@@ -2,15 +2,19 @@ use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
 use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
+use std::default::Default;
 use std::{fmt, fs, io, path::Path, sync::Arc};
 use sway_fmt::get_formatted_data;
-use sway_utils::{find_manifest_dir, get_sway_files};
+use sway_utils::{constants, find_manifest_dir, get_sway_files};
+use taplo::formatter as taplo_fmt;
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
         path: None,
+        use_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         binary_outfile: None,
         offline_mode: false,
         silent_mode: false,
@@ -30,6 +34,8 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
 
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
+            let mut manifest_file = path.clone();
+            manifest_file.push(constants::MANIFEST_FILE_NAME);
             let files = get_sway_files(path);
             let mut contains_edits = false;
 
@@ -41,53 +47,14 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {
-                                    let changeset = diff_lines(&file_content, &formatted_content);
-
-                                    println!("\n{:?}\n", file);
-
-                                    let mut count_of_updates = 0;
-
-                                    for diff in changeset.diff() {
-                                        // max 100 updates
-                                        if count_of_updates >= 100 {
-                                            break;
-                                        }
-                                        match diff {
-                                            DiffOp::Equal(old) => {
-                                                for o in old {
-                                                    println!("{}", o)
-                                                }
-                                            }
-                                            DiffOp::Insert(new) => {
-                                                count_of_updates += 1;
-                                                for n in new {
-                                                    println_green(&format!("+{}", n))?;
-                                                }
-                                            }
-                                            DiffOp::Remove(old) => {
-                                                count_of_updates += 1;
-                                                for o in old {
-                                                    println_red(&format!("-{}", o))?;
-                                                }
-                                            }
-                                            DiffOp::Replace(old, new) => {
-                                                count_of_updates += 1;
-                                                for o in old {
-                                                    println_red(&format!("-{}", o))?;
-                                                }
-                                                for n in new {
-                                                    println_green(&format!("+{}", n))?;
-                                                }
-                                            }
-                                        }
-                                    }
-
                                     if !contains_edits {
                                         contains_edits = true;
                                     }
+                                    println!("\n{:?}\n", file);
+                                    display_file_diff(&file_content, &formatted_content)?;
                                 }
                             } else {
-                                format_sway_file(&file, &formatted_content)?;
+                                format_file(&file, &formatted_content)?;
                             }
                         }
                         Err(err) => {
@@ -95,6 +62,26 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                             eprintln!("\nThis file: {:?} is not part of the build", file);
                             eprintln!("{}", err.join("\n"));
                         }
+                    }
+                }
+            }
+
+            // format manifest using taplo formatter
+            if let Ok(file_content) = fs::read_to_string(&manifest_file) {
+                let taplo_alphabetize = taplo_fmt::Options {
+                    reorder_keys: true,
+                    ..Default::default()
+                };
+                let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
+                if command.check {
+                    if formatted_content != file_content {
+                        if !contains_edits {
+                            contains_edits = true;
+                        }
+                        eprintln!("\nManifest Forc.toml improperly formatted");
+                        display_file_diff(&file_content, &formatted_content)?;
+                    } else {
+                        format_file(&manifest_file, &formatted_content)?;
                     }
                 }
             }
@@ -115,7 +102,47 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     }
 }
 
-fn format_sway_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
+fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<(), FormatError> {
+    let changeset = diff_lines(file_content, formatted_content);
+    let mut count_of_updates = 0;
+    for diff in changeset.diff() {
+        // max 100 updates
+        if count_of_updates >= 100 {
+            break;
+        }
+        match diff {
+            DiffOp::Equal(old) => {
+                for o in old {
+                    println!("{}", o)
+                }
+            }
+            DiffOp::Insert(new) => {
+                count_of_updates += 1;
+                for n in new {
+                    println_green(&format!("+{}", n))?;
+                }
+            }
+            DiffOp::Remove(old) => {
+                count_of_updates += 1;
+                for o in old {
+                    println_red(&format!("-{}", o))?;
+                }
+            }
+            DiffOp::Replace(old, new) => {
+                count_of_updates += 1;
+                for o in old {
+                    println_red(&format!("-{}", o))?;
+                }
+                for n in new {
+                    println_green(&format!("+{}", n))?;
+                }
+            }
+        }
+    }
+    Result::Ok(())
+}
+
+fn format_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
     fs::write(file, formatted_content)?;
 
     Ok(())
@@ -150,5 +177,93 @@ impl From<io::Error> for FormatError {
         FormatError {
             message: e.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::taplo_fmt;
+    use std::default::Default;
+
+    #[test]
+    fn test_forc_indentation() {
+        let correct_forc_manifest = r#"
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let indented_forc_manifest = r#"
+        [project]
+    author = "Fuel Labs <contact@fuel.sh>"
+                    license = "Apache-2.0"
+    name = "Fuel example project"
+
+
+    [dependencies]
+        core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+                    std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let formatted_content =
+            taplo_fmt::format(indented_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let whitespace_forc_manifest = r#"
+[project]
+ author="Fuel Labs <contact@fuel.sh>"
+license   =                                   "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = {git="http://github.com/FuelLabs/sway-lib-core"}
+std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"             }
+"#;
+        let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
+        assert_eq!(formatted_content, correct_forc_manifest);
+    }
+
+    #[test]
+    fn test_forc_alphabetization() {
+        let correct_forc_manifest = r#"
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let disordered_forc_manifest = r#"
+[project]
+name = "Fuel example project"
+license = "Apache-2.0"
+author = "Fuel Labs <contact@fuel.sh>"
+
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+    "#;
+        let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
+        assert_eq!(formatted_content, correct_forc_manifest);
     }
 }

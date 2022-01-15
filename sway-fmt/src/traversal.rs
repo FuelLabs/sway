@@ -1,4 +1,4 @@
-use sway_core::{AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, ReturnStatement, SwayParseTree};
 
 use sway_types::span::Span;
 
@@ -44,7 +44,7 @@ enum ChangeType {
 }
 
 /// traverses the Sway ParseTree and returns list of formatted changes
-pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
+pub fn traverse_for_changes(parse_tree: &SwayParseTree) -> Vec<Change> {
     let mut changes = vec![];
 
     for node in &parse_tree.tree.root_nodes {

@@ -1,0 +1,15 @@
+script script {
+    fn a(x: u64) -> u64 {
+        entry:
+        ret u64 x
+    }
+
+    fn main() -> u64 {
+        entry:
+        v0 = const u64 0
+        v1 = call a(v0)
+        v2 = const u64 1
+        v3 = call a(v2)
+        ret u64 v3
+    }
+}

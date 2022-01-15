@@ -9,16 +9,19 @@ mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
+mod optimize;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
 mod style;
 pub mod type_engine;
 
-use crate::asm_generation::checks::check_invalid_opcodes;
-pub use crate::parser::{HllParser, Rule};
-use crate::{asm_generation::compile_ast_to_asm, error::*};
-pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
+pub use crate::parser::{Rule, SwayParser};
+use crate::{
+    asm_generation::{checks, compile_ast_to_asm},
+    error::*,
+};
+pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
@@ -41,7 +44,7 @@ pub use type_engine::TypeInfo;
 /// it can be a library to be imported into one of the aforementioned
 /// program types.
 #[derive(Debug)]
-pub struct HllParseTree {
+pub struct SwayParseTree {
     pub tree_type: TreeType,
     pub tree: ParseTree,
 }
@@ -108,7 +111,7 @@ impl ParseTree {
     }
 }
 
-/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [HllParseTree].
+/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
 /// ```
@@ -121,10 +124,10 @@ impl ParseTree {
 ///
 /// # Panics
 /// Panics if the generated parser from Pest panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<HllParseTree> {
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
-    let mut parsed = match HllParser::parse(Rule::program, input.clone()) {
+    let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
         Ok(o) => o,
         Err(e) => {
             return err(
@@ -197,7 +200,7 @@ pub enum BytecodeCompilationResult {
 /// If a given [Rule] exists in the input text, return
 /// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
 pub fn extract_keyword(line: &str, rule: Rule) -> Option<String> {
-    if let Ok(pair) = HllParser::parse(rule, Arc::from(line)) {
+    if let Ok(pair) = SwayParser::parse(rule, Arc::from(line)) {
         Some(pair.as_str().trim().to_string())
     } else {
         None
@@ -342,7 +345,6 @@ pub fn compile_to_ast(
     warnings.append(&mut l_warnings);
     errors = dedup_unsorted(errors);
     warnings = dedup_unsorted(warnings);
-
     if !errors.is_empty() {
         return CompileAstResult::Failure { errors, warnings };
     }
@@ -375,7 +377,11 @@ pub fn compile_to_asm(
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        compile_ast_to_asm(*parse_tree, &build_config),
+                        if build_config.use_ir {
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, &build_config)
+                        } else {
+                            compile_ast_to_asm(*parse_tree, &build_config)
+                        },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
                         errors
@@ -393,6 +399,101 @@ pub fn compile_to_asm(
             }
         }
     }
+}
+
+use sway_ir::{context::Context, function::Function};
+
+pub(crate) fn compile_ast_to_ir_to_asm(
+    ast: TypedParseTree,
+    tree_type: TreeType,
+    build_config: &BuildConfig,
+) -> CompileResult<FinalizedAsm> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let mut ir = match optimize::compile_ast(ast) {
+        Ok(ir) => ir,
+        Err(msg) => {
+            errors.push(CompileError::InternalOwned(
+                msg,
+                span::Span {
+                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+                    path: None,
+                },
+            ));
+            return err(warnings, errors);
+        }
+    };
+
+    // Inline function calls since we don't support them yet.  For scripts and predicates we inline
+    // into main(), and for contracts we inline into ABI impls, which are found due to them having
+    // a selector.
+    let mut functions_to_inline_to = Vec::new();
+    for (idx, fc) in &ir.functions {
+        if (matches!(tree_type, TreeType::Script | TreeType::Predicate) && fc.name == "main")
+            || (tree_type == TreeType::Contract && fc.selector.is_some())
+        {
+            functions_to_inline_to.push(::sway_ir::function::Function(idx));
+        }
+    }
+    check!(
+        inline_function_calls(&mut ir, &functions_to_inline_to),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // The only other optimisation we have at the moment is constant combining.  In lieu of a
+    // forthcoming pass manager we can just call it here now.  We can re-use the inline functions
+    // list.
+    check!(
+        combine_constants(&mut ir, &functions_to_inline_to),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    if build_config.print_ir {
+        println!("{}", ir);
+    }
+
+    crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)
+}
+
+fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(msg) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    msg,
+                    span::Span {
+                        span: pest::Span::new("".into(), 0, 0).unwrap(),
+                        path: None,
+                    },
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(msg) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    msg,
+                    span::Span {
+                        span: pest::Span::new("".into(), 0, 0).unwrap(),
+                        path: None,
+                    },
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
 }
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
@@ -456,7 +557,7 @@ fn perform_control_flow_analysis(
 fn parse_root_from_pairs(
     input: impl Iterator<Item = Pair<Rule>>,
     config: Option<&BuildConfig>,
-) -> CompileResult<HllParseTree> {
+) -> CompileResult<SwayParseTree> {
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -533,25 +634,25 @@ fn parse_root_from_pairs(
         }
         match rule {
             Rule::contract => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Contract,
                     tree: parse_tree,
                 });
             }
             Rule::script => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Script,
                     tree: parse_tree,
                 });
             }
             Rule::predicate => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Predicate,
                     tree: parse_tree,
                 });
             }
             Rule::library => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Library {
                         name: library_name.expect(
                             "Safe unwrap, because the sway-core enforces the library keyword is \
