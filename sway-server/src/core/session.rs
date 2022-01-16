@@ -29,11 +29,8 @@ impl Session {
 
     // update sway config
     pub fn update_config(&self, options: Value) {
-        match self.config.write() {
-            LockResult::Ok(mut config) => {
-                *config = SwayConfig::with_options(options);
-            }
-            _ => {}
+        if let LockResult::Ok(mut config) = self.config.write() {
+            *config = SwayConfig::with_options(options);
         }
     }
 
