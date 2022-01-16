@@ -4,7 +4,7 @@ use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::{fmt, fs, io, path::Path, sync::Arc};
-use sway_fmt::get_formatted_data;
+use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, find_manifest_dir, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
@@ -41,9 +41,10 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
-                    // todo: get tab_size from Manifest file
+                    // todo read options from manifest file
+                    let formatting_options = FormattingOptions::default();
                     let file_content: Arc<str> = Arc::from(file_content);
-                    match get_formatted_data(file_content.clone(), 4) {
+                    match get_formatted_data(file_content.clone(), formatting_options) {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {

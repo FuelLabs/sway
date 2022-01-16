@@ -11,6 +11,7 @@ pub struct Command {
     pub check: bool,
 }
 
+// todo: add formatting options in the command line
 pub(crate) fn exec(command: Command) -> Result<(), String> {
     match forc_fmt::format(command) {
         Err(e) => Err(e.message),
