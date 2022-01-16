@@ -7,15 +7,15 @@ use crate::{
         get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
 use sway_core::{
-    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult, NamespaceRef,
-    NamespaceWrapper,
+    create_module, source_map::SourceMap, BuildConfig, BytecodeCompilationResult,
+    CompilationResult, NamespaceRef, NamespaceWrapper,
 };
 
 use anyhow::Result;
@@ -33,6 +33,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
         binary_outfile,
         use_ir,
+        debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -94,17 +95,29 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
+    let mut source_map = SourceMap::new();
+
     let main = compile(
         main_file,
         &manifest.project.name,
         namespace,
         build_config,
         &mut dependency_graph,
+        &mut source_map,
         silent_mode,
     )?;
+
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+    }
+
+    if let Some(outfile) = debug_outfile {
+        fs::write(
+            outfile,
+            &serde_json::to_vec(&source_map).expect("JSON seralizatio failed"),
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     println!("  Bytecode size is {} bytes.", main.len());
@@ -269,9 +282,17 @@ fn compile(
     namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    source_map: &mut SourceMap,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_bytecode(
+        source,
+        namespace,
+        build_config,
+        dependency_graph,
+        source_map,
+    );
+
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});

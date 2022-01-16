@@ -26,6 +26,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
             print_intermediate_asm: false,
             print_ir: false,
             binary_outfile: None,
+            debug_outfile: None,
             offline_mode: false,
             silent_mode: true,
         }))
@@ -54,6 +55,7 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
         kill_node: false,
         use_ir: false,
         binary_outfile: None,
+        debug_outfile: None,
         print_finalized_asm: false,
         print_intermediate_asm: false,
         print_ir: false,
@@ -121,6 +123,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         print_intermediate_asm: false,
         print_ir: false,
         binary_outfile: None,
+        debug_outfile: None,
         offline_mode: false,
         silent_mode: true,
     })
