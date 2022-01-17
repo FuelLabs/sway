@@ -1,0 +1,7 @@
+script script {
+    fn main() -> u64 {
+        entry:
+        v0 = const u64 42
+        ret u64 v0
+    }
+}

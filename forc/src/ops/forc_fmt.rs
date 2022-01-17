@@ -11,8 +11,10 @@ use taplo::formatter as taplo_fmt;
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
         path: None,
+        use_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         binary_outfile: None,
         offline_mode: false,
         silent_mode: false,

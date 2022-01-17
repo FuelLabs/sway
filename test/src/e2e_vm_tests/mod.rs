@@ -68,7 +68,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("match_expressions", ProgramState::Return(42)),
         ("assert_test", ProgramState::Return(1)),  // true
         ("array_basics", ProgramState::Return(1)), // true
-        ("array_dynamic_oob", ProgramState::Revert(1)),
+        // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
         ("block_height", ProgramState::Return(1)),   // true

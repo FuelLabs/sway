@@ -21,8 +21,10 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
 
     let DeployCommand {
         path,
+        use_ir,
         print_finalized_asm,
         print_intermediate_asm,
+        print_ir,
         binary_outfile,
         offline_mode,
         silent_mode,
@@ -41,8 +43,10 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                     TreeType::Contract => {
                         let build_command = BuildCommand {
                             path,
+                            use_ir,
                             print_finalized_asm,
                             print_intermediate_asm,
+                            print_ir,
                             binary_outfile,
                             offline_mode,
                             silent_mode,

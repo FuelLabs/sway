@@ -15,6 +15,7 @@
 //! ```
 
 use crate::{context::Context, irtype::Type, value::Value};
+use sway_types::ident::Ident;
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
@@ -24,31 +25,31 @@ pub struct AsmBlock(pub generational_arena::Index);
 #[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct AsmBlockContent {
-    pub args_names: Vec<String>,
+    pub args_names: Vec<Ident>,
     pub body: Vec<AsmInstruction>,
-    pub return_name: Option<String>,
+    pub return_name: Option<Ident>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmArg {
-    pub name: String,
+    pub name: Ident,
     pub initializer: Option<Value>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmInstruction {
-    pub name: String,
-    pub args: Vec<String>,
-    pub immediate: Option<String>,
+    pub name: Ident,
+    pub args: Vec<Ident>,
+    pub immediate: Option<Ident>,
 }
 
 impl AsmBlock {
     /// Create a new [`AsmBlock`] in the passed context and return its handle.
     pub fn new(
         context: &mut Context,
-        args_names: Vec<String>,
+        args_names: Vec<Ident>,
         body: Vec<AsmInstruction>,
-        return_name: Option<String>,
+        return_name: Option<Ident>,
     ) -> Self {
         let content = AsmBlockContent {
             args_names,
