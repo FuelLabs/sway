@@ -10,17 +10,14 @@ use sway_types::span::Span;
 #[serde(transparent)]
 pub struct PathIndex(usize);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SourceMap {
     paths: Vec<PathBuf>,
     map: HashMap<usize, SourceMapSpan>,
 }
 impl SourceMap {
     pub fn new() -> Self {
-        Self {
-            paths: Vec::new(),
-            map: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn insert(&mut self, pc: usize, span: &Span) {
