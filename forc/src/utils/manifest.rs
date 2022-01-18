@@ -2,6 +2,7 @@ use crate::utils::dependency::Dependency;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 use sway_utils::constants::DEFAULT_NODE_URL;
 
@@ -114,11 +115,30 @@ fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, St
     .unwrap())
 }
 
+fn try_parse_utxo_id(raw: &Option<String>, name: &str) -> Result<fuel_tx::UtxoId, String> {
+    let mut raw = if let Some(raw) = raw {
+        raw.to_string()
+    } else {
+        return Err(format!("Missing value for field {}.\nhelp: a tx-input entry in your Forc.toml manifest is missing a field named {}.", name, name));
+    };
+    if raw.len() > 2 && &raw[0..2] == "0x" {
+        raw = (&raw[2..]).to_string();
+    }
+    Ok(fuel_tx::UtxoId::from_str(&raw[..])
+        .map_err(|_| {
+            format!(
+                r#"In the manifest file (Forc.toml), the given value for "utxo-id" in tx-inputs ({}) is not hexadecimal."#,
+                raw
+            )
+        })?
+    )
+}
+
 impl TxInput {
     pub fn to_input(&self) -> Result<fuel_tx::Input, String> {
         match self.r#type.to_lowercase().as_ref() {
             "contract" => Ok(fuel_tx::Input::Contract {
-                utxo_id: try_parse_bytes32(&self.utxo_id, "utxo-id")?,
+                utxo_id: try_parse_utxo_id(&self.utxo_id, "utxo-id")?,
                 balance_root: try_parse_bytes32(&self.balance_root, "balance-root")?,
                 state_root: try_parse_bytes32(&self.state_root, "state-root")?,
                 contract_id: try_parse_contract_id(&self.contract_id)?,

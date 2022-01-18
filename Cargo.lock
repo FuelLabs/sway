@@ -965,7 +965,7 @@ dependencies = [
  "semver 1.0.4",
  "serde",
  "serde_json",
- "structopt 0.3.25",
+ "structopt 0.3.26",
  "sway-core",
  "sway-fmt",
  "sway-server",
@@ -1017,9 +1017,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-gql-client"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b44be65acdaae1d0c010b7eca682d20b0c72b4652a594173eda3b96a50a545e"
+checksum = "b4323917a47d635eb0b9e665e1d76d635c826880082e38cb6dd6dbda8acc7ed8"
 dependencies = [
  "chrono",
  "cynic",
@@ -1033,7 +1033,7 @@ dependencies = [
  "schemafy_lib",
  "serde",
  "serde_json",
- "structopt 0.3.25",
+ "structopt 0.3.26",
  "surf",
  "thiserror",
 ]
@@ -1105,9 +1105,9 @@ checksum = "f97a6a68c3378e486d645a47026bcd7139500345ef214653811ea4f016f142ce"
 
 [[package]]
 name = "fuel-tx"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae7148d11382ae57c1336f3b59465c8d4affb68031c23b264151b16a8f56c4c"
+checksum = "43d9f4b7122f3080a818a72b5eef9e0a3b6ace85505c1d19b2322c337cefadfe"
 dependencies = [
  "fuel-asm",
  "fuel-types",
@@ -1129,9 +1129,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-vm"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed9310d687a8d38f729876669f342a27710517614048b4d7421595d55209f99"
+checksum = "e6a51584f4230a4bf19099fee60da2e4a00b67d2e39a3bc94a434f207e8a224e"
 dependencies = [
  "fuel-asm",
  "fuel-merkle",
@@ -1287,7 +1287,7 @@ checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasi 0.10.3+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -1706,7 +1706,7 @@ dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
  "regex-syntax",
- "syn 1.0.84",
+ "syn 1.0.85",
  "utf8-ranges",
 ]
 
@@ -2082,7 +2082,7 @@ checksum = "fb5671a83709b2755fe5b776d4915701bf36ed2cd9575035502ec12818141d71"
 dependencies = [
  "ansi_term 0.12.1",
  "prettytable-rs",
- "structopt 0.3.25",
+ "structopt 0.3.26",
 ]
 
 [[package]]
@@ -2476,9 +2476,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "2.4.2"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525bc1abfda2e1998d152c45cf13e696f76d0a4972310b22fac1658b05df7c87"
+checksum = "d09d3c15d814eda1d6a836f2f2b56a6abc1446c8a34351cb3180d3db92ffe4ce"
 dependencies = [
  "bitflags",
  "core-foundation",
@@ -2489,9 +2489,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework-sys"
-version = "2.4.2"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9dd14d83160b528b7bfd66439110573efcfbe281b17fc2ca9f39f550d619c7e"
+checksum = "e90dd10c41c6bfc633da6e0c659bd25d31e0791e5974ac42970267d59eba87f7"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -2543,9 +2543,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.74"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee2bb9cd061c5865d345bb02ca49fcef1391741b672b54a0bf7b679badec3142"
+checksum = "c059c05b48c5c0067d4b4b2b4f0732dd65feb52daf7e0ea09cd87e7dadc1af79"
 dependencies = [
  "itoa 1.0.1",
  "ryu",
@@ -2576,12 +2576,12 @@ dependencies = [
 
 [[package]]
 name = "serde_urlencoded"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edfa57a7f8d9c1d260a549e7224100f6c43d43f9103e06dd8b4095a9b2b43ce9"
+checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
 dependencies = [
  "form_urlencoded",
- "itoa 0.4.8",
+ "itoa 1.0.1",
  "ryu",
  "serde",
 ]
@@ -2601,9 +2601,18 @@ dependencies = [
 
 [[package]]
 name = "sha1"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
+checksum = "c1da05c97445caa12d05e848c4a4fcbbea29e748ac28f7e80e9b010392063770"
+dependencies = [
+ "sha1_smol",
+]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
 name = "sha2"
@@ -2774,9 +2783,9 @@ dependencies = [
 
 [[package]]
 name = "structopt"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40b9788f4202aa75c240ecc9c15c65185e6a39ccdeb0fd5d008b98825464c87c"
+checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
 dependencies = [
  "clap",
  "lazy_static",
@@ -2853,7 +2862,7 @@ dependencies = [
  "prettydiff 0.5.1",
  "sha2",
  "smallvec",
- "structopt 0.3.25",
+ "structopt 0.3.26",
  "sway-ir",
  "sway-types",
  "thiserror",
@@ -3414,9 +3423,9 @@ checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
 name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
+version = "0.10.3+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
+checksum = "46a2e384a3f170b0c7543787a91411175b71afd56ba4d3a0ae5678d4e2243c0e"
 
 [[package]]
 name = "wasm-bindgen"

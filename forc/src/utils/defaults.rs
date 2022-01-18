@@ -38,7 +38,7 @@ fuels-abigen-macro = "0.1"
 fuels-core = "0.1"
 fuels-rs = "0.1"
 fuel-gql-client = {{ version = "0.1", default-features = false }}
-fuel-tx = "0.1"
+fuel-tx = "0.2"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
