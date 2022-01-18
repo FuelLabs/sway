@@ -454,7 +454,7 @@ fn asm_block_to_doc(
                 .append(Doc::in_parens_comma_sep(
                     args.iter()
                         .map(|AsmArg { name, initializer }| {
-                            Doc::text(name).append(match initializer {
+                            Doc::text(name.as_str()).append(match initializer {
                                 Some(init_val) => {
                                     Doc::text(format!(": {}", namer.name(context, init_val)))
                                 }
@@ -479,9 +479,9 @@ fn asm_block_to_doc(
                              immediate,
                          }| {
                             Doc::line(
-                                Doc::text(format!("{:6} ", name)).append(
+                                Doc::text(format!("{:6} ", name.as_str())).append(
                                     Doc::list_sep(
-                                        args.iter().map(&Doc::text).collect(),
+                                        args.iter().map(|arg| Doc::text(arg.as_str())).collect(),
                                         Doc::text(" "),
                                     )
                                     .append(match immediate {

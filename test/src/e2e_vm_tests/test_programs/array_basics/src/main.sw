@@ -7,7 +7,7 @@ struct S {
 
 fn main() -> bool {
     let a: [bool; 5] = [true, true, true, false, true];
-    let b: [u32; 10] = [0; 10];
+    let b: [u32; 10] = [3; 10];
     let c = [0x01, 0x02, 0x03];
     let d = [0; 10];
     let e: [[u64; 4]; 2] = [[1, 2, 3, 4], [5, 6, 7, 8]];

@@ -6,4 +6,4 @@ mod fmt;
 mod traversal;
 mod traversal_helper;
 
-pub use crate::fmt::get_formatted_data;
+pub use crate::fmt::{get_formatted_data, FormattingOptions};
