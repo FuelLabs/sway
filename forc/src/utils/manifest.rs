@@ -127,7 +127,7 @@ fn try_parse_utxo_id(raw: &Option<String>, name: &str) -> Result<fuel_tx::UtxoId
     fuel_tx::UtxoId::from_str(&raw[..])
         .map_err(|_| {
             format!(
-                r#"In the manifest file (Forc.toml), the given value for "utxo-id" in tx-inputs ({}) is not hexadecimal."#,
+                r#"In the manifest file (Forc.toml), the given value for "utxo-id" in tx-inputs ({}) is a valid UTXO ID."#,
                 raw
             )
         }
