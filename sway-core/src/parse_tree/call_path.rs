@@ -60,6 +60,7 @@ impl CallPath {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<CallPath> {
+        assert!(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_);
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];

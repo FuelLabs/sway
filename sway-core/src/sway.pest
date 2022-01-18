@@ -107,8 +107,7 @@ struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
 field_scrutinee  =  {":" ~ scrutinee}
-enum_scrutinee   =  {enum_scrutinee_component ~ fn_args_scrutinee?}
-enum_scrutinee_component = {ident ~ (path_separator ~ ident)+}
+enum_scrutinee   =  {call_path_ ~ fn_args_scrutinee?}
 fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
 tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
