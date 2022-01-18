@@ -71,7 +71,7 @@ Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 ```
 
-Use `forc abi-json` to output the abi of the contract. To write this to a `json` (which is necessary for running tests below), simple pipe it using something like `forc abi-json > my_contract.json`. There is currently not a convention for where abi files should be placed, one common choice is loose in the root directory.
+Use `forc json-abi` to output the ABI of the contract. To write this to a `.json` file (which is necessary for running tests below), pipe it using something like `forc json-abi > my_contract.json`. There is currently not a convention for where ABI files should be placed; one common choice is loose in the root directory.
 
 ## Testing a Sway Project with Forc
 
