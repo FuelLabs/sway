@@ -394,17 +394,13 @@ impl Expression {
                 };
                 let mut func_app_parts = expr.into_inner();
                 let first_part = func_app_parts.next().unwrap();
-                assert!(first_part.as_rule() == Rule::ident);
-                let suffix = check!(
-                    ident::parse_from_pair(first_part, config),
+                assert!(first_part.as_rule() == Rule::call_path);
+                let name = check!(
+                    CallPath::parse_from_pair(first_part, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let name = CallPath {
-                    prefixes: vec![],
-                    suffix,
-                };
                 let (arguments, type_args) = {
                     let maybe_type_args = func_app_parts.next().unwrap();
                     match maybe_type_args.as_rule() {
