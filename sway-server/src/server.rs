@@ -10,7 +10,6 @@ use lsp::{
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
 use std::sync::Arc;
 use sway_utils::helpers::{find_manifest_dir, get_sway_files};
-
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
@@ -50,7 +49,11 @@ impl Backend {
 
 #[lspower::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        if let Some(options) = params.initialization_options {
+            self.session.update_config(options);
+        }
+
         self.client
             .log_message(MessageType::INFO, "Initializing the Server")
             .await;

@@ -14,7 +14,7 @@ license = "Apache-2.0"
 core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
 "#,
-        project_name, real_name,
+        project_name, real_name
     )
 }
 

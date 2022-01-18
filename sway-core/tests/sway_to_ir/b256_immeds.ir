@@ -1,0 +1,22 @@
+script script {
+    fn cmp(a: b256, b: b256) -> bool {
+        entry:
+        v0 = asm(lhs: a, rhs: b, sz, res) -> res {
+            addi   sz zero i32
+            meq    res lhs rhs sz
+        }
+        ret bool v0
+    }
+
+    fn main() -> bool {
+        local ptr b256 a
+
+        entry:
+        v0 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202
+        store v0, ptr b256 a
+        v1 = load ptr b256 a
+        v2 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303
+        v3 = call cmp(v1, v2)
+        ret bool v3
+    }
+}

@@ -1,25 +1,22 @@
-use std::sync::Arc;
-
 use crate::core::session::Session;
-use lspower::lsp::{
-    DocumentFormattingParams, FormattingOptions, Position, Range, TextDocumentIdentifier, TextEdit,
-};
-use sway_fmt::get_formatted_data;
+use lspower::lsp::{DocumentFormattingParams, Position, Range, TextDocumentIdentifier, TextEdit};
+use std::sync::Arc;
+use sway_fmt::{get_formatted_data, FormattingOptions};
 
 pub fn format_document(
     session: Arc<Session>,
     params: DocumentFormattingParams,
 ) -> Option<Vec<TextEdit>> {
-    let options: FormattingOptions = params.options;
     let text_document: TextDocumentIdentifier = params.text_document;
     let url = text_document.uri;
 
-    session.format_text(&url, options)
+    session.format_text(&url)
 }
 
 pub fn get_format_text_edits(text: Arc<str>, options: FormattingOptions) -> Option<Vec<TextEdit>> {
     // we only format if code is correct
-    match get_formatted_data(text.clone(), options.tab_size) {
+
+    match get_formatted_data(text.clone(), options) {
         Ok((num_of_lines, formatted_text)) => {
             let text_lines_count = text.split('\n').count();
             let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;

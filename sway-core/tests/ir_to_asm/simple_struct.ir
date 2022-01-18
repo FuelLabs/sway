@@ -1,0 +1,16 @@
+script script {
+    fn main() -> u64 {
+        local ptr { u64, u64 } record
+
+        entry:
+        v0 = const { u64, u64 } { u64 undef, u64 undef }
+        v1 = const u64 40
+        v2 = insert_value v0, { u64, u64 }, v1, 0
+        v3 = const u64 2
+        v4 = insert_value v2, { u64, u64 }, v3, 1
+        store v4, ptr { u64, u64 } record
+        v5 = get_ptr ptr { u64, u64 } record
+        v6 = extract_value v5, { u64, u64 }, 0
+        ret u64 v6
+    }
+}

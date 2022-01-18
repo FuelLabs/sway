@@ -1,0 +1,26 @@
+script script {
+    fn new(a: bool, b: bool) -> { bool, bool } {
+        local ptr bool a_
+        local ptr bool b_
+
+        entry:
+        v0 = const bool false
+        store v0, ptr bool a_
+        v1 = const bool true
+        store v1, ptr bool b_
+        v2 = load ptr bool a_
+        v3 = load ptr bool b_
+        v4 = const { bool, bool } { bool undef, bool undef }
+        v5 = insert_value v4, { bool, bool }, v2, 0
+        v6 = insert_value v5, { bool, bool }, v3, 1
+        ret { bool, bool } v6
+    }
+
+    fn main() -> () {
+        entry:
+        v0 = const bool true
+        v1 = const bool false
+        v2 = call new(v0, v1)
+        ret () v2
+    }
+}

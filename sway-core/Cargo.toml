@@ -21,9 +21,11 @@ lazy_static = "1.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
 pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
 petgraph = "0.5"
+prettydiff = "0.5"
 sha2 = "0.9"
 smallvec = "1.7"
 structopt = { version = "0.3", default-features = false, optional = true }
+sway-ir = { version = "0.2.1", path = "../sway-ir" }
 sway-types = { version = "0.2.1", path = "../sway-types" }
 thiserror = "1.0"
 
