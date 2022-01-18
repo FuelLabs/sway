@@ -256,6 +256,7 @@ Bytecode size is 28 bytes.
 Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 </code></pre>
+<p>Use <code>forc json-abi</code> to output the ABI of the contract. To write this to a <code>.json</code> file (which is necessary for running tests below), pipe it using something like <code>forc json-abi &gt; my_contract.json</code>. There is currently not a convention for where ABI files should be placed; one common choice is loose in the root directory.</p>
 <h2 id="testing-a-sway-project-with-forc"><a class="header" href="#testing-a-sway-project-with-forc">Testing a Sway Project with Forc</a></h2>
 <p>If you look again at the project structure when you create a new Forc project, you can see a directory called <code>tests/</code>:</p>
 <pre><code class="language-plaintext">$ forc init my-fuel-project
@@ -270,7 +271,7 @@ $ tree .
 </code></pre>
 <p>Note that this is a Rust package, hence the existence of a <code>Cargo.toml</code> (Rust manifest file) in the project root directory. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a> (<code>fuels-rs</code>).</p>
 <p>These tests can be run using either <code>carg test</code>, or <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code>).</p>
-<p>For example, let's write tests against this contract, written in Sway:</p>
+<p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
 <pre><code class="language-sway">contract;
 
 use std::storage::*;
