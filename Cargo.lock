@@ -847,7 +847,7 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "docstrings"
-version = "0.3.0"
+version = "0.0.0"
 dependencies = [
  "thiserror",
 ]
@@ -2609,7 +2609,7 @@ dependencies = [
 
 [[package]]
 name = "signatures"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "fuel-tx",
@@ -2966,7 +2966,7 @@ dependencies = [
 
 [[package]]
 name = "test"
-version = "0.3.0"
+version = "0.0.0"
 dependencies = [
  "forc",
  "fuel-asm",
