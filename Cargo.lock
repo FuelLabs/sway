@@ -2608,17 +2608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "signatures"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "fuel-tx",
- "fuel-vm",
- "hex",
- "secp256k1",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2976,6 +2965,17 @@ dependencies = [
  "regex",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "test-sig-gen-util"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "fuel-tx",
+ "fuel-vm",
+ "hex",
+ "secp256k1",
 ]
 
 [[package]]
