@@ -40,6 +40,6 @@ fn get_kind(token_type: &TokenType) -> SymbolKind {
         TokenType::Struct(_) => SymbolKind::STRUCT,
         TokenType::Variable(_) => SymbolKind::VARIABLE,
         TokenType::Trait(_) => SymbolKind::INTERFACE,
-        _ => SymbolKind::NULL, // TODO SymbolKind::UNKNOWN was removed in https://github.com/gluon-lang/lsp-types/pull/219
+        TokenType::Reassignment => SymbolKind::OPERATOR,
     }
 }
