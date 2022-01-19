@@ -14,5 +14,10 @@ fn main() -> bool {
     let new_bits = addr.into();
     assert(new_bits == bits);
 
+    // test Ord
+    let addr1 = ~Address::from(bits);
+    let addr2 = ~Address::from(bits);
+    assert(addr1 == addr2);
+
     true
 }
