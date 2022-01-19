@@ -9,7 +9,7 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Fuel Orchestrator."
 
 [dependencies]
-annotate-snippets = { version = "0.9", features = ["color"] } # used for formating error/warning print
+annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0.41"
 dirs = "3.0.2"
 flate2 = "1.0.20"
