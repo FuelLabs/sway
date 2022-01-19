@@ -171,6 +171,9 @@ jobs:
         with:
           images: |
             ghcr.io/fuellabs/sway
+          tags: |
+            type=semver,pattern={{raw}}
+            
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       
@@ -187,7 +190,7 @@ jobs:
           context: .
           file: deployment/Dockerfile
           push: true
-          tags: ${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
