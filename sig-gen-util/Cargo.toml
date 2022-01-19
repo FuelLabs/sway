@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.39"
-fuel-tx = "0.1"
-fuel-vm = "0.1"
+fuel-tx = "0.2"
+fuel-vm = "0.2"
 hex = "0.4"
 secp256k1 = { version = "0.20", features = ["recovery"] }
