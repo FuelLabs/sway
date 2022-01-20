@@ -32,14 +32,14 @@ impl TypedCodeBlock {
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
-        let mut local_namespace = namespace.clone();
+        let mut local_namespace = todo!("make a new_scope() function?"); //namespace.clone();
         let evaluated_contents = other
             .contents
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
-                    namespace: &mut local_namespace,
+                    namespace: local_namespace,
                     crate_namespace,
                     return_type_annotation: type_annotation,
                     help_text,

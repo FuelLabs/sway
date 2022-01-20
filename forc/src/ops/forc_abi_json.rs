@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
+use sway_core::{BuildConfig, NamespaceWrapper, CompileAstResult, Namespace, TreeType, TypedParseTree, NamespaceRef, create_module, retrieve_module};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -55,7 +55,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     let mut dependency_graph = HashMap::new();
     let mut json_abi = vec![];
 
-    let mut namespace: Namespace = Default::default();
+    let namespace= create_module();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             // Check if dependency is a git-based dependency.
@@ -96,7 +96,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
                 &this_dir,
                 dependency_name,
                 dependency_details,
-                &mut namespace,
+                namespace,
                 &mut dependency_graph,
                 silent_mode,
                 offline_mode,
@@ -107,14 +107,16 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
-    json_abi.append(&mut compile(
+    let mut res = compile(
         main_file,
         &manifest.project.name,
-        &namespace,
+        namespace,
         build_config,
         &mut dependency_graph,
         silent_mode,
-    )?);
+    )?;
+    let namespace = retrieve_module(namespace);
+    json_abi.append(&mut res);
 
     let output_json = json!(json_abi);
 
@@ -134,7 +136,7 @@ fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace,
+    namespace: NamespaceRef,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -202,7 +204,6 @@ fn compile_dependency_lib<'manifest>(
         file_name.to_owned(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace = Default::default();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref mut deps) = manifest_of_dep.dependencies {
@@ -213,7 +214,7 @@ fn compile_dependency_lib<'manifest>(
                 &manifest_dir,
                 dep.0,
                 dep.1,
-                &mut dep_namespace,
+                create_module(),
                 dependency_graph,
                 silent_mode,
                 offline_mode,
@@ -226,13 +227,13 @@ fn compile_dependency_lib<'manifest>(
     let (compiled, json_abi) = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &dep_namespace,
+        create_module(),
         build_config,
         dependency_graph,
         silent_mode,
     )?;
 
-    namespace.insert_dependency_module(dependency_name.to_string(), compiled);
+    namespace.insert_module_ref(dependency_name.to_string(), compiled);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(json_abi)
@@ -241,11 +242,11 @@ fn compile_dependency_lib<'manifest>(
 fn compile_library(
     source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<(Namespace, Vec<Function>), String> {
+) -> Result<(NamespaceRef, Vec<Function>), String> {
     let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
@@ -258,7 +259,7 @@ fn compile_library(
                 TreeType::Library { name } => {
                     print_on_success(silent_mode, proj_name, warnings, TreeType::Library { name });
                     let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
-                    Ok((parse_tree.into_namespace(), json_abi))
+                    Ok((parse_tree.get_namespace_ref(), json_abi))
                 }
                 _ => {
                     print_on_failure(silent_mode, warnings, errors);
@@ -276,7 +277,7 @@ fn compile_library(
 fn compile(
     source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,

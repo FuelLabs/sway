@@ -3,8 +3,9 @@ use crate::{
     error::*,
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
-    semantic_analysis::ast_node::{
-        declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant,
+    semantic_analysis::{
+        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
+        NamespaceRef, NamespaceWrapper,
     },
     style::is_upper_camel_case,
     type_engine::*,
@@ -152,7 +153,7 @@ impl EnumDeclaration {
 impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: crate::semantic_analysis::NamespaceRef,
+        namespace: NamespaceRef,
         self_type: TypeId,
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],

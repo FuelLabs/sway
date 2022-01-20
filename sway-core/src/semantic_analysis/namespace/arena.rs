@@ -1,11 +1,16 @@
-use crate::{CallPath, Visibility, error::*, semantic_analysis::{*, ast_node::*}, type_engine::*};
+use crate::{
+    error::*,
+    semantic_analysis::{ast_node::*, *},
+    type_engine::*,
+    CallPath, Visibility,
+};
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
 use std::{collections::VecDeque, sync::RwLock};
-use sway_types::{Ident, Span, join_spans};
+use sway_types::{join_spans, Ident, Span};
 pub type NamespaceRef = Index;
 
-pub(crate) trait NamespaceWrapper {
+pub trait NamespaceWrapper {
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///
@@ -14,8 +19,8 @@ pub(crate) trait NamespaceWrapper {
     fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()>;
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId;
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()>;
-    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
     fn insert_module(&self, module_name: String, module_contents: Namespace);
+    fn insert_module_ref(&self, module_name: String, ix: NamespaceRef);
     fn insert_trait_implementation(
         &self,
         trait_name: CallPath,
@@ -56,8 +61,8 @@ pub(crate) trait NamespaceWrapper {
     /// where `foo` and `bar` are the prefixes
     /// and `function` is the suffix
     fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration>;
-    fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> ;
-     fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration>; 
+    fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration>;
+    fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration>;
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid
     /// e.g. foo.bar.baz
@@ -68,20 +73,116 @@ pub(crate) trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> ;
-     fn get_tuple_elems(
+    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)>;
+    fn get_tuple_elems(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<Vec<TypeId>>;
+    /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
+    /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
+    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
 }
 
 impl NamespaceWrapper for NamespaceRef {
-     fn get_tuple_elems(&self, ty: TypeId, debug_string: impl Into<String>, debug_span: &Span) -> CompileResult<Vec<TypeId>> {
-        read_module(|ns| ns.get_tuple_elems(ty, debug_string, debug_span), *self)
+    fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
+        write_module(|ns| ns.insert_module(module_name, ix), *self)
     }
-     fn get_struct_type_fields(
+    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut ident_iter = subfield_exp.iter().peekable();
+        let first_ident = ident_iter.next().unwrap();
+        let symbol = match read_module(|m| m.symbols.get(first_ident).cloned(), *self) {
+            Some(s) => s,
+            None => {
+                errors.push(CompileError::UnknownVariable {
+                    var_name: first_ident.as_str().to_string(),
+                    span: first_ident.span().clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
+        if ident_iter.peek().is_none() {
+            let ty = check!(
+                symbol.return_type(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            return ok((ty, ty), warnings, errors);
+        }
+        let mut symbol = check!(
+            symbol.return_type(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut type_fields =
+            self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
+        warnings.append(&mut type_fields.warnings);
+        errors.append(&mut type_fields.errors);
+        let (mut fields, struct_name) = match type_fields.value {
+            // if it is missing, the error message comes from within the above method
+            // so we don't need to re-add it here
+            None => return err(warnings, errors),
+            Some(value) => value,
+        };
+
+        let mut parent_rover = symbol;
+
+        for ident in ident_iter {
+            // find the ident in the currently available fields
+            let OwnedTypedStructField { r#type, .. } =
+                match fields.iter().find(|x| x.name == ident.as_str()) {
+                    Some(field) => field.clone(),
+                    None => {
+                        // gather available fields for the error message
+                        let available_fields =
+                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
+
+                        errors.push(CompileError::FieldNotFound {
+                            field_name: ident.clone(),
+                            struct_name,
+                            available_fields: available_fields.join(", "),
+                            span: ident.span().clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+
+            match crate::type_engine::look_up_type_id(r#type) {
+                TypeInfo::Struct {
+                    fields: ref l_fields,
+                    ..
+                } => {
+                    parent_rover = symbol;
+                    fields = l_fields.clone();
+                    symbol = r#type;
+                }
+                _ => {
+                    fields = vec![];
+                    parent_rover = symbol;
+                    symbol = r#type;
+                }
+            }
+        }
+        ok((symbol, parent_rover), warnings, errors)
+    }
+    fn get_tuple_elems(
+        &self,
+        ty: TypeId,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<Vec<TypeId>> {
+        let debug_string = debug_string.into();
+        read_module(
+            |ns| ns.get_tuple_elems(ty, debug_string.clone(), debug_span),
+            *self,
+        )
+    }
+    fn get_struct_type_fields(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
@@ -103,7 +204,7 @@ impl NamespaceWrapper for NamespaceRef {
             ),
         }
     }
-     fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
+    fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
         match self.get_symbol(enum_name) {
             CompileResult {
                 value: Some(TypedDeclaration::EnumDeclaration(inner)),
@@ -112,17 +213,20 @@ impl NamespaceWrapper for NamespaceRef {
             _ => None,
         }
     }
-fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
-    let (path , true_symbol) = read_module(|m| {
-        let empty = vec![];
-        let path = m.use_synonyms.get(symbol).unwrap_or(&empty);
-        let true_symbol =m 
-            .use_aliases
-            .get(&symbol.as_str().to_string())
-            .unwrap_or(symbol);
-            (path, true_symbol)
-    }, *self);
-        self.get_name_from_path(path, true_symbol)
+    fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
+        let (path, true_symbol) = read_module(
+            |m| {
+                let empty = vec![];
+                let path = m.use_synonyms.get(symbol).unwrap_or(&empty);
+                let true_symbol = m
+                    .use_aliases
+                    .get(&symbol.as_str().to_string())
+                    .unwrap_or(symbol);
+                (path.clone(), true_symbol.clone())
+            },
+            *self,
+        );
+        self.get_name_from_path(&path, &true_symbol)
     }
     fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
         read_module(
@@ -200,7 +304,7 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
             namespace,
         );
         write_module(
-            |m| {
+            move |m| {
                 m.implemented_traits
                     .extend(&mut implemented_traits.into_iter());
                 for symbol in symbols {
@@ -235,13 +339,14 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type =  namespace.resolve_type_with_self(look_up_type_id(r#type), self_type)
-        .unwrap_or_else(|_| {
-            errors.push(CompileError::UnknownType {
-                span: method_name.span().clone(),
+        let r#type = namespace
+            .resolve_type_with_self(look_up_type_id(r#type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: method_name.span().clone(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
             });
-            insert_type(TypeInfo::ErrorRecovery)
-        });
         let local_methods = self.get_methods_for_type(r#type);
         let mut ns_methods = read_module(
             |namespace| namespace.get_methods_for_type(r#type),
@@ -276,9 +381,9 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         if path.is_empty() {
             return ok(*self, warnings, errors);
         }
-        let ix = read_module(|m| m.modules.get(path[0].as_str()), *self);
+        let ix = read_module(|m| m.modules.get(path[0].as_str()).cloned(), *self);
         let mut ix: NamespaceRef = match ix {
-            Some(ix) => *ix,
+            Some(ix) => ix,
             None => {
                 errors.push(CompileError::ModuleNotFound {
                     span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
@@ -370,14 +475,14 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
                 write_module(
                     |mut m| {
                         // no matter what, import it this way though.
-                        match alias {
+                        match alias.clone() {
                             Some(alias) => {
-                                m.use_synonyms.insert(alias.clone(), path);
+                                m.use_synonyms.insert(alias.clone(), path.clone());
                                 m.use_aliases
                                     .insert(alias.as_str().to_string(), item.clone());
                             }
                             None => {
-                                m.use_synonyms.insert(item.clone(), path);
+                                m.use_synonyms.insert(item.clone(), path.clone());
                             }
                         };
                     },
@@ -411,7 +516,9 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
         write_module(
-            |ns| ns.insert_trait_implementation(trait_name, type_implementing_for, functions_buf),
+            move |ns| {
+                ns.insert_trait_implementation(trait_name, type_implementing_for, functions_buf)
+            },
             *self,
         )
     }
@@ -423,9 +530,6 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         write_module(|mut ns| ns.insert_module(module_name, ix), *self)
     }
 
-    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)> {
-        read_module(|ns| ns.find_subfield_type(subfield_exp), *self)
-    }
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
         write_module(|mut ns| ns.insert(name, item), *self)
     }
@@ -459,7 +563,7 @@ fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
                     }),
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         crate::type_engine::insert_type(TypeInfo::UnknownGeneric {
-                            name: name.as_str().to_string(),
+                            name: name.clone(),
                         })
                     }
                     _ => return Err(()),
@@ -531,7 +635,7 @@ where
 }
 pub fn write_module<F, R>(mut func: F, ix: NamespaceRef) -> R
 where
-    F: FnMut(&mut Namespace) -> R,
+    F: FnOnce(&mut Namespace) -> R,
 {
     let res = {
         let mut write_lock = MODULES.write().expect("poisoned lock");
@@ -545,4 +649,13 @@ where
 
 lazy_static! {
     pub static ref MODULES: RwLock<Arena<Namespace>> = Default::default();
+}
+
+pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
+    let module = {
+        let mut lock = MODULES.write().expect("poisoned lock");
+        lock.remove(ix)
+            .expect("index did not exist in namespace arena")
+    };
+    module
 }

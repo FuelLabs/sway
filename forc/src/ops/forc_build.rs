@@ -12,7 +12,7 @@ use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
-use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
+use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace, create_module, NamespaceRef, NamespaceWrapper};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -72,14 +72,14 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let mut dependency_graph = HashMap::new();
 
-    let mut namespace: NamespaceRef = create_module();
+    let mut namespace = create_module();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             compile_dependency_lib(
                 &this_dir,
                 dependency_name,
                 dependency_details,
-                &mut namespace,
+                namespace,
                 &mut dependency_graph,
                 silent_mode,
                 offline_mode,
@@ -93,7 +93,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let main = compile(
         main_file,
         &manifest.project.name,
-        &namespace,
+        namespace,
         build_config,
         &mut dependency_graph,
         silent_mode,
@@ -114,7 +114,7 @@ fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace,
+    namespace: NamespaceRef,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -205,8 +205,8 @@ fn compile_dependency_lib<'manifest>(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace: Namespace = Default::default();
 
+    let dep_namespace = create_module();
     if let Some(ref mut deps) = manifest_of_dep.dependencies {
         for (dependency_name, ref mut dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
@@ -215,7 +215,7 @@ fn compile_dependency_lib<'manifest>(
                 &manifest_dir,
                 dependency_name,
                 dependency_lib,
-                &mut dep_namespace,
+                dep_namespace,
                 dependency_graph,
                 silent_mode,
                 offline_mode,
@@ -228,13 +228,13 @@ fn compile_dependency_lib<'manifest>(
     let compiled = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &dep_namespace,
+        dep_namespace,
         build_config,
         dependency_graph,
         silent_mode,
     )?;
 
-    namespace.insert_dependency_module(dependency_name.to_string(), compiled);
+    namespace.insert_module_ref(dependency_name.to_string(), compiled);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -243,11 +243,11 @@ fn compile_dependency_lib<'manifest>(
 fn compile_library(
     source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Namespace, String> {
+) -> Result<NamespaceRef, String> {
     let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
@@ -256,7 +256,7 @@ fn compile_library(
             ..
         } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(*namespace)
+            Ok(namespace)
         }
         CompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -274,7 +274,7 @@ fn compile_library(
 fn compile(
     source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
@@ -299,7 +299,7 @@ fn compile(
 fn compile_to_asm(
     source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,

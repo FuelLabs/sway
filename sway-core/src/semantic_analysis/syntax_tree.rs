@@ -8,7 +8,10 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::Purity,
-    semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments},
+    semantic_analysis::{
+        ast_node::Mode, retrieve_module, Namespace, NamespaceRef, NamespaceWrapper,
+        TypeCheckArguments,
+    },
     type_engine::*,
     AstNode, ParseTree,
 };
@@ -30,24 +33,24 @@ pub enum TreeType {
 pub enum TypedParseTree {
     Script {
         main_function: TypedFunctionDeclaration,
-        namespace: Namespace,
+        namespace: NamespaceRef,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration,
-        namespace: Namespace,
+        namespace: NamespaceRef,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: Namespace,
+        namespace: NamespaceRef,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: Namespace,
+        namespace: NamespaceRef,
         all_nodes: Vec<TypedAstNode>,
     },
 }
@@ -66,13 +69,23 @@ impl TypedParseTree {
         }
     }
 
+    pub fn get_namespace_ref(self) -> NamespaceRef {
+        use TypedParseTree::*;
+        match self {
+            Library { namespace, .. } =>   namespace,
+            Script { namespace, .. } =>    namespace,
+            Contract { namespace, .. } =>  namespace,
+            Predicate { namespace, .. } => namespace,
+        }
+    }
+    
     pub fn into_namespace(self) -> Namespace {
         use TypedParseTree::*;
         match self {
-            Library { namespace, .. } => namespace,
-            Script { namespace, .. } => namespace,
-            Contract { namespace, .. } => namespace,
-            Predicate { namespace, .. } => namespace,
+            Library { namespace, .. } => retrieve_module(namespace),
+            Script { namespace, .. } => retrieve_module(namespace),
+            Contract { namespace, .. } => retrieve_module(namespace),
+            Predicate { namespace, .. } => retrieve_module(namespace),
         }
     }
 
@@ -155,7 +168,7 @@ impl TypedParseTree {
     fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode>,
         span: Span,
-        namespace: Namespace,
+        namespace: NamespaceRef,
         tree_type: &TreeType,
         warnings: Vec<CompileWarning>,
         mut errors: Vec<CompileError>,

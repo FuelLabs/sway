@@ -282,11 +282,11 @@ pub(crate) fn type_check_method_application(
 // TODO(static span): this whole method can go away and the address can go back in the contract
 // caller type.
 #[allow(clippy::too_many_arguments)]
-fn re_parse_expression<'n>(
+fn re_parse_expression(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<&'n Namespace>,
+    crate_namespace: Option<NamespaceRef>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,

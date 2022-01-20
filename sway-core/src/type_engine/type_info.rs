@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
-    Rule, TypeParameter,
+    Ident, Rule, TypeParameter,
 };
 
 use sway_types::span::Span;
@@ -19,7 +19,7 @@ use pest::iterators::Pair;
 pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
-        name: String,
+        name: Ident,
     },
     Str(u64),
     UnsignedInteger(IntegerBits),
@@ -125,7 +125,7 @@ impl TypeInfo {
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
                 _other => TypeInfo::Custom {
-                    name: input.as_str().trim().to_string(),
+                    name: Ident::new(span),
                 },
             },
             Rule::array_type => {
@@ -563,11 +563,7 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { name, .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name
-                        == (TypeInfo::Custom {
-                            name: name.to_string(),
-                        })
-                    {
+                    if param.name == (TypeInfo::Custom { name: name.clone() }) {
                         return Some(*ty_id);
                     }
                 }

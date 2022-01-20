@@ -789,7 +789,7 @@ fn import_new_file(
     } = check!(
         crate::compile_inner_dependency(
             file_as_string,
-            dep_namespace,
+            namespace,
             dep_config,
             dead_code_graph,
             dependency_graph

@@ -629,7 +629,7 @@ pub(crate) fn compile_ast_to_asm(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -684,7 +684,7 @@ pub(crate) fn compile_ast_to_asm(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -726,7 +726,7 @@ pub(crate) fn compile_ast_to_asm(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -1244,33 +1244,55 @@ fn add_module_constant_decls(
     // it we need to support hierarchical names (or at least absolute normalised names) to
     // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
     // soon.
-    for ns_ix in ast_namespace.get_all_imported_modules() {
+    check!(
         read_module(
-            |ns| {
+            |m| -> CompileResult<()> {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                for decl in ns.get_all_declared_symbols() {
-                    if let TypedDeclaration::ConstantDeclaration(decl) = decl {
-                        let mut ops = check!(
-                            convert_constant_decl_to_asm(decl, namespace, register_sequencer),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        asm_buf.append(&mut ops);
-                    }
+                for ns_ix in m.get_all_imported_modules() {
+                    check!(
+                        read_module(
+                            |ns| -> CompileResult<()> {
+                                let mut warnings = vec![];
+                                let mut errors = vec![];
+                                for decl in ns.get_all_declared_symbols() {
+                                    if let TypedDeclaration::ConstantDeclaration(decl) = decl {
+                                        let mut ops = check!(
+                                            convert_constant_decl_to_asm(
+                                                decl,
+                                                namespace,
+                                                register_sequencer
+                                            ),
+                                            return err(warnings, errors),
+                                            warnings,
+                                            errors
+                                        );
+                                        asm_buf.append(&mut ops);
+                                    }
+                                }
+                                ok((), warnings, errors)
+                            },
+                            *ns_ix
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    check!(
+                        add_module_constant_decls(namespace, register_sequencer, asm_buf, *ns_ix),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                 }
-                check!(
-                    add_module_constant_decls(namespace, register_sequencer, asm_buf, ns),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
                 ok((), warnings, errors)
             },
-            *ns_ix,
-        );
-    }
+            ast_namespace
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     ok((), warnings, errors)
 }

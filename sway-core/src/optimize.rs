@@ -49,12 +49,12 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: Namespace,
+    namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
     let module = Module::new(context, Kind::Script, "script");
 
-    compile_constants(context, module, &namespace, false)?;
+    compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
     compile_function(context, module, main_function)?;
 
@@ -81,26 +81,32 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: NamespaceRef,
     public_only: bool,
 ) -> Result<(), String> {
-    for decl in namespace.get_all_declared_symbols() {
-        if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-            name,
-            value,
-            visibility,
-        }) = decl
-        {
-            if !public_only || matches!(visibility, Visibility::Public) {
-                let const_val = compile_constant_expression(context, value)?;
-                module.add_global_constant(context, name.as_str().to_owned(), const_val);
+    read_module(
+        |ns| -> Result<(), String> {
+            for decl in ns.get_all_declared_symbols() {
+                if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                    name,
+                    value,
+                    visibility,
+                }) = decl
+                {
+                    if !public_only || matches!(visibility, Visibility::Public) {
+                        let const_val = compile_constant_expression(context, &value)?;
+                        module.add_global_constant(context, name.as_str().to_owned(), const_val);
+                    }
+                }
             }
-        }
-    }
 
-    for ns_ix in namespace.get_all_imported_modules() {
-        read_module(|ns| compile_constants(context, module, ns, true), *ns_ix)?;
-    }
+            for ns_ix in ns.get_all_imported_modules() {
+                compile_constants(context, module, *ns_ix, true)?;
+            }
+            Ok(())
+        },
+        namespace,
+    )?;
 
     Ok(())
 }

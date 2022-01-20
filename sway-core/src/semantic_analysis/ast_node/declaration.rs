@@ -103,9 +103,7 @@ impl TypedDeclaration {
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
-                    insert_type(TypeInfo::UnknownGeneric {
-                        name: name.as_str().to_string(),
-                    })
+                    insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
                 }
                 decl => {
                     return err(

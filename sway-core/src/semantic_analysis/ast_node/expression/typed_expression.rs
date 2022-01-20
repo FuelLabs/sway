@@ -619,11 +619,11 @@ impl TypedExpression {
         )
     }
 
-    fn type_check_code_block<'n>(
+    fn type_check_code_block(
         contents: CodeBlock,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
@@ -794,11 +794,11 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_asm_expression<'n>(
+    fn type_check_asm_expression(
         asm: AsmExpression,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -864,12 +864,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_struct_expression<'n>(
+    fn type_check_struct_expression(
         span: Span,
         struct_name: Ident,
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -988,12 +988,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_subfield_expression<'n>(
+    fn type_check_subfield_expression(
         prefix: Box<Expression>,
         span: Span,
         field_to_access: Ident,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1063,11 +1063,11 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_tuple<'n>(
+    fn type_check_tuple(
         fields: Vec<Expression>,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1128,14 +1128,14 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_delineated_path<'n>(
+    fn type_check_delineated_path(
         call_path: CallPath,
         span: Span,
         args: Vec<Expression>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1162,9 +1162,7 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace
-                .map(|ns| read_module(|ns| ns.find_enum(&enum_name), ns))
-                .flatten()
+            namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1175,18 +1173,16 @@ impl TypedExpression {
                     errors.push(CompileError::AmbiguousPath { span });
                     return err(warnings, errors);
                 }
-                (Some(module), None) => {
-                    match read_module(|module| module.get_symbol(&call_path.suffix).value, module) {
-                        Some(decl) => Either::Left(decl),
-                        None => {
-                            errors.push(CompileError::SymbolNotFound {
-                                name: call_path.suffix.as_str().to_string(),
-                                span: call_path.suffix.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
+                (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
+                    Some(decl) => Either::Left(decl),
+                    None => {
+                        errors.push(CompileError::SymbolNotFound {
+                            name: call_path.suffix.as_str().to_string(),
+                            span: call_path.suffix.span().clone(),
+                        });
+                        return err(warnings, errors);
                     }
-                }
+                },
                 (None, Some(enum_decl)) => Either::Right(check!(
                     instantiate_enum(
                         enum_decl,
@@ -1228,12 +1224,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_abi_cast<'n>(
+    fn type_check_abi_cast(
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1337,11 +1333,11 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_array<'n>(
+    fn type_check_array(
         contents: Vec<Expression>,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: Option<&'n Namespace>,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1648,9 +1644,7 @@ impl TypedExpression {
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
-                    namespace
-                        .map(|ns|  ns.find_enum(&enum_name))
-                        .flatten()
+                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
                 let mut return_type = None;
                 let mut owned_enum_variant = None;

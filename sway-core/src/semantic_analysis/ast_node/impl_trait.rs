@@ -5,9 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
-    semantic_analysis::{
-        Namespace, TCOpts, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
-    },
+    semantic_analysis::*,
     type_engine::{
         insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
     },
@@ -355,7 +353,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut local_namespace = namespace.clone();
+    let mut local_namespace: NamespaceRef = todo!("new scope fn?"); //namespace.clone();
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
@@ -379,7 +377,7 @@ fn type_check_trait_implementation(
         let method = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
-                namespace: &mut local_namespace,
+                namespace: local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "",

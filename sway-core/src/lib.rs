@@ -29,13 +29,12 @@ use pest::Parser;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-pub use semantic_analysis::TreeType;
-pub use semantic_analysis::TypedParseTree;
+pub use semantic_analysis::{TypedParseTree, create_module, retrieve_module, NamespaceWrapper, NamespaceRef, TreeType, Namespace, TypedDeclaration, TypedFunctionDeclaration
+};
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
-pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use sway_types::{ident::Ident, span};
 pub use type_engine::TypeInfo;
 
@@ -160,7 +159,7 @@ pub enum CompilationResult {
     },
     Library {
         name: Ident,
-        namespace: Box<Namespace>,
+        namespace: NamespaceRef,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -394,7 +393,7 @@ pub fn compile_to_asm(
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: Box::new(parse_tree.into_namespace()),
+                    namespace: parse_tree.get_namespace_ref(),
                 },
             }
         }
