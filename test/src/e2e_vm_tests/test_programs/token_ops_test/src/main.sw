@@ -27,7 +27,7 @@ fn main() -> bool {
     // todo: use correct type ContractId
     let fuel_coin = abi(TestFuelCoin, 0x16af825dc6a612810b6c80a16f2a7e3248f574f2b0c96babda736fc53d8d8f8c);
 
-    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, balance_id);
+    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
     fuel_coin.mint(default.gas, default.coins, default.id.value, 11);
