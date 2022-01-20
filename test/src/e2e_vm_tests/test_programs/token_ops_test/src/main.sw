@@ -23,9 +23,9 @@ fn main() -> bool {
     };
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0xae521fc826adff91aa86f43a4606dbf1c423dfa45c2116371d62be930bb941f4);
+    let fuelcoin_id = ~ContractId::from(0x16af825dc6a612810b6c80a16f2a7e3248f574f2b0c96babda736fc53d8d8f8c);
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0xae521fc826adff91aa86f43a4606dbf1c423dfa45c2116371d62be930bb941f4);
+    let fuel_coin = abi(TestFuelCoin, 0x16af825dc6a612810b6c80a16f2a7e3248f574f2b0c96babda736fc53d8d8f8c);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, balance_id);
     assert(fuelcoin_balance == 0);
