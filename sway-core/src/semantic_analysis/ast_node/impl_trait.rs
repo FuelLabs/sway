@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
+    crate_namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -191,7 +191,7 @@ fn type_check_trait_implementation(
     trait_name: &Ident,
     type_arguments: &[TypeParameter],
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
+    crate_namespace: NamespaceRef,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,

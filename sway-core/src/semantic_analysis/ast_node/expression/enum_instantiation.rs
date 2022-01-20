@@ -12,7 +12,7 @@ pub(crate) fn instantiate_enum(
     enum_field_name: Ident,
     args: Vec<Expression>,
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<NamespaceRef>,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,

@@ -266,7 +266,7 @@ pub(crate) fn compile_inner_dependency(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace,
-            Some(initial_namespace),
+            initial_namespace,
             &parse_tree.tree_type,
             &build_config,
             dead_code_graph,
@@ -325,7 +325,7 @@ pub fn compile_to_ast(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace,
-            None,
+            initial_namespace,
             &parse_tree.tree_type,
             &build_config.clone(),
             &mut dead_code_graph,

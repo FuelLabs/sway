@@ -145,7 +145,7 @@ impl TypedAstNode {
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr =
             |namespace: crate::semantic_analysis::NamespaceRef,
-             crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
+             crate_namespace: NamespaceRef,
              type_ascription: TypeInfo,
              value| {
                 let type_id = namespace
@@ -175,8 +175,7 @@ impl TypedAstNode {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute { crate_namespace } else { None };
-                    dbg!(&crate_namespace.is_some());
+                    let from_module = if a.is_absolute { Some(crate_namespace )} else { None };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
@@ -1070,7 +1069,7 @@ fn type_check_interface_surface(
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,

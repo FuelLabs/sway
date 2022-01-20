@@ -13,7 +13,7 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     span: Span,
     namespace: NamespaceRef,
-    crate_namespace: Option<NamespaceRef>,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -63,7 +63,7 @@ pub(crate) fn type_check_method_application(
                     .map(|x| x.return_type)
                     .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
             };
-            let from_module = if is_absolute { crate_namespace } else { None };
+            let from_module = if is_absolute { Some(crate_namespace) } else { None };
             check!(
                 namespace.find_method_for_type(
                     ty,
@@ -286,7 +286,7 @@ fn re_parse_expression(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
     namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: Option<NamespaceRef>,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,

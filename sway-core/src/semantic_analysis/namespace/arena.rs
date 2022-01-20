@@ -6,6 +6,7 @@ use crate::{
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
+use pest::unicode::MODIFIER_LETTER;
 use std::{collections::VecDeque, sync::RwLock};
 use sway_types::{join_spans, Ident, Span};
 pub type NamespaceRef = Index;
@@ -249,7 +250,9 @@ impl NamespaceWrapper for NamespaceRef {
         let mut errors = vec![];
         let module = check!(
             self.find_module_relative(path),
-            return err(warnings, errors),
+            
+                return err(warnings, errors)
+            ,
             warnings,
             errors
         );
@@ -398,7 +401,7 @@ impl NamespaceWrapper for NamespaceRef {
                 return err(warnings, errors);
             }
         };
-        for ident in path {
+        for ident in path.iter().skip(1) {
             match read_module(
                 |namespace| namespace.modules.get(ident.as_str()).cloned(),
                 ix,
@@ -473,7 +476,7 @@ impl NamespaceWrapper for NamespaceRef {
                 );
                 impls_to_insert.append(&mut res);
                 write_module(
-                    |mut m| {
+                    |m| {
                         // no matter what, import it this way though.
                         match alias.clone() {
                             Some(alias) => {
@@ -653,7 +656,7 @@ lazy_static! {
 
 pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
     let module = {
-        let lock = MODULES.write().expect("poisoned lock");
+        let lock = MODULES.read().expect("poisoned lock");
         lock.get(ix)
             .expect("index did not exist in namespace arena").clone()
     };
