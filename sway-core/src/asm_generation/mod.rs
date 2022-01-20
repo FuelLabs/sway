@@ -1190,7 +1190,7 @@ fn add_all_constant_decls(
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op>,
     declarations: &[TypedDeclaration],
-    ast_namespace: &Namespace,
+    ast_namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1235,7 +1235,7 @@ fn add_module_constant_decls(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op>,
-    ast_namespace: &Namespace,
+    ast_namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];

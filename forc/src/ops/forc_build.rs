@@ -72,7 +72,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let mut dependency_graph = HashMap::new();
 
-    let mut namespace: Namespace = Default::default();
+    let mut namespace: NamespaceRef = create_module();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             compile_dependency_lib(

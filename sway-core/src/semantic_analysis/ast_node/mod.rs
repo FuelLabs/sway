@@ -5,9 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::*,
-    semantic_analysis::{
-        ast_node::declaration::insert_type_parameters, Namespace, TCOpts, TypeCheckArguments,
-    },
+    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
@@ -145,33 +143,34 @@ impl TypedAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |namespace: &mut Namespace,
-                                            crate_namespace: Option<&Namespace>,
-                                            type_ascription: TypeInfo,
-                                            value| {
-            let type_id = namespace
-                .resolve_type_with_self(type_ascription, self_type)
-                .unwrap_or_else(|_| {
-                    errors.push(CompileError::UnknownType {
-                        span: node.span.clone(),
+        let mut type_check_ascribed_expr =
+            |namespace: crate::semantic_analysis::NamespaceRef,
+             crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
+             type_ascription: TypeInfo,
+             value| {
+                let type_id = namespace
+                    .resolve_type_with_self(type_ascription, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: node.span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
                     });
-                    insert_type(TypeInfo::ErrorRecovery)
-                });
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: value,
-                namespace,
-                crate_namespace,
-                return_type_annotation: type_id,
-                help_text: "This declaration's type annotation  does \
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: value,
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: type_id,
+                    help_text: "This declaration's type annotation  does \
                      not match up with the assigned expression's type.",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-                mode: Mode::NonAbi,
-                opts,
-            })
-        };
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                })
+            };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
@@ -351,7 +350,7 @@ impl TypedAstNode {
                             let _methods = check!(
                                 type_check_trait_methods(
                                     methods.clone(),
-                                    &mut trait_namespace,
+                                    trait_namespace,
                                     crate_namespace,
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
@@ -736,7 +735,7 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    namespace: &mut Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -776,7 +775,6 @@ fn import_new_file(
         }
     };
 
-    let dep_namespace = &namespace;
     let mut dep_config = build_config.clone();
     let dep_path = {
         canonical_path.pop();
@@ -791,7 +789,7 @@ fn import_new_file(
     } = check!(
         crate::compile_inner_dependency(
             file_as_string,
-            &dep_namespace,
+            dep_namespace,
             dep_config,
             dead_code_graph,
             dependency_graph
@@ -1010,7 +1008,7 @@ fn reassignment(
 
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
-    namespace: &Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut errors = vec![];
     ok(
@@ -1070,8 +1068,8 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: Option<crate::semantic_analysis::NamespaceRef>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -1204,7 +1202,7 @@ fn type_check_trait_methods(
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
-                namespace: &mut function_namespace,
+                namespace: function_namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text: "Trait method body's return type does not match up with \

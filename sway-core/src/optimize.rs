@@ -81,7 +81,7 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: &Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
     public_only: bool,
 ) -> Result<(), String> {
     for decl in namespace.get_all_declared_symbols() {

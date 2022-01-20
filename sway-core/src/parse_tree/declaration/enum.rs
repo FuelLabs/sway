@@ -37,7 +37,7 @@ impl EnumDeclaration {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
         let mut variants_buf = vec![];
@@ -152,7 +152,7 @@ impl EnumDeclaration {
 impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],

@@ -11,7 +11,7 @@ pub(crate) fn instantiate_enum<'n>(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
-    namespace: &mut Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: Option<&'n Namespace>,
     self_type: TypeId,
     build_config: &BuildConfig,

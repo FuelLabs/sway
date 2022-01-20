@@ -78,7 +78,7 @@ impl TypedParseTree {
 
     pub(crate) fn type_check(
         parsed: ParseTree,
-        mut new_namespace: Namespace,
+        new_namespace: NamespaceRef,
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -96,7 +96,7 @@ impl TypedParseTree {
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
-                &mut new_namespace,
+                new_namespace,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
@@ -118,7 +118,7 @@ impl TypedParseTree {
 
     fn type_check_nodes(
         nodes: Vec<AstNode>,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,

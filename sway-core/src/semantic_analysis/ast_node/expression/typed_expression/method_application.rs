@@ -8,12 +8,12 @@ use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn type_check_method_application<'n>(
+pub(crate) fn type_check_method_application(
     method_name: MethodName,
     arguments: Vec<Expression>,
     span: Span,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&'n Namespace>,
+    namespace: NamespaceRef,
+    crate_namespace: Option<NamespaceRef>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -285,7 +285,7 @@ pub(crate) fn type_check_method_application<'n>(
 fn re_parse_expression<'n>(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
-    namespace: &mut Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: Option<&'n Namespace>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,

@@ -360,7 +360,7 @@ impl TypedExpression {
     fn type_check_variable_expression(
         name: Ident,
         span: Span,
-        namespace: &Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name).value {
@@ -622,7 +622,7 @@ impl TypedExpression {
     fn type_check_code_block<'n>(
         contents: CodeBlock,
         span: Span,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         type_annotation: TypeId,
         help_text: &'static str,
@@ -797,7 +797,7 @@ impl TypedExpression {
     fn type_check_asm_expression<'n>(
         asm: AsmExpression,
         span: Span,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -868,7 +868,7 @@ impl TypedExpression {
         span: Span,
         struct_name: Ident,
         fields: Vec<StructExpressionField>,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -992,7 +992,7 @@ impl TypedExpression {
         prefix: Box<Expression>,
         span: Span,
         field_to_access: Ident,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1066,7 +1066,7 @@ impl TypedExpression {
     fn type_check_tuple<'n>(
         fields: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         type_annotation: TypeId,
         self_type: TypeId,
@@ -1134,7 +1134,7 @@ impl TypedExpression {
         args: Vec<Expression>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1232,7 +1232,7 @@ impl TypedExpression {
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1340,7 +1340,7 @@ impl TypedExpression {
     fn type_check_array<'n>(
         contents: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1539,11 +1539,11 @@ impl TypedExpression {
     /// or a struct), 2) determines the return type of the corresponding
     /// struct field or enum arg, and 3) constructs the respective typed
     /// expression.
-    fn type_check_delayed_resolution<'n>(
+    fn type_check_delayed_resolution(
         variant: DelayedResolutionVariant,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: NamespaceRef,
+        crate_namespace: Option<NamespaceRef>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1649,7 +1649,7 @@ impl TypedExpression {
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
                     namespace
-                        .map(|ns| read_module(|ns| ns.find_enum(&enum_name), ns))
+                        .map(|ns|  ns.find_enum(&enum_name))
                         .flatten()
                 };
                 let mut return_type = None;

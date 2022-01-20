@@ -238,7 +238,7 @@ pub(crate) struct InnerDependencyCompileResult {
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency(
     input: Arc<str>,
-    initial_namespace: &Namespace,
+    initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -303,7 +303,7 @@ pub(crate) fn compile_inner_dependency(
 
 pub fn compile_to_ast(
     input: Arc<str>,
-    initial_namespace: &Namespace,
+    initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileAstResult {
@@ -360,7 +360,7 @@ pub fn compile_to_ast(
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
-    initial_namespace: &Namespace,
+    initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult {
@@ -500,7 +500,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
 /// bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
-    initial_namespace: &Namespace,
+    initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult {

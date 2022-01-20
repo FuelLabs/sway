@@ -51,7 +51,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: String,
+        name: Ident,
     },
     SelfType,
     Byte,
@@ -236,7 +236,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("unresolved {}", name),
+            Custom { name } => format!("unresolved {}", name.as_str()),
             Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -282,7 +282,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("unresolved {}", name),
+            Custom { name } => format!("unresolved {}", name.as_str()),
             Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
