@@ -837,11 +837,7 @@ fn reassignment(
                     name,
                     ..
                 })) => {
-                    // allow the type checking to continue unhindered even though
-                    // this is an error
-                    // basically pretending that this isn't an error by not
-                    // early-returning, for the sake of better error reporting
-                    if is_mutable.is_mutable() {
+                    if !is_mutable.is_mutable() {
                         errors.push(CompileError::AssignmentToNonMutable(
                             name.as_str().to_string(),
                             span.clone(),

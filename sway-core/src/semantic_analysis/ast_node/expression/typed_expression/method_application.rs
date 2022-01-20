@@ -63,7 +63,11 @@ pub(crate) fn type_check_method_application(
                     .map(|x| x.return_type)
                     .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
             };
-            let from_module = if is_absolute { Some(crate_namespace) } else { None };
+            let from_module = if is_absolute {
+                Some(crate_namespace)
+            } else {
+                None
+            };
             check!(
                 namespace.find_method_for_type(
                     ty,

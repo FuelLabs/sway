@@ -6,7 +6,6 @@ use crate::{
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
-use pest::unicode::MODIFIER_LETTER;
 use std::{collections::VecDeque, sync::RwLock};
 use sway_types::{join_spans, Ident, Span};
 pub type NamespaceRef = Index;
@@ -451,14 +450,19 @@ impl NamespaceWrapper for NamespaceRef {
 
         match read_module(|namespace| namespace.symbols.get(item).cloned(), namespace) {
             Some(decl) => {
-                //  if this is an enum or struct, import its implementations
                 if decl.visibility() != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: item.as_str().to_string(),
                         span: item.span().clone(),
                     });
                 }
+                // if this is a const, insert it into the local namespace directly
+                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { is_mutable: VariableMutability::ExportedConst, ref name, .. }) = decl {
+                    self.insert(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                    return ok((), warnings, errors);
+                }
                 let a = decl.return_type().value;
+                //  if this is an enum or struct, import its implementations
                 let mut res = read_module(
                     move |namespace| {
                         namespace
@@ -530,11 +534,11 @@ impl NamespaceWrapper for NamespaceRef {
             let mut write_lock = MODULES.write().expect("poisoned lock");
             write_lock.insert(module_contents)
         };
-        write_module(|mut ns| ns.insert_module(module_name, ix), *self)
+        write_module(|ns| ns.insert_module(module_name, ix), *self)
     }
 
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
-        write_module(|mut ns| ns.insert(name, item), *self)
+        write_module(|ns| ns.insert(name, item), *self)
     }
     fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()> {
         let mut warnings = vec![];
@@ -661,4 +665,14 @@ pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
             .expect("index did not exist in namespace arena").clone()
     };
     module
+}
+
+pub fn create_new_scope(parent: NamespaceRef) -> NamespaceRef {
+    let new_module = read_module(|ns| ns.clone(), parent);
+
+    let res = {
+        let mut write_lock = MODULES.write().expect("poisoned mutex");
+        write_lock.insert(new_module)
+    };
+    res
 }

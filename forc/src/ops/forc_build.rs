@@ -1,4 +1,5 @@
 use crate::utils::dependency::{Dependency, DependencyDetails};
+use crate::utils::helpers::{find_file_name, find_main_path};
 use crate::{
     cli::BuildCommand,
     utils::dependency,
@@ -12,7 +13,10 @@ use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
-use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace, create_module, NamespaceRef, NamespaceWrapper};
+use sway_core::{
+    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace,
+    NamespaceRef, NamespaceWrapper,
+};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -71,8 +75,8 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     .print_ir(print_ir);
 
     let mut dependency_graph = HashMap::new();
+    let namespace = create_module();
 
-    let mut namespace = create_module();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             compile_dependency_lib(
@@ -119,6 +123,28 @@ fn compile_dependency_lib<'manifest>(
     silent_mode: bool,
     offline_mode: bool,
 ) -> Result<(), String> {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     let mut details = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(
@@ -185,28 +211,16 @@ fn compile_dependency_lib<'manifest>(
             ))
         }
     };
-
     let mut manifest_of_dep = read_manifest(&manifest_dir)?;
-
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(constants::SRC_DIR);
-        code_dir.push(&manifest_of_dep.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
+    let main_path = find_main_path(&manifest_dir, &manifest_of_dep);
+    let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
 
-    let dep_namespace = namespace.clone();
+    let dep_namespace = create_module();
     if let Some(ref mut deps) = manifest_of_dep.dependencies {
         for (dependency_name, ref mut dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no

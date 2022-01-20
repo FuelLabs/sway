@@ -887,9 +887,13 @@ impl FnCompiler {
         self.symbol_map
             .insert(name.as_str().to_owned(), local_name.clone());
 
-        let ptr =
-            self.function
-                .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)?;
+        let ptr = self.function.new_local_ptr(
+            context,
+            local_name,
+            return_type,
+            is_mutable.into(),
+            None,
+        )?;
 
         self.current_block.ins(context).store(ptr, init_val);
         Ok(init_val)

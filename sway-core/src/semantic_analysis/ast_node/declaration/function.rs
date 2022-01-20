@@ -7,6 +7,7 @@ use crate::{
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
         },
+        create_module, create_new_scope,
         NamespaceWrapper, TypeCheckArguments,
     },
     type_engine::*,
@@ -85,7 +86,7 @@ impl TypedFunctionDeclaration {
             };
 
         // insert parameters and generic type declarations into namespace
-        let mut namespace = namespace.clone();
+        let mut namespace = create_new_scope(namespace);
         type_parameters.iter().for_each(|param| {
             namespace.insert(param.name_ident.clone(), param.into());
         });

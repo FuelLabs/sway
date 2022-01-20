@@ -1,4 +1,4 @@
-use crate::utils::dependency::Dependency;
+use crate::utils::dependency::{Dependency, DependencyDetails};
 use crate::{
     cli::JsonAbiCommand,
     utils::dependency,
@@ -17,7 +17,10 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use sway_core::{BuildConfig, NamespaceWrapper, CompileAstResult, Namespace, TreeType, TypedParseTree, NamespaceRef, create_module, retrieve_module};
+use sway_core::{
+    create_module, retrieve_module, BuildConfig, CompileAstResult, Namespace, NamespaceRef,
+    NamespaceWrapper, TreeType, TypedParseTree,
+};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -47,15 +50,15 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     let main_path = find_main_path(&manifest_dir, &manifest);
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
+
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_owned(),
         manifest_dir.clone(),
     );
-
     let mut dependency_graph = HashMap::new();
     let mut json_abi = vec![];
 
-    let namespace= create_module();
+    let namespace = create_module();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             // Check if dependency is a git-based dependency.
@@ -115,7 +118,6 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
         &mut dependency_graph,
         silent_mode,
     )?;
-    let namespace = retrieve_module(namespace);
     json_abi.append(&mut res);
 
     let output_json = json!(json_abi);
@@ -151,6 +153,8 @@ fn compile_dependency_lib<'manifest>(
     };
     // Download a non-local dependency if the `git` property is set in this dependency.
     if let Some(ref git) = details.git {
+        // the qualified name of the dependency includes its source and some metadata to prevent
+        // conflating dependencies from different sources
         let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
         let downloaded_dep_path = match dependency::download_github_dep(
             &fully_qualified_dep_name,
@@ -171,8 +175,17 @@ fn compile_dependency_lib<'manifest>(
         // Mutate this dependency's path to hold the newly downloaded dependency's path.
         details.path = Some(downloaded_dep_path);
     }
+    let dep_path = match dependency_lib {
+        Dependency::Simple(..) => {
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            )
+        }
+        Dependency::Detailed(DependencyDetails { path, .. }) => path,
+    };
+
     let dep_path =
-        match &details.path {
+        match dep_path {
             Some(p) => p,
             None => return Err(
                 "Only simple path imports are supported right now. Please supply a path relative \
@@ -205,6 +218,7 @@ fn compile_dependency_lib<'manifest>(
         manifest_dir.clone(),
     );
 
+    let dep_namespace = create_module();
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref mut deps) = manifest_of_dep.dependencies {
         for ref mut dep in deps {
@@ -214,7 +228,7 @@ fn compile_dependency_lib<'manifest>(
                 &manifest_dir,
                 dep.0,
                 dep.1,
-                create_module(),
+                dep_namespace,
                 dependency_graph,
                 silent_mode,
                 offline_mode,
@@ -227,7 +241,7 @@ fn compile_dependency_lib<'manifest>(
     let (compiled, json_abi) = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        create_module(),
+       dep_namespace, 
         build_config,
         dependency_graph,
         silent_mode,

@@ -26,6 +26,17 @@ pub struct OwnedCallPath {
     pub suffix: String,
 }
 
+
+use std::fmt;
+impl fmt::Display for CallPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut buf = self.prefixes.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+        let suffix = self.suffix.as_str();
+        buf.push(suffix);
+
+        write!(f, "{}", buf.join("::"))
+    }
+}
 impl CallPath {
     pub(crate) fn to_owned_call_path(&self) -> OwnedCallPath {
         OwnedCallPath {

@@ -72,13 +72,13 @@ impl TypedParseTree {
     pub fn get_namespace_ref(self) -> NamespaceRef {
         use TypedParseTree::*;
         match self {
-            Library { namespace, .. } =>   namespace,
-            Script { namespace, .. } =>    namespace,
-            Contract { namespace, .. } =>  namespace,
+            Library { namespace, .. } => namespace,
+            Script { namespace, .. } => namespace,
+            Contract { namespace, .. } => namespace,
             Predicate { namespace, .. } => namespace,
         }
     }
-    
+
     pub fn into_namespace(self) -> Namespace {
         use TypedParseTree::*;
         match self {

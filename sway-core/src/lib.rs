@@ -29,7 +29,9 @@ use pest::Parser;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-pub use semantic_analysis::{TypedParseTree, create_module, retrieve_module, NamespaceWrapper, NamespaceRef, TreeType, Namespace, TypedDeclaration, TypedFunctionDeclaration
+pub use semantic_analysis::{
+    create_module, retrieve_module, Namespace, NamespaceRef, NamespaceWrapper, TreeType,
+    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
