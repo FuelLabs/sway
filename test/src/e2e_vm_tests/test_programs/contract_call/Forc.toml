@@ -8,10 +8,3 @@ entry = "main.sw"
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0x6c626fddd128e24e6805fe1779779f14097d34086c571dd8df1c78ac4bb9a78b"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
-balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
-state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"

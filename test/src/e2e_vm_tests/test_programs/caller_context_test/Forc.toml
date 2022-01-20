@@ -8,17 +8,3 @@ entry = "main.sw"
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 context_testing_abi = { path = "../context_testing_abi" }
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
-utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e14058600"
-balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
-state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
-utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e14058600"
-balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
-state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
