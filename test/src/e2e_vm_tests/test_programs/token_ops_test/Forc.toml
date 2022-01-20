@@ -5,14 +5,14 @@ name = "token_ops_test"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+std = { path = "../../../../../../sway-lib-std/src" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 
 # test_fuel_coin_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0xafdec5cc6c93021635b8344711c03e455b82f0a75a518782ef104868ab20d3c7"
+contract-id = "0xae521fc826adff91aa86f43a4606dbf1c423dfa45c2116371d62be930bb941f4"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
