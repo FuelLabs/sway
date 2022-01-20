@@ -22,6 +22,7 @@ struct GitHubReleaseAsset {
     browser_download_url: String,
 }
 
+const MODULE_PATH: &str = "forc/";
 const BUILD_ARCHIVE_PATH: &str = "forc/build.tar";
 const BUILD_UNPACK_TEMP_PATH: &str = "forc/build";
 const STATIC_FILES_PATH: &str = "forc/www";
@@ -106,7 +107,7 @@ async fn download_build(url: &str) -> DownloadResult<File> {
 
 fn unpack_archive() -> Result<(), std::io::Error> {
     let mut ar = Archive::new(File::open(BUILD_ARCHIVE_PATH).unwrap());
-    ar.unpack("forc/").unwrap();
+    ar.unpack(MODULE_PATH).unwrap();
     Ok(())
 }
 
