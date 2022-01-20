@@ -5,6 +5,7 @@ use crate::{
         ast_node::{
             IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
+            VariableMutability,
         },
         NamespaceWrapper, TypeCheckArguments,
     },
@@ -116,7 +117,7 @@ impl TypedFunctionDeclaration {
                         is_constant: IsConstant::No,
                         span: name.span().clone(),
                     },
-                    is_mutable: false, // TODO allow mutable function params?
+                    is_mutable: VariableMutability::Immutable,
                     type_ascription: r#type,
                 }),
             );

@@ -150,7 +150,11 @@ impl TypedDeclaration {
                     is_mutable,
                     name,
                     ..
-                }) => format!("{} {}", if *is_mutable { "mut" } else { "" }, name.as_str()),
+                }) => format!("{} {}", match is_mutable {
+                    VariableMutability::Mutable => "mut",
+                    VariableMutability::Immutable => "",
+                    VariableMutability::ExportedConst => "pub const" 
+                }, name.as_str()),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {

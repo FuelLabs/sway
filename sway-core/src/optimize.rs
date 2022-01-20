@@ -100,7 +100,7 @@ fn compile_constants(
                 }
             }
 
-            for ns_ix in ns.get_all_imported_modules() {
+            for ns_ix in ns.get_all_imported_modules().filter(|x| **x != namespace) {
                 compile_constants(context, module, *ns_ix, true)?;
             }
             Ok(())
@@ -889,7 +889,7 @@ impl FnCompiler {
 
         let ptr =
             self.function
-                .new_local_ptr(context, local_name, return_type, is_mutable, None)?;
+                .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)?;
 
         self.current_block.ins(context).store(ptr, init_val);
         Ok(init_val)

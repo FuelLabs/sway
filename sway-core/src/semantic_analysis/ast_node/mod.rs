@@ -23,7 +23,7 @@ pub mod declaration;
 use declaration::TypedTraitFn;
 pub(crate) use declaration::{
     OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
-    TypedVariableDeclaration,
+    TypedVariableDeclaration, VariableMutability,
 };
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -247,7 +247,7 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    is_mutable,
+                                    is_mutable: is_mutable.into(),
                                     type_ascription,
                                 });
                             namespace.insert(name, typed_var_decl.clone());
@@ -262,7 +262,7 @@ impl TypedAstNode {
                             let result = type_check_ascribed_expr(
                                 namespace,
                                 crate_namespace,
-                                type_ascription,
+                                type_ascription.clone(),
                                 value,
                             );
                             let value = check!(
@@ -272,10 +272,11 @@ impl TypedAstNode {
                                 errors
                             );
                             let typed_const_decl =
-                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
-                                    value,
-                                    visibility,
+                                    body: value,
+                                    is_mutable: if visibility.is_public() { VariableMutability::ExportedConst } else { VariableMutability::Immutable },
+                                    type_ascription: insert_type(type_ascription),
                                 });
                             namespace.insert(name, typed_const_decl.clone());
                             typed_const_decl
@@ -834,13 +835,13 @@ fn reassignment(
                     body,
                     is_mutable,
                     name,
-                    type_ascription: _,
+                    ..
                 })) => {
                     // allow the type checking to continue unhindered even though
                     // this is an error
                     // basically pretending that this isn't an error by not
                     // early-returning, for the sake of better error reporting
-                    if !is_mutable {
+                    if is_mutable.is_mutable() {
                         errors.push(CompileError::AssignmentToNonMutable(
                             name.as_str().to_string(),
                             span.clone(),
@@ -1117,7 +1118,7 @@ fn type_check_trait_methods(
                             span: name.span().clone(),
                         },
                         // TODO allow mutable function params?
-                        is_mutable: false,
+                        is_mutable: VariableMutability::Immutable,
                         type_ascription: r#type,
                     }),
                 );
