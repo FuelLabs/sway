@@ -1,23 +1,36 @@
 use super::document::{DocumentError, TextDocument};
-use crate::capabilities::{self, formatting::get_format_text_edits};
+use crate::{
+    capabilities::{self, formatting::get_format_text_edits},
+    sway_config::SwayConfig,
+};
 use dashmap::DashMap;
 use lspower::lsp::{
-    CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Position, Range,
-    SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, Diagnostic, GotoDefinitionResponse, Position, Range, SemanticToken,
+    SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
-use std::sync::Arc;
+use serde_json::Value;
+use std::sync::{Arc, LockResult, RwLock};
 
 pub type Documents = DashMap<String, TextDocument>;
 
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
+    pub config: RwLock<SwayConfig>,
 }
 
 impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
+            config: RwLock::new(SwayConfig::default()),
+        }
+    }
+
+    // update sway config
+    pub fn update_config(&self, options: Value) {
+        if let LockResult::Ok(mut config) = self.config.write() {
+            *config = SwayConfig::with_options(options);
         }
     }
 
@@ -32,7 +45,7 @@ impl Session {
         }
     }
 
-    pub fn _remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         match self.documents.remove(url.path()) {
             Some((_, text_document)) => Ok(text_document),
             None => Err(DocumentError::DocumentNotFound),
@@ -145,9 +158,15 @@ impl Session {
         None
     }
 
-    pub fn format_text(&self, url: &Url, options: FormattingOptions) -> Option<Vec<TextEdit>> {
+    pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            get_format_text_edits(Arc::from(document.get_text()), options)
+            match self.config.read() {
+                std::sync::LockResult::Ok(config) => {
+                    let config: SwayConfig = *config;
+                    get_format_text_edits(Arc::from(document.get_text()), config.into())
+                }
+                _ => None,
+            }
         } else {
             None
         }

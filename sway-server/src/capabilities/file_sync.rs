@@ -1,12 +1,11 @@
 use crate::core::session::Session;
-use lspower::lsp::FileEvent;
+use lspower::lsp::{FileChangeType, FileEvent};
 use std::sync::Arc;
 
-pub fn handle_watched_files(_session: Arc<Session>, events: Vec<FileEvent>) {
-    for _event in events {
-        // TODO FileChangeType::DELETED wants fully-qualified type, but that doesn't work
-        // if let FileChangeType::DELETED {} = event.typ {
-        //     let _ = session.remove_document(&event.uri);
-        // }
+pub fn handle_watched_files(session: Arc<Session>, events: Vec<FileEvent>) {
+    for event in events {
+        if event.typ == FileChangeType::DELETED {
+            let _ = session.remove_document(&event.uri);
+        }
     }
 }

@@ -3,6 +3,7 @@ use lspower::{LspService, Server};
 mod capabilities;
 mod core;
 mod server;
+mod sway_config;
 mod utils;
 use server::Backend;
 

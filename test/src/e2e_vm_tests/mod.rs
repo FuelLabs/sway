@@ -141,6 +141,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("test_fuel_coin_contract", "token_ops_test"),
     ];
 
+    let total_number_of_tests = positive_project_names.len()
+        + negative_project_names.len()
+        + contract_and_project_names.len();
+
     // Filter them first.
     let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
         .iter()
@@ -149,13 +153,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .unzip();
 
     // Deploy and then test.
+    number_of_tests_run += projects.len();
     for name in contracts {
         harness::deploy_contract(name)
     }
     for name in projects {
         harness::runs_on_node(name);
     }
-    let total_number_of_tests = positive_project_names.len() + negative_project_names.len();
+
     if number_of_tests_run == 0 {
         println!(
             "No tests were run. Regex filter \"{}\" filtered out all {} tests.",

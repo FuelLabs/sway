@@ -17,6 +17,7 @@ fn main() -> Result<()> {
             .unwrap();
     let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
     let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
+    // 64 byte fuel address is the sha-256 hash of the public key.
     let address = Hasher::hash(&public[..]);
 
     let message = b"The gift of words is the gift of deception and illusion.";
@@ -26,7 +27,7 @@ fn main() -> Result<()> {
 
     println!("Secret Key: {:?}", secret);
     println!("Public Key: {:?}", public);
-    println!("Address: {:?}", address);
+    println!("Fuel Address: {:?}", address);
     println!("Message Hash: {:?}", e);
     println!("Signature: {:?}", sig);
 
