@@ -37,6 +37,7 @@ termcolor = "1.1"
 tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "process"] }
 toml = "0.5"
 ureq = "2.4"
+warp = "0.3"
 whoami = "1.1"
 uwuify = { version = "^0.2", optional = true }
 
