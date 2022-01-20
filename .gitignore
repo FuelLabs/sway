@@ -13,3 +13,6 @@ Cargo.lock
 
 # Explorer web app static files
 forc/www
+
+# macOS files
+**/.DS_Store
