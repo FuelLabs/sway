@@ -11,8 +11,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
-        TypedParseTree,
+        read_module, Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+        TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -1244,23 +1244,31 @@ fn add_module_constant_decls(
     // it we need to support hierarchical names (or at least absolute normalised names) to
     // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
     // soon.
-    for ns in ast_namespace.get_all_imported_modules() {
-        for decl in ns.get_all_declared_symbols() {
-            if let TypedDeclaration::ConstantDeclaration(decl) = decl {
-                let mut ops = check!(
-                    convert_constant_decl_to_asm(decl, namespace, register_sequencer),
+    for ns_ix in ast_namespace.get_all_imported_modules() {
+        read_module(
+            |ns| {
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                for decl in ns.get_all_declared_symbols() {
+                    if let TypedDeclaration::ConstantDeclaration(decl) = decl {
+                        let mut ops = check!(
+                            convert_constant_decl_to_asm(decl, namespace, register_sequencer),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut ops);
+                    }
+                }
+                check!(
+                    add_module_constant_decls(namespace, register_sequencer, asm_buf, ns),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                asm_buf.append(&mut ops);
-            }
-        }
-        check!(
-            add_module_constant_decls(namespace, register_sequencer, asm_buf, ns),
-            return err(warnings, errors),
-            warnings,
-            errors
+                ok((), warnings, errors)
+            },
+            *ns_ix,
         );
     }
 

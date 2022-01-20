@@ -98,8 +98,8 @@ fn compile_constants(
         }
     }
 
-    for ns in namespace.get_all_imported_modules() {
-        compile_constants(context, module, ns, true)?;
+    for ns_ix in namespace.get_all_imported_modules() {
+        read_module(|ns| compile_constants(context, module, ns, true), *ns_ix)?;
     }
 
     Ok(())

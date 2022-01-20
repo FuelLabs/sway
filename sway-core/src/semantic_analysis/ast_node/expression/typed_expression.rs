@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
-    semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments},
+    semantic_analysis::{ast_node::*, *},
     type_engine::{insert_type, IntegerBits},
 };
 use sway_types::join_spans;
@@ -1162,7 +1162,9 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+            namespace
+                .map(|ns| read_module(|ns| ns.find_enum(&enum_name), ns))
+                .flatten()
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1173,16 +1175,18 @@ impl TypedExpression {
                     errors.push(CompileError::AmbiguousPath { span });
                     return err(warnings, errors);
                 }
-                (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
-                    Some(decl) => Either::Left(decl),
-                    None => {
-                        errors.push(CompileError::SymbolNotFound {
-                            name: call_path.suffix.as_str().to_string(),
-                            span: call_path.suffix.span().clone(),
-                        });
-                        return err(warnings, errors);
+                (Some(module), None) => {
+                    match read_module(|module| module.get_symbol(&call_path.suffix).value, module) {
+                        Some(decl) => Either::Left(decl),
+                        None => {
+                            errors.push(CompileError::SymbolNotFound {
+                                name: call_path.suffix.as_str().to_string(),
+                                span: call_path.suffix.span().clone(),
+                            });
+                            return err(warnings, errors);
+                        }
                     }
-                },
+                }
                 (None, Some(enum_decl)) => Either::Right(check!(
                     instantiate_enum(
                         enum_decl,
@@ -1644,7 +1648,9 @@ impl TypedExpression {
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
-                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                    namespace
+                        .map(|ns| read_module(|ns| ns.find_enum(&enum_name), ns))
+                        .flatten()
                 };
                 let mut return_type = None;
                 let mut owned_enum_variant = None;

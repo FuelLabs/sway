@@ -12,9 +12,11 @@ use sway_types::span::{join_spans, Span};
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
+pub mod arena;
+pub use arena::*;
+
 type ModuleName = String;
 type TraitName = CallPath;
-
 /// A namespace represents all items that exist either via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace {
@@ -27,7 +29,7 @@ pub struct Namespace {
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
-    modules: BTreeMap<ModuleName, Namespace>,
+    modules: BTreeMap<ModuleName, NamespaceRef>,
     use_synonyms: HashMap<Ident, Vec<Ident>>,
     // Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
@@ -38,7 +40,7 @@ impl Namespace {
         self.symbols.values()
     }
 
-    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace> {
+    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &NamespaceRef> {
         self.modules.values()
     }
 
@@ -152,7 +154,7 @@ impl Namespace {
     }
 
     // TODO(static span) remove this and switch to spans when we have arena spans
-    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration> {
+    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<TypedDeclaration> {
         let empty = vec![];
         let path = self
             .use_synonyms
@@ -168,7 +170,7 @@ impl Namespace {
         self.get_name_from_path_str(path, symbol).value
     }
 
-    pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
         let true_symbol = self
@@ -194,7 +196,7 @@ impl Namespace {
             .map(|decl| decl.clone())
     }
 
-    fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<&TypedDeclaration> {
+    fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -203,8 +205,7 @@ impl Namespace {
             warnings,
             errors
         );
-
-        match module.symbols.get(name) {
+        match read_module(|module| module.symbols.get(name).cloned(), module) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
@@ -221,7 +222,7 @@ impl Namespace {
         &self,
         path: &[Ident],
         name: &str,
-    ) -> CompileResult<&TypedDeclaration> {
+    ) -> CompileResult<TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -231,13 +232,22 @@ impl Namespace {
             errors
         );
 
-        match module.symbols.iter().find_map(|(item, other)| {
-            if item.as_str() == name {
-                Some(other)
-            } else {
-                None
-            }
-        }) {
+        match read_module(
+            |module| {
+                module
+                    .symbols
+                    .iter()
+                    .find_map(|(item, other)| {
+                        if item.as_str() == name {
+                            Some(other)
+                        } else {
+                            None
+                        }
+                    })
+                    .cloned()
+            },
+            module,
+        ) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
                 let span = match path.get(0) {
@@ -261,14 +271,37 @@ impl Namespace {
         }
     }
 
-    pub(crate) fn find_module_relative(&self, path: &[Ident]) -> CompileResult<&Namespace> {
+    pub(crate) fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef> {
+        debug_assert!(!path.is_empty());
         let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
+        let ix = self.modules.get(path[0].as_str());
+        let mut ix: NamespaceRef = match ix {
+            Some(ix) => *ix,
+            None => {
+                errors.push(CompileError::ModuleNotFound {
+                    span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
+                        join_spans(acc, this_one.span().clone())
+                    }),
+                    name: path
+                        .iter()
+                        .map(|x| x.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::"),
+                });
+                return err(warnings, errors);
+            }
+        };
         for ident in path {
-            match namespace.modules.get(ident.as_str()) {
-                Some(o) => namespace = o,
-                None => {
+            match read_module(
+                |namespace| namespace.modules.get(ident.as_str()).cloned(),
+                ix,
+            ) {
+                Some(ns_ix) => {
+                    ix = ns_ix;
+                }
+                _ => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
                             join_spans(acc, this_one.span().clone())
@@ -283,7 +316,8 @@ impl Namespace {
                 }
             };
         }
-        ok(namespace, warnings, errors)
+
+        ok(ix, warnings, errors)
     }
 
     pub(crate) fn insert_trait_implementation(
@@ -320,11 +354,15 @@ impl Namespace {
     }
 
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace) {
-        self.modules.insert(module_name, module_contents);
+        let ix = {
+            let mut write_lock = MODULES.write().expect("poisoned lock");
+            write_lock.insert(module_contents)
+        };
+        self.modules.insert(module_name, ix);
     }
 
     pub fn insert_dependency_module(&mut self, module_name: String, module_contents: Namespace) {
-        self.modules.insert(module_name, module_contents);
+        self.insert_module(module_name, module_contents)
     }
 
     pub(crate) fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
@@ -506,18 +544,23 @@ impl Namespace {
                 errors
             )
         };
-        let symbols = namespace
-            .symbols
-            .iter()
-            .filter_map(|(symbol, decl)| {
-                if decl.visibility() == Visibility::Public {
-                    Some(symbol.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        let implemented_traits = namespace.implemented_traits.clone();
+        let (symbols, implemented_traits) = read_module(
+            |namespace| {
+                let symbols = namespace
+                    .symbols
+                    .iter()
+                    .filter_map(|(symbol, decl)| {
+                        if decl.visibility() == Visibility::Public {
+                            Some(symbol.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                (symbols, namespace.implemented_traits.clone())
+            },
+            namespace,
+        );
         self.implemented_traits
             .extend(&mut implemented_traits.into_iter());
         for symbol in symbols {
@@ -548,7 +591,7 @@ impl Namespace {
         );
         let mut impls_to_insert = vec![];
 
-        match namespace.symbols.get(item) {
+        match read_module(|namespace| namespace.symbols.get(item).cloned(), namespace) {
             Some(decl) => {
                 //  if this is an enum or struct, import its implementations
                 if decl.visibility() != Visibility::Public {
@@ -558,15 +601,22 @@ impl Namespace {
                     });
                 }
                 let a = decl.return_type().value;
-                namespace
-                    .implemented_traits
-                    .iter()
-                    .filter(|((_trait_name, type_info), _impl)| {
-                        a.map(look_up_type_id).as_ref() == Some(type_info)
-                    })
-                    .for_each(|(a, b)| {
-                        impls_to_insert.push((a.clone(), b.to_vec()));
-                    });
+                let mut res = read_module(
+                    move |namespace| {
+                        namespace
+                            .implemented_traits
+                            .iter()
+                            .filter(|((_trait_name, type_info), _impl)| {
+                                a.map(look_up_type_id).as_ref() == Some(type_info)
+                            })
+                            .fold(Vec::new(), |mut acc, (a, b)| {
+                                acc.push((a.clone(), b.to_vec()));
+                                acc
+                            })
+                    },
+                    namespace,
+                );
+                impls_to_insert.append(&mut res);
                 // no matter what, import it this way though.
                 match alias {
                     Some(alias) => {
@@ -624,16 +674,21 @@ impl Namespace {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = namespace
-            .resolve_type_with_self(look_up_type_id(r#type), self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType {
-                    span: method_name.span().clone(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
+        let r#type = read_module(
+            |namespace| namespace.resolve_type_with_self(look_up_type_id(r#type), self_type),
+            namespace,
+        )
+        .unwrap_or_else(|_| {
+            errors.push(CompileError::UnknownType {
+                span: method_name.span().clone(),
             });
+            insert_type(TypeInfo::ErrorRecovery)
+        });
         let local_methods = self.get_methods_for_type(r#type);
-        let mut ns_methods = namespace.get_methods_for_type(r#type);
+        let mut ns_methods = read_module(
+            |namespace| namespace.get_methods_for_type(r#type),
+            namespace,
+        );
 
         let mut methods = local_methods;
         methods.append(&mut ns_methods);

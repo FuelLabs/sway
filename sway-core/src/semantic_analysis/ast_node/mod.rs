@@ -776,7 +776,7 @@ fn import_new_file(
         }
     };
 
-    let dep_namespace = namespace.clone();
+    let dep_namespace = &namespace;
     let mut dep_config = build_config.clone();
     let dep_path = {
         canonical_path.pop();

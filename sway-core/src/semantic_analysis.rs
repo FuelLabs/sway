@@ -7,6 +7,7 @@ pub(crate) mod type_check_arguments;
 pub(crate) use ast_node::{TypedAstNode, TypedAstNodeContent, TypedExpression};
 pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};
 pub use namespace::Namespace;
+pub(crate) use namespace::*;
 pub use syntax_tree::TreeType;
 pub use syntax_tree::TypedParseTree;
 pub use type_check_arguments::*;

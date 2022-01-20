@@ -2821,6 +2821,7 @@ dependencies = [
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-vm",
+ "generational-arena",
  "hex",
  "lazy_static",
  "petgraph",
