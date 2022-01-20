@@ -53,10 +53,11 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
-                        let tx = create_contract_tx(compiled_contract, inputs, outputs);
+                        let tx = create_contract_tx(
+                            compiled_contract,
+                            Vec::<fuel_tx::Input>::new(),
+                            Vec::<fuel_tx::Output>::new(),
+                        );
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,

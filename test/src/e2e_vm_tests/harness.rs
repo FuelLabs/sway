@@ -52,6 +52,7 @@ pub(crate) fn runs_on_node(file_name: &str) {
         print_ir: false,
         silent_mode: true,
         pretty_print: false,
+        contract: None,
     };
     tokio::runtime::Runtime::new()
         .unwrap()

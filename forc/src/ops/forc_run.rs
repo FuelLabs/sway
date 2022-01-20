@@ -1,6 +1,7 @@
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
+use std::convert::TryFrom;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use sway_core::{parse, TreeType};
@@ -49,9 +50,8 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
+                        let contracts = command.contract.unwrap_or(Vec::<String>::new());
+                        let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
                             compiled_script,
@@ -184,4 +184,51 @@ fn create_tx_with_script_and_data(
 // cut '0x' from the start
 fn format_hex_data(data: &str) -> &str {
     data.strip_prefix("0x").unwrap_or(data)
+}
+
+fn try_parse_bytes32(raw: String) -> Result<fuel_tx::Bytes32, String> {
+    let mut raw = raw;
+    if raw.len() > 2 && &raw[0..2] == "0x" {
+        raw = (&raw[2..]).to_string();
+    }
+    Ok(TryFrom::try_from(
+        hex::decode(&raw[..])
+            .map_err(|_| format!(r#"Given Bytes32 value ({}) is not valid."#, raw))?
+            .as_slice(),
+    )
+    .unwrap())
+}
+
+fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx::Input {
+    fuel_tx::Input::Contract {
+        utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+        contract_id: fuel_tx::ContractId::new(*try_parse_bytes32(contract.clone()).unwrap()),
+    }
+}
+
+fn construct_output_from_contract((idx, _contract): (usize, &String)) -> fuel_tx::Output {
+    fuel_tx::Output::Contract {
+        input_index: idx as u8, // probably safe unless a user inputs > u8::MAX inputs
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+    }
+}
+
+/// Given some contracts, constructs the most basic input and output set that satisfies validation.
+fn get_tx_inputs_and_outputs(
+    contracts: Vec<String>,
+) -> (Vec<fuel_tx::Input>, Vec<fuel_tx::Output>) {
+    let inputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_input_from_contract)
+        .collect::<Vec<_>>();
+    let outputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_output_from_contract)
+        .collect::<Vec<_>>();
+    (inputs, outputs)
 }
