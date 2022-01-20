@@ -50,7 +50,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
-                        let contracts = command.contract.unwrap_or(Vec::<String>::new());
+                        let contracts = command.contract.unwrap_or_default();
                         let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
