@@ -12,7 +12,7 @@ use helpers::{get_main_file, read_manifest};
 use std::path::PathBuf;
 use sway_utils::{constants::*, find_manifest_dir};
 
-pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
@@ -69,7 +69,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         match client.submit(&tx).await {
                             Ok(logs) => {
                                 println!("Logs:\n{:?}", logs);
-                                Ok(())
+                                Ok(logs.into())
                             }
                             Err(e) => Err(e.to_string().into()),
                         }

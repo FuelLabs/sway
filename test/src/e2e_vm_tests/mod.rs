@@ -148,11 +148,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .unzip();
 
     // Deploy and then test.
+    let mut contract_ids = Vec::<fuel_tx::ContractId>::with_capacity(contracts.len());
     for name in contracts {
-        harness::deploy_contract(name)
+        let contract_id = harness::deploy_contract(name);
+        contract_ids.push(contract_id);
     }
     for name in projects {
-        harness::runs_on_node(name);
+        harness::runs_on_node(name, &contract_ids);
     }
     let total_number_of_tests = positive_project_names.len() + negative_project_names.len();
     if number_of_tests_run == 0 {
