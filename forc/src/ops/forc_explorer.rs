@@ -23,8 +23,18 @@ struct GitHubReleaseAsset {
 }
 
 const BUILD_ARCHIVE_PATH: &str = "forc/build.tar";
+const BUILD_UNPACK_TEMP_PATH: &str = "forc/build";
 const STATIC_FILES_PATH: &str = "forc/www";
+const STATIC_ASSETS_PATH: &str = "forc/www/assets";
 const REPO_RELEASES_URL: &str = "https://api.github.com/repos/FuelLabs/block-explorer-v2/releases";
+
+struct EndPoints {}
+
+impl EndPoints {
+    pub fn static_files() -> String {
+        "static".to_string()
+    }
+}
 
 pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error> {
     let ExplorerCommand { port } = command;
@@ -45,10 +55,9 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
             Err(error) => panic!("Failed to unpack build archive {:?}", error),
         };
 
-        match rename("forc/build", STATIC_FILES_PATH) {
-            Err(error) => panic!("Failed to move static files {:?}", error),
-            Ok(_) => (),
-        };
+        if let Err(error) = rename(BUILD_UNPACK_TEMP_PATH, STATIC_FILES_PATH) {
+            panic!("Failed to move static files {:?}", error)
+        }
 
         match remove_file(BUILD_ARCHIVE_PATH) {
             Ok(_) => (),
@@ -84,7 +93,7 @@ async fn get_release_url() -> Result<String, reqwest::Error> {
     Ok(download_url)
 }
 
-async fn download_build(url: &String) -> DownloadResult<File> {
+async fn download_build(url: &str) -> DownloadResult<File> {
     let mut file = match File::create(BUILD_ARCHIVE_PATH) {
         Ok(fc) => fc,
         Err(error) => panic!("Problem creating the build archive: {:?}", error),
@@ -104,7 +113,7 @@ fn unpack_archive() -> Result<(), std::io::Error> {
 async fn start_server(port: String) {
     let explorer = warp::path::end().and(warp::fs::dir(STATIC_FILES_PATH));
     let static_assets =
-        warp::path("static").and(warp::fs::dir(format!("{}/static", STATIC_FILES_PATH)));
+        warp::path(EndPoints::static_files()).and(warp::fs::dir(STATIC_ASSETS_PATH));
     let routes = static_assets.or(explorer);
 
     let port_number = match port.parse::<u16>() {
