@@ -79,6 +79,75 @@ pub fn format_data_types(text: &str) -> String {
     })
 }
 
+/// Formats Sway data types: Enums and Structs ...but _swayfully_
+pub fn format_swayful_data_types(text: &str) -> String {
+    todo!("Use longest_var, and add spaces");
+    let longest_var: usize = find_longest_variant(text);
+    custom_format_with_comments(text, &mut move |text, result, current_char, iter| {
+        result.push(current_char);
+        match current_char {
+            '}' => {
+                clean_all_whitespace(iter);
+                if let Some((_, next_char)) = iter.peek() {
+                    if *next_char != ',' {
+                        result.push(',');
+                    }
+                }
+            }
+            ':' => {
+                let field_type = get_data_field_type(text, iter);
+                result.push_str(&field_type);
+            }
+            _ => {}
+        }
+    })
+}
+
+// Returns the length of the longest variant key name.
+fn find_longest_variant(text: &str) -> usize {
+    let mut current_size: usize = 0;
+    let mut longest_var: usize = 0;
+    let mut iter = text.chars().enumerate().peekable();
+    
+    while let Some((_, current_char)) = iter.next() {
+        match current_char {
+            '{' | ',' => {
+                current_size = 0;
+                clean_all_whitespace(&mut iter);
+            }
+            ':' => {
+                if current_size > longest_var {
+                    longest_var = current_size;
+                }
+            }
+            _ => {
+                current_size += 1;
+            }
+        }
+    }
+    longest_var
+}
+
+#[test]
+fn test_find_longest_variant() { 
+    let raw = r#"struct MyStruct {
+        foo: u32,
+        foooooo: u32, 
+        bar: u64,
+    }"#;
+    assert_eq!(find_longest_variant(raw), 7); 
+    let raw = r#"enum myenum {     foo: u32,
+        AH: u32, 
+        thisisatest: u64
+    }"#;
+    assert_eq!(find_longest_variant(raw), 11); 
+    let raw = r#"enum myenum {    
+        b: u32, 
+        a: u64
+    }"#;
+    assert_eq!(find_longest_variant(raw), 1); 
+}
+
 pub fn format_delineated_path(line: &str) -> String {
     // currently just clean up extra unwanted whitespace
     line.chars().filter(|c| !c.is_whitespace()).collect()
@@ -104,6 +173,8 @@ pub fn format_include_statement(line: &str) -> String {
     )
 }
 
+/// Given text right after a `:` in an enum or struct, get the type as a string.
+/// If this function is given data that either starts with a `:` or is the field/variant _name_, it will not work.
 fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> String {
     let mut result = String::default();
 
