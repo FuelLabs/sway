@@ -9,7 +9,7 @@ use crate::{
     error::*,
     parse_tree::Purity,
     semantic_analysis::{
-        ast_node::Mode, retrieve_module, Namespace, NamespaceRef, NamespaceWrapper,
+        ast_node::Mode, retrieve_module, Namespace, NamespaceRef,
         TypeCheckArguments,
     },
     type_engine::*,

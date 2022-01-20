@@ -333,7 +333,7 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut trait_namespace = namespace.clone();
+                            let trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
                             trait_namespace.insert_trait_implementation(
@@ -1087,7 +1087,7 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let mut function_namespace = namespace.clone();
+        let function_namespace = namespace.clone();
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name, ref r#type, ..

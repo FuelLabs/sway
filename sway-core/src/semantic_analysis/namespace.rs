@@ -1,16 +1,13 @@
-use super::ast_node::{
-    OwnedTypedStructField, TypedEnumDeclaration, TypedEnumVariant, TypedStructDeclaration,
-    TypedStructField,
-};
+
 
 use crate::{
-    error::*, parse_tree::Visibility, semantic_analysis::TypedExpression, type_engine::*, CallPath,
+    error::*, type_engine::*, CallPath,
     CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
-use sway_types::span::{join_spans, Span};
+use sway_types::span::{Span};
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap};
 
 pub mod arena;
 pub use arena::*;

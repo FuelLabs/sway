@@ -9,7 +9,6 @@ use crate::{
     },
     style::is_upper_camel_case,
     type_engine::*,
-    Namespace,
 };
 
 use sway_types::{ident::Ident, span::Span};

@@ -6,8 +6,7 @@ use crate::{
             IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
-        },
-        create_module, create_new_scope,
+        }, create_new_scope,
         NamespaceWrapper, TypeCheckArguments,
     },
     type_engine::*,
@@ -86,7 +85,7 @@ impl TypedFunctionDeclaration {
             };
 
         // insert parameters and generic type declarations into namespace
-        let mut namespace = create_new_scope(namespace);
+        let namespace = create_new_scope(namespace);
         type_parameters.iter().for_each(|param| {
             namespace.insert(param.name_ident.clone(), param.into());
         });

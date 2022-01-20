@@ -640,13 +640,13 @@ where
     };
     res
 }
-pub fn write_module<F, R>(mut func: F, ix: NamespaceRef) -> R
+pub fn write_module<F, R>(func: F, ix: NamespaceRef) -> R
 where
     F: FnOnce(&mut Namespace) -> R,
 {
     let res = {
         let mut write_lock = MODULES.write().expect("poisoned lock");
-        let mut ns = write_lock
+        let ns = write_lock
             .get_mut(ix)
             .expect("namespace index did not exist in arena");
         func(ns)

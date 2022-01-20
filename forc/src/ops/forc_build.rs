@@ -14,7 +14,7 @@ use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
 use sway_core::{
-    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace,
+    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult,
     NamespaceRef, NamespaceWrapper,
 };
 

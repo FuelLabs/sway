@@ -18,7 +18,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_core::{
-    create_module, retrieve_module, BuildConfig, CompileAstResult, Namespace, NamespaceRef,
+    create_module, BuildConfig, CompileAstResult, NamespaceRef,
     NamespaceWrapper, TreeType, TypedParseTree,
 };
 

@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{ast_node::*},
     type_engine::{insert_type, IntegerBits},
 };
 use sway_types::join_spans;

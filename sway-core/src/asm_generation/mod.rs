@@ -12,7 +12,7 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        read_module, Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
         TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
@@ -619,7 +619,7 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
@@ -700,7 +700,7 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Predicate {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
@@ -767,7 +767,7 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Contract {
             abi_entries,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
