@@ -653,9 +653,9 @@ lazy_static! {
 
 pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
     let module = {
-        let mut lock = MODULES.write().expect("poisoned lock");
-        lock.remove(ix)
-            .expect("index did not exist in namespace arena")
+        let lock = MODULES.write().expect("poisoned lock");
+        lock.get(ix)
+            .expect("index did not exist in namespace arena").clone()
     };
     module
 }

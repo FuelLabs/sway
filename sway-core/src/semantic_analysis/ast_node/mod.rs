@@ -176,6 +176,7 @@ impl TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let from_module = if a.is_absolute { crate_namespace } else { None };
+                    dbg!(&crate_namespace.is_some());
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
@@ -735,7 +736,7 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,

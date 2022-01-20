@@ -237,7 +237,7 @@ pub(crate) struct InnerDependencyCompileResult {
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: NamespaceRef,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -265,7 +265,8 @@ pub(crate) fn compile_inner_dependency(
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
             parse_tree.tree,
-            initial_namespace.clone(),
+            initial_namespace,
+            Some(initial_namespace),
             &parse_tree.tree_type,
             &build_config,
             dead_code_graph,
@@ -323,7 +324,8 @@ pub fn compile_to_ast(
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
             parse_tree.tree,
-            initial_namespace.clone(),
+            initial_namespace,
+            None,
             &parse_tree.tree_type,
             &build_config.clone(),
             &mut dead_code_graph,

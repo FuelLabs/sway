@@ -206,7 +206,7 @@ fn compile_dependency_lib<'manifest>(
         manifest_dir.clone(),
     );
 
-    let dep_namespace = create_module();
+    let dep_namespace = namespace.clone();
     if let Some(ref mut deps) = manifest_of_dep.dependencies {
         for (dependency_name, ref mut dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
