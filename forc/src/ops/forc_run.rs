@@ -1,7 +1,6 @@
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
-use std::convert::TryFrom;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -185,19 +184,6 @@ fn create_tx_with_script_and_data(
 // cut '0x' from the start
 fn format_hex_data(data: &str) -> &str {
     data.strip_prefix("0x").unwrap_or(data)
-}
-
-fn try_parse_bytes32(raw: String) -> Result<fuel_tx::Bytes32, String> {
-    let mut raw = raw;
-    if raw.len() > 2 && &raw[0..2] == "0x" {
-        raw = (&raw[2..]).to_string();
-    }
-    Ok(TryFrom::try_from(
-        hex::decode(&raw[..])
-            .map_err(|_| format!(r#"Given Bytes32 value ({}) is not valid."#, raw))?
-            .as_slice(),
-    )
-    .unwrap())
 }
 
 fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx::Input {
