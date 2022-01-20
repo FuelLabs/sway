@@ -120,15 +120,14 @@ impl TypedParseTree {
             errors
         );
 
-        let res = TypedParseTree::validate_typed_nodes(
+         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
             new_namespace,
             tree_type,
             warnings,
             errors,
-        );
-        res
+        )
     }
 
     fn type_check_nodes(

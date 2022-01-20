@@ -94,7 +94,7 @@ fn compile_constants(
                 }) = decl
                 {
                     if !public_only || matches!(visibility, Visibility::Public) {
-                        let const_val = compile_constant_expression(context, &value)?;
+                        let const_val = compile_constant_expression(context, value)?;
                         module.add_global_constant(context, name.as_str().to_owned(), const_val);
                     }
                 }
@@ -1585,7 +1585,8 @@ mod tests {
         };
         TypedParseTree::type_check(
             parse_tree.tree,
-            Default::default(),
+            crate::create_module(),
+            crate::create_module(),
             &TreeType::Script,
             &build_config,
             &mut dead_code_graph,

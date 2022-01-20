@@ -882,7 +882,7 @@ impl TypedExpression {
 
         let definition: TypedStructDeclaration =
             match namespace.clone().get_symbol(&struct_name).value {
-                Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
+                Some(TypedDeclaration::StructDeclaration(st)) => st,
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
                         name: struct_name.clone(),
@@ -1794,7 +1794,7 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace: Namespace = Default::default();
+        let mut namespace = create_module();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
@@ -1810,8 +1810,8 @@ mod tests {
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
-            namespace: &mut namespace,
-            crate_namespace: None,
+            namespace,
+            crate_namespace: namespace,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,

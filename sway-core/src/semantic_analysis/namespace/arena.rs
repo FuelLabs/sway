@@ -16,6 +16,7 @@ pub trait NamespaceWrapper {
     ///
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
+    #[allow(clippy::result_unit_err)]
     fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()>;
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId;
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()>;
@@ -209,7 +210,7 @@ impl NamespaceWrapper for NamespaceRef {
             CompileResult {
                 value: Some(TypedDeclaration::EnumDeclaration(inner)),
                 ..
-            } => Some(inner.clone()),
+            } => Some(inner),
             _ => None,
         }
     }
@@ -239,7 +240,6 @@ impl NamespaceWrapper for NamespaceRef {
                     &symbol.prefixes
                 };
                 self.get_name_from_path(path, &symbol.suffix)
-                    .map(|decl| decl.clone())
             },
             *self,
         )
@@ -572,9 +572,7 @@ impl NamespaceWrapper for NamespaceRef {
                             .collect(),
                     }),
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric {
-                            name: name.clone(),
-                        })
+                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => return Err(()),
                 }

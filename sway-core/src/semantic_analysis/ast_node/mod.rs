@@ -294,7 +294,7 @@ impl TypedAstNode {
                             );
 
                             let _ = check!(
-                                namespace.insert(e.name.clone(), decl.clone()),
+                                namespace.insert(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -340,7 +340,7 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            let trait_namespace = namespace.clone();
+                            let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
                             trait_namespace.insert_trait_implementation(
@@ -851,7 +851,7 @@ fn reassignment(
                         ));
                     }
 
-                    body.clone()
+                    body
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
@@ -1094,7 +1094,7 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let function_namespace = namespace.clone();
+        let function_namespace = namespace;
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name, ref r#type, ..

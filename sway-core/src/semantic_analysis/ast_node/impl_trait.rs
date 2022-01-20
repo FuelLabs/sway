@@ -353,7 +353,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let local_namespace: NamespaceRef = namespace.clone();
+    let local_namespace: NamespaceRef = create_new_scope(namespace);
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
