@@ -23,9 +23,9 @@ fn main() -> bool {
     };
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0x16af825dc6a612810b6c80a16f2a7e3248f574f2b0c96babda736fc53d8d8f8c);
+    let fuelcoin_id = ~ContractId::from(0x49050d88db785fdf3b3fd35df44fbe644b9b5273ae97d9c7c19cc3e4aa361eaf);
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0x16af825dc6a612810b6c80a16f2a7e3248f574f2b0c96babda736fc53d8d8f8c);
+    let fuel_coin = abi(TestFuelCoin, 0x49050d88db785fdf3b3fd35df44fbe644b9b5273ae97d9c7c19cc3e4aa361eaf);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
@@ -35,6 +35,12 @@ fn main() -> bool {
     // check that the mint was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 11);
+
+    fuel_coin.burn(default.gas, default.coins, default.id.value, 7);
+
+    // check that the burn was successful
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
+    assert(fuelcoin_balance == 4);
 
     true
 }
