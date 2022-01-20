@@ -22,8 +22,4 @@ impl TestFuelCoin for Contract {
     fn force_transfer(gas: u64, coins: u64, asset_id: b256, params: ParamsForceTransfer) {
         force_transfer(params.coins, params.asset_id, params.c_id)
     }
-
-    fn name(gas: u64, coins: u64, asset_id: b256, input: ()) -> str[14] {
-        "Test Fuel Coin"
-    }
 }
