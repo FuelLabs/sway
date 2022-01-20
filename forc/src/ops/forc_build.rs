@@ -14,8 +14,8 @@ use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
 use sway_core::{
-    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult,
-    NamespaceRef, NamespaceWrapper,
+    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult, NamespaceRef,
+    NamespaceWrapper,
 };
 
 use anyhow::Result;
@@ -123,28 +123,6 @@ fn compile_dependency_lib<'manifest>(
     silent_mode: bool,
     offline_mode: bool,
 ) -> Result<(), String> {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     let mut details = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(

@@ -1,11 +1,9 @@
-
-
 use crate::{
-    error::*, type_engine::*, CallPath,
-    CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 
-use sway_types::span::{Span};
+use sway_types::span::Span;
 
 use std::collections::{BTreeMap, HashMap};
 

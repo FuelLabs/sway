@@ -18,8 +18,8 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_core::{
-    create_module, BuildConfig, CompileAstResult, NamespaceRef,
-    NamespaceWrapper, TreeType, TypedParseTree,
+    create_module, BuildConfig, CompileAstResult, NamespaceRef, NamespaceWrapper, TreeType,
+    TypedParseTree,
 };
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
@@ -49,7 +49,6 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     let mut manifest = read_manifest(&manifest_dir)?;
     let main_path = find_main_path(&manifest_dir, &manifest);
     let file_name = find_file_name(&manifest_dir, &main_path)?;
-
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_owned(),
@@ -241,7 +240,7 @@ fn compile_dependency_lib<'manifest>(
     let (compiled, json_abi) = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-       dep_namespace, 
+        dep_namespace,
         build_config,
         dependency_graph,
         silent_mode,

@@ -143,39 +143,42 @@ impl TypedAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr =
-            |namespace: crate::semantic_analysis::NamespaceRef,
-             crate_namespace: NamespaceRef,
-             type_ascription: TypeInfo,
-             value| {
-                let type_id = namespace
-                    .resolve_type_with_self(type_ascription, self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: node.span.clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
+        let mut type_check_ascribed_expr = |namespace: crate::semantic_analysis::NamespaceRef,
+                                            crate_namespace: NamespaceRef,
+                                            type_ascription: TypeInfo,
+                                            value| {
+            let type_id = namespace
+                .resolve_type_with_self(type_ascription, self_type)
+                .unwrap_or_else(|_| {
+                    errors.push(CompileError::UnknownType {
+                        span: node.span.clone(),
                     });
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: value,
-                    namespace,
-                    crate_namespace,
-                    return_type_annotation: type_id,
-                    help_text: "This declaration's type annotation  does \
+                    insert_type(TypeInfo::ErrorRecovery)
+                });
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: value,
+                namespace,
+                crate_namespace,
+                return_type_annotation: type_id,
+                help_text: "This declaration's type annotation  does \
                      not match up with the assigned expression's type.",
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    dependency_graph,
-                    mode: Mode::NonAbi,
-                    opts,
-                })
-            };
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            })
+        };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute { Some(crate_namespace )} else { None };
+                    let from_module = if a.is_absolute {
+                        Some(crate_namespace)
+                    } else {
+                        None
+                    };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
@@ -275,7 +278,11 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body: value,
-                                    is_mutable: if visibility.is_public() { VariableMutability::ExportedConst } else { VariableMutability::Immutable },
+                                    is_mutable: if visibility.is_public() {
+                                        VariableMutability::ExportedConst
+                                    } else {
+                                        VariableMutability::Immutable
+                                    },
                                     type_ascription: insert_type(type_ascription),
                                 });
                             namespace.insert(name, typed_const_decl.clone());

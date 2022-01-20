@@ -68,7 +68,9 @@ impl Span {
 /// This panics if the spans are not from the same file. This should
 /// only be used on spans that are actually next to each other.
 pub fn join_spans(s1: Span, s2: Span) -> Span {
-    if s1.as_str() == "core" { return s2 }
+    if s1.as_str() == "core" {
+        return s2;
+    }
     assert!(
         s1.input() == s2.input() && s1.path == s2.path,
         "Spans from different files cannot be joined.",

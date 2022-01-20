@@ -32,7 +32,7 @@ impl TypedCodeBlock {
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
-        let local_namespace = create_new_scope(namespace);  
+        let local_namespace = create_new_scope(namespace);
         let evaluated_contents = other
             .contents
             .iter()

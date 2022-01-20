@@ -249,9 +249,7 @@ impl NamespaceWrapper for NamespaceRef {
         let mut errors = vec![];
         let module = check!(
             self.find_module_relative(path),
-            
-                return err(warnings, errors)
-            ,
+            return err(warnings, errors),
             warnings,
             errors
         );
@@ -457,7 +455,12 @@ impl NamespaceWrapper for NamespaceRef {
                     });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { is_mutable: VariableMutability::ExportedConst, ref name, .. }) = decl {
+                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    is_mutable: VariableMutability::ExportedConst,
+                    ref name,
+                    ..
+                }) = decl
+                {
                     self.insert(alias.unwrap_or_else(|| name.clone()), decl.clone());
                     return ok((), warnings, errors);
                 }
@@ -662,7 +665,8 @@ pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
     let module = {
         let lock = MODULES.read().expect("poisoned lock");
         lock.get(ix)
-            .expect("index did not exist in namespace arena").clone()
+            .expect("index did not exist in namespace arena")
+            .clone()
     };
     module
 }

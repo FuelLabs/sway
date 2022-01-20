@@ -26,7 +26,6 @@ pub struct OwnedCallPath {
     pub suffix: String,
 }
 
-
 use std::fmt;
 impl fmt::Display for CallPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
