@@ -108,7 +108,7 @@ fn find_longest_variant(text: &str) -> usize {
     let mut current_size: usize = 0;
     let mut longest_var: usize = 0;
     let mut iter = text.chars().enumerate().peekable();
-    
+
     while let Some((_, current_char)) = iter.next() {
         match current_char {
             '{' | ',' => {
@@ -129,23 +129,23 @@ fn find_longest_variant(text: &str) -> usize {
 }
 
 #[test]
-fn test_find_longest_variant() { 
+fn test_find_longest_variant() {
     let raw = r#"struct MyStruct {
         foo: u32,
         foooooo: u32, 
         bar: u64,
     }"#;
-    assert_eq!(find_longest_variant(raw), 7); 
+    assert_eq!(find_longest_variant(raw), 7);
     let raw = r#"enum myenum {     foo: u32,
         AH: u32, 
         thisisatest: u64
     }"#;
-    assert_eq!(find_longest_variant(raw), 11); 
+    assert_eq!(find_longest_variant(raw), 11);
     let raw = r#"enum myenum {    
         b: u32, 
         a: u64
     }"#;
-    assert_eq!(find_longest_variant(raw), 1); 
+    assert_eq!(find_longest_variant(raw), 1);
 }
 
 pub fn format_delineated_path(line: &str) -> String {
