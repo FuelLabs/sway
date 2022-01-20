@@ -4,6 +4,7 @@ use futures::TryFutureExt;
 use std::convert::TryFrom;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use sway_core::{parse, TreeType};
 use tokio::process::Child;
 
@@ -204,7 +205,7 @@ fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx:
         utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
         balance_root: fuel_tx::Bytes32::zeroed(),
         state_root: fuel_tx::Bytes32::zeroed(),
-        contract_id: fuel_tx::ContractId::new(*try_parse_bytes32(contract.clone()).unwrap()),
+        contract_id: fuel_tx::ContractId::from_str(contract).unwrap(),
     }
 }
 
