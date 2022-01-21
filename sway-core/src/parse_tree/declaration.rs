@@ -137,129 +137,87 @@ impl Declaration {
     pub(crate) fn parse_from_pair(
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
-        let parsed_declaration = match decl_inner.as_rule() {
-            Rule::fn_decl => Declaration::FunctionDeclaration(check!(
+        let parsed_declarations = match decl_inner.as_rule() {
+            Rule::fn_decl => vec![Declaration::FunctionDeclaration(check!(
                 FunctionDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
+            ))],
             Rule::var_decl => {
-                let mut var_decl_parts = decl_inner.into_inner();
-                let _let_keyword = var_decl_parts.next();
-                let maybe_mut_keyword = var_decl_parts.next().unwrap();
-                let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
-                let name_pair = if is_mutable {
-                    var_decl_parts.next().unwrap()
-                } else {
-                    maybe_mut_keyword
-                };
-                let mut maybe_body = var_decl_parts.next().unwrap();
-                let type_ascription = match maybe_body.as_rule() {
-                    Rule::type_ascription => {
-                        let type_asc = maybe_body.clone();
-                        maybe_body = var_decl_parts.next().unwrap();
-                        Some(type_asc)
-                    }
-                    _ => None,
-                };
-                let type_ascription_span = type_ascription
-                    .clone()
-                    .map(|x| x.into_inner().next().unwrap().as_span());
-                let type_ascription = if let Some(ascription) = type_ascription {
-                    let type_name = ascription.into_inner().next().unwrap();
-                    check!(
-                        TypeInfo::parse_from_pair(type_name, config),
-                        TypeInfo::Tuple(Vec::new()),
-                        warnings,
-                        errors
-                    )
-                } else {
-                    TypeInfo::Unknown
-                };
-                let body = check!(
-                    Expression::parse_from_pair(maybe_body, config),
+                let var_decls = check!(
+                    VariableDeclaration::parse_from_pair(decl_inner, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                Declaration::VariableDeclaration(VariableDeclaration {
-                    name: check!(
-                        ident::parse_from_pair(name_pair, config),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
-                    body,
-                    is_mutable,
-                    type_ascription,
-                    type_ascription_span: type_ascription_span.map(|type_ascription_span| Span {
-                        span: type_ascription_span,
-                        path: config.map(|x| x.path()),
-                    }),
-                })
+                let mut decls = vec![];
+                for var_decl in var_decls.into_iter() {
+                    decls.push(Declaration::VariableDeclaration(var_decl));
+                }
+                decls
             }
-            Rule::trait_decl => Declaration::TraitDeclaration(check!(
+            Rule::trait_decl => vec![Declaration::TraitDeclaration(check!(
                 TraitDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::struct_decl => Declaration::StructDeclaration(check!(
+            ))],
+            Rule::struct_decl => vec![Declaration::StructDeclaration(check!(
                 StructDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::non_var_decl => check!(
+            ))],
+            Rule::non_var_decl => vec![check!(
                 Self::parse_non_var_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ),
-            Rule::enum_decl => Declaration::EnumDeclaration(check!(
+            )],
+            Rule::enum_decl => vec![Declaration::EnumDeclaration(check!(
                 EnumDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::reassignment => Declaration::Reassignment(check!(
+            ))],
+            Rule::reassignment => vec![Declaration::Reassignment(check!(
                 Reassignment::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::impl_trait => Declaration::ImplTrait(check!(
+            ))],
+            Rule::impl_trait => vec![Declaration::ImplTrait(check!(
                 ImplTrait::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::impl_self => Declaration::ImplSelf(check!(
+            ))],
+            Rule::impl_self => vec![Declaration::ImplSelf(check!(
                 ImplSelf::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::const_decl => Declaration::ConstantDeclaration(check!(
+            ))],
+            Rule::const_decl => vec![Declaration::ConstantDeclaration(check!(
                 ConstantDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::abi_decl => Declaration::AbiDeclaration(check!(
+            ))],
+            Rule::abi_decl => vec![Declaration::AbiDeclaration(check!(
                 AbiDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
+            ))],
             a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };
-        ok(parsed_declaration, warnings, errors)
+        ok(parsed_declarations, warnings, errors)
     }
 }
