@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt};
 
+use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -11,7 +12,7 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
     types::ResolvedType,
@@ -618,22 +619,48 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            // generate any const decls
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             // start generating from the main function
             let return_register = register_sequencer.next();
@@ -673,22 +700,47 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Predicate {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             // start generating from the main function
             let mut body = check!(
@@ -715,22 +767,47 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Contract {
             abi_entries,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             let (selectors_and_labels, mut contract_asm) = check!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
@@ -1183,88 +1260,6 @@ fn build_contract_abi_switch(
     });
 
     asm_buf
-}
-
-fn add_all_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    declarations: &[TypedDeclaration],
-    ast_namespace: &Namespace,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    check!(
-        add_global_constant_decls(namespace, register_sequencer, asm_buf, declarations),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    check!(
-        add_module_constant_decls(namespace, register_sequencer, asm_buf, ast_namespace),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok((), warnings, errors)
-}
-
-fn add_global_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    declarations: &[TypedDeclaration],
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    for declaration in declarations {
-        if let TypedDeclaration::ConstantDeclaration(decl) = declaration {
-            let mut ops = check!(
-                convert_constant_decl_to_asm(decl, namespace, register_sequencer),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            asm_buf.append(&mut ops);
-        }
-    }
-    ok((), warnings, errors)
-}
-
-fn add_module_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    ast_namespace: &Namespace,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    // NOTE: this is currently flattening out the entire namespace, which is problematic.  To fix
-    // it we need to support hierarchical names (or at least absolute normalised names) to
-    // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
-    // soon.
-    for ns in ast_namespace.get_all_imported_modules() {
-        for decl in ns.get_all_declared_symbols() {
-            if let TypedDeclaration::ConstantDeclaration(decl) = decl {
-                let mut ops = check!(
-                    convert_constant_decl_to_asm(decl, namespace, register_sequencer),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                asm_buf.append(&mut ops);
-            }
-        }
-        check!(
-            add_module_constant_decls(namespace, register_sequencer, asm_buf, ns),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-    }
-
-    ok((), warnings, errors)
 }
 
 /// The function selector value and corresponding label.
