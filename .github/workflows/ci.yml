@@ -16,6 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core
+        ports:
+          - 4000:4000
+
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -44,14 +50,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-      - name: Install fuel-core
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          # We use debug here to reduce build time, since the performance difference
-          # is minimal between release and debug builds for the purposes of these tests.
-          args: --debug fuel-core
 
       - name: Run fuel-core
         run: |
