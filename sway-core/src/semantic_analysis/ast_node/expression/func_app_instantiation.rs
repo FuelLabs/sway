@@ -6,7 +6,7 @@ use crate::type_engine::TypeId;
 use std::cmp::Ordering;
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn instantiate_function_application<'n>(
+pub(crate) fn instantiate_function_application(
     typed_function_decl: TypedFunctionDeclaration,
     name: CallPath,
     arguments: Vec<Expression>,

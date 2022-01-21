@@ -795,7 +795,7 @@ impl TypedExpression {
         let mut typed_fields_buf = vec![];
         let definition = match module_result {
             Some(module) => match module.clone().get_symbol(&call_path.suffix).value {
-                Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
+                Some(TypedDeclaration::StructDeclaration(st)) => st,
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
                         name: call_path.suffix.clone(),
@@ -813,7 +813,7 @@ impl TypedExpression {
             },
             None => {
                 errors.push(CompileError::StructNotFound {
-                    name: call_path.suffix.clone(),
+                    name: call_path.suffix,
                     span,
                 });
                 return err(warnings, errors);
@@ -1152,7 +1152,7 @@ impl TypedExpression {
             (None, Some(enum_decl)) => check!(
                 instantiate_enum(
                     enum_decl,
-                    call_path.suffix.clone(),
+                    call_path.suffix,
                     args,
                     namespace,
                     crate_namespace,
@@ -1749,7 +1749,7 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace = create_module();
+        let namespace = create_module();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
