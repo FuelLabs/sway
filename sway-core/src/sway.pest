@@ -119,11 +119,13 @@ array_elems        =  {literal_value ~ ";" ~ u64_integer|expr ~ ("," ~ expr)*}
 // declarations
 declaration               =  {(non_var_decl|var_decl|reassignment)}
 non_var_decl              =  {(enum_decl|storage_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
-var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
+var_decl                  =  {var_decl_keyword ~ var_lhs ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
 fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
-var_name                  =  {ident}
+var_lhs                   =  {var_name|var_tuple}
+var_name                  =  {mut_keyword? ~ ident}
+var_tuple                 =  {"(" ~ (var_lhs ~ ("," ~ var_lhs)* ~ ","?)? ~ ")" }
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
