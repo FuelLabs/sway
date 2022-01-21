@@ -15,11 +15,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core
-
+    container: ghcr.io/fuellabs/fuel-core
+    
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -51,7 +48,7 @@ jobs:
 
       - name: Run fuel-core
         run: |
-          ./fuel-core &
+          fuel-core &
           echo $! > ./fuel-core.pid
 
       - name: Build
