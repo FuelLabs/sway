@@ -27,6 +27,7 @@ smallvec = "1.7"
 structopt = { version = "0.3", default-features = false, optional = true }
 sway-ir = { version = "0.3.0", path = "../sway-ir" }
 sway-types = { version = "0.3.0", path = "../sway-types" }
+generational-arena = "0.2"
 thiserror = "1.0"
 
 [[bin]]

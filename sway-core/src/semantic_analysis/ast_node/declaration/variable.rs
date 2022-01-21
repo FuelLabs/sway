@@ -1,13 +1,60 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::type_engine::*;
 use crate::Ident;
+use crate::Visibility;
 use crate::{type_engine::TypeId, TypeParameter};
 
 #[derive(Clone, Debug)]
+pub enum VariableMutability {
+    // private + mutable
+    Mutable,
+    // private + immutable
+    Immutable,
+    // public + immutable
+    ExportedConst,
+    // public + mutable is invalid
+}
+
+impl Default for VariableMutability {
+    fn default() -> Self {
+        VariableMutability::Immutable
+    }
+}
+impl VariableMutability {
+    pub fn is_mutable(&self) -> bool {
+        matches!(self, VariableMutability::Mutable)
+    }
+    pub fn visibility(&self) -> Visibility {
+        match self {
+            VariableMutability::ExportedConst => Visibility::Public,
+            _ => Visibility::Private,
+        }
+    }
+    pub fn is_immutable(&self) -> bool {
+        !self.is_mutable()
+    }
+}
+
+impl From<bool> for VariableMutability {
+    fn from(o: bool) -> Self {
+        if o {
+            VariableMutability::Mutable
+        } else {
+            VariableMutability::Immutable
+        }
+    }
+}
+// as a bool, true means mutable
+impl From<VariableMutability> for bool {
+    fn from(o: VariableMutability) -> bool {
+        o.is_mutable()
+    }
+}
+#[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration {
     pub(crate) name: Ident,
-    pub(crate) body: TypedExpression, // will be codeblock variant
-    pub(crate) is_mutable: bool,
+    pub(crate) body: TypedExpression,
+    pub(crate) is_mutable: VariableMutability,
     pub(crate) type_ascription: TypeId,
 }
 

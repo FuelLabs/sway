@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
-    Rule, TypeParameter,
+    Ident, Rule, TypeParameter,
 };
 
 use sway_types::span::Span;
@@ -19,7 +19,7 @@ use pest::iterators::Pair;
 pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
-        name: String,
+        name: Ident,
     },
     Str(u64),
     UnsignedInteger(IntegerBits),
@@ -51,7 +51,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: String,
+        name: Ident,
     },
     SelfType,
     Byte,
@@ -125,7 +125,7 @@ impl TypeInfo {
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
                 _other => TypeInfo::Custom {
-                    name: input.as_str().trim().to_string(),
+                    name: Ident::new(span),
                 },
             },
             Rule::array_type => {
@@ -236,7 +236,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("unresolved {}", name),
+            Custom { name } => format!("unresolved {}", name.as_str()),
             Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -282,7 +282,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("unresolved {}", name),
+            Custom { name } => format!("unresolved {}", name.as_str()),
             Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -563,11 +563,7 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { name, .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name
-                        == (TypeInfo::Custom {
-                            name: name.to_string(),
-                        })
-                    {
+                    if param.name == (TypeInfo::Custom { name: name.clone() }) {
                         return Some(*ty_id);
                     }
                 }
