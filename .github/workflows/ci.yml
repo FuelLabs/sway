@@ -16,11 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core
-        ports:
-          - 4000:4000
+    container:
+      image: ghcr.io/fuellabs/fuel-core
 
     steps:
       - name: Cancel Previous Runs
