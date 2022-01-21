@@ -103,9 +103,7 @@ impl TypedDeclaration {
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
-                    insert_type(TypeInfo::UnknownGeneric {
-                        name: name.as_str().to_string(),
-                    })
+                    insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
                 }
                 decl => {
                     return err(
@@ -152,7 +150,15 @@ impl TypedDeclaration {
                     is_mutable,
                     name,
                     ..
-                }) => format!("{} {}", if *is_mutable { "mut" } else { "" }, name.as_str()),
+                }) => format!(
+                    "{} {}",
+                    match is_mutable {
+                        VariableMutability::Mutable => "mut",
+                        VariableMutability::Immutable => "",
+                        VariableMutability::ExportedConst => "pub const",
+                    },
+                    name.as_str()
+                ),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
@@ -177,12 +183,14 @@ impl TypedDeclaration {
     pub(crate) fn visibility(&self) -> Visibility {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(..)
-            | GenericTypeForFunctionScope { .. }
+            GenericTypeForFunctionScope { .. }
             | Reassignment(..)
             | ImplTrait { .. }
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,
+            VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
+                is_mutable.visibility()
+            }
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })

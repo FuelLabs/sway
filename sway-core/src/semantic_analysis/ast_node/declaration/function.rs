@@ -5,8 +5,9 @@ use crate::{
         ast_node::{
             IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
+            VariableMutability,
         },
-        TypeCheckArguments,
+        create_new_scope, NamespaceWrapper, TypeCheckArguments,
     },
     type_engine::*,
     Ident, TypeParameter,
@@ -84,7 +85,7 @@ impl TypedFunctionDeclaration {
             };
 
         // insert parameters and generic type declarations into namespace
-        let mut namespace = namespace.clone();
+        let namespace = create_new_scope(namespace);
         type_parameters.iter().for_each(|param| {
             namespace.insert(param.name_ident.clone(), param.into());
         });
@@ -116,7 +117,7 @@ impl TypedFunctionDeclaration {
                         is_constant: IsConstant::No,
                         span: name.span().clone(),
                     },
-                    is_mutable: false, // TODO allow mutable function params?
+                    is_mutable: VariableMutability::Immutable,
                     type_ascription: r#type,
                 }),
             );
@@ -127,7 +128,7 @@ impl TypedFunctionDeclaration {
         let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace: &mut namespace,
+                namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text:
@@ -583,7 +584,7 @@ pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParam
             (
                 x.clone(),
                 insert_type(TypeInfo::UnknownGeneric {
-                    name: x.name_ident.as_str().to_string(),
+                    name: x.name_ident.clone(),
                 }),
             )
         })
