@@ -120,7 +120,7 @@ impl TypedParseTree {
             errors
         );
 
-         TypedParseTree::validate_typed_nodes(
+        TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
             new_namespace,
