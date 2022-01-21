@@ -5,9 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
-    semantic_analysis::{
-        Namespace, TCOpts, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
-    },
+    semantic_analysis::*,
     type_engine::{
         insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
     },
@@ -20,8 +18,8 @@ use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -192,8 +190,8 @@ fn type_check_trait_implementation(
     methods: &[FunctionDeclaration],
     trait_name: &Ident,
     type_arguments: &[TypeParameter],
-    namespace: &mut Namespace,
-    crate_namespace: Option<&Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: NamespaceRef,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -355,7 +353,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut local_namespace = namespace.clone();
+    let local_namespace: NamespaceRef = create_new_scope(namespace);
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
@@ -380,7 +378,7 @@ fn type_check_trait_implementation(
         let method = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
-                namespace: &mut local_namespace,
+                namespace: local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "",

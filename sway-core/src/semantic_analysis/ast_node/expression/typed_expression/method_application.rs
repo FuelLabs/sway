@@ -8,12 +8,12 @@ use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn type_check_method_application<'n>(
+pub(crate) fn type_check_method_application(
     method_name: MethodName,
     arguments: Vec<Expression>,
     span: Span,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&'n Namespace>,
+    namespace: NamespaceRef,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -63,7 +63,7 @@ pub(crate) fn type_check_method_application<'n>(
                     .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
             };
             let from_module = if call_path.is_absolute {
-                crate_namespace
+                Some(crate_namespace)
             } else {
                 None
             };
@@ -286,11 +286,11 @@ pub(crate) fn type_check_method_application<'n>(
 // TODO(static span): this whole method can go away and the address can go back in the contract
 // caller type.
 #[allow(clippy::too_many_arguments)]
-fn re_parse_expression<'n>(
+fn re_parse_expression(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&'n Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,

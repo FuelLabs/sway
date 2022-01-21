@@ -11,7 +11,7 @@ auth_testing_abi = { path = "../auth_testing_abi" }
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
+contract-id = "0xea689c2ca58ee9b8728f02bad4a074875ea365efcbbf21d685ea6f1c6c932609"
+utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
 balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
 state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"

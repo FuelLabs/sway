@@ -491,7 +491,7 @@ impl Dependencies {
 
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         if let TypeInfo::Custom { name } = type_info {
-            self.deps.insert(DependentSymbol::Symbol(name.clone()));
+            self.deps.insert(DependentSymbol::Symbol(name.to_string()));
         }
         self
     }
@@ -598,7 +598,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name } => name,
+        TypeInfo::Custom { name } => name.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",

@@ -5,9 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::*,
-    semantic_analysis::{
-        ast_node::declaration::insert_type_parameters, Namespace, TCOpts, TypeCheckArguments,
-    },
+    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
@@ -25,7 +23,7 @@ pub mod declaration;
 use declaration::TypedTraitFn;
 pub(crate) use declaration::{
     OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
-    TypedVariableDeclaration,
+    TypedVariableDeclaration, VariableMutability,
 };
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -145,8 +143,8 @@ impl TypedAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |namespace: &mut Namespace,
-                                            crate_namespace: Option<&Namespace>,
+        let mut type_check_ascribed_expr = |namespace: crate::semantic_analysis::NamespaceRef,
+                                            crate_namespace: NamespaceRef,
                                             type_ascription: TypeInfo,
                                             value| {
             let type_id = namespace
@@ -176,7 +174,11 @@ impl TypedAstNode {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute { crate_namespace } else { None };
+                    let from_module = if a.is_absolute {
+                        Some(crate_namespace)
+                    } else {
+                        None
+                    };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
@@ -248,7 +250,7 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    is_mutable,
+                                    is_mutable: is_mutable.into(),
                                     type_ascription,
                                 });
                             namespace.insert(name, typed_var_decl.clone());
@@ -263,7 +265,7 @@ impl TypedAstNode {
                             let result = type_check_ascribed_expr(
                                 namespace,
                                 crate_namespace,
-                                type_ascription,
+                                type_ascription.clone(),
                                 value,
                             );
                             let value = check!(
@@ -273,10 +275,15 @@ impl TypedAstNode {
                                 errors
                             );
                             let typed_const_decl =
-                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
-                                    value,
-                                    visibility,
+                                    body: value,
+                                    is_mutable: if visibility.is_public() {
+                                        VariableMutability::ExportedConst
+                                    } else {
+                                        VariableMutability::Immutable
+                                    },
+                                    type_ascription: insert_type(type_ascription),
                                 });
                             namespace.insert(name, typed_const_decl.clone());
                             typed_const_decl
@@ -287,7 +294,7 @@ impl TypedAstNode {
                             );
 
                             let _ = check!(
-                                namespace.insert(e.name.clone(), decl.clone()),
+                                namespace.insert(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -333,7 +340,7 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut trait_namespace = namespace.clone();
+                            let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
                             trait_namespace.insert_trait_implementation(
@@ -352,7 +359,7 @@ impl TypedAstNode {
                             let _methods = check!(
                                 type_check_trait_methods(
                                     methods.clone(),
-                                    &mut trait_namespace,
+                                    trait_namespace,
                                     crate_namespace,
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
@@ -738,7 +745,7 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    namespace: &mut Namespace,
+    namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -778,7 +785,6 @@ fn import_new_file(
         }
     };
 
-    let dep_namespace = namespace.clone();
     let mut dep_config = build_config.clone();
     let dep_path = {
         canonical_path.pop();
@@ -793,7 +799,7 @@ fn import_new_file(
     } = check!(
         crate::compile_inner_dependency(
             file_as_string,
-            &dep_namespace,
+            namespace,
             dep_config,
             dead_code_graph,
             dependency_graph
@@ -838,20 +844,16 @@ fn reassignment(
                     body,
                     is_mutable,
                     name,
-                    type_ascription: _,
+                    ..
                 })) => {
-                    // allow the type checking to continue unhindered even though
-                    // this is an error
-                    // basically pretending that this isn't an error by not
-                    // early-returning, for the sake of better error reporting
-                    if !is_mutable {
+                    if !is_mutable.is_mutable() {
                         errors.push(CompileError::AssignmentToNonMutable(
                             name.as_str().to_string(),
                             span.clone(),
                         ));
                     }
 
-                    body.clone()
+                    body
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
@@ -1012,7 +1014,7 @@ fn reassignment(
 
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
-    namespace: &Namespace,
+    namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut errors = vec![];
     ok(
@@ -1072,8 +1074,8 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -1094,7 +1096,7 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let mut function_namespace = namespace.clone();
+        let function_namespace = namespace;
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name, ref r#type, ..
@@ -1121,7 +1123,7 @@ fn type_check_trait_methods(
                             span: name.span().clone(),
                         },
                         // TODO allow mutable function params?
-                        is_mutable: false,
+                        is_mutable: VariableMutability::Immutable,
                         type_ascription: r#type,
                     }),
                 );
@@ -1206,7 +1208,7 @@ fn type_check_trait_methods(
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
-                namespace: &mut function_namespace,
+                namespace: function_namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text: "Trait method body's return type does not match up with \

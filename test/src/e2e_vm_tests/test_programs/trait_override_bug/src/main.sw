@@ -26,7 +26,7 @@ impl Shiftable for u64 {
 }
 
 fn foo() -> u64 {
-    let mut x:u64 = 4;
+    let mut x: u64 = 4;
     x = 5 + 2;
     x
 }
