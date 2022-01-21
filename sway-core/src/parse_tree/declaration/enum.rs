@@ -3,12 +3,12 @@ use crate::{
     error::*,
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
-    semantic_analysis::ast_node::{
-        declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant,
+    semantic_analysis::{
+        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
+        NamespaceRef, NamespaceWrapper,
     },
     style::is_upper_camel_case,
     type_engine::*,
-    Namespace,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -37,7 +37,7 @@ impl EnumDeclaration {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
         let mut variants_buf = vec![];
@@ -152,7 +152,7 @@ impl EnumDeclaration {
 impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace,
+        namespace: NamespaceRef,
         self_type: TypeId,
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],

@@ -4,6 +4,7 @@ use pest::Parser;
 use std::sync::Arc;
 use structopt::StructOpt;
 use sway_core::{
+    create_module,
     parse_tree::declaration::FunctionDeclaration,
     semantic_analysis::{
         ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},
@@ -34,10 +35,11 @@ fn main() {
         FunctionDeclaration::parse_from_pair(parsed_fn_decl.next().unwrap(), Default::default())
             .unwrap(&mut warnings, &mut errors);
 
+    let namespace = create_module();
     let res = TypedFunctionDeclaration::type_check(TypeCheckArguments {
         checkee: parsed_fn_decl,
-        namespace: &mut Default::default(),
-        crate_namespace: None,
+        namespace,
+        crate_namespace: namespace,
         help_text: "",
         return_type_annotation: insert_type(TypeInfo::Unknown),
         self_type: insert_type(TypeInfo::Unknown),

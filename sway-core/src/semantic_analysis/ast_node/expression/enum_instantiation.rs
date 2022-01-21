@@ -7,12 +7,12 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn instantiate_enum<'n>(
+pub(crate) fn instantiate_enum(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
-    namespace: &mut Namespace,
-    crate_namespace: Option<&'n Namespace>,
+    namespace: crate::semantic_analysis::NamespaceRef,
+    crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
