@@ -16,6 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    container:
+      image: ghcr.io/fuellabs/fuel-core
     services:
       fuel-core:
         image: ghcr.io/fuellabs/fuel-core
