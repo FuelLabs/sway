@@ -1145,13 +1145,13 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_tuple_index<'n>(
+    fn type_check_tuple_index(
         prefix: Expression,
         index: usize,
         index_span: Span,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
