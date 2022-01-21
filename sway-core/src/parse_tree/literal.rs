@@ -368,7 +368,7 @@ fn parse_binary_from_pair(
 }
 
 #[allow(clippy::wildcard_in_or_patterns)]
-fn handle_parse_int_error(
+pub(crate) fn handle_parse_int_error(
     e: ParseIntError,
     ty: TypeInfo,
     span: Span,

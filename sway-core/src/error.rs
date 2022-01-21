@@ -788,6 +788,12 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
+    TupleOutOfBounds {
+        index: usize,
+        count: usize,
+        span: Span,
+    },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
     #[error(
@@ -995,6 +1001,7 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
