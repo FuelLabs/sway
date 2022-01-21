@@ -620,6 +620,7 @@ impl NamespaceWrapper for NamespaceRef {
     }
 }
 
+/// Create a new module ([Namespace]), insert it into the arena, and get its id back.
 pub fn create_module() -> NamespaceRef {
     let res = {
         let mut write_lock = MODULES.write().expect("poisoned mutex");
@@ -628,6 +629,7 @@ pub fn create_module() -> NamespaceRef {
     res
 }
 
+/// Given a function `func` and a reference to a module `ix`, read from `MODULES[ix]` with `func`.
 pub fn read_module<F, R>(mut func: F, ix: NamespaceRef) -> R
 where
     F: FnMut(&Namespace) -> R,
@@ -641,6 +643,8 @@ where
     };
     res
 }
+
+/// Given a function `func` and a reference to a module `ix`, mutate `MODULES[ix]` with `func`.
 pub fn write_module<F, R>(func: F, ix: NamespaceRef) -> R
 where
     F: FnOnce(&mut Namespace) -> R,
@@ -656,9 +660,11 @@ where
 }
 
 lazy_static! {
+    /// The arena which contains all modules in all dependencies and the main compilation target.
     pub static ref MODULES: RwLock<Arena<Namespace>> = Default::default();
 }
 
+/// Given a [NamespaceRef], get a clone of the actual [Namespace] it refers to.
 pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
     let module = {
         let lock = MODULES.read().expect("poisoned lock");
@@ -669,6 +675,8 @@ pub fn retrieve_module(ix: NamespaceRef) -> Namespace {
     module
 }
 
+/// Given a [NamespaceRef] that refers to a module, construct a new `Namespace` (incurring the
+/// cloning cost) with `parent` as its parent.
 pub fn create_new_scope(parent: NamespaceRef) -> NamespaceRef {
     let new_module = read_module(|ns| ns.clone(), parent);
 
