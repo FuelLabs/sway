@@ -16,13 +16,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container:
-      image: ghcr.io/fuellabs/fuel-core
     services:
       fuel-core:
         image: ghcr.io/fuellabs/fuel-core
-        ports:
-          - 4000:4000
 
     steps:
       - name: Cancel Previous Runs
@@ -53,11 +49,6 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Run fuel-core
-        run: |
-          fuel-core &
-          echo $! > ./fuel-core.pid
-
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -70,9 +61,6 @@ jobs:
         with:
           command: run
           args: --release --bin test
-
-      - name: Kill fuel-core
-        run: cat ./fuel-core.pid | xargs kill
 
 
   publish:
