@@ -53,7 +53,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let tx = create_contract_tx(
+                        let (tx, contract_id) = create_contract_tx(
                             compiled_contract,
                             Vec::<fuel_tx::Input>::new(),
                             Vec::<fuel_tx::Output>::new(),
@@ -69,7 +69,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                         match client.submit(&tx).await {
                             Ok(logs) => {
                                 println!("Logs:\n{:?}", logs);
-                                Ok(logs.into())
+                                Ok(contract_id)
                             }
                             Err(e) => Err(e.to_string().into()),
                         }
@@ -101,7 +101,7 @@ fn create_contract_tx(
     compiled_contract: Vec<u8>,
     inputs: Vec<Input>,
     outputs: Vec<Output>,
-) -> Transaction {
+) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
@@ -117,15 +117,18 @@ fn create_contract_tx(
     println!("Contract id: 0x{}", hex::encode(id));
     let outputs = [&[Output::ContractCreated { contract_id: id }], &outputs[..]].concat();
 
-    Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness_index,
-        salt,
-        static_contracts,
-        inputs,
-        outputs,
-        witnesses,
+    (
+        Transaction::create(
+            gas_price,
+            gas_limit,
+            maturity,
+            bytecode_witness_index,
+            salt,
+            static_contracts,
+            inputs,
+            outputs,
+            witnesses,
+        ),
+        id,
     )
 }
