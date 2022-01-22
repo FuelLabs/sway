@@ -53,6 +53,10 @@ pub struct Command {
     /// Pretty-print the outputs from the node.
     #[structopt(long = "pretty-print", short = "r")]
     pub pretty_print: bool,
+
+    /// 32-byte contract ID that will be called during the transaction.
+    #[structopt(long = "contract")]
+    pub contract: Option<Vec<String>>,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

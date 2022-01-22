@@ -8,10 +8,3 @@ entry = "main.sw"
 std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 auth_testing_abi = { path = "../auth_testing_abi" }
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0xea689c2ca58ee9b8728f02bad4a074875ea365efcbbf21d685ea6f1c6c932609"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
-balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
-state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
