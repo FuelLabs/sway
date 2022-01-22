@@ -19,6 +19,8 @@ jobs:
     services:
       fuel-core:
         image: ghcr.io/fuellabs/fuel-core
+        ports:
+          - 4000:4000
     
     steps:
       - name: Cancel Previous Runs
