@@ -15,7 +15,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ghcr.io/fuellabs/fuel-core
+
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core
     
     steps:
       - name: Cancel Previous Runs
