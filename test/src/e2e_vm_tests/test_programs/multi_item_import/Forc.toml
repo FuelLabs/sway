@@ -1,12 +1,10 @@
 [project]
 author = "Fuel Labs <contact@fuel.sh>"
+entry = "main.sw"
 license = "Apache-2.0"
 name = "multi_item_import"
-entry = "main.sw"
 
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-
-
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
