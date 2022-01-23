@@ -5,9 +5,9 @@ name = "token_ops_test"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }
 
 # test_fuel_coin_contract
 [[tx-input]]
