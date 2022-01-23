@@ -6,7 +6,7 @@ fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
     let other_contract_id = ~ContractId::from(0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f);
-    let deployed_contract_id = 0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501;
+    let deployed_contract_id = 0x2890a0a3fb38e88d4ef887d78db0cd4483583a00506c30b572dff1aa73305b3e;
 
     let test_contract = abi(ContextTesting, deployed_contract_id);
 

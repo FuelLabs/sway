@@ -15,7 +15,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
         ("contract_abi_impl", ProgramState::Return(0)),
-        // TEMPORARILY DISABLED DUE TO OOM ("dependencies", ProgramState::Return(0)), // 0 == false
+        ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
         ("tuple_types", ProgramState::Return(123)),
         ("out_of_order_decl", ProgramState::Return(1)),

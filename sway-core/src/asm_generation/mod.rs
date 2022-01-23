@@ -1256,7 +1256,7 @@ fn build_contract_abi_switch(
         opcode: Either::Left(VirtualOp::RVRT(VirtualRegister::Constant(
             ConstantRegister::Zero,
         ))),
-        comment: "return if no selectors matched".into(),
+        comment: "revert if no selectors matched".into(),
         owning_span: None,
     });
 
