@@ -6,15 +6,15 @@ The standard library is currently not distributed with `forc` if [installed via 
 
 ```toml
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 ```
 
 Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
 
 ## Explicit Parameters
 
-For now, the first tree parameters of an ABI method must be the amount of gas forwarded with the call, the amount of coins, and the asset ID of the coin (i.e. token type). A single fourth parameter is available (which could be a struct) for actual arguments. This restriction will be removed in the near future, such that only the actual arguments need to be declared.
+For now, the first tree parameters of [an ABI method](../sway-on-chain/smart_contracts.md#the-abi-declaration) must be the amount of gas forwarded with the call, the amount of coins, and the asset ID of the coin (i.e. token type). A single fourth parameter is available (which could be a struct) for actual arguments. This restriction will be removed in the near future, such that only the actual arguments need to be declared.
 
 ## Storage Variables and Mappings
 
@@ -65,4 +65,4 @@ The optimizing pass of the compiler is not yet implemented, therefore bytecode w
 
 ## Formatter
 
-Currently, we need to parse the Sway code before formatting it, and the best way to do this is to compile the code. Hence, **the formatter cannot work on Sway code that does not compile**. This requirement may be changed in the future. 
+Currently, we need to parse the Sway code before formatting it, and the best way to do this is to compile the code. Hence, **the formatter cannot work on Sway code that does not compile**. This requirement may be changed in the future.
