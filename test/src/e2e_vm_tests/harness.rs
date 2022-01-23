@@ -8,7 +8,7 @@ use fuel_vm::prelude::*;
 use serde_json::Value;
 use std::fs;
 
-pub(crate) fn deploy_contract(file_name: &str) {
+pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
     // build the contract
     // deploy it
     println!(" Deploying {}", file_name);
@@ -21,8 +21,10 @@ pub(crate) fn deploy_contract(file_name: &str) {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
+            use_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
+            print_ir: false,
             binary_outfile: None,
             offline_mode: false,
             silent_mode: true,
@@ -31,9 +33,16 @@ pub(crate) fn deploy_contract(file_name: &str) {
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
-pub(crate) fn runs_on_node(file_name: &str) {
+pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]) {
     println!("Running on node: {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
+    for contract_id in contract_ids {
+        let contract = format!("0x{:x}", contract_id);
+        contracts.push(contract);
+    }
+
     let command = RunCommand {
         data: None,
         path: Some(format!(
@@ -43,11 +52,14 @@ pub(crate) fn runs_on_node(file_name: &str) {
         dry_run: false,
         node_url: "127.0.0.1:4000".into(),
         kill_node: false,
+        use_ir: false,
         binary_outfile: None,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         silent_mode: true,
         pretty_print: false,
+        contract: Some(contracts),
     };
     tokio::runtime::Runtime::new()
         .unwrap()
@@ -104,8 +116,10 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
+        use_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         binary_outfile: None,
         offline_mode: false,
         silent_mode: true,

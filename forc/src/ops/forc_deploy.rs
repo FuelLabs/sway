@@ -12,7 +12,7 @@ use helpers::{get_main_file, read_manifest};
 use std::path::PathBuf;
 use sway_utils::{constants::*, find_manifest_dir};
 
-pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
@@ -21,8 +21,10 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
 
     let DeployCommand {
         path,
+        use_ir,
         print_finalized_asm,
         print_intermediate_asm,
+        print_ir,
         binary_outfile,
         offline_mode,
         silent_mode,
@@ -41,18 +43,21 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                     TreeType::Contract => {
                         let build_command = BuildCommand {
                             path,
+                            use_ir,
                             print_finalized_asm,
                             print_intermediate_asm,
+                            print_ir,
                             binary_outfile,
                             offline_mode,
                             silent_mode,
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
-                        let tx = create_contract_tx(compiled_contract, inputs, outputs);
+                        let (tx, contract_id) = create_contract_tx(
+                            compiled_contract,
+                            Vec::<fuel_tx::Input>::new(),
+                            Vec::<fuel_tx::Output>::new(),
+                        );
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,
@@ -64,7 +69,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         match client.submit(&tx).await {
                             Ok(logs) => {
                                 println!("Logs:\n{:?}", logs);
-                                Ok(())
+                                Ok(contract_id)
                             }
                             Err(e) => Err(e.to_string().into()),
                         }
@@ -96,7 +101,7 @@ fn create_contract_tx(
     compiled_contract: Vec<u8>,
     inputs: Vec<Input>,
     outputs: Vec<Output>,
-) -> Transaction {
+) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
@@ -112,15 +117,18 @@ fn create_contract_tx(
     println!("Contract id: 0x{}", hex::encode(id));
     let outputs = [&[Output::ContractCreated { contract_id: id }], &outputs[..]].concat();
 
-    Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness_index,
-        salt,
-        static_contracts,
-        inputs,
-        outputs,
-        witnesses,
+    (
+        Transaction::create(
+            gas_price,
+            gas_limit,
+            maturity,
+            bytecode_witness_index,
+            salt,
+            static_contracts,
+            inputs,
+            outputs,
+            witnesses,
+        ),
+        id,
     )
 }

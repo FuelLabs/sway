@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt};
 
+use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -11,7 +12,7 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
     types::ResolvedType,
@@ -24,6 +25,7 @@ pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
 mod finalized_asm;
+pub(crate) mod from_ir;
 mod register_sequencer;
 mod while_loop;
 
@@ -64,10 +66,10 @@ use while_loop::convert_while_loop_to_asm;
 // "memory", and the above described number if it is not. This prevents over-prioritization of
 // registers that have already been written off to memory.
 //
-/// The [HllAsmSet] contains either a contract ABI and corresponding ASM, a script's main
+/// The [SwayAsmSet] contains either a contract ABI and corresponding ASM, a script's main
 /// function's ASM, or a predicate's main function's ASM. ASM is never generated for libraries,
 /// as that happens when the library itself is imported.
-pub enum HllAsmSet {
+pub enum SwayAsmSet {
     ContractAbi {
         data_section: DataSection,
         program_section: AbstractInstructionSet,
@@ -188,11 +190,7 @@ impl AbstractInstructionSet {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(
-        self,
-        data_section: &DataSection,
-        _namespace: &AsmNamespace,
-    ) -> RealizedAbstractInstructionSet {
+    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -451,23 +449,23 @@ impl fmt::Display for DataSection {
     }
 }
 
-impl fmt::Display for HllAsmSet {
+impl fmt::Display for SwayAsmSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HllAsmSet::ScriptMain {
+            SwayAsmSet::ScriptMain {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            HllAsmSet::PredicateMain {
+            SwayAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            HllAsmSet::ContractAbi {
+            SwayAsmSet::ContractAbi {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
             // Libraries do not directly generate any asm.
-            HllAsmSet::Library => write!(f, ""),
+            SwayAsmSet::Library => write!(f, ""),
         }
     }
 }
@@ -617,26 +615,52 @@ pub(crate) fn compile_ast_to_asm(
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (asm, asm_namespace) = match ast {
+    let (asm, _asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            // generate any const decls
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             // start generating from the main function
             let return_register = register_sequencer.next();
@@ -666,7 +690,7 @@ pub(crate) fn compile_ast_to_asm(
             ));
 
             (
-                HllAsmSet::ScriptMain {
+                SwayAsmSet::ScriptMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
@@ -676,22 +700,47 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Predicate {
             main_function,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             // start generating from the main function
             let mut body = check!(
@@ -708,7 +757,7 @@ pub(crate) fn compile_ast_to_asm(
             asm_buf.append(&mut body);
 
             (
-                HllAsmSet::PredicateMain {
+                SwayAsmSet::PredicateMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
@@ -718,22 +767,47 @@ pub(crate) fn compile_ast_to_asm(
         TypedParseTree::Contract {
             abi_entries,
             namespace: ast_namespace,
-            declarations,
+            declarations: _,
             ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            check!(
-                add_all_constant_decls(
-                    &mut namespace,
-                    &mut register_sequencer,
-                    &mut asm_buf,
-                    &declarations,
-                    &ast_namespace,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
+            read_module(
+                |ns| -> CompileResult<()> {
+                    let mut warnings = vec![];
+                    let mut errors = vec![];
+                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
+                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable: VariableMutability::ExportedConst,
+                            name,
+                            ..
+                        }) = x
+                        {
+                            Some((body, name))
+                        } else {
+                            None
+                        }
+                    });
+                    for (body, name) in const_decls {
+                        let return_register = register_sequencer.next();
+                        let mut buf = check!(
+                            convert_expression_to_asm(
+                                body,
+                                &mut namespace,
+                                &return_register,
+                                &mut register_sequencer
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        asm_buf.append(&mut buf);
+                        namespace.insert_variable(name.clone(), return_register);
+                    }
+                    ok((), warnings, errors)
+                },
+                ast_namespace,
             );
             let (selectors_and_labels, mut contract_asm) = check!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
@@ -743,20 +817,20 @@ pub(crate) fn compile_ast_to_asm(
             );
             asm_buf.append(&mut build_contract_abi_switch(
                 &mut register_sequencer,
-                &mut namespace,
+                &mut namespace.data_section,
                 selectors_and_labels,
             ));
             asm_buf.append(&mut contract_asm);
 
             (
-                HllAsmSet::ContractAbi {
+                SwayAsmSet::ContractAbi {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
                 namespace,
             )
         }
-        TypedParseTree::Library { .. } => (HllAsmSet::Library, Default::default()),
+        TypedParseTree::Library { .. } => (SwayAsmSet::Library, Default::default()),
     };
 
     if build_config.print_intermediate_asm {
@@ -765,7 +839,7 @@ pub(crate) fn compile_ast_to_asm(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers(&asm_namespace)
+        .allocate_registers()
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -773,7 +847,7 @@ pub(crate) fn compile_ast_to_asm(
     }
 
     check!(
-        super::check_invalid_opcodes(&finalized_asm),
+        crate::checks::check_invalid_opcodes(&finalized_asm),
         return err(warnings, errors),
         warnings,
         errors
@@ -782,25 +856,25 @@ pub(crate) fn compile_ast_to_asm(
     ok(finalized_asm, warnings, errors)
 }
 
-impl HllAsmSet {
+impl SwayAsmSet {
     pub(crate) fn remove_unnecessary_jumps(self) -> JumpOptimizedAsmSet {
         match self {
-            HllAsmSet::ScriptMain {
+            SwayAsmSet::ScriptMain {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::ScriptMain {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },
-            HllAsmSet::PredicateMain {
+            SwayAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },
-            HllAsmSet::Library {} => JumpOptimizedAsmSet::Library,
-            HllAsmSet::ContractAbi {
+            SwayAsmSet::Library {} => JumpOptimizedAsmSet::Library,
+            SwayAsmSet::ContractAbi {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::ContractAbi {
@@ -812,7 +886,7 @@ impl HllAsmSet {
 }
 
 impl JumpOptimizedAsmSet {
-    fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet {
+    fn allocate_registers(self) -> RegisterAllocatedAsmSet {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -820,7 +894,7 @@ impl JumpOptimizedAsmSet {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
@@ -832,7 +906,7 @@ impl JumpOptimizedAsmSet {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
@@ -844,7 +918,7 @@ impl JumpOptimizedAsmSet {
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers(),
                 data_section,
             },
@@ -1113,7 +1187,7 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op; 6] {
 /// for an explanation of its location)
 fn build_contract_abi_switch(
     register_sequencer: &mut RegisterSequencer,
-    namespace: &mut AsmNamespace,
+    data_section: &mut DataSection,
     selectors_and_labels: Vec<([u8; 4], Label)>,
 ) -> Vec<Op> {
     let input_selector_register = register_sequencer.next();
@@ -1138,7 +1212,8 @@ fn build_contract_abi_switch(
 
     for (selector, label) in selectors_and_labels {
         // put the selector in the data section
-        let data_label = namespace.insert_data_value(&Literal::U32(u32::from_be_bytes(selector)));
+        let data_label =
+            data_section.insert_data_value(&Literal::U32(u32::from_be_bytes(selector)));
         // load the data into a register for comparison
         let prog_selector_register = register_sequencer.next();
         asm_buf.push(Op {
@@ -1186,88 +1261,6 @@ fn build_contract_abi_switch(
     });
 
     asm_buf
-}
-
-fn add_all_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    declarations: &[TypedDeclaration],
-    ast_namespace: &Namespace,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    check!(
-        add_global_constant_decls(namespace, register_sequencer, asm_buf, declarations),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    check!(
-        add_module_constant_decls(namespace, register_sequencer, asm_buf, ast_namespace),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok((), warnings, errors)
-}
-
-fn add_global_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    declarations: &[TypedDeclaration],
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    for declaration in declarations {
-        if let TypedDeclaration::ConstantDeclaration(decl) = declaration {
-            let mut ops = check!(
-                convert_constant_decl_to_asm(decl, namespace, register_sequencer),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            asm_buf.append(&mut ops);
-        }
-    }
-    ok((), warnings, errors)
-}
-
-fn add_module_constant_decls(
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-    asm_buf: &mut Vec<Op>,
-    ast_namespace: &Namespace,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    // NOTE: this is currently flattening out the entire namespace, which is problematic.  To fix
-    // it we need to support hierarchical names (or at least absolute normalised names) to
-    // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
-    // soon.
-    for ns in ast_namespace.get_all_imported_modules() {
-        for decl in ns.get_all_declared_symbols() {
-            if let TypedDeclaration::ConstantDeclaration(decl) = decl {
-                let mut ops = check!(
-                    convert_constant_decl_to_asm(decl, namespace, register_sequencer),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                asm_buf.append(&mut ops);
-            }
-        }
-        check!(
-            add_module_constant_decls(namespace, register_sequencer, asm_buf, ns),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-    }
-
-    ok((), warnings, errors)
 }
 
 /// The function selector value and corresponding label.

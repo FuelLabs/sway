@@ -6,8 +6,8 @@ The standard library is currently not distributed with `forc` if [installed via 
 
 ```toml
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 ```
 
 Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
@@ -62,3 +62,7 @@ Serializing arbitrary structures can be accomplished manually by composition of 
 ## Optimizer
 
 The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
+
+## Formatter
+
+Currently, we need to parse the Sway code before formatting it, and the best way to do this is to compile the code. Hence, **the formatter cannot work on Sway code that does not compile**. This requirement may be changed in the future. 

@@ -3,6 +3,7 @@ use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use sway_core::{parse, TreeType};
 use tokio::process::Child;
 
@@ -39,17 +40,18 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
                         let build_command = BuildCommand {
                             path: command.path,
+                            use_ir: command.use_ir,
                             print_finalized_asm: command.print_finalized_asm,
                             print_intermediate_asm: command.print_intermediate_asm,
+                            print_ir: command.print_ir,
                             binary_outfile: command.binary_outfile,
                             offline_mode: false,
                             silent_mode: command.silent_mode,
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
+                        let contracts = command.contract.unwrap_or_default();
+                        let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
                             compiled_script,
@@ -182,4 +184,38 @@ fn create_tx_with_script_and_data(
 // cut '0x' from the start
 fn format_hex_data(data: &str) -> &str {
     data.strip_prefix("0x").unwrap_or(data)
+}
+
+fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx::Input {
+    fuel_tx::Input::Contract {
+        utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+        contract_id: fuel_tx::ContractId::from_str(contract).unwrap(),
+    }
+}
+
+fn construct_output_from_contract((idx, _contract): (usize, &String)) -> fuel_tx::Output {
+    fuel_tx::Output::Contract {
+        input_index: idx as u8, // probably safe unless a user inputs > u8::MAX inputs
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+    }
+}
+
+/// Given some contracts, constructs the most basic input and output set that satisfies validation.
+fn get_tx_inputs_and_outputs(
+    contracts: Vec<String>,
+) -> (Vec<fuel_tx::Input>, Vec<fuel_tx::Output>) {
+    let inputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_input_from_contract)
+        .collect::<Vec<_>>();
+    let outputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_output_from_contract)
+        .collect::<Vec<_>>();
+    (inputs, outputs)
 }

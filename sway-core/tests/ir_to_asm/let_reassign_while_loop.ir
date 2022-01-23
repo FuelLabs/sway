@@ -1,0 +1,32 @@
+script script {
+    fn main() -> bool {
+        local ptr bool a
+
+        entry:
+        v0 = const bool true
+        store v0, ptr bool a
+        br while
+
+        while:
+        v1 = load ptr bool a
+        cbr v1, while_body, end_while
+
+        while_body:
+        v2 = load ptr bool a
+        cbr v2, block0, block1
+
+        block0:
+        v3 = phi(while_body: v2)
+        v4 = const bool false
+        br block1
+
+        block1:
+        v5 = phi(while_body: v2, block0: v4)
+        store v5, ptr bool a
+        br while
+
+        end_while:
+        v6 = load ptr bool a
+        ret bool v6
+    }
+}

@@ -29,8 +29,8 @@ entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 ```
 
 Here are the contents of the only Sway file in the project, and the main entry point, `src/main.sw`:
@@ -71,6 +71,8 @@ Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 ```
 
+Use `forc json-abi` to output the ABI of the contract. To write this to a `.json` file (which is necessary for running tests below), pipe it using something like `forc json-abi > my_contract.json`. There is currently not a convention for where ABI files should be placed; one common choice is loose in the root directory.
+
 ## Testing a Sway Project with Forc
 
 If you look again at the project structure when you create a new Forc project, you can see a directory called `tests/`:
@@ -91,7 +93,7 @@ Note that this is a Rust package, hence the existence of a `Cargo.toml` (Rust ma
 
 These tests can be run using either `carg test`, or `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init`).
 
-For example, let's write tests against this contract, written in Sway:
+For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated `src/main.sw` or in a new file in `src`. In the case of the latter, update the `entry` field in `Forc.toml` to point at the new contract.
 
 ```sway
 contract;

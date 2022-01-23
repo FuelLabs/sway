@@ -11,7 +11,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // programs that should successfully compile and terminate
     // with some known state
-    let project_names = vec![
+    let positive_project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
         ("contract_abi_impl", ProgramState::Return(0)),
@@ -68,7 +68,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("match_expressions", ProgramState::Return(42)),
         ("assert_test", ProgramState::Return(1)),  // true
         ("array_basics", ProgramState::Return(1)), // true
-        ("array_dynamic_oob", ProgramState::Revert(1)),
+        // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
         ("block_height", ProgramState::Return(1)),   // true
@@ -83,15 +83,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("multi_item_import", ProgramState::Return(0)), // false
     ];
 
-    project_names.into_iter().for_each(|(name, res)| {
+    let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
         if filter(name) {
-            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
             assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
+            acc + 1
+        } else {
+            acc
         }
     });
 
     // source code that should _not_ compile
-    let project_names = vec![
+    let negative_project_names = vec![
         "recursive_calls",
         "asm_missing_return",
         "asm_should_not_have_return",
@@ -117,9 +120,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "script_calls_impure",
         "contract_pure_calls_impure",
     ];
-    project_names.into_iter().for_each(|name| {
+    number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
-            crate::e2e_vm_tests::harness::does_not_compile(name)
+            crate::e2e_vm_tests::harness::does_not_compile(name);
+            acc + 1
+        } else {
+            acc
         }
     });
 
@@ -134,6 +140,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("balance_test_contract", "bal_opcode"),
     ];
 
+    let total_number_of_tests = positive_project_names.len()
+        + negative_project_names.len()
+        + contract_and_project_names.len();
+
     // Filter them first.
     let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
         .iter()
@@ -142,12 +152,28 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .unzip();
 
     // Deploy and then test.
+    number_of_tests_run += projects.len();
+    let mut contract_ids = Vec::<fuel_tx::ContractId>::with_capacity(contracts.len());
     for name in contracts {
-        harness::deploy_contract(name)
+        let contract_id = harness::deploy_contract(name);
+        contract_ids.push(contract_id);
     }
     for name in projects {
-        harness::runs_on_node(name);
+        harness::runs_on_node(name, &contract_ids);
     }
 
-    println!("_________________________________\nTests passed.");
+    if number_of_tests_run == 0 {
+        println!(
+            "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
+            filter_regex.map(|x| x.to_string()).unwrap_or_default(),
+            total_number_of_tests
+        );
+    } else {
+        println!("_________________________________\nTests passed.");
+        println!(
+            "{} tests run ({} skipped)",
+            number_of_tests_run,
+            total_number_of_tests - number_of_tests_run
+        );
+    }
 }
