@@ -48,9 +48,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {
-                                    if !contains_edits {
-                                        contains_edits = true;
-                                    }
+                                    contains_edits = true;
                                     println!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
@@ -66,7 +64,6 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     }
                 }
             }
-
             // format manifest using taplo formatter
             if let Ok(file_content) = fs::read_to_string(&manifest_file) {
                 let taplo_alphabetize = taplo_fmt::Options {
@@ -74,16 +71,14 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     ..Default::default()
                 };
                 let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
-                if command.check {
-                    if formatted_content != file_content {
-                        if !contains_edits {
-                            contains_edits = true;
-                        }
-                        eprintln!("\nManifest Forc.toml improperly formatted");
-                        display_file_diff(&file_content, &formatted_content)?;
-                    } else {
-                        format_file(&manifest_file, &formatted_content)?;
-                    }
+                if !command.check {
+                    format_file(&manifest_file, &formatted_content)?;
+                } else if formatted_content != file_content {
+                    contains_edits = true;
+                    eprintln!("\nManifest Forc.toml improperly formatted");
+                    display_file_diff(&file_content, &formatted_content)?;
+                } else {
+                    println!("\nManifest Forc.toml properly formatted")
                 }
             }
 
