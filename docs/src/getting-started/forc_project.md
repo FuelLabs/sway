@@ -29,8 +29,8 @@ entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 ```
 
 Here are the contents of the only Sway file in the project, and the main entry point, `src/main.sw`:
