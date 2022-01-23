@@ -14,7 +14,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     let positive_project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
-        ("contract_abi_impl", ProgramState::Return(0)),
+        // contracts revert because this test runs them against the VM
+        // and no selectors will match
+        ("contract_abi_impl", ProgramState::Revert(0)),
         ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
         ("tuple_types", ProgramState::Return(123)),
@@ -74,7 +76,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("block_height", ProgramState::Return(1)),   // true
         ("b512_test", ProgramState::Return(1)),      // true
         ("block_height", ProgramState::Return(1)),   // true
-        ("valid_impurity", ProgramState::Return(0)), // false
+        ("valid_impurity", ProgramState::Revert(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
