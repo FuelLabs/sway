@@ -11,6 +11,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
+  FUEL_CORE_IMAGE: ghcr.io/fuellabs/fuel-core:v0.2.1
 
 jobs:
   build:
@@ -18,7 +19,7 @@ jobs:
 
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core
+        image: ${{env.FUEL_CORE_IMAGE}}
         ports:
           - 4000:4000
     
