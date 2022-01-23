@@ -225,8 +225,8 @@ entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
 
 [dependencies]
-core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot; }
-std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot; }
+core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot;, version = &quot;v0.0.1&quot; }
+std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot;, version = &quot;v0.0.1&quot; }
 </code></pre>
 <p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
 <pre><code class="language-sway">script;
@@ -359,8 +359,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <h2 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h2>
 <p>The standard library is currently not distributed with <code>forc</code> if <a href="getting-started/./installation.html#installing-from-cargo">installed via <code>cargo</code></a>. It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's <code>Forc.toml</code> file:</p>
 <pre><code class="language-toml">[dependencies]
-core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot; }
-std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot; }
+core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot;, version = &quot;v0.0.1&quot; }
+std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot;, version = &quot;v0.0.1&quot; }
 </code></pre>
 <p>Note that the default <code>Forc.toml</code> generated with <code>forc init</code> already includes these lines, so no further action is necessary.</p>
 <h2 id="explicit-parameters"><a class="header" href="#explicit-parameters">Explicit Parameters</a></h2>
