@@ -48,9 +48,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {
-                                    if !contains_edits {
-                                        contains_edits = true;
-                                    }
+                                    contains_edits = true;
                                     println!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
@@ -76,13 +74,11 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                 if !command.check {
                     format_file(&manifest_file, &formatted_content)?;
                 } else if formatted_content != file_content {
-                    if !contains_edits {
-                        contains_edits = true;
-                    }
+                    contains_edits = true;
                     eprintln!("\nManifest Forc.toml improperly formatted");
                     display_file_diff(&file_content, &formatted_content)?;
                 } else {
-                    eprintln!("\nManifest Forc.toml properly formatted")
+                    println!("\nManifest Forc.toml properly formatted")
                 }
             }
 
