@@ -43,7 +43,7 @@ fn main() {
 }
 ```
 
-The project is _script_, one of four different project types. For additional information on different project types, see [here](./../sway-on-chain/index.md).
+The project is _script_, one of four different project types. For additional information on different project types, see [here](../sway-on-chain/index.md).
 
 We now compile our project with `forc build`, passing the flag `--print-finalized-asm` to view the generated assembly:
 
