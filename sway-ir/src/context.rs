@@ -74,8 +74,7 @@ impl Context {
     pub fn get_aggregate_index(&self, aggregate: &Aggregate, field_name: &str) -> Option<u64> {
         self.aggregate_symbols
             .get(aggregate)
-            .map(|idx_map| idx_map.get(field_name).copied())
-            .flatten()
+            .and_then(|idx_map| idx_map.get(field_name).copied())
     }
 
     /// Get a globally unique symbol.
