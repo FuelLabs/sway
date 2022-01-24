@@ -82,17 +82,14 @@ fn find_recursive_call_chain(
                 ))
             };
         }
-        decl_dependencies
-            .get(fn_sym)
-            .map(|deps_set| {
-                chain.push(fn_sym_ident.clone());
-                let result = deps_set.deps.iter().find_map(|dep_sym| {
-                    find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
-                });
-                chain.pop();
-                result
-            })
-            .flatten()
+        decl_dependencies.get(fn_sym).and_then(|deps_set| {
+            chain.push(fn_sym_ident.clone());
+            let result = deps_set.deps.iter().find_map(|dep_sym| {
+                find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
+            });
+            chain.pop();
+            result
+        })
     } else {
         None
     }

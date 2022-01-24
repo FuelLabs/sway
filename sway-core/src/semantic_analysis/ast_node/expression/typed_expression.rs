@@ -1250,7 +1250,7 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+            namespace.and_then(|ns| ns.find_enum(&enum_name))
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1732,7 +1732,7 @@ impl TypedExpression {
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
-                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                    namespace.and_then(|ns| ns.find_enum(&enum_name))
                 };
                 let mut return_type = None;
                 let mut owned_enum_variant = None;
@@ -1882,7 +1882,7 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace = create_module();
+        let namespace = create_module();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
