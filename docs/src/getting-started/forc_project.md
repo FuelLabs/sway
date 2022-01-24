@@ -29,8 +29,8 @@ entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 ```
 
 Here are the contents of the only Sway file in the project, and the main entry point, `src/main.sw`:
@@ -43,7 +43,7 @@ fn main() {
 }
 ```
 
-The project is _script_, one of four different project types. For additional information on different project types, see [here](./../sway-on-chain/index.md).
+The project is _script_, one of four different project types. For additional information on different project types, see [here](../sway-on-chain/index.md).
 
 We now compile our project with `forc build`, passing the flag `--print-finalized-asm` to view the generated assembly:
 

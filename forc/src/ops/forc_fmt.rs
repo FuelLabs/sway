@@ -48,9 +48,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {
-                                    if !contains_edits {
-                                        contains_edits = true;
-                                    }
+                                    contains_edits = true;
                                     println!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
@@ -66,7 +64,6 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     }
                 }
             }
-
             // format manifest using taplo formatter
             if let Ok(file_content) = fs::read_to_string(&manifest_file) {
                 let taplo_alphabetize = taplo_fmt::Options {
@@ -74,16 +71,14 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     ..Default::default()
                 };
                 let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
-                if command.check {
-                    if formatted_content != file_content {
-                        if !contains_edits {
-                            contains_edits = true;
-                        }
-                        eprintln!("\nManifest Forc.toml improperly formatted");
-                        display_file_diff(&file_content, &formatted_content)?;
-                    } else {
-                        format_file(&manifest_file, &formatted_content)?;
-                    }
+                if !command.check {
+                    format_file(&manifest_file, &formatted_content)?;
+                } else if formatted_content != file_content {
+                    contains_edits = true;
+                    eprintln!("\nManifest Forc.toml improperly formatted");
+                    display_file_diff(&file_content, &formatted_content)?;
+                } else {
+                    println!("\nManifest Forc.toml properly formatted")
                 }
             }
 
@@ -196,8 +191,8 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
             reorder_keys: true,
@@ -213,8 +208,8 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 
 
     [dependencies]
-        core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-                    std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+        core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+                    std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let formatted_content =
             taplo_fmt::format(indented_forc_manifest, taplo_alphabetize.clone());
@@ -244,8 +239,8 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
             reorder_keys: true,
@@ -261,8 +256,8 @@ author = "Fuel Labs <contact@fuel.sh>"
 
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
     "#;
         let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
         assert_eq!(formatted_content, correct_forc_manifest);

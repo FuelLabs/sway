@@ -5,4 +5,4 @@ name = "context_testing_abi"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
