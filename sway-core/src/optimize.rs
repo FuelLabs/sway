@@ -838,8 +838,7 @@ impl FnCompiler {
         if let Some(ptr) = self
             .symbol_map
             .get(name)
-            .map(|local_name| self.function.get_local_ptr(context, local_name))
-            .flatten()
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
             Ok(if ptr.is_struct_ptr(context) {
                 self.current_block.ins(context).get_ptr(ptr)
@@ -1489,7 +1488,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }
@@ -1534,7 +1533,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }
