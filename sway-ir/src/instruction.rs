@@ -110,23 +110,20 @@ impl Instruction {
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
             },
-            Instruction::ExtractElement { ty, .. } => ty
-                .get_elem_type(context)
-                .map(|ty| match ty {
+            Instruction::ExtractElement { ty, .. } => {
+                ty.get_elem_type(context).and_then(|ty| match ty {
                     Type::Array(nested_aggregate) => Some(nested_aggregate),
                     Type::Struct(nested_aggregate) => Some(nested_aggregate),
                     _otherwise => None,
                 })
-                .flatten(),
+            }
             Instruction::ExtractValue { ty, indices, .. } => {
                 // This array is a field in a struct or element in an array.
-                ty.get_field_type(context, indices)
-                    .map(|ty| match ty {
-                        Type::Array(nested_aggregate) => Some(nested_aggregate),
-                        Type::Struct(nested_aggregate) => Some(nested_aggregate),
-                        _otherwise => None,
-                    })
-                    .flatten()
+                ty.get_field_type(context, indices).and_then(|ty| match ty {
+                    Type::Array(nested_aggregate) => Some(nested_aggregate),
+                    Type::Struct(nested_aggregate) => Some(nested_aggregate),
+                    _otherwise => None,
+                })
             }
 
             // Unknown aggregate instruction.  Adding these as we come across them...

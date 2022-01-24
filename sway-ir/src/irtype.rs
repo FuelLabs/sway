@@ -112,7 +112,7 @@ impl Aggregate {
     /// Get the type of (nested) aggregate fields, if found.
     pub fn get_field_type(&self, context: &Context, indices: &[u64]) -> Option<Type> {
         indices.iter().fold(Some(Type::Struct(*self)), |ty, idx| {
-            ty.map(|ty| match ty {
+            ty.and_then(|ty| match ty {
                 Type::Struct(agg) => context.aggregates[agg.0]
                     .field_types()
                     .get(*idx as usize)
@@ -121,7 +121,6 @@ impl Aggregate {
                 // Trying to index a non-aggregate.
                 _otherwise => None,
             })
-            .flatten()
         })
     }
 
