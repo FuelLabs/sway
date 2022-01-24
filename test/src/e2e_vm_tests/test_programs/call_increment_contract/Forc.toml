@@ -5,13 +5,6 @@ name = "call_increment_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 increment_abi = { path = "../increment_abi" }
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0x5671702d819b53bac8baf4166f879bc9c1e5cb83659a94b63b6d0199f5c856b0"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
-balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
-state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
