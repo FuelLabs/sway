@@ -138,6 +138,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("context_testing_contract", "caller_context_test"),
         ("contract_abi_impl", "contract_call"),
         ("balance_test_contract", "bal_opcode"),
+        ("test_fuel_coin_contract", "token_ops_test"),
     ];
 
     let total_number_of_tests = positive_project_names.len()
