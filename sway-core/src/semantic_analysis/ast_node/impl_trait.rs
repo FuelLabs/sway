@@ -45,9 +45,11 @@ pub(crate) fn implementation_of_trait(
             type_arguments[0].clone().name_ident.span().clone(),
         ));
     }
+    let mut prob_warnings = vec![];
+    let mut prob_errors = vec![];
     match namespace
         .get_call_path(&trait_name)
-        .ok(&mut warnings, &mut errors)
+        .ok(&mut prob_warnings, &mut prob_errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
             if type_arguments.len() != tr.type_parameters.len() {

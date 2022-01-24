@@ -119,6 +119,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "predicate_calls_impure",
         "script_calls_impure",
         "contract_pure_calls_impure",
+        "excessive_error_reporting",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
