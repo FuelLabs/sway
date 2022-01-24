@@ -19,6 +19,22 @@ pub struct VariableDeclaration {
     pub is_mutable: bool,
 }
 
+pub enum VariableDeclarationLHS {
+    Name(LHSName),
+    Tuple(LHSTuple),
+}
+
+pub struct LHSName {
+    name: Ident,
+    is_mutable: bool,
+    span: Span,
+}
+
+pub struct LHSTuple {
+    elems: Vec<VariableDeclarationLHS>,
+    span: Span,
+}
+
 impl VariableDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
@@ -28,13 +44,15 @@ impl VariableDeclaration {
         let mut errors = vec![];
         let mut var_decl_parts = pair.into_inner();
         let _let_keyword = var_decl_parts.next();
-        let maybe_mut_keyword = var_decl_parts.next().unwrap();
-        let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
-        let name_pair = if is_mutable {
-            var_decl_parts.next().unwrap()
-        } else {
-            maybe_mut_keyword
-        };
+        let lhs = check!(
+            VariableDeclarationLHS::parse_from_pair(
+                var_decl_parts.next().expect("gaurenteed by grammar"),
+                config
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         let mut maybe_body = var_decl_parts.next().unwrap();
         let type_ascription = match maybe_body.as_rule() {
             Rule::type_ascription => {
@@ -44,9 +62,10 @@ impl VariableDeclaration {
             }
             _ => None,
         };
-        let type_ascription_span = type_ascription
-            .clone()
-            .map(|x| x.into_inner().next().unwrap().as_span());
+        let type_ascription_span = type_ascription.clone().map(|x| Span {
+            span: x.into_inner().next().unwrap().as_span(),
+            path: config.map(|x| x.path()),
+        });
         let type_ascription = if let Some(ascription) = type_ascription {
             let type_name = ascription.into_inner().next().unwrap();
             check!(
@@ -64,21 +83,159 @@ impl VariableDeclaration {
             warnings,
             errors
         );
-        let decl = VariableDeclaration {
-            name: check!(
-                ident::parse_from_pair(name_pair, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            body,
-            is_mutable,
-            type_ascription,
-            type_ascription_span: type_ascription_span.map(|type_ascription_span| Span {
-                span: type_ascription_span,
-                path: config.map(|x| x.path()),
-            }),
+        VariableDeclaration::desugar_to_decls(lhs, type_ascription, type_ascription_span, body)
+    }
+
+    fn desugar_to_decls(
+        lhs: VariableDeclarationLHS,
+        type_ascription: TypeInfo,
+        type_ascription_span: Option<Span>,
+        body: Expression,
+    ) -> CompileResult<Vec<Self>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let decls = match lhs {
+            VariableDeclarationLHS::Name(LHSName {
+                name, is_mutable, ..
+            }) => {
+                vec![VariableDeclaration {
+                    name,
+                    body,
+                    is_mutable,
+                    type_ascription,
+                    type_ascription_span,
+                }]
+            }
+            VariableDeclarationLHS::Tuple(lhs_tuple) => {
+                let name = Ident::new_with_override("TUPLE_ACCESS_DESUGARING", body.span());
+                let save_body_first = VariableDeclaration {
+                    name: name.clone(),
+                    type_ascription,
+                    type_ascription_span,
+                    body: body.clone(),
+                    is_mutable: false,
+                };
+                let new_body = Expression::VariableExpression {
+                    name,
+                    span: body.span(),
+                };
+                let mut decls = vec![save_body_first];
+                decls.append(&mut check!(
+                    VariableDeclaration::desugar_to_decls_inner(
+                        VariableDeclarationLHS::Tuple(lhs_tuple),
+                        new_body
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                decls
+            }
         };
-        ok(vec![decl], warnings, errors)
+        ok(decls, warnings, errors)
+    }
+
+    fn desugar_to_decls_inner(
+        lhs: VariableDeclarationLHS,
+        body: Expression,
+    ) -> CompileResult<Vec<Self>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let decls = match lhs {
+            VariableDeclarationLHS::Name(LHSName {
+                name, is_mutable, ..
+            }) => {
+                vec![VariableDeclaration {
+                    name,
+                    body,
+                    is_mutable,
+                    type_ascription: TypeInfo::Unknown,
+                    type_ascription_span: None,
+                }]
+            }
+            VariableDeclarationLHS::Tuple(LHSTuple { elems, span }) => {
+                let mut decls = vec![];
+                for (pos, elem) in elems.into_iter().enumerate() {
+                    let new_body = Expression::TupleIndex {
+                        prefix: Box::new(body.clone()),
+                        index: pos,
+                        index_span: elem.span(),
+                        span: span.clone(),
+                    };
+                    decls.append(&mut check!(
+                        VariableDeclaration::desugar_to_decls_inner(elem, new_body),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                decls
+            }
+        };
+        ok(decls, warnings, errors)
+    }
+}
+
+impl VariableDeclarationLHS {
+    pub(crate) fn parse_from_pair(
+        pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Self> {
+        assert_eq!(pair.as_rule(), Rule::var_lhs);
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let span = Span {
+            span: pair.as_span(),
+            path: config.map(|x| x.path()),
+        };
+        let inner = pair.into_inner().next().expect("gaurenteed by grammar.");
+        let lhs = match inner.as_rule() {
+            Rule::var_name => {
+                let mut parts = inner.into_inner();
+                let maybe_mut_keyword = parts.next().unwrap();
+                let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
+                let name_pair = if is_mutable {
+                    parts.next().unwrap()
+                } else {
+                    maybe_mut_keyword
+                };
+                let name = check!(
+                    ident::parse_from_pair(name_pair, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                VariableDeclarationLHS::Name(LHSName {
+                    name,
+                    is_mutable,
+                    span,
+                })
+            }
+            Rule::var_tuple => {
+                let fields = inner.into_inner().collect::<Vec<_>>();
+                let mut fields_buf = Vec::with_capacity(fields.len());
+                for field in fields.into_iter() {
+                    fields_buf.push(check!(
+                        VariableDeclarationLHS::parse_from_pair(field, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                VariableDeclarationLHS::Tuple(LHSTuple {
+                    elems: fields_buf,
+                    span,
+                })
+            }
+            a => unreachable!("Grammar should prevent this case from being {:?}", a),
+        };
+        ok(lhs, warnings, errors)
+    }
+
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            VariableDeclarationLHS::Name(LHSName { span, .. }) => span.clone(),
+            VariableDeclarationLHS::Tuple(LHSTuple { span, .. }) => span.clone(),
+        }
     }
 }
