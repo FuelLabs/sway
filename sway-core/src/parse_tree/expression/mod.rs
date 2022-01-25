@@ -76,6 +76,10 @@ pub enum Expression {
         r#else: Option<Box<Expression>>,
         span: Span,
     },
+    MatchExp {
+        if_exp: Box<Expression>,
+        span: Span,
+    },
     // separated into other struct for parsing reasons
     AsmExpression {
         span: Span,
@@ -252,6 +256,7 @@ impl Expression {
             StructExpression { span, .. } => span,
             CodeBlock { span, .. } => span,
             IfExp { span, .. } => span,
+            MatchExp { span, .. } => span,
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
             SubfieldExpression { span, .. } => span,
@@ -514,12 +519,16 @@ impl Expression {
                     );
                     branches.push(res);
                 }
-                check!(
-                    desugar_match_expression(primary_expression, branches, span),
+                let if_exp = check!(
+                    desugar_match_expression(primary_expression, branches, span.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+                Expression::MatchExp {
+                    if_exp: Box::new(if_exp),
+                    span: span.clone(),
+                }
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();

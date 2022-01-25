@@ -131,6 +131,22 @@ impl TypedExpression {
                 },
                 span,
             ),
+            Expression::MatchExp { if_exp, span } => Self::type_check_match_expression(
+                TypeCheckArguments {
+                    checkee: *if_exp,
+                    return_type_annotation: type_annotation,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    help_text: Default::default(),
+                    opts,
+                },
+                span,
+            ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
                 span,
@@ -791,6 +807,46 @@ impl TypedExpression {
             span,
         };
         ok(exp, warnings, errors)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn type_check_match_expression(
+        arguments: TypeCheckArguments<'_, Expression>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let TypeCheckArguments {
+            checkee: if_exp,
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
+        let typed_if_exp = check!(
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: if_exp.clone(),
+                namespace,
+                crate_namespace,
+                return_type_annotation: type_annotation,
+                help_text: Default::default(),
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
+            error_recovery_expr(if_exp.span()),
+            warnings,
+            errors
+        );
+        ok(typed_if_exp, warnings, errors)
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -356,6 +356,7 @@ impl Dependencies {
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
+            Expression::MatchExp { if_exp, .. } => self.gather_from_expr(if_exp),
             Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
             Expression::Array { contents, .. } => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
