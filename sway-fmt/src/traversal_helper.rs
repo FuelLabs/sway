@@ -1,9 +1,9 @@
-use super::code_builder_helpers::{is_comment, is_multiline_comment, is_newline_incoming};
-use crate::code_builder_helpers::clean_all_whitespace;
-use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
+use crate::code_builder_helpers::*;
+use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN, TAB_SIZE};
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 use sway_core::{extract_keyword, Rule};
+
 
 /// Performs the formatting of the `comments` section in your code.
 /// Takes in a function that provides the logic to handle the rest of the code.
@@ -63,7 +63,7 @@ pub fn format_data_types(text: &str) -> String {
         result.push(current_char);
         match current_char {
             '}' => {
-                clean_all_whitespace(iter);
+                clean_all_whitespace_enumerated(iter);
                 if let Some((_, next_char)) = iter.peek() {
                     if *next_char != ',' {
                         result.push(',');
@@ -79,41 +79,96 @@ pub fn format_data_types(text: &str) -> String {
     })
 }
 
-/// Formats Sway data types: Enums and Structs ...but _swayfully_
-pub fn format_swayful_data_types(text: &str) -> String {
-    todo!("Use longest_var, and add spaces");
-    let longest_var: usize = find_longest_variant(text);
-    custom_format_with_comments(text, &mut move |text, result, current_char, iter| {
-        result.push(current_char);
-        match current_char {
+#[test]
+// write test for format_data_types & custom_format_with_comments
+fn test_align_struct_with_gnarly_comments() {
+    let unformatted_struct = r"
+    struct /* i am about to declare a struct */ DummyStruct { // hi
+        // properly handling comments?
+sumn /* hi i am  a comment */ : value /* another comment */,
+    sumnelse: u32, // so many comments
+nocomments: u64,
+    /* hi */    } // oops a comment
+    ";
+    let formatted = r"
+    struct /* i am about to declare a struct */ DummyStruct {
+        // properly handling comments?
+        sumn /* hi i am  a comment */ : value /* another comment */,
+        sumnelse                      : u32, // so many comments
+        nocomments                    : u64,
+        /* hi */    
+    } // oops a comment
+    ";
+    let post_formatting = format_align_data_types(unformatted_struct);
+    println!("{}", post_formatting);
+    assert_eq!(post_formatting, formatted);
+}
+
+/// Formats Sway data types and aligns fields for Enums and Structs
+pub fn format_align_data_types(text: &str) -> String {
+    let longest_var = find_longest_variant(text);
+    let mut current_column = 0;
+    let mut iter = text.chars().enumerate().peekable();
+    let mut result = String::new();
+    let newline_and_tab = format!("\n{}", {
+        let buf = vec![" "; TAB_SIZE];
+        buf.join("")
+    });
+    clean_all_whitespace_enumerated(&mut iter);
+
+    while let Some((_, current_char))  = iter.next() {
+        match dbg!(current_char) {
             '}' => {
-                clean_all_whitespace(iter);
-                if let Some((_, next_char)) = iter.peek() {
-                    if *next_char != ',' {
-                        result.push(',');
-                    }
+                clean_all_whitespace_enumerated(&mut iter);
+                if current_column != 0 {
+                    result.push('\n');
                 }
+                result.push(current_char);
+                current_column = 0;
             }
             ':' => {
-                let field_type = get_data_field_type(text, iter);
+                clean_all_whitespace_enumerated(&mut iter);
+                let field_type = get_data_field_type(text, &mut iter);
+                while current_column < longest_var {
+                    result.push(' ');
+                    current_column += 1;
+                }
+                result.push(current_char);
+                result.push(' ');
                 result.push_str(&field_type);
             }
-            _ => {}
+            ',' => (),
+            '{' => {
+                current_column = 0;
+                result.push(current_char);
+                result.push_str(&newline_and_tab);
+                clean_all_whitespace_enumerated(&mut iter);
+            }
+            '\n' => {
+                clean_all_whitespace_enumerated(&mut iter);
+                current_column = 0;
+                result.push_str(&newline_and_tab);
+            }
+            _ => {
+                result.push(current_char);
+                current_column += 1;
+            }
         }
-    })
+    }
+    result
 }
 
 // Returns the length of the longest variant key name.
 fn find_longest_variant(text: &str) -> usize {
     let mut current_size: usize = 0;
     let mut longest_var: usize = 0;
-    let mut iter = text.chars().enumerate().peekable();
 
-    while let Some((_, current_char)) = iter.next() {
+    let mut iter = text.chars().peekable();
+
+    while let Some(current_char) = iter.next() {
         match current_char {
-            '{' | ',' => {
+            '{' | ',' | '\n' => {
                 current_size = 0;
-                clean_all_whitespace(&mut iter);
             }
             ':' => {
                 if current_size > longest_var {
@@ -135,17 +190,22 @@ fn test_find_longest_variant() {
         foooooo: u32, 
         bar: u64,
     }"#;
-    assert_eq!(find_longest_variant(raw), 7);
+    assert_eq!(find_longest_variant(raw), 15);
     let raw = r#"enum myenum {     foo: u32,
         AH: u32, 
         thisisatest: u64
     }"#;
-    assert_eq!(find_longest_variant(raw), 11);
-    let raw = r#"enum myenum {    
+    assert_eq!(find_longest_variant(raw), 19);
+    let raw = r#"enum myenum {    // test comment
         b: u32, 
         a: u64
     }"#;
-    assert_eq!(find_longest_variant(raw), 1);
+    assert_eq!(find_longest_variant(raw), 9);
+    let raw = r#"enum myenum { // comment
+        b /*hi comment test */ : u32, 
+        a: u64
+    }"#;
+    assert_eq!(find_longest_variant(raw), 31);
 }
 
 pub fn format_delineated_path(line: &str) -> String {
@@ -199,6 +259,10 @@ fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> Str
                         result.push(',');
                         break;
                     }
+                    // type names cannot have spaces
+                    ' ' => {
+                        iter.next();
+                    },
                     '/' => {
                         let leftover = &line[next_index..next_index + 2];
                         if leftover == "//" || leftover == "/*" {
@@ -220,15 +284,6 @@ fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> Str
                 result.push(',');
                 break;
             }
-        }
-    }
-
-    if let Some((next_index, _)) = iter.peek() {
-        let leftover = &line[*next_index..];
-        if is_newline_incoming(leftover)
-            || !(is_comment(leftover) || is_multiline_comment(leftover))
-        {
-            result.push_str(NEW_LINE_PATTERN);
         }
     }
 

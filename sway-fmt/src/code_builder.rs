@@ -9,9 +9,9 @@ use crate::code_builder_helpers::{
 
 use super::{
     code_builder_helpers::{
-        clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
-        handle_dash_case, handle_multiline_comment_case, handle_pipe_case, handle_string_case,
-        handle_whitespace_case, is_comment, is_multiline_comment,
+        clean_all_whitespace_enumerated, handle_ampersand_case, handle_assignment_case,
+        handle_colon_case, handle_dash_case, handle_multiline_comment_case, handle_pipe_case,
+        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
     code_line::{CodeLine, CodeType},
 };
@@ -89,7 +89,7 @@ impl CodeBuilder {
                         '|' => handle_pipe_case(&mut code_line, &mut iter),
                         '&' => handle_ampersand_case(&mut code_line, &mut iter),
 
-                        '+' => code_line.append_with_whitespace("+ "),
+                        //'+' => code_line.append_with_whitespace("+ "),
                         '*' => code_line.append_with_whitespace("* "),
                         '/' => {
                             match iter.peek() {
@@ -264,7 +264,7 @@ impl CodeBuilder {
         }
 
         self.outdent();
-        clean_all_whitespace(&mut iter);
+        clean_all_whitespace_enumerated(&mut iter);
 
         match iter.peek() {
             // check is there a ';' and add it after '}'
