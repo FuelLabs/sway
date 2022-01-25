@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
-    semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments},
+    semantic_analysis::ast_node::*,
     type_engine::{insert_type, IntegerBits},
 };
 use sway_types::join_spans;
@@ -360,7 +360,7 @@ impl TypedExpression {
     fn type_check_variable_expression(
         name: Ident,
         span: Span,
-        namespace: &Namespace,
+        namespace: crate::semantic_analysis::NamespaceRef,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name).value {
@@ -619,11 +619,11 @@ impl TypedExpression {
         )
     }
 
-    fn type_check_code_block<'n>(
+    fn type_check_code_block(
         contents: CodeBlock,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
@@ -794,11 +794,11 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_asm_expression<'n>(
+    fn type_check_asm_expression(
         asm: AsmExpression,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -864,12 +864,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_struct_expression<'n>(
+    fn type_check_struct_expression(
         span: Span,
         struct_name: Ident,
         fields: Vec<StructExpressionField>,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -882,7 +882,7 @@ impl TypedExpression {
 
         let definition: TypedStructDeclaration =
             match namespace.clone().get_symbol(&struct_name).value {
-                Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
+                Some(TypedDeclaration::StructDeclaration(st)) => st,
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
                         name: struct_name.clone(),
@@ -988,12 +988,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_subfield_expression<'n>(
+    fn type_check_subfield_expression(
         prefix: Box<Expression>,
         span: Span,
         field_to_access: Ident,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1063,11 +1063,11 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_tuple<'n>(
+    fn type_check_tuple(
         fields: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1128,14 +1128,14 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_delineated_path<'n>(
+    fn type_check_delineated_path(
         call_path: CallPath,
         span: Span,
         args: Vec<Expression>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1162,7 +1162,7 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+            namespace.and_then(|ns| ns.find_enum(&enum_name))
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1173,7 +1173,7 @@ impl TypedExpression {
                     errors.push(CompileError::AmbiguousPath { span });
                     return err(warnings, errors);
                 }
-                (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
+                (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
                     Some(decl) => Either::Left(decl),
                     None => {
                         errors.push(CompileError::SymbolNotFound {
@@ -1224,12 +1224,12 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_abi_cast<'n>(
+    fn type_check_abi_cast(
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1333,11 +1333,11 @@ impl TypedExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn type_check_array<'n>(
+    fn type_check_array(
         contents: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1535,11 +1535,11 @@ impl TypedExpression {
     /// or a struct), 2) determines the return type of the corresponding
     /// struct field or enum arg, and 3) constructs the respective typed
     /// expression.
-    fn type_check_delayed_resolution<'n>(
+    fn type_check_delayed_resolution(
         variant: DelayedResolutionVariant,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: Option<&'n Namespace>,
+        namespace: NamespaceRef,
+        crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1644,7 +1644,7 @@ impl TypedExpression {
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
-                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                    namespace.and_then(|ns| ns.find_enum(&enum_name))
                 };
                 let mut return_type = None;
                 let mut owned_enum_variant = None;
@@ -1794,7 +1794,7 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace: Namespace = Default::default();
+        let namespace = create_module();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
@@ -1810,8 +1810,8 @@ mod tests {
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
-            namespace: &mut namespace,
-            crate_namespace: None,
+            namespace,
+            crate_namespace: namespace,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,

@@ -5,6 +5,6 @@ name = "basic_storage"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 basic_storage_abi = { path = "../basic_storage_abi" }

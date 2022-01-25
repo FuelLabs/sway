@@ -49,12 +49,12 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: Namespace,
+    namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
     let module = Module::new(context, Kind::Script, "script");
 
-    compile_constants(context, module, &namespace, false)?;
+    compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
     compile_function(context, module, main_function)?;
 
@@ -81,26 +81,32 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: &Namespace,
+    namespace: NamespaceRef,
     public_only: bool,
 ) -> Result<(), String> {
-    for decl in namespace.get_all_declared_symbols() {
-        if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-            name,
-            value,
-            visibility,
-        }) = decl
-        {
-            if !public_only || matches!(visibility, Visibility::Public) {
-                let const_val = compile_constant_expression(context, value)?;
-                module.add_global_constant(context, name.as_str().to_owned(), const_val);
+    read_module(
+        |ns| -> Result<(), String> {
+            for decl in ns.get_all_declared_symbols() {
+                if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                    name,
+                    value,
+                    visibility,
+                }) = decl
+                {
+                    if !public_only || matches!(visibility, Visibility::Public) {
+                        let const_val = compile_constant_expression(context, value)?;
+                        module.add_global_constant(context, name.as_str().to_owned(), const_val);
+                    }
+                }
             }
-        }
-    }
 
-    for ns in namespace.get_all_imported_modules() {
-        compile_constants(context, module, ns, true)?;
-    }
+            for ns_ix in ns.get_all_imported_modules().filter(|x| **x != namespace) {
+                compile_constants(context, module, *ns_ix, true)?;
+            }
+            Ok(())
+        },
+        namespace,
+    )?;
 
     Ok(())
 }
@@ -832,8 +838,7 @@ impl FnCompiler {
         if let Some(ptr) = self
             .symbol_map
             .get(name)
-            .map(|local_name| self.function.get_local_ptr(context, local_name))
-            .flatten()
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
             Ok(if ptr.is_struct_ptr(context) {
                 self.current_block.ins(context).get_ptr(ptr)
@@ -881,9 +886,13 @@ impl FnCompiler {
         self.symbol_map
             .insert(name.as_str().to_owned(), local_name.clone());
 
-        let ptr =
-            self.function
-                .new_local_ptr(context, local_name, return_type, is_mutable, None)?;
+        let ptr = self.function.new_local_ptr(
+            context,
+            local_name,
+            return_type,
+            is_mutable.into(),
+            None,
+        )?;
 
         self.current_block.ins(context).store(ptr, init_val);
         Ok(init_val)
@@ -1479,7 +1488,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }
@@ -1524,7 +1533,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }
@@ -1575,7 +1584,8 @@ mod tests {
         };
         TypedParseTree::type_check(
             parse_tree.tree,
-            Default::default(),
+            crate::create_module(),
+            crate::create_module(),
             &TreeType::Script,
             &build_config,
             &mut dead_code_graph,

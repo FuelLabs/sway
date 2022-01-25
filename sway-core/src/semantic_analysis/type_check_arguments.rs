@@ -1,14 +1,14 @@
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::declaration::Purity;
-use crate::semantic_analysis::{ast_node::Mode, Namespace};
+use crate::semantic_analysis::{ast_node::Mode, *};
 use crate::type_engine::*;
 
 use std::collections::{HashMap, HashSet};
 pub struct TypeCheckArguments<'a, T> {
     pub checkee: T,
-    pub namespace: &'a mut Namespace,
-    pub crate_namespace: Option<&'a Namespace>,
+    pub namespace: NamespaceRef,
+    pub crate_namespace: NamespaceRef,
     pub return_type_annotation: TypeId,
     pub help_text: &'static str,
     pub self_type: TypeId,
