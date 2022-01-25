@@ -1,0 +1,9 @@
+[project]
+author  = "Emily Herbert <emily.herbert@fuel.sh>"
+license = "MIT"
+name = "match_expressions_non_exhaustive"
+entry = "main.sw"
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
