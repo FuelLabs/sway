@@ -4,6 +4,7 @@ members = [
     "docstrings",
     "forc",
     "parser",
+    "new-parser",
     "sway-core",
     "sway-fmt",
     "sway-server",
