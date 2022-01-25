@@ -388,22 +388,6 @@ impl Dependencies {
                     deps.gather_from_opt_expr(&register.initializer)
                 })
                 .gather_from_typeinfo(&asm.return_type),
-            Expression::MatchExpression {
-                primary_expression,
-                branches,
-                ..
-            } => self.gather_from_expr(primary_expression).gather_from_iter(
-                branches.iter(),
-                |deps, branch| {
-                    match &branch.condition {
-                        MatchCondition::CatchAll(_) => deps,
-                        MatchCondition::Scrutinee(scrutinee) => {
-                            deps.gather_from_scrutinee(scrutinee)
-                        }
-                    }
-                    .gather_from_expr(&branch.result)
-                },
-            ),
 
             // Not sure about AbiCast, could add the abi_name and address.
             Expression::AbiCast { .. } => self,
@@ -414,10 +398,6 @@ impl Dependencies {
             }
             Expression::DelayedMatchTypeResolution { .. } => self,
         }
-    }
-
-    fn gather_from_scrutinee(self, _scrutinee: &Scrutinee) -> Self {
-        self
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {

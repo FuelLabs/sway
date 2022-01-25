@@ -61,11 +61,6 @@ pub enum Expression {
         contents: Vec<Expression>,
         span: Span,
     },
-    MatchExpression {
-        primary_expression: Box<Expression>,
-        branches: Vec<MatchBranch>,
-        span: Span,
-    },
     StructExpression {
         struct_name: Ident,
         fields: Vec<StructExpressionField>,
@@ -254,7 +249,6 @@ impl Expression {
             VariableExpression { span, .. } => span,
             Tuple { span, .. } => span,
             Array { span, .. } => span,
-            MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
             CodeBlock { span, .. } => span,
             IfExp { span, .. } => span,
