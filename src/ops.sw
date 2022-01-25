@@ -265,20 +265,89 @@ impl Shiftable for u8 {
     }
 }
 
+pub trait Eq {
+    fn eq(self, other: Self) -> bool;
+}
+
+impl Eq for u64 {
+    fn eq(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+            r3: bool
+        }
+    }
+}
+
+impl Eq for u32 {
+    fn eq(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+            r3: bool
+        }
+    }
+}
+
+impl Eq for u16 {
+    fn eq(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+            r3: bool
+        }
+    }
+}
+
+impl Eq for u8 {
+    fn eq(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+            r3: bool
+        }
+    }
+}
+
+impl Eq for b256 {
+    fn eq(self, other: Self) -> bool {
+        // Both self and other are addresses of the values, so we can use MEQ.
+        asm(r1: self, r2: other, r3, r4) {
+            addi r3 zero i32;
+            meq r4 r1 r2 r3;
+            r4: bool
+        }
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
-    fn eq(self, other: Self) -> bool;
 } {
     fn le(self, other: Self) -> bool {
-        self.lt(other) || self.eq(other)
+        asm(r1: self, r2: other, r3, r4) {
+            gt r3 r1 r2;
+            not r4 r3;
+
+            r4: bool
+        }
     }
     fn ge(self, other: Self) -> bool {
-        self.gt(other) || self.eq(other)
+        asm(r1: self, r2: other, r3, r4) {
+            lt r3 r1 r2;
+            not r4 r3;
+
+            r4: bool
+        }
     }
     fn neq(self, other: Self) -> bool {
         // TODO unary operator negation
-        if self.eq(other) {
+
+        // Fix this ugly block which uses assembly rather than
+        // importing and utilizing an eq method
+        let is_equal: bool = asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+
+            r3: bool
+        };
+
+        if is_equal {
             false
         } else {
             true
@@ -299,12 +368,6 @@ impl Ord for u64 {
             r3: bool
         }
     }
-    fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
-    }
 }
 
 impl Ord for u32 {
@@ -317,12 +380,6 @@ impl Ord for u32 {
     fn lt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             lt r3 r1 r2;
-            r3: bool
-        }
-    }
-    fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
             r3: bool
         }
     }
@@ -341,12 +398,6 @@ impl Ord for u16 {
             r3: bool
         }
     }
-    fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
-    }
 }
 
 impl Ord for u8 {
@@ -359,12 +410,6 @@ impl Ord for u8 {
     fn lt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             lt r3 r1 r2;
-            r3: bool
-        }
-    }
-    fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
             r3: bool
         }
     }
@@ -381,14 +426,6 @@ pub fn not(a: bool) -> bool {
 }
 
 impl b256 {
-    fn eq(self, other: Self) -> bool {
-        // Both self and other are addresses of the values, so we can use MEQ.
-        asm(r1: self, r2: other, r3, r4) {
-            addi r3 zero i32;
-            meq r4 r1 r2 r3;
-            r4: bool
-        }
-    }
     fn neq(self, other: Self) -> bool {
         // Both self and other are addresses of the values, so we can use MEQ.
         not(asm(r1: self, r2: other, r3, r4) {
