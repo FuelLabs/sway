@@ -34,7 +34,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels-abigen-macro = "0.1"
+fuels-abigen-macro = "0.2"
 fuels-core = "0.2"
 fuels-rs = "0.2"
 fuel-gql-client = {{ version = "0.2", default-features = false }}
