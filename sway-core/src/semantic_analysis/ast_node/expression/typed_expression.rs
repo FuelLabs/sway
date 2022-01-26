@@ -325,11 +325,7 @@ impl TypedExpression {
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit.clone() {
                 typed_expression = check!(
-                    Self::resolve_numeric_span_to_type(
-                        lit,
-                        expr_span,
-                        typed_expression.return_type
-                    ),
+                    Self::resolve_numeric_literal(lit, expr_span, typed_expression.return_type),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1799,7 +1795,7 @@ impl TypedExpression {
         }
     }
 
-    fn resolve_numeric_span_to_type(
+    fn resolve_numeric_literal(
         lit: Literal,
         span: Span,
         new_type: TypeId,
