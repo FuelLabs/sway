@@ -315,15 +315,21 @@ impl TypedExpression {
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType { span: expr_span });
+                errors.push(CompileError::UnknownType {
+                    span: expr_span.clone(),
+                });
                 insert_type(TypeInfo::ErrorRecovery)
             });
 
         // Literals of type Numeric can now be resolved
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
-            if let Literal::Numeric(span) = lit {
+            if let Literal::Numeric(_) = lit.clone() {
                 typed_expression = check!(
-                    Self::resolve_numeric_span_ty_type(span, typed_expression.return_type),
+                    Self::resolve_numeric_span_to_type(
+                        lit,
+                        expr_span,
+                        typed_expression.return_type
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1793,7 +1799,8 @@ impl TypedExpression {
         }
     }
 
-    fn resolve_numeric_span_to_typ(
+    fn resolve_numeric_span_to_type(
+        lit: Literal,
         span: Span,
         new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
@@ -1802,71 +1809,74 @@ impl TypedExpression {
         let path = span.clone().path;
 
         // Parse and resolve a Numeric(span) based on new_type.
-        let val = match look_up_type_id(new_type) {
-            TypeInfo::UnsignedInteger(n) => match n {
-                IntegerBits::Eight => span
-                    .clone()
-                    .clone()
-                    .as_str()
-                    .trim()
-                    .replace("_", "")
-                    .parse()
-                    .map(Literal::U8)
-                    .map_err(|e| {
-                        Literal::handle_parse_int_error(
-                            e,
-                            TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                            pest_span,
-                            path,
-                        )
-                    }),
-                IntegerBits::Sixteen => span
-                    .clone()
-                    .as_str()
-                    .trim()
-                    .replace("_", "")
-                    .parse()
-                    .map(Literal::U16)
-                    .map_err(|e| {
-                        Literal::handle_parse_int_error(
-                            e,
-                            TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                            pest_span,
-                            path,
-                        )
-                    }),
-                IntegerBits::ThirtyTwo => span
-                    .clone()
-                    .as_str()
-                    .trim()
-                    .replace("_", "")
-                    .parse()
-                    .map(Literal::U32)
-                    .map_err(|e| {
-                        Literal::handle_parse_int_error(
-                            e,
-                            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                            pest_span,
-                            path,
-                        )
-                    }),
-                IntegerBits::SixtyFour => span
-                    .clone()
-                    .as_str()
-                    .trim()
-                    .replace("_", "")
-                    .parse()
-                    .map(Literal::U64)
-                    .map_err(|e| {
-                        Literal::handle_parse_int_error(
-                            e,
-                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                            pest_span,
-                            path,
-                        )
-                    }),
+        let val = match lit {
+            Literal::Numeric(span) => match look_up_type_id(new_type) {
+                TypeInfo::UnsignedInteger(n) => match n {
+                    IntegerBits::Eight => span
+                        .clone()
+                        .clone()
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::U8)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                                pest_span,
+                                path,
+                            )
+                        }),
+                    IntegerBits::Sixteen => span
+                        .clone()
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::U16)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                                pest_span,
+                                path,
+                            )
+                        }),
+                    IntegerBits::ThirtyTwo => span
+                        .clone()
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::U32)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                                pest_span,
+                                path,
+                            )
+                        }),
+                    IntegerBits::SixtyFour => span
+                        .clone()
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::U64)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                pest_span,
+                                path,
+                            )
+                        }),
+                },
+                _ => unreachable!("Unexpected type for integer literals"),
             },
-            _ => unreachable!(),
+            _ => unreachable!("Unexpected non-integer literals"),
         };
 
         match val {
