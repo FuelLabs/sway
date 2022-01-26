@@ -70,15 +70,15 @@ impl std::fmt::Debug for ControlFlowGraphNode {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
             ControlFlowGraphNode::ProgramNode(node) => format!("{:?}", node),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
-                format!("Enum variant {}", variant_name.to_string())
+                format!("Enum variant {}", variant_name)
             }
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
-                format!("Method {}", method_name.as_str().to_string())
+                format!("Method {}", method_name.as_str())
             }
             ControlFlowGraphNode::StructField {
                 struct_field_name, ..
             } => {
-                format!("Struct field {}", struct_field_name.as_str().to_string())
+                format!("Struct field {}", struct_field_name.as_str())
             }
         };
         f.write_str(&text)
