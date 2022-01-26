@@ -38,7 +38,6 @@ impl Literal {
             U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
             U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
-            // Essentially a string - cannot convert to an unsigned just yet.
             Numeric(inner) => ResolvedType::Str(inner.as_str().len() as u64),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
@@ -51,11 +50,8 @@ impl Literal {
     ) -> CompileResult<(Self, span::Span)> {
         let path = config.map(|c| c.path());
         let lit_inner = lit.into_inner().next().unwrap();
-        let lit_span = lit_inner.clone().as_span();
-        println!("lit_span: {:?}", lit_span);
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::basic_integer => {
-                // remove opening and closing quotes
                 let lit_span = lit_inner.as_span();
                 let lit = span::Span {
                     span: pest::Span::new(
@@ -71,27 +67,6 @@ impl Literal {
                     path,
                 };
                 (Ok(Literal::Numeric(lit)), span)
-
-                /*let span = span::Span {
-                    span: lit_inner.as_span(),
-                    path: path.clone(),
-                };
-                (
-                    lit_inner
-                            .as_str()
-                            .trim()
-                            .replace("_", "")
-                            .parse()
-                            .map(Literal::U64)
-                            .map_err(|e| {
-                                handle_parse_int_error(
-                                    e,
-                                    TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                    lit_inner.as_span(),
-                                    path.clone(),
-                                )}),
-                    span,
-                )*/
             }
             Rule::typed_integer => {
                 let mut int_inner = lit_inner.into_inner().next().unwrap();
