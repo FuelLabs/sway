@@ -297,7 +297,6 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
-
         match unify_with_self(
             typed_expression.return_type,
             type_annotation,
@@ -311,135 +310,27 @@ impl TypedExpression {
                 errors.push(CompileError::TypeError(e));
             }
         };
-
         // The annotation may result in a cast, which is handled in the type engine.
-        // After the cast, try to update the Numeric literal
-
-        println!(
-            "typed_expression.return_type: {}",
-            typed_expression.return_type.friendly_type_str()
-        );
-        println!(
-            "looked up: {:?}",
-            look_up_type_id(typed_expression.return_type)
-        );
-
         // Handle casting literals
         let expr = typed_expression.clone().expression;
         if let TypedExpressionVariant::Literal(lit) = expr.clone() {
-            if let Literal::Numeric(span2) = lit.clone() {
-                println!("path: {:?}", span2.path);
-                println!("as_str: {:?}", span2.as_str());
-                println!("start: {:?}", span2.start());
-                println!("end: {:?}", span2.end());
-                println!(
-                    "return_type: {:?}",
-                    look_up_type_id(typed_expression.return_type).friendly_type_str()
+            if let Literal::Numeric(span) = lit.clone() {
+                typed_expression = check!(
+                    Self::resolve_numeric_literal_type(typed_expression.return_type, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
                 );
-                let val = match look_up_type_id(typed_expression.return_type) {
-                    TypeInfo::UnsignedInteger(n) => match n {
-                        IntegerBits::Eight => span2
-                            .clone()
-                            .as_str()
-                            .trim()
-                            .replace("_", "")
-                            .parse()
-                            .map(Literal::U8)
-                            .map_err(|e| {
-                                Literal::handle_parse_int_error(
-                                    e,
-                                    TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                    pest::Span::new(span2.as_str().into(), 0, span2.as_str().len())
-                                        .unwrap(),
-                                    span2.path,
-                                )
-                            }),
-                        IntegerBits::Sixteen => span2
-                            .clone()
-                            .as_str()
-                            .trim()
-                            .replace("_", "")
-                            .parse()
-                            .map(Literal::U16)
-                            .map_err(|e| {
-                                Literal::handle_parse_int_error(
-                                    e,
-                                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                    pest::Span::new(
-                                        span2.as_str().into(),
-                                        span2.start(),
-                                        span2.end(),
-                                    )
-                                    .unwrap(),
-                                    span2.path,
-                                )
-                            }),
-                        IntegerBits::ThirtyTwo => span2
-                            .clone()
-                            .as_str()
-                            .trim()
-                            .replace("_", "")
-                            .parse()
-                            .map(Literal::U32)
-                            .map_err(|e| {
-                                Literal::handle_parse_int_error(
-                                    e,
-                                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                    pest::Span::new(
-                                        span2.as_str().into(),
-                                        span2.start(),
-                                        span2.end(),
-                                    )
-                                    .unwrap(),
-                                    span2.path,
-                                )
-                            }),
-                        IntegerBits::SixtyFour => span2
-                            .clone()
-                            .as_str()
-                            .trim()
-                            .replace("_", "")
-                            .parse()
-                            .map(Literal::U64)
-                            .map_err(|e| {
-                                Literal::handle_parse_int_error(
-                                    e,
-                                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                    pest::Span::new(
-                                        span2.as_str().into(),
-                                        span2.start(),
-                                        span2.end(),
-                                    )
-                                    .unwrap(),
-                                    span2.path,
-                                )
-                            }),
-                    },
-                    _ => unreachable!(),
-                };
-
-                match val {
-                    Ok(v) => {
-                        let new_typed_expression = TypedExpressionVariant::Literal(v);
-                        typed_expression.expression = new_typed_expression;
-                    }
-                    Err(e) => {
-                        errors.push(e);
-                        //                        println!("Error: {:?}", e);
-                        return err(warnings, errors);
-                    }
-                }
             }
         }
 
-        typed_expression.return_type = namespace
+        namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
                 errors.push(CompileError::UnknownType { span: expr_span });
                 insert_type(TypeInfo::ErrorRecovery)
             });
 
-        println!("final typed_expression: {:?}", typed_expression);
         ok(typed_expression, warnings, errors)
     }
 
@@ -1898,6 +1789,99 @@ impl TypedExpression {
                     span,
                 };
                 ok(exp, warnings, errors)
+            }
+        }
+    }
+
+    fn resolve_numeric_literal_type(
+        new_type: TypeId,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut errors = vec![];
+        let path = span.clone().path;
+        let pest_span =
+            pest::Span::new(span.clone().as_str().into(), 0, span.clone().as_str().len()).unwrap();
+        let val = match look_up_type_id(new_type) {
+            TypeInfo::UnsignedInteger(n) => match n {
+                IntegerBits::Eight => span
+                    .clone()
+                    .clone()
+                    .as_str()
+                    .trim()
+                    .replace("_", "")
+                    .parse()
+                    .map(Literal::U8)
+                    .map_err(|e| {
+                        Literal::handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                            pest_span,
+                            path,
+                        )
+                    }),
+                IntegerBits::Sixteen => span
+                    .clone()
+                    .as_str()
+                    .trim()
+                    .replace("_", "")
+                    .parse()
+                    .map(Literal::U16)
+                    .map_err(|e| {
+                        Literal::handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                            pest_span,
+                            path,
+                        )
+                    }),
+                IntegerBits::ThirtyTwo => span
+                    .clone()
+                    .as_str()
+                    .trim()
+                    .replace("_", "")
+                    .parse()
+                    .map(Literal::U32)
+                    .map_err(|e| {
+                        Literal::handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                            pest_span,
+                            path,
+                        )
+                    }),
+                IntegerBits::SixtyFour => span
+                    .clone()
+                    .as_str()
+                    .trim()
+                    .replace("_", "")
+                    .parse()
+                    .map(Literal::U64)
+                    .map_err(|e| {
+                        Literal::handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                            pest_span,
+                            path,
+                        )
+                    }),
+            },
+            _ => unreachable!(),
+        };
+
+        match val {
+            Ok(v) => {
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::Literal(v),
+                    return_type: new_type,
+                    is_constant: IsConstant::Yes,
+                    span,
+                };
+                ok(exp, vec![], vec![])
+            }
+            Err(e) => {
+                errors.push(e);
+                let exp = error_recovery_expr(span);
+                ok(exp, vec![], errors)
             }
         }
     }

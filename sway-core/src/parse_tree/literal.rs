@@ -232,7 +232,6 @@ impl Literal {
                 ]
             }
             // assume utf8 for now
-            // assume utf8 for now
             String(st) => {
                 let mut buf = st.as_str().to_string().into_bytes();
                 // pad to word alignment
