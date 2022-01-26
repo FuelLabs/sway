@@ -75,17 +75,16 @@ if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|ref_keyword|deref_keyword}
 
-literal_value =  {integer|byte|string|boolean}
+literal_value =  {typed_integer|basic_integer|byte|string|boolean}
 
 boolean          =  {true_keyword|false_keyword}
 string           = ${"\"" ~ char* ~ "\""}
-integer          =  {(u8_integer|u16_integer|u32_integer|u64_integer)}
+typed_integer    =  {(u8_integer|u16_integer|u32_integer|u64_integer)}
 basic_integer    = @{!("0b"|"0x") ~ ASCII_DIGIT ~ (ASCII_DIGIT|"_")*}
 u8_integer       =  {basic_integer ~ "u8"}
 u16_integer      =  {basic_integer ~ "u16"}
 u32_integer      =  {basic_integer ~ "u32"}
-// default is u64
-u64_integer      =  {basic_integer ~ "u64"?}
+u64_integer      =  {basic_integer ~ "u64"}
 byte             =  {binary_byte|hex_byte}
 binary_byte      = @{"0b" ~ ("1"|"0"|"_")*}
 hex_byte         = @{"0x" ~ hex_digit*}

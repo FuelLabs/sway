@@ -431,6 +431,7 @@ impl fmt::Display for DataSection {
                 Literal::U32(num) => format!(".u32 {:#04x}", num),
                 Literal::U64(num) => format!(".u64 {:#04x}", num),
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
+                Literal::Numeric(st) => format!(".str \"{}\"", st.as_str()),
                 Literal::String(st) => format!(".str \"{}\"", st.as_str()),
                 Literal::Byte(b) => format!(".byte {:#08b}", b),
                 Literal::B256(b) => format!(

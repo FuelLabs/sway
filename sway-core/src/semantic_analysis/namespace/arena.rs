@@ -544,6 +544,9 @@ impl NamespaceWrapper for NamespaceRef {
         write_module(|ns| ns.insert(name, item), *self)
     }
     fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()> {
+        println!("In this one!");
+        println!("ty: {}", ty.friendly_type_str());
+        println!("self_type: {}", ty.friendly_type_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         Ok(match ty {

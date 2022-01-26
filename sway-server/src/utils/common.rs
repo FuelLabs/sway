@@ -24,6 +24,7 @@ pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
             Literal::U32(_) => VarBody::Type("u32".into()),
             Literal::U64(_) => VarBody::Type("u64".into()),
             Literal::String(len) => VarBody::Type(format!("str[{}]", len.as_str().len())),
+            Literal::Numeric(len) => VarBody::Type(format!("str[{}]", len.as_str().len())),
             Literal::Boolean(_) => VarBody::Type("bool".into()),
             Literal::Byte(_) => VarBody::Type("u8".into()),
             Literal::B256(_) => VarBody::Type("b256".into()),

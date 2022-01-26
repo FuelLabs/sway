@@ -297,6 +297,7 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
+
         match unify_with_self(
             typed_expression.return_type,
             type_annotation,
@@ -310,7 +311,127 @@ impl TypedExpression {
                 errors.push(CompileError::TypeError(e));
             }
         };
+
         // The annotation may result in a cast, which is handled in the type engine.
+        // After the cast, try to update the Numeric literal
+
+        println!(
+            "typed_expression.return_type: {}",
+            typed_expression.return_type.friendly_type_str()
+        );
+        println!(
+            "looked up: {:?}",
+            look_up_type_id(typed_expression.return_type)
+        );
+
+        // Handle casting literals
+        let expr = typed_expression.clone().expression;
+        if let TypedExpressionVariant::Literal(lit) = expr.clone() {
+            if let Literal::Numeric(span2) = lit.clone() {
+                println!("path: {:?}", span2.path);
+                println!("as_str: {:?}", span2.as_str());
+                println!("start: {:?}", span2.start());
+                println!("end: {:?}", span2.end());
+                println!("return_type: {:?}", look_up_type_id(typed_expression.return_type).friendly_type_str());
+                let val = match look_up_type_id(typed_expression.return_type) {
+                    TypeInfo::UnsignedInteger(n) => match n {
+                        IntegerBits::Eight => span2
+                            .clone()
+                            .as_str()
+                            .trim()
+                            .replace("_", "")
+                            .parse()
+                            .map(Literal::U8)
+                            .map_err(|e| {
+                                Literal::handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                                    pest::Span::new(
+                                        span2.as_str().into(),
+                                        0,
+                                        span2.as_str().len(),
+                                    )
+                                    .unwrap(),
+                                    span2.path,
+                                )
+                            }),
+                        IntegerBits::Sixteen => span2
+                            .clone()
+                            .as_str()
+                            .trim()
+                            .replace("_", "")
+                            .parse()
+                            .map(Literal::U16)
+                            .map_err(|e| {
+                                Literal::handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                                    pest::Span::new(
+                                        span2.as_str().into(),
+                                        span2.start(),
+                                        span2.end(),
+                                    )
+                                    .unwrap(),
+                                    span2.path,
+                                )
+                            }),
+                        IntegerBits::ThirtyTwo => span2
+                            .clone()
+                            .as_str()
+                            .trim()
+                            .replace("_", "")
+                            .parse()
+                            .map(Literal::U32)
+                            .map_err(|e| {
+                                Literal::handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                                    pest::Span::new(
+                                        span2.as_str().into(),
+                                        span2.start(),
+                                        span2.end(),
+                                    )
+                                    .unwrap(),
+                                    span2.path,
+                                )
+                            }),
+                        IntegerBits::SixtyFour => span2
+                            .clone()
+                            .as_str()
+                            .trim()
+                            .replace("_", "")
+                            .parse()
+                            .map(Literal::U64)
+                            .map_err(|e| {
+                                Literal::handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                    pest::Span::new(
+                                        span2.as_str().into(),
+                                        span2.start(),
+                                        span2.end(),
+                                    )
+                                    .unwrap(),
+                                    span2.path,
+                                )
+                            }),
+                    },
+                    _ => unreachable!(),
+                };
+
+                match val {
+                    Ok(v) => {
+                        let new_typed_expression = TypedExpressionVariant::Literal(v);
+                        typed_expression.expression = new_typed_expression;
+                    }
+                    Err(e) => {
+                        errors.push(e);
+//                        println!("Error: {:?}", e);
+                        return err(warnings, errors);
+                    }
+                }
+            }
+        }
 
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
@@ -319,6 +440,7 @@ impl TypedExpression {
                 insert_type(TypeInfo::ErrorRecovery)
             });
 
+        println!("final typed_expression: {:?}", typed_expression);
         ok(typed_expression, warnings, errors)
     }
 
@@ -338,6 +460,7 @@ impl TypedExpression {
     fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
+            Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
 

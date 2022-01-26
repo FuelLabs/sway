@@ -1347,6 +1347,7 @@ fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Val
         Literal::U32(n) => Constant::get_uint(context, 32, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
         Literal::String(s) => Constant::get_string(context, s.as_str().to_owned()),
+        Literal::Numeric(s) => Constant::get_string(context, s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
     }
@@ -1359,6 +1360,7 @@ fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
         Literal::U32(n) => Constant::new_uint(32, *n as u64),
         Literal::U64(n) => Constant::new_uint(64, *n),
         Literal::String(s) => Constant::new_string(s.as_str().to_owned()),
+        Literal::Numeric(s) => Constant::new_string(s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::new_bool(*b),
         Literal::B256(bs) => Constant::new_b256(*bs),
     }
