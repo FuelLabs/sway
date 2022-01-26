@@ -52,21 +52,11 @@ impl Literal {
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::basic_integer => {
-                let lit_span = lit_inner.as_span();
-                let lit = span::Span {
-                    span: pest::Span::new(
-                        lit_span.input().clone(),
-                        lit_span.start(),
-                        lit_span.end(),
-                    )
-                    .unwrap(),
-                    path: path.clone(),
-                };
                 let span = span::Span {
-                    span: lit_span,
+                    span: lit_inner.as_span(),
                     path,
                 };
-                (Ok(Literal::Numeric(lit)), span)
+                (Ok(Literal::Numeric(span.clone())), span)
             }
             Rule::typed_integer => {
                 let mut int_inner = lit_inner.into_inner().next().unwrap();
@@ -242,14 +232,6 @@ impl Literal {
                 ]
             }
             // assume utf8 for now
-            Numeric(st) => {
-                let mut buf = st.as_str().to_string().into_bytes();
-                // pad to word alignment
-                while buf.len() % 8 != 0 {
-                    buf.push(0);
-                }
-                buf
-            }
             // assume utf8 for now
             String(st) => {
                 let mut buf = st.as_str().to_string().into_bytes();
@@ -261,6 +243,9 @@ impl Literal {
             }
             Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
             B256(b) => b.to_vec(),
+            Numeric(_) => {
+                unreachable!("Cannot convert a Numeric Literal with unknown size to bytes")
+            }
         }
     }
 

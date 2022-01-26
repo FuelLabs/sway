@@ -332,7 +332,10 @@ impl TypedExpression {
                 println!("as_str: {:?}", span2.as_str());
                 println!("start: {:?}", span2.start());
                 println!("end: {:?}", span2.end());
-                println!("return_type: {:?}", look_up_type_id(typed_expression.return_type).friendly_type_str());
+                println!(
+                    "return_type: {:?}",
+                    look_up_type_id(typed_expression.return_type).friendly_type_str()
+                );
                 let val = match look_up_type_id(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(n) => match n {
                         IntegerBits::Eight => span2
@@ -346,12 +349,8 @@ impl TypedExpression {
                                 Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                    pest::Span::new(
-                                        span2.as_str().into(),
-                                        0,
-                                        span2.as_str().len(),
-                                    )
-                                    .unwrap(),
+                                    pest::Span::new(span2.as_str().into(), 0, span2.as_str().len())
+                                        .unwrap(),
                                     span2.path,
                                 )
                             }),
@@ -426,7 +425,7 @@ impl TypedExpression {
                     }
                     Err(e) => {
                         errors.push(e);
-//                        println!("Error: {:?}", e);
+                        //                        println!("Error: {:?}", e);
                         return err(warnings, errors);
                     }
                 }
