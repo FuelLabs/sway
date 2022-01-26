@@ -330,6 +330,7 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
+                println!("New typed exp: {:?}\n", typed_expression);
             }
         }
 
