@@ -39,8 +39,6 @@ impl Engine {
         span: &Span,
     ) -> Result<Vec<CompileWarning>, TypeError> {
         use TypeInfo::*;
-        println!("received: {}", received.friendly_type_str());
-        println!("expected: {}", expected.friendly_type_str());
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
             (received_info, expected_info) if received_info == expected_info => Ok(vec![]),

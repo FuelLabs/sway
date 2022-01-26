@@ -1798,9 +1798,8 @@ impl TypedExpression {
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
+        let pest_span = span.clone().span;
         let path = span.clone().path;
-        let pest_span =
-            pest::Span::new(span.clone().as_str().into(), 0, span.clone().as_str().len()).unwrap();
 
         // Parse and resolve a Numeric(span) based on new_type.
         let val = match look_up_type_id(new_type) {
@@ -1878,7 +1877,6 @@ impl TypedExpression {
                     is_constant: IsConstant::Yes,
                     span,
                 };
-                println!("final exp: {:?}", exp);
                 ok(exp, vec![], vec![])
             }
             Err(e) => {
