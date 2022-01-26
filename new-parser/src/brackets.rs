@@ -12,6 +12,15 @@ macro_rules! define_brackets (
             pub fn inner(&self) -> &T {
                 &self.inner
             }
+
+            pub fn map<F, U>(self, func: F) -> $ty_name<U>
+            where
+                F: FnOnce(T) -> U,
+            {
+                let $ty_name { open_token, inner, close_token } = self;
+                let inner = func(inner);
+                $ty_name { open_token, inner, close_token }
+            }
         }
 
         impl<T> Spanned for $ty_name<T> {

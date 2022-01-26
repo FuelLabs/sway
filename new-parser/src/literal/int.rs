@@ -8,22 +8,6 @@ pub struct IntLiteral {
     pub parsed: BigInt,
 }
 
-pub enum BasePrefix {
-    Hex(HexPrefixToken),
-    Octal(OctalPrefixToken),
-    Binary(BinaryPrefixToken),
-}
-
-impl Spanned for BasePrefix {
-    fn span(&self) -> Span {
-        match self {
-            BasePrefix::Hex(hex_prefix_token) => hex_prefix_token.span(),
-            BasePrefix::Octal(octal_prefix_token) => octal_prefix_token.span(),
-            BasePrefix::Binary(binary_prefix_token) => binary_prefix_token.span(),
-        }
-    }
-}
-
 pub enum IntTy {
     I8(I8Token),
     I16(I16Token),
@@ -65,45 +49,35 @@ impl Spanned for IntTy {
     }
 }
 
-fn digits() -> impl Parser<char, (Option<BasePrefix>, BigUint, Span), Error = Cheap<char, Span>> + Clone {
-    let hex = {
-        hex_prefix_token()
-        .then(big_uint(16).map_with_span(|big_uint, span| (big_uint, span)))
-        .map(|(hex_prefix_token, (big_uint, span))| {
-            (Some(BasePrefix::Hex(hex_prefix_token)), big_uint, span)
+fn digits() -> impl Parser<Output = WithSpan<(Option<BasePrefix>, WithSpan<BigUint>)>> + Clone {
+    base_prefix()
+    .optional()
+    .and_then(|base_prefix_res: Result<BasePrefix, Span>| {
+        let span_start = base_prefix_res.span();
+        let base_prefix_opt = base_prefix_res.ok();
+        let radix = base_prefix_opt.as_ref().map(BasePrefix::radix).unwrap_or(10);
+
+        big_uint(radix)
+        .map(move |big_uint_with_span: WithSpan<BigUint>| {
+            let span_end = big_uint_with_span.span();
+            WithSpan {
+                parsed: (base_prefix_opt.clone(), big_uint_with_span),
+                span: Span::join(span_start.clone(), span_end),
+            }
         })
-    };
-    let octal = {
-        octal_prefix_token()
-        .then(big_uint(8).map_with_span(|big_uint, span| (big_uint, span)))
-        .map(|(octal_prefix_token, (big_uint, span))| {
-            (Some(BasePrefix::Octal(octal_prefix_token)), big_uint, span)
-        })
-    };
-    let binary = {
-        binary_prefix_token()
-        .then(big_uint(2).map_with_span(|big_uint, span| (big_uint, span)))
-        .map(|(binary_prefix_token, (big_uint, span))| {
-            (Some(BasePrefix::Binary(binary_prefix_token)), big_uint, span)
-        })
-    };
-    let decimal = {
-        big_uint(10)
-        .map_with_span(|big_uint, span| (None, big_uint, span))
-    };
-    
-    hex
-    .or(octal)
-    .or(binary)
-    .or(decimal)
+    })
 }
 
-pub fn int_literal() -> impl Parser<char, IntLiteral, Error = Cheap<char, Span>> + Clone {
+pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
     numeric_sign()
-    .or_not()
+    .optional()
     .then(digits())
-    .then(int_ty().or_not())
-    .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt)| {
+    .then(int_ty().optional())
+    .map(|((numeric_sign_res, digits_with_span), ty_suffix_res): ((Result<_, _>, _), Result<_, _>)| {
+        let numeric_sign_opt = numeric_sign_res.ok();
+        let WithSpan { parsed: (base_prefix_opt, big_uint_with_span), span: _ } = digits_with_span;
+        let WithSpan { parsed: big_uint, span: digits_span } = big_uint_with_span;
+        let ty_suffix_opt = ty_suffix_res.ok();
         let parsed = match numeric_sign_opt {
             Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),
             Some(NumericSign::Positive { .. }) | None => BigInt::from(big_uint),
@@ -112,68 +86,22 @@ pub fn int_literal() -> impl Parser<char, IntLiteral, Error = Cheap<char, Span>>
     })
 }
 
-pub fn big_uint(radix: u32) -> impl Parser<char, BigUint, Error = Cheap<char, Span>> + Clone {
+pub fn big_uint(radix: u32) -> impl Parser<Output = WithSpan<BigUint>> + Clone {
     digit(radix)
     .repeated()
-    .map(move |digits| {
+    .map(move |digits_with_span| {
+        let WithSpan { parsed: digits, span } = digits_with_span;
         let mut value = BigUint::zero();
-        for digit in digits {
-            value *= 1u32 << radix;
+        for digit_with_span in digits {
+            let WithSpan { parsed: digit, span: _ } = digit_with_span;
+            value *= radix;
             value += digit;
         }
-        value
+        WithSpan { parsed: value, span }
     })
 }
 
-pub fn base_prefix() -> impl Parser<char, BasePrefix, Error = Cheap<char, Span>> + Clone {
-    let hex = {
-        hex_prefix_token()
-        .map(BasePrefix::Hex)
-    };
-    let octal = {
-        octal_prefix_token()
-        .map(BasePrefix::Octal)
-    };
-    let binary = {
-        binary_prefix_token()
-        .map(BasePrefix::Binary)
-    };
-    
-    hex
-    .or(octal)
-    .or(binary)
-}
-
-/*
-pub fn int_digits() -> impl Parser<char, IntDigits, Error = Cheap<char, Span>> {
-    let decimal = {
-        chumsky::text::int(10)
-        .map_with_span(|_, digits| IntDigits::Decimal { digits })
-    };
-    let hex = {
-        hex_prefix_token()
-        .then(chumsky::text::int(16).map_with_span(|_, digits| digits))
-        .map(|(hex_prefix_token, digits)| IntDigits::Hex { hex_prefix_token, digits })
-    };
-    let octal = {
-        octal_prefix_token()
-        .then(chumsky::text::int(8).map_with_span(|_, digits| digits))
-        .map(|(octal_prefix_token, digits)| IntDigits::Octal { octal_prefix_token, digits })
-    };
-    let binary = {
-        binary_prefix_token()
-        .then(chumsky::text::int(2).map_with_span(|_, digits| digits))
-        .map(|(binary_prefix_token, digits)| IntDigits::Binary { binary_prefix_token, digits })
-    };
-
-    binary
-    .or(octal)
-    .or(hex)
-    .or(decimal)
-}
-*/
-
-pub fn int_ty() -> impl Parser<char, IntTy, Error = Cheap<char, Span>> + Clone {
+pub fn int_ty() -> impl Parser<Output = IntTy> + Clone {
     let i8_parser = {
         i8_token()
         .map(|i8_token| IntTy::I8(i8_token))

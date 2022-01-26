@@ -35,7 +35,7 @@ impl Spanned for StatementLet {
     }
 }
 
-pub fn statement() -> impl Parser<char, Statement, Error = Cheap<char, Span>> + Clone {
+pub fn statement() -> impl Parser<Output = Statement> + Clone {
     let statement_let = {
         statement_let()
         .map(Statement::Let)
@@ -45,7 +45,7 @@ pub fn statement() -> impl Parser<char, Statement, Error = Cheap<char, Span>> + 
         .map(Statement::Item)
     };
     let expr = {
-        expr()
+        lazy(|| expr())
         .then(semicolon_token())
         .map(|(expr, semicolon_token)| Statement::Expr { expr, semicolon_token })
     };
@@ -55,14 +55,14 @@ pub fn statement() -> impl Parser<char, Statement, Error = Cheap<char, Span>> + 
     .or(expr)
 }
 
-pub fn statement_let() -> impl Parser<char, StatementLet, Error = Cheap<char, Span>> + Clone {
+pub fn statement_let() -> impl Parser<Output = StatementLet> + Clone {
     let_token()
     .then_whitespace()
     .then(pattern())
     .then_optional_whitespace()
     .then(eq_token())
     .then_optional_whitespace()
-    .then(expr())
+    .then(lazy(|| expr()))
     .then_optional_whitespace()
     .then(semicolon_token())
     .map(|((((let_token, pattern), eq_token), expr), semicolon_token)| {

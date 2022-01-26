@@ -5,8 +5,12 @@ pub enum Expr {
     StringLiteral(StringLiteral),
     IntLiteral(IntLiteral),
     Tuple(ExprTuple),
-    CodeBlock(CodeBlock),
+    Array {
+        elems: SquareBrackets<Punctuated<Expr, CommaToken>>,
+    },
+    ArrayRepeat(ExprArrayRepeat),
     Parens(Box<Parens<Expr>>),
+    CodeBlock(CodeBlock),
     FuncApp {
         func: Box<Expr>,
         args: Parens<Punctuated<Expr, CommaToken>>,
@@ -119,8 +123,10 @@ impl Spanned for Expr {
             Expr::StringLiteral(string_literal) => string_literal.span(),
             Expr::IntLiteral(int_literal) => int_literal.span(),
             Expr::Tuple(expr_tuple) => expr_tuple.span(),
-            Expr::CodeBlock(code_block) => code_block.span(),
+            Expr::Array { elems } => elems.span(),
+            Expr::ArrayRepeat(expr_array_repeat) => expr_array_repeat.span(),
             Expr::Parens(parens) => parens.span(),
+            Expr::CodeBlock(code_block) => code_block.span(),
             Expr::FuncApp { func, args } => {
                 Span::join(func.span(), args.span())
             },
@@ -188,11 +194,11 @@ impl Spanned for Expr {
     }
 }
 
-pub fn expr() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
-    expr_precedence_comparison().boxed()
+pub fn expr() -> impl Parser<Output = Expr> + Clone {
+    expr_precedence_comparison()
 }
 
-pub fn expr_precedence_comparison() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_comparison() -> impl Parser<Output = Expr> + Clone {
     enum Op {
         Equal {
             double_eq_token: DoubleEqToken,
@@ -218,6 +224,31 @@ pub fn expr_precedence_comparison() -> impl Parser<char, Expr, Error = Cheap<cha
             greater_than_eq_token: GreaterThanEqToken,
             rhs: Expr,
         },
+    }
+
+    impl Spanned for Op {
+        fn span(&self) -> Span {
+            match self {
+                Op::Equal { double_eq_token, rhs } => {
+                    Span::join(double_eq_token.span(), rhs.span())
+                },
+                Op::NotEqual { bang_eq_token, rhs } => {
+                    Span::join(bang_eq_token.span(), rhs.span())
+                },
+                Op::LessThan { less_than_token, rhs } => {
+                    Span::join(less_than_token.span(), rhs.span())
+                },
+                Op::GreaterThan { greater_than_token, rhs } => {
+                    Span::join(greater_than_token.span(), rhs.span())
+                },
+                Op::LessThanEq { less_than_eq_token, rhs } => {
+                    Span::join(less_than_eq_token.span(), rhs.span())
+                },
+                Op::GreaterThanEq { greater_than_eq_token, rhs } => {
+                    Span::join(greater_than_eq_token.span(), rhs.span())
+                },
+            }
+        }
     }
 
     let op = {
@@ -267,8 +298,8 @@ pub fn expr_precedence_comparison() -> impl Parser<char, Expr, Error = Cheap<cha
     };
 
     expr_precedence_bit_or()
-    .then(leading_whitespace(op.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
+    .then(optional_leading_whitespace(op).optional())
+    .map(|(lhs, op_res): (_, Result<_, _>)| match op_res.ok() {
         None => lhs,
         Some(Op::Equal { double_eq_token, rhs }) => Expr::Equal {
             lhs: Box::new(lhs),
@@ -303,64 +334,73 @@ pub fn expr_precedence_comparison() -> impl Parser<char, Expr, Error = Cheap<cha
     })
 }
 
-pub fn expr_precedence_bit_or() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_bit_or() -> impl Parser<Output = Expr> + Clone {
     let bit_or = {
         pipe_token()
-        .then_optional_whitespace()
-        .then(expr_precedence_bit_or())
-    };
-
-    expr_precedence_bit_xor()
-    .then(leading_whitespace(bit_or.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some((pipe_token, rhs)) => Expr::BitOr {
-            lhs: Box::new(lhs),
-            pipe_token,
-            rhs: Box::new(rhs),
-        },
-    })
-}
-
-pub fn expr_precedence_bit_xor() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
-    let bit_xor = {
-        caret_token()
         .then_optional_whitespace()
         .then(expr_precedence_bit_xor())
     };
 
-    expr_precedence_bit_and()
-    .then(leading_whitespace(bit_xor.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some((caret_token, rhs)) => Expr::BitXor {
-            lhs: Box::new(lhs),
-            caret_token,
-            rhs: Box::new(rhs),
-        },
+    expr_precedence_bit_xor()
+    .then(optional_leading_whitespace(bit_or).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for (pipe_token, rhs) in ops_with_span.parsed {
+            expr = Expr::BitOr {
+                lhs: Box::new(expr),
+                pipe_token,
+                rhs: Box::new(rhs),
+            };
+        }
+        expr
     })
 }
 
-pub fn expr_precedence_bit_and() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
-    let bit_and = {
-        ampersand_token()
+pub fn expr_precedence_bit_xor() -> impl Parser<Output = Expr> + Clone {
+    let bit_xor = {
+        caret_token()
         .then_optional_whitespace()
         .then(expr_precedence_bit_and())
     };
 
-    expr_precedence_shift()
-    .then(leading_whitespace(bit_and.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some((ampersand_token, rhs)) => Expr::BitAnd {
-            lhs: Box::new(lhs),
-            ampersand_token,
-            rhs: Box::new(rhs),
-        },
+    expr_precedence_bit_and()
+    .then(optional_leading_whitespace(bit_xor).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for (caret_token, rhs) in ops_with_span.parsed {
+            expr = Expr::BitXor {
+                lhs: Box::new(expr),
+                caret_token,
+                rhs: Box::new(rhs),
+            };
+        }
+        expr
     })
 }
 
-pub fn expr_precedence_shift() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_bit_and() -> impl Parser<Output = Expr> + Clone {
+    let bit_and = {
+        ampersand_token()
+        .then_optional_whitespace()
+        .then(expr_precedence_shift())
+    };
+
+    expr_precedence_shift()
+    .then(optional_leading_whitespace(bit_and).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for (ampersand_token, rhs) in ops_with_span.parsed {
+            expr = Expr::BitAnd {
+                lhs: Box::new(expr),
+                ampersand_token,
+                rhs: Box::new(rhs),
+            };
+        }
+        expr
+    })
+}
+
+pub fn expr_precedence_shift() -> impl Parser<Output = Expr> + Clone {
     enum Op {
         Shl {
             shl_token: ShlToken,
@@ -372,17 +412,26 @@ pub fn expr_precedence_shift() -> impl Parser<char, Expr, Error = Cheap<char, Sp
         },
     }
 
+    impl Spanned for Op {
+        fn span(&self) -> Span {
+            match self {
+                Op::Shl { shl_token, rhs } => Span::join(shl_token.span(), rhs.span()),
+                Op::Shr { shr_token, rhs } => Span::join(shr_token.span(), rhs.span()),
+            }
+        }
+    }
+
     let op = {
         let shl = {
             shl_token()
             .then_optional_whitespace()
-            .then(expr_precedence_shift())
+            .then(expr_precedence_add())
             .map(|(shl_token, rhs)| Op::Shl { shl_token, rhs })
         };
         let shr = {
             shr_token()
             .then_optional_whitespace()
-            .then(expr_precedence_shift())
+            .then(expr_precedence_add())
             .map(|(shr_token, rhs)| Op::Shr { shr_token, rhs })
         };
 
@@ -391,23 +440,28 @@ pub fn expr_precedence_shift() -> impl Parser<char, Expr, Error = Cheap<char, Sp
     };
 
     expr_precedence_add()
-    .then(leading_whitespace(op.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some(Op::Shl { shl_token, rhs }) => Expr::Shl {
-            lhs: Box::new(lhs),
-            shl_token,
-            rhs: Box::new(rhs),
-        },
-        Some(Op::Shr { shr_token, rhs }) => Expr::Shr {
-            lhs: Box::new(lhs),
-            shr_token,
-            rhs: Box::new(rhs),
-        },
+    .then(optional_leading_whitespace(op).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for op in ops_with_span.parsed {
+            expr = match op {
+                Op::Shl { shl_token, rhs } => Expr::Shl {
+                    lhs: Box::new(expr),
+                    shl_token,
+                    rhs: Box::new(rhs),
+                },
+                Op::Shr { shr_token, rhs } => Expr::Shr {
+                    lhs: Box::new(expr),
+                    shr_token,
+                    rhs: Box::new(rhs),
+                },
+            }
+        }
+        expr
     })
 }
 
-pub fn expr_precedence_add() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_add() -> impl Parser<Output = Expr> + Clone {
     enum Op {
         Add {
             add_token: AddToken,
@@ -419,17 +473,26 @@ pub fn expr_precedence_add() -> impl Parser<char, Expr, Error = Cheap<char, Span
         },
     }
 
+    impl Spanned for Op {
+        fn span(&self) -> Span {
+            match self {
+                Op::Add { add_token, rhs } => Span::join(add_token.span(), rhs.span()),
+                Op::Sub { sub_token, rhs } => Span::join(sub_token.span(), rhs.span()),
+            }
+        }
+    }
+
     let op = {
         let add = {
             add_token()
             .then_optional_whitespace()
-            .then(expr_precedence_add())
+            .then(expr_precedence_mul())
             .map(|(add_token, rhs)| Op::Add { add_token, rhs })
         };
         let sub = {
             sub_token()
             .then_optional_whitespace()
-            .then(expr_precedence_add())
+            .then(expr_precedence_mul())
             .map(|(sub_token, rhs)| Op::Sub { sub_token, rhs })
         };
 
@@ -438,23 +501,28 @@ pub fn expr_precedence_add() -> impl Parser<char, Expr, Error = Cheap<char, Span
     };
 
     expr_precedence_mul()
-    .then(leading_whitespace(op.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some(Op::Add { add_token, rhs }) => Expr::Add {
-            lhs: Box::new(lhs),
-            add_token,
-            rhs: Box::new(rhs),
-        },
-        Some(Op::Sub { sub_token, rhs }) => Expr::Sub {
-            lhs: Box::new(lhs),
-            sub_token,
-            rhs: Box::new(rhs),
-        },
+    .then(optional_leading_whitespace(op).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for op in ops_with_span.parsed {
+            expr = match op {
+                Op::Add { add_token, rhs } => Expr::Add {
+                    lhs: Box::new(expr),
+                    add_token,
+                    rhs: Box::new(rhs),
+                },
+                Op::Sub { sub_token, rhs } => Expr::Sub {
+                    lhs: Box::new(expr),
+                    sub_token,
+                    rhs: Box::new(rhs),
+                },
+            }
+        }
+        expr
     })
 }
 
-pub fn expr_precedence_mul() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_mul() -> impl Parser<Output = Expr> + Clone {
     enum Op {
         Mul {
             star_token: StarToken,
@@ -470,23 +538,33 @@ pub fn expr_precedence_mul() -> impl Parser<char, Expr, Error = Cheap<char, Span
         },
     }
 
+    impl Spanned for Op {
+        fn span(&self) -> Span {
+            match self {
+                Op::Mul { star_token, rhs } => Span::join(star_token.span(), rhs.span()),
+                Op::Div { forward_slash_token, rhs } => Span::join(forward_slash_token.span(), rhs.span()),
+                Op::Modulo { percent_token, rhs } => Span::join(percent_token.span(), rhs.span()),
+            }
+        }
+    }
+
     let op = {
         let mul = {
             star_token()
             .then_optional_whitespace()
-            .then(expr_precedence_mul())
+            .then(expr_precedence_unary_op())
             .map(|(star_token, rhs)| Op::Mul { star_token, rhs })
         };
         let div = {
             forward_slash_token()
             .then_optional_whitespace()
-            .then(expr_precedence_mul())
+            .then(expr_precedence_unary_op())
             .map(|(forward_slash_token, rhs)| Op::Div { forward_slash_token, rhs })
         };
         let modulo = {
             percent_token()
             .then_optional_whitespace()
-            .then(expr_precedence_mul())
+            .then(expr_precedence_unary_op())
             .map(|(percent_token, rhs)| Op::Modulo { percent_token, rhs })
         };
 
@@ -496,47 +574,50 @@ pub fn expr_precedence_mul() -> impl Parser<char, Expr, Error = Cheap<char, Span
     };
 
     expr_precedence_unary_op()
-    .then(leading_whitespace(op.boxed()).or_not())
-    .map(|(lhs, op_opt)| match op_opt {
-        None => lhs,
-        Some(Op::Mul { star_token, rhs }) => Expr::Mul {
-            lhs: Box::new(lhs),
-            star_token,
-            rhs: Box::new(rhs),
-        },
-        Some(Op::Div { forward_slash_token, rhs }) => Expr::Div {
-            lhs: Box::new(lhs),
-            forward_slash_token,
-            rhs: Box::new(rhs),
-        },
-        Some(Op::Modulo { percent_token, rhs }) => Expr::Modulo {
-            lhs: Box::new(lhs),
-            percent_token,
-            rhs: Box::new(rhs),
-        },
+    .then(optional_leading_whitespace(op).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for op in ops_with_span.parsed {
+            expr = match op {
+                Op::Mul { star_token, rhs } => Expr::Mul {
+                    lhs: Box::new(expr),
+                    star_token,
+                    rhs: Box::new(rhs),
+                },
+                Op::Div { forward_slash_token, rhs } => Expr::Div {
+                    lhs: Box::new(expr),
+                    forward_slash_token,
+                    rhs: Box::new(rhs),
+                },
+                Op::Modulo { percent_token, rhs } => Expr::Modulo {
+                    lhs: Box::new(expr),
+                    percent_token,
+                    rhs: Box::new(rhs),
+                },
+            }
+        }
+        expr
     })
 }
 
-pub fn expr_precedence_unary_op() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
-    recursive(|recurse| {
-        let not = {
-            bang_token()
-            .then_optional_whitespace()
-            .then(recurse)
-            .map(|(bang_token, expr)| {
-                Expr::Not {
-                    bang_token,
-                    expr: Box::new(expr),
-                }
-            })
-        };
+pub fn expr_precedence_unary_op() -> impl Parser<Output = Expr> + Clone {
+    let not = {
+        bang_token()
+        .then_optional_whitespace()
+        .then(lazy(|| expr()))
+        .map(|(bang_token, expr)| {
+            Expr::Not {
+                bang_token,
+                expr: Box::new(expr),
+            }
+        })
+    };
 
-        not
-        .or(expr_precedence_projection())
-    })
+    not
+    .or(expr_precedence_projection())
 }
 
-pub fn expr_precedence_projection() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_projection() -> impl Parser<Output = Expr> + Clone {
     enum Projection {
         Index(SquareBrackets<Box<Expr>>),
         MemberOrMethodCall {
@@ -546,9 +627,24 @@ pub fn expr_precedence_projection() -> impl Parser<char, Expr, Error = Cheap<cha
         },
     }
 
+    impl Spanned for Projection {
+        fn span(&self) -> Span {
+            match self {
+                Projection::Index(inner) => inner.span(),
+                Projection::MemberOrMethodCall { dot_token, name, method_call_args_opt } => {
+                    let span_end = match method_call_args_opt {
+                        Some(method_call_args) => method_call_args.span(),
+                        None => name.span(),
+                    };
+                    Span::join(dot_token.span(), span_end)
+                },
+            }
+        }
+    }
+
     let projection = {
         let index = {
-            square_brackets(padded(expr().map(Box::new)))
+            square_brackets(padded(lazy(|| expr()).map(Box::new)))
             .map(Projection::Index)
         };
         let member_or_method_call = {
@@ -556,9 +652,13 @@ pub fn expr_precedence_projection() -> impl Parser<char, Expr, Error = Cheap<cha
             .then_optional_whitespace()
             .then(ident())
             .then_optional_whitespace()
-            .then(parens(padded(punctuated(expr(), comma_token()))).or_not())
-            .map(|((dot_token, name), method_call_args_opt)| {
-                Projection::MemberOrMethodCall { dot_token, name, method_call_args_opt }
+            .then(parens(padded(punctuated(lazy(|| expr()), comma_token()))).optional())
+            .map(|((dot_token, name), method_call_args_res): ((_, _), Result<_, _>)| {
+                Projection::MemberOrMethodCall {
+                    dot_token,
+                    name,
+                    method_call_args_opt: method_call_args_res.ok(),
+                }
             })
         };
 
@@ -567,10 +667,10 @@ pub fn expr_precedence_projection() -> impl Parser<char, Expr, Error = Cheap<cha
     };
 
     expr_precedence_func_app()
-    .then(leading_whitespace(projection).repeated())
-    .map(|(expr, projections)| {
+    .then(optional_leading_whitespace(projection).repeated())
+    .map(|(expr, projections_with_span): (_, WithSpan<_>)| {
         let mut expr = expr;
-        for projection in projections {
+        for projection in projections_with_span.parsed {
             match projection {
                 Projection::Index(arg) => {
                     expr = Expr::Index {
@@ -603,15 +703,15 @@ pub fn expr_precedence_projection() -> impl Parser<char, Expr, Error = Cheap<cha
     })
 }
 
-pub fn expr_precedence_func_app() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_func_app() -> impl Parser<Output = Expr> + Clone {
     expr_precedence_atomic()
     .then(
-        leading_whitespace(parens(padded(punctuated(expr(), comma_token()))))
+        optional_leading_whitespace(parens(padded(punctuated(lazy(|| expr()), comma_token()))))
         .repeated()
     )
-    .map(|(expr, apps)| {
+    .map(|(expr, apps_with_span): (_, WithSpan<_>)| {
         let mut expr = expr;
-        for args in apps {
+        for args in apps_with_span.parsed {
             expr = Expr::FuncApp {
                 func: Box::new(expr),
                 args,
@@ -621,7 +721,11 @@ pub fn expr_precedence_func_app() -> impl Parser<char, Expr, Error = Cheap<char,
     })
 }
 
-pub fn expr_precedence_atomic() -> impl Parser<char, Expr, Error = Cheap<char, Span>> + Clone {
+pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
+    let path = {
+        path()
+        .map(Expr::Path)
+    };
     let string_literal = {
         string_literal()
         .map(Expr::StringLiteral)
@@ -633,28 +737,35 @@ pub fn expr_precedence_atomic() -> impl Parser<char, Expr, Error = Cheap<char, S
     let tuple = {
         expr_tuple()
         .map(Expr::Tuple)
-        .boxed()
+    };
+    let array = {
+        square_brackets(
+            optional_leading_whitespace(
+                punctuated(lazy(|| expr()), comma_token())
+            )
+        )
+        .map(|elems| Expr::Array { elems })
+    };
+    let array_repeat = {
+        expr_array_repeat()
+        .map(Expr::ArrayRepeat)
+    };
+    let parens = {
+        parens(padded(lazy(|| expr())))
+        .map(Box::new)
+        .map(Expr::Parens)
     };
     let code_block = {
         code_block()
         .map(Expr::CodeBlock)
-        .boxed()
-    };
-    let parens = {
-        parens(padded(expr()))
-        .map(Box::new)
-        .map(Expr::Parens)
-        .boxed()
-    };
-    let path = {
-        path()
-        .map(Expr::Path)
     };
     
-    string_literal
+    path
+    .or(string_literal)
     .or(int_literal)
     .or(tuple)
-    .or(code_block)
+    .or(array)
+    .or(array_repeat)
     .or(parens)
-    .or(path)
+    .or(code_block)
 }

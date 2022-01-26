@@ -10,8 +10,15 @@ impl Spanned for TyArray {
     }
 }
 
-pub fn ty_array() -> impl Parser<char, TyArray, Error = Cheap<char, Span>> + Clone {
-    square_brackets(leading_whitespace(array_repeat_descriptor(ty())).then_optional_whitespace())
+pub fn ty_array() -> impl Parser<Output = TyArray> + Clone {
+    square_brackets(
+        optional_leading_whitespace(
+            array_repeat_descriptor(
+                lazy(|| ty())
+            )
+        )
+        .then_optional_whitespace()
+    )
     .map(|descriptor| TyArray { descriptor })
 }
 

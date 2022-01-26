@@ -13,21 +13,47 @@ impl Spanned for StringLiteral {
     }
 }
 
-pub fn string_literal() -> impl Parser<char, StringLiteral, Error = Cheap<char, Span>> + Clone {
+pub fn string_literal() -> impl Parser<Output = StringLiteral> + Clone {
     quote_token()
-    .then(string_literal_contents().map_with_span(|parsed, span| (parsed, span)))
+    .then(string_literal_contents())
     .then(quote_token())
-    .map(|((open_quote, (parsed, contents_span)), close_quote)| {
+    .map(|((open_quote, parsed), close_quote)| {
+        let WithSpan { parsed, span: contents_span } = parsed;
         StringLiteral { open_quote, contents_span, close_quote, parsed }
     })
 }
 
-fn string_literal_contents() -> impl Parser<char, String, Error = Cheap<char, Span>> + Clone {
-    string_char().repeated().map(|chars| chars.into_iter().collect())
+fn string_literal_contents() -> impl Parser<Output = WithSpan<String>> + Clone {
+    string_char()
+    .repeated()
+    .map(|chars_with_span: WithSpan<Vec<WithSpan<char>>>| {
+        let WithSpan { parsed: chars, span } = chars_with_span;
+        let s = {
+            chars
+            .into_iter()
+            .map(|c_with_span| c_with_span.parsed)
+            .collect()
+        };
+        WithSpan { parsed: s, span }
+    })
 }
 
-fn string_char() -> impl Parser<char, char, Error = Cheap<char, Span>> + Clone {
-    escape_code()
-    .or(chumsky::primitive::none_of("\""))
+fn string_char() -> impl Parser<Output = WithSpan<char>> + Clone {
+    keyword("\\")
+    .optional()
+    .and_then(|backslash_res: Result<Span, Span>| match backslash_res {
+        Ok(backslash_span) => {
+            Either::Left(
+                escape_code()
+                .map(move |c_with_span| {
+                    let WithSpan { parsed: c, span } = c_with_span;
+                    WithSpan { parsed: c, span: Span::join(backslash_span.clone(), span) }
+                })
+            )
+        },
+        Err(..) => {
+            Either::Right(single_char())
+        },
+    })
 }
 

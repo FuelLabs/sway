@@ -160,4 +160,9 @@ where
     }
 }
 
+pub fn empty() -> impl Parser<Output = Span> {
+    from_fn(move |input| {
+        Ok(input.to_start())
+    })
+}
 

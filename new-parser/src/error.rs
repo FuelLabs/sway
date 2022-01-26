@@ -22,6 +22,12 @@ pub enum ParseError {
         error0: Box<ParseError>,
         error1: Box<ParseError>,
     },
+    UnicodeEscapeOutOfRange {
+        span: Span,
+    },
+    InvalidUnicodeEscapeChar {
+        span: Span,
+    },
 }
 
 impl Spanned for ParseError {
@@ -35,6 +41,8 @@ impl Spanned for ParseError {
             ParseError::Or { error0, error1 } => {
                 Span::join(error0.span(), error1.span())
             },
+            ParseError::UnicodeEscapeOutOfRange { span } => span.clone(),
+            ParseError::InvalidUnicodeEscapeChar { span } => span.clone(),
         }
     }
 }

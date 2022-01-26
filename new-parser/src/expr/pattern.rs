@@ -9,7 +9,7 @@ impl Spanned for Pattern {
     }
 }
 
-pub fn pattern() -> impl Parser<char, Pattern, Error = Cheap<char, Span>> + Clone {
-    chumsky::primitive::todo()
+pub fn pattern() -> impl Parser<Output = Pattern> + Clone {
+    todo()
 }
 

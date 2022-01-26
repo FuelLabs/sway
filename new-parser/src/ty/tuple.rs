@@ -10,10 +10,8 @@ impl Spanned for TyTuple {
     }
 }
 
-pub fn ty_tuple() -> impl Parser<char, TyTuple, Error = Cheap<char, Span>> + Clone {
-    //parens(leading_whitespace(tuple_descriptor(ty(), empty())).then_optional_whitespace())
-    //.map(|descriptor| TyTuple { descriptor })
-    parens(padded(punctuated(ty(), comma_token())))
+pub fn ty_tuple() -> impl Parser<Output = TyTuple> + Clone {
+    parens(padded(punctuated(lazy(|| ty()), comma_token())))
     .map(|elems| TyTuple { elems })
 }
 

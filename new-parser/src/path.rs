@@ -20,20 +20,24 @@ impl Spanned for Path {
     }
 }
 
-pub fn path() -> impl Parser<char, Path, Error = Cheap<char, Span>> + Clone {
+pub fn path() -> impl Parser<Output = Path> + Clone {
     double_colon_token()
     .then_optional_whitespace()
-    .or_not()
+    .optional()
     .then(ident())
     .then(
-        leading_whitespace(
+        optional_leading_whitespace(
             double_colon_token()
             .then_optional_whitespace()
             .then(ident())
         )
         .repeated()
     )
-    .map(|((leading_double_colon_opt, prefix), suffix)| {
-        Path { leading_double_colon_opt, prefix, suffix }
+    .map(|((leading_double_colon_res, prefix), suffix_with_span): ((Result<_, _>, _), WithSpan<_>)| {
+        Path {
+            leading_double_colon_opt: leading_double_colon_res.ok(),
+            prefix,
+            suffix: suffix_with_span.parsed,
+        }
     })
 }

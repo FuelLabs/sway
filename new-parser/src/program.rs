@@ -1,27 +1,15 @@
 use crate::priv_prelude::*;
 
 pub struct Program {
+    pub span: Span,
     pub kind: ProgramKind,
     pub dependencies: Vec<Dependency>,
 }
 
 impl Spanned for Program {
     fn span(&self) -> Span {
-        let src = self.kind.span().context();
-        let end = src.len();
-        Span::new(src, 0, end)
+        self.span.clone()
     }
-}
-
-pub fn program() -> impl Parser<char, Program, Error = Cheap<char, Span>> + Clone {
-    whitespace()
-    .or_not()
-    .then(program_kind())
-    .then_optional_whitespace()
-    .then(dependency().then_optional_whitespace().repeated())
-    .map(|((_opt, kind), dependencies)| {
-        Program { kind, dependencies }
-    })
 }
 
 pub enum ProgramKind {
@@ -63,7 +51,23 @@ impl Spanned for ProgramKind {
     }
 }
 
-pub fn program_kind() -> impl Parser<char, ProgramKind, Error = Cheap<char, Span>> + Clone {
+pub fn program() -> impl Parser<Output = Program> + Clone {
+    whitespace()
+    .optional()
+    .then(program_kind())
+    .then_optional_whitespace()
+    .then(dependency().then_optional_whitespace().repeated())
+    .then(whitespace().optional())
+    .map(|(((leading_whitespace, kind), dependencies_with_span), trailing_whitespace): (((Result<_, _>, _), WithSpan<_>), Result<_, _>)| {
+        Program {
+            span: Span::join(leading_whitespace.span(), trailing_whitespace.span()),
+            kind,
+            dependencies: dependencies_with_span.parsed,
+        }
+    })
+}
+
+pub fn program_kind() -> impl Parser<Output = ProgramKind> + Clone {
     let script = {
         script_token()
         .then_optional_whitespace()

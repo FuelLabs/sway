@@ -2,6 +2,7 @@ mod priv_prelude;
 mod parser;
 mod error;
 mod primitive;
+#[macro_use]
 mod combinators;
 mod span;
 mod tokens;
@@ -10,17 +11,12 @@ mod brackets;
 mod punctuated;
 mod item;
 mod ty;
-//mod literal;
-
-/*
-mod parser_ext;
-mod program;
-mod visibility;
+mod literal;
 mod path;
-mod dependency;
-mod expr;
 mod array;
-*/
+mod dependency;
+mod program;
+mod expr;
 
 pub use parser::*;
 pub use error::*;
@@ -33,13 +29,9 @@ pub use brackets::*;
 pub use punctuated::*;
 pub use item::*;
 pub use ty::*;
-//pub use literal::*;
-/*
-pub use parser_ext::*;
-pub use program::*;
-pub use visibility::*;
+pub use literal::*;
 pub use path::*;
-pub use dependency::*;
-pub use expr::*;
 pub use array::*;
-*/
+pub use dependency::*;
+pub use program::*;
+pub use expr::*;

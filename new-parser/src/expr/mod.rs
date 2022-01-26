@@ -1,14 +1,14 @@
-mod code_block;
-mod statement;
-mod pattern;
-mod tuple;
-mod array;
 mod expr;
+mod tuple;
+mod pattern;
+mod statement;
+mod code_block;
+mod array;
 
-pub use code_block::*;
-pub use statement::*;
-pub use pattern::*;
-pub use tuple::*;
 pub use expr::*;
+pub use tuple::*;
+pub use pattern::*;
+pub use statement::*;
+pub use code_block::*;
 pub use array::*;
 

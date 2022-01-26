@@ -6,6 +6,12 @@ pub struct Map<P, F> {
     func: F,
 }
 
+impl<P, F> Map<P, F> {
+    pub fn new(parser: P, func: F) -> Map<P, F> {
+        Map { parser, func }
+    }
+}
+
 impl<T, U, P, F> Parser for Map<P, F>
 where
     P: Parser<Output = T>,
@@ -23,6 +29,12 @@ where
 pub struct TryMap<P, F> {
     parser: P,
     func: F,
+}
+
+impl<P, F> TryMap<P, F> {
+    pub fn new(parser: P, func: F) -> TryMap<P, F> {
+        TryMap { parser, func }
+    }
 }
 
 impl<P, T, F> Parser for TryMap<P, F>
@@ -45,6 +57,12 @@ pub struct Then<P0, P1> {
     parser1: P1,
 }
 
+impl<P0, P1> Then<P0, P1> {
+    pub fn new(parser0: P0, parser1: P1) -> Then<P0, P1> {
+        Then { parser0, parser1 }
+    }
+}
+
 impl<P0, P1> Parser for Then<P0, P1>
 where
     P0: Parser,
@@ -64,6 +82,12 @@ where
 pub struct Or<P0, P1> {
     parser0: P0,
     parser1: P1,
+}
+
+impl<P0, P1> Or<P0, P1> {
+    pub fn new(parser0: P0, parser1: P1) -> Or<P0, P1> {
+        Or { parser0, parser1 }
+    }
 }
 
 impl<P0, P1> Parser for Or<P0, P1>
@@ -94,6 +118,12 @@ pub struct Optional<P> {
     parser: P,
 }
 
+impl<P> Optional<P> {
+    pub fn new(parser: P) -> Optional<P> {
+        Optional { parser }
+    }
+}
+
 impl<P> Parser for Optional<P>
 where
     P: Parser,
@@ -111,6 +141,12 @@ where
 #[derive(Clone)]
 pub struct ThenWhitespace<P> {
     parser: P,
+}
+
+impl<P> ThenWhitespace<P> {
+    pub fn new(parser: P) -> ThenWhitespace<P> {
+        ThenWhitespace { parser }
+    }
 }
 
 impl<P> Parser for ThenWhitespace<P>
@@ -132,6 +168,12 @@ pub struct ThenOptionalWhitespace<P> {
     parser: P,
 }
 
+impl<P> ThenOptionalWhitespace<P> {
+    pub fn new(parser: P) -> ThenOptionalWhitespace<P> {
+        ThenOptionalWhitespace { parser }
+    }
+}
+
 impl<P> Parser for ThenOptionalWhitespace<P>
 where
     P: Parser,
@@ -149,6 +191,12 @@ where
 #[derive(Clone)]
 pub struct Repeated<P> {
     parser: P,
+}
+
+impl<P> Repeated<P> {
+    pub fn new(parser: P) -> Repeated<P> {
+        Repeated { parser }
+    }
 }
 
 impl<P> Parser for Repeated<P>
@@ -175,4 +223,32 @@ where
     }
 }
 
+#[derive(Clone)]
+pub struct AndThen<P, F> {
+    parser: P,
+    func: F,
+}
+
+impl<P, F> AndThen<P, F> {
+    pub fn new(parser: P, func: F) -> AndThen<P, F> {
+        AndThen { parser, func }
+    }
+}
+
+impl<P0, P1, F> Parser for AndThen<P0, F>
+where
+    P0: Parser,
+    F: Fn(P0::Output) -> P1,
+    P1: Parser,
+{
+    type Output = P1::Output;
+
+    fn parse(&self, input: &Span) -> Result<P1::Output, ParseError> {
+        let value0 = self.parser.parse(input)?;
+        let input = input.with_range(value0.span().end()..);
+        let parser1 = (self.func)(value0);
+        let value1 = parser1.parse(&input)?;
+        Ok(value1)
+    }
+}
 

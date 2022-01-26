@@ -4,23 +4,19 @@ mod type_fields;
 mod item_use;
 mod item_struct;
 mod item_enum;
-/*
 mod item_fn;
-*/
 
 pub use type_fields::*;
 pub use item_use::*;
 pub use item_struct::*;
 pub use item_enum::*;
-/*
 pub use item_fn::*;
-*/
 
 pub enum Item {
     Use(ItemUse),
     Struct(ItemStruct),
     Enum(ItemEnum),
-    //Function(ItemFn),
+    Function(ItemFn),
 }
 
 impl Spanned for Item {
@@ -29,7 +25,7 @@ impl Spanned for Item {
             Item::Use(item_use) => item_use.span(),
             Item::Struct(item_struct) => item_struct.span(),
             Item::Enum(item_enum) => item_enum.span(),
-            //Item::Function(item_fn) => item_fn.span(),
+            Item::Function(item_fn) => item_fn.span(),
         }
     }
 }
@@ -47,17 +43,14 @@ pub fn item() -> impl Parser<Output = Item> + Clone {
         item_enum()
         .map(Item::Enum)
     };
-    /*
     let item_fn = {
         item_fn()
         .map(Item::Function)
-        .boxed()
     };
-    */
 
     item_use
     .or(item_struct)
     .or(item_enum)
-    //.or(item_fn)
+    .or(item_fn)
 }
 

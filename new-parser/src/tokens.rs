@@ -2,6 +2,7 @@ use crate::priv_prelude::*;
 
 macro_rules! define_token (
     ($ty_name:ident, $fn_name:ident, $s:literal) => (
+        #[derive(Clone)]
         pub struct $ty_name {
             span: Span,
         }

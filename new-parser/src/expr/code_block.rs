@@ -15,21 +15,26 @@ impl Spanned for CodeBlock {
     }
 }
 
-pub fn code_block() -> impl Parser<char, CodeBlock, Error = Cheap<char, Span>> + Clone {
+pub fn code_block() -> impl Parser<Output = CodeBlock> + Clone {
     braces(padded(code_block_contents()))
-    .map(|contents| CodeBlock { contents })
+    .map(|braces: Braces<WithSpan<_>>| {
+        let contents = braces.map(|contents_with_span| contents_with_span.parsed);
+        CodeBlock { contents }
+    })
 }
 
-pub fn code_block_contents() -> impl Parser<char, CodeBlockContents, Error = Cheap<char, Span>> + Clone {
+pub fn code_block_contents() -> impl Parser<Output = WithSpan<CodeBlockContents>> + Clone {
     statement()
     .then_optional_whitespace()
     .repeated()
-    .then(expr().or_not())
-    .map(|(statements, final_expr_opt)| {
-        CodeBlockContents {
-            statements,
-            final_expr_opt: final_expr_opt.map(Box::new),
-        }
+    .then(lazy(|| expr()).optional())
+    .map(|(statements_with_span, final_expr_res): (WithSpan<Vec<Statement>>, Result<Expr, Span>)| {
+        let span = Span::join(statements_with_span.span(), final_expr_res.span());
+        let parsed = CodeBlockContents {
+            statements: statements_with_span.parsed,
+            final_expr_opt: final_expr_res.ok().map(Box::new),
+        };
+        WithSpan { parsed, span }
     })
 }
 
