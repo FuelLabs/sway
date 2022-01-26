@@ -29,6 +29,7 @@ sway-ir = { version = "0.3.1", path = "../sway-ir" }
 sway-types = { version = "0.3.1", path = "../sway-types" }
 generational-arena = "0.2"
 thiserror = "1.0"
+nanoid = "0.4.0"
 
 [[bin]]
 name = "selector-debug"

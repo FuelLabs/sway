@@ -527,7 +527,7 @@ impl Expression {
                 );
                 Expression::MatchExp {
                     if_exp: Box::new(if_exp),
-                    span: span.clone(),
+                    span,
                 }
             }
             Rule::struct_expression => {
