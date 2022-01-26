@@ -310,8 +310,8 @@ impl TypedExpression {
                 errors.push(CompileError::TypeError(e));
             }
         };
-
         // The annotation may result in a cast, which is handled in the type engine.
+
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
@@ -319,11 +319,11 @@ impl TypedExpression {
                 insert_type(TypeInfo::ErrorRecovery)
             });
 
-        // Literal of type Numeric can now be resolved
+        // Literals of type Numeric can now be resolved
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(span) = lit {
                 typed_expression = check!(
-                    Self::resolve_numeric_literal_type(typed_expression.return_type, span),
+                    Self::resolve_numeric_span_ty_type(span, typed_expression.return_type),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1793,9 +1793,9 @@ impl TypedExpression {
         }
     }
 
-    fn resolve_numeric_literal_type(
-        new_type: TypeId,
+    fn resolve_numeric_span_to_typ(
         span: Span,
+        new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
         let pest_span = span.clone().span;
