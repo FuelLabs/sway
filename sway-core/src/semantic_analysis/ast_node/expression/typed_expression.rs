@@ -310,11 +310,18 @@ impl TypedExpression {
                 errors.push(CompileError::TypeError(e));
             }
         };
+
         // The annotation may result in a cast, which is handled in the type engine.
-        // Handle casting literals
-        let expr = typed_expression.clone().expression;
-        if let TypedExpressionVariant::Literal(lit) = expr.clone() {
-            if let Literal::Numeric(span) = lit.clone() {
+        typed_expression.return_type = namespace
+            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: expr_span });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+
+        // Literal of type Numeric can now be resolved
+        if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
+            if let Literal::Numeric(span) = lit {
                 typed_expression = check!(
                     Self::resolve_numeric_literal_type(typed_expression.return_type, span),
                     return err(warnings, errors),
@@ -323,13 +330,6 @@ impl TypedExpression {
                 );
             }
         }
-
-        namespace
-            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType { span: expr_span });
-                insert_type(TypeInfo::ErrorRecovery)
-            });
 
         ok(typed_expression, warnings, errors)
     }
@@ -1801,6 +1801,8 @@ impl TypedExpression {
         let path = span.clone().path;
         let pest_span =
             pest::Span::new(span.clone().as_str().into(), 0, span.clone().as_str().len()).unwrap();
+
+        // Parse and resolve a Numeric(span) based on new_type.
         let val = match look_up_type_id(new_type) {
             TypeInfo::UnsignedInteger(n) => match n {
                 IntegerBits::Eight => span
@@ -1876,6 +1878,7 @@ impl TypedExpression {
                     is_constant: IsConstant::Yes,
                     span,
                 };
+                println!("final exp: {:?}", exp);
                 ok(exp, vec![], vec![])
             }
             Err(e) => {

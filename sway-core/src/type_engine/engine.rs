@@ -39,6 +39,8 @@ impl Engine {
         span: &Span,
     ) -> Result<Vec<CompileWarning>, TypeError> {
         use TypeInfo::*;
+        println!("received: {}", received.friendly_type_str());
+        println!("expected: {}", expected.friendly_type_str());
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
             (received_info, expected_info) if received_info == expected_info => Ok(vec![]),
@@ -46,6 +48,60 @@ impl Engine {
             // Follow any references
             (Ref(received), _) => self.unify(received, expected, span),
             (_, Ref(expected)) => self.unify(received, expected, span),
+
+            (Unknown, Numeric) => match self.slab.replace(
+                received,
+                &Unknown,
+                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            ) {
+                None => {
+                    match self.slab.replace(
+                        expected,
+                        &Numeric,
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                    ) {
+                        None => Ok(vec![]),
+                        Some(_) => self.unify(received, expected, span),
+                    }
+                }
+                Some(_) => self.unify(received, expected, span),
+            },
+
+            (Numeric, Unknown) => match self.slab.replace(
+                expected,
+                &Unknown,
+                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            ) {
+                None => {
+                    match self.slab.replace(
+                        received,
+                        &Numeric,
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                    ) {
+                        None => Ok(vec![]),
+                        Some(_) => self.unify(received, expected, span),
+                    }
+                }
+                Some(_) => self.unify(received, expected, span),
+            },
+
+            (Numeric, Numeric) => match self.slab.replace(
+                expected,
+                &Numeric,
+                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            ) {
+                None => {
+                    match self.slab.replace(
+                        received,
+                        &Numeric,
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                    ) {
+                        None => Ok(vec![]),
+                        Some(_) => self.unify(received, expected, span),
+                    }
+                }
+                Some(_) => self.unify(received, expected, span),
+            },
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the

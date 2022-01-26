@@ -261,6 +261,7 @@ impl Literal {
         span: Span,
         path: Option<Arc<PathBuf>>,
     ) -> CompileError {
+        println!("Pest span: {:?}", span);
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
                 ty: ty.friendly_type_str(),
