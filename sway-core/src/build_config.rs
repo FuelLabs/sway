@@ -10,6 +10,7 @@ pub struct BuildConfig {
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
+    pub(crate) generated_names: Arc<Vec<&'static str>>,
 }
 
 impl BuildConfig {
@@ -29,6 +30,7 @@ impl BuildConfig {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
+            generated_names: Arc::new(vec![]),
         }
     }
 

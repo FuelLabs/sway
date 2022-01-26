@@ -83,7 +83,13 @@ impl VariableDeclaration {
             warnings,
             errors
         );
-        VariableDeclaration::desugar_to_decls(lhs, type_ascription, type_ascription_span, body)
+        VariableDeclaration::desugar_to_decls(
+            lhs,
+            type_ascription,
+            type_ascription_span,
+            body,
+            config,
+        )
     }
 
     fn desugar_to_decls(
@@ -91,6 +97,7 @@ impl VariableDeclaration {
         type_ascription: TypeInfo,
         type_ascription_span: Option<Span>,
         body: Expression,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -107,7 +114,7 @@ impl VariableDeclaration {
                 }]
             }
             VariableDeclarationLHS::Tuple(lhs_tuple) => {
-                let name = Ident::new_with_override("TUPLE_ACCESS_DESUGARING", body.span());
+                let name = ident::random_name(body.span(), config);
                 let save_body_first = VariableDeclaration {
                     name: name.clone(),
                     type_ascription,
