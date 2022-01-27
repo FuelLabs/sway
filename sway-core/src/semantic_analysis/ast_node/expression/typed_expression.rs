@@ -1814,7 +1814,6 @@ impl TypedExpression {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => span
                         .clone()
-                        .clone()
                         .as_str()
                         .trim()
                         .replace("_", "")
