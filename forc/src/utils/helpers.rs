@@ -280,7 +280,6 @@ fn format_warning(err: &sway_core::CompileWarning) {
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
 fn maybe_uwuify(raw: &str) -> String {
     use uwuifier::uwuify_str_sse;
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     uwuify_str_sse(raw)
 }
 #[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
