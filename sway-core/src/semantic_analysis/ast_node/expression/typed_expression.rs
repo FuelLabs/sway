@@ -1813,7 +1813,6 @@ impl TypedExpression {
             Literal::Numeric(span) => match look_up_type_id(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => span
-                        .clone()
                         .as_str()
                         .trim()
                         .replace("_", "")
@@ -1828,7 +1827,6 @@ impl TypedExpression {
                             )
                         }),
                     IntegerBits::Sixteen => span
-                        .clone()
                         .as_str()
                         .trim()
                         .replace("_", "")
@@ -1843,7 +1841,6 @@ impl TypedExpression {
                             )
                         }),
                     IntegerBits::ThirtyTwo => span
-                        .clone()
                         .as_str()
                         .trim()
                         .replace("_", "")
@@ -1858,7 +1855,6 @@ impl TypedExpression {
                             )
                         }),
                     IntegerBits::SixtyFour => span
-                        .clone()
                         .as_str()
                         .trim()
                         .replace("_", "")
