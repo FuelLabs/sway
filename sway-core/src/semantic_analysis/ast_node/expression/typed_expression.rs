@@ -321,15 +321,19 @@ impl TypedExpression {
                 insert_type(TypeInfo::ErrorRecovery)
             });
 
-        // Literals of type Numeric can now be resolved
+        // Literals of type Numeric can now be resolved if typed_expression.return_type is
+        // an UnsignedInteger
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit.clone() {
-                typed_expression = check!(
-                    Self::resolve_numeric_literal(lit, expr_span, typed_expression.return_type),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                if let TypeInfo::UnsignedInteger(_) = look_up_type_id(typed_expression.return_type)
+                {
+                    typed_expression = check!(
+                        Self::resolve_numeric_literal(lit, expr_span, typed_expression.return_type),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
             }
         }
 
@@ -1907,7 +1911,7 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace = create_module();
+        let namespace = create_module();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
