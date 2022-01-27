@@ -152,6 +152,34 @@ impl Engine {
                 Ok(warn)
             }
 
+            (ref received_info @ UnknownGeneric { .. }, Numeric) => {
+                self.slab.replace(
+                    received,
+                    received_info,
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                );
+                self.slab.replace(
+                    expected,
+                    &Numeric,
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                );
+                Ok(vec![])
+            }
+
+            (Numeric, ref expected_info @ UnknownGeneric { .. }) => {
+                self.slab.replace(
+                    expected,
+                    expected_info,
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                );
+                self.slab.replace(
+                    received,
+                    &Numeric,
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                );
+                Ok(vec![])
+            }
+
             (ref received_info @ UnknownGeneric { .. }, _) => {
                 self.slab
                     .replace(received, received_info, TypeInfo::Ref(expected));

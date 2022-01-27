@@ -50,9 +50,6 @@ impl Literal {
     ) -> CompileResult<(Self, span::Span)> {
         let path = config.map(|c| c.path());
         let lit_inner = lit.into_inner().next().unwrap();
-        if let Rule::basic_integer = lit_inner.as_rule() {
-            println!("lit_inner basic integer: {:?}", lit_inner);
-        }
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::basic_integer => {
                 let span = span::Span {
