@@ -215,7 +215,7 @@ fn format_err(err: &sway_core::CompileError) {
         end_pos += 1;
     }
     let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
-    let (mut start, mut end) = err.line_col();
+    let (mut start, end) = err.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
@@ -254,7 +254,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         end_pos += 1;
     }
 
-    let (mut start, mut end) = err.line_col();
+    let (mut start, end) = err.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
