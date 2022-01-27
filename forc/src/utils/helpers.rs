@@ -214,7 +214,7 @@ fn format_err(err: &sway_core::CompileError) {
         // if start/pos are same we will not get that arrow pointing to code, so we add +1.
         end_pos += 1;
     }
-    let friendly_str = err.to_friendly_error_string();
+    let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
     let (mut start, mut end) = err.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
@@ -247,8 +247,8 @@ fn format_warning(err: &sway_core::CompileWarning) {
     let input = err.span.input();
     let path = err.path();
 
+    let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
     let (mut start_pos, mut end_pos) = err.span();
-    let friendly_str = err.to_friendly_warning_string();
     if start_pos == end_pos {
         // if start/pos are same we will not get that arrow pointing to code, so we add +1.
         end_pos += 1;
@@ -332,4 +332,20 @@ fn construct_window<'a>(
     *end_ix -= calculated_start_ix;
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
+}
+
+#[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
+fn maybe_uwuify(raw: &str) -> String {
+    use uwuifier::uwuify_str_sse;
+    uwuify_str_sse(raw)
+}
+#[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
+fn maybe_uwuify(raw: &str) -> String {
+    compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
+    Default::default()
+}
+
+#[cfg(not(feature = "uwu"))]
+fn maybe_uwuify(raw: &str) -> String {
+    raw.to_string()
 }
