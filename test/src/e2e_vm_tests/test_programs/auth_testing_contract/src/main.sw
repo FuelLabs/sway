@@ -1,5 +1,5 @@
 contract;
---use std::chain::auth::{caller_is_external,msg_sender};
+use std::chain::auth::{caller_is_external,msg_sender};
 use std::result::Result;
 use auth_testing_abi::AuthTesting;
 
