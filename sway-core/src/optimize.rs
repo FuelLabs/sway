@@ -838,8 +838,7 @@ impl FnCompiler {
         if let Some(ptr) = self
             .symbol_map
             .get(name)
-            .map(|local_name| self.function.get_local_ptr(context, local_name))
-            .flatten()
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
             Ok(if ptr.is_struct_ptr(context) {
                 self.current_block.ins(context).get_ptr(ptr)
@@ -1346,6 +1345,7 @@ fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Val
         Literal::U16(n) => Constant::get_uint(context, 16, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 32, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
+        Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
         Literal::String(s) => Constant::get_string(context, s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
@@ -1358,6 +1358,7 @@ fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
         Literal::U16(n) => Constant::new_uint(16, *n as u64),
         Literal::U32(n) => Constant::new_uint(32, *n as u64),
         Literal::U64(n) => Constant::new_uint(64, *n),
+        Literal::Numeric(n) => Constant::new_uint(64, *n),
         Literal::String(s) => Constant::new_string(s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::new_bool(*b),
         Literal::B256(bs) => Constant::new_b256(*bs),
@@ -1489,7 +1490,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }
@@ -1534,7 +1535,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
+                    path.file_name().unwrap_or_else(|| path.as_os_str())
                 ),
             }
         }

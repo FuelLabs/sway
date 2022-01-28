@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "test_fuel_coin_contract"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.2" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }

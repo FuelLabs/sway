@@ -100,15 +100,12 @@ async fn check_tagged_dependency(
     if current_release.ne(&latest) {
         println!(
             "[{}] not up-to-date. Current version: {}, latest: {}",
-            dependency_name,
-            current_release.to_string(),
-            latest.to_string()
+            dependency_name, current_release, latest
         );
     } else {
         println!(
             "[{}] up-to-date. Current version: {}",
-            dependency_name,
-            current_release.to_string(),
+            dependency_name, current_release,
         );
     }
 

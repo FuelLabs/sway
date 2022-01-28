@@ -22,6 +22,7 @@ pub enum Literal {
     U32(u32),
     U64(u64),
     String(span::Span),
+    Numeric(u64),
     Boolean(bool),
     Byte(u8),
     B256([u8; 32]),
@@ -36,6 +37,7 @@ impl Literal {
             U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
             U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
             U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            Numeric(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
@@ -49,7 +51,30 @@ impl Literal {
         let path = config.map(|c| c.path());
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
-            Rule::integer => {
+            Rule::basic_integer => {
+                let span = span::Span {
+                    span: lit_inner.as_span(),
+                    path: path.clone(),
+                };
+                (
+                    lit_inner
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::Numeric)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                lit_inner.as_span(),
+                                path.clone(),
+                            )
+                        }),
+                    span,
+                )
+            }
+            Rule::typed_integer => {
                 let mut int_inner = lit_inner.into_inner().next().unwrap();
                 let rule = int_inner.as_rule();
                 if int_inner.as_rule() != Rule::basic_integer {
@@ -64,11 +89,11 @@ impl Literal {
                         Rule::u8_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U8)
                             .map_err(|e| {
-                                handle_parse_int_error(
+                                Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::Eight),
                                     int_inner.as_span(),
@@ -78,11 +103,11 @@ impl Literal {
                         Rule::u16_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U16)
                             .map_err(|e| {
-                                handle_parse_int_error(
+                                Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                                     int_inner.as_span(),
@@ -92,11 +117,11 @@ impl Literal {
                         Rule::u32_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U32)
                             .map_err(|e| {
-                                handle_parse_int_error(
+                                Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                                     int_inner.as_span(),
@@ -106,11 +131,11 @@ impl Literal {
                         Rule::u64_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U64)
                             .map_err(|e| {
-                                handle_parse_int_error(
+                                Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
                                     int_inner.as_span(),
@@ -210,6 +235,7 @@ impl Literal {
                 vec![0, 0, 0, 0, bytes[0], bytes[1], bytes[2], bytes[3]]
             }
             U64(val) => val.to_be_bytes().to_vec(),
+            Numeric(val) => val.to_be_bytes().to_vec(),
             Boolean(b) => {
                 vec![
                     0,
@@ -240,6 +266,33 @@ impl Literal {
     /// values that wouldn't fit in a register.
     pub(crate) fn new_pointer_literal(offset_bytes: u64) -> Literal {
         Literal::U64(offset_bytes)
+    }
+
+    #[allow(clippy::wildcard_in_or_patterns)]
+    pub(crate) fn handle_parse_int_error(
+        e: ParseIntError,
+        ty: TypeInfo,
+        span: Span,
+        path: Option<Arc<PathBuf>>,
+    ) -> CompileError {
+        match e.kind() {
+            IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
+                ty: ty.friendly_type_str(),
+                span: span::Span { span, path },
+            },
+            IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
+                ty: ty.friendly_type_str(),
+                span: span::Span { span, path },
+            },
+            IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
+                ty: ty.friendly_type_str(),
+                span: span::Span { span, path },
+            },
+            IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
+                "Called incorrect internal sway-core on literal type.",
+                span::Span { span, path },
+            ),
+        }
     }
 }
 
@@ -365,31 +418,4 @@ fn parse_binary_from_pair(
             })
         }
     })
-}
-
-#[allow(clippy::wildcard_in_or_patterns)]
-fn handle_parse_int_error(
-    e: ParseIntError,
-    ty: TypeInfo,
-    span: Span,
-    path: Option<Arc<PathBuf>>,
-) -> CompileError {
-    match e.kind() {
-        IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-            ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
-        },
-        IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-            ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
-        },
-        IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-            ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
-        },
-        IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
-            "Called incorrect internal sway-core on literal type.",
-            span::Span { span, path },
-        ),
-    }
 }

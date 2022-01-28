@@ -157,13 +157,13 @@ impl TypeInfo {
                     }
                     Some(array_elem_count_pair) => {
                         match array_elem_count_pair.as_rule() {
-                            Rule::u64_integer => {
+                            Rule::basic_integer => {
                                 // Parse the count directly to a usize.
                                 check!(
                                     array_elem_count_pair
                                         .as_str()
                                         .trim()
-                                        .replace("_", "")
+                                        .replace('_', "")
                                         .parse::<usize>()
                                         // Could probably just .unwrap() here since it will succeed.
                                         .map_or_else(

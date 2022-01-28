@@ -128,18 +128,14 @@ impl Block {
     ///
     /// Returns `None` if block is empty.
     pub fn get_term_inst<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
-        context.blocks[self.0]
-            .instructions
-            .last()
-            .map(|val| {
-                // It's guaranteed to be an instruction value.
-                if let ValueContent::Instruction(term_inst) = &context.values[val.0] {
-                    Some(term_inst)
-                } else {
-                    None
-                }
-            })
-            .flatten()
+        context.blocks[self.0].instructions.last().and_then(|val| {
+            // It's guaranteed to be an instruction value.
+            if let ValueContent::Instruction(term_inst) = &context.values[val.0] {
+                Some(term_inst)
+            } else {
+                None
+            }
+        })
     }
 
     /// Replace a value within this block.

@@ -25,14 +25,14 @@ fn ir_to_ir_tests() {
                 } else {
                     panic!(
                         "File which doesn't match valid passes: {:?}",
-                        path.file_name().unwrap_or(path.as_os_str())
+                        path.file_name().unwrap_or_else(|| path.as_os_str())
                     );
                 }
             }
             Some("out_ir") => (),
             _ => panic!(
                 "File with invalid extension in tests dir: {:?}",
-                path.file_name().unwrap_or(path.as_os_str())
+                path.file_name().unwrap_or_else(|| path.as_os_str())
             ),
         }
     }
