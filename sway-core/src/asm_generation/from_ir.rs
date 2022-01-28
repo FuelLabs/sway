@@ -1143,8 +1143,7 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Unit
             | ConstantValue::Bool(_)
             | ConstantValue::Uint(_)
-            | ConstantValue::B256(_)
-            | ConstantValue::String(_) => {
+            | ConstantValue::B256(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -1157,26 +1156,55 @@ impl<'ir> AsmBuilder<'ir> {
                     owning_span: None,
                 });
 
-                // Write the initialiser to memory.
+                // Write the initialiser to memory.  Most Literals are 1 word, B256 is 32 bytes and
+                // needs to use a MCP instruction.
+                if let Literal::B256(_) = lit {
+                    let offs_reg = self.reg_seqr.next();
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADDI(
+                            offs_reg.clone(),
+                            start_reg.clone(),
+                            VirtualImmediate12::new(offs_in_words * 8, Self::empty_span()).unwrap(),
+                        )),
+                        comment: "calculate byte offset to aggregate field".into(),
+                        owning_span: None,
+                    });
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCPI(
+                            offs_reg,
+                            init_reg,
+                            VirtualImmediate12 { value: 32 },
+                        )),
+                        comment: "initialise aggregate field".into(),
+                        owning_span: None,
+                    });
+
+                    4 // 32 bytes is 4 words.
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            start_reg.clone(),
+                            init_reg,
+                            VirtualImmediate12::new(offs_in_words, Self::empty_span()).unwrap(),
+                        )),
+                        comment: "initialise aggregate field".into(),
+                        owning_span: None,
+                    });
+
+                    1
+                }
+            }
+
+            ConstantValue::String(_) => {
+                // These are still not properly implemented until we refactor for spans!  There's
+                // an issue on GitHub for it.
                 self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        start_reg.clone(),
-                        init_reg,
-                        VirtualImmediate12::new(offs_in_words, Self::empty_span()).unwrap(),
-                    )),
-                    comment: format!(
-                        "initialise aggregate field at stack offset {}",
-                        offs_in_words
-                    ),
+                    opcode: Either::Left(VirtualOp::NOOP),
+                    comment: "strings aren't implemented!".into(),
                     owning_span: None,
                 });
 
-                // Return the constant size in words.
-                match &constant.value {
-                    ConstantValue::B256(_) => 4,
-                    ConstantValue::String(s) => size_bytes_in_words!(s.len() as u64),
-                    _otherwise => 1,
-                }
+                0
             }
 
             ConstantValue::Array(items) | ConstantValue::Struct(items) => {
