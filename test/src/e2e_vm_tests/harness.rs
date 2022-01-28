@@ -14,6 +14,8 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
     println!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
+    let (verbose, use_ir) = get_test_config_from_env();
+
     tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(forc_deploy::deploy(DeployCommand {
@@ -21,14 +23,14 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            use_ir: false,
+            use_ir,
             print_finalized_asm: false,
             print_intermediate_asm: false,
             print_ir: false,
             binary_outfile: None,
             debug_outfile: None,
             offline_mode: false,
-            silent_mode: true,
+            silent_mode: !verbose,
         }))
         .unwrap()
 }
@@ -44,6 +46,8 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
         contracts.push(contract);
     }
 
+    let (verbose, use_ir) = get_test_config_from_env();
+
     let command = RunCommand {
         data: None,
         path: Some(format!(
@@ -53,13 +57,13 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
         dry_run: false,
         node_url: "127.0.0.1:4000".into(),
         kill_node: false,
-        use_ir: false,
+        use_ir,
         binary_outfile: None,
         debug_outfile: None,
         print_finalized_asm: false,
         print_intermediate_asm: false,
         print_ir: false,
-        silent_mode: true,
+        silent_mode: !verbose,
         pretty_print: false,
         contract: Some(contracts),
     };
@@ -113,19 +117,20 @@ pub(crate) fn does_not_compile(file_name: &str) {
 pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
     println!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let (verbose, use_ir) = get_test_config_from_env();
     forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        use_ir: false,
+        use_ir,
         print_finalized_asm: false,
         print_intermediate_asm: false,
         print_ir: false,
         binary_outfile: None,
         debug_outfile: None,
         offline_mode: false,
-        silent_mode: true,
+        silent_mode: !verbose,
     })
 }
 
@@ -171,4 +176,13 @@ fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
         offline_mode: false,
         silent_mode: true,
     })
+}
+
+fn get_test_config_from_env() -> (bool, bool) {
+    let var_exists = |key| std::env::var(key).map(|_| true).unwrap_or(false);
+
+    (
+        var_exists("SWAY_TEST_VERBOSE"),
+        var_exists("SWAY_TEST_USE_IR"),
+    )
 }
