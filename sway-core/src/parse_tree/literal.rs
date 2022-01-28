@@ -22,7 +22,7 @@ pub enum Literal {
     U32(u32),
     U64(u64),
     String(span::Span),
-    Numeric(span::Span),
+    Numeric(u64),
     Boolean(bool),
     Byte(u8),
     B256([u8; 32]),
@@ -38,7 +38,7 @@ impl Literal {
             U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
             U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
-            Numeric(inner) => ResolvedType::Str(inner.as_str().len() as u64),
+            Numeric(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
             B256(_) => ResolvedType::B256,
@@ -54,9 +54,25 @@ impl Literal {
             Rule::basic_integer => {
                 let span = span::Span {
                     span: lit_inner.as_span(),
-                    path,
+                    path: path.clone(),
                 };
-                (Ok(Literal::Numeric(span.clone())), span)
+                (
+                    lit_inner
+                        .as_str()
+                        .trim()
+                        .replace("_", "")
+                        .parse()
+                        .map(Literal::Numeric)
+                        .map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                lit_inner.as_span(),
+                                path.clone(),
+                            )
+                        }),
+                    span,
+                )
             }
             Rule::typed_integer => {
                 let mut int_inner = lit_inner.into_inner().next().unwrap();
@@ -219,6 +235,7 @@ impl Literal {
                 vec![0, 0, 0, 0, bytes[0], bytes[1], bytes[2], bytes[3]]
             }
             U64(val) => val.to_be_bytes().to_vec(),
+            Numeric(val) => val.to_be_bytes().to_vec(),
             Boolean(b) => {
                 vec![
                     0,
@@ -242,9 +259,6 @@ impl Literal {
             }
             Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
             B256(b) => b.to_vec(),
-            Numeric(_) => {
-                unreachable!("Cannot convert a Numeric Literal with unknown size to bytes")
-            }
         }
     }
 

@@ -116,7 +116,7 @@ impl TypedExpressionVariant {
                     Literal::U16(content) => content.to_string(),
                     Literal::U32(content) => content.to_string(),
                     Literal::U64(content) => content.to_string(),
-                    Literal::Numeric(content) => content.as_str().to_string(),
+                    Literal::Numeric(content) => content.to_string(),
                     Literal::String(content) => content.as_str().to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),

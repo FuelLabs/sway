@@ -322,17 +322,23 @@ impl TypedExpression {
             });
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
-        // an UnsignedInteger
+        // an UnsignedInteger or a Numeric
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit.clone() {
-                if let TypeInfo::UnsignedInteger(_) = look_up_type_id(typed_expression.return_type)
-                {
-                    typed_expression = check!(
-                        Self::resolve_numeric_literal(lit, expr_span, typed_expression.return_type),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                match look_up_type_id(typed_expression.return_type) {
+                    TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
+                        typed_expression = check!(
+                            Self::resolve_numeric_literal(
+                                lit.clone(),
+                                expr_span.clone(),
+                                typed_expression.return_type
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1809,16 +1815,11 @@ impl TypedExpression {
         let path = span.clone().path;
 
         // Parse and resolve a Numeric(span) based on new_type.
-        let val = match lit {
-            Literal::Numeric(span) => match look_up_type_id(new_type) {
+        let (val, new_integer_type) = match lit {
+            Literal::Numeric(num) => match look_up_type_id(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
-                    IntegerBits::Eight => span
-                        .as_str()
-                        .trim()
-                        .replace("_", "")
-                        .parse()
-                        .map(Literal::U8)
-                        .map_err(|e| {
+                    IntegerBits::Eight => (
+                        num.to_string().parse().map(Literal::U8).map_err(|e| {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Eight),
@@ -1826,13 +1827,10 @@ impl TypedExpression {
                                 path,
                             )
                         }),
-                    IntegerBits::Sixteen => span
-                        .as_str()
-                        .trim()
-                        .replace("_", "")
-                        .parse()
-                        .map(Literal::U16)
-                        .map_err(|e| {
+                        new_type,
+                    ),
+                    IntegerBits::Sixteen => (
+                        num.to_string().parse().map(Literal::U16).map_err(|e| {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -1840,13 +1838,10 @@ impl TypedExpression {
                                 path,
                             )
                         }),
-                    IntegerBits::ThirtyTwo => span
-                        .as_str()
-                        .trim()
-                        .replace("_", "")
-                        .parse()
-                        .map(Literal::U32)
-                        .map_err(|e| {
+                        new_type,
+                    ),
+                    IntegerBits::ThirtyTwo => (
+                        num.to_string().parse().map(Literal::U32).map_err(|e| {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -1854,13 +1849,10 @@ impl TypedExpression {
                                 path,
                             )
                         }),
-                    IntegerBits::SixtyFour => span
-                        .as_str()
-                        .trim()
-                        .replace("_", "")
-                        .parse()
-                        .map(Literal::U64)
-                        .map_err(|e| {
+                        new_type,
+                    ),
+                    IntegerBits::SixtyFour => (
+                        num.to_string().parse().map(Literal::U64).map_err(|e| {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -1868,7 +1860,20 @@ impl TypedExpression {
                                 path,
                             )
                         }),
+                        new_type,
+                    ),
                 },
+                TypeInfo::Numeric => (
+                    num.to_string().parse().map(Literal::U64).map_err(|e| {
+                        Literal::handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                            pest_span,
+                            path,
+                        )
+                    }),
+                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                ),
                 _ => unreachable!("Unexpected type for integer literals"),
             },
             _ => unreachable!("Unexpected non-integer literals"),
@@ -1878,7 +1883,7 @@ impl TypedExpression {
             Ok(v) => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Literal(v),
-                    return_type: new_type,
+                    return_type: new_integer_type,
                     is_constant: IsConstant::Yes,
                     span,
                 };

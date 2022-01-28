@@ -47,60 +47,6 @@ impl Engine {
             (Ref(received), _) => self.unify(received, expected, span),
             (_, Ref(expected)) => self.unify(received, expected, span),
 
-            (Unknown, Numeric) => match self.slab.replace(
-                received,
-                &Unknown,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            ) {
-                None => {
-                    match self.slab.replace(
-                        expected,
-                        &Numeric,
-                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                    ) {
-                        None => Ok(vec![]),
-                        Some(_) => self.unify(received, expected, span),
-                    }
-                }
-                Some(_) => self.unify(received, expected, span),
-            },
-
-            (Numeric, Unknown) => match self.slab.replace(
-                expected,
-                &Unknown,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            ) {
-                None => {
-                    match self.slab.replace(
-                        received,
-                        &Numeric,
-                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                    ) {
-                        None => Ok(vec![]),
-                        Some(_) => self.unify(received, expected, span),
-                    }
-                }
-                Some(_) => self.unify(received, expected, span),
-            },
-
-            (Numeric, Numeric) => match self.slab.replace(
-                expected,
-                &Numeric,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            ) {
-                None => {
-                    match self.slab.replace(
-                        received,
-                        &Numeric,
-                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                    ) {
-                        None => Ok(vec![]),
-                        Some(_) => self.unify(received, expected, span),
-                    }
-                }
-                Some(_) => self.unify(received, expected, span),
-            },
-
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
@@ -128,13 +74,13 @@ impl Engine {
             }
 
             (
-                ref received_info @ UnsignedInteger(recieved_width),
+                ref received_info @ UnsignedInteger(received_width),
                 ref expected_info @ UnsignedInteger(expected_width),
             ) => {
                 // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
                 // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
                 // `u64`.  So we're casting received TO expected.
-                let warn = match numeric_cast_compat(expected_width, recieved_width) {
+                let warn = match numeric_cast_compat(expected_width, received_width) {
                     NumericCastCompatResult::CastableWithWarning(warn) => {
                         vec![CompileWarning {
                             span: span.clone(),
@@ -146,38 +92,10 @@ impl Engine {
                     }
                 };
 
-                // Cast the expected type to the recieved type.
+                // Cast the expected type to the received type.
                 self.slab
                     .replace(received, received_info, expected_info.clone());
                 Ok(warn)
-            }
-
-            (ref received_info @ UnknownGeneric { .. }, Numeric) => {
-                self.slab.replace(
-                    received,
-                    received_info,
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                );
-                self.slab.replace(
-                    expected,
-                    &Numeric,
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                );
-                Ok(vec![])
-            }
-
-            (Numeric, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(
-                    expected,
-                    expected_info,
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                );
-                self.slab.replace(
-                    received,
-                    &Numeric,
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                );
-                Ok(vec![])
             }
 
             (ref received_info @ UnknownGeneric { .. }, _) => {
@@ -328,7 +246,7 @@ pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
+pub fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
     // If this is a downcast, warn for loss of precision. If upcast, then no warning.
     use IntegerBits::*;
     match (new_size, old_size) {
@@ -348,7 +266,7 @@ fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericC
         _ => NumericCastCompatResult::Compatible,
     }
 }
-enum NumericCastCompatResult {
+pub enum NumericCastCompatResult {
     Compatible,
     CastableWithWarning(Warning),
 }
