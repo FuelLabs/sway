@@ -9,13 +9,12 @@ use std::token::*;
 use test_fuel_coin_abi::*;
 
 struct Opts {
-        gas: u64,
-        coins: u64,
-        id: ContractId,
-    }
+    gas: u64,
+    coins: u64,
+    id: ContractId,
+}
 
 fn main() -> bool {
-
     let default = Opts {
         gas: 100_000,
         coins: 0,
