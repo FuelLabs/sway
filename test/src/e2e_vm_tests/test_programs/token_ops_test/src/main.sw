@@ -1,6 +1,6 @@
 script;
 
-// use std::constants::ETH_ID;
+use std::constants::ETH_ID;
 use std::context::balance_of_contract;
 use std::chain::assert;
 use std::address::Address;
@@ -17,9 +17,9 @@ struct Opts {
 fn main() -> bool {
 
     let default = Opts {
-        gas: 1_000_000_000_000,
+        gas: 100_000,
         coins: 0,
-        id: ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000),
+        id: ~ContractId::from(ETH_ID),
     };
 
     // the deployed fuel_coin Contract_Id:
