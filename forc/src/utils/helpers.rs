@@ -307,9 +307,8 @@ fn construct_window<'a>(
     let mut calculated_start_ix = None;
     let mut calculated_end_ix = None;
     for (ix, character) in input.chars().enumerate() {
-        match character {
-            '\n' => current_line += 1,
-            _ => (),
+        if character == '\n' {
+            current_line += 1
         }
 
         if current_line >= start.line - NUM_LINES_BUFFER && calculated_start_ix.is_none() {
