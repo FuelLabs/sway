@@ -163,7 +163,7 @@ impl TypeInfo {
                                     array_elem_count_pair
                                         .as_str()
                                         .trim()
-                                        .replace("_", "")
+                                        .replace('_', "")
                                         .parse::<usize>()
                                         // Could probably just .unwrap() here since it will succeed.
                                         .map_or_else(

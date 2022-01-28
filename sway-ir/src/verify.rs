@@ -59,8 +59,7 @@ impl Context {
         if !last_is_term || num_terms != 1 {
             Err(format!(
                 "Block {} must have single terminator as its last instruction.\n\n{}",
-                block.label,
-                self.to_string()
+                block.label, self
             ))
         } else {
             Ok(())

@@ -1187,7 +1187,7 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+            namespace.and_then(|ns| ns.find_enum(&enum_name))
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1669,7 +1669,7 @@ impl TypedExpression {
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module_relative(module_path);
                     let namespace = namespace.ok(&mut warnings, &mut errors);
-                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                    namespace.and_then(|ns| ns.find_enum(&enum_name))
                 };
                 let mut return_type = None;
                 let mut owned_enum_variant = None;

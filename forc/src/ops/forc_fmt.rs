@@ -222,8 +222,8 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = {git="http://github.com/FuelLabs/sway-lib-core"}
-std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"             }
+core = {git="http://github.com/FuelLabs/sway-lib-core",version="v0.0.1"}
+std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"  , version = "v0.0.1"           }
 "#;
         let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
         assert_eq!(formatted_content, correct_forc_manifest);

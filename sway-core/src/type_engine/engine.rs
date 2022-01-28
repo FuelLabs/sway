@@ -181,12 +181,16 @@ impl Engine {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (_, _) => Err(TypeError::MismatchedType {
-                expected,
-                received,
-                help_text: Default::default(),
-                span: span.clone(),
-            }),
+            (the_received, the_expected) => match (the_received, the_expected) {
+                (TypeInfo::ErrorRecovery, _) => Ok(vec![]),
+                (_, TypeInfo::ErrorRecovery) => Ok(vec![]),
+                _ => Err(TypeError::MismatchedType {
+                    expected,
+                    received,
+                    help_text: Default::default(),
+                    span: span.clone(),
+                }),
+            },
         }
     }
 

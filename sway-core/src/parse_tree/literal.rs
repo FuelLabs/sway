@@ -89,7 +89,7 @@ impl Literal {
                         Rule::u8_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U8)
                             .map_err(|e| {
@@ -103,7 +103,7 @@ impl Literal {
                         Rule::u16_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U16)
                             .map_err(|e| {
@@ -117,7 +117,7 @@ impl Literal {
                         Rule::u32_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U32)
                             .map_err(|e| {
@@ -131,7 +131,7 @@ impl Literal {
                         Rule::u64_integer => int_inner
                             .as_str()
                             .trim()
-                            .replace("_", "")
+                            .replace('_', "")
                             .parse()
                             .map(Literal::U64)
                             .map_err(|e| {
