@@ -8,6 +8,7 @@ dep chain;
 dep contract_id;
 dep context;
 dep address;
+dep option;
 dep block;
 dep token;
 dep result;
