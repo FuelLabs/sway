@@ -46,6 +46,10 @@ pub struct Command {
     #[structopt(short = "o")]
     pub binary_outfile: Option<String>,
 
+    /// If set, outputs source file mapping in JSON format
+    #[structopt(short = "g", long)]
+    pub debug_outfile: Option<String>,
+
     /// Silent mode. Don't output any warnings or errors to the command line.
     #[structopt(long = "silent", short = "s")]
     pub silent_mode: bool,

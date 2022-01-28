@@ -2847,6 +2847,7 @@ dependencies = [
  "lazy_static",
  "petgraph",
  "prettydiff 0.5.1",
+ "serde",
  "sha2",
  "smallvec",
  "structopt 0.3.26",

@@ -13,6 +13,7 @@ mod optimize;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
+pub mod source_map;
 mod style;
 pub mod type_engine;
 
@@ -20,6 +21,7 @@ pub use crate::parser::{Rule, SwayParser};
 use crate::{
     asm_generation::{checks, compile_ast_to_asm},
     error::*,
+    source_map::SourceMap,
 };
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
@@ -506,13 +508,14 @@ pub fn compile_to_bytecode(
     initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
     match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,
         } => {
-            let mut asm_res = asm.to_bytecode_mut();
+            let mut asm_res = asm.to_bytecode_mut(source_map);
             warnings.append(&mut asm_res.warnings);
             if asm_res.value.is_none() || !asm_res.errors.is_empty() {
                 BytecodeCompilationResult::Failure {
