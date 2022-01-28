@@ -56,6 +56,7 @@ pub struct TypedVariableDeclaration {
     pub(crate) body: TypedExpression,
     pub(crate) is_mutable: VariableMutability,
     pub(crate) type_ascription: TypeId,
+    pub(crate) const_decl_origin: bool,
 }
 
 impl TypedVariableDeclaration {

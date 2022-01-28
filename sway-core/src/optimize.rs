@@ -31,10 +31,10 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
         } => unimplemented!("compile predicate to ir"),
         TypedParseTree::Contract {
             abi_entries,
-            namespace: _,
+            namespace,
             declarations,
             all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, declarations),
+        } => compile_contract(&mut ctx, abi_entries, namespace, declarations),
         TypedParseTree::Library {
             namespace: _,
             all_nodes: _,
@@ -64,10 +64,12 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
+    namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
     let module = Module::new(context, Kind::Contract, "contract");
 
+    compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
     for decl in abi_entries {
         compile_abi_method(context, module, decl)?;
@@ -87,16 +89,33 @@ fn compile_constants(
     read_module(
         |ns| -> Result<(), String> {
             for decl in ns.get_all_declared_symbols() {
-                if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                    name,
-                    value,
-                    visibility,
-                }) = decl
-                {
-                    if !public_only || matches!(visibility, Visibility::Public) {
-                        let const_val = compile_constant_expression(context, value)?;
-                        module.add_global_constant(context, name.as_str().to_owned(), const_val);
+                let decl_name_value = match decl {
+                    TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                        name,
+                        value,
+                        visibility,
+                    }) => {
+                        // XXX Do we really only add public constants?
+                        if !public_only || matches!(visibility, Visibility::Public) {
+                            Some((name, value))
+                        } else {
+                            None
+                        }
                     }
+
+                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        name,
+                        body,
+                        const_decl_origin,
+                        ..
+                    }) if *const_decl_origin => Some((name, body)),
+
+                    _otherwise => None,
+                };
+
+                if let Some((name, value)) = decl_name_value {
+                    let const_val = compile_constant_expression(context, value)?;
+                    module.add_global_constant(context, name.as_str().to_owned(), const_val);
                 }
             }
 
@@ -118,7 +137,7 @@ fn compile_constant_expression(
     if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
         Ok(convert_literal_to_value(context, literal))
     } else {
-        Err("Unsupported constant declaration type.".into())
+        Err("Unsupported constant expression type.".into())
     }
 }
 
