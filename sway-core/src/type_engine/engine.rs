@@ -246,7 +246,10 @@ pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-pub fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
+pub fn numeric_cast_compat(
+    new_size: IntegerBits,
+    old_size: IntegerBits,
+) -> NumericCastCompatResult {
     // If this is a downcast, warn for loss of precision. If upcast, then no warning.
     use IntegerBits::*;
     match (new_size, old_size) {

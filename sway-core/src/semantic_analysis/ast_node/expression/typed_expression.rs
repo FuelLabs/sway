@@ -324,13 +324,13 @@ impl TypedExpression {
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
         if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
-            if let Literal::Numeric(_) = lit.clone() {
+            if let Literal::Numeric(_) = lit {
                 match look_up_type_id(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = check!(
                             Self::resolve_numeric_literal(
-                                lit.clone(),
-                                expr_span.clone(),
+                                lit,
+                                expr_span,
                                 typed_expression.return_type
                             ),
                             return err(warnings, errors),
