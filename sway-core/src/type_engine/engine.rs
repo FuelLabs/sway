@@ -246,7 +246,7 @@ pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-pub fn numeric_cast_compat(
+fn numeric_cast_compat(
     new_size: IntegerBits,
     old_size: IntegerBits,
 ) -> NumericCastCompatResult {
@@ -269,7 +269,7 @@ pub fn numeric_cast_compat(
         _ => NumericCastCompatResult::Compatible,
     }
 }
-pub enum NumericCastCompatResult {
+enum NumericCastCompatResult {
     Compatible,
     CastableWithWarning(Warning),
 }
