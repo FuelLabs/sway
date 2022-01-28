@@ -33,13 +33,13 @@ fn main() -> bool {
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
-    fuel_coin.mint(default.gas, default.coins, default.id.value, 11);
+    fuel_coin.mint_coins(default.gas, default.coins, default.id.value, 11);
 
     // check that the mint was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 11);
 
-    fuel_coin.burn(default.gas, default.coins, default.id.value, 7);
+    fuel_coin.burn_coins(default.gas, default.coins, default.id.value, 7);
 
     // check that the burn was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
@@ -52,7 +52,7 @@ fn main() -> bool {
     };
 
     // force transfer coins
-    fuel_coin.force_transfer(default.gas, default.coins, default.id.value, force_transfer_args);
+    fuel_coin.force_transfer_coins(default.gas, default.coins, default.id.value, force_transfer_args);
 
     // check that the transfer was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
@@ -67,7 +67,7 @@ fn main() -> bool {
     };
 
     // transfer coins to output
-    fuel_coin.transfer_to_output(default.gas, default.coins, default.id.value, transfer_to_output_args);
+    fuel_coin.transfer_coins_to_output(default.gas, default.coins, default.id.value, transfer_to_output_args);
 
     // check that the transfer was a success
     // TODO: additional testing to check the recipient's balance ?
