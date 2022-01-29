@@ -1420,6 +1420,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
             };
             Type::Uint(nbits)
         }
+        TypeInfo::Numeric => Type::Uint(64),
         TypeInfo::Boolean => Type::Bool,
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
@@ -1469,7 +1470,6 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         )),
         TypeInfo::Unknown => return Err("unknown type found in AST..?".into()),
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
-        TypeInfo::Numeric => return Err("'numeric' type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
         TypeInfo::ErrorRecovery => return Err("error recovery type found in AST..?".into()),
     })
