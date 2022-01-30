@@ -2,6 +2,8 @@
 
 Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements.
 
+## Writing Libraries
+
 Functions in libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
 
 ```sway
@@ -34,6 +36,48 @@ pub struct MyStruct {
 }
 ```
 
+Libaries are composed of just a Forc.toml and src folder unlike usual Sway projects which usually contain tests and a Cargo.toml. An example of a Librarie's Forc.toml may be
+
+```toml=
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "lib-std"
+
+[dependencies]
+"core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
+```
+
+which denotes the author, the name by which it can be imported, an entry file, and any dependencies. For large libraries it is reccomended to have a lib.sw entry point that depends on all of the libraries functionality. For example, the lib.sw of the standard library looks like
+
+```sway
+library std;
+
+dep block;
+dep storage;
+dep constants;
+
+```
+
+with other libraries contained in the src folder, like the block library (inside of block.sw) 
+
+```sway
+library block;
+//! Functionality for accessing block-related data.
+
+/// Get the current block height
+pub fn height() -> u64 {
+    asm(height) {
+        bhei height;
+        height: u64
+    }
+}
+```
+
+The `dep` keyword in the main library includes the dependency, making all of its functions accessible from the main library.
+
+## Using Libraries
 
 Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
 
