@@ -9,4 +9,5 @@ either = "*"
 num-bigint = "*"
 num-traits = "*"
 unicode-xid = "*"
+walkdir = "*"
 

@@ -30,6 +30,8 @@ define_token!(PubToken, pub_token, "pub");
 define_token!(StructToken, struct_token, "struct");
 define_token!(EnumToken, enum_token, "enum");
 define_token!(FnToken, fn_token, "fn");
+define_token!(TraitToken, trait_token, "trait");
+define_token!(AbiToken, abi_token, "abi");
 define_token!(LetToken, let_token, "let");
 
 define_token!(SemicolonToken, semicolon_token, ";");
@@ -57,6 +59,8 @@ define_token!(DoubleEqToken, double_eq_token, "==");
 define_token!(BangEqToken, bang_eq_token, "!=");
 define_token!(LessThanEqToken, less_than_eq_token, "<=");
 define_token!(GreaterThanEqToken, greater_than_eq_token, ">=");
+define_token!(DoubleAmpersandToken, double_ampersand_token, "&&");
+define_token!(DoublePipeToken, double_pipe_token, "||");
 
 define_token!(HexPrefixToken, hex_prefix_token, "0x");
 define_token!(OctalPrefixToken, octal_prefix_token, "0o");

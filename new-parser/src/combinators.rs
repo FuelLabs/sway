@@ -71,8 +71,10 @@ where
     type Output = (P0::Output, P1::Output);
 
     fn parse(&self, input: &Span) -> Result<(P0::Output, P1::Output), ParseError> {
+        println!("then[0]: input == {:?}", input.as_str());
         let value0 = self.parser0.parse(input)?;
         let input = input.with_range(value0.span().end()..);
+        println!("then[1]: input == {:?}", input.as_str());
         let value1 = self.parser1.parse(&input)?;
         Ok((value0, value1))
     }

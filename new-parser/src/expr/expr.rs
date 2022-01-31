@@ -1,4 +1,4 @@
-pub use crate::priv_prelude::*;
+use crate::priv_prelude::*;
 
 pub enum Expr {
     Path(Path), 
@@ -114,6 +114,16 @@ pub enum Expr {
         greater_than_eq_token: GreaterThanEqToken,
         rhs: Box<Expr>,
     },
+    LogicalAnd {
+        lhs: Box<Expr>,
+        double_ampersand_token: DoubleAmpersandToken,
+        rhs: Box<Expr>,
+    },
+    LogicalOr {
+        lhs: Box<Expr>,
+        double_pipe_token: DoublePipeToken,
+        rhs: Box<Expr>,
+    },
 }
 
 impl Spanned for Expr {
@@ -190,12 +200,62 @@ impl Spanned for Expr {
             Expr::GreaterThanEq { lhs, rhs, .. } => {
                 Span::join(lhs.span(), rhs.span())
             },
+            Expr::LogicalAnd { lhs, rhs, .. } => {
+                Span::join(lhs.span(), rhs.span())
+            },
+            Expr::LogicalOr { lhs, rhs, .. } => {
+                Span::join(lhs.span(), rhs.span())
+            },
         }
     }
 }
 
 pub fn expr() -> impl Parser<Output = Expr> + Clone {
+    expr_precedence_logical_or()
+}
+
+pub fn expr_precedence_logical_or() -> impl Parser<Output = Expr> + Clone {
+    let logical_or = {
+        double_pipe_token()
+        .then_optional_whitespace()
+        .then(expr_precedence_logical_and())
+    };
+
+    expr_precedence_logical_and()
+    .then(optional_leading_whitespace(logical_or).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for (double_pipe_token, rhs) in ops_with_span.parsed {
+            expr = Expr::LogicalOr {
+                lhs: Box::new(expr),
+                double_pipe_token,
+                rhs: Box::new(rhs),
+            };
+        }
+        expr
+    })
+}
+
+pub fn expr_precedence_logical_and() -> impl Parser<Output = Expr> + Clone {
+    let logical_and = {
+        double_ampersand_token()
+        .then_optional_whitespace()
+        .then(expr_precedence_comparison())
+    };
+
     expr_precedence_comparison()
+    .then(optional_leading_whitespace(logical_and).repeated())
+    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+        let mut expr = lhs;
+        for (double_ampersand_token, rhs) in ops_with_span.parsed {
+            expr = Expr::LogicalAnd {
+                lhs: Box::new(expr),
+                double_ampersand_token,
+                rhs: Box::new(rhs),
+            };
+        }
+        expr
+    })
 }
 
 pub fn expr_precedence_comparison() -> impl Parser<Output = Expr> + Clone {
@@ -335,24 +395,30 @@ pub fn expr_precedence_comparison() -> impl Parser<Output = Expr> + Clone {
 }
 
 pub fn expr_precedence_bit_or() -> impl Parser<Output = Expr> + Clone {
-    let bit_or = {
-        pipe_token()
-        .then_optional_whitespace()
-        .then(expr_precedence_bit_xor())
-    };
+    // TODO: Chaining too many `impl Parser` functions currently makes the compile-time of the
+    // parser explode. Using `lazy` fixes this but will make the parser run slower. There are some
+    // `impl Trait` improvements being done to the compiler, so try taking this `lazy` out at some
+    // point and see if the compile time regresses.
+    lazy(move || {
+        let bit_or = {
+            pipe_token()
+            .then_optional_whitespace()
+            .then(expr_precedence_bit_xor())
+        };
 
-    expr_precedence_bit_xor()
-    .then(optional_leading_whitespace(bit_or).repeated())
-    .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
-        let mut expr = lhs;
-        for (pipe_token, rhs) in ops_with_span.parsed {
-            expr = Expr::BitOr {
-                lhs: Box::new(expr),
-                pipe_token,
-                rhs: Box::new(rhs),
-            };
-        }
-        expr
+        expr_precedence_bit_xor()
+        .then(optional_leading_whitespace(bit_or).repeated())
+        .map(|(lhs, ops_with_span): (_, WithSpan<_>)| {
+            let mut expr = lhs;
+            for (pipe_token, rhs) in ops_with_span.parsed {
+                expr = Expr::BitOr {
+                    lhs: Box::new(expr),
+                    pipe_token,
+                    rhs: Box::new(rhs),
+                };
+            }
+            expr
+        })
     })
 }
 
@@ -601,20 +667,30 @@ pub fn expr_precedence_mul() -> impl Parser<Output = Expr> + Clone {
 }
 
 pub fn expr_precedence_unary_op() -> impl Parser<Output = Expr> + Clone {
-    let not = {
-        bang_token()
-        .then_optional_whitespace()
-        .then(lazy(|| expr()))
-        .map(|(bang_token, expr)| {
-            Expr::Not {
-                bang_token,
-                expr: Box::new(expr),
-            }
-        })
-    };
+    // TODO: Chaining too many `impl Parser` functions currently makes the compile-time of the
+    // parser explode. Using `lazy` fixes this but will make the parser run slower. There are some
+    // `impl Trait` improvements being done to the compiler, so try taking this `lazy` out at some
+    // point and see if the compile time regresses.
+    lazy(|| {
+        let unary_op = {
+            bang_token()
+            .then_optional_whitespace()
+        };
 
-    not
-    .or(expr_precedence_projection())
+        unary_op
+        .repeated()
+        .then(expr_precedence_projection())
+        .map(|(ops, expr): (WithSpan<_>, Expr)| {
+            let mut expr = expr;
+            for bang_token in ops.parsed {
+                expr = Expr::Not {
+                    bang_token,
+                    expr: Box::new(expr),
+                };
+            }
+            expr
+        })
+    })
 }
 
 pub fn expr_precedence_projection() -> impl Parser<Output = Expr> + Clone {

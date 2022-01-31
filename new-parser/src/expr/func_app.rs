@@ -1,4 +1,4 @@
-pub use crate::priv_prelude::*;
+use crate::priv_prelude::*;
 
 pub struct ExprFuncApp {
     pub func: Box<Expr>,
