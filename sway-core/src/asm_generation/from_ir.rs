@@ -286,14 +286,16 @@ impl<'ir> AsmBuilder<'ir> {
         // Reserve space on the stack for ALL our locals which require it.
         if stack_base > 0 {
             let base_reg = self.reg_seqr.next();
-            self.bytecode.push(Op::register_move(
+            self.bytecode.push(Op::unowned_register_move_comment(
                 base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
-                Self::empty_span(),
+                "save locals base register",
             ));
-            self.bytecode.push(Op::unowned_stack_allocate_memory(
+            let mut alloc_op = Op::unowned_stack_allocate_memory(
                 VirtualImmediate24::new(stack_base * 8, Self::empty_span()).unwrap(),
-            ));
+            );
+            alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
+            self.bytecode.push(alloc_op);
             self.stack_base_reg = Some(base_reg);
         }
     }
@@ -482,7 +484,7 @@ impl<'ir> AsmBuilder<'ir> {
 
             inline_ops.push(Op {
                 opcode: either::Either::Left(opcode),
-                comment: String::new(),
+                comment: "asm block".into(),
                 owning_span: None,
             });
         }
@@ -796,6 +798,11 @@ impl<'ir> AsmBuilder<'ir> {
         let insert_reg = self.value_to_register(value);
         let (insert_offs, value_size) = self.aggregate_idcs_to_field_layout(ty, indices);
 
+        let indices_str = indices
+            .iter()
+            .map(|idx| format!("{}", idx))
+            .collect::<Vec<String>>()
+            .join(",");
         if value_size <= 8 {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::SW(
@@ -803,14 +810,7 @@ impl<'ir> AsmBuilder<'ir> {
                     insert_reg,
                     VirtualImmediate12::new(insert_offs, Self::empty_span()).unwrap(),
                 )),
-                comment: format!(
-                    "insert_value @ {}",
-                    indices
-                        .iter()
-                        .map(|idx| format!("{}", idx))
-                        .collect::<Vec<String>>()
-                        .join(",")
-                ),
+                comment: format!("insert_value @ {}", indices_str),
                 owning_span: None,
             });
         } else {
@@ -821,7 +821,7 @@ impl<'ir> AsmBuilder<'ir> {
                     base_reg.clone(),
                     VirtualImmediate12::new(insert_offs * 8, Self::empty_span()).unwrap(),
                 )),
-                comment: "insert_value get offset".into(),
+                comment: format!("get struct field(s) {} offset", indices_str),
                 owning_span: None,
             });
             self.bytecode.push(Op {
@@ -830,7 +830,7 @@ impl<'ir> AsmBuilder<'ir> {
                     insert_reg,
                     VirtualImmediate12::new(value_size, Self::empty_span()).unwrap(),
                 )),
-                comment: "insert_value store value".into(),
+                comment: "store struct field value".into(),
                 owning_span: None,
             });
         }
@@ -1000,7 +1000,7 @@ impl<'ir> AsmBuilder<'ir> {
                                     VirtualImmediate12::new(word_offs * 8, Self::empty_span())
                                         .unwrap(),
                                 )),
-                                comment: "store get offset".into(),
+                                comment: "get store offset".into(),
                                 owning_span: None,
                             });
 
@@ -1047,16 +1047,26 @@ impl<'ir> AsmBuilder<'ir> {
                                 // We can have zero sized structs and maybe arrays?
                                 if total_size > 0 {
                                     // Save the stack pointer.
-                                    self.bytecode.push(Op::register_move(
+                                    self.bytecode.push(Op::unowned_register_move_comment(
                                         start_reg.clone(),
                                         VirtualRegister::Constant(ConstantRegister::StackPointer),
-                                        Self::empty_span(),
+                                        "save register for temporary stack value",
                                     ));
 
-                                    self.bytecode.push(Op::unowned_stack_allocate_memory(
+                                    let mut alloc_op = Op::unowned_stack_allocate_memory(
                                         VirtualImmediate24::new(total_size, Self::empty_span())
                                             .unwrap(),
-                                    ));
+                                    );
+                                    alloc_op.comment = format!(
+                                        "allocate {} bytes for temporary {}",
+                                        total_size,
+                                        if matches!(&constant.value, ConstantValue::Struct(_)) {
+                                            "struct"
+                                        } else {
+                                            "array"
+                                        },
+                                    );
+                                    self.bytecode.push(alloc_op);
 
                                     // Fill in the fields.
                                     self.initialise_constant_memory(constant, &start_reg, 0);
