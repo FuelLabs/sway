@@ -24,12 +24,8 @@ pub fn item_trait() -> impl Parser<Output = ItemTrait> + Clone {
         .then_optional_whitespace()
         .repeated()
     )))
-    .map(|((trait_token, name), trait_items): (_, Braces<WithSpan<_>>)| {
-        ItemTrait {
-            trait_token,
-            name,
-            trait_items: trait_items.map(|items| items.parsed),
-        }
+    .map(|((trait_token, name), trait_items)| {
+        ItemTrait { trait_token, name, trait_items }
     })
 }
 

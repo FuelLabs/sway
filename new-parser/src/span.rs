@@ -139,27 +139,3 @@ where
     }
 }
 
-pub struct WithSpan<T> {
-    pub parsed: T,
-    pub span: Span,
-}
-
-impl<T> Spanned for WithSpan<T> {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl<T> WithSpan<T> {
-    pub fn try_map<U, F>(self, func: F) -> Result<WithSpan<U>, ParseError>
-    where
-        F: FnOnce(T, Span) -> Result<U, ParseError>,
-    {
-        let WithSpan { parsed, span } = self;
-        Ok(WithSpan {
-            parsed: func(parsed, span.clone())?,
-            span,
-        })
-    }
-}
-

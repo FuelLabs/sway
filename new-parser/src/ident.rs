@@ -26,15 +26,16 @@ pub fn ident() -> impl Parser<Output = Ident> + Clone {
                 span: input.to_start(),
             });
         }
-        loop {
+        let len = loop {
             let (i, c) = match char_indices.next() {
                 Some((i, c)) => (i, c),
-                None => return Ok(Ident { span: input.clone() }),
+                None => break input.as_str().len(),
             };
             if !c.is_xid_continue() {
-                return Ok(Ident { span: input.slice(..i) });
+                break i;
             }
-        }
+        };
+        Ok((Ident { span: input.slice(..len) }, len))
     })
 }
 

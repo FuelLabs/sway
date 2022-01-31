@@ -4,6 +4,7 @@ use {
 };
 
 fn main() {
+    /*
     let program = new_parser::program();
     let dir = {
         let mut dir = std::env::current_dir().unwrap();
@@ -52,4 +53,5 @@ fn main() {
         }
     }
     println!("all good!");
+    */
 }

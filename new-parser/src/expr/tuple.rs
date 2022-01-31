@@ -17,9 +17,9 @@ pub fn expr_tuple() -> impl Parser<Output = ExprTuple> + Clone {
         .then(punctuated(lazy(|| expr()), comma_token()))
         .optional()
     ))
-    .map(|parens: Parens<Result<_, _>>| {
-        let elems = parens.map(|elems_res| {
-            elems_res.ok().map(|((head, head_token), tail)| (Box::new(head), head_token, tail))
+    .map(|parens: Parens<Option<_>>| {
+        let elems = parens.map(|elems_opt| {
+            elems_opt.map(|((head, head_token), tail)| (Box::new(head), head_token, tail))
         });
         ExprTuple { elems }
     })

@@ -99,15 +99,8 @@ pub fn item_use() -> impl Parser<Output = ItemUse> + Clone {
     .then(use_tree())
     .then_optional_whitespace()
     .then(semicolon_token())
-    .map(|
-         (((use_token, root_import), tree), semicolon_token): (((_, Result<_, _>), _), _)
-    | {
-        ItemUse {
-            use_token,
-            root_import: root_import.ok(),
-            tree,
-            semicolon_token,
-        }
+    .map(|(((use_token, root_import), tree), semicolon_token)| {
+        ItemUse { use_token, root_import, tree, semicolon_token }
     })
 }
 

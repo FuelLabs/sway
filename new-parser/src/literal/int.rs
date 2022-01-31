@@ -49,55 +49,29 @@ impl Spanned for IntTy {
     }
 }
 
-fn digits() -> impl Parser<Output = WithSpan<(Option<BasePrefix>, WithSpan<BigUint>)>> + Clone {
-    base_prefix()
-    .optional()
-    .and_then(|base_prefix_res: Result<BasePrefix, Span>| {
-        let span_start = base_prefix_res.span();
-        let base_prefix_opt = base_prefix_res.ok();
-        let radix = base_prefix_opt.as_ref().map(BasePrefix::radix).unwrap_or(10);
-
-        big_uint(radix)
-        .map(move |big_uint_with_span: WithSpan<BigUint>| {
-            let span_end = big_uint_with_span.span();
-            WithSpan {
-                parsed: (base_prefix_opt.clone(), big_uint_with_span),
-                span: Span::join(span_start.clone(), span_end),
-            }
-        })
-    })
-}
-
-pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
-    numeric_sign()
-    .optional()
-    .then(digits())
-    .then(int_ty().optional())
-    .map(|((numeric_sign_res, digits_with_span), ty_suffix_res): ((Result<_, _>, _), Result<_, _>)| {
-        let numeric_sign_opt = numeric_sign_res.ok();
-        let WithSpan { parsed: (base_prefix_opt, big_uint_with_span), span: _ } = digits_with_span;
-        let WithSpan { parsed: big_uint, span: digits_span } = big_uint_with_span;
-        let ty_suffix_opt = ty_suffix_res.ok();
-        let parsed = match numeric_sign_opt {
-            Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),
-            Some(NumericSign::Positive { .. }) | None => BigInt::from(big_uint),
-        };
-        IntLiteral { numeric_sign_opt, base_prefix_opt, digits_span, ty_suffix_opt, parsed }
-    })
-}
-
-pub fn big_uint(radix: u32) -> impl Parser<Output = WithSpan<BigUint>> + Clone {
+pub fn big_uint(radix: u32) -> impl Parser<Output = BigUint> + Clone {
     digit(radix)
     .repeated()
-    .map(move |digits_with_span| {
-        let WithSpan { parsed: digits, span } = digits_with_span;
+    .map(move |digits| {
         let mut value = BigUint::zero();
-        for digit_with_span in digits {
-            let WithSpan { parsed: digit, span: _ } = digit_with_span;
+        for digit in digits {
             value *= radix;
             value += digit;
         }
-        WithSpan { parsed: value, span }
+        value
+    })
+}
+
+fn digits() -> impl Parser<Output = (Option<BasePrefix>, BigUint, Span)> + Clone {
+    base_prefix()
+    .optional()
+    .and_then(|base_prefix_opt: Option<BasePrefix>| {
+        let radix = base_prefix_opt.as_ref().map(BasePrefix::radix).unwrap_or(10);
+
+        big_uint(radix)
+        .map_with_span(move |big_uint, span| {
+            (base_prefix_opt.clone(), big_uint, span)
+        })
     })
 }
 
@@ -145,3 +119,16 @@ pub fn int_ty() -> impl Parser<Output = IntTy> + Clone {
     .or(u64_parser)
 }
 
+pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
+    numeric_sign()
+    .optional()
+    .then(digits())
+    .then(int_ty().optional())
+    .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt): ((Option<_>, _), Option<_>)| {
+        let parsed = match numeric_sign_opt {
+            Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),
+            Some(NumericSign::Positive { .. }) | None => BigInt::from(big_uint),
+        };
+        IntLiteral { numeric_sign_opt, base_prefix_opt, digits_span, ty_suffix_opt, parsed }
+    })
+}

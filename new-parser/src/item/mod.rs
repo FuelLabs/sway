@@ -106,13 +106,8 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
         .then_optional_whitespace()
         .optional()
     )
-    .map(|(((fn_token, name), arguments), return_type_res): (_, Result<_, _>)| {
-        FnSignature {
-            fn_token,
-            name,
-            arguments,
-            return_type_opt: return_type_res.ok(),
-        }
+    .map(|(((fn_token, name), arguments), return_type_opt): (_, Option<_>)| {
+        FnSignature { fn_token, name, arguments, return_type_opt }
     })
 }
 

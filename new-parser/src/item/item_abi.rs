@@ -24,12 +24,8 @@ pub fn item_abi() -> impl Parser<Output = ItemAbi> + Clone {
         .then_optional_whitespace()
         .repeated()
     )))
-    .map(|((abi_token, name), abi_items): (_, Braces<WithSpan<_>>)| {
-        ItemAbi {
-            abi_token,
-            name,
-            abi_items: abi_items.map(|items| items.parsed),
-        }
+    .map(|((abi_token, name), abi_items)| {
+        ItemAbi { abi_token, name, abi_items }
     })
 }
 

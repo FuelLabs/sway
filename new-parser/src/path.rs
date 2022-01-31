@@ -33,11 +33,7 @@ pub fn path() -> impl Parser<Output = Path> + Clone {
         )
         .repeated()
     )
-    .map(|((leading_double_colon_res, prefix), suffix_with_span): ((Result<_, _>, _), WithSpan<_>)| {
-        Path {
-            leading_double_colon_opt: leading_double_colon_res.ok(),
-            prefix,
-            suffix: suffix_with_span.parsed,
-        }
+    .map(|((leading_double_colon_opt, prefix), suffix)| {
+        Path { leading_double_colon_opt, prefix, suffix }
     })
 }

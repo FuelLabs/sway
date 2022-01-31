@@ -14,7 +14,7 @@ macro_rules! define_token (
         }
 
         pub fn $fn_name() -> impl Parser<Output = $ty_name> + Clone {
-            keyword($s).map(|span| $ty_name { span })
+            keyword($s).map_with_span(|(), span| $ty_name { span })
         }
     );
 );

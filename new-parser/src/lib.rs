@@ -1,40 +1,39 @@
 mod priv_prelude;
+mod span;
 mod parser;
 mod error;
 mod primitive;
-#[macro_use]
 mod combinators;
-mod span;
 mod tokens;
 mod ident;
 mod brackets;
 mod punctuated;
-mod item;
-mod ty;
 mod literal;
 mod path;
+mod item;
 mod array;
+mod ty;
+mod expr;
 mod dependency;
 mod program;
-mod expr;
 
+pub use span::*;
 pub use parser::*;
 pub use error::*;
-pub use combinators::*;
 pub use primitive::*;
-pub use span::*;
+pub use combinators::*;
 pub use tokens::*;
 pub use ident::*;
 pub use brackets::*;
 pub use punctuated::*;
-pub use item::*;
-pub use ty::*;
 pub use literal::*;
 pub use path::*;
+pub use item::*;
 pub use array::*;
+pub use ty::*;
+pub use expr::*;
 pub use dependency::*;
 pub use program::*;
-pub use expr::*;
 
 //#[cfg(test)]
 //mod test;

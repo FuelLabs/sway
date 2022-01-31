@@ -32,14 +32,14 @@ where
     }
 }
 
-pub fn punctuated<T, S, U, V>(item: U, separator: V) -> impl Parser<Output = Punctuated<T, S>> + Clone
+pub fn punctuated<T, S, U, V>(value: U, separator: V) -> impl Parser<Output = Punctuated<T, S>> + Clone
 where
     U: Parser<Output = T> + Clone + 'static,
     V: Parser<Output = S> + Clone + 'static,
     T: Spanned + 'static,
     S: Spanned + 'static,
 {
-    pre_punctuated(item, separator)
+    pre_punctuated(value, separator)
     .map(|pre_punctuated| {
         let PrePunctuated { values, separators, span } = pre_punctuated;
         Punctuated {
@@ -62,59 +62,51 @@ impl<T, S> Spanned for PrePunctuated<T, S> {
     }
 }
 
-fn pre_punctuated<T, S, U, V>(item: U, separator: V) -> impl Parser<Output = PrePunctuated<T, S>> + Clone
+fn pre_punctuated<T, S, U, V>(value: U, separator: V) -> impl Parser<Output = PrePunctuated<T, S>> + Clone
 where
     U: Parser<Output = T> + Clone + 'static,
     V: Parser<Output = S> + Clone + 'static,
     T: Spanned + 'static,
     S: Spanned + 'static,
 {
-    item
+    value
     .clone()
     .then(
         separator
         .clone()
         .then(optional_leading_whitespace(lazy(move || {
-            pre_punctuated(item.clone(), separator.clone())
+            pre_punctuated(value.clone(), separator.clone())
             .optional()
         })))
         .optional()
     )
     .optional()
-    .map(|head_separator_tail_res: Result<(T, Result<(S, Result<PrePunctuated<T, S>, _>), _>), Span>| {
-        match head_separator_tail_res {
-            Ok((head, separator_tail_res)) => match separator_tail_res {
-                Ok((separator, tail_res)) => match tail_res {
-                    Ok(mut pre_punctuated) => {
-                        pre_punctuated.span = Span::join(pre_punctuated.span, separator.span());
-                        pre_punctuated.values.push(head);
-                        pre_punctuated.separators.push(separator);
-                        pre_punctuated
-                    },
-                    Err(..) => {
-                        let span = Span::join(head.span(), separator.span());
-                        PrePunctuated {
-                            values: vec![head],
-                            separators: vec![separator],
-                            span,
-                        }
-                    },
-                },
-                Err(..) => {
-                    let span = head.span();
-                    PrePunctuated {
-                        values: vec![head],
-                        separators: vec![],
-                        span,
-                    }
-                },
+    .map_with_span(|item_separator_tail_opt: Option<(T, Option<(S, Option<PrePunctuated<T, S>>)>)>, span| {
+        match item_separator_tail_opt {
+            None => PrePunctuated {
+                values: vec![],
+                separators: vec![],
+                span,
             },
-            Err(span) => {
-                PrePunctuated {
-                    values: vec![],
+            Some((value, separator_tail_opt)) => match separator_tail_opt {
+                None => PrePunctuated {
+                    values: vec![value],
                     separators: vec![],
-                    span: span.to_start(),
-                }
+                    span,
+                },
+                Some((separator, tail_opt)) => match tail_opt {
+                    None => PrePunctuated {
+                        values: vec![value],
+                        separators: vec![separator],
+                        span,
+                    },
+                    Some(mut tail) => {
+                        tail.values.push(value);
+                        tail.separators.push(separator);
+                        tail.span = span;
+                        tail
+                    },
+                },
             },
         }
     })

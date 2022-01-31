@@ -53,11 +53,8 @@ pub fn dependency_path() -> impl Parser<Output = DependencyPath> + Clone {
         .then(ident())
         .repeated()
     )
-    .map(|(prefix, suffix_with_span): (_, WithSpan<_>)| {
-        DependencyPath {
-            prefix,
-            suffix: suffix_with_span.parsed,
-        }
+    .map(|(prefix, suffix)| {
+        DependencyPath { prefix, suffix }
     })
 }
 

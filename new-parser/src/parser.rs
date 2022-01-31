@@ -1,8 +1,8 @@
 use crate::priv_prelude::*;
 
 pub trait Parser {
-    type Output: Spanned;
-    fn parse(&self, input: &Span) -> Result<Self::Output, ParseError>;
+    type Output;
+    fn parse(&self, input: &Span) -> Result<(Self::Output, usize), ParseError>;
 }
 
 impl<P: ?Sized> Parser for Box<P>
@@ -11,7 +11,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<P::Output, ParseError> {
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
         (&**self).parse(input)
     }
 }
@@ -22,7 +22,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<P::Output, ParseError> {
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
         (&**self).parse(input)
     }
 }
@@ -33,7 +33,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<P::Output, ParseError> {
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
         (&**self).parse(input)
     }
 }
@@ -45,7 +45,7 @@ where
 {
     type Output = P0::Output;
 
-    fn parse(&self, input: &Span) -> Result<P0::Output, ParseError> {
+    fn parse(&self, input: &Span) -> Result<(P0::Output, usize), ParseError> {
         match self {
             Either::Left(parser0) => parser0.parse(input),
             Either::Right(parser1) => parser1.parse(input),
@@ -58,7 +58,15 @@ pub trait ParserExt: Parser {
     where
         Self: Sized;
 
+    fn map_with_span<F>(self, func: F) -> MapWithSpan<Self, F>
+    where
+        Self: Sized;
+
     fn try_map<F>(self, func: F) -> TryMap<Self, F>
+    where
+        Self: Sized;
+
+    fn try_map_with_span<F>(self, func: F) -> TryMapWithSpan<Self, F>
     where
         Self: Sized;
 
@@ -66,19 +74,19 @@ pub trait ParserExt: Parser {
     where
         Self: Sized;
 
-    fn or<R>(self, parser: R) -> Or<Self, R>
-    where
-        Self: Sized;
-
     fn optional(self) -> Optional<Self>
     where
         Self: Sized;
 
-    fn then_whitespace(self) -> ThenWhitespace<Self>
+    fn then_optional_whitespace(self) -> ThenOptionalWhitespace<Self>
     where
         Self: Sized;
 
-    fn then_optional_whitespace(self) -> ThenOptionalWhitespace<Self>
+    fn or<R>(self, parser: R) -> Or<Self, R>
+    where
+        Self: Sized;
+
+    fn then_whitespace(self) -> ThenWhitespace<Self>
     where
         Self: Sized;
 
@@ -102,11 +110,25 @@ where
         Map::new(self, func)
     }
 
+    fn map_with_span<F>(self, func: F) -> MapWithSpan<Self, F>
+    where
+        Self: Sized,
+    {
+        MapWithSpan::new(self, func)
+    }
+
     fn try_map<F>(self, func: F) -> TryMap<Self, F>
     where
         Self: Sized,
     {
         TryMap::new(self, func)
+    }
+
+    fn try_map_with_span<F>(self, func: F) -> TryMapWithSpan<Self, F>
+    where
+        Self: Sized,
+    {
+        TryMapWithSpan::new(self, func)
     }
 
     fn then<R>(self, parser: R) -> Then<Self, R>
@@ -116,13 +138,6 @@ where
         Then::new(self, parser)
     }
 
-    fn or<R>(self, parser: R) -> Or<Self, R>
-    where
-        Self: Sized,
-    {
-        Or::new(self, parser)
-    }
-
     fn optional(self) -> Optional<Self>
     where
         Self: Sized,
@@ -130,18 +145,25 @@ where
         Optional::new(self)
     }
 
-    fn then_whitespace(self) -> ThenWhitespace<Self>
-    where
-        Self: Sized,
-    {
-        ThenWhitespace::new(self)
-    }
-
     fn then_optional_whitespace(self) -> ThenOptionalWhitespace<Self>
     where
         Self: Sized,
     {
         ThenOptionalWhitespace::new(self)
+    }
+
+    fn or<R>(self, parser: R) -> Or<Self, R>
+    where
+        Self: Sized,
+    {
+        Or::new(self, parser)
+    }
+
+    fn then_whitespace(self) -> ThenWhitespace<Self>
+    where
+        Self: Sized,
+    {
+        ThenWhitespace::new(self)
     }
 
     fn repeated(self) -> Repeated<Self>

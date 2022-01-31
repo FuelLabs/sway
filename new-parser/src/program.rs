@@ -54,15 +54,16 @@ impl Spanned for ProgramKind {
 pub fn program() -> impl Parser<Output = Program> + Clone {
     whitespace()
     .optional()
+    .map_with_span(|_opt, span| span)
     .then(program_kind())
     .then_optional_whitespace()
     .then(dependency().then_optional_whitespace().repeated())
-    .then(whitespace().optional())
-    .map(|(((leading_whitespace, kind), dependencies_with_span), trailing_whitespace): (((Result<_, _>, _), WithSpan<_>), Result<_, _>)| {
+    .then(whitespace().optional().map_with_span(|_opt, span| span))
+    .map(|(((start_span, kind), dependencies), end_span)| {
         Program {
-            span: Span::join(leading_whitespace.span(), trailing_whitespace.span()),
+            span: Span::join(start_span, end_span),
             kind,
-            dependencies: dependencies_with_span.parsed,
+            dependencies,
         }
     })
 }

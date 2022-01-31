@@ -38,44 +38,34 @@ pub fn numeric_sign() -> impl Parser<Output = NumericSign> + Clone {
     .or(negative)
 }
 
-pub fn digit(radix: u32) -> impl Parser<Output = WithSpan<u32>> + Clone {
+pub fn digit(radix: u32) -> impl Parser<Output = u32> + Clone {
     single_char()
-    .try_map(move |char_with_span: WithSpan<char>| {
-        char_with_span.try_map(|c, span| {
-            match c.to_digit(radix) {
-                Some(value) => Ok(value),
-                None => Err(ParseError::ExpectedDigit { span }),
-            }
-        })
+    .try_map_with_span(move |c: char, span| match c.to_digit(radix) {
+        Some(value) => Ok(value),
+        None => Err(ParseError::ExpectedDigit { span }),
     })
 }
 
-pub fn escape_code() -> impl Parser<Output = WithSpan<char>> + Clone {
-    let newline = keyword("n").map(|span| WithSpan { parsed: '\n', span });
-    let carriage_return = keyword("r").map(|span| WithSpan { parsed: '\r', span });
-    let tab = keyword("t").map(|span| WithSpan { parsed: '\t', span });
-    let backslash = keyword("\\").map(|span| WithSpan { parsed: '\\', span });
-    let null = keyword("0").map(|span| WithSpan { parsed: '\0', span });
-    let apostrophe = keyword("'").map(|span| WithSpan { parsed: '\'', span });
-    let quote = keyword("\"").map(|span| WithSpan { parsed: '\"', span });
+pub fn escape_code() -> impl Parser<Output = char> + Clone {
+    let newline = keyword("n").map(|()| '\n');
+    let carriage_return = keyword("r").map(|()| '\r');
+    let tab = keyword("t").map(|()| '\t');
+    let backslash = keyword("\\").map(|()| '\\');
+    let null = keyword("0").map(|()| '\0');
+    let apostrophe = keyword("'").map(|()| '\'');
+    let quote = keyword("\"").map(|()| '"');
     let hex = {
         keyword("x")
         .then(digit(16))
         .then(digit(16))
-        .map(|((span_start, high_with_span), low_with_span)| {
-            let WithSpan { parsed: high, span: _ } = high_with_span;
-            let WithSpan { parsed: low, span: low_span } = low_with_span;
-            let c = char::try_from(high << 16 | low).unwrap();
-            WithSpan { parsed: c, span: Span::join(span_start, low_span) }
-        })
+        .map(|(((), high), low)| char::try_from(high << 16 | low).unwrap())
     };
     let unicode = {
         keyword("u")
         .then(keyword("{"))
-        .then(digit(16).repeated())
+        .then(digit(16).repeated().map_with_span(|digits, span| (digits, span)))
         .then(keyword("}"))
-        .try_map(|(((span_start, _), digits), span_end)| {
-            let WithSpan { parsed: digits, span: digits_span } = digits;
+        .try_map(|((((), ()), (digits, digits_span)), ())| {
             let mut value = 0u32;
             for digit in digits {
                 value = match value.checked_mul(16) {
@@ -84,14 +74,10 @@ pub fn escape_code() -> impl Parser<Output = WithSpan<char>> + Clone {
                         span: digits_span,
                     }),
                 };
-                let WithSpan { parsed: digit, span: _ } = digit;
                 value += digit;
             }
             match char::try_from(value) {
-                Ok(c) => {
-                    let span = Span::join(span_start, span_end);
-                    Ok(WithSpan { parsed: c, span })
-                },
+                Ok(c) => Ok(c),
                 Err(_) => Err(ParseError::InvalidUnicodeEscapeChar {
                     span: digits_span,
                 }),
