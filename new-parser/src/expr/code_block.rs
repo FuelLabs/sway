@@ -1,9 +1,11 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct CodeBlock {
     contents: Braces<CodeBlockContents>,
 }
 
+#[derive(Clone, Debug)]
 pub struct CodeBlockContents {
     pub statements: Vec<Statement>,
     pub final_expr_opt: Option<Box<Expr>>,

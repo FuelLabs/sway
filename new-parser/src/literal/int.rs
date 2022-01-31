@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Debug, Clone)]
 pub struct IntLiteral {
     pub numeric_sign_opt: Option<NumericSign>,
     pub base_prefix_opt: Option<BasePrefix>,
@@ -8,6 +9,7 @@ pub struct IntLiteral {
     pub parsed: BigInt,
 }
 
+#[derive(Debug, Clone)]
 pub enum IntTy {
     I8(I8Token),
     I16(I16Token),
@@ -50,13 +52,20 @@ impl Spanned for IntTy {
 }
 
 pub fn big_uint(radix: u32) -> impl Parser<Output = BigUint> + Clone {
+    let inner_digit = {
+        digit(radix)
+        .map(Some)
+        .or(keyword("_").map(|()| None))
+    };
     digit(radix)
-    .repeated()
-    .map(move |digits| {
-        let mut value = BigUint::zero();
-        for digit in digits {
-            value *= radix;
-            value += digit;
+    .then(inner_digit.repeated())
+    .map(move |(first_digit, digits)| {
+        let mut value = BigUint::from(first_digit);
+        for digit_opt in digits {
+            if let Some(digit) = digit_opt {
+                value *= radix;
+                value += digit;
+            }
         }
         value
     })

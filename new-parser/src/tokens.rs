@@ -2,7 +2,7 @@ use crate::priv_prelude::*;
 
 macro_rules! define_token (
     ($ty_name:ident, $fn_name:ident, $s:literal) => (
-        #[derive(Clone)]
+        #[derive(Clone, Debug)]
         pub struct $ty_name {
             span: Span,
         }
@@ -61,6 +61,7 @@ define_token!(LessThanEqToken, less_than_eq_token, "<=");
 define_token!(GreaterThanEqToken, greater_than_eq_token, ">=");
 define_token!(DoubleAmpersandToken, double_ampersand_token, "&&");
 define_token!(DoublePipeToken, double_pipe_token, "||");
+define_token!(TildeToken, tilde_token, "~");
 
 define_token!(HexPrefixToken, hex_prefix_token, "0x");
 define_token!(OctalPrefixToken, octal_prefix_token, "0o");

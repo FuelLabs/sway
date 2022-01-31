@@ -2,6 +2,7 @@ use crate::priv_prelude::*;
 
 macro_rules! define_brackets (
     ($ty_name:ident, $fn_name:ident, $ty_open:ident, $fn_open:ident, $ty_close:ident, $fn_close:ident,) => (
+        #[derive(Clone, Debug)]
         pub struct $ty_name<T> {
             open_token: $ty_open,
             inner: T,

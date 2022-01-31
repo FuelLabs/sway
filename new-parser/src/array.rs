@@ -1,9 +1,10 @@
 use crate::priv_prelude::*;
 
+#[derive(Debug, Clone)]
 pub struct ArrayRepeatDescriptor<T> {
     pub elem: Box<T>,
     pub semicolon_token: SemicolonToken,
-    pub len: IntLiteral,
+    pub len: Box<Expr>,
 }
 
 impl<T> Spanned for ArrayRepeatDescriptor<T>
@@ -26,7 +27,7 @@ where
     .then_optional_whitespace()
     .then(semicolon_token())
     .then_optional_whitespace()
-    .then(int_literal())
+    .then(lazy(|| expr()).map(Box::new))
     .map(|((elem, semicolon_token), len)| {
         ArrayRepeatDescriptor {
             elem: Box::new(elem),

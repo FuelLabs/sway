@@ -1,9 +1,11 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct TypeFields {
     pub fields: Punctuated<TypeField, CommaToken>,
 }
 
+#[derive(Clone, Debug)]
 pub struct TypeField {
     pub field_name: Ident,
     pub colon_token: ColonToken,

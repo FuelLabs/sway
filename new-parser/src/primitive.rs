@@ -54,34 +54,95 @@ pub fn single_char() -> impl Parser<Output = char> + Clone {
     })
 }
 
-pub fn whitespace() -> impl Parser<Output = ()> + Clone {
-    from_fn(move |input| {
-        let mut char_indices = input.as_str().char_indices();
-        let c = match char_indices.next() {
-            Some((_, c)) => c,
-            None => {
-                return Err(ParseError::UnexpectedEof {
-                    span: input.to_start(),
-                });
-            },
-        };
-        if !c.is_whitespace() {
+pub fn line_comment() -> impl Parser<Output = ()> + Clone {
+    from_fn(|input| {
+        if !input.as_str().starts_with("//") {
             return Err(ParseError::ExpectedWhitespace {
-                span: input.to_start(),
+                span: input.span(),
+            });
+        };
+        let mut char_indices = input.as_str().char_indices().skip(2);
+        let len = loop {
+            let c = match char_indices.next() {
+                Some((_, c)) => c,
+                None => break input.as_str().len(),
+            };
+            if c == '\n' {
+                break match char_indices.next() {
+                    Some((i, _)) => i,
+                    None => input.as_str().len(),
+                };
+            }
+        };
+        Ok(((), len))
+    })
+}
+
+pub fn multiline_comment() -> impl Parser<Output = ()> + Clone {
+    from_fn(|input| {
+        if !input.as_str().starts_with("/*") {
+            return Err(ParseError::ExpectedWhitespace {
+                span: input.span(),
             });
         }
-        loop {
-            let (i, c) = match char_indices.next() {
-                Some((i, c)) => (i, c),
-                None => {
-                    return Ok(((), input.as_str().len()));
-                },
+        let mut char_indices = input.as_str().char_indices().skip(2).peekable();
+        let mut depth = 1;
+        let len = loop {
+            let c = match char_indices.next() {
+                Some((_, c)) => c,
+                None => return Err(ParseError::UnclosedMultilineComment {
+                    span: input.clone(),
+                }),
             };
-            if !c.is_whitespace() {
-                return Ok(((), i));
+            match c {
+                '/' => {
+                    if let Some((_, '*')) = char_indices.peek() {
+                        let _ = char_indices.next();
+                        depth += 1;
+                    }
+                },
+                '*' => {
+                    if let Some((_, '/')) = char_indices.peek() {
+                        let _ = char_indices.next();
+                        depth -= 1;
+                        if depth == 0 {
+                            break match char_indices.next() {
+                                Some((i, _)) => i,
+                                None => input.as_str().len(),
+                            };
+                        }
+                    }
+                },
+                _ => (),
             }
+        };
+        Ok(((), len))
+    })
+}
+
+pub fn single_whitespace_char() -> impl Parser<Output = ()> + Clone {
+    single_char()
+    .try_map_with_span(|c: char, span: Span| {
+        if c.is_whitespace() {
+            Ok(())
+        } else {
+            return Err(ParseError::ExpectedWhitespace {
+                span: span.to_start(),
+            });
         }
     })
+}
+
+pub fn whitespace() -> impl Parser<Output = ()> + Clone {
+    let any_whitespace = {
+        single_whitespace_char()
+        .or(line_comment())
+        .or(multiline_comment())
+    };
+    any_whitespace
+    .clone()
+    .then(any_whitespace.repeated())
+    .map(|(_, _vec)| ())
 }
 
 pub fn optional_leading_whitespace<P>(parser: P) -> impl Parser<Output = P::Output> + Clone
@@ -157,9 +218,19 @@ where
     }
 }
 
-pub fn empty() -> impl Parser<Output = ()> {
+pub fn empty() -> impl Parser<Output = ()> + Clone {
     from_fn(move |_input| {
         Ok(((), 0))
+    })
+}
+
+pub fn eof() -> impl Parser<Output = ()> + Clone {
+    from_fn(|input| {
+        if input.as_str().is_empty() {
+            Ok(((), 0))
+        } else {
+            Err(ParseError::ExpectedEof { span: input.to_start() })
+        }
     })
 }
 

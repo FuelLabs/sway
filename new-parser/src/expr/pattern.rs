@@ -1,15 +1,20 @@
 use crate::priv_prelude::*;
 
-pub enum Pattern {}
+#[derive(Clone, Debug)]
+pub enum Pattern {
+    Var(Ident),
+}
 
 impl Spanned for Pattern {
     fn span(&self) -> Span {
-        match *self {
+        match self {
+            Pattern::Var(ident) => ident.span(),
         }
     }
 }
 
 pub fn pattern() -> impl Parser<Output = Pattern> + Clone {
-    todo()
+    ident()
+    .map(Pattern::Var)
 }
 

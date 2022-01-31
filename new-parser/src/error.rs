@@ -9,6 +9,9 @@ pub enum ParseError {
     UnexpectedEof {
         span: Span,
     },
+    ExpectedEof {
+        span: Span,
+    },
     ExpectedIdent {
         span: Span,
     },
@@ -28,6 +31,9 @@ pub enum ParseError {
     InvalidUnicodeEscapeChar {
         span: Span,
     },
+    UnclosedMultilineComment {
+        span: Span,
+    },
 }
 
 impl Spanned for ParseError {
@@ -35,6 +41,7 @@ impl Spanned for ParseError {
         match self {
             ParseError::ExpectedKeyword { span, .. } => span.clone(),
             ParseError::UnexpectedEof { span } => span.clone(),
+            ParseError::ExpectedEof { span } => span.clone(),
             ParseError::ExpectedIdent { span } => span.clone(),
             ParseError::ExpectedWhitespace { span } => span.clone(),
             ParseError::ExpectedDigit { span } => span.clone(),
@@ -43,6 +50,7 @@ impl Spanned for ParseError {
             },
             ParseError::UnicodeEscapeOutOfRange { span } => span.clone(),
             ParseError::InvalidUnicodeEscapeChar { span } => span.clone(),
+            ParseError::UnclosedMultilineComment { span } => span.clone(),
         }
     }
 }

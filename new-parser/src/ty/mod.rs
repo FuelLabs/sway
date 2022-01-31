@@ -6,6 +6,7 @@ mod tuple;
 pub use array::*;
 pub use tuple::*;
 
+#[derive(Debug, Clone)]
 pub enum Ty {
     Path {
         path: Path,

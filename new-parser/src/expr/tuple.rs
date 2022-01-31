@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct ExprTuple {
     pub elems: Parens<Option<(Box<Expr>, CommaToken, Punctuated<Expr, CommaToken>)>>,
 }

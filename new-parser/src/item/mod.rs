@@ -16,6 +16,7 @@ pub use item_fn::*;
 pub use item_trait::*;
 pub use item_abi::*;
 
+#[derive(Clone, Debug)]
 pub enum Item {
     Use(ItemUse),
     Struct(ItemStruct),
@@ -38,9 +39,11 @@ impl Spanned for Item {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct FnSignature {
     pub fn_token: FnToken,
     pub name: Ident,
+    pub generics: Option<Generics>,
     pub arguments: Parens<TypeFields>,
     pub return_type_opt: Option<(RightArrowToken, Ty)>,
 }
@@ -97,6 +100,11 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
     .then_whitespace()
     .then(ident())
     .then_optional_whitespace()
+    .then(
+        generics()
+        .then_optional_whitespace()
+        .optional()
+    )
     .then(parens(padded(type_fields())))
     .then_optional_whitespace()
     .then(
@@ -106,8 +114,8 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
         .then_optional_whitespace()
         .optional()
     )
-    .map(|(((fn_token, name), arguments), return_type_opt): (_, Option<_>)| {
-        FnSignature { fn_token, name, arguments, return_type_opt }
+    .map(|((((fn_token, name), generics), arguments), return_type_opt): (_, Option<_>)| {
+        FnSignature { fn_token, name, generics, arguments, return_type_opt }
     })
 }
 

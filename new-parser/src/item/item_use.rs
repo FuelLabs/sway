@@ -1,6 +1,8 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct ItemUse {
+    pub visibility: Option<PubToken>,
     pub use_token: UseToken,
     pub root_import: Option<DoubleColonToken>,
     pub tree: UseTree,
@@ -9,10 +11,14 @@ pub struct ItemUse {
 
 impl Spanned for ItemUse {
     fn span(&self) -> Span {
-        Span::join(self.use_token.span(), self.semicolon_token.span())
+        match &self.visibility {
+            Some(pub_token) => Span::join(pub_token.span(), self.semicolon_token.span()),
+            None => Span::join(self.use_token.span(), self.semicolon_token.span()),
+        }
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum UseTree {
     Group {
         imports: Braces<Punctuated<UseTree, CommaToken>>,
@@ -93,14 +99,17 @@ pub fn use_tree() -> impl Parser<Output = UseTree> + Clone {
 }
 
 pub fn item_use() -> impl Parser<Output = ItemUse> + Clone {
-    use_token()
+    pub_token()
+    .then_whitespace()
+    .optional()
+    .then(use_token())
     .then_whitespace()
     .then(double_colon_token().then_optional_whitespace().optional())
     .then(use_tree())
     .then_optional_whitespace()
     .then(semicolon_token())
-    .map(|(((use_token, root_import), tree), semicolon_token)| {
-        ItemUse { use_token, root_import, tree, semicolon_token }
+    .map(|((((visibility, use_token), root_import), tree), semicolon_token)| {
+        ItemUse { visibility, use_token, root_import, tree, semicolon_token }
     })
 }
 

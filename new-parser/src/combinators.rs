@@ -205,6 +205,7 @@ where
     fn parse(&self, input: &Span) -> Result<(P0::Output, usize), ParseError> {
         match self.parser0.parse(input) {
             Ok((value, len)) => Ok((value, len)),
+            /*
             Err(error0) => match self.parser1.parse(input) {
                 Ok((value, len)) => Ok((value, len)),
                 Err(error1) => {
@@ -213,6 +214,26 @@ where
                         error1: Box::new(error1),
                     })
                 },
+            },
+            */
+            Err(error0) => {
+                //println!("first parser failed: {:?}", error0);
+                /*
+                let flim = error0.span().start();
+                let flom = input.start();
+                let diff = flim - flom;
+                let s = &input.as_str()[diff..];
+                println!("first failed at: {:?}", s);
+                */
+                match self.parser1.parse(input) {
+                    Ok((value, len)) => Ok((value, len)),
+                    Err(error1) => {
+                        Err(ParseError::Or {
+                            error0: Box::new(error0),
+                            error1: Box::new(error1),
+                        })
+                    },
+                }
             },
         }
     }

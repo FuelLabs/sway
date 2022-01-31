@@ -4,6 +4,7 @@ pub struct Program {
     pub span: Span,
     pub kind: ProgramKind,
     pub dependencies: Vec<Dependency>,
+    pub items: Vec<Item>,
 }
 
 impl Spanned for Program {
@@ -52,19 +53,15 @@ impl Spanned for ProgramKind {
 }
 
 pub fn program() -> impl Parser<Output = Program> + Clone {
-    whitespace()
-    .optional()
-    .map_with_span(|_opt, span| span)
-    .then(program_kind())
-    .then_optional_whitespace()
-    .then(dependency().then_optional_whitespace().repeated())
-    .then(whitespace().optional().map_with_span(|_opt, span| span))
-    .map(|(((start_span, kind), dependencies), end_span)| {
-        Program {
-            span: Span::join(start_span, end_span),
-            kind,
-            dependencies,
-        }
+    optional_leading_whitespace(
+        program_kind()
+        .then_optional_whitespace()
+        .then(dependency().then_optional_whitespace().repeated())
+        .then(item().then_optional_whitespace().repeated())
+        .then(eof())
+    )
+    .map_with_span(|(((kind, dependencies), items), ()), span| {
+        Program { span, kind, dependencies, items }
     })
 }
 

@@ -6,6 +6,7 @@ mod string;
 pub use int::*;
 pub use string::*;
 
+#[derive(Debug, Clone)]
 pub enum NumericSign {
     Positive {
         add_token: AddToken,
@@ -96,7 +97,7 @@ pub fn escape_code() -> impl Parser<Output = char> + Clone {
     .or(unicode)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BasePrefix {
     Hex(HexPrefixToken),
     Octal(OctalPrefixToken),

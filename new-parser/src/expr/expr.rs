@@ -1,7 +1,15 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub enum Expr {
-    Path(Path), 
+    Path {
+        fully_qualified: Option<TildeToken>,
+        path: Path,
+    },
+    StructLiteral {
+        path: Path,
+        fields: Braces<Punctuated<StructField, CommaToken>>,
+    },
     StringLiteral(StringLiteral),
     IntLiteral(IntLiteral),
     Tuple(ExprTuple),
@@ -126,10 +134,25 @@ pub enum Expr {
     },
 }
 
+#[derive(Clone, Debug)]
+pub struct StructField  {
+    pub field_name: Ident,
+    pub colon_token: ColonToken,
+    pub expr: Box<Expr>,
+}
+
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Expr::Path(path) => path.span(),
+            Expr::Path { fully_qualified, path } => {
+                match fully_qualified {
+                    Some(tilde_token) => Span::join(tilde_token.span(), path.span()),
+                    None => path.span(),
+                }
+            },
+            Expr::StructLiteral { path, fields } => {
+                Span::join(path.span(), fields.span())
+            },
             Expr::StringLiteral(string_literal) => string_literal.span(),
             Expr::IntLiteral(int_literal) => int_literal.span(),
             Expr::Tuple(expr_tuple) => expr_tuple.span(),
@@ -207,6 +230,12 @@ impl Spanned for Expr {
                 Span::join(lhs.span(), rhs.span())
             },
         }
+    }
+}
+
+impl Spanned for StructField {
+    fn span(&self) -> Span {
+        Span::join(self.field_name.span(), self.expr.span())
     }
 }
 
@@ -798,9 +827,21 @@ pub fn expr_precedence_func_app() -> impl Parser<Output = Expr> + Clone {
 }
 
 pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
-    let path = {
+    let struct_literal = {
         path()
-        .map(Expr::Path)
+        .then_optional_whitespace()
+        .then(braces(padded(punctuated(struct_field(), padded(comma_token())))))
+        .map(|(path, fields)| {
+            Expr::StructLiteral { path, fields }
+        })
+    };
+    let path = {
+        tilde_token()
+        .optional()
+        .then(path())
+        .map(|(fully_qualified, path)| {
+            Expr::Path { fully_qualified, path }
+        })
     };
     let string_literal = {
         string_literal()
@@ -817,7 +858,7 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
     let array = {
         square_brackets(
             optional_leading_whitespace(
-                punctuated(lazy(|| expr()), comma_token())
+                punctuated(lazy(|| expr()), padded(comma_token()))
             )
         )
         .map(|elems| Expr::Array { elems })
@@ -836,7 +877,8 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
         .map(Expr::CodeBlock)
     };
     
-    path
+    struct_literal
+    .or(path)
     .or(string_literal)
     .or(int_literal)
     .or(tuple)
@@ -844,4 +886,119 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
     .or(array_repeat)
     .or(parens)
     .or(code_block)
+
+    /*
+    lazy(move || {
+        println!("parsing atomic");
+        let struct_literal = struct_literal.clone();
+        let path = path.clone();
+        let string_literal = string_literal.clone();
+        let int_literal = int_literal.clone();
+        let tuple = tuple.clone();
+        let array = array.clone();
+        let array_repeat = array_repeat.clone();
+        let parens = parens.clone();
+        lazy(move || {
+            let struct_literal = struct_literal.clone();
+            let path = path.clone();
+            let string_literal = string_literal.clone();
+            let int_literal = int_literal.clone();
+            let tuple = tuple.clone();
+            let array = array.clone();
+            let array_repeat = array_repeat.clone();
+            println!("parsing non code block");
+            lazy(move || {
+                let struct_literal = struct_literal.clone();
+                let path = path.clone();
+                let string_literal = string_literal.clone();
+                let int_literal = int_literal.clone();
+                let tuple = tuple.clone();
+                let array = array.clone();
+                println!("parsing non parens");
+                lazy(move || {
+                    let struct_literal = struct_literal.clone();
+                    let path = path.clone();
+                    let string_literal = string_literal.clone();
+                    let int_literal = int_literal.clone();
+                    let tuple = tuple.clone();
+                    let array = array.clone();
+                    println!("parsing non array repeat");
+                    lazy(move || {
+                        let struct_literal = struct_literal.clone();
+                        let path = path.clone();
+                        let string_literal = string_literal.clone();
+                        let int_literal = int_literal.clone();
+                        println!("parsing non array");
+                        struct_literal.clone()
+                        .or(path.clone())
+                        .or(string_literal.clone())
+                        .or(int_literal.clone())
+                        .or(tuple.clone())
+                    })
+                    .or(lazy(move || {
+                        println!("parsing array instead");
+                        array.clone()
+                    }))
+                })
+                .or(array_repeat.clone())
+            })
+            .or(parens.clone())
+        })
+        .or(code_block.clone())
+    })
+
+    from_fn(move |input| {
+        //println!("parsing atomic at: {:?}", input.as_str());
+        if let Ok(x) = struct_literal.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a struct literal");
+        if let Ok(x) = path.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a path");
+        if let Ok(x) = string_literal.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a string_literal");
+        if let Ok(x) = int_literal.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a int_literal");
+        if let Ok(x) = tuple.parse(input) {
+            //println!("    parsed atomic: {:?}", input.as_str());
+            //println!("    it's an int literal");
+            return Ok(x);
+        };
+        //println!("   not a tuple");
+        if let Ok(x) = array.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a array");
+        if let Ok(x) = array_repeat.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a array repeat");
+        if let Ok(x) = parens.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a parens");
+        if let Ok(x) = code_block.parse(input) {
+            return Ok(x);
+        };
+        //println!("   not a code block");
+        Err(ParseError::ExpectedEof { span: input.span() })
+    })
+    */
+}
+
+pub fn struct_field() -> impl Parser<Output = StructField> + Clone {
+    ident()
+    .then_optional_whitespace()
+    .then(colon_token())
+    .then_optional_whitespace()
+    .then(lazy(|| expr()).map(Box::new))
+    .map(|((field_name, colon_token), expr)| {
+        StructField { field_name, colon_token, expr }
+    })
 }

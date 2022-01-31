@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct Path {
     leading_double_colon_opt: Option<DoubleColonToken>,
     prefix: Ident,

@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct ExprArrayRepeat {
     pub descriptor: SquareBrackets<ArrayRepeatDescriptor<Expr>>,
 }

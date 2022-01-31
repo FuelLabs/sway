@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub enum Statement {
     Let(StatementLet),
     Item(Item),
@@ -9,9 +10,11 @@ pub enum Statement {
     },
 }
 
+#[derive(Clone, Debug)]
 pub struct StatementLet {
     pub let_token: LetToken,
     pub pattern: Pattern,
+    pub ty: Option<(ColonToken, Ty)>,
     pub eq_token: EqToken,
     pub expr: Expr,
     pub semicolon_token: SemicolonToken,
@@ -60,13 +63,20 @@ pub fn statement_let() -> impl Parser<Output = StatementLet> + Clone {
     .then_whitespace()
     .then(pattern())
     .then_optional_whitespace()
+    .then(
+        colon_token()
+        .then_optional_whitespace()
+        .then(ty())
+        .then_optional_whitespace()
+        .optional()
+    )
     .then(eq_token())
     .then_optional_whitespace()
     .then(lazy(|| expr()))
     .then_optional_whitespace()
     .then(semicolon_token())
-    .map(|((((let_token, pattern), eq_token), expr), semicolon_token)| {
-        StatementLet { let_token, pattern, eq_token, expr, semicolon_token }
+    .map(|(((((let_token, pattern), ty), eq_token), expr), semicolon_token)| {
+        StatementLet { let_token, pattern, ty, eq_token, expr, semicolon_token }
     })
 }
 

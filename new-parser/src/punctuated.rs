@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct Punctuated<T, S> {
     values: Vec<T>,
     separators: Vec<S>,
@@ -50,6 +51,7 @@ where
     })
 }
 
+#[derive(Debug)]
 struct PrePunctuated<T, S> {
     values: Vec<T>,
     separators: Vec<S>,

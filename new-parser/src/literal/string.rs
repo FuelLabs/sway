@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Clone, Debug)]
 pub struct StringLiteral {
     pub open_quote: QuoteToken,
     pub contents_span: Span,

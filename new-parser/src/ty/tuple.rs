@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Debug, Clone)]
 pub struct TyTuple {
     pub elems: Parens<Punctuated<Ty, CommaToken>>,
 }
