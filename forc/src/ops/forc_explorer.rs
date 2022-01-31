@@ -1,7 +1,8 @@
-use std::fs::{remove_file, rename, File};
+use std::fs::{remove_file, rename, File, create_dir_all};
 use std::io::Cursor;
-use std::path::Path;
+use std::path::{PathBuf};
 
+use dirs;
 use reqwest;
 use serde::Deserialize;
 use tar::Archive;
@@ -22,11 +23,6 @@ struct GitHubReleaseAsset {
     browser_download_url: String,
 }
 
-const MODULE_PATH: &str = "forc/";
-const BUILD_ARCHIVE_PATH: &str = "forc/build.tar";
-const BUILD_UNPACK_TEMP_PATH: &str = "forc/build";
-const STATIC_FILES_PATH: &str = "forc/www";
-const STATIC_ASSETS_PATH: &str = "forc/www/assets";
 const REPO_RELEASES_URL: &str = "https://api.github.com/repos/FuelLabs/block-explorer-v2/releases";
 
 struct EndPoints {}
@@ -34,6 +30,26 @@ struct EndPoints {}
 impl EndPoints {
     pub fn static_files() -> String {
         "static".to_string()
+    }
+}
+
+struct ExplorerAppPaths {}
+
+impl ExplorerAppPaths {
+    pub fn web_app_path() -> PathBuf {
+        dirs::home_dir().unwrap().join(".fuel/explorer")
+    }
+    pub fn build_archive_path() -> PathBuf {
+        dirs::home_dir().unwrap().join(".fuel/explorer/build.tar")
+    }
+    pub fn build_archive_unpack_path() -> PathBuf {
+        dirs::home_dir().unwrap().join(".fuel/explorer/build")
+    }
+    pub fn web_app_files_path() -> PathBuf {
+        dirs::home_dir().unwrap().join(".fuel/explorer/www")
+    }
+    pub fn web_app_static_assets_path() -> PathBuf {
+        dirs::home_dir().unwrap().join(".fuel/explorer/www/static")
     }
 }
 
@@ -56,11 +72,11 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
             Err(error) => panic!("Failed to unpack build archive {:?}", error),
         };
 
-        if let Err(error) = rename(BUILD_UNPACK_TEMP_PATH, STATIC_FILES_PATH) {
+        if let Err(error) = rename(ExplorerAppPaths::build_archive_unpack_path(), ExplorerAppPaths::web_app_files_path()) {
             panic!("Failed to move static files {:?}", error)
         }
 
-        match remove_file(BUILD_ARCHIVE_PATH) {
+        match remove_file(ExplorerAppPaths::build_archive_path()) {
             Ok(_) => (),
             Err(error) => eprintln!("Failed clean up files {:?}", error),
         }
@@ -71,7 +87,7 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
 }
 
 fn has_static_files() -> bool {
-    Path::new(&format!("{}/index.html", STATIC_FILES_PATH)).exists()
+    ExplorerAppPaths::web_app_files_path().clone().join("index.html").exists()
 }
 
 async fn get_release_url() -> Result<String, reqwest::Error> {
@@ -95,7 +111,9 @@ async fn get_release_url() -> Result<String, reqwest::Error> {
 }
 
 async fn download_build(url: &str) -> DownloadResult<File> {
-    let mut file = match File::create(BUILD_ARCHIVE_PATH) {
+    println!("{:?}", ExplorerAppPaths::build_archive_path());
+    create_dir_all(ExplorerAppPaths::web_app_path())?;
+    let mut file = match File::create(ExplorerAppPaths::build_archive_path()) {
         Ok(fc) => fc,
         Err(error) => panic!("Problem creating the build archive: {:?}", error),
     };
@@ -106,15 +124,15 @@ async fn download_build(url: &str) -> DownloadResult<File> {
 }
 
 fn unpack_archive() -> Result<(), std::io::Error> {
-    let mut ar = Archive::new(File::open(BUILD_ARCHIVE_PATH).unwrap());
-    ar.unpack(MODULE_PATH).unwrap();
+    let mut ar = Archive::new(File::open(ExplorerAppPaths::build_archive_path()).unwrap());
+    ar.unpack(ExplorerAppPaths::web_app_path()).unwrap();
     Ok(())
 }
 
 async fn start_server(port: String) {
-    let explorer = warp::path::end().and(warp::fs::dir(STATIC_FILES_PATH));
+    let explorer = warp::path::end().and(warp::fs::dir(ExplorerAppPaths::web_app_files_path()));
     let static_assets =
-        warp::path(EndPoints::static_files()).and(warp::fs::dir(STATIC_ASSETS_PATH));
+        warp::path(EndPoints::static_files()).and(warp::fs::dir(ExplorerAppPaths::web_app_static_assets_path()));
     let routes = static_assets.or(explorer);
 
     let port_number = match port.parse::<u16>() {
