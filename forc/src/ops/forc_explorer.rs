@@ -91,7 +91,6 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
 
 fn has_static_files() -> bool {
     ExplorerAppPaths::web_app_files_path()
-        .clone()
         .join("index.html")
         .exists()
 }
