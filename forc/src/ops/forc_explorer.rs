@@ -1,6 +1,6 @@
-use std::fs::{remove_file, rename, File, create_dir_all};
+use std::fs::{create_dir_all, remove_file, rename, File};
 use std::io::Cursor;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 use dirs;
 use reqwest;
@@ -72,7 +72,10 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
             Err(error) => panic!("Failed to unpack build archive {:?}", error),
         };
 
-        if let Err(error) = rename(ExplorerAppPaths::build_archive_unpack_path(), ExplorerAppPaths::web_app_files_path()) {
+        if let Err(error) = rename(
+            ExplorerAppPaths::build_archive_unpack_path(),
+            ExplorerAppPaths::web_app_files_path(),
+        ) {
             panic!("Failed to move static files {:?}", error)
         }
 
@@ -87,7 +90,10 @@ pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error>
 }
 
 fn has_static_files() -> bool {
-    ExplorerAppPaths::web_app_files_path().clone().join("index.html").exists()
+    ExplorerAppPaths::web_app_files_path()
+        .clone()
+        .join("index.html")
+        .exists()
 }
 
 async fn get_release_url() -> Result<String, reqwest::Error> {
@@ -131,8 +137,8 @@ fn unpack_archive() -> Result<(), std::io::Error> {
 
 async fn start_server(port: String) {
     let explorer = warp::path::end().and(warp::fs::dir(ExplorerAppPaths::web_app_files_path()));
-    let static_assets =
-        warp::path(EndPoints::static_files()).and(warp::fs::dir(ExplorerAppPaths::web_app_static_assets_path()));
+    let static_assets = warp::path(EndPoints::static_files())
+        .and(warp::fs::dir(ExplorerAppPaths::web_app_static_assets_path()));
     let routes = static_assets.or(explorer);
 
     let port_number = match port.parse::<u16>() {
