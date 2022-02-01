@@ -131,9 +131,14 @@ impl TypedExpression {
                 },
                 span,
             ),
-            Expression::MatchExp { if_exp, span } => Self::type_check_match_expression(
+            Expression::MatchExp {
+                if_exp,
+                span,
+                variable_created,
+                cases_covered,
+            } => Self::type_check_match_expression(
                 TypeCheckArguments {
-                    checkee: *if_exp,
+                    checkee: (*if_exp, variable_created, cases_covered),
                     return_type_annotation: type_annotation,
                     namespace,
                     crate_namespace,
@@ -399,7 +404,7 @@ impl TypedExpression {
         ok(exp, vec![], vec![])
     }
 
-    fn type_check_variable_expression(
+    pub(crate) fn type_check_variable_expression(
         name: Ident,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
@@ -837,13 +842,13 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_match_expression(
-        arguments: TypeCheckArguments<'_, Expression>,
-        _span: Span,
+        arguments: TypeCheckArguments<'_, (Expression, Ident, Vec<MatchCondition>)>,
+        span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let TypeCheckArguments {
-            checkee: if_exp,
+            checkee: (if_exp, variable_created, cases_covered),
             namespace,
             crate_namespace,
             return_type_annotation: type_annotation,
@@ -869,6 +874,12 @@ impl TypedExpression {
                 opts,
             }),
             error_recovery_expr(if_exp.span()),
+            warnings,
+            errors
+        );
+        check!(
+            check_match_expression_exhaustivity(variable_created, cases_covered, span, namespace),
+            return err(warnings, errors),
             warnings,
             errors
         );

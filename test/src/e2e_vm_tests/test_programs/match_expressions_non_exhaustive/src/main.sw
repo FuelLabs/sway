@@ -1,11 +1,9 @@
 script;
 
-/*
 struct Point {
     x: u64,
     y: u64
 }
-*/
 
 fn main() -> u64 {
     /*
@@ -21,9 +19,11 @@ fn main() -> u64 {
     }
     */
 
+    ///*
     let x = 0;
     match x {
         0 => { 42 },
         1 => { 43 },
     }
+    //*/
 }

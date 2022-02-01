@@ -78,6 +78,8 @@ pub enum Expression {
     },
     MatchExp {
         if_exp: Box<Expression>,
+        variable_created: Ident,
+        cases_covered: Vec<MatchCondition>,
         span: Span,
     },
     // separated into other struct for parsing reasons
@@ -553,21 +555,25 @@ impl Expression {
                     );
                     branches.push(res);
                 }
-                let mut if_exp_result = check!(
-                    desugar_match_expression(
-                        primary_expression_result.value,
-                        branches,
-                        span.clone(),
-                        config
-                    ),
+                let primary_expression = primary_expression_result.value;
+                let (if_exp, var_decl_name, cases_covered) = check!(
+                    desugar_match_expression(&primary_expression, branches, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let mut var_decls = primary_expression_result.var_decls;
-                var_decls.append(&mut if_exp_result.var_decls);
+                var_decls.push(VariableDeclaration {
+                    name: var_decl_name.clone(),
+                    type_ascription: TypeInfo::Unknown,
+                    type_ascription_span: None,
+                    is_mutable: false,
+                    body: primary_expression,
+                });
                 let exp = Expression::MatchExp {
-                    if_exp: Box::new(if_exp_result.value),
+                    if_exp: Box::new(if_exp),
+                    variable_created: var_decl_name,
+                    cases_covered,
                     span,
                 };
                 ParseResult {
@@ -1713,27 +1719,19 @@ struct MatchedBranch {
 ///     2b. Assemble the statements that go inside of the body of the if expression
 ///     2c. Assemble the giant if statement.
 /// 3. Return!
-pub fn desugar_match_expression(
-    primary_expression: Expression,
+pub(crate) fn desugar_match_expression(
+    primary_expression: &Expression,
     branches: Vec<MatchBranch>,
-    _span: Span,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<(Expression, Ident, Vec<MatchCondition>)> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
     // 0. Create a VariableDeclaration that assigns the primary expression to a variable.
     let var_decl_span = primary_expression.span();
     let var_decl_name = ident::random_name(var_decl_span.clone(), config);
-    let var_decl = VariableDeclaration {
-        name: var_decl_name.clone(),
-        type_ascription: TypeInfo::Unknown,
-        type_ascription_span: None,
-        is_mutable: false,
-        body: primary_expression,
-    };
     let var_decl_exp = Expression::VariableExpression {
-        name: var_decl_name,
+        name: var_decl_name.clone(),
         span: var_decl_span,
     };
 
@@ -1772,14 +1770,7 @@ pub fn desugar_match_expression(
                     fields: vec![],
                     span: branch_span.clone(),
                 };
-                return ok(
-                    ParseResult {
-                        var_decls: vec![],
-                        value: exp,
-                    },
-                    vec![],
-                    errors,
-                );
+                return ok((exp, var_decl_name, vec![]), vec![], errors);
             }
         }
     }
@@ -1944,14 +1935,7 @@ pub fn desugar_match_expression(
                     fields: vec![],
                     span: if_statement.span(),
                 };
-                return ok(
-                    ParseResult {
-                        var_decls: vec![],
-                        value: exp,
-                    },
-                    warnings,
-                    errors,
-                );
+                return ok((exp, var_decl_name, vec![]), warnings, errors);
             }
         }
     }
@@ -1959,13 +1943,6 @@ pub fn desugar_match_expression(
     // 3. Return!
     match if_statement {
         None => err(vec![], vec![]),
-        Some(if_statement) => ok(
-            ParseResult {
-                var_decls: vec![var_decl],
-                value: if_statement,
-            },
-            warnings,
-            errors,
-        ),
+        Some(if_statement) => ok((if_statement, var_decl_name, vec![]), warnings, errors),
     }
 }

@@ -3,7 +3,7 @@ use super::scrutinee::Scrutinee;
 use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
-pub(crate) enum MatchCondition {
+pub enum MatchCondition {
     CatchAll(CatchAll),
     Scrutinee(Scrutinee),
 }
