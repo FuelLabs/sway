@@ -125,7 +125,7 @@ impl MatchBranch {
             a => {
                 let span = Span {
                     span: result.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 errors.push(CompileError::UnimplementedRule(a, span.clone()));
                 Expression::Tuple {

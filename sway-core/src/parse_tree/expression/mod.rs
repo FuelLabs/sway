@@ -828,7 +828,7 @@ impl Expression {
                             .collect::<Vec<_>>();
                         let exp = Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
-                            arguments: arguments_buf.into_iter().collect(),
+                            arguments: arguments_buf,
                             span: whole_exp_span,
                         };
                         ParseResult {

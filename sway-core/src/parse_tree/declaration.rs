@@ -128,7 +128,7 @@ impl Declaration {
                 let mut decls = res_result
                     .var_decls
                     .into_iter()
-                    .map(|x| Declaration::VariableDeclaration(x))
+                    .map(Declaration::VariableDeclaration)
                     .collect::<Vec<_>>();
                 decls.push(Declaration::ConstantDeclaration(res_result.value));
                 decls
@@ -143,7 +143,7 @@ impl Declaration {
                 let mut decls = res_result
                     .var_decls
                     .into_iter()
-                    .map(|x| Declaration::VariableDeclaration(x))
+                    .map(Declaration::VariableDeclaration)
                     .collect::<Vec<_>>();
                 decls.push(Declaration::StorageDeclaration(res_result.value));
                 decls
@@ -209,7 +209,7 @@ impl Declaration {
                 let mut decls = body_result
                     .var_decls
                     .into_iter()
-                    .map(|x| Declaration::VariableDeclaration(x))
+                    .map(Declaration::VariableDeclaration)
                     .collect::<Vec<_>>();
                 decls.push(Declaration::VariableDeclaration(VariableDeclaration {
                     name: check!(
@@ -262,7 +262,7 @@ impl Declaration {
                 let mut decls = res_result
                     .var_decls
                     .into_iter()
-                    .map(|x| Declaration::VariableDeclaration(x))
+                    .map(Declaration::VariableDeclaration)
                     .collect::<Vec<_>>();
                 decls.push(Declaration::Reassignment(res_result.value));
                 decls
@@ -289,7 +289,7 @@ impl Declaration {
                 let mut decls = res_result
                     .var_decls
                     .into_iter()
-                    .map(|x| Declaration::VariableDeclaration(x))
+                    .map(Declaration::VariableDeclaration)
                     .collect::<Vec<_>>();
                 decls.push(Declaration::ConstantDeclaration(res_result.value));
                 decls
