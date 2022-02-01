@@ -1692,10 +1692,11 @@ struct MatchedBranch {
 /// The resulting if statement would look roughly like this:
 ///
 /// ```ignore
-/// if y==5 {
+/// let NEW_NAME = p;
+/// if NEW_NAME.y==5 {
 ///     let x = 42;
 ///     x
-/// } else if y==42 {
+/// } else if NEW_NAME.y==42 {
 ///     let x = 42;
 ///     x
 /// } else {
