@@ -35,6 +35,12 @@ pub trait NamespaceWrapper {
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()>;
+    fn self_import(
+        &self,
+        from_module: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()>;
     fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef>;
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
     /// method in the namespace. Requires `args_buf` because of some special casing for the
@@ -50,7 +56,8 @@ pub trait NamespaceWrapper {
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration>;
-
+    
+    
     /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
     fn star_import(&self, from_module: Option<NamespaceRef>, path: Vec<Ident>)
@@ -519,6 +526,21 @@ impl NamespaceWrapper for NamespaceRef {
 
         ok((), warnings, errors)
     }
+
+    /// Pull a single item from a module and import it into this namespace.
+    /// The item we want to import is basically the last item in path because 
+    /// this is a self import.
+    fn self_import(
+        &self,
+        from_namespace: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        let mut new_path = path.clone();
+        let last_item = new_path.pop().expect("Guranteed_by_grammar");
+        self.item_import(from_namespace, new_path, &last_item, alias)
+    }
+
     fn insert_trait_implementation(
         &self,
         trait_name: CallPath,

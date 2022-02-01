@@ -181,6 +181,7 @@ impl TypedAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
+                        ImportType::SelfImport => namespace.self_import(from_module, a.call_path, a.alias),
                         ImportType::Item(s) => {
                             namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
@@ -790,6 +791,7 @@ fn import_new_file(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
+    let dep_namespace = create_new_scope(namespace);
     let crate::InnerDependencyCompileResult {
         name,
         namespace: module,
@@ -797,7 +799,7 @@ fn import_new_file(
     } = check!(
         crate::compile_inner_dependency(
             file_as_string,
-            namespace,
+            dep_namespace,
             dep_config,
             dead_code_graph,
             dependency_graph

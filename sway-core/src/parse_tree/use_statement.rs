@@ -1,4 +1,4 @@
-use crate::{build_config::BuildConfig, error::*, parse_tree::ident, Rule};
+use crate::{build_config::BuildConfig, error::*, span, parse_tree::ident, Rule};
 use pest::iterators::Pair;
 
 use sway_types::ident::Ident;
@@ -6,6 +6,7 @@ use sway_types::ident::Ident;
 #[derive(Debug, Clone)]
 pub enum ImportType {
     Star,
+    SelfImport,
     Item(Ident),
 }
 
@@ -44,7 +45,7 @@ impl UseStatement {
             errors
         );
 
-        ok(use_statements_buf, Vec::new(), Vec::new())
+        ok(use_statements_buf, warnings, errors)
     }
 }
 
@@ -149,7 +150,19 @@ fn handle_import_path(
     } else {
         // Handle the case where the last item is just an individual item
         let import_type = match last_item.as_rule() {
-            Rule::star => ImportType::Star,
+            Rule::star => {
+                // Check that a star import does not have an alias
+                if top_level_alias.is_some() {
+                    errors.push(CompileError::AsteriskWithAlias {
+                        span: span::Span {
+                            span: last_item.as_span(),
+                            path: config.map(|c| c.path()),
+                        },
+                    });
+                }
+                ImportType::Star
+            },
+            Rule::self_keyword => ImportType::SelfImport,
             Rule::ident => ImportType::Item(check!(
                 ident::parse_from_pair(last_item, config),
                 return err(warnings, errors),
