@@ -806,7 +806,7 @@ pub enum CompileError {
          "
     )]
     MatchWrongType { expected: TypeId, span: Span },
-    #[error("Non-exhaustive match expression arms. Try adding a catchall arm.")]
+    #[error("Non-exhaustive match expression. Try adding a catchall arm.")]
     MatchExpressionNonExhaustive { span: Span },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span },

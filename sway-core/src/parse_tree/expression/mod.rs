@@ -1941,8 +1941,16 @@ pub(crate) fn desugar_match_expression(
     }
 
     // 3. Return!
+    let cases_covered = branches
+        .into_iter()
+        .map(|x| x.condition)
+        .collect::<Vec<_>>();
     match if_statement {
         None => err(vec![], vec![]),
-        Some(if_statement) => ok((if_statement, var_decl_name, vec![]), warnings, errors),
+        Some(if_statement) => ok(
+            (if_statement, var_decl_name, cases_covered),
+            warnings,
+            errors,
+        ),
     }
 }
