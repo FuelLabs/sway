@@ -1007,7 +1007,7 @@ impl CompileError {
             IntegerTooLarge { span, .. } => span,
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
-            AsteriskWithAlias {span, .. } => span,
+            AsteriskWithAlias { span, .. } => span,
         }
     }
 

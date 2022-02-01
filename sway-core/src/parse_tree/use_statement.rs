@@ -1,4 +1,4 @@
-use crate::{build_config::BuildConfig, error::*, span, parse_tree::ident, Rule};
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, span, Rule};
 use pest::iterators::Pair;
 
 use sway_types::ident::Ident;
@@ -161,7 +161,7 @@ fn handle_import_path(
                     });
                 }
                 ImportType::Star
-            },
+            }
             Rule::self_keyword => ImportType::SelfImport,
             Rule::ident => ImportType::Item(check!(
                 ident::parse_from_pair(last_item, config),

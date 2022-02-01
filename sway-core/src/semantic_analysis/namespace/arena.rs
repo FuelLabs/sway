@@ -56,8 +56,7 @@ pub trait NamespaceWrapper {
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration>;
-    
-    
+
     /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
     fn star_import(&self, from_module: Option<NamespaceRef>, path: Vec<Ident>)
@@ -528,7 +527,7 @@ impl NamespaceWrapper for NamespaceRef {
     }
 
     /// Pull a single item from a module and import it into this namespace.
-    /// The item we want to import is basically the last item in path because 
+    /// The item we want to import is basically the last item in path because
     /// this is a self import.
     fn self_import(
         &self,
