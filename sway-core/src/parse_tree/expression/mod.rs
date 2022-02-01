@@ -557,7 +557,8 @@ impl Expression {
                     desugar_match_expression(
                         primary_expression_result.value,
                         branches,
-                        span.clone()
+                        span.clone(),
+                        config
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1704,6 +1705,7 @@ struct MatchedBranch {
 ///
 /// The steps of the algorithm can roughly be broken down into:
 ///
+/// 0. Create a VariableDeclaration that assigns the primary expression to a variable.
 /// 1. Assemble the "matched branches."
 /// 2. Assemble the possibly nested giant if statement using the matched branches.
 ///     2a. Assemble the conditional that goes in the if primary expression.
@@ -1714,9 +1716,25 @@ pub fn desugar_match_expression(
     primary_expression: Expression,
     branches: Vec<MatchBranch>,
     _span: Span,
+    config: Option<&BuildConfig>,
 ) -> CompileResult<ParseResult<Expression>> {
     let mut errors = vec![];
     let mut warnings = vec![];
+
+    // 0. Create a VariableDeclaration that assigns the primary expression to a variable.
+    let var_decl_span = primary_expression.span();
+    let var_decl_name = ident::random_name(var_decl_span.clone(), config);
+    let var_decl = VariableDeclaration {
+        name: var_decl_name.clone(),
+        type_ascription: TypeInfo::Unknown,
+        type_ascription_span: None,
+        is_mutable: false,
+        body: primary_expression,
+    };
+    let var_decl_exp = Expression::VariableExpression {
+        name: var_decl_name,
+        span: var_decl_span,
+    };
 
     // 1. Assemble the "matched branches."
     let mut matched_branches = vec![];
@@ -1729,7 +1747,7 @@ pub fn desugar_match_expression(
         let matches = match condition {
             MatchCondition::CatchAll(_) => Some((vec![], vec![])),
             MatchCondition::Scrutinee(scrutinee) => check!(
-                matcher(&primary_expression, scrutinee),
+                matcher(&var_decl_exp, scrutinee),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1942,7 +1960,7 @@ pub fn desugar_match_expression(
         None => err(vec![], vec![]),
         Some(if_statement) => ok(
             ParseResult {
-                var_decls: vec![],
+                var_decls: vec![var_decl],
                 value: if_statement,
             },
             warnings,
