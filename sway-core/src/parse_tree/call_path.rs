@@ -75,10 +75,13 @@ impl CallPath {
         let mut errors = vec![];
         let span = Span {
             span: pair.as_span(),
-            path: config.map(|c| c.path())
+            path: config.map(|c| c.path()),
         };
         if !(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_) {
-            errors.push(CompileError::ParseError { span, err: "expected call path here".to_string()});
+            errors.push(CompileError::ParseError {
+                span,
+                err: "expected call path here".to_string(),
+            });
             return err(warnings, errors);
         }
         let mut pairs_buf = vec![];

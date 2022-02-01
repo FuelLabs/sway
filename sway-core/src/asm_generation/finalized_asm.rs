@@ -1,6 +1,8 @@
 use super::{DataSection, InstructionSet};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
+use crate::source_map::SourceMap;
+
 use sway_types::span::Span;
 
 use either::Either;
@@ -26,23 +28,23 @@ pub enum FinalizedAsm {
     Library,
 }
 impl FinalizedAsm {
-    pub(crate) fn to_bytecode_mut(&mut self) -> CompileResult<Vec<u8>> {
+    pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
         use FinalizedAsm::*;
         match self {
             ContractAbi {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section, source_map),
             // libraries are not compiled to asm
             Library => ok(vec![], vec![], vec![]),
             ScriptMain {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section, source_map),
             PredicateMain {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section, source_map),
         }
     }
 }
@@ -50,6 +52,7 @@ impl FinalizedAsm {
 fn to_bytecode_mut(
     program_section: &InstructionSet,
     data_section: &mut DataSection,
+    source_map: &mut SourceMap,
 ) -> CompileResult<Vec<u8>> {
     let mut errors = vec![];
     if program_section.ops.len() & 1 != 0 {
@@ -92,6 +95,7 @@ fn to_bytecode_mut(
 
     let mut half_word_ix = 0;
     for op in program_section.ops.iter() {
+        let span = op.owning_span.clone();
         let op = op.to_fuel_asm(offset_to_data_section_in_bytes, data_section);
         match op {
             Either::Right(data) => {
@@ -105,6 +109,9 @@ fn to_bytecode_mut(
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
                 for mut op in ops {
+                    if let Some(span) = &span {
+                        source_map.insert(half_word_ix, span);
+                    }
                     op.read_exact(&mut buf[half_word_ix * 4..])
                         .expect("Failed to write to in-memory buffer.");
                     half_word_ix += 1;

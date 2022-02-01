@@ -14,8 +14,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     let positive_project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
-        ("contract_abi_impl", ProgramState::Return(0)),
-        // TEMPORARILY DISABLED DUE TO OOM ("dependencies", ProgramState::Return(0)), // 0 == false
+        // contracts revert because this test runs them against the VM
+        // and no selectors will match
+        ("contract_abi_impl", ProgramState::Revert(0)),
+        ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
         ("tuple_types", ProgramState::Return(123)),
         ("out_of_order_decl", ProgramState::Return(1)),
@@ -71,17 +73,17 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
-        ("block_height", ProgramState::Return(1)), // true
-        ("b512_test", ProgramState::Return(1)),    // true
-        ("block_height", ProgramState::Return(1)), // true
-        ("use_full_path_names", ProgramState::Return(1)),
-        ("valid_impurity", ProgramState::Return(0)), // false
+        ("block_height", ProgramState::Return(1)),   // true
+        ("b512_test", ProgramState::Return(1)),      // true
+        ("block_height", ProgramState::Return(1)),   // true
+        ("valid_impurity", ProgramState::Revert(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
         ("multi_item_import", ProgramState::Return(0)), // false
+        ("use_full_path_names", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -120,6 +122,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "predicate_calls_impure",
         "script_calls_impure",
         "contract_pure_calls_impure",
+        "literal_too_large_for_type",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

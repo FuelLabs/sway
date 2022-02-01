@@ -23,6 +23,9 @@ pub struct Command {
     /// If set, outputs a binary file representing the script bytes.
     #[structopt(short = "o")]
     pub binary_outfile: Option<String>,
+    /// If set, outputs source file mapping in JSON format
+    #[structopt(short = "g", long)]
+    pub debug_outfile: Option<String>,
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     #[structopt(long = "offline")]

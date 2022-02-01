@@ -1,9 +1,9 @@
 [project]
 author  = "Fuel Labs <contact@fuel.sh>"
+entry = "main.sw"
 license = "Apache-2.0"
 name = "test_fuel_coin_contract"
-entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.2" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }

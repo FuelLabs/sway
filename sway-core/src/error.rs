@@ -148,6 +148,7 @@ pub struct CompileWarning {
     pub warning_content: Warning,
 }
 
+#[derive(Clone, Copy)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
