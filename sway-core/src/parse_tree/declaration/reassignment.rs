@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{err, ok, CompileError, CompileResult},
-    parse_array_index,
+    error::{err, ok, CompileError, CompileResult, ParseResult},
+    error_recovery_parse_result, parse_array_index,
     parse_tree::{ident, Expression},
     parser::Rule,
 };
@@ -23,7 +23,7 @@ impl Reassignment {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Reassignment> {
+    ) -> CompileResult<ParseResult<Reassignment>> {
         let path = config.map(|c| c.path());
         let span = Span {
             span: pair.as_span(),
@@ -36,31 +36,37 @@ impl Reassignment {
         match variable_or_struct_reassignment.as_rule() {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
-                let name = check!(
+                let name_result = check!(
                     Expression::parse_from_pair_inner(iter.next().unwrap(), config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let body = iter.next().unwrap();
-                let body = check!(
+                let mut body_result = check!(
                     Expression::parse_from_pair(body.clone(), config),
-                    Expression::Tuple {
+                    error_recovery_parse_result(Expression::Tuple {
                         fields: vec![],
                         span: Span {
                             span: body.as_span(),
                             path
                         }
-                    },
+                    }),
                     warnings,
                     errors
                 );
 
+                let mut var_decls = name_result.var_decls;
+                var_decls.append(&mut body_result.var_decls);
+                let reassign = Reassignment {
+                    lhs: Box::new(name_result.value),
+                    rhs: body_result.value,
+                    span,
+                };
                 ok(
-                    Reassignment {
-                        lhs: Box::new(name),
-                        rhs: body,
-                        span,
+                    ParseResult {
+                        var_decls,
+                        value: reassign,
                     },
                     warnings,
                     errors,
@@ -74,12 +80,12 @@ impl Reassignment {
                     span: rhs.as_span(),
                     path: path.clone(),
                 };
-                let body = check!(
+                let body_result = check!(
                     Expression::parse_from_pair(rhs, config),
-                    Expression::Tuple {
+                    error_recovery_parse_result(Expression::Tuple {
                         fields: vec![],
                         span: rhs_span
-                    },
+                    }),
                     warnings,
                     errors
                 );
@@ -94,7 +100,7 @@ impl Reassignment {
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
                 let mut name_parts = inner.into_inner();
-                let mut expr = check!(
+                let mut expr_result = check!(
                     parse_subfield_path_ensure_only_var(
                         name_parts.next().expect("guaranteed by grammar"),
                         config
@@ -105,8 +111,8 @@ impl Reassignment {
                 );
 
                 for name_part in name_parts {
-                    expr = Expression::SubfieldExpression {
-                        prefix: Box::new(expr.clone()),
+                    let expr = Expression::SubfieldExpression {
+                        prefix: Box::new(expr_result.value.clone()),
                         span: Span {
                             span: name_part.as_span(),
                             path: path.clone(),
@@ -117,14 +123,24 @@ impl Reassignment {
                             warnings,
                             errors
                         ),
-                    }
+                    };
+                    expr_result = ParseResult {
+                        var_decls: expr_result.var_decls,
+                        value: expr,
+                    };
                 }
 
+                let mut var_decls = body_result.var_decls;
+                var_decls.append(&mut expr_result.var_decls);
+                let exp = Reassignment {
+                    lhs: Box::new(expr_result.value),
+                    rhs: body_result.value,
+                    span,
+                };
                 ok(
-                    Reassignment {
-                        lhs: Box::new(expr),
-                        rhs: body,
-                        span,
+                    ParseResult {
+                        var_decls,
+                        value: exp,
                     },
                     warnings,
                     errors,
@@ -138,7 +154,7 @@ impl Reassignment {
 fn parse_subfield_path_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+) -> CompileResult<ParseResult<Expression>> {
     let warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -161,14 +177,14 @@ fn parse_subfield_path_ensure_only_var(
                 },
             ));
             // construct unit expression for error recovery
-            let exp = Expression::Tuple {
+            let exp_result = error_recovery_parse_result(Expression::Tuple {
                 fields: vec![],
                 span: Span {
                     span: item.as_span(),
                     path,
                 },
-            };
-            ok(exp, warnings, errors)
+            });
+            ok(exp_result, warnings, errors)
         }
     }
 }
@@ -187,7 +203,7 @@ fn parse_subfield_path_ensure_only_var(
 fn parse_call_item_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+) -> CompileResult<ParseResult<Expression>> {
     let path = config.map(|c| c.path());
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -217,5 +233,12 @@ fn parse_call_item_ensure_only_var(
         }
         a => unreachable!("{:?}", a),
     };
-    ok(exp, warnings, errors)
+    ok(
+        ParseResult {
+            var_decls: vec![],
+            value: exp,
+        },
+        warnings,
+        errors,
+    )
 }

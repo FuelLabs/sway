@@ -1,6 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{ok, CompileResult},
+    error::{ok, CompileResult, ParseResult},
+    error_recovery_parse_result,
     parser::Rule,
     CodeBlock, Expression,
 };
@@ -20,7 +21,7 @@ impl WhileLoop {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParseResult<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -33,15 +34,15 @@ impl WhileLoop {
             path: path.clone(),
         };
 
-        let condition = check!(
+        let condition_result = check!(
             Expression::parse_from_pair(condition.clone(), config),
-            Expression::Tuple {
+            error_recovery_parse_result(Expression::Tuple {
                 fields: vec![],
                 span: Span {
                     span: condition.as_span(),
                     path,
                 }
-            },
+            }),
             warnings,
             errors
         );
@@ -55,7 +56,18 @@ impl WhileLoop {
             warnings,
             errors
         );
+        let while_loop = WhileLoop {
+            condition: condition_result.value,
+            body,
+        };
 
-        ok(WhileLoop { condition, body }, warnings, errors)
+        ok(
+            ParseResult {
+                var_decls: condition_result.var_decls,
+                value: while_loop,
+            },
+            warnings,
+            errors,
+        )
     }
 }

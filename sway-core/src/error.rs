@@ -4,6 +4,7 @@ use crate::{
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
+    VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};
 
@@ -67,6 +68,12 @@ pub(crate) fn ok<T>(
         warnings,
         errors,
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParseResult<T> {
+    pub var_decls: Vec<VariableDeclaration>,
+    pub value: T,
 }
 
 #[derive(Debug, Clone)]
@@ -148,6 +155,7 @@ pub struct CompileWarning {
     pub warning_content: Warning,
 }
 
+#[derive(Clone, Copy)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
@@ -381,6 +389,8 @@ pub enum CompileError {
         span: Span,
         err: pest::error::Error<Rule>,
     },
+    #[error("Error parsing input: {err:?}")]
+    ParseError { span: Span, err: String },
     #[error(
         "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
          predicate at the top level."
@@ -902,6 +912,7 @@ impl CompileError {
             Unimplemented(_, span) => span,
             TypeError(err) => err.internal_span(),
             ParseFailure { span, .. } => span,
+            ParseError { span, .. } => span,
             InvalidTopLevelItem(_, span) => span,
             Internal(_, span) => span,
             InternalOwned(_, span) => span,

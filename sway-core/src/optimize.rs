@@ -1345,6 +1345,7 @@ fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Val
         Literal::U16(n) => Constant::get_uint(context, 16, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 32, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
+        Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
         Literal::String(s) => Constant::get_string(context, s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
@@ -1357,6 +1358,7 @@ fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
         Literal::U16(n) => Constant::new_uint(16, *n as u64),
         Literal::U32(n) => Constant::new_uint(32, *n as u64),
         Literal::U64(n) => Constant::new_uint(64, *n),
+        Literal::Numeric(n) => Constant::new_uint(64, *n),
         Literal::String(s) => Constant::new_string(s.as_str().to_owned()),
         Literal::Boolean(b) => Constant::new_bool(*b),
         Literal::B256(bs) => Constant::new_b256(*bs),
@@ -1581,7 +1583,7 @@ mod tests {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: std::sync::Arc::new(std::sync::Mutex::new(vec!()))
+            generated_names: std::sync::Arc::new(std::sync::Mutex::new(vec![])),
         };
         TypedParseTree::type_check(
             parse_tree.tree,

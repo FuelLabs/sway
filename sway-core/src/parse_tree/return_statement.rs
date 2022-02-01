@@ -1,4 +1,10 @@
-use crate::{build_config::BuildConfig, error::ok, parser::Rule, CompileResult, Expression};
+use crate::{
+    build_config::BuildConfig,
+    error::{ok, ParseResult},
+    error_recovery_parse_result,
+    parser::Rule,
+    CompileResult, Expression,
+};
 
 use sway_types::span;
 
@@ -13,7 +19,7 @@ impl ReturnStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParseResult<Self>> {
         let span = span::Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),
@@ -24,23 +30,35 @@ impl ReturnStatement {
         let _ret_keyword = inner.next();
         let expr = inner.next();
         let res = match expr {
-            None => ReturnStatement {
-                expr: Expression::Tuple {
-                    fields: vec![],
-                    span,
-                },
-            },
+            None => {
+                let stmt = ReturnStatement {
+                    expr: Expression::Tuple {
+                        fields: vec![],
+                        span,
+                    },
+                };
+                ParseResult {
+                    var_decls: vec![],
+                    value: stmt,
+                }
+            }
             Some(expr_pair) => {
-                let expr = check!(
+                let expr_result = check!(
                     Expression::parse_from_pair(expr_pair, config),
-                    Expression::Tuple {
+                    error_recovery_parse_result(Expression::Tuple {
                         fields: vec![],
                         span
-                    },
+                    }),
                     warnings,
                     errors
                 );
-                ReturnStatement { expr }
+                let stmt = ReturnStatement {
+                    expr: expr_result.value,
+                };
+                ParseResult {
+                    var_decls: expr_result.var_decls,
+                    value: stmt,
+                }
             }
         };
         ok(res, warnings, errors)

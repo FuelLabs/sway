@@ -23,9 +23,11 @@ fn main() -> bool {
     };
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0x49050d88db785fdf3b3fd35df44fbe644b9b5273ae97d9c7c19cc3e4aa361eaf);
+    let fuelcoin_id = ~ContractId::from(0xbaf516b8b50c51953a6d2f20ec1f5ff09ced2b80a9c72ea376aaf23dd6af467e);
+    let balance_test_id = ~ContractId::from(0x27eb552a9458aec1db874930ae86fe91df49b4e0c221e08f7ffcf3fadadee0a3);
+
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0x49050d88db785fdf3b3fd35df44fbe644b9b5273ae97d9c7c19cc3e4aa361eaf);
+    let fuel_coin = abi(TestFuelCoin, 0xbaf516b8b50c51953a6d2f20ec1f5ff09ced2b80a9c72ea376aaf23dd6af467e);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
@@ -41,6 +43,21 @@ fn main() -> bool {
     // check that the burn was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 4);
+
+    let force_transfer_args = ParamsForceTransfer {
+        coins: 3,
+        asset_id: fuelcoin_id,
+        c_id: balance_test_id,
+    };
+
+    // force transfer coins
+    fuel_coin.force_transfer(default.gas, default.coins, default.id.value, force_transfer_args);
+
+    // check that the transfer was successful
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
+    let balance_test_contract_balance = balance_of_contract(fuelcoin_id.value, balance_test_id);
+    assert(fuelcoin_balance == 1);
+    assert(balance_test_contract_balance == 3);
 
     true
 }

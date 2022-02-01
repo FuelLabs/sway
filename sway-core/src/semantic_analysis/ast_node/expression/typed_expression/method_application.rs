@@ -329,15 +329,30 @@ fn re_parse_expression(
         }
     };
 
-    let contract_address = check!(
+    let span = Span {
+        span: contract_pair.as_span(),
+        path: Some(build_config.path()),
+    };
+    // contract_address_result should be empty I think?
+    let contract_address_result = check!(
         Expression::parse_from_pair(contract_pair, Some(build_config)),
         return err(warnings, errors),
         warnings,
         errors
     );
+    if !contract_address_result.var_decls.is_empty() {
+        errors.push(CompileError::ParseError {
+            span,
+            err:
+                "The contract address parse result should not attempt to make variable declarations"
+                    .to_string(),
+        });
+        return err(warnings, errors);
+    }
+
     let contract_address = check!(
         TypedExpression::type_check(TypeCheckArguments {
-            checkee: contract_address,
+            checkee: contract_address_result.value,
             namespace,
             crate_namespace,
             return_type_annotation: insert_type(TypeInfo::Unknown),

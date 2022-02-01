@@ -1,6 +1,6 @@
 use crate::{build_config::BuildConfig, error::*, parser::Rule, CatchAll, CodeBlock};
 
-use sway_types::span;
+use sway_types::{span, Span};
 
 use pest::iterators::Pair;
 
@@ -104,18 +104,6 @@ impl MatchBranch {
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => check!(
-                Expression::parse_from_pair(result.clone(), config),
-                Expression::Tuple {
-                    fields: vec![],
-                    span: span::Span {
-                        span: result.as_span(),
-                        path
-                    }
-                },
-                warnings,
-                errors
-            ),
             Rule::code_block => {
                 let span = span::Span {
                     span: result.as_span(),
@@ -134,7 +122,17 @@ impl MatchBranch {
                     span,
                 }
             }
-            _ => unreachable!(),
+            a => {
+                let span = Span {
+                    span: result.as_span(),
+                    path: path.clone(),
+                };
+                errors.push(CompileError::UnimplementedRule(a, span.clone()));
+                Expression::Tuple {
+                    fields: vec![],
+                    span,
+                }
+            }
         };
         ok(
             MatchBranch {
