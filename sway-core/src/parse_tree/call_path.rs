@@ -73,6 +73,14 @@ impl CallPath {
         assert!(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_);
         let mut warnings = vec![];
         let mut errors = vec![];
+        let span = Span {
+            span: pair.as_span(),
+            path: config.map(|c| c.path())
+        };
+        if !(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_) {
+            errors.push(CompileError::ParseError { span, err: "expected call path here".to_string()});
+            return err(warnings, errors);
+        }
         let mut pairs_buf = vec![];
         let stmt = pair.into_inner().next().unwrap();
         let is_absolute = stmt.as_rule() == Rule::absolute_call_path

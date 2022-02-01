@@ -42,11 +42,18 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
 
-// this call path is used when there can be some number of "::foo"s
+// this call path is used when there are 0+ prefixes in the call path
+// examples:
+// thing
+// thing::thing2
+// thing::thing2::thing3
 call_path           =  {relative_call_path|absolute_call_path}
 relative_call_path  =  {ident ~ (path_separator ~ ident)*}
 absolute_call_path  =  {path_separator ~ ident ~ (path_separator ~ ident)*}
-// this call path is used when there must be at least one "::foo"
+// this call path is used when there are 1+ prefixes in the call path
+// examples:
+// thing::thing2
+// thing::thing2::thing3
 call_path_          =  {relative_call_path_|absolute_call_path_}
 relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
 absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
