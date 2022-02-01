@@ -126,6 +126,26 @@ impl Declaration {
         };
         ok(parsed_declaration, warnings, errors)
     }
+
+    /// This function returns a `Vec<Self>` because of actions taken during
+    /// desugaring. Given this variable declaration:
+    ///
+    /// ```ignore
+    /// let x = (1, 2);
+    /// let (a, b) = x;
+    /// ```
+    ///
+    /// This gets desugared to:
+    ///
+    /// ```ignore
+    /// let x = (1, 2);
+    /// let a = x.0;
+    /// let b = x.1;
+    /// ```
+    ///
+    /// So, the `var_decl` rule has the possibility of returning more than
+    /// one `VariableDeclaration`, thus we may need to return multiple
+    /// `Declaration`s.
     pub(crate) fn parse_from_pair(
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,

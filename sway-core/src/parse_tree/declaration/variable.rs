@@ -19,18 +19,29 @@ pub struct VariableDeclaration {
     pub is_mutable: bool,
 }
 
-pub enum VariableDeclarationLHS {
+/// This enum represents the possibilities of what can be placed
+/// on the LHS of a variable declaration. Given this declaration:
+///
+/// ```ignore
+/// let (a, b) = (1, 2);
+/// ```
+///
+/// The LHS would translate to a `VariableDeclarationLHS::Tuple(...)`.
+/// However, these objects are not public and do not exist outside
+/// of variable declaration desugaring. They get consumed in the
+/// `parse_from_pair` function below.
+enum VariableDeclarationLHS {
     Name(LHSName),
     Tuple(LHSTuple),
 }
 
-pub struct LHSName {
+struct LHSName {
     name: Ident,
     is_mutable: bool,
     span: Span,
 }
 
-pub struct LHSTuple {
+struct LHSTuple {
     elems: Vec<VariableDeclarationLHS>,
     span: Span,
 }

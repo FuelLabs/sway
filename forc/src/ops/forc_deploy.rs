@@ -26,6 +26,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
         print_intermediate_asm,
         print_ir,
         binary_outfile,
+        debug_outfile,
         offline_mode,
         silent_mode,
     } = command;
@@ -49,6 +50,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                             print_ir,
                             binary_outfile,
                             offline_mode,
+                            debug_outfile,
                             silent_mode,
                         };
 
