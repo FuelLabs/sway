@@ -639,8 +639,6 @@ impl FnCompiler {
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
     ) -> Result<Value, String> {
-        // XXX To do: Calling into other modules, managing namespaces.
-        //
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
         // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
         // straight in, no questions asked.  Library functions are provided in an initial namespace
@@ -654,10 +652,16 @@ impl FnCompiler {
         // Eventually we need to Do It Properly and inline only when necessary, and compile the
         // standard library to an actual module.
 
+        // Edge case: take note as to whether the called function has the same name as this
+        // function.  If so we'll get confused and try and recurse.  This is only a problem while
+        // we don't have absolute paths to callees and while function bodies are inlined at call
+        // sites.
+        let has_same_name = self.function.get_name(context) == ast_name;
+
         match context
             .module_iter()
             .flat_map(|module| module.function_iter(context))
-            .find(|function| function.get_name(context) == ast_name)
+            .find(|function| !has_same_name && function.get_name(context) == ast_name)
         {
             Some(callee) => {
                 let args = ast_args
