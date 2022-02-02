@@ -36,7 +36,7 @@ pub struct MyStruct {
 }
 ```
 
-Libaries are composed of just a Forc.toml and src folder unlike usual Sway projects which usually contain tests and a Cargo.toml. An example of a Librarie's Forc.toml may be
+Libraries are composed of just a Forc.toml and src folder, unlike usual Sway projects which usually contain tests and a Cargo.toml. An example of a Library's Forc.toml 
 
 ```toml=
 [project]
@@ -49,7 +49,7 @@ name = "lib-std"
 "core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
 ```
 
-which denotes the author, the name by which it can be imported, an entry file, and any dependencies. For large libraries it is reccomended to have a lib.sw entry point that depends on all of the libraries functionality. For example, the lib.sw of the standard library looks like
+which denotes the author, the name by which it can be imported, an entry file, and any dependencies. For large libraries, it is recommended to have a lib.sw entry point that depends on all of the library's functionality. For example, the lib.sw of the standard library looks like
 
 ```sway
 library std;
@@ -75,7 +75,7 @@ pub fn height() -> u64 {
 }
 ```
 
-The `dep` keyword in the main library includes the dependency, making all of its functions accessible from the main library.
+The `dep` keyword in the main library includes the dependency, making all of its functions and structs accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
 
 ## Using Libraries
 
