@@ -145,6 +145,15 @@ pub fn whitespace() -> impl Parser<Output = ()> + Clone {
     .map(|(_, _vec)| ())
 }
 
+pub fn leading_whitespace<P>(parser: P) -> impl Parser<Output = P::Output> + Clone
+where
+    P: Parser + Clone,
+{
+    whitespace()
+    .then(parser)
+    .map(|((), value)| value)
+}
+
 pub fn optional_leading_whitespace<P>(parser: P) -> impl Parser<Output = P::Output> + Clone
 where
     P: Parser + Clone,
@@ -168,10 +177,7 @@ pub fn todo<T>() -> Todo<T> {
     }
 }
 
-impl<T> Parser for Todo<T>
-where
-    T: Spanned,
-{
+impl<T> Parser for Todo<T> {
     type Output = T;
 
     fn parse(&self, _input: &Span) -> Result<(T, usize), ParseError> {
@@ -230,6 +236,16 @@ pub fn eof() -> impl Parser<Output = ()> + Clone {
             Ok(((), 0))
         } else {
             Err(ParseError::ExpectedEof { span: input.to_start() })
+        }
+    })
+}
+
+pub fn newline() -> impl Parser<Output = ()> + Clone {
+    from_fn(|input| {
+        if input.as_str().starts_with("\n") {
+            Ok(((), 1))
+        } else {
+            Err(ParseError::ExpectedNewline { span: input.to_start() })
         }
     })
 }

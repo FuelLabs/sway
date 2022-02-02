@@ -34,6 +34,9 @@ pub enum ParseError {
     UnclosedMultilineComment {
         span: Span,
     },
+    ExpectedNewline {
+        span: Span,
+    },
 }
 
 impl Spanned for ParseError {
@@ -51,6 +54,7 @@ impl Spanned for ParseError {
             ParseError::UnicodeEscapeOutOfRange { span } => span.clone(),
             ParseError::InvalidUnicodeEscapeChar { span } => span.clone(),
             ParseError::UnclosedMultilineComment { span } => span.clone(),
+            ParseError::ExpectedNewline { span } => span.clone(),
         }
     }
 }

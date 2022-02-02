@@ -16,6 +16,8 @@ fn main() {
         dir.push("test_programs");
         dir
     };
+    let mut good = 0;
+    let mut bad = 0;
     for entry_res in walkdir::WalkDir::new(&dir).sort_by_file_name() {
         let entry = entry_res.unwrap();
         if !entry.file_type().is_file() {
@@ -44,12 +46,15 @@ fn main() {
         match res {
             Ok(_parsed) => {
                 println!("    -> ok");
+                good += 1;
             },
             Err(error) => {
                 println!("{:?}", error);
-                return;
+                bad += 1;
+                break;
             },
         }
     }
-    println!("all good!");
+    println!("good == {}", good);
+    println!("bad == {}", bad);
 }

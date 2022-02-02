@@ -33,6 +33,7 @@ define_token!(FnToken, fn_token, "fn");
 define_token!(TraitToken, trait_token, "trait");
 define_token!(AbiToken, abi_token, "abi");
 define_token!(LetToken, let_token, "let");
+define_token!(AsmToken, asm_token, "asm");
 
 define_token!(SemicolonToken, semicolon_token, ";");
 define_token!(ColonToken, colon_token, ":");
