@@ -75,7 +75,7 @@ pub fn height() -> u64 {
 }
 ```
 
-The `dep` keyword in the main library includes the dependency, making all of its functions and structs accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
+The `dep` keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
 
 ## Using Libraries
 
