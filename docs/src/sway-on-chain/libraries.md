@@ -49,7 +49,7 @@ name = "lib-std"
 "core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
 ```
 
-which denotes the author, the name by which it can be imported, an entry file, and any dependencies. For large libraries, it is recommended to have a lib.sw entry point that depends on all of the library's functionality. For example, the lib.sw of the standard library looks like
+which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point that depends on all of the library's functionality. For example, the `lib.sw` of the standard library looks like:
 
 ```sway
 library std;
