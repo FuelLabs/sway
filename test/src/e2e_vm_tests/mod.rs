@@ -83,6 +83,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
         ("multi_item_import", ProgramState::Return(0)), // false
+        ("funcs_with_generic_types", ProgramState::Return(1)), // true 
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {

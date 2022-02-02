@@ -550,12 +550,13 @@ impl NamespaceWrapper for NamespaceRef {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let mut new_decl = decl.clone();
                         if !decl.type_parameters.is_empty() {
-                            decl.monomorphize();
+                            new_decl = decl.monomorphize();
                         }
                         crate::type_engine::insert_type(TypeInfo::Struct {
-                            name: decl.name.as_str().to_string(),
-                            fields: decl
+                            name: new_decl.name.as_str().to_string(),
+                            fields: new_decl
                                 .fields
                                 .iter()
                                 .map(TypedStructField::as_owned_typed_struct_field)
@@ -563,12 +564,13 @@ impl NamespaceWrapper for NamespaceRef {
                         })
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let mut new_decl = decl.clone();
                         if !decl.type_parameters.is_empty() {
-                            decl.monomorphize();
+                            new_decl = decl.monomorphize();
                         }
                         crate::type_engine::insert_type(TypeInfo::Enum {
-                            name: decl.name.as_str().to_string(),
-                            variant_types: decl
+                            name: new_decl.name.as_str().to_string(),
+                            variant_types: new_decl
                                 .variants
                                 .iter()
                                 .map(TypedEnumVariant::as_owned_typed_enum_variant)
