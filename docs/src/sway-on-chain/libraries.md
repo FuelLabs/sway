@@ -57,7 +57,6 @@ library std;
 dep block;
 dep storage;
 dep constants;
-
 ```
 
 with other libraries contained in the src folder, like the block library (inside of block.sw) 
