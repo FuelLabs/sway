@@ -42,7 +42,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
 // expressions
-expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|tuple_index|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -118,11 +118,13 @@ array_elems        =  {literal_value ~ ";" ~ basic_integer|expr ~ ("," ~ expr)*}
 // declarations
 declaration               =  {(non_var_decl|var_decl|reassignment)}
 non_var_decl              =  {(enum_decl|storage_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
-var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
+var_decl                  =  {var_decl_keyword ~ var_lhs ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
 fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
-var_name                  =  {ident}
+var_lhs                   =  {var_name|var_tuple}
+var_name                  =  {mut_keyword? ~ ident}
+var_tuple                 =  {"(" ~ (var_lhs ~ ("," ~ var_lhs)* ~ ","?)? ~ ")" }
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
@@ -190,6 +192,11 @@ asm_register             =  {ident}
 asm_immediate            =  {"i" ~ basic_integer}
 opcode                   =  {ident}
 
+// tuples
+tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
+tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
+tuple_index    =  {call_item ~ "." ~ basic_integer}
+
 // control flow
 control_flow = _{while_loop|return_statement}
 
@@ -203,8 +210,6 @@ char           = @{
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
-tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
 reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 

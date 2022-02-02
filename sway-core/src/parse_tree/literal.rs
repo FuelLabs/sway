@@ -419,3 +419,30 @@ fn parse_binary_from_pair(
         }
     })
 }
+
+#[allow(clippy::wildcard_in_or_patterns)]
+pub(crate) fn handle_parse_int_error(
+    e: ParseIntError,
+    ty: TypeInfo,
+    span: Span,
+    path: Option<Arc<PathBuf>>,
+) -> CompileError {
+    match e.kind() {
+        IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
+            "Called incorrect internal sway-core on literal type.",
+            span::Span { span, path },
+        ),
+    }
+}

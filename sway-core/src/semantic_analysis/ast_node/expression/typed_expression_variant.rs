@@ -60,8 +60,8 @@ pub(crate) enum TypedExpressionVariant {
     StructFieldAccess {
         prefix: Box<TypedExpression>,
         field_to_access: OwnedTypedStructField,
-        field_to_access_span: Span,
         resolved_type_of_parent: TypeId,
+        field_to_access_span: Span,
     },
     EnumArgAccess {
         prefix: Box<TypedExpression>,
@@ -72,8 +72,8 @@ pub(crate) enum TypedExpressionVariant {
     TupleElemAccess {
         prefix: Box<TypedExpression>,
         elem_to_access_num: usize,
-        elem_to_access_span: Span,
         resolved_type_of_parent: TypeId,
+        elem_to_access_span: Span,
     },
     EnumInstantiation {
         /// for printing

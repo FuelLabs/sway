@@ -83,6 +83,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
         ("multi_item_import", ProgramState::Return(0)), // false
+        ("tuple_indexing", ProgramState::Return(1)),
+        ("tuple_access", ProgramState::Return(42)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -123,6 +125,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "contract_pure_calls_impure",
         "literal_too_large_for_type",
         "star_import_alias",
+        "item_used_without_import",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
