@@ -549,28 +549,32 @@ impl NamespaceWrapper for NamespaceRef {
         Ok(match ty {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                        name,
-                        fields,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
-                    Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
-                        name,
-                        variants,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
-                    }),
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        if !decl.type_parameters.is_empty() {
+                            decl.monomorphize();
+                        }
+                        crate::type_engine::insert_type(TypeInfo::Struct {
+                            name: decl.name.as_str().to_string(),
+                            fields: decl
+                                .fields
+                                .iter()
+                                .map(TypedStructField::as_owned_typed_struct_field)
+                                .collect::<Vec<_>>(),
+                        })
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        if !decl.type_parameters.is_empty() {
+                            decl.monomorphize();
+                        }
+                        crate::type_engine::insert_type(TypeInfo::Enum {
+                            name: decl.name.as_str().to_string(),
+                            variant_types: decl
+                                .variants
+                                .iter()
+                                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                                .collect(),
+                        })
+                    }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
                     }
