@@ -85,6 +85,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("multi_item_import", ProgramState::Return(0)), // false
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
+        ("funcs_with_generic_types", ProgramState::Return(1)), // true 
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
