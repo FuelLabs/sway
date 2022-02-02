@@ -536,7 +536,7 @@ impl NamespaceWrapper for NamespaceRef {
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let mut new_path = path;
-        let last_item = new_path.pop().expect("Guranteed_by_grammar");
+        let last_item = new_path.pop().expect("guaranteed by grammar");
         self.item_import(from_namespace, new_path, &last_item, alias)
     }
 
