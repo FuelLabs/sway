@@ -59,7 +59,7 @@ dep storage;
 dep constants;
 ```
 
-with other libraries contained in the src folder, like the block library (inside of block.sw) 
+with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
 
 ```sway
 library block;
