@@ -36,7 +36,7 @@ pub struct MyStruct {
 }
 ```
 
-Libraries are composed of just a Forc.toml and src folder, unlike usual Sway projects which usually contain tests and a Cargo.toml. An example of a Library's Forc.toml 
+Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usual Sway projects which usually contain a `tests` folder and a `Cargo.toml` file as well. An example of a Library's `Forc.toml`: 
 
 ```toml=
 [project]
