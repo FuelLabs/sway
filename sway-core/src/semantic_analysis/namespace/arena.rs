@@ -310,10 +310,16 @@ impl NamespaceWrapper for NamespaceRef {
             namespace,
         );
         write_module(
-            move |m| {
+            |m| {
                 m.implemented_traits
                     .extend(&mut implemented_traits.into_iter());
                 for symbol in symbols {
+                    if m.use_synonyms.contains_key(&symbol) {
+                        errors.push(CompileError::StarImportShadowsOtherSymbol {
+                            name: symbol.as_str().to_string(),
+                            span: symbol.span().clone(),
+                        });
+                    }
                     m.use_synonyms.insert(symbol, path.clone());
                 }
             },
@@ -493,11 +499,23 @@ impl NamespaceWrapper for NamespaceRef {
                         // no matter what, import it this way though.
                         match alias.clone() {
                             Some(alias) => {
+                                if m.use_synonyms.contains_key(&alias) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: alias.as_str().to_string(),
+                                        span: alias.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(alias.clone(), path.clone());
                                 m.use_aliases
                                     .insert(alias.as_str().to_string(), item.clone());
                             }
                             None => {
+                                if m.use_synonyms.contains_key(item) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: item.as_str().to_string(),
+                                        span: item.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(item.clone(), path.clone());
                             }
                         };

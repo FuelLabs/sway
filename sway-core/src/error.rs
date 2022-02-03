@@ -797,6 +797,8 @@ pub enum CompileError {
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
+    StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -1006,6 +1008,7 @@ impl CompileError {
             ArrayOutOfBounds { span, .. } => span,
             TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PatternMatchingAlgorithmFailure(_, span) => span,
