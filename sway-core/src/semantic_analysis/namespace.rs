@@ -107,6 +107,20 @@ impl Namespace {
         self.insert_module(module_name, ix)
     }
 
+    pub(crate) fn copy_methods_to_type(&mut self, old_type: TypeInfo, new_type: TypeInfo) {
+        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
+        for ((trait_name, type_info), l_methods) in &self.implemented_traits {
+            if *type_info == old_type {
+                methods.insert((*trait_name).clone(), l_methods.clone());
+            }
+        }
+
+        for (trait_name, l_methods) in &methods {
+            self.implemented_traits
+                .insert(((*trait_name).clone(), new_type.clone()), l_methods.clone());
+        }
+    }
+
     pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         let r#type = crate::type_engine::look_up_type_id(r#type);

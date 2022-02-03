@@ -1,5 +1,7 @@
 script;
 
+/* ------------------*/
+
 struct Foo1 {
     a: u64,
     b: u64,
@@ -16,6 +18,7 @@ fn func1() -> bool {
     f.trivial()
 }
 
+/* ------------------*/
 
 enum Bar {
     a: (),
@@ -28,23 +31,39 @@ impl Bar {
     }
 }
 
-fn bar(m: Bar) -> bool {
+fn func2(m: Bar) -> bool {
     m.trivial()
 }
 
+/* ------------------*/
 
 struct Foo2<T> {
     foo: T,
 }
 
-fn func2(a: Foo2<u8>) -> u8 {
-  a.foo
+impl Foo2<T> {
+    fn trivial(self) -> bool {
+        false
+    }
 }
 
-fn func3(b: Foo2<u32>) -> u32 {
-  b.foo
+fn func3(a: Foo2<u8>) -> Foo2<bool> {
+    if a.trivial() {
+        Foo2 {foo: false}
+    } else {
+        Foo2 {foo: true}
+    }
 }
 
+fn func4(b: Foo2<bool>) -> Foo2<u8> {
+    if b.trivial() {
+        Foo2 {foo: 0u8} 
+    } else {
+        Foo2 {foo: 1u8}
+    }
+}
+
+/* ------------------*/
 
 pub enum Rezult<T, E> {
     Ok: T,
@@ -55,21 +74,29 @@ pub enum DumbError {
     Error: (),
 }
 
-pub fn func4() -> Rezult<u8, DumbError> {
-    if false {
+impl Rezult<T, E> {
+    fn trivial(self) -> bool {
+        false
+    }
+}
+
+pub fn func5(r: Rezult<u8, DumbError>) -> Rezult<u8, DumbError> {
+    if r.trivial() {
         Rezult::Err(DumbError::Error)
     } else {
         Rezult::Ok(1u8)
     }
 }
 
-pub fn func5() -> Rezult<bool, DumbError> {
-   if false {
+pub fn func6(r: Rezult<bool, DumbError>) -> Rezult<bool, DumbError> {
+   if r.trivial() {
         Rezult::Err(DumbError::Error)
     } else {
         Rezult::Ok(true)
     }
 }
+
+/* ------------------*/
 
 fn main() -> bool {
   true
