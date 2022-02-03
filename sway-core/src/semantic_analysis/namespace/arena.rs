@@ -270,7 +270,7 @@ impl NamespaceWrapper for NamespaceRef {
     }
     fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo) {
         write_module(
-            move |ns| ns.copy_methods_to_type(old_type.clone(), new_type.clone()),
+            move |ns| ns.copy_methods_to_type(old_type.clone(), new_type),
             *self,
         )
     }
