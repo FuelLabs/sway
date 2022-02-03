@@ -109,7 +109,12 @@ fn combine_const_aggregate_field(
     function.replace_value(context, aggregate, new_aggregate_value, None);
 
     // Remove the old aggregate from the context.
-    context.values.remove(aggregate.0);
+    //
+    // OR NOT!  This is too dangerous unless we can
+    // guarantee it has no uses, which is something we should implement eventually.  For now, in
+    // this case it shouldn't matter if we leave it, even if it's not used.
+    //
+    // TODO: context.values.remove(aggregate.0);
 
     new_aggregate_value
 }

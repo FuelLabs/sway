@@ -44,7 +44,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         ("op_precedence", ProgramState::Return(0)),
         ("asm_without_return", ProgramState::Return(0)),
-        ("op_precedence", ProgramState::Return(0)), // false
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
         ("struct_field_access", ProgramState::Return(43)),
@@ -53,7 +52,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
-        // TEMPORARILY DISABLED DUE TO OOM ("const_decl_in_library", ProgramState::Return(1)), // true
+        ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
@@ -61,19 +60,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_functions", ProgramState::Return(1)),        // true
         ("generic_enum", ProgramState::Return(1)),             // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
-        ("b512_test", ProgramState::Return(1)),                // true
         ("ec_recover_test", ProgramState::Return(1)),          // true
         ("address_test", ProgramState::Return(1)),             // true
         ("generic_struct", ProgramState::Return(1)),           // true
         ("zero_field_types", ProgramState::Return(10)),        // true
         ("assert_test", ProgramState::Return(1)),              // true
         ("match_expressions", ProgramState::Return(42)),
-        ("assert_test", ProgramState::Return(1)),  // true
         ("array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
-        ("block_height", ProgramState::Return(1)),   // true
         ("b512_test", ProgramState::Return(1)),      // true
         ("block_height", ProgramState::Return(1)),   // true
         ("valid_impurity", ProgramState::Revert(0)), // false
