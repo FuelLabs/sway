@@ -2,7 +2,7 @@ script;
 
 dep bar;
 
-use ::bar::{Bar1 as MyBar1, Bar2, double_bar::{DoubleBar1 as MyDoubleBar1, DoubleBar2, *}};
+use ::bar::{Bar1 as MyBar1, Bar2, double_bar::{DoubleBar1 as MyDoubleBar1, DoubleBar2, DoubleBar3}};
 
 fn main() -> bool {
     let bar1 = MyBar1 {

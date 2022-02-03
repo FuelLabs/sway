@@ -494,7 +494,7 @@ impl NamespaceWrapper for NamespaceRef {
                         match alias.clone() {
                             Some(alias) => {
                                 if m.use_synonyms.contains_key(&alias) {
-                                     errors.push(CompileError::ShadowsOtherSymbol {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
                                         name: alias.as_str().to_string(),
                                         span: alias.span().clone(),
                                     });
