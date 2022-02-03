@@ -797,6 +797,8 @@ pub enum CompileError {
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
+    StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -813,6 +815,8 @@ pub enum CompileError {
     IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
     IntegerContainsInvalidDigit { span: Span, ty: String },
+    #[error("Unexpected alias after an asterisk in an import statement.")]
+    AsteriskWithAlias { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1004,6 +1008,7 @@ impl CompileError {
             ArrayOutOfBounds { span, .. } => span,
             TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PatternMatchingAlgorithmFailure(_, span) => span,
@@ -1012,6 +1017,7 @@ impl CompileError {
             IntegerTooLarge { span, .. } => span,
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
+            AsteriskWithAlias { span, .. } => span,
         }
     }
 
