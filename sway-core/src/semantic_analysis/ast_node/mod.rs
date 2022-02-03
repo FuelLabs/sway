@@ -251,6 +251,7 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     body,
                                     is_mutable: is_mutable.into(),
+                                    const_decl_origin: false,
                                     type_ascription,
                                 });
                             namespace.insert(name, typed_var_decl.clone());
@@ -283,6 +284,7 @@ impl TypedAstNode {
                                     } else {
                                         VariableMutability::Immutable
                                     },
+                                    const_decl_origin: true,
                                     type_ascription: insert_type(type_ascription),
                                 });
                             namespace.insert(name, typed_const_decl.clone());
@@ -1123,6 +1125,7 @@ fn type_check_trait_methods(
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
+                        const_decl_origin: false,
                         type_ascription: r#type,
                     }),
                 );
