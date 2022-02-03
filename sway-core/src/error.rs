@@ -813,6 +813,8 @@ pub enum CompileError {
     IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
     IntegerContainsInvalidDigit { span: Span, ty: String },
+    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
+    StarImportShadowsOtherSymbol { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1012,6 +1014,7 @@ impl CompileError {
             IntegerTooLarge { span, .. } => span,
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
+            StarImportShadowsOtherSymbol { span, .. } => span,
         }
     }
 
