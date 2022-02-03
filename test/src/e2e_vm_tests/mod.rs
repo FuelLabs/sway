@@ -120,6 +120,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "script_calls_impure",
         "contract_pure_calls_impure",
         "literal_too_large_for_type",
+        "star_import_alias",
         "item_used_without_import",
         "shadow_import",
     ];

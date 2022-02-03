@@ -815,6 +815,8 @@ pub enum CompileError {
     IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
     IntegerContainsInvalidDigit { span: Span, ty: String },
+    #[error("Unexpected alias after an asterisk in an import statement.")]
+    AsteriskWithAlias { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1015,6 +1017,7 @@ impl CompileError {
             IntegerTooLarge { span, .. } => span,
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
+            AsteriskWithAlias { span, .. } => span,
         }
     }
 

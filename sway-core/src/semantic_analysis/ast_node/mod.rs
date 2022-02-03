@@ -181,6 +181,9 @@ impl TypedAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
+                        ImportType::SelfImport => {
+                            namespace.self_import(from_module, a.call_path, a.alias)
+                        }
                         ImportType::Item(s) => {
                             namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
