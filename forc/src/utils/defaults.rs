@@ -34,9 +34,9 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels-abigen-macro = "0.2"
-fuels-core = "0.2"
-fuels-rs = "0.2"
+fuels-abigen-macro = "0.3"
+fuels-core = "0.3"
+fuels-contract = "0.3"
 fuel-gql-client = {{ version = "0.2", default-features = false }}
 fuel-tx = "0.3"
 rand = "0.8"
