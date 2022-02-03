@@ -128,7 +128,7 @@ Our `tests/harness.rs` file could look like:
 ```rust
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
-use fuels_rs::contract::Contract;
+use fuels_contract::contract::Contract;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
