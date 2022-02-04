@@ -1,3 +1,4 @@
+pub mod addr2line;
 pub mod build;
 pub mod deploy;
 pub mod format;
