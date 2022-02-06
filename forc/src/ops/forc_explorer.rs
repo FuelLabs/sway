@@ -85,7 +85,7 @@ async fn exec_start(command: ExplorerCommand) -> Result<(), reqwest::Error> {
     let is_downloaded = check_version_path(version);
 
     if !is_downloaded {
-        let url = get_release_url_1(releases.as_slice(), version);
+        let url = get_release_url(releases.as_slice(), version);
         match download_build(url, version).await {
             Ok(arch) => arch,
             Err(error) => panic!("Failed to download build {:?}", error),
@@ -140,7 +140,7 @@ fn check_version_path(version: &str) -> bool {
     path.exists()
 }
 
-fn get_release_url_1<'a>(releases: &'a [GitHubRelease], name: &str) -> &'a str {
+fn get_release_url<'a>(releases: &'a [GitHubRelease], name: &str) -> &'a str {
     let mut url: &'a str = "";
 
     for release in releases {
@@ -150,26 +150,6 @@ fn get_release_url_1<'a>(releases: &'a [GitHubRelease], name: &str) -> &'a str {
         }
     }
     url
-}
-
-async fn get_release_url() -> Result<String, reqwest::Error> {
-    let client = reqwest::Client::new();
-    let releases_url = REPO_RELEASES_URL;
-    let response = client
-        .get(releases_url)
-        .header("User-Agent", "warp")
-        .send()
-        .await?;
-    let response_json: Vec<GitHubRelease> = response.json().await?;
-    let download_url = response_json
-        .first()
-        .unwrap()
-        .assets
-        .first()
-        .unwrap()
-        .browser_download_url
-        .clone();
-    Ok(download_url)
 }
 
 async fn download_build(url: &str, version: &str) -> DownloadResult<File> {
