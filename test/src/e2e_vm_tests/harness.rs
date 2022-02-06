@@ -80,7 +80,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
-    let gas_limit = 10000000;
+    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
     let byte_price = 0;
     let maturity = 0;
     let script_data = vec![];
