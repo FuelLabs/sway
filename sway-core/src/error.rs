@@ -817,6 +817,14 @@ pub enum CompileError {
     IntegerContainsInvalidDigit { span: Span, ty: String },
     #[error("Unexpected alias after an asterisk in an import statement.")]
     AsteriskWithAlias { span: Span },
+    #[error("A trait cannot be a subtrait of an ABI.")]
+    AbiAsSupertrait { span: Span },
+    #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
+    NameDefinedMultipleTimesForTrait {
+        fn_name: String,
+        trait_name: String,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1018,6 +1026,8 @@ impl CompileError {
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
             AsteriskWithAlias { span, .. } => span,
+            AbiAsSupertrait { span, .. } => span,
+            NameDefinedMultipleTimesForTrait { span, .. } => span,
         }
     }
 

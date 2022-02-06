@@ -82,6 +82,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
+        ("supertraits", ProgramState::Return(10)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -124,6 +125,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "star_import_alias",
         "item_used_without_import",
         "shadow_import",
+        "supertrait_dup_methods_1",
+        "supertrait_dup_methods_2",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
