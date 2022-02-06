@@ -81,6 +81,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
     let gas_limit = 10000000;
+    let byte_price = 0;
     let maturity = 0;
     let script_data = vec![];
     let inputs = vec![];
@@ -89,6 +90,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let tx_to_test = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,

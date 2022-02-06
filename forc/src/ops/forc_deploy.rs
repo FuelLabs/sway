@@ -106,27 +106,32 @@ fn create_contract_tx(
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
     let gas_limit = 10000000;
+    let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;
     let witnesses = vec![compiled_contract.clone().into()];
 
     let salt = Salt::new([0; 32]);
     let static_contracts = vec![];
+    let storage_slots = vec![];
 
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
-    let id = contract.id(&salt, &root);
+    let state_root = Contract::default_state_root();
+    let id = contract.id(&salt, &root, &state_root);
     println!("Contract id: 0x{}", hex::encode(id));
-    let outputs = [&[Output::ContractCreated { contract_id: id }], &outputs[..]].concat();
+    let outputs = [&[Output::ContractCreated { contract_id: id, state_root: state_root }], &outputs[..]].concat();
 
     (
         Transaction::create(
             gas_price,
             gas_limit,
+            byte_price,
             maturity,
             bytecode_witness_index,
             salt,
             static_contracts,
+            storage_slots,
             inputs,
             outputs,
             witnesses,
