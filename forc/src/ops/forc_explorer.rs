@@ -110,9 +110,12 @@ async fn exec_start(command: ExplorerCommand) -> Result<(), reqwest::Error> {
 }
 
 async fn exec_clean() -> Result<(), reqwest::Error> {
-    match remove_dir_all(ExplorerAppPaths::web_app_path()) {
-        Ok(_) => (),
-        Err(error) => eprintln!("Failed clean up files {:?}", error),
+    let path = ExplorerAppPaths::web_app_path();
+    if path.exists() {
+        match remove_dir_all(path) {
+            Ok(_) => (),
+            Err(error) => eprintln!("Failed clean up files {:?}", error),
+        }
     }
     Ok(())
 }

@@ -950,6 +950,7 @@ name = "forc"
 version = "0.3.3"
 dependencies = [
  "annotate-snippets",
+ "ansi_term 0.12.1",
  "anyhow",
  "dirs 3.0.2",
  "flate2",
