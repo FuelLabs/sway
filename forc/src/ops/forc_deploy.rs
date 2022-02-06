@@ -120,7 +120,14 @@ fn create_contract_tx(
     let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root, &state_root);
     println!("Contract id: 0x{}", hex::encode(id));
-    let outputs = [&[Output::ContractCreated { contract_id: id, state_root: state_root }], &outputs[..]].concat();
+    let outputs = [
+        &[Output::ContractCreated {
+            contract_id: id,
+            state_root: state_root,
+        }],
+        &outputs[..],
+    ]
+    .concat();
 
     (
         Transaction::create(
