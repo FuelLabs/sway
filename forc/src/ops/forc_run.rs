@@ -166,7 +166,7 @@ fn create_tx_with_script_and_data(
     outputs: Vec<fuel_tx::Output>,
 ) -> Transaction {
     let gas_price = 0;
-    let gas_limit = 10000000;
+    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
     let byte_price = 0;
     let maturity = 0;
     let witnesses = vec![];
