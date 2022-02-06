@@ -62,6 +62,7 @@ pub trait NamespaceWrapper {
     fn star_import(&self, from_module: Option<NamespaceRef>, path: Vec<Ident>)
         -> CompileResult<()>;
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration>;
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo);
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
     /// `foo::bar::function`
@@ -273,6 +274,13 @@ impl NamespaceWrapper for NamespaceRef {
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         read_module(|ns| ns.get_methods_for_type(r#type), *self)
     }
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo) {
+        write_module(
+            move |ns| ns.copy_methods_to_type(old_type.clone(), new_type),
+            *self,
+        )
+    }
+
     fn star_import(
         &self,
         from_module: Option<NamespaceRef>,
@@ -588,28 +596,54 @@ impl NamespaceWrapper for NamespaceRef {
         Ok(match ty {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                        name,
-                        fields,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
-                    Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
-                        name,
-                        variants,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
-                    }),
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let old_struct = TypeInfo::Struct {
+                            name: decl.name.as_str().to_string(),
+                            fields: decl
+                                .fields
+                                .iter()
+                                .map(TypedStructField::as_owned_typed_struct_field)
+                                .collect::<Vec<_>>(),
+                        };
+                        let mut new_struct = old_struct.clone();
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = decl.monomorphize();
+                            new_struct = TypeInfo::Struct {
+                                name: new_decl.name.as_str().to_string(),
+                                fields: new_decl
+                                    .fields
+                                    .iter()
+                                    .map(TypedStructField::as_owned_typed_struct_field)
+                                    .collect::<Vec<_>>(),
+                            };
+                            self.copy_methods_to_type(old_struct, new_struct.clone());
+                        }
+                        crate::type_engine::insert_type(new_struct)
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let old_enum = TypeInfo::Enum {
+                            name: decl.name.as_str().to_string(),
+                            variant_types: decl
+                                .variants
+                                .iter()
+                                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                                .collect(),
+                        };
+                        let mut new_enum = old_enum.clone();
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = decl.monomorphize();
+                            new_enum = TypeInfo::Enum {
+                                name: new_decl.name.as_str().to_string(),
+                                variant_types: new_decl
+                                    .variants
+                                    .iter()
+                                    .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                                    .collect(),
+                            };
+                            self.copy_methods_to_type(old_enum, new_enum.clone());
+                        }
+                        crate::type_engine::insert_type(new_enum)
+                    }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
                     }
