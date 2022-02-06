@@ -123,7 +123,7 @@ fn create_contract_tx(
     let outputs = [
         &[Output::ContractCreated {
             contract_id: id,
-            state_root: state_root,
+            state_root,
         }],
         &outputs[..],
     ]
