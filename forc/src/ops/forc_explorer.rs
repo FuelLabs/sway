@@ -1,7 +1,8 @@
-use std::fs::{create_dir_all, remove_file, rename, File};
+use std::fs::{create_dir_all, remove_dir_all, remove_file, rename, File};
 use std::io::Cursor;
 use std::path::PathBuf;
 
+use ansi_term::Colour;
 use dirs;
 use reqwest;
 use serde::Deserialize;
@@ -9,13 +10,13 @@ use tar::Archive;
 use warp::Filter;
 
 use crate::cli::ExplorerCommand;
-
 type DownloadResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Deserialize, Debug)]
 struct GitHubRelease {
     url: String,
     assets: Vec<GitHubReleaseAsset>,
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -39,60 +40,116 @@ impl ExplorerAppPaths {
     pub fn web_app_path() -> PathBuf {
         dirs::home_dir().unwrap().join(".fuel/explorer")
     }
-    pub fn build_archive_path() -> PathBuf {
-        dirs::home_dir().unwrap().join(".fuel/explorer/build.tar")
+    pub fn web_app_version_path(version: &str) -> PathBuf {
+        dirs::home_dir()
+            .unwrap()
+            .join(".fuel/explorer")
+            .join(version)
     }
-    pub fn build_archive_unpack_path() -> PathBuf {
-        dirs::home_dir().unwrap().join(".fuel/explorer/build")
+    pub fn web_app_files_path(version: &str) -> PathBuf {
+        dirs::home_dir()
+            .unwrap()
+            .join(format!(".fuel/explorer/{}/www", version))
     }
-    pub fn web_app_files_path() -> PathBuf {
-        dirs::home_dir().unwrap().join(".fuel/explorer/www")
+    pub fn build_archive_path(version: &str) -> PathBuf {
+        dirs::home_dir()
+            .unwrap()
+            .join(format!(".fuel/explorer/{}/build.tar", version))
     }
-    pub fn web_app_static_assets_path() -> PathBuf {
-        dirs::home_dir().unwrap().join(".fuel/explorer/www/static")
+    pub fn build_archive_unpack_path(version: &str) -> PathBuf {
+        dirs::home_dir()
+            .unwrap()
+            .join(format!(".fuel/explorer/{version}/build"))
+    }
+    pub fn web_app_static_assets_path(version: &str) -> PathBuf {
+        dirs::home_dir()
+            .unwrap()
+            .join(format!(".fuel/explorer/{}/www/static", version))
     }
 }
 
 pub(crate) async fn exec(command: ExplorerCommand) -> Result<(), reqwest::Error> {
-    let ExplorerCommand { port } = command;
-    if !has_static_files() {
-        let download_url = match get_release_url().await {
-            Ok(url) => url,
-            Err(error) => panic!("Failed to get release {:?}", error),
-        };
-        eprintln!("Downloading Fuel Explorer ...");
+    if command.clean.is_some() {
+        exec_clean().await
+    } else {
+        exec_start(command).await
+    }
+}
 
-        match download_build(&download_url).await {
+async fn exec_start(command: ExplorerCommand) -> Result<(), reqwest::Error> {
+    let ExplorerCommand { port, .. } = command;
+    let releases = get_github_releases().await?;
+    let version = get_latest_release_name(releases.as_slice());
+    let message = format!("Fuel Network Explorer {}", version);
+    println!("{}", Colour::Green.paint(message));
+    let is_downloaded = check_version_path(version);
+
+    if !is_downloaded {
+        let url = get_release_url_1(releases.as_slice(), version);
+        match download_build(url, version).await {
             Ok(arch) => arch,
             Err(error) => panic!("Failed to download build {:?}", error),
         };
-
-        match unpack_archive() {
+        match unpack_archive(version) {
             Ok(_) => (),
             Err(error) => panic!("Failed to unpack build archive {:?}", error),
         };
-
         if let Err(error) = rename(
-            ExplorerAppPaths::build_archive_unpack_path(),
-            ExplorerAppPaths::web_app_files_path(),
+            ExplorerAppPaths::build_archive_unpack_path(version),
+            ExplorerAppPaths::web_app_files_path(version),
         ) {
             panic!("Failed to move static files {:?}", error)
         }
-
-        match remove_file(ExplorerAppPaths::build_archive_path()) {
+        match remove_file(ExplorerAppPaths::build_archive_path(version)) {
             Ok(_) => (),
             Err(error) => eprintln!("Failed clean up files {:?}", error),
         }
     }
-
-    start_server(port).await;
+    start_server(port.as_str(), version).await;
     Ok(())
 }
 
-fn has_static_files() -> bool {
-    ExplorerAppPaths::web_app_files_path()
-        .join("index.html")
-        .exists()
+async fn exec_clean() -> Result<(), reqwest::Error> {
+    match remove_dir_all(ExplorerAppPaths::web_app_path()) {
+        Ok(_) => (),
+        Err(error) => eprintln!("Failed clean up files {:?}", error),
+    }
+    Ok(())
+}
+
+async fn get_github_releases() -> Result<Vec<GitHubRelease>, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(REPO_RELEASES_URL)
+        .header("User-Agent", "warp")
+        .send()
+        .await?;
+    Ok(response.json().await?)
+}
+
+fn get_latest_release_name(releases: &[GitHubRelease]) -> &str {
+    let a = match releases.first() {
+        Some(release) => release,
+        None => panic!("No version has been released yet!"),
+    };
+    a.name.as_str()
+}
+
+fn check_version_path(version: &str) -> bool {
+    let path = ExplorerAppPaths::web_app_version_path(version);
+    path.exists()
+}
+
+fn get_release_url_1<'a>(releases: &'a [GitHubRelease], name: &str) -> &'a str {
+    let mut url: &'a str = "";
+
+    for release in releases {
+        if release.name == name {
+            url = &release.assets.first().unwrap().browser_download_url;
+            break;
+        }
+    }
+    url
 }
 
 async fn get_release_url() -> Result<String, reqwest::Error> {
@@ -115,10 +172,9 @@ async fn get_release_url() -> Result<String, reqwest::Error> {
     Ok(download_url)
 }
 
-async fn download_build(url: &str) -> DownloadResult<File> {
-    println!("{:?}", ExplorerAppPaths::build_archive_path());
-    create_dir_all(ExplorerAppPaths::web_app_path())?;
-    let mut file = match File::create(ExplorerAppPaths::build_archive_path()) {
+async fn download_build(url: &str, version: &str) -> DownloadResult<File> {
+    create_dir_all(ExplorerAppPaths::web_app_path().join(version))?;
+    let mut file = match File::create(ExplorerAppPaths::build_archive_path(version)) {
         Ok(fc) => fc,
         Err(error) => panic!("Problem creating the build archive: {:?}", error),
     };
@@ -128,22 +184,25 @@ async fn download_build(url: &str) -> DownloadResult<File> {
     Ok(file)
 }
 
-fn unpack_archive() -> Result<(), std::io::Error> {
-    let mut ar = Archive::new(File::open(ExplorerAppPaths::build_archive_path()).unwrap());
-    ar.unpack(ExplorerAppPaths::web_app_path()).unwrap();
+fn unpack_archive(version: &str) -> Result<(), std::io::Error> {
+    let mut ar = Archive::new(File::open(ExplorerAppPaths::build_archive_path(version)).unwrap());
+    ar.unpack(ExplorerAppPaths::web_app_version_path(version))
+        .unwrap();
     Ok(())
 }
 
-async fn start_server(port: String) {
-    let explorer = warp::path::end().and(warp::fs::dir(ExplorerAppPaths::web_app_files_path()));
-    let static_assets = warp::path(EndPoints::static_files())
-        .and(warp::fs::dir(ExplorerAppPaths::web_app_static_assets_path()));
+async fn start_server(port: &str, version: &str) {
+    let explorer =
+        warp::path::end().and(warp::fs::dir(ExplorerAppPaths::web_app_files_path(version)));
+    let static_assets = warp::path(EndPoints::static_files()).and(warp::fs::dir(
+        ExplorerAppPaths::web_app_static_assets_path(version),
+    ));
     let routes = static_assets.or(explorer);
 
     let port_number = match port.parse::<u16>() {
         Ok(n) => n,
         Err(error) => panic!("Invalid port number {:?}", error),
     };
-    println!("Running Fuel Network Explorer on 127.0.0.1:{}", port_number);
+    println!("Started server on 127.0.0.1:{}", port_number);
     warp::serve(routes).run(([127, 0, 0, 1], port_number)).await
 }
