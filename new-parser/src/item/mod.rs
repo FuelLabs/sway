@@ -9,6 +9,7 @@ mod item_trait;
 mod item_impl;
 mod item_abi;
 mod item_const;
+mod item_storage;
 
 pub use type_fields::*;
 pub use item_use::*;
@@ -19,6 +20,7 @@ pub use item_trait::*;
 pub use item_impl::*;
 pub use item_abi::*;
 pub use item_const::*;
+pub use item_storage::*;
 
 #[derive(Clone, Debug)]
 pub enum Item {
@@ -30,6 +32,7 @@ pub enum Item {
     Impl(ItemImpl),
     Abi(ItemAbi),
     Const(ItemConst),
+    Storage(ItemStorage),
 }
 
 impl Spanned for Item {
@@ -43,6 +46,7 @@ impl Spanned for Item {
             Item::Impl(item_impl) => item_impl.span(),
             Item::Abi(item_abi) => item_abi.span(),
             Item::Const(item_const) => item_const.span(),
+            Item::Storage(item_storage) => item_storage.span(),
         }
     }
 }
@@ -76,7 +80,7 @@ pub struct FnSignature {
     pub impure: Option<ImpureToken>,
     pub fn_token: FnToken,
     pub name: Ident,
-    pub generics: Option<Generics>,
+    pub generics: Option<GenericParams>,
     pub arguments: Parens<FnArgs>,
     pub return_type_opt: Option<(RightArrowToken, Ty)>,
 }
@@ -131,6 +135,10 @@ pub fn item() -> impl Parser<Output = Item> + Clone {
         item_const()
         .map(Item::Const)
     };
+    let item_storage = {
+        item_storage()
+        .map(Item::Storage)
+    };
 
     or! {
         item_use,
@@ -141,6 +149,7 @@ pub fn item() -> impl Parser<Output = Item> + Clone {
         item_impl,
         item_abi,
         item_const,
+        item_storage,
     }
     .try_map_with_span(|item_opt: Option<Item>, span| {
         item_opt.ok_or_else(|| ParseError::ExpectedItem { span })
@@ -182,7 +191,7 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
     .then(ident())
     .then_optional_whitespace()
     .then(
-        generics()
+        generic_params()
         .then_optional_whitespace()
         .optional()
     )

@@ -43,6 +43,9 @@ pub enum ParseError {
     ExpectedExpression {
         span: Span,
     },
+    ExpectedPattern {
+        span: Span,
+    },
     ExpectedItem {
         span: Span,
     },
@@ -78,6 +81,7 @@ impl Spanned for ParseError {
             ParseError::UnclosedMultilineComment { span } => span.clone(),
             ParseError::UnknownOpcode { span } => span.clone(),
             ParseError::ExpectedExpression { span } => span.clone(),
+            ParseError::ExpectedPattern { span } => span.clone(),
             ParseError::ExpectedItem { span } => span.clone(),
             ParseError::MalformedImport { span } => span.clone(),
             ParseError::ExpectedStatement { span } => span.clone(),

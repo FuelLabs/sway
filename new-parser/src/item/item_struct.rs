@@ -5,7 +5,7 @@ pub struct ItemStruct {
     pub visibility: Option<PubToken>,
     pub struct_token: StructToken,
     pub name: Ident,
-    pub generics: Option<Generics>,
+    pub generics: Option<GenericParams>,
     pub type_fields: Braces<TypeFields>,
 }
 
@@ -27,7 +27,7 @@ pub fn item_struct() -> impl Parser<Output = ItemStruct> + Clone {
     .then(ident())
     .then_optional_whitespace()
     .then(
-        generics()
+        generic_params()
         .then_optional_whitespace()
         .optional()
     )

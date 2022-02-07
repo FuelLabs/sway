@@ -73,6 +73,8 @@ define_keyword!(StrToken, str_token, "str");
 define_keyword!(ConstToken, const_token, "const");
 define_keyword!(ImpureToken, impure_token, "impure");
 define_keyword!(SelfToken, self_token, "self");
+define_keyword!(MatchToken, match_token, "match");
+define_keyword!(StorageToken, storage_token, "storage");
 
 define_keyword!(I8Token, i8_token, "i8");
 define_keyword!(I16Token, i16_token, "i16");
@@ -92,6 +94,7 @@ define_token!(StarToken, star_token, "*");
 define_token!(AddToken, add_token, "+");
 define_token!(SubToken, sub_token, "-");
 define_token!(RightArrowToken, right_arrow_token, "->");
+define_token!(FatRightArrowToken, fat_right_arrow_token, "=>");
 define_token!(LessThanToken, less_than_token, "<");
 define_token!(GreaterThanToken, greater_than_token, ">");
 define_token!(EqToken, eq_token, "=");

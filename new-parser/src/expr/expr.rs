@@ -3,13 +3,9 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub enum Expr {
     Path {
-        fully_qualified: Option<TildeToken>,
-        path: Path,
+        path: PathExpr,
     },
-    StructLiteral {
-        path: Path,
-        fields: Braces<Punctuated<StructField, CommaToken>>,
-    },
+    Struct(ExprStruct),
     StringLiteral(StringLiteral),
     IntLiteral(IntLiteral),
     Tuple(ExprTuple),
@@ -25,6 +21,7 @@ pub enum Expr {
         expr_opt: Option<Box<Expr>>,
     },
     If(ExprIf),
+    Match(ExprMatch),
     FuncApp {
         func: Box<Expr>,
         args: Parens<Punctuated<Expr, CommaToken>>,
@@ -140,25 +137,11 @@ pub enum Expr {
     },
 }
 
-#[derive(Clone, Debug)]
-pub struct StructField  {
-    pub field_name: Ident,
-    pub colon_token: ColonToken,
-    pub expr: Box<Expr>,
-}
-
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Expr::Path { fully_qualified, path } => {
-                match fully_qualified {
-                    Some(tilde_token) => Span::join(tilde_token.span(), path.span()),
-                    None => path.span(),
-                }
-            },
-            Expr::StructLiteral { path, fields } => {
-                Span::join(path.span(), fields.span())
-            },
+            Expr::Path { path } => path.span(),
+            Expr::Struct(struct_literal) => struct_literal.span(),
             Expr::StringLiteral(string_literal) => string_literal.span(),
             Expr::IntLiteral(int_literal) => int_literal.span(),
             Expr::Tuple(expr_tuple) => expr_tuple.span(),
@@ -174,6 +157,7 @@ impl Spanned for Expr {
                 }
             },
             Expr::If(expr_if) => expr_if.span(),
+            Expr::Match(expr_match) => expr_match.span(),
             Expr::FuncApp { func, args } => {
                 Span::join(func.span(), args.span())
             },
@@ -244,12 +228,6 @@ impl Spanned for Expr {
                 Span::join(lhs.span(), rhs.span())
             },
         }
-    }
-}
-
-impl Spanned for StructField {
-    fn span(&self) -> Span {
-        Span::join(self.field_name.span(), self.expr.span())
     }
 }
 
@@ -851,20 +829,16 @@ pub fn expr_precedence_func_app() -> impl Parser<Output = Expr> + Clone {
 }
 
 pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
-    let struct_literal = {
-        path()
-        .then_optional_whitespace()
-        .then(braces(padded(punctuated(struct_field(), padded(comma_token())))))
-        .map(|(path, fields)| {
-            Expr::StructLiteral { path, fields }
+    let expr_struct = {
+        expr_struct()
+        .map(|expr_struct| {
+            Expr::Struct(expr_struct)
         })
     };
     let path = {
-        tilde_token()
-        .optional()
-        .then(path())
-        .map(|(fully_qualified, path)| {
-            Expr::Path { fully_qualified, path }
+        path_expr()
+        .map(|path| {
+            Expr::Path { path }
         })
     };
     let string_literal = {
@@ -916,12 +890,17 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
         expr_if()
         .map(Expr::If)
     };
+    let expr_match = {
+        expr_match()
+        .map(Expr::Match)
+    };
     
     or! {
         asm,
         expr_return,
         expr_if,
-        struct_literal,
+        expr_match,
+        expr_struct,
         path,
         string_literal,
         int_literal,
@@ -933,17 +912,6 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
     }
     .try_map_with_span(|expr_opt: Option<Expr>, span| {
         expr_opt.ok_or_else(|| ParseError::ExpectedExpression { span })
-    })
-}
-
-pub fn struct_field() -> impl Parser<Output = StructField> + Clone {
-    ident()
-    .then_optional_whitespace()
-    .then(colon_token())
-    .then_optional_whitespace()
-    .then(lazy(|| expr()).map(Box::new))
-    .map(|((field_name, colon_token), expr)| {
-        StructField { field_name, colon_token, expr }
     })
 }
 

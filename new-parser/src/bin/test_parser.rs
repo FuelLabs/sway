@@ -28,7 +28,10 @@ fn main() {
             Some(extension) if extension == "sw" => (),
             _ => continue,
         }
-        if path.to_str().unwrap().contains("parsing_error") {
+        if {
+            path.to_str().unwrap().contains("parsing_error") ||
+            path.to_str().unwrap().contains("top_level_vars") 
+        } {
             continue;
         }
 

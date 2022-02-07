@@ -3,7 +3,7 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub struct ItemImpl {
     pub impl_token: ImplToken,
-    pub trait_opt: Option<(Path, ForToken)>,
+    pub trait_opt: Option<(PathType, ForToken)>,
     pub ty: Ty,
     pub contents: Braces<Vec<ItemFn>>,
 }
@@ -18,7 +18,7 @@ pub fn item_impl() -> impl Parser<Output = ItemImpl> + Clone {
     impl_token()
     .then_whitespace()
     .then(
-        path()
+        path_type()
         .then_whitespace()
         .then(for_token())
         .then_whitespace()

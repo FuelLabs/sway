@@ -5,7 +5,7 @@ pub struct ItemEnum {
     pub visibility: Option<PubToken>,
     pub enum_token: EnumToken,
     pub name: Ident,
-    pub generics: Option<Generics>,
+    pub generics: Option<GenericParams>,
     pub type_fields: Braces<TypeFields>,
 }
 
@@ -27,7 +27,7 @@ pub fn item_enum() -> impl Parser<Output = ItemEnum> + Clone {
     .then(ident())
     .then_optional_whitespace()
     .then(
-        generics()
+        generic_params()
         .then_optional_whitespace()
         .optional()
     )

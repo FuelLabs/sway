@@ -9,8 +9,7 @@ pub use tuple::*;
 #[derive(Debug, Clone)]
 pub enum Ty {
     Path {
-        path: Path,
-        generics_opt: Option<AngleBrackets<Punctuated<Ty, CommaToken>>>,
+        path: PathType,
     },
     Tuple(TyTuple),
     Array(TyArray),
@@ -23,12 +22,7 @@ pub enum Ty {
 impl Spanned for Ty {
     fn span(&self) -> Span {
         match self {
-            Ty::Path { path, generics_opt } => {
-                match generics_opt {
-                    Some(generics) => Span::join(path.span(), generics.span()),
-                    None => path.span(),
-                }
-            },
+            Ty::Path { path } => path.span(),
             Ty::Tuple(ty_tuple) => ty_tuple.span(),
             Ty::Array(ty_array) => ty_array.span(),
             Ty::Str { str_token, length } => {
@@ -48,12 +42,8 @@ pub fn ty() -> impl Parser<Output = Ty> + Clone {
         })
     };
     let path = {
-        path()
-        .then(optional_leading_whitespace(
-            angle_brackets(punctuated(lazy(|| ty()), comma_token()))
-            .optional()
-        ))
-        .map(|(path, generics_opt)| Ty::Path { path, generics_opt })
+        path_type()
+        .map(|path| Ty::Path { path })
     };
     let tuple = {
         ty_tuple()
