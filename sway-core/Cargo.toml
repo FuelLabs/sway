@@ -18,6 +18,7 @@ fuel-asm = "0.1"
 fuel-vm = "0.2"
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
+nanoid = "0.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
 pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
 petgraph = "0.5"

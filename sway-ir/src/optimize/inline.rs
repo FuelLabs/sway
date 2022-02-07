@@ -182,7 +182,6 @@ fn inline_instruction(
     // Util to translate old values to new.  If an old value isn't in the map then it (should be)
     // a const, which we can just keep using.
     let map_value = |old_val: Value| value_map.get(&old_val).copied().unwrap_or(old_val);
-    let map_value_ref = |old_val: &Value| map_value(*old_val);
     let map_ptr = |old_ptr| ptr_map.get(&old_ptr).copied().unwrap();
 
     // The instruction needs to be cloned into the new block, with each value and/or block
@@ -212,7 +211,7 @@ fn inline_instruction(
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,
                 args.iter()
-                    .map(&map_value_ref)
+                    .map(|old_val: &Value| map_value(*old_val))
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
