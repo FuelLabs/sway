@@ -1,5 +1,34 @@
 use crate::priv_prelude::*;
 
+macro_rules! define_keyword (
+    ($ty_name:ident, $fn_name:ident, $s:literal) => (
+        #[derive(Clone, Debug)]
+        pub struct $ty_name {
+            span: Span,
+        }
+
+        impl Spanned for $ty_name {
+            fn span(&self) -> Span {
+                self.span.clone()
+            }
+        }
+
+        pub fn $fn_name() -> impl Parser<Output = $ty_name> + Clone {
+            ident()
+            .try_map(|ident: Ident| {
+                if ident.as_str() == $s {
+                    Ok($ty_name { span: ident.span() })
+                } else {
+                    Err(ParseError::ExpectedKeyword {
+                        word: $s,
+                        span: ident.span(),
+                    })
+                }
+            })
+        }
+    )
+);
+
 macro_rules! define_token (
     ($ty_name:ident, $fn_name:ident, $s:literal) => (
         #[derive(Clone, Debug)]
@@ -19,31 +48,40 @@ macro_rules! define_token (
     );
 );
 
-define_token!(ScriptToken, script_token, "script");
-define_token!(ContractToken, contract_token, "contract");
-define_token!(PredicateToken, predicate_token, "predicate");
-define_token!(LibraryToken, library_token, "library");
-define_token!(DepToken, dep_token, "dep");
-define_token!(UseToken, use_token, "use");
-define_token!(AsToken, as_token, "as");
-define_token!(PubToken, pub_token, "pub");
-define_token!(StructToken, struct_token, "struct");
-define_token!(EnumToken, enum_token, "enum");
-define_token!(FnToken, fn_token, "fn");
-define_token!(TraitToken, trait_token, "trait");
-define_token!(AbiToken, abi_token, "abi");
-define_token!(LetToken, let_token, "let");
-define_token!(AsmToken, asm_token, "asm");
-define_token!(ReturnToken, return_token, "return");
-define_token!(ForToken, for_token, "for");
-define_token!(ImplToken, impl_token, "impl");
-define_token!(IfToken, if_token, "if");
-define_token!(ElseToken, else_token, "else");
-define_token!(MutToken, mut_token, "mut");
-define_token!(StrToken, str_token, "str");
-define_token!(ConstToken, const_token, "const");
-define_token!(ImpureToken, impure_token, "impure");
-define_token!(SelfToken, self_token, "self");
+define_keyword!(ScriptToken, script_token, "script");
+define_keyword!(ContractToken, contract_token, "contract");
+define_keyword!(PredicateToken, predicate_token, "predicate");
+define_keyword!(LibraryToken, library_token, "library");
+define_keyword!(DepToken, dep_token, "dep");
+define_keyword!(UseToken, use_token, "use");
+define_keyword!(AsToken, as_token, "as");
+define_keyword!(PubToken, pub_token, "pub");
+define_keyword!(StructToken, struct_token, "struct");
+define_keyword!(EnumToken, enum_token, "enum");
+define_keyword!(FnToken, fn_token, "fn");
+define_keyword!(TraitToken, trait_token, "trait");
+define_keyword!(AbiToken, abi_token, "abi");
+define_keyword!(LetToken, let_token, "let");
+define_keyword!(AsmToken, asm_token, "asm");
+define_keyword!(ReturnToken, return_token, "return");
+define_keyword!(ForToken, for_token, "for");
+define_keyword!(ImplToken, impl_token, "impl");
+define_keyword!(IfToken, if_token, "if");
+define_keyword!(ElseToken, else_token, "else");
+define_keyword!(MutToken, mut_token, "mut");
+define_keyword!(StrToken, str_token, "str");
+define_keyword!(ConstToken, const_token, "const");
+define_keyword!(ImpureToken, impure_token, "impure");
+define_keyword!(SelfToken, self_token, "self");
+
+define_keyword!(I8Token, i8_token, "i8");
+define_keyword!(I16Token, i16_token, "i16");
+define_keyword!(I32Token, i32_token, "i32");
+define_keyword!(I64Token, i64_token, "i64");
+define_keyword!(U8Token, u8_token, "u8");
+define_keyword!(U16Token, u16_token, "u16");
+define_keyword!(U32Token, u32_token, "u32");
+define_keyword!(U64Token, u64_token, "u64");
 
 define_token!(SemicolonToken, semicolon_token, ";");
 define_token!(ColonToken, colon_token, ":");
@@ -77,15 +115,6 @@ define_token!(TildeToken, tilde_token, "~");
 define_token!(HexPrefixToken, hex_prefix_token, "0x");
 define_token!(OctalPrefixToken, octal_prefix_token, "0o");
 define_token!(BinaryPrefixToken, binary_prefix_token, "0b");
-
-define_token!(I8Token, i8_token, "i8");
-define_token!(I16Token, i16_token, "i16");
-define_token!(I32Token, i32_token, "i32");
-define_token!(I64Token, i64_token, "i64");
-define_token!(U8Token, u8_token, "u8");
-define_token!(U16Token, u16_token, "u16");
-define_token!(U32Token, u32_token, "u32");
-define_token!(U64Token, u64_token, "u64");
 
 define_token!(OpenParenToken, open_paren_token, "(");
 define_token!(CloseParenToken, close_paren_token, ")");

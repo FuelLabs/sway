@@ -5,6 +5,12 @@ pub struct Ident {
     span: Span,
 }
 
+impl Ident {
+    pub fn as_str(&self) -> &str {
+        self.span.as_str()
+    }
+}
+
 impl Spanned for Ident {
     fn span(&self) -> Span {
         self.span.clone()

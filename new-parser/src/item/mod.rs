@@ -72,6 +72,7 @@ impl Spanned for FnArgs {
 
 #[derive(Clone, Debug)]
 pub struct FnSignature {
+    pub visibility: Option<PubToken>,
     pub impure: Option<ImpureToken>,
     pub fn_token: FnToken,
     pub name: Ident,
@@ -82,9 +83,12 @@ pub struct FnSignature {
 
 impl Spanned for FnSignature {
     fn span(&self) -> Span {
-        let start = match &self.impure {
-            Some(impure_token) => impure_token.span(),
-            None => self.fn_token.span(),
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => match &self.impure {
+                Some(impure_token) => impure_token.span(),
+                None => self.fn_token.span(),
+            },
         };
         let end = match &self.return_type_opt {
             Some((_right_arrow_token, ty)) => ty.span(),
@@ -165,9 +169,14 @@ pub fn fn_args() -> impl Parser<Output = FnArgs> + Clone {
 }
 
 pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
-    impure_token()
+    pub_token()
     .then_whitespace()
     .optional()
+    .then(
+        impure_token()
+        .then_whitespace()
+        .optional()
+    )
     .then(fn_token())
     .then_whitespace()
     .then(ident())
@@ -186,8 +195,8 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
         .then_optional_whitespace()
         .optional()
     )
-    .map(|(((((impure, fn_token), name), generics), arguments), return_type_opt): (_, Option<_>)| {
-        FnSignature { impure, fn_token, name, generics, arguments, return_type_opt }
+    .map(|((((((visibility, impure), fn_token), name), generics), arguments), return_type_opt)| {
+        FnSignature { visibility, impure, fn_token, name, generics, arguments, return_type_opt }
     })
 }
 
