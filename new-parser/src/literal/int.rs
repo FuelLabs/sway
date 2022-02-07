@@ -84,7 +84,7 @@ fn digits() -> impl Parser<Output = (Option<BasePrefix>, BigUint, Span)> + Clone
     })
 }
 
-pub fn int_ty() -> impl Parser<Output = IntTy> + Clone {
+pub fn int_ty() -> impl Parser<Output = Option<IntTy>> + Clone {
     let i8_parser = {
         i8_token()
         .map(|i8_token| IntTy::I8(i8_token))
@@ -118,21 +118,23 @@ pub fn int_ty() -> impl Parser<Output = IntTy> + Clone {
         .map(|u64_token| IntTy::U64(u64_token))
     };
 
-    i8_parser
-    .or(i16_parser)
-    .or(i32_parser)
-    .or(i64_parser)
-    .or(u8_parser)
-    .or(u16_parser)
-    .or(u32_parser)
-    .or(u64_parser)
+    or! {
+        i8_parser,
+        i16_parser,
+        i32_parser,
+        i64_parser,
+        u8_parser,
+        u16_parser,
+        u32_parser,
+        u64_parser,
+    }
 }
 
 pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
     numeric_sign()
     .optional()
     .then(digits())
-    .then(int_ty().optional())
+    .then(int_ty())
     .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt): ((Option<_>, _), Option<_>)| {
         let parsed = match numeric_sign_opt {
             Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),

@@ -1,7 +1,10 @@
+#![recursion_limit = "256"]
+
 mod priv_prelude;
 mod span;
 mod parser;
 mod error;
+#[macro_use]
 mod primitive;
 mod combinators;
 mod tokens;
@@ -15,6 +18,7 @@ mod array;
 mod ty;
 mod generics;
 mod expr;
+mod assignable;
 mod dependency;
 mod program;
 
@@ -34,6 +38,7 @@ pub use array::*;
 pub use ty::*;
 pub use generics::*;
 pub use expr::*;
+pub use assignable::*;
 pub use dependency::*;
 pub use program::*;
 

@@ -6,7 +6,9 @@ mod item_struct;
 mod item_enum;
 mod item_fn;
 mod item_trait;
+mod item_impl;
 mod item_abi;
+mod item_const;
 
 pub use type_fields::*;
 pub use item_use::*;
@@ -14,7 +16,9 @@ pub use item_struct::*;
 pub use item_enum::*;
 pub use item_fn::*;
 pub use item_trait::*;
+pub use item_impl::*;
 pub use item_abi::*;
+pub use item_const::*;
 
 #[derive(Clone, Debug)]
 pub enum Item {
@@ -23,7 +27,9 @@ pub enum Item {
     Enum(ItemEnum),
     Function(ItemFn),
     Trait(ItemTrait),
+    Impl(ItemImpl),
     Abi(ItemAbi),
+    Const(ItemConst),
 }
 
 impl Spanned for Item {
@@ -34,30 +40,57 @@ impl Spanned for Item {
             Item::Enum(item_enum) => item_enum.span(),
             Item::Function(item_fn) => item_fn.span(),
             Item::Trait(item_trait) => item_trait.span(),
+            Item::Impl(item_impl) => item_impl.span(),
             Item::Abi(item_abi) => item_abi.span(),
+            Item::Const(item_const) => item_const.span(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum FnArgs {
+    Static(TypeFields),
+    NonStatic {
+        self_token: SelfToken,
+        args_opt: Option<(CommaToken, TypeFields)>,
+    },
+}
+
+impl Spanned for FnArgs {
+    fn span(&self) -> Span {
+        match self {
+            FnArgs::Static(type_fields) => type_fields.span(),
+            FnArgs::NonStatic { self_token, args_opt } => {
+                match args_opt {
+                    Some((_, type_fields)) => Span::join(self_token.span(), type_fields.span()),
+                    None => self_token.span(),
+                }
+            },
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct FnSignature {
+    pub impure: Option<ImpureToken>,
     pub fn_token: FnToken,
     pub name: Ident,
     pub generics: Option<Generics>,
-    pub arguments: Parens<TypeFields>,
+    pub arguments: Parens<FnArgs>,
     pub return_type_opt: Option<(RightArrowToken, Ty)>,
 }
 
 impl Spanned for FnSignature {
     fn span(&self) -> Span {
-        match &self.return_type_opt {
-            Some((_return_type, ty)) => {
-                Span::join(self.fn_token.span(), ty.span())
-            },
-            None => {
-                Span::join(self.fn_token.span(), self.arguments.span())
-            },
-        }
+        let start = match &self.impure {
+            Some(impure_token) => impure_token.span(),
+            None => self.fn_token.span(),
+        };
+        let end = match &self.return_type_opt {
+            Some((_right_arrow_token, ty)) => ty.span(),
+            None => self.arguments.span(),
+        };
+        Span::join(start, end)
     }
 }
 
@@ -82,21 +115,60 @@ pub fn item() -> impl Parser<Output = Item> + Clone {
         item_trait()
         .map(Item::Trait)
     };
+    let item_impl = {
+        item_impl()
+        .map(Item::Impl)
+    };
     let item_abi = {
         item_abi()
         .map(Item::Abi)
     };
+    let item_const = {
+        item_const()
+        .map(Item::Const)
+    };
 
-    item_use
-    .or(item_struct)
-    .or(item_enum)
-    .or(item_fn)
-    .or(item_trait)
-    .or(item_abi)
+    or! {
+        item_use,
+        item_struct,
+        item_enum,
+        item_fn,
+        item_trait,
+        item_impl,
+        item_abi,
+        item_const,
+    }
+    .try_map_with_span(|item_opt: Option<Item>, span| {
+        item_opt.ok_or_else(|| ParseError::ExpectedItem { span })
+    })
+}
+
+pub fn fn_args() -> impl Parser<Output = FnArgs> + Clone {
+    let args_static = {
+        type_fields()
+        .map(|type_fields| FnArgs::Static(type_fields))
+    };
+    let args_non_static = {
+        self_token()
+        .then_optional_whitespace()
+        .then(
+            comma_token()
+            .then_optional_whitespace()
+            .then(type_fields())
+            .optional()
+        )
+        .map(|(self_token, args_opt)| FnArgs::NonStatic { self_token, args_opt })
+    };
+
+    args_non_static
+    .or(args_static)
 }
 
 pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
-    fn_token()
+    impure_token()
+    .then_whitespace()
+    .optional()
+    .then(fn_token())
     .then_whitespace()
     .then(ident())
     .then_optional_whitespace()
@@ -105,7 +177,7 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
         .then_optional_whitespace()
         .optional()
     )
-    .then(parens(padded(type_fields())))
+    .then(parens(fn_args()))
     .then_optional_whitespace()
     .then(
         right_arrow_token()
@@ -114,8 +186,8 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
         .then_optional_whitespace()
         .optional()
     )
-    .map(|((((fn_token, name), generics), arguments), return_type_opt): (_, Option<_>)| {
-        FnSignature { fn_token, name, generics, arguments, return_type_opt }
+    .map(|(((((impure, fn_token), name), generics), arguments), return_type_opt): (_, Option<_>)| {
+        FnSignature { impure, fn_token, name, generics, arguments, return_type_opt }
     })
 }
 

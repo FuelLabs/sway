@@ -28,6 +28,9 @@ fn main() {
             Some(extension) if extension == "sw" => (),
             _ => continue,
         }
+        if path.to_str().unwrap().contains("parsing_error") {
+            continue;
+        }
 
         let src = {
             let src = std::fs::read(path).unwrap();

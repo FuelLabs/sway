@@ -91,11 +91,16 @@ pub fn use_tree() -> impl Parser<Output = UseTree> + Clone {
         })
     };
 
-    group
-    .or(glob)
-    .or(path)
-    .or(rename)
-    .or(name)
+    or! {
+        group,
+        glob,
+        path,
+        rename,
+        name,
+    }
+    .try_map_with_span(|use_tree_opt: Option<UseTree>, span| {
+        use_tree_opt.ok_or_else(|| ParseError::MalformedImport { span })
+    })
 }
 
 pub fn item_use() -> impl Parser<Output = ItemUse> + Clone {

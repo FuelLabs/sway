@@ -5,6 +5,7 @@ pub struct ItemAbi {
     pub abi_token: AbiToken,
     pub name: Ident,
     pub abi_items: Braces<Vec<(FnSignature, SemicolonToken)>>,
+    pub abi_defs_opt: Option<Braces<Vec<ItemFn>>>,
 }
 
 impl Spanned for ItemAbi {
@@ -25,8 +26,13 @@ pub fn item_abi() -> impl Parser<Output = ItemAbi> + Clone {
         .then_optional_whitespace()
         .repeated()
     )))
-    .map(|((abi_token, name), abi_items)| {
-        ItemAbi { abi_token, name, abi_items }
+    .then_optional_whitespace()
+    .then(
+        braces(padded(item_fn()).repeated())
+        .optional()
+    )
+    .map(|(((abi_token, name), abi_items), abi_defs_opt)| {
+        ItemAbi { abi_token, name, abi_items, abi_defs_opt }
     })
 }
 

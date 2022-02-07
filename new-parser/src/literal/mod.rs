@@ -86,15 +86,20 @@ pub fn escape_code() -> impl Parser<Output = char> + Clone {
         })
     };
     
-    newline
-    .or(carriage_return)
-    .or(tab)
-    .or(backslash)
-    .or(null)
-    .or(apostrophe)
-    .or(quote)
-    .or(hex)
-    .or(unicode)
+    or! {
+        newline,
+        carriage_return,
+        tab,
+        backslash,
+        null,
+        apostrophe,
+        quote,
+        hex,
+        unicode,
+    }
+    .try_map_with_span(|char_opt: Option<char>, span| {
+        char_opt.ok_or_else(|| ParseError::InvalidEscapeCode { span })
+    })
 }
 
 #[derive(Clone, Debug)]

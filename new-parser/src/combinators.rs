@@ -300,6 +300,43 @@ where
 }
 
 #[derive(Clone)]
+pub struct WhileSome<P> {
+    parser: P,
+}
+
+impl<P> WhileSome<P> {
+    pub fn new(parser: P) -> WhileSome<P> {
+        WhileSome { parser }
+    }
+}
+
+impl<P, T> Parser for WhileSome<P>
+where
+    P: Parser<Output = Option<T>>,
+{
+    type Output = Vec<T>;
+
+    fn parse(&self, input: &Span) -> Result<(Vec<T>, usize), ParseError> {
+        let mut values = Vec::new();
+        let mut total_len = 0;
+        let mut remaining_input = input.clone();
+        loop {
+            match self.parser.parse(&remaining_input)? {
+                (Some(value), len) => {
+                    remaining_input = remaining_input.slice(len..);
+                    total_len += len;
+                    values.push(value);
+                },
+                (None, _) => {
+                    break;
+                },
+            }
+        }
+        Ok((values, total_len))
+    }
+}
+
+#[derive(Clone)]
 pub struct AndThen<P, F> {
     parser: P,
     func: F,
@@ -325,6 +362,35 @@ where
         let parser1 = (self.func)(value0);
         let (value1, len1) = parser1.parse(&input)?;
         Ok((value1, len0 + len1))
+    }
+}
+
+#[derive(Clone)]
+pub struct Debug<P> {
+    parser: P,
+    text: &'static str,
+}
+
+impl<P> Debug<P> {
+    pub fn new(parser: P, text: &'static str) -> Debug<P> {
+        Debug { parser, text }
+    }
+}
+
+impl<P> Parser for Debug<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+        match self.parser.parse(input) {
+            Ok(value) => {
+                println!("debug: {}", self.text);
+                Ok(value)
+            },
+            Err(err) => Err(err),
+        }
     }
 }
 

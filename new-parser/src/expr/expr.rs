@@ -19,6 +19,12 @@ pub enum Expr {
     ArrayRepeat(ExprArrayRepeat),
     Parens(Box<Parens<Expr>>),
     CodeBlock(CodeBlock),
+    Asm(AsmBlock),
+    Return {
+        return_token: ReturnToken,
+        expr_opt: Option<Box<Expr>>,
+    },
+    If(ExprIf),
     FuncApp {
         func: Box<Expr>,
         args: Parens<Punctuated<Expr, CommaToken>>,
@@ -160,6 +166,14 @@ impl Spanned for Expr {
             Expr::ArrayRepeat(expr_array_repeat) => expr_array_repeat.span(),
             Expr::Parens(parens) => parens.span(),
             Expr::CodeBlock(code_block) => code_block.span(),
+            Expr::Asm(asm_block) => asm_block.span(),
+            Expr::Return { return_token, expr_opt } => {
+                match expr_opt {
+                    Some(expr) => Span::join(return_token.span(), expr.span()),
+                    None => return_token.span(),
+                }
+            },
+            Expr::If(expr_if) => expr_if.span(),
             Expr::FuncApp { func, args } => {
                 Span::join(func.span(), args.span())
             },
@@ -378,16 +392,18 @@ pub fn expr_precedence_comparison() -> impl Parser<Output = Expr> + Clone {
             .map(|(greater_than_eq_token, rhs)| Op::GreaterThanEq { greater_than_eq_token, rhs })
         };
 
-        equal
-        .or(not_equal)
-        .or(less_than_eq)
-        .or(greater_than_eq)
-        .or(less_than)
-        .or(greater_than)
+        or! {
+            equal,
+            not_equal,
+            less_than_eq,
+            greater_than_eq,
+            less_than,
+            greater_than,
+        }
     };
 
     expr_precedence_bit_or()
-    .then(optional_leading_whitespace(op).optional())
+    .then(optional_leading_whitespace(op))
     .map(|(lhs, op_opt): (_, Option<_>)| match op_opt {
         None => lhs,
         Some(Op::Equal { double_eq_token, rhs }) => Expr::Equal {
@@ -530,12 +546,14 @@ pub fn expr_precedence_shift() -> impl Parser<Output = Expr> + Clone {
             .map(|(shr_token, rhs)| Op::Shr { shr_token, rhs })
         };
 
-        shl
-        .or(shr)
+        or! {
+            shl,
+            shr,
+        }
     };
 
     expr_precedence_add()
-    .then(optional_leading_whitespace(op).repeated())
+    .then(optional_leading_whitespace(op).while_some())
     .map(|(lhs, ops)| {
         let mut expr = lhs;
         for op in ops {
@@ -591,12 +609,14 @@ pub fn expr_precedence_add() -> impl Parser<Output = Expr> + Clone {
             .map(|(sub_token, rhs)| Op::Sub { sub_token, rhs })
         };
 
-        add
-        .or(sub)
+        or! {
+            add,
+            sub,
+        }
     };
 
     expr_precedence_mul()
-    .then(optional_leading_whitespace(op).repeated())
+    .then(optional_leading_whitespace(op).while_some())
     .map(|(lhs, ops)| {
         let mut expr = lhs;
         for op in ops {
@@ -663,13 +683,15 @@ pub fn expr_precedence_mul() -> impl Parser<Output = Expr> + Clone {
             .map(|(percent_token, rhs)| Op::Modulo { percent_token, rhs })
         };
 
-        mul
-        .or(div)
-        .or(modulo)
+        or! {
+            mul,
+            div,
+            modulo,
+        }
     };
 
     expr_precedence_unary_op()
-    .then(optional_leading_whitespace(op).repeated())
+    .then(optional_leading_whitespace(op).while_some())
     .map(|(lhs, ops)| {
         let mut expr = lhs;
         for op in ops {
@@ -767,12 +789,14 @@ pub fn expr_precedence_projection() -> impl Parser<Output = Expr> + Clone {
             })
         };
 
-        member_or_method_call
-        .or(index)
+        or! {
+            member_or_method_call,
+            index,
+        }
     };
 
     expr_precedence_func_app()
-    .then(optional_leading_whitespace(projection).repeated())
+    .then(optional_leading_whitespace(projection).while_some())
     .map(|(expr, projections)| {
         let mut expr = expr;
         for projection in projections {
@@ -876,120 +900,40 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
         code_block()
         .map(Expr::CodeBlock)
     };
-    
-    struct_literal
-    .or(path)
-    .or(string_literal)
-    .or(int_literal)
-    .or(tuple)
-    .or(array)
-    .or(array_repeat)
-    .or(parens)
-    .or(code_block)
-
-    /*
-    lazy(move || {
-        println!("parsing atomic");
-        let struct_literal = struct_literal.clone();
-        let path = path.clone();
-        let string_literal = string_literal.clone();
-        let int_literal = int_literal.clone();
-        let tuple = tuple.clone();
-        let array = array.clone();
-        let array_repeat = array_repeat.clone();
-        let parens = parens.clone();
-        lazy(move || {
-            let struct_literal = struct_literal.clone();
-            let path = path.clone();
-            let string_literal = string_literal.clone();
-            let int_literal = int_literal.clone();
-            let tuple = tuple.clone();
-            let array = array.clone();
-            let array_repeat = array_repeat.clone();
-            println!("parsing non code block");
-            lazy(move || {
-                let struct_literal = struct_literal.clone();
-                let path = path.clone();
-                let string_literal = string_literal.clone();
-                let int_literal = int_literal.clone();
-                let tuple = tuple.clone();
-                let array = array.clone();
-                println!("parsing non parens");
-                lazy(move || {
-                    let struct_literal = struct_literal.clone();
-                    let path = path.clone();
-                    let string_literal = string_literal.clone();
-                    let int_literal = int_literal.clone();
-                    let tuple = tuple.clone();
-                    let array = array.clone();
-                    println!("parsing non array repeat");
-                    lazy(move || {
-                        let struct_literal = struct_literal.clone();
-                        let path = path.clone();
-                        let string_literal = string_literal.clone();
-                        let int_literal = int_literal.clone();
-                        println!("parsing non array");
-                        struct_literal.clone()
-                        .or(path.clone())
-                        .or(string_literal.clone())
-                        .or(int_literal.clone())
-                        .or(tuple.clone())
-                    })
-                    .or(lazy(move || {
-                        println!("parsing array instead");
-                        array.clone()
-                    }))
-                })
-                .or(array_repeat.clone())
-            })
-            .or(parens.clone())
+    let asm = {
+        asm_block()
+        .map(Expr::Asm)
+    };
+    let expr_return = {
+        return_token()
+        .then_optional_whitespace()
+        .then(lazy(|| expr()).map(Box::new).optional())
+        .map(|(return_token, expr_opt)| {
+            Expr::Return { return_token, expr_opt }
         })
-        .or(code_block.clone())
+    };
+    let expr_if = {
+        expr_if()
+        .map(Expr::If)
+    };
+    
+    or! {
+        asm,
+        expr_return,
+        expr_if,
+        struct_literal,
+        path,
+        string_literal,
+        int_literal,
+        tuple,
+        array,
+        array_repeat,
+        parens,
+        code_block,
+    }
+    .try_map_with_span(|expr_opt: Option<Expr>, span| {
+        expr_opt.ok_or_else(|| ParseError::ExpectedExpression { span })
     })
-
-    from_fn(move |input| {
-        //println!("parsing atomic at: {:?}", input.as_str());
-        if let Ok(x) = struct_literal.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a struct literal");
-        if let Ok(x) = path.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a path");
-        if let Ok(x) = string_literal.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a string_literal");
-        if let Ok(x) = int_literal.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a int_literal");
-        if let Ok(x) = tuple.parse(input) {
-            //println!("    parsed atomic: {:?}", input.as_str());
-            //println!("    it's an int literal");
-            return Ok(x);
-        };
-        //println!("   not a tuple");
-        if let Ok(x) = array.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a array");
-        if let Ok(x) = array_repeat.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a array repeat");
-        if let Ok(x) = parens.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a parens");
-        if let Ok(x) = code_block.parse(input) {
-            return Ok(x);
-        };
-        //println!("   not a code block");
-        Err(ParseError::ExpectedEof { span: input.span() })
-    })
-    */
 }
 
 pub fn struct_field() -> impl Parser<Output = StructField> + Clone {
@@ -1000,5 +944,43 @@ pub fn struct_field() -> impl Parser<Output = StructField> + Clone {
     .then(lazy(|| expr()).map(Box::new))
     .map(|((field_name, colon_token), expr)| {
         StructField { field_name, colon_token, expr }
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct ExprIf {
+    pub if_token: IfToken,
+    pub condition: Box<Expr>,
+    pub then_block: CodeBlock,
+    pub else_opt: Option<(ElseToken, Box<Expr>)>,
+}
+
+impl Spanned for ExprIf {
+    fn span(&self) -> Span {
+        match &self.else_opt {
+            Some((_, expr)) => Span::join(self.if_token.span(), expr.span()),
+            None => Span::join(self.if_token.span(), self.then_block.span()),
+        }
+    }
+}
+
+pub fn expr_if() -> impl Parser<Output = ExprIf> + Clone {
+    if_token()
+    .then_optional_whitespace()
+    .then(lazy(|| expr()).map(Box::new))
+    .then_optional_whitespace()
+    .then(code_block())
+    .then(optional_leading_whitespace(
+        else_token()
+        .then_optional_whitespace()
+        .then(
+            code_block().map(Expr::CodeBlock)
+            .or(lazy(|| expr_if()).map(Expr::If))
+            .map(Box::new)
+        )
+        .optional()
+    ))
+    .map(|(((if_token, condition), then_block), else_opt)| {
+        ExprIf { if_token, condition, then_block, else_opt }
     })
 }

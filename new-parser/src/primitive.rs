@@ -240,13 +240,42 @@ pub fn eof() -> impl Parser<Output = ()> + Clone {
     })
 }
 
-pub fn newline() -> impl Parser<Output = ()> + Clone {
-    from_fn(|input| {
-        if input.as_str().starts_with("\n") {
-            Ok(((), 1))
-        } else {
-            Err(ParseError::ExpectedNewline { span: input.to_start() })
+#[macro_export]
+macro_rules! __or_inner {
+    ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ()) => {
+        Ok((None, 0))
+    };
+    //($parsers:ident, $input:ident, ($($head_pats:pat,)*), (_, $($tail_pats:pat,)*)) => {{
+    ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ($ignore:pat, $($tail_pats:pat,)*)) => {{
+        let ($($head_pats,)* this_parser, $($tail_pats,)*) = &$parsers;
+        match Parser::parse(&this_parser, $input) {
+            Ok((value, len)) => Ok((Some(value), len)),
+            Err(_err) => {
+                __or_inner!($parsers, $input, (_, $($head_pats,)*), ($($tail_pats,)*))
+            },
         }
-    })
+    }};
+}
+
+#[macro_export]
+macro_rules! __or_build_pattern {
+    ($parsers:ident, $input:ident, (), ($($tail_pats:pat,)*)) => {
+        __or_inner!($parsers, $input, (), ($($tail_pats,)*))
+    };
+    ($parsers:ident, $input:ident, ($head:expr, $($tail:expr,)*), ($($tail_pats:pat,)*)) => {
+        __or_build_pattern!($parsers, $input, ($($tail,)*), (_, $($tail_pats,)*))
+    };
+}
+
+#[macro_export]
+macro_rules! or {
+    ($($parser:expr),* $(,)?) => {{
+        #[allow(unused_variables)]
+        let parsers = ($($parser,)*);
+        from_fn(move |input| {
+            let _ = input;
+            __or_build_pattern!(parsers, input, ($($parser,)*), ())
+        })
+    }};
 }
 

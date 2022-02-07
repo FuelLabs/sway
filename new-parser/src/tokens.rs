@@ -34,6 +34,16 @@ define_token!(TraitToken, trait_token, "trait");
 define_token!(AbiToken, abi_token, "abi");
 define_token!(LetToken, let_token, "let");
 define_token!(AsmToken, asm_token, "asm");
+define_token!(ReturnToken, return_token, "return");
+define_token!(ForToken, for_token, "for");
+define_token!(ImplToken, impl_token, "impl");
+define_token!(IfToken, if_token, "if");
+define_token!(ElseToken, else_token, "else");
+define_token!(MutToken, mut_token, "mut");
+define_token!(StrToken, str_token, "str");
+define_token!(ConstToken, const_token, "const");
+define_token!(ImpureToken, impure_token, "impure");
+define_token!(SelfToken, self_token, "self");
 
 define_token!(SemicolonToken, semicolon_token, ";");
 define_token!(ColonToken, colon_token, ":");

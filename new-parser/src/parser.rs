@@ -94,7 +94,15 @@ pub trait ParserExt: Parser {
     where
         Self: Sized;
 
+    fn while_some(self) -> WhileSome<Self>
+    where
+        Self: Sized;
+
     fn and_then<F>(self, func: F) -> AndThen<Self, F>
+    where
+        Self: Sized;
+
+    fn debug(self, text: &'static str) -> Debug<Self>
     where
         Self: Sized;
 }
@@ -173,11 +181,25 @@ where
         Repeated::new(self)
     }
 
+    fn while_some(self) -> WhileSome<Self>
+    where
+        Self: Sized,
+    {
+        WhileSome::new(self)
+    }
+
     fn and_then<F>(self, func: F) -> AndThen<Self, F>
     where
         Self: Sized,
     {
         AndThen::new(self, func)
+    }
+
+    fn debug(self, text: &'static str) -> Debug<Self>
+    where
+        Self: Sized,
+    {
+        Debug::new(self, text)
     }
 }
 

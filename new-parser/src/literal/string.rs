@@ -16,8 +16,11 @@ impl Spanned for StringLiteral {
 
 pub fn string_literal() -> impl Parser<Output = StringLiteral> + Clone {
     quote_token()
+    .debug("parsed open quote")
     .then(string_literal_contents())
+    .debug("parsed string contents")
     .then(quote_token())
+    .debug("parsed closing quote")
     .map(|((open_quote, (parsed, contents_span)), close_quote)| {
         StringLiteral { open_quote, contents_span, close_quote, parsed }
     })
@@ -41,7 +44,17 @@ fn string_char() -> impl Parser<Output = char> + Clone {
     .optional()
     .and_then(|backslash_opt: Option<()>| match backslash_opt {
         Some(()) => Either::Left(escape_code()),
-        None => Either::Right(single_char()),
+        None => Either::Right(non_close_quote_char()),
+    })
+}
+
+fn non_close_quote_char() -> impl Parser<Output = char> + Clone {
+    single_char()
+    .try_map_with_span(|c, span| {
+        if c == '"' {
+            return Err(ParseError::UnexpectedQuote { span });
+        }
+        Ok(c)
     })
 }
 

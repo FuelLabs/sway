@@ -37,11 +37,11 @@ impl Spanned for AsmRegisterDeclaration {
 #[derive(Clone, Debug)]
 pub struct AsmBlockContents {
     pub instructions: Vec<AsmInstruction>,
-    pub final_expr_opt: Option<AsmExpr>,
+    pub final_expr_opt: Option<AsmFinalExpr>,
 }
 
 #[derive(Clone, Debug)]
-pub struct AsmExpr {
+pub struct AsmFinalExpr {
     pub register: Ident,
     pub ty_opt: Option<(ColonToken, Ty)>,
 }
@@ -87,13 +87,13 @@ pub fn asm_block_contents() -> impl Parser<Output = AsmBlockContents> + Clone {
     asm_instruction()
     .then_optional_whitespace()
     .repeated()
-    .then(asm_expr().optional())
+    .then(asm_final_expr().optional())
     .map(|(instructions, final_expr_opt)| {
         AsmBlockContents { instructions, final_expr_opt }
     })
 }
 
-pub fn asm_expr() -> impl Parser<Output = AsmExpr> + Clone {
+pub fn asm_final_expr() -> impl Parser<Output = AsmFinalExpr> + Clone {
     ident()
     .then_optional_whitespace()
     .then(
@@ -103,7 +103,7 @@ pub fn asm_expr() -> impl Parser<Output = AsmExpr> + Clone {
         .optional()
     )
     .map(|(register, ty_opt)| {
-        AsmExpr { register, ty_opt }
+        AsmFinalExpr { register, ty_opt }
     })
 }
 
