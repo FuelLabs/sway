@@ -78,7 +78,7 @@ jobs:
             override: true
       - uses: katyo/publish-crates@v1
         with:
-            path: './packages'
+            registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
             args: --no-verify
             dry-run: true
 
@@ -91,12 +91,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
 
     - name: Verify tag version
       run: |
