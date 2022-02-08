@@ -37,7 +37,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      
+
       - name: Install rustfmt
         run: rustup component add rustfmt
 
