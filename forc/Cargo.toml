@@ -14,9 +14,9 @@ anyhow = "1.0.41"
 dirs = "3.0.2"
 flate2 = "1.0.20"
 fuel-asm = "0.1" 
-fuel-gql-client = { version = "0.2", default-features = false }
-fuel-tx = "0.2"
-fuel-vm = "0.2"
+fuel-gql-client = { version = "0.3", default-features = false }
+fuel-tx = "0.5"
+fuel-vm = "0.4"
 futures = "0.3"
 hex = "0.4.3"
 prettydiff = "0.4.0"
