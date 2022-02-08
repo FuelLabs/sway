@@ -896,7 +896,7 @@ impl TypedExpression {
             errors
         );
         check!(
-            check_match_expression_exhaustivity(variable_created, cases_covered, span, namespace),
+            check_match_expression_usefulness(variable_created, cases_covered, span, namespace),
             return err(warnings, errors),
             warnings,
             errors

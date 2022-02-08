@@ -1,10 +1,10 @@
 mod enum_instantiation;
-mod exhaustivity_checker;
 mod struct_expr_field;
 mod typed_expression;
 mod typed_expression_variant;
+mod usefulness;
 pub(crate) use enum_instantiation::instantiate_enum;
-pub(crate) use exhaustivity_checker::check_match_expression_exhaustivity;
 pub(crate) use struct_expr_field::TypedStructExpressionField;
 pub(crate) use typed_expression::{error_recovery_expr, TypedExpression};
 pub(crate) use typed_expression_variant::*;
+pub(crate) use usefulness::check_match_expression_usefulness;
