@@ -1,6 +1,6 @@
 [package]
 name = "forc"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 homepage = "https://fuel.network/"
@@ -25,11 +25,11 @@ semver = "1.0.3"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0.73"
 structopt = "0.3"
-sway-core = { version = "0.3.3", path = "../sway-core" }
-sway-fmt = { version = "0.3.3", path = "../sway-fmt" }
-sway-server = { version = "0.3.3", path = "../sway-server" }
-sway-utils = { version = "0.3.3", path = "../sway-utils" }
-sway-types = { version = "0.3.3", path = "../sway-types" }
+sway-core = { version = "0.3.4", path = "../sway-core" }
+sway-fmt = { version = "0.3.4", path = "../sway-fmt" }
+sway-server = { version = "0.3.4", path = "../sway-server" }
+sway-utils = { version = "0.3.4", path = "../sway-utils" }
+sway-types = { version = "0.3.4", path = "../sway-types" }
 taplo = "0.7"
 tar = "0.4.35"
 term-table = "1.3"
