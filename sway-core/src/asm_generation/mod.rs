@@ -308,7 +308,7 @@ impl RegisterPool {
     pub(crate) fn get_register(
         &mut self,
         virtual_register: &VirtualRegister,
-        op_register_mapping: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
+        op_register_mapping: &[(RealizedOp, std::collections::BTreeSet<VirtualRegister>)],
     ) -> Option<AllocatedRegister> {
         // check if this register has already been allocated for
         if let a @ Some(_) = self.registers.iter().find_map(
@@ -349,7 +349,7 @@ impl RegisterPool {
 
 fn virtual_register_is_never_accessed_again(
     reg: &VirtualRegister,
-    ops: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
+    ops: &[(RealizedOp, std::collections::BTreeSet<VirtualRegister>)],
 ) -> bool {
     !ops.iter().any(|(_, regs)| regs.contains(reg))
 }
