@@ -5,16 +5,15 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
 
     format!(
         r#"[project]
-author = "{}"
+author = "{real_name}"
 entry = "main.sw"
 license = "Apache-2.0"
-name = "{}"
+name = "{project_name}"
 
 [dependencies]
 core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
-"#,
-        project_name, real_name
+"#
     )
 }
 
@@ -27,10 +26,10 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
 
     format!(
         r#"[package]
-authors = ["{}"]
+authors = ["{real_name}"]
 edition = "2021"
 license = "Apache-2.0"
-name = "{}"
+name = "{project_name}"
 version = "0.1.0"
 
 [dependencies]
@@ -46,8 +45,7 @@ tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 harness = true
 name = "integration_tests"
 path = "tests/harness.rs"
-"#,
-        project_name, real_name,
+"#
     )
 }
 
