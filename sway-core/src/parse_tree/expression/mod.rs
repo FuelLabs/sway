@@ -1,9 +1,9 @@
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{ident, CallPath, Literal},
+    parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
-    type_engine::TypeInfo,
+    type_engine::{IntegerBits, TypeInfo},
     AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
 };
 
@@ -55,6 +55,12 @@ pub enum Expression {
     },
     Tuple {
         fields: Vec<Expression>,
+        span: Span,
+    },
+    TupleIndex {
+        prefix: Box<Expression>,
+        index: usize,
+        index_span: Span,
         span: Span,
     },
     Array {
@@ -253,6 +259,7 @@ impl Expression {
             LazyOperator { span, .. } => span,
             VariableExpression { span, .. } => span,
             Tuple { span, .. } => span,
+            TupleIndex { span, .. } => span,
             Array { span, .. } => span,
             MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
@@ -911,6 +918,48 @@ impl Expression {
                 }
                 Expression::Tuple {
                     fields: fields_buf,
+                    span,
+                }
+            }
+            Rule::tuple_index => {
+                let span = Span {
+                    span: expr.as_span(),
+                    path: path.clone(),
+                };
+                let mut inner = expr.into_inner();
+                let call_item = inner.next().expect("guarenteed by grammar");
+                assert_eq!(call_item.as_rule(), Rule::call_item);
+                let prefix = check!(
+                    parse_call_item(call_item, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let the_integer = inner.next().expect("guarenteed by grammar");
+                let the_integer_span = Span {
+                    span: the_integer.as_span(),
+                    path: path.clone(),
+                };
+                let index: Result<usize, CompileError> =
+                    the_integer.as_str().trim().parse().map_err(|e| {
+                        handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                            the_integer.as_span(),
+                            path.clone(),
+                        )
+                    });
+                let index = match index {
+                    Ok(index) => index,
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
+                };
+                Expression::TupleIndex {
+                    prefix: Box::new(prefix),
+                    index,
+                    index_span: the_integer_span,
                     span,
                 }
             }

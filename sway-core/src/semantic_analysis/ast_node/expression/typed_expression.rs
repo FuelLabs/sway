@@ -198,6 +198,24 @@ impl TypedExpression {
                 dependency_graph,
                 opts,
             ),
+            Expression::TupleIndex {
+                prefix,
+                index,
+                index_span,
+                span,
+            } => Self::type_check_tuple_index(
+                *prefix,
+                index,
+                index_span,
+                span,
+                namespace,
+                crate_namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+                opts,
+            ),
             Expression::DelineatedPath {
                 call_path,
                 span,
@@ -1073,6 +1091,76 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
+    fn type_check_tuple_index(
+        prefix: Expression,
+        index: usize,
+        index_span: Span,
+        span: Span,
+        namespace: crate::semantic_analysis::NamespaceRef,
+        crate_namespace: NamespaceRef,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let parent = check!(
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: prefix,
+                namespace,
+                crate_namespace,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut tuple_elem_to_access = None;
+        let tuple_elems = check!(
+            namespace.get_tuple_elems(parent.return_type, parent.span.as_str(), &parent.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for (pos, elem) in tuple_elems.iter().enumerate() {
+            if pos == index {
+                tuple_elem_to_access = Some(*elem);
+            }
+        }
+        let tuple_elem_to_access = match tuple_elem_to_access {
+            Some(tuple_elem_to_access) => tuple_elem_to_access,
+            None => {
+                errors.push(CompileError::TupleOutOfBounds {
+                    index,
+                    count: tuple_elems.len(),
+                    span: index_span,
+                });
+                return err(warnings, errors);
+            }
+        };
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::TupleElemAccess {
+                resolved_type_of_parent: parent.return_type,
+                prefix: Box::new(parent),
+                elem_to_access_num: index,
+                elem_to_access_span: index_span,
+            },
+            return_type: tuple_elem_to_access,
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path(
         call_path: CallPath,
@@ -1863,6 +1951,8 @@ impl TypedExpression {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
@@ -1876,6 +1966,7 @@ mod tests {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
+            generated_names: Arc::new(Mutex::new(vec![])),
         };
         let mut dead_code_graph: ControlFlowGraph = Default::default();
         let mut dependency_graph = HashMap::new();

@@ -151,8 +151,9 @@ impl Block {
     /// Remove an instruction from this block.
     ///
     /// **NOTE:** We must be very careful!  We mustn't remove the phi or the terminator.  Some
-    /// extra checks should probably be performed here to avoid corruption! Using `Vec::remove()`
-    /// is also O(n) which we may want to avoid someday.
+    /// extra checks should probably be performed here to avoid corruption! Ideally we use get a
+    /// user/uses system implemented.  Using `Vec::remove()` is also O(n) which we may want to
+    /// avoid someday.
     pub fn remove_instruction(&self, context: &mut Context, instr_val: Value) {
         let ins = &mut context.blocks[self.0].instructions;
         if let Some(pos) = ins.iter().position(|iv| *iv == instr_val) {

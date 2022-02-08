@@ -35,6 +35,12 @@ pub trait NamespaceWrapper {
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()>;
+    fn self_import(
+        &self,
+        from_module: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()>;
     fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef>;
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
     /// method in the namespace. Requires `args_buf` because of some special casing for the
@@ -56,6 +62,7 @@ pub trait NamespaceWrapper {
     fn star_import(&self, from_module: Option<NamespaceRef>, path: Vec<Ident>)
         -> CompileResult<()>;
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration>;
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo);
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
     /// `foo::bar::function`
@@ -267,6 +274,13 @@ impl NamespaceWrapper for NamespaceRef {
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         read_module(|ns| ns.get_methods_for_type(r#type), *self)
     }
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo) {
+        write_module(
+            move |ns| ns.copy_methods_to_type(old_type.clone(), new_type),
+            *self,
+        )
+    }
+
     fn star_import(
         &self,
         from_module: Option<NamespaceRef>,
@@ -304,10 +318,16 @@ impl NamespaceWrapper for NamespaceRef {
             namespace,
         );
         write_module(
-            move |m| {
+            |m| {
                 m.implemented_traits
                     .extend(&mut implemented_traits.into_iter());
                 for symbol in symbols {
+                    if m.use_synonyms.contains_key(&symbol) {
+                        errors.push(CompileError::StarImportShadowsOtherSymbol {
+                            name: symbol.as_str().to_string(),
+                            span: symbol.span().clone(),
+                        });
+                    }
                     m.use_synonyms.insert(symbol, path.clone());
                 }
             },
@@ -487,11 +507,23 @@ impl NamespaceWrapper for NamespaceRef {
                         // no matter what, import it this way though.
                         match alias.clone() {
                             Some(alias) => {
+                                if m.use_synonyms.contains_key(&alias) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: alias.as_str().to_string(),
+                                        span: alias.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(alias.clone(), path.clone());
                                 m.use_aliases
                                     .insert(alias.as_str().to_string(), item.clone());
                             }
                             None => {
+                                if m.use_synonyms.contains_key(item) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: item.as_str().to_string(),
+                                        span: item.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(item.clone(), path.clone());
                             }
                         };
@@ -519,6 +551,21 @@ impl NamespaceWrapper for NamespaceRef {
 
         ok((), warnings, errors)
     }
+
+    /// Pull a single item from a module and import it into this namespace.
+    /// The item we want to import is basically the last item in path because
+    /// this is a self import.
+    fn self_import(
+        &self,
+        from_namespace: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        let mut new_path = path;
+        let last_item = new_path.pop().expect("guaranteed by grammar");
+        self.item_import(from_namespace, new_path, &last_item, alias)
+    }
+
     fn insert_trait_implementation(
         &self,
         trait_name: CallPath,
@@ -549,28 +596,54 @@ impl NamespaceWrapper for NamespaceRef {
         Ok(match ty {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                        name,
-                        fields,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
-                    Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
-                        name,
-                        variants,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
-                    }),
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let old_struct = TypeInfo::Struct {
+                            name: decl.name.as_str().to_string(),
+                            fields: decl
+                                .fields
+                                .iter()
+                                .map(TypedStructField::as_owned_typed_struct_field)
+                                .collect::<Vec<_>>(),
+                        };
+                        let mut new_struct = old_struct.clone();
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = decl.monomorphize();
+                            new_struct = TypeInfo::Struct {
+                                name: new_decl.name.as_str().to_string(),
+                                fields: new_decl
+                                    .fields
+                                    .iter()
+                                    .map(TypedStructField::as_owned_typed_struct_field)
+                                    .collect::<Vec<_>>(),
+                            };
+                            self.copy_methods_to_type(old_struct, new_struct.clone());
+                        }
+                        crate::type_engine::insert_type(new_struct)
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let old_enum = TypeInfo::Enum {
+                            name: decl.name.as_str().to_string(),
+                            variant_types: decl
+                                .variants
+                                .iter()
+                                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                                .collect(),
+                        };
+                        let mut new_enum = old_enum.clone();
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = decl.monomorphize();
+                            new_enum = TypeInfo::Enum {
+                                name: new_decl.name.as_str().to_string(),
+                                variant_types: new_decl
+                                    .variants
+                                    .iter()
+                                    .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                                    .collect(),
+                            };
+                            self.copy_methods_to_type(old_enum, new_enum.clone());
+                        }
+                        crate::type_engine::insert_type(new_enum)
+                    }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
                     }
