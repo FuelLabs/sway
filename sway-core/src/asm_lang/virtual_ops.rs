@@ -12,7 +12,7 @@ use super::{
 };
 use crate::asm_generation::RegisterPool;
 
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 
 use std::fmt;
 
