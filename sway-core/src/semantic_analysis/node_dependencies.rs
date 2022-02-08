@@ -397,6 +397,7 @@ impl Dependencies {
             Expression::Tuple { fields, .. } => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
+            Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
         }
     }

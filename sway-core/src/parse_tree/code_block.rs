@@ -32,25 +32,22 @@ impl CodeBlock {
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
-            let mut pair_contents: Vec<AstNode> = match pair.as_rule() {
-                Rule::declaration => {
-                    let span = span::Span {
+            let mut ast_nodes = match pair.as_rule() {
+                Rule::declaration => check!(
+                    Declaration::parse_from_pair(pair.clone(), config),
+                    continue,
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(|content| AstNode {
+                    content: AstNodeContent::Declaration(content),
+                    span: span::Span {
                         span: pair.as_span(),
                         path: path.clone(),
-                    };
-                    check!(
-                        Declaration::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    )
-                    .into_iter()
-                    .map(|x| AstNode {
-                        content: AstNodeContent::Declaration(x),
-                        span: span.clone(),
-                    })
-                    .collect::<Vec<_>>()
-                }
+                    },
+                })
+                .collect::<Vec<_>>(),
                 Rule::expr_statement => {
                     let evaluated_node_result = check!(
                         Expression::parse_from_pair(
@@ -179,7 +176,7 @@ impl CodeBlock {
                     continue;
                 }
             };
-            contents.append(&mut pair_contents);
+            contents.append(&mut ast_nodes);
         }
 
         ok(

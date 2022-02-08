@@ -31,10 +31,10 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
         } => unimplemented!("compile predicate to ir"),
         TypedParseTree::Contract {
             abi_entries,
-            namespace: _,
+            namespace,
             declarations,
             all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, declarations),
+        } => compile_contract(&mut ctx, abi_entries, namespace, declarations),
         TypedParseTree::Library {
             namespace: _,
             all_nodes: _,
@@ -64,10 +64,12 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
+    namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
     let module = Module::new(context, Kind::Contract, "contract");
 
+    compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
     for decl in abi_entries {
         compile_abi_method(context, module, decl)?;
@@ -87,16 +89,33 @@ fn compile_constants(
     read_module(
         |ns| -> Result<(), String> {
             for decl in ns.get_all_declared_symbols() {
-                if let TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                    name,
-                    value,
-                    visibility,
-                }) = decl
-                {
-                    if !public_only || matches!(visibility, Visibility::Public) {
-                        let const_val = compile_constant_expression(context, value)?;
-                        module.add_global_constant(context, name.as_str().to_owned(), const_val);
+                let decl_name_value = match decl {
+                    TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                        name,
+                        value,
+                        visibility,
+                    }) => {
+                        // XXX Do we really only add public constants?
+                        if !public_only || matches!(visibility, Visibility::Public) {
+                            Some((name, value))
+                        } else {
+                            None
+                        }
                     }
+
+                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        name,
+                        body,
+                        const_decl_origin,
+                        ..
+                    }) if *const_decl_origin => Some((name, body)),
+
+                    _otherwise => None,
+                };
+
+                if let Some((name, value)) = decl_name_value {
+                    let const_val = compile_constant_expression(context, value)?;
+                    module.add_global_constant(context, name.as_str().to_owned(), const_val);
                 }
             }
 
@@ -118,7 +137,7 @@ fn compile_constant_expression(
     if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
         Ok(convert_literal_to_value(context, literal))
     } else {
-        Err("Unsupported constant declaration type.".into())
+        Err("Unsupported constant expression type.".into())
     }
 }
 
@@ -620,8 +639,6 @@ impl FnCompiler {
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
     ) -> Result<Value, String> {
-        // XXX To do: Calling into other modules, managing namespaces.
-        //
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
         // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
         // straight in, no questions asked.  Library functions are provided in an initial namespace
@@ -635,10 +652,16 @@ impl FnCompiler {
         // Eventually we need to Do It Properly and inline only when necessary, and compile the
         // standard library to an actual module.
 
+        // Edge case: take note as to whether the called function has the same name as this
+        // function.  If so we'll get confused and try and recurse.  This is only a problem while
+        // we don't have absolute paths to callees and while function bodies are inlined at call
+        // sites.
+        let has_same_name = self.function.get_name(context) == ast_name;
+
         match context
             .module_iter()
             .flat_map(|module| module.function_iter(context))
-            .find(|function| function.get_name(context) == ast_name)
+            .find(|function| !has_same_name && function.get_name(context) == ast_name)
         {
             Some(callee) => {
                 let args = ast_args
@@ -1401,6 +1424,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
             };
             Type::Uint(nbits)
         }
+        TypeInfo::Numeric => Type::Uint(64),
         TypeInfo::Boolean => Type::Bool,
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
@@ -1450,7 +1474,6 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         )),
         TypeInfo::Unknown => return Err("unknown type found in AST..?".into()),
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
-        TypeInfo::Numeric => return Err("'numeric' type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
         TypeInfo::ErrorRecovery => return Err("error recovery type found in AST..?".into()),
     })
