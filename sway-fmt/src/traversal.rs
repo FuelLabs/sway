@@ -47,8 +47,15 @@ enum ChangeType {
 pub fn traverse_for_changes(parse_tree: &SwayParseTree) -> Vec<Change> {
     let mut changes = vec![];
 
+    let mut previous_text_content = "";
     for node in &parse_tree.tree.root_nodes {
-        traverse_ast_node(node, &mut changes)
+        let current_text_content = node.span.as_str();
+        if current_text_content == previous_text_content {
+            continue;
+        } else {
+            previous_text_content = current_text_content;
+        }
+        traverse_ast_node(node, &mut changes);
     }
 
     changes.sort_by(|a, b| a.start.cmp(&b.start));
