@@ -1606,7 +1606,7 @@ mod tests {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: std::sync::Arc::new(std::sync::Mutex::new(vec![])),
+            generated_names: Default::default(),
         };
         TypedParseTree::type_check(
             parse_tree.tree,
