@@ -271,7 +271,7 @@ $ tree .
     └── harness.rs
 </code></pre>
 <p>Note that this is a Rust package, hence the existence of a <code>Cargo.toml</code> (Rust manifest file) in the project root directory. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a> (<code>fuels-rs</code>).</p>
-<p>These tests can be run using either <code>carg test</code>, or <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code>).</p>
+<p>These tests can be run using either <code>cargo test</code>, or <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code>).</p>
 <p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
 <pre><code class="language-sway">contract;
 
