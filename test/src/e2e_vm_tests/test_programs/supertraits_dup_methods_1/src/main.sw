@@ -1,6 +1,4 @@
 script;
-use core::*;
-use core::ops::Ord;
 
 struct Rgb {
     red: u64,
