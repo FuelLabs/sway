@@ -91,7 +91,7 @@ $ tree .
 
 Note that this is a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs) (`fuels-rs`).
 
-These tests can be run using either `carg test`, or `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init`).
+These tests can be run using either `cargo test`, or `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init`).
 
 For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated `src/main.sw` or in a new file in `src`. In the case of the latter, update the `entry` field in `Forc.toml` to point at the new contract.
 
