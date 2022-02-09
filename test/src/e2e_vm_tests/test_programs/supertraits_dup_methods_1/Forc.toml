@@ -2,4 +2,4 @@
 author = "Fuel Labs <contact@fuel.sh>"
 entry = "main.sw"
 license = "Apache-2.0"
-name = "supertraits"
+name = "supertraits_dup_methods_1"
