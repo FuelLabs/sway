@@ -12,21 +12,15 @@ use crate::Scrutinee;
 use crate::TypeInfo;
 
 #[derive(Clone, Debug)]
+enum Usefulness {
+    Useful,
+    NotUseful,
+}
+
+#[derive(Clone, Debug)]
 enum ArmType {
     FakeExtraWildcard,
     RealArm,
-}
-
-#[derive(Clone, Debug)]
-enum ReachabilityStatus {
-    Unknown,
-    Known(Reachability),
-}
-
-#[derive(Clone, Debug)]
-enum Reachability {
-    Reachable,
-    Unreachable,
 }
 
 #[derive(Clone, Debug)]
@@ -93,15 +87,15 @@ impl Pattern {
         match (self, other) {
             (Pattern::Wildcard, Pattern::Wildcard) => true,
             (Pattern::Literal(lit1), Pattern::Literal(lit2)) => match (lit1, lit2) {
-                (Literal::U8(_), Literal::U8(_))
-                | (Literal::U16(_), Literal::U16(_))
-                | (Literal::U32(_), Literal::U32(_))
-                | (Literal::U64(_), Literal::U64(_))
-                | (Literal::B256(_), Literal::B256(_))
-                | (Literal::Boolean(_), Literal::Boolean(_))
-                | (Literal::Byte(_), Literal::Byte(_))
-                | (Literal::Numeric(_), Literal::Numeric(_))
-                | (Literal::String(_), Literal::String(_)) => true,
+                (Literal::U8(x), Literal::U8(y)) => x == y,
+                (Literal::U16(x), Literal::U16(y)) => x == y,
+                (Literal::U32(x), Literal::U32(y)) => x == y,
+                (Literal::U64(x), Literal::U64(y)) => x == y,
+                (Literal::B256(x), Literal::B256(y)) => x == y,
+                (Literal::Boolean(x), Literal::Boolean(y)) => x == y,
+                (Literal::Byte(x), Literal::Byte(y)) => x == y,
+                (Literal::Numeric(x), Literal::Numeric(y)) => x == y,
+                (Literal::String(x), Literal::String(y)) => x == y,
                 _ => false,
             },
             (
@@ -119,16 +113,16 @@ impl Pattern {
                     && fields1
                         .iter()
                         .zip(fields2.iter())
-                        .map(|(field1, field2)| field1.has_the_same_constructor(&field2))
-                        .all(|x| x == true)
+                        .map(|(field1, field2)| field1.has_the_same_constructor(field2))
+                        .all(|x| x)
             }
             (Pattern::Tuple(elems1), Pattern::Tuple(elems2)) => {
                 elems1.len() == elems2.len()
                     && elems1
                         .iter()
                         .zip(elems2.iter())
-                        .map(|(elems1, elems2)| elems1.has_the_same_constructor(&elems2))
-                        .all(|x| x == true)
+                        .map(|(elems1, elems2)| elems1.has_the_same_constructor(elems2))
+                        .all(|x| x)
             }
             _ => false,
         }
@@ -136,12 +130,14 @@ impl Pattern {
 
     fn sub_patterns(&self) -> PatStack {
         match self {
-            Pattern::Wildcard => PatStack::empty(),
+            /*
             Pattern::Literal(lit) => PatStack {
                 pats: vec![Pattern::Literal(lit.to_owned())],
             },
+            */
             Pattern::Struct(StructPattern { fields, .. }) => fields.to_owned(),
             Pattern::Tuple(elems) => elems.to_owned(),
+            _ => PatStack::empty(),
         }
     }
 }
@@ -199,82 +195,181 @@ impl PatStack {
 
 #[derive(Clone, Debug)]
 struct Matrix {
-    patterns: Vec<PatStack>,
+    rows: Vec<PatStack>,
 }
 
 impl Matrix {
     fn empty() -> Self {
-        Matrix { patterns: vec![] }
+        Matrix { rows: vec![] }
     }
 
-    fn push(&mut self, other: PatStack) {
-        self.patterns.push(other);
+    fn from_pat_stack(pat_stack: &PatStack) -> Self {
+        Matrix {
+            rows: vec![pat_stack.to_owned()],
+        }
     }
 
-    fn append(&mut self, others: &mut Vec<PatStack>) {
-        self.patterns.append(others);
+    fn push(&mut self, row: PatStack) {
+        self.rows.push(row);
+    }
+
+    fn append(&mut self, rows: &mut Vec<PatStack>) {
+        self.rows.append(rows);
     }
 
     fn rows(&self) -> &Vec<PatStack> {
-        &self.patterns
+        &self.rows
+    }
+
+    fn m_n(&self) -> (usize, usize) {
+        let mut n = 0;
+        for row in self.rows.iter() {
+            let l = row.len();
+            if l > n {
+                n = l
+            }
+        }
+        (self.rows.len(), n)
+    }
+
+    fn unwrap_vector(&self) -> CompileResult<PatStack> {
+        if self.rows.len() > 1 {
+            unimplemented!()
+        }
+        match self.rows.first() {
+            Some(first) => ok(first.clone(), vec![], vec![]),
+            None => ok(PatStack::empty(), vec![], vec![]),
+        }
     }
 }
 
-/// Algorithm modeled after this documentation:
+/// Algorithm modeled after this paper:
+/// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
+/// and resembles the one here:
 /// https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
-/// and this paper:
-/// http://moscova.inria.fr/%7Emaranget/papers/warn/index.html
 pub(crate) fn check_match_expression_usefulness(
-    _parent_type: TypeInfo,
     arms: Vec<MatchCondition>,
-    _span: Span,
-) -> CompileResult<()> {
-    let arms_as_patterns = arms
-        .into_iter()
-        .map(Pattern::from_match_condition)
-        .collect::<Vec<_>>();
+) -> CompileResult<(bool, Vec<(MatchCondition, bool)>)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
     let mut matrix = Matrix::empty();
-    let arms_usefulness = arms_as_patterns
-        .into_iter()
-        .map(|pattern| {
-            let v = PatStack::from_pattern(pattern);
-            is_useful(&matrix, &v, ArmType::RealArm);
-            matrix.push(v);
-            /*
-            let is_reachable = match pattern.reachability.clone() {
-                ReachabilityStatus::Unknown => unimplemented!(),
-                ReachabilityStatus::Known(is_reachable) => is_reachable,
-            };
-            */
-            unimplemented!()
-        })
-        .collect::<Vec<_>>();
+    let mut arms_reachability = vec![];
+    for arm in arms.into_iter() {
+        let pattern = Pattern::from_match_condition(arm.clone());
+        let v = PatStack::from_pattern(pattern);
+        let arm_is_useful = check!(
+            is_useful(&matrix, &v, ArmType::RealArm),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        matrix.push(v);
+        // if an arm is useful then it is reachable
+        let arm_is_reachable = match arm_is_useful {
+            Usefulness::Useful => true,
+            Usefulness::NotUseful => false,
+        };
+        arms_reachability.push((arm, arm_is_reachable));
+    }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
-    let usefulness = is_useful(&matrix, &v, ArmType::FakeExtraWildcard);
-    unimplemented!()
+    let wildcard_is_useful = check!(
+        is_useful(&matrix, &v, ArmType::FakeExtraWildcard),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // if a wildcard case is not useful, then the match arms are exhaustive
+    let is_exhaustive = match wildcard_is_useful {
+        Usefulness::NotUseful => true,
+        Usefulness::Useful => false,
+    };
+    ok((is_exhaustive, arms_reachability), warnings, errors)
 }
 
-fn is_useful(matrix: &Matrix, v: &PatStack, arm_type: ArmType) {
-    unimplemented!()
+fn is_useful(p: &Matrix, q: &PatStack, _arm_type: ArmType) -> CompileResult<Usefulness> {
+    //println!("{:?}", p);
+    //println!("{:?}", q);
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    match p.m_n() {
+        (0, 0) => ok(Usefulness::Useful, warnings, errors),
+        (_, 0) => ok(Usefulness::NotUseful, warnings, errors),
+        (_, _) => {
+            let (q_1, q_rest) = check!(
+                q.split_first(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            match q_1 {
+                Pattern::Wildcard => {
+                    let d_p = check!(
+                        compute_default_matrix(p),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    is_useful(&d_p, &q_rest, _arm_type)
+                }
+                q_1 => {
+                    let s_c_p = check!(
+                        compute_specialized_matrix(&q_1, p),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    println!("{:#?}", s_c_p);
+                    let s_c_q = check!(
+                        compute_specialized_matrix(&q_1, &Matrix::from_pat_stack(q)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let s_c_q_vector = check!(
+                        s_c_q.unwrap_vector(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    is_useful(&s_c_p, &s_c_q_vector, _arm_type)
+                }
+            }
+        }
+    }
 }
 
-fn compute_specialized_matrix(q: &Pattern, P: &Matrix) -> CompileResult<Matrix> {
+fn compute_default_matrix(p: &Matrix) -> CompileResult<Matrix> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut d_p = Matrix::empty();
+    for p_i in p.rows().iter() {
+        let (p_i_1, p_i_rest) = check!(
+            p_i.split_first(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let row = match p_i_1 {
+            Pattern::Wildcard => p_i_rest,
+            _ => PatStack::empty(),
+        };
+        d_p.push(row);
+    }
+    ok(d_p, warnings, errors)
+}
+
+fn compute_specialized_matrix(q: &Pattern, p: &Matrix) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut s_c_p = Matrix::empty();
-    for p_i in P.rows().iter() {
+    for p_i in p.rows().iter() {
         let (p_i_1, mut p_i_rest) = check!(
             p_i.split_first(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let mut rows = check!(
-            compute_specialized_matrix_row(q, &p_i_1, &mut p_i_rest),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let mut rows = compute_specialized_matrix_row(q, &p_i_1, &mut p_i_rest);
         s_c_p.append(&mut rows);
     }
     ok(s_c_p, warnings, errors)
@@ -284,15 +379,12 @@ fn compute_specialized_matrix_row(
     q: &Pattern,
     p_i_1: &Pattern,
     p_i_rest: &mut PatStack,
-) -> CompileResult<Vec<PatStack>> {
-    let warnings = vec![];
-    let errors = vec![];
+) -> Vec<PatStack> {
     let mut rows: Vec<PatStack> = vec![];
-    let a = q.a();
     match p_i_1 {
         Pattern::Wildcard => {
             let mut row: PatStack = PatStack::empty();
-            for _ in 0..a {
+            for _ in 0..q.a() {
                 row.push(Pattern::Wildcard);
             }
             row.append(p_i_rest);
@@ -302,8 +394,10 @@ fn compute_specialized_matrix_row(
             if q.has_the_same_constructor(other) {
                 let mut row: PatStack = PatStack::empty();
                 row.append(&mut other.sub_patterns());
+                row.append(p_i_rest);
+                rows.push(row);
             }
         }
     }
-    ok(rows, warnings, errors)
+    rows
 }

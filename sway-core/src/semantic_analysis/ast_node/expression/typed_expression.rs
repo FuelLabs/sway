@@ -905,13 +905,16 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let parent_type_info = crate::type_engine::look_up_type_id(parent.return_type);
-        check!(
-            check_match_expression_usefulness(parent_type_info, cases_covered, span),
+        let (is_exhaustive, arms_reachability) = check!(
+            check_match_expression_usefulness(cases_covered),
             return err(warnings, errors),
             warnings,
             errors
         );
+        if !is_exhaustive {
+            errors.push(CompileError::MatchExpressionNonExhaustive { span });
+            return err(warnings, errors);
+        }
         ok(typed_if_exp, warnings, errors)
     }
 
