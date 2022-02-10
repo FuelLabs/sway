@@ -15,8 +15,10 @@ members = [
 
     # These are standalone forc example projects, but because running `forc
     # test` calls `cargo test` within this workspace, we must add them here.
+    "examples/fizzbuzz",
     "examples/hello_world",
     "examples/subcurrency",
+    "examples/wallet_smart_contract",
 ]
 
 [profile.dev.package.sway-server]
