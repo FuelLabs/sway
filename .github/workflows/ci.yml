@@ -70,6 +70,18 @@ jobs:
           command: run
           args: --release --bin test
 
+      - name: Install forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --path ./forc
+
+      - name: Build sway examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
+
   publish:
     # Only do this job if publishing a release
     needs: build

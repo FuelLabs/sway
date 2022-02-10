@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "docstrings",
+    "examples/build-all-examples",
     "forc",
     "parser",
     "sway-core",
@@ -12,13 +13,6 @@ members = [
     "sway-utils",
     "test",
     "test-sig-gen-util",
-
-    # These are standalone forc example projects, but because running `forc
-    # test` calls `cargo test` within this workspace, we must add them here.
-    "examples/fizzbuzz",
-    "examples/hello_world",
-    "examples/subcurrency",
-    "examples/wallet_smart_contract",
 ]
 
 [profile.dev.package.sway-server]
