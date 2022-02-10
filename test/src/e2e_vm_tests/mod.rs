@@ -129,6 +129,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "supertrait_dup_methods_1",
         "supertrait_dup_methods_2",
         "missing_supertrait",
+        "missing_supertrait_impl",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
