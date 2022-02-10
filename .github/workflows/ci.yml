@@ -52,7 +52,8 @@ jobs:
           args: --all -- --check
 
       - name: Build
-        uses: actions-rs/cargo@v1
+        uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/cargo@v1
         with:
           command: build
           args: --workspace --all-features --all-targets
