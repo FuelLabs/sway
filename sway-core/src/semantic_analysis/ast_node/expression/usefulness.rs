@@ -1,7 +1,6 @@
 use std::slice::Iter;
 
 use sway_types::Ident;
-use sway_types::Span;
 
 use crate::error::err;
 use crate::error::ok;
@@ -9,12 +8,20 @@ use crate::CompileResult;
 use crate::Literal;
 use crate::MatchCondition;
 use crate::Scrutinee;
-use crate::TypeInfo;
 
 #[derive(Clone, Debug)]
 enum Usefulness {
     Useful,
     NotUseful,
+}
+
+impl Usefulness {
+    fn to_bool(&self) -> bool {
+        match self {
+            Usefulness::Useful => true,
+            Usefulness::NotUseful => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -108,21 +115,24 @@ impl Pattern {
                     fields: fields2,
                 }),
             ) => {
-                struct_name1 == struct_name2
-                    && fields1.len() == fields2.len()
-                    && fields1
-                        .iter()
-                        .zip(fields2.iter())
-                        .map(|(field1, field2)| field1.has_the_same_constructor(field2))
-                        .all(|x| x)
+                struct_name1 == struct_name2 && fields1.len() == fields2.len()
+                /*
+                && fields1
+                    .iter()
+                    .zip(fields2.iter())
+                    .map(|(field1, field2)| field1.has_the_same_constructor(field2))
+                    .all(|x| x)
+                */
             }
             (Pattern::Tuple(elems1), Pattern::Tuple(elems2)) => {
                 elems1.len() == elems2.len()
-                    && elems1
-                        .iter()
-                        .zip(elems2.iter())
-                        .map(|(elems1, elems2)| elems1.has_the_same_constructor(elems2))
-                        .all(|x| x)
+                /*
+                && elems1
+                    .iter()
+                    .zip(elems2.iter())
+                    .map(|(elems1, elems2)| elems1.has_the_same_constructor(elems2))
+                    .all(|x| x)
+                */
             }
             _ => false,
         }
@@ -164,6 +174,13 @@ impl PatStack {
         }
     }
 
+    fn first(&self) -> CompileResult<Pattern> {
+        match self.pats.first() {
+            Some(first) => ok(first.to_owned(), vec![], vec![]),
+            None => unimplemented!(),
+        }
+    }
+
     fn split_first(&self) -> CompileResult<(Pattern, PatStack)> {
         match self.pats.split_first() {
             Some((first, pat_stack_contents)) => {
@@ -190,6 +207,43 @@ impl PatStack {
 
     fn iter(&self) -> Iter<'_, Pattern> {
         self.pats.iter()
+    }
+
+    fn is_complete_signature(&self) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut filtered_pats = vec![];
+        for pat in self.pats.iter() {
+            match pat {
+                Pattern::Wildcard => {}
+                other => filtered_pats.push(other.clone()),
+            }
+        }
+        if filtered_pats.is_empty() {
+            return ok(false, warnings, errors);
+        }
+        let filtered_pat_stack = PatStack {
+            pats: filtered_pats,
+        };
+        let (first, rest) = check!(
+            filtered_pat_stack.split_first(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match first {
+            // its assumed that no one is every going to list every single literal
+            Pattern::Literal(_) => ok(false, warnings, errors),
+            Pattern::Tuple(elems) => {
+                for pat in rest.iter() {
+                    if !pat.has_the_same_constructor(&Pattern::Tuple(elems.clone())) {
+                        return ok(false, warnings, errors);
+                    }
+                }
+                ok(true, warnings, errors)
+            }
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -221,15 +275,25 @@ impl Matrix {
         &self.rows
     }
 
-    fn m_n(&self) -> (usize, usize) {
-        let mut n = 0;
-        for row in self.rows.iter() {
+    fn m_n(&self) -> CompileResult<(usize, usize)> {
+        let warnings = vec![];
+        let errors = vec![];
+        let first = match self.rows.first() {
+            Some(first) => first,
+            None => return ok((0, 0), warnings, errors),
+        };
+        let n = first.len();
+        for row in self.rows.iter().skip(1) {
             let l = row.len();
-            if l > n {
-                n = l
+            if l != n {
+                unimplemented!()
             }
         }
-        (self.rows.len(), n)
+        ok((self.rows.len(), n), warnings, errors)
+    }
+
+    fn is_a_vector(&self) -> bool {
+        self.rows.len() == 1
     }
 
     fn unwrap_vector(&self) -> CompileResult<PatStack> {
@@ -240,6 +304,21 @@ impl Matrix {
             Some(first) => ok(first.clone(), vec![], vec![]),
             None => ok(PatStack::empty(), vec![], vec![]),
         }
+    }
+
+    fn compute_sigma(&self) -> CompileResult<PatStack> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut pat_stack = PatStack::empty();
+        for row in self.rows.iter() {
+            pat_stack.push(check!(
+                row.first(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        ok(pat_stack, warnings, errors)
     }
 }
 
@@ -254,22 +333,27 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
-    for arm in arms.into_iter() {
-        let pattern = Pattern::from_match_condition(arm.clone());
-        let v = PatStack::from_pattern(pattern);
-        let arm_is_useful = check!(
-            is_useful(&matrix, &v, ArmType::RealArm),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        matrix.push(v);
-        // if an arm is useful then it is reachable
-        let arm_is_reachable = match arm_is_useful {
-            Usefulness::Useful => true,
-            Usefulness::NotUseful => false,
-        };
-        arms_reachability.push((arm, arm_is_reachable));
+    match arms.split_first() {
+        Some((first_arm, arms_rest)) => {
+            matrix.push(PatStack::from_pattern(Pattern::from_match_condition(
+                first_arm.clone(),
+            )));
+            arms_reachability.push((first_arm.clone(), true));
+            for arm in arms_rest.iter() {
+                let pattern = Pattern::from_match_condition(arm.clone());
+                let v = PatStack::from_pattern(pattern);
+                let arm_is_useful = check!(
+                    is_useful(&matrix, &v, ArmType::RealArm),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                matrix.push(v);
+                // if an arm is useful then it is reachable
+                arms_reachability.push((arm.clone(), arm_is_useful.to_bool()));
+            }
+        }
+        None => unimplemented!(),
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let wildcard_is_useful = check!(
@@ -279,48 +363,101 @@ pub(crate) fn check_match_expression_usefulness(
         errors
     );
     // if a wildcard case is not useful, then the match arms are exhaustive
-    let is_exhaustive = match wildcard_is_useful {
-        Usefulness::NotUseful => true,
-        Usefulness::Useful => false,
-    };
-    ok((is_exhaustive, arms_reachability), warnings, errors)
+    ok(
+        (!wildcard_is_useful.to_bool(), arms_reachability),
+        warnings,
+        errors,
+    )
 }
 
 fn is_useful(p: &Matrix, q: &PatStack, _arm_type: ArmType) -> CompileResult<Usefulness> {
-    //println!("{:?}", p);
-    //println!("{:?}", q);
     let mut warnings = vec![];
     let mut errors = vec![];
-    match p.m_n() {
-        (0, 0) => ok(Usefulness::Useful, warnings, errors),
+    let (m, n) = check!(p.m_n(), return err(warnings, errors), warnings, errors);
+    /*
+    if n != q.len() {
+        println!("p: {:?}", p);
+        println!("q: {:?}", q);
+        unimplemented!()
+    }
+    */
+    match (m, n) {
+        (0, _) => ok(Usefulness::Useful, warnings, errors),
         (_, 0) => ok(Usefulness::NotUseful, warnings, errors),
         (_, _) => {
-            let (q_1, q_rest) = check!(
+            let (c, q_rest) = check!(
                 q.split_first(),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            match q_1 {
+            match c {
                 Pattern::Wildcard => {
-                    let d_p = check!(
-                        compute_default_matrix(p),
+                    let sigma = check!(
+                        p.compute_sigma(),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    is_useful(&d_p, &q_rest, _arm_type)
+                    let is_complete_signature = check!(
+                        sigma.is_complete_signature(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_complete_signature {
+                        let mut usefulness = false;
+                        for c_k in sigma.iter() {
+                            let s_c_k_p = check!(
+                                compute_specialized_matrix(c_k, p),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let s_c_k_q = check!(
+                                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q)),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let s_c_q_vector = check!(
+                                s_c_k_q.unwrap_vector(),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let res = check!(
+                                is_useful(&s_c_k_p, &s_c_q_vector, _arm_type.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            usefulness = usefulness || res.to_bool();
+                        }
+                        if usefulness {
+                            ok(Usefulness::Useful, warnings, errors)
+                        } else {
+                            ok(Usefulness::NotUseful, warnings, errors)
+                        }
+                    } else {
+                        let d_p = check!(
+                            compute_default_matrix(p),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        is_useful(&d_p, &q_rest, _arm_type)
+                    }
                 }
-                q_1 => {
+                c => {
                     let s_c_p = check!(
-                        compute_specialized_matrix(&q_1, p),
+                        compute_specialized_matrix(&c, p),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    println!("{:#?}", s_c_p);
                     let s_c_q = check!(
-                        compute_specialized_matrix(&q_1, &Matrix::from_pat_stack(q)),
+                        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q)),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -349,11 +486,9 @@ fn compute_default_matrix(p: &Matrix) -> CompileResult<Matrix> {
             warnings,
             errors
         );
-        let row = match p_i_1 {
-            Pattern::Wildcard => p_i_rest,
-            _ => PatStack::empty(),
-        };
-        d_p.push(row);
+        if let Pattern::Wildcard = p_i_1 {
+            d_p.push(p_i_rest);
+        }
     }
     ok(d_p, warnings, errors)
 }
@@ -371,6 +506,10 @@ fn compute_specialized_matrix(q: &Pattern, p: &Matrix) -> CompileResult<Matrix> 
         );
         let mut rows = compute_specialized_matrix_row(q, &p_i_1, &mut p_i_rest);
         s_c_p.append(&mut rows);
+    }
+    let (m, _n) = check!(s_c_p.m_n(), return err(warnings, errors), warnings, errors);
+    if p.is_a_vector() && m > 1 {
+        unimplemented!()
     }
     ok(s_c_p, warnings, errors)
 }

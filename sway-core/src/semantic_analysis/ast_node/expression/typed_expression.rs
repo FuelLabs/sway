@@ -895,7 +895,7 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let parent = check!(
+        let _parent = check!(
             TypedExpression::type_check_variable_expression(
                 variable_created.clone(),
                 variable_created.span().clone(),
@@ -905,7 +905,7 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let (is_exhaustive, arms_reachability) = check!(
+        let (is_exhaustive, _arms_reachability) = check!(
             check_match_expression_usefulness(cases_covered),
             return err(warnings, errors),
             warnings,
