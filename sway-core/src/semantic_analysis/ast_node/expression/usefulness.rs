@@ -2,6 +2,7 @@ use std::slice::Iter;
 use std::vec::IntoIter;
 
 use sway_types::Ident;
+use sway_types::Span;
 
 use crate::error::err;
 use crate::error::ok;
@@ -71,15 +72,170 @@ impl WitnessReport {
     fn has_witnesses(&self) -> bool {
         match self {
             WitnessReport::NoWitnesses => false,
-            WitnessReport::Witnesses(witnesses) => true, // !witnesses.is_empty()
+            WitnessReport::Witnesses(_) => true, // !witnesses.is_empty()
         }
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Range<T>
+where
+    T: Eq + Ord + PartialEq + PartialOrd + Clone,
+{
+    first: T,
+    last: T,
+}
+
+impl<T> Range<T>
+where
+    T: Eq + Ord + PartialEq + PartialOrd + Clone,
+{
+    fn new(a: T, b: T) -> Range<T> {
+        Range { first: a, last: b }
+    }
+
+    fn from_single(x: T) -> Range<T> {
+        Range {
+            first: x.clone(),
+            last: x,
+        }
+    }
+
+    /// Combines two ranges that overlap. There are 4 ways
+    /// in which this might be the case:
+    ///
+    /// ```ignore
+    /// |------------|
+    ///    |------|
+    /// ->
+    /// |------------|
+    ///
+    ///    |------|
+    /// |------------|
+    /// ->
+    /// |------------|
+    ///
+    /// |---------|
+    ///      |---------|
+    /// ->
+    /// |--------------|
+    ///
+    ///      |---------|
+    /// |---------|
+    /// ->
+    /// |--------------|
+    /// ```
+    fn join_ranges(a: &Range<T>, b: &Range<T>) -> Range<T> {
+        unimplemented!()
+    }
+
+    /// Condenses a `Vec<Range<T>>` to a `Vec<Range<T>>` of non-overlapping
+    /// ranges.
+    ///
+    /// Modeled after the algorithm here: https://www.geeksforgeeks.org/merging-intervals/
+    ///
+    /// 1. Sort the intervals based on increasing order of starting time.
+    /// 2. Push the first interval on to a stack.
+    /// 3. For each interval do the following
+    ///     3a. If the current interval does not overlap with the stack
+    ///         top, push it.
+    ///     3b. If the current interval overlaps with stack top and ending
+    ///         time of current interval is more than that of stack top,
+    ///         update stack top with the ending  time of current interval.
+    /// 4. At the end stack contains the merged intervals.
+    fn condense_ranges(ranges: Vec<Range<T>>) -> CompileResult<Vec<Range<T>>> {
+        let warnings = vec![];
+        let errors = vec![];
+        let mut ranges = ranges;
+        let mut stack: Vec<Range<T>> = vec![];
+
+        // 1. Sort the intervals based on increasing order of starting time.
+        ranges.sort_by(|a, b| b.first.cmp(&a.first));
+
+        // 2. Push the first interval on to a stack.
+        let (first, rest) = match ranges.split_first() {
+            Some((first, rest)) => (first.to_owned(), rest.to_owned()),
+            None => unimplemented!(),
+        };
+        stack.push(first);
+
+        for range in rest.iter() {
+            let top = match stack.pop() {
+                Some(top) => top,
+                None => unimplemented!(),
+            };
+            if range.overlaps(&top) {
+                // 3b. If the current interval overlaps with stack top and ending
+                //     time of current interval is more than that of stack top,
+                //     update stack top with the ending  time of current interval.
+                stack.push(Range::join_ranges(range, &top));
+            } else {
+                // 3a. If the current interval does not overlap with the stack
+                //     top, push it.
+                stack.push(top);
+                stack.push(range.clone());
+            }
+        }
+        ok(stack, warnings, errors)
+    }
+
+    fn do_ranges_equal_range(ranges: Vec<Range<T>>, oracle: Range<T>) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let condensed_ranges = check!(
+            Range::condense_ranges(ranges),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        if condensed_ranges.len() > 1 {
+            unimplemented!()
+        } else {
+            let first_range = match condensed_ranges.first() {
+                Some(first_range) => first_range.clone(),
+                _ => unimplemented!(),
+            };
+            ok(first_range == oracle, warnings, errors)
+        }
+    }
+
+    /// Checks to see if two ranges overlap. There are 4 ways
+    /// in which this might be the case:
+    ///
+    /// ```ignore
+    /// |------------|
+    ///    |------|
+    ///
+    ///    |------|
+    /// |------------|
+    ///
+    /// |---------|
+    ///      |---------|
+    ///
+    ///      |---------|
+    /// |---------|
+    /// ```
+    fn overlaps(&self, other: &Range<T>) -> bool {
+        other.first >= self.first && other.last <= self.last
+            || other.first <= self.first && other.last >= self.last
+            || other.first <= self.first && other.last <= self.last && other.last >= self.first
+            || other.first >= self.first && other.first <= self.last && other.last >= self.last
+    }
+}
+
+/// [first, last] (closed interval)
 #[derive(Clone, Debug)]
 enum Pattern {
     Wildcard,
-    Literal(Literal),
+    U8(Range<u8>),
+    U16(Range<u16>),
+    U32(Range<u32>),
+    U64(Range<u64>),
+    B256([u8; 32]),
+    Boolean(bool),
+    Byte(Range<u8>),
+    Numeric(Range<u64>),
+    String(Span),
     Struct(StructPattern),
     Tuple(PatStack),
 }
@@ -95,7 +251,17 @@ impl Pattern {
     fn from_scrutinee(scrutinee: Scrutinee) -> Self {
         match scrutinee {
             Scrutinee::Variable { .. } => Pattern::Wildcard,
-            Scrutinee::Literal { value, .. } => Pattern::Literal(value),
+            Scrutinee::Literal { value, .. } => match value {
+                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
+                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
+                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
+                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+                Literal::B256(x) => Pattern::B256(x),
+                Literal::Boolean(b) => Pattern::Boolean(b),
+                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
+                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+                Literal::String(s) => Pattern::String(s),
+            },
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
@@ -144,7 +310,15 @@ impl Pattern {
     fn a(&self) -> usize {
         match self {
             Pattern::Wildcard => 0,
-            Pattern::Literal(_) => 1,
+            Pattern::U8(_) => 1,
+            Pattern::U16(_) => 1,
+            Pattern::U32(_) => 1,
+            Pattern::U64(_) => 1,
+            Pattern::B256(_) => 1,
+            Pattern::Boolean(_) => 1,
+            Pattern::Byte(_) => 1,
+            Pattern::Numeric(_) => 1,
+            Pattern::String(_) => 1,
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
             Pattern::Tuple(elems) => elems.len(),
         }
@@ -153,18 +327,15 @@ impl Pattern {
     fn has_the_same_constructor(&self, other: &Pattern) -> bool {
         match (self, other) {
             (Pattern::Wildcard, Pattern::Wildcard) => true,
-            (Pattern::Literal(lit1), Pattern::Literal(lit2)) => match (lit1, lit2) {
-                (Literal::U8(x), Literal::U8(y)) => x == y,
-                (Literal::U16(x), Literal::U16(y)) => x == y,
-                (Literal::U32(x), Literal::U32(y)) => x == y,
-                (Literal::U64(x), Literal::U64(y)) => x == y,
-                (Literal::B256(x), Literal::B256(y)) => x == y,
-                (Literal::Boolean(x), Literal::Boolean(y)) => x == y,
-                (Literal::Byte(x), Literal::Byte(y)) => x == y,
-                (Literal::Numeric(x), Literal::Numeric(y)) => x == y,
-                (Literal::String(x), Literal::String(y)) => x == y,
-                _ => false,
-            },
+            (Pattern::U8(a), Pattern::U8(b)) => a == b,
+            (Pattern::U16(a), Pattern::U16(b)) => a == b,
+            (Pattern::U32(a), Pattern::U32(b)) => a == b,
+            (Pattern::U64(a), Pattern::U64(b)) => a == b,
+            (Pattern::B256(x), Pattern::B256(y)) => x == y,
+            (Pattern::Boolean(x), Pattern::Boolean(y)) => x == y,
+            (Pattern::Byte(a), Pattern::Byte(b)) => a == b,
+            (Pattern::Numeric(a), Pattern::Numeric(b)) => a == b,
+            (Pattern::String(x), Pattern::String(y)) => x == y,
             (
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name1,
@@ -209,10 +380,6 @@ impl PatStack {
         PatStack {
             pats: vec![pattern],
         }
-    }
-
-    fn compute_patterns_not_present(type_info: &TypeInfo, patterns: PatStack) -> Self {
-        unimplemented!()
     }
 
     fn first(&self) -> CompileResult<Pattern> {
@@ -282,8 +449,88 @@ impl PatStack {
             errors
         );
         match first {
-            // its assumed that no one is every going to list every single literal
-            Pattern::Literal(_) => ok(false, warnings, errors),
+            // its assumed that no one is every going to list every string
+            Pattern::String(_) => ok(false, warnings, errors),
+            // its assumed that no one is every going to list every B256
+            Pattern::B256(_) => ok(false, warnings, errors),
+            Pattern::U8(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U8(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX))
+            }
+            Pattern::U16(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U16(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u16::MIN, std::u16::MAX))
+            }
+            Pattern::U32(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U32(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u32::MIN, std::u32::MAX))
+            }
+            Pattern::U64(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U64(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX))
+            }
+            Pattern::Boolean(b) => {
+                let mut true_found = false;
+                let mut false_found = false;
+                match b {
+                    true => true_found = true,
+                    false => false_found = true,
+                }
+                for pat in rest.iter() {
+                    match pat {
+                        Pattern::Boolean(b) => match b {
+                            true => true_found = true,
+                            false => false_found = true,
+                        },
+                        _ => unimplemented!(),
+                    }
+                }
+                ok(true_found && false_found, warnings, errors)
+            }
+            Pattern::Byte(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::Byte(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX))
+            }
+            Pattern::Numeric(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::Numeric(range) => ranges.push(range),
+                        _ => unimplemented!(),
+                    }
+                }
+                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX))
+            }
             Pattern::Tuple(elems) => {
                 for pat in rest.iter() {
                     if !pat.has_the_same_constructor(&Pattern::Tuple(elems.clone())) {
@@ -371,6 +618,17 @@ impl Matrix {
     }
 }
 
+struct ConstructorFactory {
+    type_info: TypeInfo,
+    constructors: PatStack,
+}
+
+impl ConstructorFactory {
+    fn new(type_info: TypeInfo) -> Self {
+        unimplemented!()
+    }
+}
+
 /// Algorithm modeled after this paper:
 /// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
 /// and resembles the one here:
@@ -383,6 +641,7 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
+    let factory = ConstructorFactory::new(type_info);
     match arms.split_first() {
         Some((first_arm, arms_rest)) => {
             matrix.push(PatStack::from_pattern(Pattern::from_match_condition(
@@ -393,7 +652,7 @@ pub(crate) fn check_match_expression_usefulness(
                 let pattern = Pattern::from_match_condition(arm.clone());
                 let v = PatStack::from_pattern(pattern);
                 let witness_report = check!(
-                    is_useful(&type_info, &matrix, &v),
+                    is_useful(&factory, &matrix, &v),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -407,7 +666,7 @@ pub(crate) fn check_match_expression_usefulness(
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(
-        is_useful(&type_info, &matrix, &v),
+        is_useful(&factory, &matrix, &v),
         return err(warnings, errors),
         warnings,
         errors
@@ -420,7 +679,11 @@ pub(crate) fn check_match_expression_usefulness(
     )
 }
 
-fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<WitnessReport> {
+fn is_useful(
+    factory: &ConstructorFactory,
+    p: &Matrix,
+    q: &PatStack,
+) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (m, n) = check!(p.m_n(), return err(warnings, errors), warnings, errors);
@@ -481,7 +744,7 @@ fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<Wi
                                 errors
                             );
                             let witness_report = check!(
-                                is_useful(type_info, &s_c_k_p, &s_c_k_q),
+                                is_useful(factory, &s_c_k_p, &s_c_k_q),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -506,12 +769,12 @@ fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<Wi
                             errors
                         );
                         let mut witness_report = check!(
-                            is_useful(type_info, &d_p, &q_rest),
+                            is_useful(factory, &d_p, &q_rest),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        if sigma.len() == 0 {
+                        if sigma.is_empty() {
                             check!(
                                 witness_report.add_witness(Pattern::Wildcard),
                                 return err(warnings, errors),
@@ -519,6 +782,7 @@ fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<Wi
                                 errors
                             );
                         } else {
+                            /*
                             let constructors_not_present =
                                 PatStack::compute_patterns_not_present(type_info, sigma);
                             for constructor in constructors_not_present.into_iter() {
@@ -529,6 +793,8 @@ fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<Wi
                                     errors
                                 );
                             }
+                            */
+                            unimplemented!()
                         }
                         ok(witness_report, warnings, errors)
                     }
@@ -552,7 +818,7 @@ fn is_useful(type_info: &TypeInfo, p: &Matrix, q: &PatStack) -> CompileResult<Wi
                         warnings,
                         errors
                     );
-                    is_useful(type_info, &s_c_p, &s_c_q)
+                    is_useful(factory, &s_c_p, &s_c_q)
                 }
             }
         }
