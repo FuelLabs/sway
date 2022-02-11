@@ -341,25 +341,25 @@ struct Rgb {
     blue: u64,
 }
 
-struct Structure {
+struct Bimbam {
     age: u32,
 
     name: string,
 }
 
-struct Structure {
+struct Building {
     age: u32, /* completely meaningless multiline comment
         not sure why would anyone write this but let's deal with it as well!
     */
     name: string,
 }
 
-struct Structure {
+struct Darts {
     age: u32,
     name: string, // super comment
 }
 
-struct BIMBAMBOUM {
+struct Lighthouse {
     age: u32,
     name: string, // super comment
 }
@@ -447,7 +447,7 @@ struct Rgb {
     blue: u64,
 }
 
-struct Structure {
+struct Bimbam {
 
     age: u32,
 
@@ -455,24 +455,24 @@ struct Structure {
 
 }
 
-struct Structure {
+struct Building {
     age: u32, /* completely meaningless multiline comment
         not sure why would anyone write this but let's deal with it as well!
     */
     name: string
 }
 
-struct Structure {
+struct Darts {
     age: u32,
     name: string// super comment
 }
 
-struct BIMBAMBOUM {
+struct Lighthouse {
     age: u32,
     name: string, // super comment
 }
 
-struct Vehicle 
+struct Vehicle
           { age:       u32,          name: string , // some comment middle of nowhere
 }
 
@@ -640,5 +640,24 @@ fn one_liner() -> bool {
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    // This test is here to check that the `use` statements are properly formatted
+    // Currently, there is a hard-to-diagnose bug which adds a leading `--` to the first
+    // `use` statement
+    fn test_use_statement() {
+        let expected_sway = r#"script;
+use std::chain::{panic,log_u8};
+use std::chain::assert;
+use std::address::{Address,Address};
+
+fn main() {
+}
+"#;
+        let result = get_formatted_data(expected_sway.into(), OPTIONS);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(formatted_code, expected_sway);
     }
 }
