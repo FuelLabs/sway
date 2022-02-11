@@ -93,6 +93,19 @@ impl WitnessReport {
     }
 }
 
+/// A `Range<T>` is a range of values of type T.
+/// Given this range:
+///
+/// ```ignore
+/// Range {
+///     first: 0,
+///     last: 3
+/// }
+/// ```
+///
+/// This represents the inclusive range `[0, 3]`.
+/// (Where '[' and ']' represent inclusive contains.)
+/// More specifically: `0, 1, 2, 3`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Range<T>
 where
@@ -141,8 +154,30 @@ where
     /// ->
     /// |--------------|
     /// ```
-    fn join_ranges(a: &Range<T>, b: &Range<T>) -> Range<T> {
-        unimplemented!()
+    fn join_ranges(a: &Range<T>, b: &Range<T>, span: &Span) -> CompileResult<Range<T>> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        if !a.overlaps(b) {
+            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                "these two ranges cannot be joined",
+                span.clone(),
+            ));
+            return err(warnings, errors);
+        } else {
+            let range = Range {
+                first: if a.first < b.first {
+                    a.first.clone()
+                } else {
+                    b.first.clone()
+                },
+                last: if a.last > b.last {
+                    a.last.clone()
+                } else {
+                    b.last.clone()
+                },
+            };
+            ok(range, warnings, errors)
+        }
     }
 
     /// Condenses a `Vec<Range<T>>` to a `Vec<Range<T>>` of non-overlapping
@@ -195,8 +230,13 @@ where
             if range.overlaps(&top) {
                 // 3b. If the current interval overlaps with stack top and ending
                 //     time of current interval is more than that of stack top,
-                //     update stack top with the ending  time of current interval.
-                stack.push(Range::join_ranges(range, &top));
+                //     update stack top with the ending time of current interval.
+                stack.push(check!(
+                    Range::join_ranges(range, &top, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             } else {
                 // 3a. If the current interval does not overlap with the stack
                 //     top, push it.
@@ -207,6 +247,7 @@ where
         ok(stack, warnings, errors)
     }
 
+    /// Checks to see if a given set of ranges is equal to an oracle range, once condensed.
     fn do_ranges_equal_range(
         ranges: Vec<Range<T>>,
         oracle: Range<T>,
@@ -237,8 +278,7 @@ where
         }
     }
 
-    /// Checks to see if two ranges overlap. There are 4 ways
-    /// in which this might be the case:
+    /// Checks to see if two ranges overlap. There are 4 ways in which this might be the case:
     ///
     /// ```ignore
     /// |------------|
@@ -261,7 +301,60 @@ where
     }
 }
 
-/// [first, last] (closed interval)
+/// A `Pattern` represents something that could be on the LHS of a match expression arm.
+///
+/// For instance this match expression:
+///
+/// ```ignore
+/// let x = (0, 5);
+/// match x {
+///     (0, 1) => true,
+///     (2, 3) => true,
+///     _ => false
+/// }
+/// ```
+///
+/// would result in these patterns:
+///
+/// ```ignore
+/// Pattern::Tuple(
+///     PatStack {
+///         pats: [
+///             Pattern::U64(Range { first: 0, last: 0 }),
+///             Pattern::U64(Range { first: 1, last: 1 })
+///         ]
+///     }
+/// )
+///
+/// Pattern::Tuple(
+///     PatStack {
+///         pats: [
+///             Pattern::U64(Range { first: 2, last: 2 }),
+///             Pattern::U64(Range { first: 3, last: 3 })
+///         ]
+///     }
+/// )
+///
+/// Pattern::Wildcard
+/// ```
+///
+/// A `Pattern` is semantically constructed from a "constructor" and its "arguments."
+///
+/// Given the `Pattern`:
+///
+/// ```ignore
+/// Pattern::Tuple(
+///     PatStack {
+///         pats: [
+///             Pattern::U64(Range { first: 0, last: 0 }),
+///             Pattern::U64(Range { first: 1, last: 1 })
+///         ]
+///     }
+/// )
+/// ```
+///
+/// The constructor is "Pattern::Tuple" and its arguments are the contents of `pats`.
+/// This idea of a constructor and arguments is used in the match exhaustivity algorithm.
 #[derive(Clone, Debug)]
 enum Pattern {
     Wildcard,
