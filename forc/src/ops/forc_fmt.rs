@@ -19,6 +19,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
         debug_outfile: None,
         offline_mode: false,
         silent_mode: false,
+        output_directory: None,
     };
 
     match forc_build::build(build_command) {

@@ -33,6 +33,11 @@ pub struct Command {
     /// Silent mode. Don't output any warnings or errors to the command line.
     #[structopt(long = "silent", short = "s")]
     pub silent_mode: bool,
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    #[structopt(long)]
+    pub output_directory: Option<String>,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

@@ -61,6 +61,12 @@ pub struct Command {
     /// 32-byte contract ID that will be called during the transaction.
     #[structopt(long = "contract")]
     pub contract: Option<Vec<String>>,
+
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    #[structopt(long)]
+    pub output_directory: Option<String>,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

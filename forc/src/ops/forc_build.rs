@@ -22,15 +22,11 @@ use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(ref path) = command.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
-    };
+const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
+pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
+        path,
         binary_outfile,
         use_ir,
         debug_outfile,
@@ -39,8 +35,16 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         print_ir,
         offline_mode,
         silent_mode,
-        ..
+        output_directory,
     } = command;
+
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+    };
+
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -130,6 +134,23 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         )
         .map_err(|e| e.to_string())?;
     }
+
+    // TODO: We may support custom build profiles in the future.
+    let profile = "debug";
+
+    // Create the output directory for build artifacts.
+    let output_dir = output_directory
+        .map(PathBuf::from)
+        .unwrap_or_else(|| manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY).join(profile));
+    if !output_dir.exists() {
+        fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+    }
+
+    // Place build artifacts into the output directory.
+    let bin_path = output_dir
+        .join(&manifest.project.name)
+        .with_extension("bin");
+    std::fs::write(&bin_path, main.as_slice()).map_err(|e| e.to_string())?;
 
     println!("  Bytecode size is {} bytes.", main.len());
 
