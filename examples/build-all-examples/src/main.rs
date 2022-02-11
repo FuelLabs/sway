@@ -5,7 +5,7 @@
 use std::{
     fs,
     io::{self, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 fn main() {
@@ -13,7 +13,10 @@ fn main() {
     let examples_dir = proj_dir
         .parent()
         .expect("failed to find examples directory");
-    let mut failed = false;
+
+    // Track discovered projects and whether or not they were successful.
+    let mut summary: Vec<(PathBuf, bool)> = vec![];
+
     for res in fs::read_dir(examples_dir).expect("failed to walk examples directory") {
         let entry = match res {
             Ok(entry) => entry,
@@ -31,14 +34,43 @@ fn main() {
             .expect("failed to run `forc build` for example project");
 
         // Print output on failure so we can read it in CI.
-        if !output.status.success() {
+        let success = if !output.status.success() {
             io::stdout().write_all(&output.stdout).unwrap();
             io::stdout().write_all(&output.stderr).unwrap();
-            failed = true;
+            false
+        } else {
+            true
+        };
+
+        summary.push((path, success));
+    }
+
+    println!("\nBuild all examples summary:");
+    let mut successes = 0;
+    for (path, success) in &summary {
+        let (checkmark, status) = if *success {
+            ("[✓]", "succeeded")
+        } else {
+            ("[x]", "failed")
+        };
+        println!("  {}: {} {}!", checkmark, path.display(), status);
+        if *success {
+            successes += 1;
         }
     }
-    if failed {
-        eprintln!("One or more example projects failed to build");
+    let failures = summary.len() - successes;
+    let successes_str = if successes == 1 {
+        "success"
+    } else {
+        "successes"
+    };
+    let failures_str = if failures == 1 { "failure" } else { "failures" };
+    println!(
+        "{} {}, {} {}",
+        successes, successes_str, failures, failures_str
+    );
+
+    if failures > 0 {
         std::process::exit(1);
     }
 }
