@@ -2,6 +2,8 @@
 
 Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements.
 
+## Writing Libraries
+
 Functions in libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
 
 ```sway
@@ -34,6 +36,47 @@ pub struct MyStruct {
 }
 ```
 
+Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usual Sway projects which usually contain a `tests` folder and a `Cargo.toml` file as well. An example of a Library's `Forc.toml`: 
+
+```toml=
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "lib-std"
+
+[dependencies]
+"core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
+```
+
+which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
+
+```sway
+library std;
+
+dep block;
+dep storage;
+dep constants;
+```
+
+with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
+
+```sway
+library block;
+//! Functionality for accessing block-related data.
+
+/// Get the current block height
+pub fn height() -> u64 {
+    asm(height) {
+        bhei height;
+        height: u64
+    }
+}
+```
+
+The `dep` keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
+
+## Using Libraries
 
 Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
 
@@ -43,4 +86,4 @@ Here is an example of importing storage and its related functions from the stand
 use std::storage::*;
 ```
 
-Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible. Note that multiple imports are not yet supported: https://github.com/FuelLabs/sway/issues/563.
+Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.

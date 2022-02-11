@@ -118,6 +118,7 @@ impl TypedFunctionDeclaration {
                         span: name.span().clone(),
                     },
                     is_mutable: VariableMutability::Immutable,
+                    const_decl_origin: false,
                     type_ascription: r#type,
                 }),
             );
