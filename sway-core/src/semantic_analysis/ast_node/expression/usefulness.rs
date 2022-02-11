@@ -6,6 +6,7 @@ use sway_types::Span;
 
 use crate::error::err;
 use crate::error::ok;
+use crate::CompileError;
 use crate::CompileResult;
 use crate::Literal;
 use crate::MatchCondition;
@@ -39,16 +40,23 @@ impl WitnessReport {
         witness_report: WitnessReport,
         c: &Pattern,
         n: usize,
+        span: &Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match witness_report {
-            WitnessReport::NoWitnesses => unimplemented!(),
+            WitnessReport::NoWitnesses => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "expected to find witnesses",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
             WitnessReport::Witnesses(witnesses) => {
                 let (rs, mut ps) = witnesses.split_at(witnesses.len() - n + 1);
                 let mut pat_stack = PatStack::empty();
                 pat_stack.push(check!(
-                    Pattern::from_constructor_and_arguments(c, rs),
+                    Pattern::from_constructor_and_arguments(c, rs, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -59,12 +67,20 @@ impl WitnessReport {
         }
     }
 
-    fn add_witness(&mut self, witness: Pattern) -> CompileResult<()> {
+    fn add_witness(&mut self, witness: Pattern, span: &Span) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
         match self {
-            WitnessReport::NoWitnesses => unimplemented!(),
+            WitnessReport::NoWitnesses => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "expected to find witnesses",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
             WitnessReport::Witnesses(witnesses) => {
                 witnesses.prepend(witness);
-                ok((), vec![], vec![])
+                ok((), warnings, errors)
             }
         }
     }
@@ -143,9 +159,9 @@ where
     ///         time of current interval is more than that of stack top,
     ///         update stack top with the ending  time of current interval.
     /// 4. At the end stack contains the merged intervals.
-    fn condense_ranges(ranges: Vec<Range<T>>) -> CompileResult<Vec<Range<T>>> {
+    fn condense_ranges(ranges: Vec<Range<T>>, span: &Span) -> CompileResult<Vec<Range<T>>> {
         let warnings = vec![];
-        let errors = vec![];
+        let mut errors = vec![];
         let mut ranges = ranges;
         let mut stack: Vec<Range<T>> = vec![];
 
@@ -155,14 +171,26 @@ where
         // 2. Push the first interval on to a stack.
         let (first, rest) = match ranges.split_first() {
             Some((first, rest)) => (first.to_owned(), rest.to_owned()),
-            None => unimplemented!(),
+            None => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "unable to split vec",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
         };
         stack.push(first);
 
         for range in rest.iter() {
             let top = match stack.pop() {
                 Some(top) => top,
-                None => unimplemented!(),
+                None => {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "stack empty",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
             };
             if range.overlaps(&top) {
                 // 3b. If the current interval overlaps with stack top and ending
@@ -179,21 +207,31 @@ where
         ok(stack, warnings, errors)
     }
 
-    fn do_ranges_equal_range(ranges: Vec<Range<T>>, oracle: Range<T>) -> CompileResult<bool> {
+    fn do_ranges_equal_range(
+        ranges: Vec<Range<T>>,
+        oracle: Range<T>,
+        span: &Span,
+    ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let condensed_ranges = check!(
-            Range::condense_ranges(ranges),
+            Range::condense_ranges(ranges, span),
             return err(warnings, errors),
             warnings,
             errors
         );
         if condensed_ranges.len() > 1 {
-            unimplemented!()
+            ok(false, warnings, errors)
         } else {
             let first_range = match condensed_ranges.first() {
                 Some(first_range) => first_range.clone(),
-                _ => unimplemented!(),
+                _ => {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "vec empty",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
             };
             ok(first_range == oracle, warnings, errors)
         }
@@ -289,13 +327,21 @@ impl Pattern {
         }
     }
 
-    fn from_constructor_and_arguments(c: &Pattern, args: PatStack) -> CompileResult<Self> {
+    fn from_constructor_and_arguments(
+        c: &Pattern,
+        args: PatStack,
+        span: &Span,
+    ) -> CompileResult<Self> {
         let warnings = vec![];
-        let errors = vec![];
+        let mut errors = vec![];
         match c {
             Pattern::Tuple(elems) => {
                 if elems.len() != args.len() {
-                    unimplemented!()
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "tuple arity mismatch",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
                 }
                 ok(Pattern::Tuple(args), warnings, errors)
             }
@@ -382,22 +428,38 @@ impl PatStack {
         }
     }
 
-    fn first(&self) -> CompileResult<Pattern> {
+    fn first(&self, span: &Span) -> CompileResult<Pattern> {
+        let warnings = vec![];
+        let mut errors = vec![];
         match self.pats.first() {
-            Some(first) => ok(first.to_owned(), vec![], vec![]),
-            None => unimplemented!(),
+            Some(first) => ok(first.to_owned(), warnings, errors),
+            None => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "empty PatStack",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
         }
     }
 
-    fn split_first(&self) -> CompileResult<(Pattern, PatStack)> {
+    fn split_first(&self, span: &Span) -> CompileResult<(Pattern, PatStack)> {
+        let warnings = vec![];
+        let mut errors = vec![];
         match self.pats.split_first() {
             Some((first, pat_stack_contents)) => {
                 let pat_stack = PatStack {
                     pats: pat_stack_contents.to_vec(),
                 };
-                ok((first.to_owned(), pat_stack), vec![], vec![])
+                ok((first.to_owned(), pat_stack), warnings, errors)
             }
-            None => unimplemented!(),
+            None => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "empty PatStack",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
         }
     }
 
@@ -436,14 +498,14 @@ impl PatStack {
         self.pats.into_iter()
     }
 
-    fn is_complete_signature(&self) -> CompileResult<bool> {
+    fn is_complete_signature(&self, span: &Span) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         if self.pats.is_empty() {
             return ok(false, warnings, errors);
         }
         let (first, rest) = check!(
-            self.split_first(),
+            self.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -458,40 +520,64 @@ impl PatStack {
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX), span)
             }
             Pattern::U16(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u16::MIN, std::u16::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u16::MIN, std::u16::MAX), span)
             }
             Pattern::U32(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u32::MIN, std::u32::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u32::MIN, std::u32::MAX), span)
             }
             Pattern::U64(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX), span)
             }
             Pattern::Boolean(b) => {
                 let mut true_found = false;
@@ -506,7 +592,13 @@ impl PatStack {
                             true => true_found = true,
                             false => false_found = true,
                         },
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
                 ok(true_found && false_found, warnings, errors)
@@ -516,20 +608,32 @@ impl PatStack {
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u8::MIN, std::u8::MAX), span)
             }
             Pattern::Numeric(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
-                        _ => unimplemented!(),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX))
+                Range::do_ranges_equal_range(ranges, Range::new(std::u64::MIN, std::u64::MAX), span)
             }
             Pattern::Tuple(elems) => {
                 for pat in rest.iter() {
@@ -572,9 +676,9 @@ impl Matrix {
         &self.rows
     }
 
-    fn m_n(&self) -> CompileResult<(usize, usize)> {
+    fn m_n(&self, span: &Span) -> CompileResult<(usize, usize)> {
         let warnings = vec![];
-        let errors = vec![];
+        let mut errors = vec![];
         let first = match self.rows.first() {
             Some(first) => first,
             None => return ok((0, 0), warnings, errors),
@@ -583,7 +687,11 @@ impl Matrix {
         for row in self.rows.iter().skip(1) {
             let l = row.len();
             if l != n {
-                unimplemented!()
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "found invalid matrix size",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
             }
         }
         ok((self.rows.len(), n), warnings, errors)
@@ -593,22 +701,33 @@ impl Matrix {
         self.rows.len() == 1
     }
 
-    fn unwrap_vector(&self) -> CompileResult<PatStack> {
+    fn unwrap_vector(&self, span: &Span) -> CompileResult<PatStack> {
+        let warnings = vec![];
+        let mut errors = vec![];
         if self.rows.len() > 1 {
-            unimplemented!()
+            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                "found invalid matrix size",
+                span.clone(),
+            ));
+            return err(warnings, errors);
         }
         match self.rows.first() {
-            Some(first) => ok(first.clone(), vec![], vec![]),
-            None => ok(PatStack::empty(), vec![], vec![]),
+            Some(first) => ok(first.clone(), warnings, errors),
+            None => ok(PatStack::empty(), warnings, errors),
         }
     }
 
-    fn compute_sigma(&self) -> CompileResult<PatStack> {
+    fn compute_sigma(&self, span: &Span) -> CompileResult<PatStack> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pat_stack = PatStack::empty();
         for row in self.rows.iter() {
-            let first = check!(row.first(), return err(warnings, errors), warnings, errors);
+            let first = check!(
+                row.first(span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             match first {
                 Pattern::Wildcard => {}
                 other => pat_stack.push(other),
@@ -636,6 +755,7 @@ impl ConstructorFactory {
 pub(crate) fn check_match_expression_usefulness(
     type_info: TypeInfo,
     arms: Vec<MatchCondition>,
+    span: Span,
 ) -> CompileResult<(bool, Vec<(MatchCondition, bool)>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -652,7 +772,7 @@ pub(crate) fn check_match_expression_usefulness(
                 let pattern = Pattern::from_match_condition(arm.clone());
                 let v = PatStack::from_pattern(pattern);
                 let witness_report = check!(
-                    is_useful(&factory, &matrix, &v),
+                    is_useful(&factory, &matrix, &v, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -662,11 +782,17 @@ pub(crate) fn check_match_expression_usefulness(
                 arms_reachability.push((arm.clone(), witness_report.has_witnesses()));
             }
         }
-        None => unimplemented!(),
+        None => {
+            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                "empty match arms",
+                span.clone(),
+            ));
+            return err(warnings, errors);
+        }
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(
-        is_useful(&factory, &matrix, &v),
+        is_useful(&factory, &matrix, &v, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -683,10 +809,11 @@ fn is_useful(
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
+    span: &Span,
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (m, n) = check!(p.m_n(), return err(warnings, errors), warnings, errors);
+    let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
     /*
     if n != q.len() {
         println!("p: {:?}", p);
@@ -703,7 +830,7 @@ fn is_useful(
         (_, 0) => ok(WitnessReport::NoWitnesses, warnings, errors),
         (_, _) => {
             let (c, q_rest) = check!(
-                q.split_first(),
+                q.split_first(span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -711,13 +838,13 @@ fn is_useful(
             match c {
                 Pattern::Wildcard => {
                     let sigma = check!(
-                        p.compute_sigma(),
+                        p.compute_sigma(span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_complete_signature = check!(
-                        sigma.is_complete_signature(),
+                        sigma.is_complete_signature(span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -726,31 +853,36 @@ fn is_useful(
                         let mut joined_witness_report = WitnessReport::NoWitnesses;
                         for c_k in sigma.iter() {
                             let s_c_k_p = check!(
-                                compute_specialized_matrix(c_k, p),
+                                compute_specialized_matrix(c_k, p, span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
                             let s_c_k_q = check!(
-                                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q)),
+                                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q), span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
                             let s_c_k_q = check!(
-                                s_c_k_q.unwrap_vector(),
+                                s_c_k_q.unwrap_vector(span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
                             let witness_report = check!(
-                                is_useful(factory, &s_c_k_p, &s_c_k_q),
+                                is_useful(factory, &s_c_k_p, &s_c_k_q, span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
                             let witness_report = check!(
-                                WitnessReport::resolve_with_constructor(witness_report, c_k, n),
+                                WitnessReport::resolve_with_constructor(
+                                    witness_report,
+                                    c_k,
+                                    n,
+                                    span
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -763,20 +895,20 @@ fn is_useful(
                         ok(joined_witness_report, warnings, errors)
                     } else {
                         let d_p = check!(
-                            compute_default_matrix(p),
+                            compute_default_matrix(p, span),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
                         let mut witness_report = check!(
-                            is_useful(factory, &d_p, &q_rest),
+                            is_useful(factory, &d_p, &q_rest, span),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
                         if sigma.is_empty() {
                             check!(
-                                witness_report.add_witness(Pattern::Wildcard),
+                                witness_report.add_witness(Pattern::Wildcard, span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -801,37 +933,37 @@ fn is_useful(
                 }
                 c => {
                     let s_c_p = check!(
-                        compute_specialized_matrix(&c, p),
+                        compute_specialized_matrix(&c, p, span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let s_c_q = check!(
-                        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q)),
+                        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q), span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let s_c_q = check!(
-                        s_c_q.unwrap_vector(),
+                        s_c_q.unwrap_vector(span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    is_useful(factory, &s_c_p, &s_c_q)
+                    is_useful(factory, &s_c_p, &s_c_q, span)
                 }
             }
         }
     }
 }
 
-fn compute_default_matrix(p: &Matrix) -> CompileResult<Matrix> {
+fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut d_p = Matrix::empty();
     for p_i in p.rows().iter() {
         let (p_i_1, p_i_rest) = check!(
-            p_i.split_first(),
+            p_i.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -843,13 +975,13 @@ fn compute_default_matrix(p: &Matrix) -> CompileResult<Matrix> {
     ok(d_p, warnings, errors)
 }
 
-fn compute_specialized_matrix(q: &Pattern, p: &Matrix) -> CompileResult<Matrix> {
+fn compute_specialized_matrix(q: &Pattern, p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut s_c_p = Matrix::empty();
     for p_i in p.rows().iter() {
         let (p_i_1, mut p_i_rest) = check!(
-            p_i.split_first(),
+            p_i.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -857,9 +989,18 @@ fn compute_specialized_matrix(q: &Pattern, p: &Matrix) -> CompileResult<Matrix> 
         let mut rows = compute_specialized_matrix_row(q, &p_i_1, &mut p_i_rest);
         s_c_p.append(&mut rows);
     }
-    let (m, _n) = check!(s_c_p.m_n(), return err(warnings, errors), warnings, errors);
+    let (m, _n) = check!(
+        s_c_p.m_n(span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     if p.is_a_vector() && m > 1 {
-        unimplemented!()
+        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            "S(c,p) must be a vector",
+            span.clone(),
+        ));
+        return err(warnings, errors);
     }
     ok(s_c_p, warnings, errors)
 }
