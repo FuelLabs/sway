@@ -650,7 +650,7 @@ fn one_liner() -> bool {
         let expected_sway = r#"script;
 use std::chain::{panic,log_u8};
 use std::chain::assert;
-use std::address::{Address,Address};
+use std::hash::{HashMethod,hash_value,hash_pair};
 
 fn main() {
 }
