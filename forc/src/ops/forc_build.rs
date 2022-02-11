@@ -78,6 +78,8 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let mut dependency_graph = HashMap::new();
     let namespace = create_module();
 
+    let mut source_map = SourceMap::new();
+
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             compile_dependency_lib(
@@ -89,13 +91,21 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 silent_mode,
                 offline_mode,
             )?;
+
+            source_map.insert_dependency(match dependency_details {
+                Dependency::Simple(..) => {
+                    todo!("simple deps (compile_dependency_lib should have errored on this)");
+                }
+                Dependency::Detailed(DependencyDetails { path, .. }) => path
+                    .as_ref()
+                    .expect("compile_dependency_lib should have set this")
+                    .clone(),
+            });
         }
     }
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-
-    let mut source_map = SourceMap::new();
 
     let main = compile(
         main_file,
