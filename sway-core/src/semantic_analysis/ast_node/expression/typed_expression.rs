@@ -895,7 +895,7 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let _parent = check!(
+        let parent = check!(
             TypedExpression::type_check_variable_expression(
                 variable_created.clone(),
                 variable_created.span().clone(),
@@ -905,8 +905,9 @@ impl TypedExpression {
             warnings,
             errors
         );
+        let type_info = crate::type_engine::look_up_type_id(parent.return_type);
         let (is_exhaustive, _arms_reachability) = check!(
-            check_match_expression_usefulness(cases_covered),
+            check_match_expression_usefulness(type_info, cases_covered),
             return err(warnings, errors),
             warnings,
             errors
