@@ -47,14 +47,7 @@ enum ChangeType {
 pub fn traverse_for_changes(parse_tree: &SwayParseTree) -> Vec<Change> {
     let mut changes = vec![];
 
-    let mut previous_text_content = "";
     for node in &parse_tree.tree.root_nodes {
-        let current_text_content = node.span.as_str();
-        if current_text_content == previous_text_content {
-            continue;
-        } else {
-            previous_text_content = current_text_content;
-        }
         traverse_ast_node(node, &mut changes);
     }
 
@@ -76,7 +69,15 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
         }
 
         AstNodeContent::UseStatement(_) => {
-            changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+            // The AST generates one root node per use statement, we must avoid duplicating them
+            // while formatting
+            if changes.is_empty() {
+                changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+            }
+            let previous_start = changes.last().unwrap().start;
+            if previous_start != ast_node.span.start() {
+                changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+            }
         }
 
         AstNodeContent::IncludeStatement(_) => {
