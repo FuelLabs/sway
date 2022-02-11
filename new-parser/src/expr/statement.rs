@@ -69,6 +69,7 @@ pub fn statement() -> impl Parser<Output = Statement> + Clone {
     };
     let expr = {
         lazy(|| expr())
+        .uncommit()
         .then(semicolon_token())
         .map(|(expr, semicolon_token)| Statement::Expr { expr, semicolon_token })
     };
@@ -87,6 +88,7 @@ pub fn statement() -> impl Parser<Output = Statement> + Clone {
 pub fn statement_let() -> impl Parser<Output = StatementLet> + Clone {
     let_token()
     .then_whitespace()
+    .commit()
     .then(pattern())
     .then_optional_whitespace()
     .then(

@@ -49,6 +49,7 @@ impl Spanned for MatchBranchKind {
 pub fn expr_match() -> impl Parser<Output = ExprMatch> + Clone {
     match_token()
     .then_optional_whitespace()
+    .commit()
     .then(lazy(|| expr()).map(Box::new))
     .then_optional_whitespace()
     .then(braces(
@@ -64,6 +65,7 @@ pub fn expr_match() -> impl Parser<Output = ExprMatch> + Clone {
 pub fn match_branch() -> impl Parser<Output = MatchBranch> + Clone {
     pattern()
     .then_optional_whitespace()
+    .commit()
     .then(fat_right_arrow_token())
     .then_optional_whitespace()
     .then(match_branch_kind())

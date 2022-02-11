@@ -17,6 +17,7 @@ impl Spanned for ItemImpl {
 pub fn item_impl() -> impl Parser<Output = ItemImpl> + Clone {
     impl_token()
     .then_whitespace()
+    .commit()
     .then(
         path_type()
         .then_whitespace()

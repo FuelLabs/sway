@@ -109,6 +109,7 @@ pub fn item_use() -> impl Parser<Output = ItemUse> + Clone {
     .optional()
     .then(use_token())
     .then_whitespace()
+    .commit()
     .then(double_colon_token().then_optional_whitespace().optional())
     .then(use_tree())
     .then_optional_whitespace()

@@ -81,6 +81,10 @@ impl Span {
             end: self.start,
         }
     }
+
+    pub fn src(&self) -> &Arc<str> {
+        &self.src
+    }
 }
 
 pub trait Spanned {

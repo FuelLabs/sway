@@ -7,18 +7,18 @@ struct FromFn<F> {
 
 impl<T, F> Parser for FromFn<F>
 where
-    F: Fn(&Span) -> Result<(T, usize), ParseError>,
+    F: Fn(&Span) -> (bool, Result<(T, usize), ParseError>),
 {
     type Output = T;
 
-    fn parse(&self, input: &Span) -> Result<(T, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), ParseError>) {
         (self.func)(input)
     }
 }
 
 pub fn from_fn<T, F>(func: F) -> impl Parser<Output = T> + Clone
 where
-    F: Fn(&Span) -> Result<(T, usize), ParseError>,
+    F: Fn(&Span) -> (bool, Result<(T, usize), ParseError>),
     F: Clone,
 {
     FromFn { func }
@@ -27,10 +27,10 @@ where
 pub fn keyword(word: &'static str) -> impl Parser<Output = ()> + Clone {
     from_fn(move |input| {
         if input.as_str().starts_with(word) {
-            Ok(((), word.len()))
+            (false, Ok(((), word.len())))
         } else {
             let span = input.to_start();
-            Err(ParseError::ExpectedKeyword { word, span })
+            (false, Err(ParseError::ExpectedKeyword { word, span }))
         }
     })
 }
@@ -41,25 +41,27 @@ pub fn single_char() -> impl Parser<Output = char> + Clone {
         let c = match char_indices.next() {
             Some((_, c)) => c,
             None => {
-                return Err(ParseError::UnexpectedEof {
+                let error = ParseError::UnexpectedEof {
                     span: input.to_start(),
-                });
+                };
+                return (false, Err(error));
             },
         };
         let len = match char_indices.next() {
             Some((i, _)) => i,
             None => input.as_str().len(),
         };
-        Ok((c, len))
+        (false, Ok((c, len)))
     })
 }
 
 pub fn line_comment() -> impl Parser<Output = ()> + Clone {
     from_fn(|input| {
         if !input.as_str().starts_with("//") {
-            return Err(ParseError::ExpectedWhitespace {
+            let error = ParseError::ExpectedWhitespace {
                 span: input.span(),
-            });
+            };
+            return (false, Err(error));
         };
         let mut char_indices = input.as_str().char_indices().skip(2);
         let len = loop {
@@ -74,25 +76,29 @@ pub fn line_comment() -> impl Parser<Output = ()> + Clone {
                 };
             }
         };
-        Ok(((), len))
+        (false, Ok(((), len)))
     })
 }
 
 pub fn multiline_comment() -> impl Parser<Output = ()> + Clone {
     from_fn(|input| {
         if !input.as_str().starts_with("/*") {
-            return Err(ParseError::ExpectedWhitespace {
+            let error = ParseError::ExpectedWhitespace {
                 span: input.span(),
-            });
+            };
+            return (false, Err(error));
         }
         let mut char_indices = input.as_str().char_indices().skip(2).peekable();
         let mut depth = 1;
         let len = loop {
             let c = match char_indices.next() {
                 Some((_, c)) => c,
-                None => return Err(ParseError::UnclosedMultilineComment {
-                    span: input.clone(),
-                }),
+                None => {
+                    let error = ParseError::UnclosedMultilineComment {
+                        span: input.clone(),
+                    };
+                    return (false, Err(error));
+                },
             };
             match c {
                 '/' => {
@@ -116,7 +122,7 @@ pub fn multiline_comment() -> impl Parser<Output = ()> + Clone {
                 _ => (),
             }
         };
-        Ok(((), len))
+        (false, Ok(((), len)))
     })
 }
 
@@ -180,7 +186,7 @@ pub fn todo<T>() -> Todo<T> {
 impl<T> Parser for Todo<T> {
     type Output = T;
 
-    fn parse(&self, _input: &Span) -> Result<(T, usize), ParseError> {
+    fn parse(&self, _input: &Span) -> (bool, Result<(T, usize), ParseError>) {
         todo!()
     }
 }
@@ -218,7 +224,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         let parser = (self.func)();
         parser.parse(input)
     }
@@ -226,16 +232,16 @@ where
 
 pub fn empty() -> impl Parser<Output = ()> + Clone {
     from_fn(move |_input| {
-        Ok(((), 0))
+        (false, Ok(((), 0)))
     })
 }
 
 pub fn eof() -> impl Parser<Output = ()> + Clone {
     from_fn(|input| {
         if input.as_str().is_empty() {
-            Ok(((), 0))
+            (false, Ok(((), 0)))
         } else {
-            Err(ParseError::ExpectedEof { span: input.to_start() })
+            (false, Err(ParseError::ExpectedEof { span: input.to_start() }))
         }
     })
 }
@@ -243,15 +249,20 @@ pub fn eof() -> impl Parser<Output = ()> + Clone {
 #[macro_export]
 macro_rules! __or_inner {
     ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ()) => {
-        Ok((None, 0))
+        (false, Ok((None, 0)))
     };
     //($parsers:ident, $input:ident, ($($head_pats:pat,)*), (_, $($tail_pats:pat,)*)) => {{
     ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ($ignore:pat, $($tail_pats:pat,)*)) => {{
         let ($($head_pats,)* this_parser, $($tail_pats,)*) = &$parsers;
-        match Parser::parse(&this_parser, $input) {
-            Ok((value, len)) => Ok((Some(value), len)),
-            Err(_err) => {
-                __or_inner!($parsers, $input, (_, $($head_pats,)*), ($($tail_pats,)*))
+        let (commited, res) = Parser::parse(&this_parser, $input);
+        match res {
+            Ok((value, len)) => (commited, Ok((Some(value), len))),
+            Err(err) => {
+                if commited {
+                    (true, Err(err))
+                } else {
+                    __or_inner!($parsers, $input, (_, $($head_pats,)*), ($($tail_pats,)*))
+                }
             },
         }
     }};

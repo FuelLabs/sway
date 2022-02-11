@@ -881,6 +881,7 @@ pub fn expr_precedence_atomic() -> impl Parser<Output = Expr> + Clone {
     let expr_return = {
         return_token()
         .then_optional_whitespace()
+        .commit()
         .then(lazy(|| expr()).map(Box::new).optional())
         .map(|(return_token, expr_opt)| {
             Expr::Return { return_token, expr_opt }
@@ -935,12 +936,14 @@ impl Spanned for ExprIf {
 pub fn expr_if() -> impl Parser<Output = ExprIf> + Clone {
     if_token()
     .then_optional_whitespace()
+    .commit()
     .then(lazy(|| expr()).map(Box::new))
     .then_optional_whitespace()
     .then(code_block())
     .then(optional_leading_whitespace(
         else_token()
         .then_optional_whitespace()
+        .commit()
         .then(
             code_block().map(Expr::CodeBlock)
             .or(lazy(|| expr_if()).map(Expr::If))

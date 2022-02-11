@@ -24,6 +24,7 @@ pub fn item_struct() -> impl Parser<Output = ItemStruct> + Clone {
     .optional()
     .then(struct_token())
     .then_whitespace()
+    .commit()
     .then(ident())
     .then_optional_whitespace()
     .then(

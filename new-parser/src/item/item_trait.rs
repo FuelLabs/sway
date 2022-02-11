@@ -23,6 +23,7 @@ pub fn item_trait() -> impl Parser<Output = ItemTrait> + Clone {
     .optional()
     .then(trait_token())
     .then_whitespace()
+    .commit()
     .then(ident())
     .then_optional_whitespace()
     .then(braces(optional_leading_whitespace(

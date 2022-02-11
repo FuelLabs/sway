@@ -2,7 +2,7 @@ use crate::priv_prelude::*;
 
 pub trait Parser {
     type Output;
-    fn parse(&self, input: &Span) -> Result<(Self::Output, usize), ParseError>;
+    fn parse(&self, input: &Span) -> (bool, Result<(Self::Output, usize), ParseError>);
 }
 
 impl<P: ?Sized> Parser for Box<P>
@@ -11,7 +11,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         (&**self).parse(input)
     }
 }
@@ -22,7 +22,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         (&**self).parse(input)
     }
 }
@@ -33,7 +33,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         (&**self).parse(input)
     }
 }
@@ -45,7 +45,7 @@ where
 {
     type Output = P0::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P0::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P0::Output, usize), ParseError>) {
         match self {
             Either::Left(parser0) => parser0.parse(input),
             Either::Right(parser1) => parser1.parse(input),
@@ -103,6 +103,14 @@ pub trait ParserExt: Parser {
         Self: Sized;
 
     fn debug(self, text: &'static str) -> Debug<Self>
+    where
+        Self: Sized;
+
+    fn commit(self) -> Commit<Self>
+    where
+        Self: Sized;
+
+    fn uncommit(self) -> Uncommit<Self>
     where
         Self: Sized;
 }
@@ -200,6 +208,20 @@ where
         Self: Sized,
     {
         Debug::new(self, text)
+    }
+
+    fn commit(self) -> Commit<Self>
+    where
+        Self: Sized,
+    {
+        Commit::new(self)
+    }
+
+    fn uncommit(self) -> Uncommit<Self>
+    where
+        Self: Sized,
+    {
+        Uncommit::new(self)
     }
 }
 

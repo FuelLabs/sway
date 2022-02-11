@@ -188,6 +188,7 @@ pub fn fn_signature() -> impl Parser<Output = FnSignature> + Clone {
     )
     .then(fn_token())
     .then_whitespace()
+    .commit()
     .then(ident())
     .then_optional_whitespace()
     .then(

@@ -24,6 +24,7 @@ pub fn item_enum() -> impl Parser<Output = ItemEnum> + Clone {
     .optional()
     .then(enum_token())
     .then_whitespace()
+    .commit()
     .then(ident())
     .then_optional_whitespace()
     .then(

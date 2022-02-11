@@ -19,10 +19,14 @@ where
 {
     type Output = U;
 
-    fn parse(&self, input: &Span) -> Result<(U, usize), ParseError> {
-        let (value0, len) = self.parser.parse(input)?;
+    fn parse(&self, input: &Span) -> (bool, Result<(U, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        let (value0, len) = match res {
+            Ok((value0, len)) => (value0, len),
+            Err(error) => return (commited, Err(error)),
+        };
         let value1 = (self.func)(value0);
-        Ok((value1, len))
+        (commited, Ok((value1, len)))
     }
 }
 
@@ -45,11 +49,15 @@ where
 {
     type Output = U;
 
-    fn parse(&self, input: &Span) -> Result<(U, usize), ParseError> {
-        let (value0, len) = self.parser.parse(input)?;
+    fn parse(&self, input: &Span) -> (bool, Result<(U, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        let (value0, len) = match res {
+            Ok((value0, len)) => (value0, len),
+            Err(error) => return (commited, Err(error)),
+        };
         let span = input.slice(..len);
         let value1 = (self.func)(value0, span);
-        Ok((value1, len))
+        (commited, Ok((value1, len)))
     }
 }
 
@@ -72,10 +80,17 @@ where
 {
     type Output = T;
 
-    fn parse(&self, input: &Span) -> Result<(T, usize), ParseError> {
-        let (value0, len) = self.parser.parse(input)?;
-        let value1 = (self.func)(value0)?;
-        Ok((value1, len))
+    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        let (value0, len) = match res {
+            Ok((value0, len)) => (value0, len),
+            Err(error) => return (commited, Err(error)),
+        };
+        let value1 = match (self.func)(value0) {
+            Ok(value1) => value1,
+            Err(error) => return (commited, Err(error)),
+        };
+        (commited, Ok((value1, len)))
     }
 }
 
@@ -98,11 +113,18 @@ where
 {
     type Output = T;
 
-    fn parse(&self, input: &Span) -> Result<(T, usize), ParseError> {
-        let (value0, len) = self.parser.parse(input)?;
+    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        let (value0, len) = match res {
+            Ok((value0, len)) => (value0, len),
+            Err(error) => return (commited, Err(error)),
+        };
         let span = input.slice(..len);
-        let value1 = (self.func)(value0, span)?;
-        Ok((value1, len))
+        let value1 = match (self.func)(value0, span) {
+            Ok(value1) => value1,
+            Err(error) => return (commited, Err(error)),
+        };
+        (commited, Ok((value1, len)))
     }
 }
 
@@ -125,11 +147,20 @@ where
 {
     type Output = (P0::Output, P1::Output);
 
-    fn parse(&self, input: &Span) -> Result<((P0::Output, P1::Output), usize), ParseError> {
-        let (value0, len0) = self.parser0.parse(input)?;
+    fn parse(&self, input: &Span) -> (bool, Result<((P0::Output, P1::Output), usize), ParseError>) {
+        let (commited0, res0) = self.parser0.parse(input);
+        let (value0, len0) = match res0 {
+            Ok((value0, len0)) => (value0, len0),
+            Err(error) => return (commited0, Err(error)),
+        };
         let input = input.slice(len0..);
-        let (value1, len1) = self.parser1.parse(&input)?;
-        Ok(((value0, value1), len0 + len1))
+        let (commited1, res1) = self.parser1.parse(&input);
+        let commited = commited0 || commited1;
+        let (value1, len1) = match res1 {
+            Ok((value1, len1)) => (value1, len1),
+            Err(error) => return (commited, Err(error)),
+        };
+        (commited, Ok(((value0, value1), len0 + len1)))
     }
 }
 
@@ -150,10 +181,17 @@ where
 {
     type Output = Option<P::Output>;
 
-    fn parse(&self, input: &Span) -> Result<(Option<P::Output>, usize), ParseError> {
-        match self.parser.parse(input) {
-            Ok((value, len)) => Ok((Some(value), len)),
-            Err(_error) => Ok((None, 0)),
+    fn parse(&self, input: &Span) -> (bool, Result<(Option<P::Output>, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        match res {
+            Ok((value, len)) => (commited, Ok((Some(value), len))),
+            Err(error) => {
+                if commited {
+                    (true, Err(error))
+                } else {
+                    (false, Ok((None, 0)))
+                }
+            },
         }
     }
 }
@@ -175,7 +213,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         (&self.parser)
         .then(whitespace().optional())
         .map(|(value, _opt)| value)
@@ -202,37 +240,28 @@ where
 {
     type Output = P0::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P0::Output, usize), ParseError> {
-        match self.parser0.parse(input) {
-            Ok((value, len)) => Ok((value, len)),
-            /*
-            Err(error0) => match self.parser1.parse(input) {
-                Ok((value, len)) => Ok((value, len)),
-                Err(error1) => {
-                    Err(ParseError::Or {
-                        error0: Box::new(error0),
-                        error1: Box::new(error1),
-                    })
-                },
-            },
-            */
+    fn parse(&self, input: &Span) -> (bool, Result<(P0::Output, usize), ParseError>) {
+        let (commited, res) = self.parser0.parse(input);
+        match res {
+            Ok((value, len)) => (commited, Ok((value, len))),
             Err(error0) => {
-                //println!("first parser failed: {:?}", error0);
-                /*
-                let flim = error0.span().start();
-                let flom = input.start();
-                let diff = flim - flom;
-                let s = &input.as_str()[diff..];
-                println!("first failed at: {:?}", s);
-                */
-                match self.parser1.parse(input) {
-                    Ok((value, len)) => Ok((value, len)),
-                    Err(error1) => {
-                        Err(ParseError::Or {
-                            error0: Box::new(error0),
-                            error1: Box::new(error1),
-                        })
-                    },
+                if commited {
+                    (true, Err(error0))
+                } else {
+                    let (commited, res) = self.parser1.parse(input);
+                    match res {
+                        Ok((value, len)) => (commited, Ok((value, len))),
+                        Err(error1) => {
+                            if commited {
+                                (true, Err(error1))
+                            } else {
+                                (false, Err(ParseError::Or {
+                                    error0: Box::new(error0),
+                                    error1: Box::new(error1),
+                                }))
+                            }
+                        },
+                    }
                 }
             },
         }
@@ -256,7 +285,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
         (&self.parser)
         .then(whitespace())
         .map(|(value, ())| value)
@@ -281,21 +310,29 @@ where
 {
     type Output = Vec<P::Output>;
 
-    fn parse(&self, input: &Span) -> Result<(Vec<P::Output>, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(Vec<P::Output>, usize), ParseError>) {
+        let mut any_commited = false;
         let mut values = Vec::new();
         let mut total_len = 0;
         let mut remaining_input = input.clone();
         loop {
-            match self.parser.parse(&remaining_input) {
+            let (commited, res) = self.parser.parse(&remaining_input);
+            match res {
                 Ok((value, len)) => {
                     remaining_input = remaining_input.slice(len..);
+                    any_commited |= commited;
                     total_len += len;
                     values.push(value);
                 },
-                Err(..) => break,
+                Err(error) => {
+                    if commited {
+                        return (true, Err(error));
+                    } else {
+                        return (any_commited, Ok((values, total_len)));
+                    }
+                },
             }
         }
-        Ok((values, total_len))
     }
 }
 
@@ -316,23 +353,27 @@ where
 {
     type Output = Vec<T>;
 
-    fn parse(&self, input: &Span) -> Result<(Vec<T>, usize), ParseError> {
+    fn parse(&self, input: &Span) -> (bool, Result<(Vec<T>, usize), ParseError>) {
+        let mut any_commited = false;
         let mut values = Vec::new();
         let mut total_len = 0;
         let mut remaining_input = input.clone();
         loop {
-            match self.parser.parse(&remaining_input)? {
-                (Some(value), len) => {
+            let (commited, res) = self.parser.parse(&remaining_input);
+            any_commited |= commited;
+            match res {
+                Ok((Some(value), len)) => {
                     remaining_input = remaining_input.slice(len..);
                     total_len += len;
                     values.push(value);
                 },
-                (None, _) => {
+                Ok((None, _)) => {
                     break;
                 },
+                Err(error) => return (any_commited, Err(error)),
             }
         }
-        Ok((values, total_len))
+        (any_commited, Ok((values, total_len)))
     }
 }
 
@@ -356,12 +397,21 @@ where
 {
     type Output = P1::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P1::Output, usize), ParseError> {
-        let (value0, len0) = self.parser.parse(input)?;
+    fn parse(&self, input: &Span) -> (bool, Result<(P1::Output, usize), ParseError>) {
+        let (commited0, res) = self.parser.parse(input);
+        let (value0, len0) = match res {
+            Ok((value0, len0)) => (value0, len0),
+            Err(error) => return (commited0, Err(error)),
+        };
         let input = input.slice(len0..);
         let parser1 = (self.func)(value0);
-        let (value1, len1) = parser1.parse(&input)?;
-        Ok((value1, len0 + len1))
+        let (commited1, res) = parser1.parse(&input);
+        let commited = commited0 || commited1;
+        let (value1, len1) = match res {
+            Ok((value1, len1)) => (value1, len1),
+            Err(error) => return (commited, Err(error)),
+        };
+        (commited, Ok((value1, len0 + len1)))
     }
 }
 
@@ -383,13 +433,66 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, input: &Span) -> Result<(P::Output, usize), ParseError> {
-        match self.parser.parse(input) {
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        match res {
             Ok(value) => {
                 println!("debug: {}", self.text);
-                Ok(value)
+                (commited, Ok(value))
             },
-            Err(err) => Err(err),
+            Err(error) => (commited, Err(error)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Commit<P> {
+    parser: P,
+}
+
+impl<P> Commit<P> {
+    pub fn new(parser: P) -> Commit<P> {
+        Commit { parser }
+    }
+}
+
+impl<P> Parser for Commit<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        match res {
+            Ok((value, len)) => (true, Ok((value, len))),
+            Err(err) => (commited, Err(err)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Uncommit<P> {
+    parser: P,
+}
+
+impl<P> Uncommit<P> {
+    pub fn new(parser: P) -> Uncommit<P> {
+        Uncommit { parser }
+    }
+}
+
+impl<P> Parser for Uncommit<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), ParseError>) {
+        let (commited, res) = self.parser.parse(input);
+        match res {
+            Ok((value, len)) => (false, Ok((value, len))),
+            Err(err) => (commited, Err(err)),
         }
     }
 }

@@ -19,6 +19,7 @@ impl Spanned for ItemConst {
 pub fn item_const() -> impl Parser<Output = ItemConst> + Clone {
     const_token()
     .then_whitespace()
+    .commit()
     .then(ident())
     .then_optional_whitespace()
     .then(

@@ -1,6 +1,6 @@
 use {
     std::sync::Arc,
-    new_parser::{Parser, Span},
+    new_parser::{Parser, Span, Spanned},
 };
 
 fn main() {
@@ -44,7 +44,7 @@ fn main() {
         };
         
         println!("parsing: {}", path.display());
-        let res = {
+        let (_commited, res) = {
             program
             .clone()
             .parse(&src)
@@ -56,6 +56,9 @@ fn main() {
             },
             Err(error) => {
                 println!("{:?}", error);
+                let span = error.span();
+                println!("{:?}", span.as_str());
+                println!("{:?}", &span.src()[span.start()..]);
                 bad += 1;
                 break;
             },

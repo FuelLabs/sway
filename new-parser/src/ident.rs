@@ -23,15 +23,17 @@ pub fn ident() -> impl Parser<Output = Ident> + Clone {
         let c = match char_indices.next() {
             Some((_, c)) => c,
             None => {
-                return Err(ParseError::UnexpectedEof {
+                let error = ParseError::UnexpectedEof {
                     span: input.to_start(),
-                })
+                };
+                return (false, Err(error));
             },
         };
         if !c.is_xid_start() {
-            return Err(ParseError::ExpectedIdent {
+            let error = ParseError::ExpectedIdent {
                 span: input.to_start(),
-            });
+            };
+            return (false, Err(error));
         }
         let len = loop {
             let (i, c) = match char_indices.next() {
@@ -42,7 +44,7 @@ pub fn ident() -> impl Parser<Output = Ident> + Clone {
                 break i;
             }
         };
-        Ok((Ident { span: input.slice(..len) }, len))
+        (false, Ok((Ident { span: input.slice(..len) }, len)))
     })
 }
 
