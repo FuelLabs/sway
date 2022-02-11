@@ -14,6 +14,12 @@ members = [
     "test",
     "test-sig-gen-util",
 ]
+exclude = [
+    "examples/fizzbuzz",
+    "examples/hello_world",
+    "examples/subcurrency",
+    "examples/wallet_smart_contract",
+]
 
 [profile.dev.package.sway-server]
 debug = 2
