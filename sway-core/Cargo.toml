@@ -13,6 +13,7 @@ selector-debug = ["structopt", "hex"]
 
 [dependencies]
 derivative = "2.2.0"
+dirs = "3.0"
 either = "1.6"
 fuel-asm = "0.1"
 fuel-vm = "0.4"
