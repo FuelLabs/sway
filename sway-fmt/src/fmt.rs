@@ -364,7 +364,7 @@ struct Structure {
     name: string, // super comment
 }
 
-struct Structure {
+struct Vehicle {
     age: u32,
     name: string, // some comment middle of nowhere
 }
@@ -472,7 +472,7 @@ struct Structure {
     name: string, // super comment
 }
 
-struct Structure
+struct Vehicle
           { age:       u32,          name: string , // some comment middle of nowhere
 }
 
