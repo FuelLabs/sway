@@ -2929,6 +2929,7 @@ name = "sway-core"
 version = "0.3.3"
 dependencies = [
  "derivative",
+ "dirs 3.0.2",
  "either",
  "fuel-asm",
  "fuel-pest",

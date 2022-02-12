@@ -2,9 +2,10 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    build, deploy, explorer, format, init, json_abi, lsp, parse_bytecode, run, test, update,
+    addr2line, build, deploy, explorer, format, init, json_abi, lsp, parse_bytecode, run, test, update,
 };
 
+use addr2line::Command as Addr2LineCommand;
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
 pub use explorer::Command as ExplorerCommand;
@@ -27,6 +28,8 @@ struct Opt {
 
 #[derive(Debug, StructOpt)]
 enum Forc {
+    #[structopt(name = "addr2line")]
+    Addr2Line(Addr2LineCommand),
     Build(BuildCommand),
     Deploy(DeployCommand),
     Explorer(ExplorerCommand),
@@ -44,6 +47,7 @@ enum Forc {
 pub(crate) async fn run_cli() -> Result<(), String> {
     let opt = Opt::from_args();
     match opt.command {
+        Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
         Forc::Explorer(command) => explorer::exec(command).await,
