@@ -71,12 +71,14 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
         AstNodeContent::UseStatement(_) => {
             // The AST generates one root node per use statement, we must avoid duplicating them
             // while formatting
-            if changes.is_empty() {
-                changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
-            }
-            let previous_start = changes.last().unwrap().start;
-            if previous_start != ast_node.span.start() {
-                changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+            let next_span = &ast_node.span;
+            match changes.last() {
+                Some(last_change) => {
+                    if last_change.start != next_span.start() {
+                        changes.push(Change::new(next_span, ChangeType::UseStatement));
+                    }
+                }
+                _ => changes.push(Change::new(next_span, ChangeType::UseStatement)),
             }
         }
 
