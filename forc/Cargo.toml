@@ -10,6 +10,7 @@ description = "Fuel Orchestrator."
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
+ansi_term = "0.12"
 anyhow = "1.0.41"
 dirs = "3.0.2"
 flate2 = "1.0.20"
@@ -37,6 +38,7 @@ termcolor = "1.1"
 tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "process"] }
 toml = "0.5"
 ureq = "2.4"
+warp = "0.3"
 whoami = "1.1"
 uwuify = { version = "^0.2", optional = true }
 
