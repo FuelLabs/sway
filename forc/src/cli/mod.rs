@@ -2,7 +2,8 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    addr2line, build, deploy, explorer, format, init, json_abi, lsp, parse_bytecode, run, test, update,
+    addr2line, build, deploy, explorer, format, init, json_abi, lsp, parse_bytecode, run, test,
+    update,
 };
 
 use addr2line::Command as Addr2LineCommand;
