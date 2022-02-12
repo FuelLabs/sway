@@ -341,25 +341,25 @@ struct Rgb {
     blue: u64,
 }
 
-struct Bimbam {
+struct Structure {
     age: u32,
 
     name: string,
 }
 
-struct Building {
+struct Structure {
     age: u32, /* completely meaningless multiline comment
         not sure why would anyone write this but let's deal with it as well!
     */
     name: string,
 }
 
-struct Darts {
+struct Structure {
     age: u32,
     name: string, // super comment
 }
 
-struct Lighthouse {
+struct Structure {
     age: u32,
     name: string, // super comment
 }
@@ -447,7 +447,7 @@ struct Rgb {
     blue: u64,
 }
 
-struct Bimbam {
+struct Structure {
 
     age: u32,
 
@@ -455,19 +455,19 @@ struct Bimbam {
 
 }
 
-struct Building {
+struct Structure {
     age: u32, /* completely meaningless multiline comment
         not sure why would anyone write this but let's deal with it as well!
     */
     name: string
 }
 
-struct Darts {
+struct Structure {
     age: u32,
     name: string// super comment
 }
 
-struct Lighthouse {
+struct Structure {
     age: u32,
     name: string, // super comment
 }
@@ -643,9 +643,7 @@ fn one_liner() -> bool {
     }
 
     #[test]
-    // This test is here to check that the `use` statements are properly formatted
-    // Currently, there is a hard-to-diagnose bug which adds a leading `--` to the first
-    // `use` statement
+    // Test that the use statements with multiple imports are properly formatted
     fn test_use_statement() {
         let expected_sway = r#"script;
 use std::chain::{panic,log_u8};
