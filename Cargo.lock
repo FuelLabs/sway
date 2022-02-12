@@ -947,7 +947,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term 0.12.1",
@@ -1984,7 +1984,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -2926,7 +2926,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "derivative",
  "dirs 3.0.2",
@@ -2952,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -2961,7 +2961,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -2972,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "sway-server"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "dashmap",
  "lspower",
@@ -2987,7 +2987,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "fuel-asm",
  "fuel-pest",
@@ -2998,7 +2998,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.3.3"
+version = "0.4.0"
 
 [[package]]
 name = "syn"
