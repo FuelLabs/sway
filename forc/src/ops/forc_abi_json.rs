@@ -9,7 +9,7 @@ use crate::{
 };
 
 use sway_types::{Function, JsonABI};
-use sway_utils::find_manifest_dir;
+use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
 use anyhow::Result;
 use serde_json::{json, Value};
@@ -41,8 +41,9 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
         Some(dir) => dir,
         None => {
             return Err(format!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
+                "could not find `{}` in `{}` or any parent directory",
+                MANIFEST_FILE_NAME,
+                this_dir.display()
             ))
         }
     };
