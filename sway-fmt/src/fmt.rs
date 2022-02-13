@@ -649,6 +649,8 @@ fn one_liner() -> bool {
 use std::chain::{panic,log_u8};
 use std::chain::assert;
 use std::hash::{HashMethod,hash_value,hash_pair};
+use a::b::{c,d::{e,f}};
+use a::b::{c,d::{self,f}};
 
 fn main() {
 }
