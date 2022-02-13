@@ -216,7 +216,7 @@ impl Store for Contract {
 <h2 id="optimizer"><a class="header" href="#optimizer">Optimizer</a></h2>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 <h2 id="formatter"><a class="header" href="#formatter">Formatter</a></h2>
-<p>Currently, we need to parse the Sway code before formatting it, and the best way to do this is to compile the code. Hence, <strong>the formatter cannot work on Sway code that does not compile</strong>. This requirement may be changed in the future.</p>
+<p>Currently, we need to parse the Sway code before formatting it. Hence, <strong>the formatter cannot work on Sway code that does not parse correctly</strong>. This requirement may be changed in the future.</p>
 
                     </main>
 
