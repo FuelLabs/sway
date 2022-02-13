@@ -125,7 +125,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     if let Some(outfile) = debug_outfile {
         fs::write(
             outfile,
-            &serde_json::to_vec(&source_map).expect("JSON seralizatio failed"),
+            &serde_json::to_vec(&source_map).expect("JSON serialization failed"),
         )
         .map_err(|e| e.to_string())?;
     }
