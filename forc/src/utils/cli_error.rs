@@ -38,6 +38,11 @@ impl CliError {
         );
         Self { message }
     }
+
+    pub fn fuel_core_not_running(node_url: &str) -> Self {
+        let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See <https://github.com/FuelLabs/fuel-core#running> for more information", node_url);
+        Self { message }
+    }
 }
 
 impl fmt::Display for CliError {
