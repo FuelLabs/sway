@@ -31,6 +31,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
             debug_outfile: None,
             offline_mode: false,
             silent_mode: !verbose,
+            output_directory: None,
         }))
         .unwrap()
 }
@@ -66,6 +67,7 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
         silent_mode: !verbose,
         pretty_print: false,
         contract: Some(contracts),
+        output_directory: None,
     };
     tokio::runtime::Runtime::new()
         .unwrap()
@@ -133,6 +135,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         debug_outfile: None,
         offline_mode: false,
         silent_mode: !verbose,
+        output_directory: None,
     })
 }
 
