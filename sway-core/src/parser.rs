@@ -308,4 +308,34 @@ mod test {
         );
         parsed.unwrap();
     }
+
+    #[test]
+    fn test_trailing_fn_param_comma_pass() {
+        let parsed = SwayParser::parse(
+            Rule::fn_decl,
+            r#"fn myfunc(x: u64, y: u64,) -> u64 {
+            69
+        }"#
+            .into(),
+        );
+        parsed.unwrap();
+    }
+
+    #[test]
+    fn test_trailing_fn_param_comma_fail() {
+        let parsed = SwayParser::parse(
+            Rule::fn_decl,
+            r#"fn myfunc(x: u64, y: u64,,) -> u64 {
+            69
+        }"#
+            .into(),
+        );
+        // this parse should fail since double comma
+        match parsed {
+            Err(_) => (),
+            Ok(o) => {
+                panic!("{:?}", o)
+            }
+        }
+    }
 }
