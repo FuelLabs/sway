@@ -111,12 +111,22 @@ impl fmt::Display for WitnessReport {
     }
 }
 
-pub(crate) trait IncrDecr<T> {
+pub(crate) trait MyMath<T> {
+    fn global_max() -> T;
+    fn global_min() -> T;
+
     fn incr(&self) -> T;
     fn decr(&self) -> T;
 }
 
-impl IncrDecr<u8> for u8 {
+impl MyMath<u8> for u8 {
+    fn global_max() -> u8 {
+        std::u8::MAX
+    }
+    fn global_min() -> u8 {
+        std::u8::MIN
+    }
+
     fn incr(&self) -> u8 {
         self + 1
     }
@@ -125,7 +135,14 @@ impl IncrDecr<u8> for u8 {
     }
 }
 
-impl IncrDecr<u16> for u16 {
+impl MyMath<u16> for u16 {
+    fn global_max() -> u16 {
+        std::u16::MAX
+    }
+    fn global_min() -> u16 {
+        std::u16::MIN
+    }
+
     fn incr(&self) -> u16 {
         self + 1
     }
@@ -134,7 +151,14 @@ impl IncrDecr<u16> for u16 {
     }
 }
 
-impl IncrDecr<u32> for u32 {
+impl MyMath<u32> for u32 {
+    fn global_max() -> u32 {
+        std::u32::MAX
+    }
+    fn global_min() -> u32 {
+        std::u32::MIN
+    }
+
     fn incr(&self) -> u32 {
         self + 1
     }
@@ -143,7 +167,14 @@ impl IncrDecr<u32> for u32 {
     }
 }
 
-impl IncrDecr<u64> for u64 {
+impl MyMath<u64> for u64 {
+    fn global_max() -> u64 {
+        std::u64::MAX
+    }
+    fn global_min() -> u64 {
+        std::u64::MIN
+    }
+
     fn incr(&self) -> u64 {
         self + 1
     }
@@ -175,7 +206,7 @@ where
         + PartialEq
         + PartialOrd
         + Clone
-        + IncrDecr<T>
+        + MyMath<T>
         + Sub<Output = T>
         + Into<u64>,
 {
@@ -228,7 +259,7 @@ where
         + PartialEq
         + PartialOrd
         + Clone
-        + IncrDecr<T>
+        + MyMath<T>
         + Sub<Output = T>
         + Into<u64>,
 {
@@ -555,16 +586,24 @@ where
         + PartialEq
         + PartialOrd
         + Clone
-        + IncrDecr<T>
+        + MyMath<T>
         + Sub<Output = T>
         + Into<u64>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = String::new();
         builder.push('[');
-        builder.push_str(&format!("{}", self.first));
+        if self.first == T::global_min() {
+            builder.push_str("MIN");
+        } else {
+            builder.push_str(&format!("{}", self.first));
+        }
         builder.push_str("...");
-        builder.push_str(&format!("{}", self.last));
+        if self.last == T::global_max() {
+            builder.push_str("MAX");
+        } else {
+            builder.push_str(&format!("{}", self.last));
+        }
         builder.push(']');
         write!(f, "{}", builder)
     }
