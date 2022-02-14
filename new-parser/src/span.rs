@@ -143,3 +143,57 @@ where
     }
 }
 
+fn byte_offset_to_char_index(src: &str, byte_offset: usize) -> usize {
+    let mut char_indices = src.char_indices();
+    let mut char_count = 0;
+    loop {
+        let offset = match char_indices.next() {
+            Some((offset, _c)) => offset,
+            None => return char_count,
+        };
+        if offset >= byte_offset {
+            return char_count;
+        }
+        char_count += 1;
+    }
+}
+
+impl ariadne::Span for Span {
+    type SourceId = Arc<str>;
+
+    fn source(&self) -> &Arc<str> {
+        &self.src
+    }
+
+    fn start(&self) -> usize {
+        byte_offset_to_char_index(&self.src, self.start)
+    }
+
+    fn end(&self) -> usize {
+        byte_offset_to_char_index(&self.src, self.end)
+    }
+}
+
+pub struct ReportingCache {
+    sources: HashMap<Arc<str>, ariadne::Source>,
+}
+
+impl ReportingCache {
+    pub fn new() -> ReportingCache {
+        ReportingCache {
+            sources: HashMap::new(),
+        }
+    }
+}
+
+impl ariadne::Cache<Arc<str>> for ReportingCache {
+    fn fetch(&mut self, id: &Arc<str>) -> Result<&ariadne::Source, Box<dyn fmt::Debug>> {
+        let new_id = id.clone();
+        Ok(self.sources.entry(new_id).or_insert_with(|| ariadne::Source::from(id)))
+    }
+
+    fn display<'a>(&self, id: &'a Arc<str>) -> Option<Box<dyn fmt::Display + 'a>> {
+        Some(Box::new(id))
+    }
+}
+

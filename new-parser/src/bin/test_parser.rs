@@ -60,6 +60,9 @@ fn main() {
                 println!("{:?}", span.as_str());
                 println!("{:?}", &span.src()[span.start()..]);
                 bad += 1;
+
+                let report = error.report();
+                report.print(new_parser::ReportingCache::new()).unwrap();
                 break;
             },
         }

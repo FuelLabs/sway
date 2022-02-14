@@ -1,6 +1,7 @@
 pub use {
     std::{
-        cmp, iter,
+        cmp, iter, fmt,
+        collections::HashMap,
         convert::Infallible,
         rc::Rc,
         sync::Arc,
@@ -28,6 +29,7 @@ pub use {
     */
     either::Either,
     unicode_xid::UnicodeXID,
+    ariadne::{Report, ReportBuilder, ReportKind},
     crate::*,
 };
 
