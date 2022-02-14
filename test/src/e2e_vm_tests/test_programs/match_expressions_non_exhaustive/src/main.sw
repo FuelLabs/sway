@@ -23,8 +23,8 @@ fn main() -> u64 {
     // should fail
     let y = match x {
         0 => { 0 },
-        5 => { 0 },
         10 => { 0 },
+        5 => { 0 },
     };
     // should succeed
     let y = match x {

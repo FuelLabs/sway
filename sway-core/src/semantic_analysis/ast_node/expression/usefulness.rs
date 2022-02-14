@@ -425,7 +425,7 @@ where
             warnings,
             errors
         );
-        if !oracle.overlaps_multiple(&condensed) {
+        if !oracle.overlaps_all(&condensed) {
             errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                 "ranges OOB with the oracle",
                 span.clone(),
@@ -461,7 +461,7 @@ where
         }
         if oracle.last != last.last {
             exclusionary.push(check!(
-                Range::from_double(first.last.incr(), oracle.last, span),
+                Range::from_double(last.last.incr(), oracle.last, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -524,6 +524,10 @@ where
             || other.first >= self.first && other.first <= self.last && other.last >= self.last
     }
 
+    fn overlaps_all(&self, others: &[Range<T>]) -> bool {
+        others.iter().map(|other| self.overlaps(other)).all(|x| x)
+    }
+
     /// Checks to see if two ranges are within ± 1 of one another.
     /// There are 2 ways in which this might be the case:
     ///
@@ -539,10 +543,6 @@ where
             && (other.first > self.last && (other.first.clone() - self.last.clone()).into() == 1u64
                 || self.first > other.last
                     && (self.first.clone() - other.last.clone()).into() == 1u64)
-    }
-
-    fn overlaps_multiple(&self, others: &[Range<T>]) -> bool {
-        others.iter().map(|other| self.overlaps(other)).all(|x| x)
     }
 }
 
@@ -746,15 +746,15 @@ impl Pattern {
 
     fn a(&self) -> usize {
         match self {
-            Pattern::U8(_) => 1,
-            Pattern::U16(_) => 1,
-            Pattern::U32(_) => 1,
-            Pattern::U64(_) => 1,
-            Pattern::B256(_) => 1,
-            Pattern::Boolean(_) => 1,
-            Pattern::Byte(_) => 1,
-            Pattern::Numeric(_) => 1,
-            Pattern::String(_) => 1,
+            Pattern::U8(_) => 0,
+            Pattern::U16(_) => 0,
+            Pattern::U32(_) => 0,
+            Pattern::U64(_) => 0,
+            Pattern::B256(_) => 0,
+            Pattern::Boolean(_) => 0,
+            Pattern::Byte(_) => 0,
+            Pattern::Numeric(_) => 0,
+            Pattern::String(_) => 0,
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
             Pattern::Tuple(elems) => elems.len(),
             Pattern::Wildcard => unreachable!(),
@@ -1224,7 +1224,11 @@ impl ConstructorFactory {
         }
     }
 
-    fn constructor_not_present(&self, sigma: PatStack, span: &Span) -> CompileResult<Pattern> {
+    fn create_constructor_not_present(
+        &self,
+        sigma: PatStack,
+        span: &Span,
+    ) -> CompileResult<Pattern> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (first, rest) = check!(
@@ -1288,15 +1292,17 @@ pub(crate) fn check_match_expression_usefulness(
             for arm in arms_rest.iter() {
                 let pattern = Pattern::from_match_condition(arm.clone());
                 let v = PatStack::from_pattern(pattern);
+                /*
                 let witness_report = check!(
                     is_useful(&factory, &matrix, &v, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+                */
                 matrix.push(v);
                 // if an arm has witnesses to its usefulness then it is reachable
-                arms_reachability.push((arm.clone(), witness_report.has_witnesses()));
+                //arms_reachability.push((arm.clone(), witness_report.has_witnesses()));
             }
         }
         None => {
@@ -1438,7 +1444,7 @@ fn is_useful_wildcard(
             Pattern::Wildcard
         } else {
             check!(
-                factory.constructor_not_present(sigma, span),
+                factory.create_constructor_not_present(sigma, span),
                 return err(warnings, errors),
                 warnings,
                 errors
