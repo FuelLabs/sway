@@ -184,7 +184,10 @@ async fn start_server(port: &str, version: &str) {
 
     let port_number = match port.parse::<u16>() {
         Ok(n) => n,
-        Err(error) => panic!("Invalid port number {:?}", error),
+        Err(_) => panic!(
+            "Invalid port number {:?}. Expected integer value in the range [0, 65535].",
+            port
+        ),
     };
     println!("Started server on 127.0.0.1:{}", port_number);
     warp::serve(routes).run(([127, 0, 0, 1], port_number)).await
