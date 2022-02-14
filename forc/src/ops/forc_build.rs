@@ -11,7 +11,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
-use sway_utils::{constants, find_manifest_dir};
+use sway_utils::{constants, find_manifest_dir, MANIFEST_FILE_NAME};
 
 use sway_core::{
     create_module, source_map::SourceMap, BuildConfig, BytecodeCompilationResult,
@@ -45,8 +45,9 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         Some(dir) => dir,
         None => {
             return Err(format!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
+                "could not find `{}` in `{}` or any parent directory",
+                MANIFEST_FILE_NAME,
+                this_dir.display(),
             ))
         }
     };

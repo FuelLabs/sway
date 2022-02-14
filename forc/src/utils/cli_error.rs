@@ -13,8 +13,9 @@ pub struct CliError {
 impl CliError {
     pub fn manifest_file_missing(curr_dir: PathBuf) -> Self {
         let message = format!(
-            "Manifest file not found at {:?}. Project root should contain '{}'",
-            curr_dir, MANIFEST_FILE_NAME
+            "could not find `{}` in `{}` or any parent directory",
+            MANIFEST_FILE_NAME,
+            curr_dir.display()
         );
         Self { message }
     }
