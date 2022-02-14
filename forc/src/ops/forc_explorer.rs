@@ -186,6 +186,6 @@ async fn start_server(port: &str, version: &str) {
         Ok(n) => n,
         Err(error) => panic!("Invalid port number {:?}", error),
     };
-    println!("Started server on 127.0.0.1:{}", port_number);
+    println!("Started server on http://127.0.0.1:{}", port_number);
     warp::serve(routes).run(([127, 0, 0, 1], port_number)).await
 }
