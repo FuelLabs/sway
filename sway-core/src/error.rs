@@ -816,8 +816,11 @@ pub enum CompileError {
          "
     )]
     MatchWrongType { expected: TypeId, span: Span },
-    #[error("Non-exhaustive match expression. Try adding a catchall arm.")]
-    MatchExpressionNonExhaustive { span: Span },
+    #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
+    MatchExpressionNonExhaustive {
+        missing_patterns: String,
+        span: Span,
+    },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
@@ -1024,7 +1027,7 @@ impl CompileError {
             ShadowsOtherSymbol { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
-            MatchExpressionNonExhaustive { span } => span,
+            MatchExpressionNonExhaustive { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PatternMatchingAlgorithmFailure(_, span) => span,
             ExhaustivityCheckingAlgorithmFailure(_, span) => span,
