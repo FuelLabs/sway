@@ -184,9 +184,9 @@ async fn start_server(port: &str, version: &str) {
 
     let port_number = match port.parse::<u16>() {
         Ok(n) => n,
-        Err(error) => panic!(
+        Err(_) => panic!(
             "Invalid port number {:?}. Expected integer value in the range [0, 65353].",
-            error
+            port
         ),
     };
     println!("Started server on 127.0.0.1:{}", port_number);
