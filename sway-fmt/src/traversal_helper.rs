@@ -133,7 +133,9 @@ fn sort_and_filter_use_expression(line: &str) -> String {
                         a.cmp(b)
                     }
                 });
-                *buffer = vec![format!("{{{}}}", buffer.join(","))];
+                if buffer.len() > 1 {
+                    *buffer = vec![format!("{{{}}}", buffer.join(","))];
+                }
                 return;
             }
             Some(c) => buffer.push(c.to_string()),
@@ -247,6 +249,10 @@ mod tests {
             sort_and_filter_use_expression("a::b::{c,d::{self,f}};"),
             "a::b::{c,d::{self,f}};"
         );
-        assert_eq!(sort_and_filter_use_expression("a::b::{c;"), "a::b::c;");
+        assert_eq!(sort_and_filter_use_expression("a::b::{c};"), "a::b::c;");
+        assert_eq!(
+            sort_and_filter_use_expression("a::b::{c,d::{e}};"),
+            "a::b::{c,d::e};"
+        );
     }
 }
