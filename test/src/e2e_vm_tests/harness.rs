@@ -24,14 +24,8 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 manifest_dir, file_name
             )),
             use_ir,
-            print_finalized_asm: false,
-            print_intermediate_asm: false,
-            print_ir: false,
-            binary_outfile: None,
-            debug_outfile: None,
-            offline_mode: false,
             silent_mode: !verbose,
-            output_directory: None,
+            ..Default::default()
         }))
         .unwrap()
 }
@@ -50,24 +44,15 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
     let (verbose, use_ir) = get_test_config_from_env();
 
     let command = RunCommand {
-        data: None,
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        dry_run: false,
         node_url: "127.0.0.1:4000".into(),
-        kill_node: false,
         use_ir,
-        binary_outfile: None,
-        debug_outfile: None,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
-        print_ir: false,
         silent_mode: !verbose,
-        pretty_print: false,
         contract: Some(contracts),
-        output_directory: None,
+        ..Default::default()
     };
     tokio::runtime::Runtime::new()
         .unwrap()
@@ -128,14 +113,8 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
             manifest_dir, file_name
         )),
         use_ir,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
-        print_ir: false,
-        binary_outfile: None,
-        debug_outfile: None,
-        offline_mode: false,
         silent_mode: !verbose,
-        output_directory: None,
+        ..Default::default()
     })
     .map(|(bytes, _json_abi)| bytes)
 }

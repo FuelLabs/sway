@@ -3,7 +3,7 @@ use structopt::{self, StructOpt};
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Default, StructOpt)]
 pub struct Command {
     /// Hex string of data to input to script.
     #[structopt(short, long)]
@@ -67,6 +67,11 @@ pub struct Command {
     /// By default, this is `<project-root>/out`.
     #[structopt(long)]
     pub output_directory: Option<String>,
+
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minimized", i.e. all on one line without whitespace.
+    #[structopt(long)]
+    pub minimize_json_abi: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

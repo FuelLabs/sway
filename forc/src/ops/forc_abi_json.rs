@@ -14,7 +14,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     let json_abi = json!(json_abi);
     if let Some(outfile) = command.json_outfile {
         let file = File::create(outfile).map_err(|e| e.to_string())?;
-        serde_json::to_writer(&file, &json_abi).map_err(|e| e.to_string())?;
+        serde_json::to_writer_pretty(&file, &json_abi).map_err(|e| e.to_string())?;
     } else {
         println!("{}", json_abi);
     }
