@@ -56,7 +56,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                             output_directory,
                         };
 
-                        let compiled_contract = forc_build::build(build_command)?;
+                        let (compiled_contract, _json_abi) = forc_build::build(build_command)?;
                         let (tx, contract_id) = create_contract_tx(
                             compiled_contract,
                             Vec::<fuel_tx::Input>::new(),

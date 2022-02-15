@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
-pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     let BuildCommand {
         path,
         binary_outfile,
@@ -154,7 +154,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     println!("  Bytecode size is {} bytes.", main.len());
 
-    Ok(main)
+    Ok((main, json_abi))
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency including

@@ -137,6 +137,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         silent_mode: !verbose,
         output_directory: None,
     })
+    .map(|(bytes, _json_abi)| bytes)
 }
 
 pub(crate) fn test_json_abi(file_name: &str) -> Result<(), String> {

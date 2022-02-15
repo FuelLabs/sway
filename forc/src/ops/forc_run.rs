@@ -50,7 +50,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             output_directory: command.output_directory,
                         };
 
-                        let compiled_script = forc_build::build(build_command)?;
+                        let (compiled_script, _json_abi) = forc_build::build(build_command)?;
                         let contracts = command.contract.unwrap_or_default();
                         let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
