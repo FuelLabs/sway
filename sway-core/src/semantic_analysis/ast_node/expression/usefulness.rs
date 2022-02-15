@@ -43,12 +43,7 @@ impl WitnessReport {
         }
     }
 
-    fn resolve_with_constructor(
-        witness_report: WitnessReport,
-        c: &Pattern,
-        n: usize,
-        span: &Span,
-    ) -> CompileResult<Self> {
+    fn split_into_leading_constructor(witness_report: WitnessReport, c: &Pattern, span: &Span) -> CompileResult<(Pattern, Self)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match witness_report {
@@ -60,16 +55,22 @@ impl WitnessReport {
                 err(warnings, errors)
             }
             WitnessReport::Witnesses(witnesses) => {
-                let (rs, mut ps) = witnesses.split_at(witnesses.len() - n + 1);
-                let mut pat_stack = PatStack::empty();
-                pat_stack.push(check!(
+                println!("{:?}", witnesses);
+                if c.a()>witnesses.len()-1 {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "attempting to split OOB",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                let (rs, ps) = witnesses.split_at(c.a());
+                let pat = check!(
                     Pattern::from_constructor_and_arguments(c, rs, span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                ));
-                pat_stack.append(&mut ps);
-                ok(WitnessReport::Witnesses(pat_stack), vec![], vec![])
+                );
+                ok((pat, WitnessReport::Witnesses(ps)), warnings, errors)
             }
         }
     }
@@ -89,6 +90,13 @@ impl WitnessReport {
                 witnesses.prepend(witness);
                 ok((), warnings, errors)
             }
+        }
+    }
+    
+    fn len(&self) -> usize {
+        match self {
+            WitnessReport::NoWitnesses => 0,
+            WitnessReport::Witnesses(witnesses) => witnesses.len()
         }
     }
 
@@ -762,6 +770,7 @@ impl Pattern {
         args: PatStack,
         span: &Span,
     ) -> CompileResult<Self> {
+        println!("{:?}", args);
         let warnings = vec![];
         let mut errors = vec![];
         match c {
@@ -828,18 +837,6 @@ impl Pattern {
             _ => false,
         }
     }
-
-    /*
-    fn constructor(&self) -> Self {
-        match self {
-            Pattern::U8(_) => Pattern::U8(Range::u8()),
-            Pattern::U16(_) => Pattern::U16(Range::u16()),
-            Pattern::U32(_) => Pattern::U32(Range::u32()),
-            Pattern::U64(_) => Pattern::U64(Range::u64()),
-            _ => unimplemented!(),
-        }
-    }
-    */
 
     fn sub_patterns(&self) -> PatStack {
         match self {
@@ -971,7 +968,7 @@ impl PatStack {
     }
 
     fn is_empty(&self) -> bool {
-        self.pats.is_empty()
+        self.flatten().filter_out_wildcards().pats.is_empty()
     }
 
     fn iter(&self) -> Iter<'_, Pattern> {
@@ -985,11 +982,12 @@ impl PatStack {
     fn is_complete_signature(&self, span: &Span) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        if self.pats.is_empty() {
+        let preprocessed = self.flatten().filter_out_wildcards();
+        if preprocessed.pats.is_empty() {
             return ok(false, warnings, errors);
         }
         let (first, rest) = check!(
-            self.flatten().split_first(span),
+            preprocessed.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1140,6 +1138,17 @@ impl PatStack {
         }
         flattened
     }
+
+    fn filter_out_wildcards(&self) -> PatStack {
+        let mut pats = PatStack::empty();
+        for pat in self.pats.iter() {
+            match pat {
+                Pattern::Wildcard => {},
+                pat => pats.push(pat.to_owned())
+            }
+        }
+        pats
+    }
 }
 
 impl From<Vec<Pattern>> for PatStack {
@@ -1236,17 +1245,13 @@ impl Matrix {
                 warnings,
                 errors
             );
-            match first {
-                Pattern::Wildcard => {}
-                other => pat_stack.push(other),
-            }
+            pat_stack.push(first)
         }
-        ok(pat_stack, warnings, errors)
+        ok(pat_stack.flatten().filter_out_wildcards(), warnings, errors)
     }
 }
 
 struct ConstructorFactory {
-    type_info: TypeInfo,
     constructors: PatStack,
 }
 
@@ -1255,10 +1260,10 @@ impl ConstructorFactory {
         let constructors = match type_info {
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => vec![Pattern::U64(Range::u64())],
             TypeInfo::Numeric => vec![Pattern::Numeric(Range::u64())],
+            TypeInfo::Tuple(elems) => vec![Pattern::Tuple(vec![Pattern::Wildcard; elems.len()].into())],
             _ => unimplemented!(),
         };
         ConstructorFactory {
-            type_info,
             constructors: PatStack::new(constructors),
         }
     }
@@ -1271,7 +1276,7 @@ impl ConstructorFactory {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (first, rest) = check!(
-            sigma.flatten().split_first(span),
+            sigma.flatten().filter_out_wildcards().split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1301,6 +1306,7 @@ impl ConstructorFactory {
                 .map(Pattern::Numeric)
                 .collect::<Vec<_>>()
                 .into();
+                println!("{:?}", unincluded);
                 Pattern::from_pat_stack(unincluded, span)
             }
             a => unimplemented!("{:?}", a),
@@ -1353,6 +1359,13 @@ pub(crate) fn check_match_expression_usefulness(
         }
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
+    let wr = check!(
+        i(&factory, &matrix, v.len(), &span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    println!("{:#?}", wr);
     let witness_report = check!(
         is_useful(&factory, &matrix, &v, &span),
         return err(warnings, errors),
@@ -1369,16 +1382,22 @@ fn is_useful(
     q: &PatStack,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
+    println!("p: {:#?}", p);
+    println!("q: {:#?}", q);
     let mut warnings = vec![];
     let mut errors = vec![];
     let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
-    /*
+    println!("m: {:?}", m);
+    println!("n: {:?}", n);
     if n != q.len() {
-        println!("p: {:?}", p);
-        println!("q: {:?}", q);
-        unimplemented!()
+        println!("      n: {}", n);
+        println!("q.len(): {}", q.len());
+        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            "invariant n == q.len() broken",
+            span.clone(),
+        ));
+        return err(warnings, errors);
     }
-    */
     match (m, n) {
         (0, 0) => ok(
             WitnessReport::Witnesses(PatStack::empty()),
@@ -1386,18 +1405,46 @@ fn is_useful(
             errors,
         ),
         (_, 0) => ok(WitnessReport::NoWitnesses, warnings, errors),
-        (_, _) => {
+        (_, n) => {
             let c = check!(
                 q.first(span),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            match c {
-                Pattern::Wildcard => is_useful_wildcard(factory, p, q, n, span),
-                Pattern::Or(pat1, pat2) => is_useful_or(factory, p, q, *pat1, *pat2, span),
-                c => is_useful_constructed(factory, p, q, c, span),
+            let witness_report = match c {
+                Pattern::Wildcard => check!(
+                    is_useful_wildcard(factory, p, q, n, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Pattern::Or(pat1, pat2) => check!(
+                    is_useful_or(factory, p, q, *pat1, *pat2, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                c => check!(
+                    is_useful_constructed(factory, p, q, c, n, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+            };
+            if let WitnessReport::Witnesses(ref witnesses) = witness_report {
+                if witnesses.len() != n {
+                    println!("p: {:#?}", p);
+                    println!("witnesses: {:#?}", witnesses);
+                    println!("n: {:?}", n);
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "invariant witness_report.len() == n broken",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
             }
+            ok(witness_report, warnings, errors)
         }
     }
 }
@@ -1409,8 +1456,10 @@ fn is_useful_wildcard(
     n: usize,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
+    println!("is_useful_wildcard");
     let mut warnings = vec![];
     let mut errors = vec![];
+    println!("q: {:#?}", q);
     let (_, q_rest) = check!(
         q.split_first(span),
         return err(warnings, errors),
@@ -1423,6 +1472,8 @@ fn is_useful_wildcard(
         warnings,
         errors
     );
+    println!("p: {:#?}", p);
+    println!("sigma: {:#?}", sigma);
     let is_complete_signature = check!(
         sigma.is_complete_signature(span),
         return err(warnings, errors),
@@ -1430,7 +1481,8 @@ fn is_useful_wildcard(
         errors
     );
     if is_complete_signature {
-        let mut joined_witness_report = WitnessReport::NoWitnesses;
+        let mut witness_report = WitnessReport::NoWitnesses;
+        let mut pat_stack = PatStack::empty();
         for c_k in sigma.iter() {
             let s_c_k_p = check!(
                 compute_specialized_matrix(c_k, p, span),
@@ -1450,22 +1502,55 @@ fn is_useful_wildcard(
                 warnings,
                 errors
             );
-            let witness_report = check!(
+            println!("s_c_k_p: {:#?}", s_c_k_p);
+            println!("s_c_k_q: {:#?}", s_c_k_q);
+            let wr = check!(
                 is_useful(factory, &s_c_k_p, &s_c_k_q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            let witness_report = check!(
-                WitnessReport::resolve_with_constructor(witness_report, c_k, n, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            joined_witness_report =
-                WitnessReport::join_witness_reports(joined_witness_report, witness_report)
+            match (&witness_report, wr) {
+                (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {},
+                (WitnessReport::NoWitnesses, wr) => {
+                    let (pat, wr) = check!(
+                        WitnessReport::split_into_leading_constructor(wr, c_k, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    pat_stack.push(pat);
+                    witness_report = wr;
+                },
+                (_, wr) => {
+                    let (pat, _) = check!(
+                        WitnessReport::split_into_leading_constructor(wr, c_k, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    pat_stack.push(pat);
+                }
+            }
         }
-        ok(joined_witness_report, warnings, errors)
+        match &mut witness_report {
+            WitnessReport::NoWitnesses => {},
+            witness_report => {
+                let pat = check!(
+                    Pattern::from_pat_stack(pat_stack, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                check!(
+                    witness_report.add_witness(pat, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+        }
+        ok(witness_report, warnings, errors)
     } else {
         let d_p = check!(
             compute_default_matrix(p, span),
@@ -1473,12 +1558,30 @@ fn is_useful_wildcard(
             warnings,
             errors
         );
+        let (_, d_p_n) = check!(
+            d_p.m_n(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        if d_p_n != n-1 {
+            println!("  n-1: {}", n-1);
+            println!("d_p_n: {}", d_p_n);
+            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                "D(P) matrix is misshappen",
+                span.clone(),
+            ));
+            return err(warnings, errors);
+        }
+        println!("d_p: {:#?}", d_p);
+        println!("q_rest: {:#?}", q_rest);
         let mut witness_report = check!(
             is_useful(factory, &d_p, &q_rest, span),
             return err(warnings, errors),
             warnings,
             errors
         );
+        println!("witness_report: {:?}", witness_report);
         let witness_to_add = if sigma.is_empty() {
             Pattern::Wildcard
         } else {
@@ -1507,8 +1610,10 @@ fn is_useful_constructed(
     p: &Matrix,
     q: &PatStack,
     c: Pattern,
+    n: usize,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
+    println!("is_useful_constructed");
     let mut warnings = vec![];
     let mut errors = vec![];
     let s_c_p = check!(
@@ -1517,6 +1622,19 @@ fn is_useful_constructed(
         warnings,
         errors
     );
+    let (_, s_c_p_n) = check!(
+        s_c_p.m_n(span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    if s_c_p_n != (c.a() + n - 1) {
+        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            "S(c,P) matrix is misshappen",
+            span.clone(),
+        ));
+        return err(warnings, errors);
+    }
     let s_c_q = check!(
         compute_specialized_matrix(&c, &Matrix::from_pat_stack(q.clone()), span),
         return err(warnings, errors),
@@ -1540,6 +1658,7 @@ fn is_useful_or(
     pat2: Pattern,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
+    println!("is_useful_or");
     let mut warnings = vec![];
     let mut errors = vec![];
     let (_, q_rest) = check!(
@@ -1567,6 +1686,114 @@ fn is_useful_or(
 
     let witness_report = WitnessReport::join_witness_reports(witness_report1, witness_report2);
     ok(witness_report, warnings, errors)
+}
+
+fn i(factory: &ConstructorFactory, p: &Matrix, n: usize, span: &Span) -> CompileResult<WitnessReport> {
+    println!("p: {:#?}", p);
+    println!("n: {:?}", n);
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let (p_m, p_n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
+    if p_n != n {
+        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            "invariant p_n == n broken",
+            span.clone(),
+        ));
+        return err(warnings, errors);
+    }
+    match (p_m, p_n) {
+        (0, 0) => ok(
+            WitnessReport::Witnesses(PatStack::empty()),
+            warnings,
+            errors,
+        ),
+        (_, 0) => ok(WitnessReport::NoWitnesses, warnings, errors),
+        (_, n) => {
+            let sigma = check!(
+                p.compute_sigma(span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let is_complete_signature = check!(
+                sigma.is_complete_signature(span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if is_complete_signature {
+                for c_k in sigma.iter() {
+                    let s_c_k_p = check!(
+                        compute_specialized_matrix(c_k, p, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let witness_report = check!(
+                        i(factory, &s_c_k_p, c_k.a() + n - 1, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    match witness_report {
+                        WitnessReport::NoWitnesses => {},
+                        WitnessReport::Witnesses(witnesses) => {
+                            if c_k.a()>witnesses.len()-1 {
+                                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                    "attempting to split OOB",
+                                    span.clone(),
+                                ));
+                                return err(warnings, errors);
+                            }
+                            let (rs, mut ps) = witnesses.split_at(c_k.a());
+                            let pat = check!(
+                                Pattern::from_constructor_and_arguments(c_k, rs, span),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            ps.prepend(pat);
+                            return ok(WitnessReport::Witnesses(ps), warnings, errors);
+                        }
+                    }
+                }
+                ok(WitnessReport::NoWitnesses, warnings, errors)
+            } else {
+                let d_p = check!(
+                    compute_default_matrix(p, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut witness_report = check!(
+                    i(factory, &d_p, n-1, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let witness_to_add = if sigma.is_empty() {
+                    Pattern::Wildcard
+                } else {
+                    check!(
+                        factory.create_constructor_not_present(sigma, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                };
+                match &mut witness_report {
+                    WitnessReport::NoWitnesses => {}
+                    witness_report => check!(
+                        witness_report.add_witness(witness_to_add, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                }
+                ok(witness_report, warnings, errors)
+            }
+        }
+    }
 }
 
 fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {

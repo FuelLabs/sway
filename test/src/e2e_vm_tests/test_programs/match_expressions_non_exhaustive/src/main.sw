@@ -19,6 +19,7 @@ fn main() -> u64 {
     }
     */
 
+    /*
     let x = 0;
     // should fail
     let y = match x {
@@ -38,14 +39,17 @@ fn main() -> u64 {
         1 => { 0 },
         a => { a },
     };
+    */
 
-    /*
     let x = (1, 2);
     // should fail
     let y = match x {
         (0, 0) => { 0 },
         (1, 1) => { 0 },
+        (a, 0) => { 0 },
+        //_ => { 0 },
     };
+    /*
     // should succeed
     let y = match x {
         (0, 0) => { 0 },
