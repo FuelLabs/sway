@@ -324,8 +324,7 @@ fn compile(
     source_map: &mut SourceMap,
     silent_mode: bool,
 ) -> Result<(Vec<u8>, JsonABI), String> {
-    let ast_res =
-        sway_core::compile_to_ast(source.clone(), namespace, &build_config, dependency_graph);
+    let ast_res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     let json_abi = match &ast_res {
         CompileAstResult::Success {
             parse_tree,
@@ -338,8 +337,7 @@ fn compile(
             }
             typ => {
                 print_on_success(silent_mode, proj_name, warnings, typ.clone());
-                let json_abi = generate_json_abi(&*parse_tree);
-                json_abi
+                generate_json_abi(&*parse_tree)
             }
         },
         CompileAstResult::Failure { warnings, errors } => {

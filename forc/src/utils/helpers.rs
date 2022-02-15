@@ -130,7 +130,7 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
 
     if !silent_mode {
         warnings.iter().for_each(format_warning);
-        errors.iter().for_each(|error| format_err(&error));
+        errors.iter().for_each(format_err);
     }
 
     println_red_err(&format!(
