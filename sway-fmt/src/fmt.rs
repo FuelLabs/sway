@@ -656,11 +656,11 @@ fn main() {
 }
 "#;
         let expected_sway = r#"script;
-use std::chain::{log_u8,panic};
+use std::chain::{log_u8, panic};
 use std::chain::assert;
-use std::hash::{HashMethod,hash_pair,hash_value};
-use a::b::{c,d::{e,f}};
-use a::b::{c,d::{self,f}};
+use std::hash::{HashMethod, hash_pair, hash_value};
+use a::b::{c, d::{e, f}};
+use a::b::{c, d::{self, f}};
 
 fn main() {
 }

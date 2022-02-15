@@ -134,7 +134,7 @@ fn sort_and_filter_use_expression(line: &str) -> String {
                     }
                 });
                 if buffer.len() > 1 {
-                    *buffer = vec![format!("{{{}}}", buffer.join(","))];
+                    *buffer = vec![format!("{{{}}}", buffer.join(", "))];
                 }
                 return;
             }
@@ -235,24 +235,24 @@ mod tests {
         assert_eq!(sort_and_filter_use_expression("::a::b::c;"), "::a::b::c;");
         assert_eq!(
             sort_and_filter_use_expression("::a::c::b::{c, b, ba};"),
-            "::a::c::b::{b,ba,c};"
+            "::a::c::b::{b, ba, c};"
         );
         assert_eq!(
             sort_and_filter_use_expression("{s,e,l,f,self};"),
-            "{self,e,f,l,s};"
+            "{self, e, f, l, s};"
         );
         assert_eq!(
             sort_and_filter_use_expression("a::{d::{f, self}, c, b};"),
-            "a::{b,c,d::{self,f}};"
+            "a::{b, c, d::{self, f}};"
         );
         assert_eq!(
             sort_and_filter_use_expression("a::b::{c,d::{self,f}};"),
-            "a::b::{c,d::{self,f}};"
+            "a::b::{c, d::{self, f}};"
         );
         assert_eq!(sort_and_filter_use_expression("a::b::{c};"), "a::b::c;");
         assert_eq!(
             sort_and_filter_use_expression("a::b::{c,d::{e}};"),
-            "a::b::{c,d::e};"
+            "a::b::{c, d::e};"
         );
     }
 }
