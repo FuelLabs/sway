@@ -73,7 +73,7 @@ pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
-    warnings: Vec<CompileWarning>,
+    warnings: &[CompileWarning],
     tree_type: TreeType,
 ) {
     let type_str = match tree_type {
@@ -104,7 +104,7 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
     if !silent_mode {
         warnings.iter().for_each(format_warning);
     }
@@ -125,16 +125,12 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Ve
     }
 }
 
-pub fn print_on_failure(
-    silent_mode: bool,
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
-) {
+pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
     if !silent_mode {
         warnings.iter().for_each(format_warning);
-        errors.into_iter().for_each(|error| format_err(&error));
+        errors.iter().for_each(|error| format_err(&error));
     }
 
     println_red_err(&format!(

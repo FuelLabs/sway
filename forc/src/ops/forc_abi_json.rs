@@ -271,18 +271,23 @@ fn compile_library(
             let errors = vec![];
             match tree_type {
                 TreeType::Library { name } => {
-                    print_on_success(silent_mode, proj_name, warnings, TreeType::Library { name });
+                    print_on_success(
+                        silent_mode,
+                        proj_name,
+                        &warnings,
+                        TreeType::Library { name },
+                    );
                     let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
                     Ok((parse_tree.get_namespace_ref(), json_abi))
                 }
                 _ => {
-                    print_on_failure(silent_mode, warnings, errors);
+                    print_on_failure(silent_mode, &warnings, &errors);
                     Err(format!("Failed to compile {}", proj_name))
                 }
             }
         }
         CompileAstResult::Failure { warnings, errors } => {
-            print_on_failure(silent_mode, warnings, errors);
+            print_on_failure(silent_mode, &warnings, &errors);
             Err(format!("Failed to compile {}", proj_name))
         }
     }
@@ -306,18 +311,18 @@ fn compile(
             let errors = vec![];
             match tree_type {
                 TreeType::Library { .. } => {
-                    print_on_failure(silent_mode, warnings, errors);
+                    print_on_failure(silent_mode, &warnings, &errors);
                     Err(format!("Failed to compile {}", proj_name))
                 }
                 typ => {
-                    print_on_success(silent_mode, proj_name, warnings, typ);
+                    print_on_success(silent_mode, proj_name, &warnings, typ);
                     let json_abi = generate_json_abi(&Some(*parse_tree));
                     Ok(json_abi)
                 }
             }
         }
         CompileAstResult::Failure { warnings, errors } => {
-            print_on_failure(silent_mode, warnings, errors);
+            print_on_failure(silent_mode, &warnings, &errors);
             Err(format!("Failed to compile {}", proj_name))
         }
     }
