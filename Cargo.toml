@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "docstrings",
+    "examples/build-all-examples",
     "forc",
     "parser",
     "sway-core",
@@ -11,7 +12,13 @@ members = [
     "sway-types",
     "sway-utils",
     "test",
-    "test-sig-gen-util"
+    "test-sig-gen-util",
+]
+exclude = [
+    "examples/fizzbuzz",
+    "examples/hello_world",
+    "examples/subcurrency",
+    "examples/wallet_smart_contract",
 ]
 
 [profile.dev.package.sway-server]

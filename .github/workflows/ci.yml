@@ -84,6 +84,18 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
+      - name: Install forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+
+      - name: Build sway examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
+
   publish:
     # Only do this job if publishing a release
     needs: build
