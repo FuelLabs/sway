@@ -115,10 +115,12 @@ fn sort_and_filter_use_expression(line: &str) -> String {
             Some("{") => {
                 let mut inner_buffer: Vec<String> = Vec::new();
                 sort_imports(tokens, &mut inner_buffer);
-                if let Some(buff) = buffer.last_mut() {
-                    buff.push_str(inner_buffer[0].as_str());
-                } else {
-                    buffer.append(&mut inner_buffer);
+                if !inner_buffer.is_empty() {
+                    if let Some(buff) = buffer.last_mut() {
+                        buff.push_str(inner_buffer[0].as_str());
+                    } else {
+                        buffer.append(&mut inner_buffer);
+                    }
                 }
             }
             Some("}") => {
@@ -245,5 +247,6 @@ mod tests {
             sort_and_filter_use_expression("a::b::{c,d::{self,f}};"),
             "a::b::{c,d::{self,f}};"
         );
+        assert_eq!(sort_and_filter_use_expression("a::b::{c;"), "a::b::c;");
     }
 }
