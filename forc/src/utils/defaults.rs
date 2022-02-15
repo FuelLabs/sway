@@ -53,7 +53,7 @@ pub(crate) fn default_program() -> String {
     r#"script;
 
 fn main() {
-    
+
 }
 "#
     .into()
@@ -66,6 +66,13 @@ pub(crate) fn default_test_program() -> String {
 async fn harness() {
     assert_eq!(true, true);
 }
+"#
+    .into()
+}
+
+pub(crate) fn default_gitignore() -> String {
+    r#"out
+target
 "#
     .into()
 }
