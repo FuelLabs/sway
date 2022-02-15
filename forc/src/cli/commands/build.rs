@@ -5,8 +5,8 @@ use structopt::{self, StructOpt};
 ///
 /// The output produced will depend on the project's program type. Building script, predicate and
 /// contract projects will produce their bytecode in binary format `<project-name>.bin`. Building
-/// contracts will *also* produce the contract's ABI in JSON format `<project-name>-abi.json`.
-/// Library projects will be type-checked, but no output is produced.
+/// contracts and libraries will also produce the public ABI in JSON format
+/// `<project-name>-abi.json`.
 #[derive(Debug, Default, StructOpt)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
