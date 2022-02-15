@@ -17,21 +17,25 @@ impl Spanned for Ident {
     }
 }
 
-pub fn ident() -> impl Parser<Output = Ident> + Clone {
+pub struct ExpectedIdentError {
+    pub position: usize,
+}
+
+pub fn ident() -> impl Parser<Output = Ident, Error = ExpectedIdentError> + Clone {
     from_fn(|input| {
         let mut char_indices = input.as_str().char_indices();
         let c = match char_indices.next() {
             Some((_, c)) => c,
             None => {
-                let error = ParseError::UnexpectedEof {
-                    span: input.to_start(),
+                let error = ExpectedIdentError {
+                    position: input.start(),
                 };
                 return (false, Err(error));
             },
         };
         if !c.is_xid_start() {
-            let error = ParseError::ExpectedIdent {
-                span: input.to_start(),
+            let error = ExpectedIdentError {
+                position: input.start(),
             };
             return (false, Err(error));
         }

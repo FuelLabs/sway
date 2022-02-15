@@ -1,12 +1,30 @@
 use crate::priv_prelude::*;
 
 macro_rules! define_brackets (
-    ($ty_name:ident, $fn_name:ident, $ty_open:ident, $fn_open:ident, $ty_close:ident, $fn_close:ident,) => (
+    (
+        $ty_name:ident,
+        $err_name:ident,
+        $fn_name:ident,
+        $ty_open:ident,
+        $name_open:ident,
+        $err_open:ident,
+        $fn_open:ident,
+        $ty_close:ident,
+        $name_close:ident,
+        $err_close:ident,
+        $fn_close:ident,
+    ) => (
         #[derive(Clone, Debug)]
         pub struct $ty_name<T> {
             open_token: $ty_open,
             inner: T,
             close_token: $ty_close,
+        }
+
+        pub enum $err_name<E> {
+            $name_open { position: usize },
+            Parser(E),
+            $name_close { position: usize },
         }
 
         impl<T> $ty_name<T> {
@@ -38,36 +56,42 @@ macro_rules! define_brackets (
             }
         }
 
-        pub fn $fn_name<T, P>(parser: P) -> impl Parser<Output = $ty_name<T>> + Clone
+        pub fn $fn_name<T, E, P>(parser: P) -> impl Parser<Output = $ty_name<T>, Error = $err_name<E>> + Clone
         where
-            P: Parser<Output = T> + Clone,
+            P: Parser<Output = T, Error = E> + Clone,
         {
             $fn_open()
-            .then(parser)
-            .then($fn_close())
+            .map_err(|$err_open { position }| $err_name::$name_open { position })
+            .then(
+                parser
+                .map_err($err_name::Parser)
+            )
+            .then(
+                $fn_close()
+                .map_err(|$err_close { position }| $err_name::$name_close { position })
+            )
             .map(|((open_token, inner), close_token)| $ty_name { open_token, inner, close_token })
         }
     );
 );
 
 define_brackets!(
-    Parens, parens,
-    OpenParenToken, open_paren_token,
-    CloseParenToken, close_paren_token,
+    Parens, ParensError, parens,
+    OpenParenToken, ExpectedOpenParen, ExpectedOpenParenTokenError, open_paren_token,
+    CloseParenToken, ExpectedCloseParen, ExpectedCloseParenTokenError, close_paren_token,
 );
 define_brackets!(
-    SquareBrackets, square_brackets,
-    OpenSquareBracketToken, open_square_bracket_token,
-    CloseSquareBracketToken, close_square_bracket_token,
+    SquareBrackets, SquareBracketsError, square_brackets,
+    OpenSquareBracketToken, ExpectedOpenSquareBracket, ExpectedOpenSquareBracketTokenError, open_square_bracket_token,
+    CloseSquareBracketToken, ExpectedClosingSquareBracket, ExpectedCloseSquareBracketTokenError, close_square_bracket_token,
 );
 define_brackets!(
-    Braces, braces,
-    OpenBraceToken, open_brace_token,
-    CloseBraceToken, close_brace_token,
+    Braces, BracesError, braces,
+    OpenBraceToken, ExpectedOpenBrace, ExpectedOpenBraceTokenError, open_brace_token,
+    CloseBraceToken, ExpectedCloseBrace, ExpectedCloseBraceTokenError, close_brace_token,
 );
 define_brackets!(
-    AngleBrackets, angle_brackets,
-    LessThanToken, less_than_token,
-    GreaterThanToken, greater_than_token,
+    AngleBrackets, AngleBracketsError, angle_brackets,
+    LessThanToken, ExpectedOpenAngleBracket, ExpectedLessThanTokenError, less_than_token,
+    GreaterThanToken, ExpectedCloseAngleBracket, ExpectedGreaterThanTokenError, greater_than_token,
 );
-
