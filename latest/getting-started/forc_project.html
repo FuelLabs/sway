@@ -183,20 +183,20 @@ $ tree .
 </code></pre>
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <pre><code class="language-toml">[project]
-name = &quot;hello_world&quot;
-author = &quot;user&quot;
+author = &quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;
 entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
+name = &quot;hello_world&quot;
 
 [dependencies]
-core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot;, version = &quot;v0.0.1&quot; }
-std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot;, version = &quot;v0.0.1&quot; }
+core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot; }
+std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot; }
 </code></pre>
 <p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
 <pre><code class="language-sway">script;
 
 fn main() {
-    
+
 }
 </code></pre>
 <p>The project is <em>script</em>, one of four different project types. For additional information on different project types, see <a href="../sway-on-chain/index.html">here</a>.</p>
@@ -220,7 +220,11 @@ Bytecode size is 28 bytes.
 Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 </code></pre>
-<p>Use <code>forc json-abi</code> to output the ABI of the contract. To write this to a <code>.json</code> file (which is necessary for running tests below), pipe it using something like <code>forc json-abi &gt; my_contract.json</code>. There is currently not a convention for where ABI files should be placed; one common choice is loose in the root directory.</p>
+<p>Use <code>forc json-abi</code> to output the ABI of the contract. To write this to a <code>.json</code> file (which is necessary for running tests below), pipe it using something like:</p>
+<pre><code class="language-console">forc json-abi &gt; my-contract-abi.json
+</code></pre>
+<p>There is currently not a convention for where ABI files should be placed; one
+common choice is loose in the root directory.</p>
 <h2 id="testing-a-sway-project-with-forc"><a class="header" href="#testing-a-sway-project-with-forc">Testing a Sway Project with Forc</a></h2>
 <p>If you look again at the project structure when you create a new Forc project, you can see a directory called <code>tests/</code>:</p>
 <pre><code class="language-plaintext">$ forc init my-fuel-project
@@ -273,6 +277,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
+// FIXME: Incorrect path, see https://github.com/FuelLabs/fuels-rs/issues/94
 abigen!(MyContract, &quot;./my-contract-abi.json&quot;);
 
 #[tokio::test]
@@ -285,7 +290,7 @@ async fn harness() {
     let compiled = Contract::compile_sway_contract(&quot;./&quot;, salt).unwrap();
 
     // Launch a local network and deploy the contract
-    let (client, contract_id) = Contract::launch_and_deploy(&amp;compiled).await.unwrap();
+    let (client, _contract_id) = Contract::launch_and_deploy(&amp;compiled).await.unwrap();
 
     let contract_instance = MyContract::new(compiled, client);
 
@@ -297,7 +302,7 @@ async fn harness() {
         .await
         .unwrap();
 
-    assert_eq!(42, result);
+    assert_eq!(42, result.value);
 
     // Call `increment_counter()` method in our deployed contract.
     let result = contract_instance
@@ -306,7 +311,7 @@ async fn harness() {
         .await
         .unwrap();
 
-    assert_eq!(52, result);
+    assert_eq!(52, result.value);
 }
 <span class="boring">}
 </span></code></pre></pre>
