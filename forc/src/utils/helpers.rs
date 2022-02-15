@@ -12,6 +12,8 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
+pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
@@ -68,6 +70,10 @@ pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<
     let main_file = std::fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
     let main_file = Arc::from(main_file);
     Ok(main_file)
+}
+
+pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
+    manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY)
 }
 
 pub fn print_on_success(

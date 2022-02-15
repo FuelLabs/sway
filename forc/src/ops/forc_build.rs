@@ -4,7 +4,8 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
+        default_output_directory, get_main_file, print_on_failure, print_on_success,
+        print_on_success_library, read_manifest,
     },
 };
 use std::fs::{self, File};
@@ -22,8 +23,6 @@ use sway_types::JsonABI;
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-
-const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
 pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     let BuildCommand {
@@ -135,7 +134,7 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     // Create the output directory for build artifacts.
     let output_dir = output_directory
         .map(PathBuf::from)
-        .unwrap_or_else(|| manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY).join(profile));
+        .unwrap_or_else(|| default_output_directory(&manifest_dir).join(profile));
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     }
