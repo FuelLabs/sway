@@ -2,6 +2,7 @@ use super::code_builder_helpers::{is_comment, is_multiline_comment, is_newline_i
 use crate::code_builder_helpers::clean_all_whitespace;
 use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 use std::iter::{Enumerate, Peekable};
+use std::slice::Iter;
 use std::str::Chars;
 use sway_core::{extract_keyword, Rule};
 
@@ -84,10 +85,71 @@ pub fn format_delineated_path(line: &str) -> String {
     line.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
+/// Trims whitespaces and reorders compound import statements lexicographically
+/// a::{c, b, d::{self, f, e}} -> a::{b,c,d::{self,e,f}}
+fn sort_and_filter_use_expression(line: &str) -> String {
+    /// Tokenizes the line on separators keeping the separators.
+    fn tokenize(line: &str) -> Vec<String> {
+        let mut buffer: Vec<String> = Vec::new();
+        let mut current = 0;
+        for (index, separator) in line.match_indices(|c: char| c == ',' || c == '{' || c == '}') {
+            if index != current {
+                buffer.push(line[current..index].to_string());
+            }
+            buffer.push(separator.to_string());
+            current = index + separator.len();
+        }
+        if current < line.len() {
+            buffer.push(line[current..].to_string());
+        }
+        buffer
+    }
+    let tokens: Vec<String> = tokenize(line);
+    let mut buffer: Vec<String> = Vec::new();
+
+    fn sort_imports(tokens: &mut Iter<String>, buffer: &mut Vec<String>) {
+        let token = tokens.next();
+        match token.map(|t| t.trim()) {
+            None => return,
+            Some(",") => (),
+            Some("{") => {
+                let mut inner_buffer: Vec<String> = Vec::new();
+                sort_imports(tokens, &mut inner_buffer);
+                if !inner_buffer.is_empty() {
+                    if let Some(buff) = buffer.last_mut() {
+                        buff.push_str(inner_buffer[0].as_str());
+                    } else {
+                        buffer.append(&mut inner_buffer);
+                    }
+                }
+            }
+            Some("}") => {
+                buffer.sort_by(|a, b| {
+                    if *a == "self" {
+                        std::cmp::Ordering::Less
+                    } else if *b == "self" {
+                        std::cmp::Ordering::Greater
+                    } else {
+                        a.cmp(b)
+                    }
+                });
+                if buffer.len() > 1 {
+                    *buffer = vec![format!("{{{}}}", buffer.join(", "))];
+                }
+                return;
+            }
+            Some(c) => buffer.push(c.to_string()),
+        }
+        sort_imports(tokens, buffer);
+    }
+    sort_imports(&mut tokens.iter(), &mut buffer);
+    buffer.concat()
+}
+
 pub fn format_use_statement(line: &str) -> String {
     let use_keyword = extract_keyword(line, Rule::use_keyword).unwrap();
     let (_, right) = line.split_once(&use_keyword).unwrap();
-    let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
+    let right: String = sort_and_filter_use_expression(right);
     format!(
         "{}{} {}",
         ALREADY_FORMATTED_LINE_PATTERN, use_keyword, right
@@ -162,4 +224,35 @@ fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> Str
     }
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sort_and_filter_use_expression;
+
+    #[test]
+    fn test_sort_and_filter_use_expression() {
+        assert_eq!(sort_and_filter_use_expression("::a::b::c;"), "::a::b::c;");
+        assert_eq!(
+            sort_and_filter_use_expression("::a::c::b::{c, b, ba};"),
+            "::a::c::b::{b, ba, c};"
+        );
+        assert_eq!(
+            sort_and_filter_use_expression("{s,e,l,f,self};"),
+            "{self, e, f, l, s};"
+        );
+        assert_eq!(
+            sort_and_filter_use_expression("a::{d::{f, self}, c, b};"),
+            "a::{b, c, d::{self, f}};"
+        );
+        assert_eq!(
+            sort_and_filter_use_expression("a::b::{c,d::{self,f}};"),
+            "a::b::{c, d::{self, f}};"
+        );
+        assert_eq!(sort_and_filter_use_expression("a::b::{c};"), "a::b::c;");
+        assert_eq!(
+            sort_and_filter_use_expression("a::b::{c,d::{e}};"),
+            "a::b::{c, d::e};"
+        );
+    }
 }

@@ -645,17 +645,27 @@ fn one_liner() -> bool {
     #[test]
     // Test that the use statements with multiple imports are properly formatted
     fn test_use_statement() {
-        let expected_sway = r#"script;
+        let test_sway = r#"script;
 use std::chain::{panic,log_u8};
 use std::chain::assert;
-use std::hash::{HashMethod,hash_value,hash_pair};
-use a::b::{c,d::{e,f}};
-use a::b::{c,d::{self,f}};
+use std::hash::{HashMethod,    hash_value,               hash_pair    };
+use a::b::{c,d::{f,e}};
+use a::b::{c,d::{f,self}};
 
 fn main() {
 }
 "#;
-        let result = get_formatted_data(expected_sway.into(), OPTIONS);
+        let expected_sway = r#"script;
+use std::chain::{log_u8, panic};
+use std::chain::assert;
+use std::hash::{HashMethod, hash_pair, hash_value};
+use a::b::{c, d::{e, f}};
+use a::b::{c, d::{self, f}};
+
+fn main() {
+}
+"#;
+        let result = get_formatted_data(test_sway.into(), OPTIONS);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(formatted_code, expected_sway);
