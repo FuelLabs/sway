@@ -59,16 +59,19 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     validate_manifest(manifest)
 }
 
-    // Using (https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs#L570) for reference
+// Using (https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs#L570) for reference
 fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
     // How do I cover all of the fields of manifest?
-    if let Some(ch) = manifest.project.name
+    if let Some(ch) = manifest
+        .project
+        .name
         .chars()
-        .find(|ch| !ch.is_alphanumeric() && *ch != '_' && *ch != '-') {
-            Err(format!("Invalid character {ch} in project name.\n Allowed characters are letters, numbers, underscore, and hyphen."))
-        } else {
-            Ok(manifest)
-        }
+        .find(|ch| !ch.is_alphanumeric() && *ch != '_' && *ch != '-')
+    {
+        Err(format!("Invalid character {ch} in project name.\n Allowed characters are letters, numbers, underscore, and hyphen."))
+    } else {
+        Ok(manifest)
+    }
 }
 
 pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
