@@ -11,13 +11,16 @@ use crate::error::*;
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
 pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
     match asm {
-        FinalizedAsm::ContractAbi { .. } | FinalizedAsm::Library => ok((), vec![], vec![]),
+        FinalizedAsm::ContractAbi {
+            program_section, ..
+        } => check_for_cei_violation(&program_section.ops),
+        FinalizedAsm::Library => ok((), vec![], vec![]),
         FinalizedAsm::ScriptMain {
             program_section, ..
-        } => check_for_contract_opcodes(&program_section.ops[..]),
+        } => check_for_contract_opcodes(&program_section.ops),
         FinalizedAsm::PredicateMain {
             program_section, ..
-        } => check_for_contract_opcodes(&program_section.ops[..]),
+        } => check_for_contract_opcodes(&program_section.ops),
     }
 }
 
@@ -73,4 +76,39 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     } else {
         err(vec![], errors)
     }
+}
+
+/// Checks for a violation of the Checks-Effects-Interaction pattern.
+/// A check could be anywhere, but what we want to ensure is that effects happen before interactions. An interaction is a `CALL` opcode, and an effect is a `SWW` or `SWWQ` opcode.
+///
+///If a `CALL` opcode happens _before_ a `SWW`/`SWWQ` opcode _without_ any jumps away, then we know this is an interaction before an effect.
+///
+///
+///For every opcode:
+///  if this is a `SWW`/`SWWQ`:
+///     seen_effect = true;
+///  if this is a jump (non-conditional):
+///     seen_effect = false;
+///  if this is a CALL:
+///       if seen_effect = false:
+///	      throw CEI violation
+///
+fn check_for_cei_violation(ops: &[AllocatedOp]) -> CompileResult<()> {
+    let mut seen_call = false;
+    use AllocatedOpcode::*;
+    for op in ops {
+        match op.opcode {
+            SWW(..) | SWWQ(..) => {
+                if seen_call {
+                    todo!("Throw warn")
+                }
+            }
+            CALL(..) => seen_call = true,
+            JI(..) => {
+                seen_call = false;
+            }
+            _ => (),
+        }
+    }
+    ok((), vec![], vec![])
 }
