@@ -393,6 +393,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "build-all-examples"
+version = "0.0.0"
+
+[[package]]
 name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
