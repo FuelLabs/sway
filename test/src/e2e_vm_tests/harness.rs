@@ -158,8 +158,8 @@ fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
             "{}/src/e2e_vm_tests/test_programs/{}/{}",
             manifest_dir, file_name, "json_abi_output.json"
         )),
-        offline_mode: false,
         silent_mode: true,
+        ..Default::default()
     })
 }
 

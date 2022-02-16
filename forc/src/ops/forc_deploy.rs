@@ -30,7 +30,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
         offline_mode,
         silent_mode,
         output_directory,
-        minimize_json_abi,
+        minify_json_abi,
     } = command;
 
     match find_manifest_dir(&curr_dir) {
@@ -55,7 +55,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                             debug_outfile,
                             silent_mode,
                             output_directory,
-                            minimize_json_abi,
+                            minify_json_abi,
                         };
 
                         let (compiled_contract, _json_abi) = forc_build::build(build_command)?;

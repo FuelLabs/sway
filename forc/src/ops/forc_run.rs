@@ -48,7 +48,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             offline_mode: false,
                             silent_mode: command.silent_mode,
                             output_directory: command.output_directory,
-                            minimize_json_abi: command.minimize_json_abi,
+                            minify_json_abi: command.minify_json_abi,
                         };
 
                         let (compiled_script, _json_abi) = forc_build::build(build_command)?;

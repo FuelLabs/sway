@@ -69,9 +69,9 @@ pub struct Command {
     pub output_directory: Option<String>,
 
     /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
-    /// output will be "minimized", i.e. all on one line without whitespace.
+    /// output will be "minified", i.e. all on one line without whitespace.
     #[structopt(long)]
-    pub minimize_json_abi: bool,
+    pub minify_json_abi: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

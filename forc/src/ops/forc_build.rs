@@ -36,7 +36,7 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
         offline_mode,
         silent_mode,
         output_directory,
-        minimize_json_abi,
+        minify_json_abi,
     } = command;
 
     // find manifest directory, even if in subdirectory
@@ -149,7 +149,7 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
         let json_abi_stem = format!("{}-abi", manifest.project.name);
         let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
         let file = File::create(json_abi_path).map_err(|e| e.to_string())?;
-        let res = if minimize_json_abi {
+        let res = if minify_json_abi {
             serde_json::to_writer(&file, &json_abi)
         } else {
             serde_json::to_writer_pretty(&file, &json_abi)
