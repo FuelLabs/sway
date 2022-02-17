@@ -35,6 +35,17 @@ jobs:
           command: fmt
           args: --all -- --check
 
+  cargo-clippy:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/clippy-check@v1.0.7
+        name: Check Clippy Linter
+        with:
+          token: ${{ github.token }}
+          args: --all-features --all-targets -- -D warnings
+
   cargo-build-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
