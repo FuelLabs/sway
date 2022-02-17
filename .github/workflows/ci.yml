@@ -21,7 +21,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-  install-rust-toolchain:
+  install-rust-and-checkout:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
@@ -31,9 +31,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
   rustfmt-check:
-    needs: install-rust-toolchain
+    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
       - name: Install rustfmt
@@ -45,7 +47,7 @@ jobs:
           args: --all -- --check
 
   cargo-build-workspace:
-    needs: install-rust-toolchain
+    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
       - name: Cargo Build Workspace
@@ -58,7 +60,7 @@ jobs:
           RUSTFLAGS: "-D warnings"
 
   cargo-test-workspace:
-    needs: install-rust-toolchain
+    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
       - name: Run tests
@@ -67,7 +69,7 @@ jobs:
           command: test
 
   cargo-run-e2e-test:
-    needs: install-rust-toolchain
+    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     services:
       fuel-core:
@@ -82,7 +84,7 @@ jobs:
           args: --release --bin test
 
   build-sway-examples:
-    needs: install-rust-toolchain
+    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
       - name: Install Forc
