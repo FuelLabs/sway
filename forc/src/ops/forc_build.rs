@@ -330,26 +330,22 @@ fn compile(
     silent_mode: bool,
 ) -> Result<(Vec<u8>, JsonABI), String> {
     let ast_res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
-    let json_abi = match &ast_res {
+    let (json_abi, tree_type, warnings) = match &ast_res {
         CompileAstResult::Success {
             parse_tree,
             tree_type,
             warnings,
-        } => match tree_type {
-            TreeType::Library { .. } => {
-                print_on_failure(silent_mode, warnings, &[]);
-                return Err(format!("Failed to compile {}", proj_name));
-            }
-            typ => {
-                print_on_success(silent_mode, proj_name, warnings, typ.clone());
-                generate_json_abi(&*parse_tree)
-            }
-        },
+        } => (generate_json_abi(&*parse_tree), tree_type, warnings),
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
             return Err(format!("Failed to compile {}", proj_name));
         }
     };
+
+    if let TreeType::Library { .. } = tree_type {
+        print_on_success(silent_mode, proj_name, warnings, tree_type.clone());
+        return Ok((vec![], json_abi));
+    }
 
     let asm_res = sway_core::ast_to_asm(ast_res, &build_config);
     let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
