@@ -33,13 +33,18 @@ where
     }
 }
 
-pub fn punctuated<T, S, U, V>(value: U, separator: V) -> impl Parser<Output = Punctuated<T, S>> + Clone
+pub fn punctuated<T, S, U, V, E, R>(value: U, separator: V)
+    -> impl Parser<Output = Punctuated<T, S>, Error = R, FatalError = PaddedFatalError<R>> + Clone
 where
-    U: Parser<Output = T> + Clone + 'static,
-    V: Parser<Output = S> + Clone + 'static,
+    U: Parser<Output = T, Error = (), FatalError = R> + Clone + 'static,
+    V: Parser<Output = S, Error = (), FatalError = R> + Clone + 'static,
     T: Spanned + 'static,
     S: Spanned + 'static,
+    E: Clone + 'static,
+    R: Clone + 'static,
 {
+    let value = optional_leading_whitespace(value);
+    let separator = optional_leading_whitespace(separator);
     pre_punctuated(value, separator)
     .map(|pre_punctuated| {
         let PrePunctuated { values, separators, span } = pre_punctuated;
@@ -64,22 +69,24 @@ impl<T, S> Spanned for PrePunctuated<T, S> {
     }
 }
 
-fn pre_punctuated<T, S, U, V>(value: U, separator: V) -> impl Parser<Output = PrePunctuated<T, S>> + Clone
+fn pre_punctuated<T, S, U, V, E, R>(value: U, separator: V) -> impl Parser<Output = PrePunctuated<T, S>, Error = E, FatalError = R> + Clone
 where
-    U: Parser<Output = T> + Clone + 'static,
-    V: Parser<Output = S> + Clone + 'static,
+    U: Parser<Output = T, Error = (), FatalError = R> + Clone + 'static,
+    V: Parser<Output = S, Error = (), FatalError = R> + Clone + 'static,
     T: Spanned + 'static,
     S: Spanned + 'static,
+    E: Clone + 'static,
+    R: Clone + 'static,
 {
     value
     .clone()
     .then(
         separator
         .clone()
-        .then(optional_leading_whitespace(lazy(move || {
+        .then(lazy(move || {
             pre_punctuated(value.clone(), separator.clone())
             .optional()
-        })))
+        }))
         .optional()
     )
     .optional()

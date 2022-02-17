@@ -66,18 +66,17 @@ pub fn single_char<R>() -> impl Parser<Output = char, Error = UnexpectedEofError
     })
 }
 
-/*
 pub struct ExpectedLineCommentError {
-    position: usize,
+    pub position: usize,
 }
 
-pub fn line_comment() -> impl Parser<Output = (), Error = ExpectedLineCommentError> + Clone {
+pub fn line_comment<R>() -> impl Parser<Output = (), Error = ExpectedLineCommentError, FatalError = R> + Clone {
     from_fn(|input| {
         if !input.as_str().starts_with("//") {
             let error = ExpectedLineCommentError {
                 position: input.span().start(),
             };
-            return (false, Err(error));
+            return Err(Ok(error));
         };
         let mut char_indices = input.as_str().char_indices().skip(2);
         let len = loop {
@@ -92,26 +91,32 @@ pub fn line_comment() -> impl Parser<Output = (), Error = ExpectedLineCommentErr
                 };
             }
         };
-        (false, Ok(((), len)))
+        Ok(((), len))
     })
 }
 
-pub enum MultilineCommentError {
-    ExpectedMultilineComment {
-        position: usize,
-    },
-    UnclosedComment {
-        start_position: usize,
-    },
+pub struct ExpectedMultilineCommentError {
+    pub position: usize,
 }
 
-pub fn multiline_comment() -> impl Parser<Output = (), Error = MultilineCommentError> + Clone {
+#[derive(Clone)]
+pub struct UnclosedMultilineCommentError {
+    pub start_position: usize,
+}
+
+pub fn multiline_comment()
+    -> impl Parser<
+        Output = (),
+        Error = ExpectedMultilineCommentError,
+        FatalError = UnclosedMultilineCommentError,
+    > + Clone
+{
     from_fn(|input| {
         if !input.as_str().starts_with("/*") {
-            let error = MultilineCommentError::ExpectedMultilineComment {
+            let error = ExpectedMultilineCommentError {
                 position: input.span().start(),
             };
-            return (false, Err(error));
+            return Err(Ok(error));
         }
         let mut char_indices = input.as_str().char_indices().skip(2).peekable();
         let mut depth = 1;
@@ -119,10 +124,10 @@ pub fn multiline_comment() -> impl Parser<Output = (), Error = MultilineCommentE
             let c = match char_indices.next() {
                 Some((_, c)) => c,
                 None => {
-                    let error = MultilineCommentError::UnclosedComment {
+                    let error = UnclosedMultilineCommentError {
                         start_position: input.clone().start(),
                     };
-                    return (false, Err(error));
+                    return Err(Err(error));
                 },
             };
             match c {
@@ -147,60 +152,55 @@ pub fn multiline_comment() -> impl Parser<Output = (), Error = MultilineCommentE
                 _ => (),
             }
         };
-        (false, Ok(((), len)))
+        Ok(((), len))
     })
 }
 
-pub struct ExpectedWhitespaceError {
-    position: usize,
+pub struct ExpectedSingleWhitespaceCharError {
+    pub position: usize,
 }
 
-pub fn single_whitespace_char() -> impl Parser<Output = (), Error = ExpectedWhitespaceError> + Clone {
+pub fn single_whitespace_char<R>()
+    -> impl Parser<Output = (), Error = ExpectedSingleWhitespaceCharError, FatalError = R> + Clone
+{
     single_char()
-    .map_err_with_span(|UnexpectedEofError, span: Span| ExpectedWhitespaceError { position: span.end() })
+    .map_err_with_span(|UnexpectedEofError, span: Span| {
+        ExpectedSingleWhitespaceCharError { position: span.end() }
+    })
     .try_map_with_span(|c: char, span: Span| {
         if c.is_whitespace() {
             Ok(())
         } else {
-            return Err(ExpectedWhitespaceError {
+            return Err(Ok(ExpectedSingleWhitespaceCharError {
                 position: span.start()
-            });
+            }));
         }
     })
 }
 
-pub enum WhitespaceError {
-    ExpectedWhitespaceOrComment {
-        position: usize,
-    },
-    UnclosedMultilineComment {
-        start_position: usize,
-    },
+#[derive(Clone)]
+pub struct ExpectedWhitespaceError {
+    pub position: usize,
 }
 
-pub fn whitespace() -> impl Parser<Output = (), Error = WhitespaceError> + Clone {
+pub fn whitespace()
+    -> impl Parser<
+        Output = (),
+        Error = ExpectedWhitespaceError,
+        FatalError = UnclosedMultilineCommentError,
+    > + Clone
+{
     let single_whitespace_char = {
         single_whitespace_char()
-        .map_err(|ExpectedWhitespaceError { position }| {
-            WhitespaceError::ExpectedWhitespaceOrComment { position }
-        })
+        .map_err(|ExpectedSingleWhitespaceCharError { .. }| ())
     };
     let line_comment = {
         line_comment()
-        .map_err(|ExpectedLineCommentError { position }| {
-            WhitespaceError::ExpectedWhitespaceOrComment { position }
-        })
+        .map_err(|ExpectedLineCommentError { .. }| ())
     };
     let multiline_comment = {
         multiline_comment()
-        .map_err(|error| match error {
-            MultilineCommentError::ExpectedMultilineComment { position } => {
-                WhitespaceError::ExpectedWhitespaceOrComment { position }
-            },
-            MultilineCommentError::UnclosedComment { start_position } => {
-                WhitespaceError::UnclosedMultilineComment { start_position }
-            },
-        })
+        .map_err(|ExpectedMultilineCommentError { .. }| ())
     };
     let any_whitespace = {
         or! {
@@ -208,17 +208,15 @@ pub fn whitespace() -> impl Parser<Output = (), Error = WhitespaceError> + Clone
             line_comment,
             multiline_comment,
         }
-        .try_map_with_span(|whitespace_opt, span: Span| match whitespace_opt {
-            Some(whitespace) => Ok(whitespace),
-            None => Err(WhitespaceError::ExpectedWhitespaceOrComment { position: span.start() }),
-        })
     };
     any_whitespace
     .clone()
+    .map_err_with_span(|(), span| ExpectedWhitespaceError { position: span.start() })
     .then(any_whitespace.repeated())
-    .map(|(_, _vec)| ())
+    .map(|((), _vec)| ())
 }
 
+/*
 pub enum WithWhitespaceError<E> {
     Whitespace(WhitespaceError),
     Parser(E),
@@ -236,32 +234,33 @@ where
     )
     .map(|((), value)| value)
 }
+*/
 
-pub enum PaddedError<E> {
-    UnclosedMultilineComment {
-        start_position: usize,
-    },
-    Parser(E),
+#[derive(Clone)]
+pub enum PaddedFatalError<R> {
+    UnclosedMultilineComment(UnclosedMultilineCommentError),
+    Inner(R),
 }
 
-pub fn optional_leading_whitespace<P>(parser: P) -> impl Parser<Output = P::Output, Error = PaddedError<P::Error>> + Clone
+pub fn optional_leading_whitespace<P>(parser: P)
+    -> impl Parser<Output = P::Output, Error = P::Error, FatalError = PaddedFatalError<P::FatalError>> + Clone
 where
     P: Parser + Clone,
+    P::Error: Clone,
 {
     whitespace()
-    .or_else(|error| match error {
-        WhitespaceError::ExpectedWhitespaceOrComment { .. } => Ok(((), 0)),
-        WhitespaceError::UnclosedMultilineComment { start_position } => {
-            Err(PaddedError::UnclosedMultilineComment { start_position })
-        },
-    })
+    .map_err(|ExpectedWhitespaceError { .. }| ())
+    .optional()
+    .map_fatal_err(PaddedFatalError::UnclosedMultilineComment)
     .then(
         parser
-        .map_err(PaddedError::Parser)
+        .map_fatal_err(PaddedFatalError::Inner)
     )
-    .map(|(_, value)| value)
+    .map(|(_opt, value)| value)
 }
 
+/*
+/*
 pub fn padded<P>(parser: P) -> impl Parser<Output = P::Output, Error = PaddedError<P::Error>> + Clone
 where
     P: Parser + Clone,
@@ -304,12 +303,14 @@ impl<T, E> Clone for Todo<T, E> {
         }
     }
 }
+*/
+*/
 
-pub fn lazy<'a, T, E, P, F>(func: F) -> Rc<dyn Parser<Output = T, Error = E> + 'a>
+pub fn lazy<'a, T, E, R, P, F>(func: F) -> Rc<dyn Parser<Output = T, Error = E, FatalError = R> + 'a>
 where
     F: Fn() -> P,
     F: 'a,
-    P: Parser<Output = T, Error = E> + 'a,
+    P: Parser<Output = T, Error = E, FatalError = R> + 'a,
 {
     Rc::new(Lazy { func })
 }
@@ -326,13 +327,16 @@ where
 {
     type Output = P::Output;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), P::Error>) {
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<P::Error, P::FatalError>> {
         let parser = (self.func)();
         parser.parse(input)
     }
 }
 
+/*
+/*
 pub fn empty() -> impl Parser<Output = (), Error = Infallible> + Clone {
     from_fn(move |_input| {
         (false, Ok(((), 0)))

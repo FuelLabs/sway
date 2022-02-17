@@ -189,22 +189,3 @@ pub fn qualified_path_root() -> impl Parser<Output = QualifiedPathRoot> + Clone 
     })
 }
 
-/*
-pub fn path() -> impl Parser<Output = Path> + Clone {
-    double_colon_token()
-    .then_optional_whitespace()
-    .optional()
-    .then(ident())
-    .then(
-        optional_leading_whitespace(
-            double_colon_token()
-            .then_optional_whitespace()
-            .then(ident())
-        )
-        .repeated()
-    )
-    .map(|((leading_double_colon_opt, prefix), suffix)| {
-        Path { leading_double_colon_opt, prefix, suffix }
-    })
-}
-*/

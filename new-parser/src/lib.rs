@@ -11,14 +11,14 @@ mod ident;
 mod tokens;
 mod brackets;
 mod literal;
+mod punctuated;
+mod ty;
 /*
 mod error;
 #[macro_use]
-mod punctuated;
 mod path;
 mod item;
 mod array;
-mod ty;
 mod generics;
 mod expr;
 mod pattern;
@@ -35,13 +35,13 @@ pub use ident::*;
 pub use tokens::*;
 pub use brackets::*;
 pub use literal::*;
+pub use punctuated::*;
+pub use ty::*;
 /*
 pub use error::*;
-pub use punctuated::*;
 pub use path::*;
 pub use item::*;
 pub use array::*;
-pub use ty::*;
 pub use generics::*;
 pub use expr::*;
 pub use pattern::*;
