@@ -237,6 +237,7 @@ pub enum Warning {
     ShadowingReservedRegister {
         reg_name: Ident,
     },
+    CEIViolation,
 }
 
 impl fmt::Display for Warning {
@@ -342,6 +343,8 @@ impl fmt::Display for Warning {
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
+            CEIViolation => write!(f, 
+                "This effect (storage write) violates the CEI pattern. Try to write to storage/contract state before calling another contract.")
         }
     }
 }

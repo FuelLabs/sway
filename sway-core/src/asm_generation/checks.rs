@@ -86,29 +86,41 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
 ///
 ///For every opcode:
 ///  if this is a `SWW`/`SWWQ`:
-///     seen_effect = true;
-///  if this is a jump (non-conditional):
-///     seen_effect = false;
-///  if this is a CALL:
-///       if seen_effect = false:
+///     if seen_call:
 ///	      throw CEI violation
 ///
+///  if this is a jump (non-conditional):
+///     seen_call = false;
+///  if this is a CALL:
+///     seen_call = true;
+///
 fn check_for_cei_violation(ops: &[AllocatedOp]) -> CompileResult<()> {
+    let mut warnings = vec![];
     let mut seen_call = false;
     use AllocatedOpcode::*;
+    let default_span = sway_types::span::Span {
+        span: pest::Span::new("no span found for opcode".into(), 0, 1).unwrap(),
+        path: None,
+    };
     for op in ops {
         match op.opcode {
             SWW(..) | SWWQ(..) => {
                 if seen_call {
-                    todo!("Throw warn")
+                    warnings.push(CompileWarning {
+                        span: op
+                            .owning_span
+                            .clone()
+                            .unwrap_or_else(|| default_span.clone()),
+                        warning_content: Warning::CEIViolation,
+                    });
                 }
             }
             CALL(..) => seen_call = true,
-            JI(..) => {
+            JI(..) | RET(..) | RVRT(..) => {
                 seen_call = false;
             }
             _ => (),
         }
     }
-    ok((), vec![], vec![])
+    ok((), warnings, vec![])
 }
