@@ -21,30 +21,26 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-  rustfmt-check:
+  build-sway-examples:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
-      - name: Check Formatting
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
         uses: actions-rs/cargo@v1
         with:
-          command: fmt
-          args: --all -- --check
-
-  cargo-clippy:
-    needs: cancel-previous-runs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/clippy-check@v1.0.7
-        name: Check Clippy Linter
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
         with:
-          token: ${{ github.token }}
-          args: --all-features --all-targets -- -D warnings
+          command: run
+          args: --bin build-all-examples
 
   cargo-build-workspace:
     needs: cancel-previous-runs
@@ -64,20 +60,30 @@ jobs:
         env:
           RUSTFLAGS: "-D warnings"
 
-  cargo-test-workspace:
+  cargo-clippy:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/clippy-check@v1.0.7
+        name: Check Clippy Linter
+        with:
+          token: ${{ github.token }}
+          args: --all-features --all-targets -- -D warnings
+
+  cargo-fmt-check:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Run tests
+      - name: Check Formatting
         uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: fmt
+          args: --all -- --check
 
   cargo-run-e2e-test:
     needs: cancel-previous-runs
@@ -100,7 +106,7 @@ jobs:
           command: run
           args: --release --bin test
 
-  build-sway-examples:
+  cargo-test-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
@@ -110,19 +116,13 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
+      - name: Run tests
         uses: actions-rs/cargo@v1
         with:
-          command: install
-          args: --debug --path ./forc
-      - name: Build Sway Examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin build-all-examples
+          command: test
 
   notify-slack-on-failure:
-    needs: [rustfmt-check, build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
@@ -140,7 +140,7 @@ jobs:
 
   publish:
     # Only do this job if publishing a release
-    needs: [rustfmt-check, build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
@@ -184,7 +184,7 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-master-image:
-    needs: [build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
