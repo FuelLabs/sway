@@ -5,11 +5,6 @@ use ::result::Result;
 use ::address::Address;
 use ::contract_id::ContractId;
 
-// TODO: use an enum instead of loose contants for these once match statements work with enum.
-/// tracked here: https://github.com/FuelLabs/sway/issues/579
-const IS_CALLER_EXTERNAL = 1;
-const GET_CALLER = 2;
-
 pub enum AuthError {
     ContextError: (),
 }
@@ -20,9 +15,10 @@ pub enum Sender {
 }
 
 /// Returns `true` if the caller is external (ie: a script or predicate).
+// ref: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#gm-get-metadata
 pub fn caller_is_external() -> bool {
-    asm(r1, r2: IS_CALLER_EXTERNAL) {
-        gm r1 r2;
+    asm(r1) {
+        gm r1 i1;
         r1: bool
     }
 }
@@ -36,8 +32,8 @@ pub fn msg_sender() -> Result<Sender, AuthError> {
         Result::Err(AuthError::ContextError)
     } else {
         // Get caller's contract ID
-        let id = ~ContractId::from(asm(r1, r2: GET_CALLER) {
-            gm r1 r2;
+        let id = ~ContractId::from(asm(r1) {
+            gm r1 i2;
             r1: b256
         });
         Result::Ok(Sender::Id(id))
