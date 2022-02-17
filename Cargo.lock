@@ -2945,6 +2945,7 @@ dependencies = [
  "nanoid",
  "petgraph",
  "prettydiff 0.5.1",
+ "regex",
  "serde",
  "sha2",
  "smallvec",
