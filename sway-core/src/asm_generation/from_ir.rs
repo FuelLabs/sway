@@ -371,7 +371,7 @@ impl<'ir> AsmBuilder<'ir> {
                         "Calls are not yet supported.",
                         instr_val
                             .get_span(self.context)
-                            .unwrap_or_else(|| Self::empty_span()),
+                            .unwrap_or_else(Self::empty_span),
                     ));
                     return err(warnings, errors);
                 }
@@ -415,7 +415,7 @@ impl<'ir> AsmBuilder<'ir> {
                 "Value not an instruction.",
                 instr_val
                     .get_span(self.context)
-                    .unwrap_or_else(|| Self::empty_span()),
+                    .unwrap_or_else(Self::empty_span),
             ));
         }
         ok((), warnings, errors)
@@ -503,7 +503,7 @@ impl<'ir> AsmBuilder<'ir> {
                             msg,
                             instr_val
                                 .get_span(self.context)
-                                .unwrap_or_else(|| Self::empty_span()),
+                                .unwrap_or_else(Self::empty_span),
                         ));
                         return err(warnings, errors);
                     }
@@ -797,7 +797,7 @@ impl<'ir> AsmBuilder<'ir> {
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
                 Storage::Register(var_reg) => {
-                    self.reg_map.insert(*instr_val, var_reg.clone());
+                    self.reg_map.insert(*instr_val, var_reg);
                 }
                 Storage::Stack(word_offs) => {
                     let word_offs = word_offs * 8;
@@ -1025,17 +1025,14 @@ impl<'ir> AsmBuilder<'ir> {
             Some(storage) => match storage.clone() {
                 Storage::Data(data_id) => {
                     self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LWDataId(
-                            instr_reg.clone(),
-                            data_id.clone(),
-                        )),
+                        opcode: Either::Left(VirtualOp::LWDataId(instr_reg.clone(), data_id)),
                         comment: "load constant".into(),
                         owning_span: instr_val.get_span(self.context),
                     });
                 }
                 Storage::Register(var_reg) => {
                     self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg.clone())),
+                        opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg)),
                         comment: String::new(),
                         owning_span: instr_val.get_span(self.context),
                     });

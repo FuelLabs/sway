@@ -583,7 +583,7 @@ fn metadata_to_doc(context: &Context, md_namer: &MetadataNamer) -> Doc {
                     start,
                     end,
                 } => md_namer
-                    .get(&loc_idx)
+                    .get(loc_idx)
                     .map(|loc_ref_idx| format!("!{ref_idx} = span !{loc_ref_idx} {start} {end}")),
             }
             .map(&Doc::text_line)
