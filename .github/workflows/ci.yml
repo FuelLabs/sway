@@ -21,25 +21,13 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-  install-rust-and-checkout:
-    needs: cancel-previous-runs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
   rustfmt-check:
-    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
-      - name: Install rustfmt
-        run: rustup component add rustfmt
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - name: Check Formatting
         uses: actions-rs/cargo@v1
         with:
@@ -47,9 +35,13 @@ jobs:
           args: --all -- --check
 
   cargo-build-workspace:
-    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
       - name: Cargo Build Workspace
         uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
@@ -60,16 +52,19 @@ jobs:
           RUSTFLAGS: "-D warnings"
 
   cargo-test-workspace:
-    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
 
   cargo-run-e2e-test:
-    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     services:
       fuel-core:
@@ -77,6 +72,11 @@ jobs:
         ports:
           - 4000:4000
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
       - name: Cargo Run E2E Tests
         uses: actions-rs/cargo@v1
         with:
@@ -84,9 +84,13 @@ jobs:
           args: --release --bin test
 
   build-sway-examples:
-    needs: install-rust-and-checkout
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
       - name: Install Forc
         uses: actions-rs/cargo@v1
         with:
