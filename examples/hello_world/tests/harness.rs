@@ -6,7 +6,7 @@ use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
 // FIXME: Incorrect path, see https://github.com/FuelLabs/fuels-rs/issues/94
-abigen!(MyContract, "./my-contract-abi.json");
+abigen!(MyContract, "./out/hello_world-abi.json");
 
 #[tokio::test]
 async fn harness() {

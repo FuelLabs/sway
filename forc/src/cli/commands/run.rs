@@ -3,7 +3,7 @@ use structopt::{self, StructOpt};
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Default, StructOpt)]
 pub struct Command {
     /// Hex string of data to input to script.
     #[structopt(short, long)]
@@ -61,6 +61,17 @@ pub struct Command {
     /// 32-byte contract ID that will be called during the transaction.
     #[structopt(long = "contract")]
     pub contract: Option<Vec<String>>,
+
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    #[structopt(long)]
+    pub output_directory: Option<String>,
+
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minified", i.e. all on one line without whitespace.
+    #[structopt(long)]
+    pub minify_json_abi: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

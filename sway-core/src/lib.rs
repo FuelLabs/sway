@@ -369,7 +369,14 @@ pub fn compile_to_asm(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult {
-    match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
+    let ast_res = compile_to_ast(input, initial_namespace, &build_config, dependency_graph);
+    ast_to_asm(ast_res, &build_config)
+}
+
+/// Given an AST compilation result, compile to a [CompilationResult] which contains the asm in
+/// opcode form (not raw bytes/bytecode).
+pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> CompilationResult {
+    match ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             CompilationResult::Failure { warnings, errors }
         }
@@ -383,9 +390,9 @@ pub fn compile_to_asm(
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
                         if build_config.use_ir {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, &build_config)
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
                         } else {
-                            compile_ast_to_asm(*parse_tree, &build_config)
+                            compile_ast_to_asm(*parse_tree, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
@@ -510,7 +517,17 @@ pub fn compile_to_bytecode(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
-    match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
+    let asm_res = compile_to_asm(input, initial_namespace, build_config, dependency_graph);
+    asm_to_bytecode(asm_res, source_map)
+}
+
+/// Given a [CompilationResult] containing the assembly (opcodes), compile to a
+/// [BytecodeCompilationResult] which contains the asm in bytecode form.
+pub fn asm_to_bytecode(
+    asm_res: CompilationResult,
+    source_map: &mut SourceMap,
+) -> BytecodeCompilationResult {
+    match asm_res {
         CompilationResult::Success {
             mut asm,
             mut warnings,
