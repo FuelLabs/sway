@@ -94,6 +94,8 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
 ///  if this is a CALL:
 ///     seen_call = true;
 ///
+/// TODO: We need to do this at the storage API level, or improve the span here. The span often
+/// just points to the standard library that is doing the storing.
 fn check_for_cei_violation(ops: &[AllocatedOp]) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut seen_call = false;
