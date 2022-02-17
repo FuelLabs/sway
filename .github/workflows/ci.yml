@@ -44,9 +44,9 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - name: Cargo Build Workspace
-        uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
+        name: Cargo Build Workspace
         with:
           command: build
           args: --workspace --all-features --all-targets
@@ -62,6 +62,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - uses: Swatinem/rust-cache@v1
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -81,6 +82,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - uses: Swatinem/rust-cache@v1
       - name: Cargo Run E2E Tests
         uses: actions-rs/cargo@v1
         with:
@@ -96,6 +98,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
         with:
