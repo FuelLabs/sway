@@ -51,6 +51,8 @@ pub mod instruction;
 pub use instruction::*;
 pub mod irtype;
 pub use irtype::*;
+pub mod metadata;
+pub use metadata::*;
 pub mod module;
 pub use module::*;
 pub mod optimize;

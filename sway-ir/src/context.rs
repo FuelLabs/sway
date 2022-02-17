@@ -15,6 +15,7 @@ use crate::{
     block::BlockContent,
     function::FunctionContent,
     irtype::{AbiInstanceContent, Aggregate, AggregateContent},
+    metadata::Metadatum,
     module::ModuleContent,
     module::ModuleIterator,
     pointer::PointerContent,
@@ -35,6 +36,8 @@ pub struct Context {
     pub aggregates: Arena<AggregateContent>,
     pub abi_instances: Arena<AbiInstanceContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
+
+    pub metadata: Arena<Metadatum>,
 
     pub(super) aggregate_names: HashMap<String, Aggregate>,
     aggregate_symbols: HashMap<Aggregate, HashMap<String, u64>>,

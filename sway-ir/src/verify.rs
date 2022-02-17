@@ -18,7 +18,7 @@ use crate::{
     irtype::{Aggregate, Type},
     module::ModuleContent,
     pointer::Pointer,
-    value::{Value, ValueContent},
+    value::{Value, ValueDatum},
 };
 
 impl Context {
@@ -46,7 +46,7 @@ impl Context {
 
     fn verify_block(&self, function: &FunctionContent, block: &BlockContent) -> Result<(), String> {
         for ins in &block.instructions {
-            self.verify_instruction(function, &self.values[ins.0])?;
+            self.verify_instruction(function, &self.values[ins.0].value)?;
         }
         let (last_is_term, num_terms) =
             block.instructions.iter().fold((false, 0), |(_, n), ins| {
@@ -69,9 +69,9 @@ impl Context {
     fn verify_instruction(
         &self,
         function: &FunctionContent,
-        instruction: &ValueContent,
+        instruction: &ValueDatum,
     ) -> Result<(), String> {
-        if let ValueContent::Instruction(instruction) = instruction {
+        if let ValueDatum::Instruction(instruction) = instruction {
             match instruction {
                 Instruction::AsmBlock(asm, args) => self.verify_asm_block(asm, args)?,
                 Instruction::Branch(block) => self.verify_br(block)?,
