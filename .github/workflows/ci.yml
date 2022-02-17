@@ -67,7 +67,7 @@ jobs:
           command: test
 
   cargo-run-e2e-test:
-    needs: [install-rust-toolchain, run-fuel-core]
+    needs: install-rust-toolchain
     runs-on: ubuntu-latest
     services:
       fuel-core:
