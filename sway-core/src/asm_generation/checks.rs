@@ -87,7 +87,7 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
 ///For every opcode:
 ///  if this is a `SWW`/`SWWQ`:
 ///     if seen_call:
-///	      throw CEI violation
+///       throw CEI violation
 ///
 ///  if this is a jump (non-conditional):
 ///     seen_call = false;
