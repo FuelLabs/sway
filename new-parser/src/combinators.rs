@@ -19,15 +19,16 @@ where
 {
     type Output = U;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(U, usize), P::Error>) {
-        let (commited, res) = self.parser.parse(input);
-        let (value0, len) = match res {
-            Ok((value0, len)) => (value0, len),
-            Err(error) => return (commited, Err(error)),
-        };
-        let value1 = (self.func)(value0);
-        (commited, Ok((value1, len)))
+    fn parse(&self, input: &Span) -> Result<(U, usize), Result<P::Error, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value0, len)) => {
+                let value1 = (self.func)(value0);
+                Ok((value1, len))
+            },
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -50,16 +51,17 @@ where
 {
     type Output = U;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(U, usize), P::Error>) {
-        let (commited, res) = self.parser.parse(input);
-        let (value0, len) = match res {
-            Ok((value0, len)) => (value0, len),
-            Err(error) => return (commited, Err(error)),
-        };
-        let span = input.slice(..len);
-        let value1 = (self.func)(value0, span);
-        (commited, Ok((value1, len)))
+    fn parse(&self, input: &Span) -> Result<(U, usize), Result<P::Error, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value0, len)) => {
+                let span = input.slice(..len);
+                let value1 = (self.func)(value0, span);
+                Ok((value1, len))
+            },
+            Err(error) => Err(error),
+        }
     }
 }
 
@@ -78,22 +80,22 @@ impl<P, F> TryMap<P, F> {
 impl<P, T, F> Parser for TryMap<P, F>
 where
     P: Parser,
-    F: Fn(P::Output) -> Result<T, P::Error>,
+    F: Fn(P::Output) -> Result<T, Result<P::Error, P::FatalError>>,
 {
     type Output = T;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), P::Error>) {
-        let (commited, res) = self.parser.parse(input);
-        let (value0, len) = match res {
-            Ok((value0, len)) => (value0, len),
-            Err(error) => return (commited, Err(error)),
-        };
-        let value1 = match (self.func)(value0) {
-            Ok(value1) => value1,
-            Err(error) => return (commited, Err(error)),
-        };
-        (commited, Ok((value1, len)))
+    fn parse(&self, input: &Span) -> Result<(T, usize), Result<P::Error, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value0, len)) => {
+                match (self.func)(value0) {
+                    Ok(value1) => Ok((value1, len)),
+                    Err(error) => Err(error),
+                }
+            },
+            Err(error) => Err(error),
+        }
     }
 }
 
@@ -112,23 +114,23 @@ impl<P, F> TryMapWithSpan<P, F> {
 impl<P, T, F> Parser for TryMapWithSpan<P, F>
 where
     P: Parser,
-    F: Fn(P::Output, Span) -> Result<T, P::Error>,
+    F: Fn(P::Output, Span) -> Result<T, Result<P::Error, P::FatalError>>,
 {
     type Output = T;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), P::Error>) {
-        let (commited, res) = self.parser.parse(input);
-        let (value0, len) = match res {
-            Ok((value0, len)) => (value0, len),
-            Err(error) => return (commited, Err(error)),
-        };
-        let span = input.slice(..len);
-        let value1 = match (self.func)(value0, span) {
-            Ok(value1) => value1,
-            Err(error) => return (commited, Err(error)),
-        };
-        (commited, Ok((value1, len)))
+    fn parse(&self, input: &Span) -> Result<(T, usize), Result<P::Error, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value0, len)) => {
+                let span = input.slice(..len);
+                match (self.func)(value0, span) {
+                    Ok(value1) => Ok((value1, len)),
+                    Err(error) => Err(error),
+                }
+            },
+            Err(error) => Err(error)
+        }
     }
 }
 
@@ -147,62 +149,115 @@ impl<P0, P1> Then<P0, P1> {
 impl<P0, P1> Parser for Then<P0, P1>
 where
     P0: Parser,
-    P1: Parser<Error = P0::Error>,
+    P1: Parser<Error = P0::Error, FatalError = P0::FatalError>,
 {
     type Output = (P0::Output, P1::Output);
     type Error = P0::Error;
+    type FatalError = P0::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<((P0::Output, P1::Output), usize), P0::Error>) {
-        let (commited0, res0) = self.parser0.parse(input);
-        let (value0, len0) = match res0 {
-            Ok((value0, len0)) => (value0, len0),
-            Err(error) => return (commited0, Err(error)),
-        };
-        let input = input.slice(len0..);
-        let (commited1, res1) = self.parser1.parse(&input);
-        let commited = commited0 || commited1;
-        let (value1, len1) = match res1 {
-            Ok((value1, len1)) => (value1, len1),
-            Err(error) => return (commited, Err(error)),
-        };
-        (commited, Ok(((value0, value1), len0 + len1)))
+    fn parse(&self, input: &Span) -> Result<((P0::Output, P1::Output), usize), Result<P0::Error, P0::FatalError>> {
+        match self.parser0.parse(input) {
+            Ok((value0, len0)) => {
+                let input = input.slice(len0..);
+                match self.parser1.parse(&input) {
+                    Ok((value1, len1)) => {
+                        Ok(((value0, value1), len0 + len1))
+                    },
+                    Err(error) => Err(error),
+                }
+            },
+            Err(error) => Err(error),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Fatal<P, E> {
+    parser: P,
+    _phantom_data: PhantomData<E>,
+}
+
+impl<P, E> Fatal<P, E> {
+    pub fn new(parser: P) -> Fatal<P, E> {
+        Fatal { parser, _phantom_data: PhantomData }
+    }
+}
+
+impl<P, E> Parser for Fatal<P, E>
+where
+    P: Parser,
+    P::FatalError: Into<P::Error>,
+{
+    type Output = P::Output;
+    type Error = E;
+    type FatalError = P::Error;
+
+    fn parse(&self, input: &Span)
+        -> Result<(P::Output, usize), Result<E, P::Error>>
+    {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => Err(Err(error)),
+            Err(Err(error)) => Err(Err(error.into())),
+            //Err(error) => Err(Err(error)),
+        }
     }
 }
 
 /*
-#[derive(Clone)]
-pub struct Optional<P> {
-    parser: P,
+pub struct CommitThen<P0, P1> {
+    parser0: P0,
+    parser1: P1,
 }
 
-impl<P> Optional<P> {
-    pub fn new(parser: P) -> Optional<P> {
-        Optional { parser }
+impl<P0, P1> CommitThen<P0, P1> {
+    pub fn new(parser0: P0, parser1: P1) -> CommitThen<P0, P1> {
+        CommitThen { parser0, parser1 }
     }
 }
 
-impl<P> Parser for Optional<P>
+impl<P0, P1> Parser for CommitThen<P0, P1>
+where
+    P0: Parser,
+    P1: Parser,
+{
+
+}
+*/
+
+#[derive(Clone)]
+pub struct Optional<P, E> {
+    parser: P,
+    _phantom_data: PhantomData<E>,
+}
+
+impl<P, E> Optional<P, E> {
+    pub fn new(parser: P) -> Optional<P, E> {
+        Optional {
+            parser,
+            _phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<P, E> Parser for Optional<P, E>
 where
     P: Parser,
 {
     type Output = Option<P::Output>;
+    type Error = E;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(Option<P::Output>, usize), ParseError>) {
-        let (commited, res) = self.parser.parse(input);
-        match res {
-            Ok((value, len)) => (commited, Ok((Some(value), len))),
-            Err(error) => {
-                if commited {
-                    (true, Err(error))
-                } else {
-                    (false, Ok((None, 0)))
-                }
-            },
+    fn parse(&self, input: &Span) -> Result<(Option<P::Output>, usize), Result<E, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value, len)) => Ok((Some(value), len)),
+            Err(Ok(_error)) => Ok((None, 0)),
+            Err(Err(error)) => Err(Err(error)),
         }
     }
 }
-*/
 
+/*
 #[derive(Clone)]
 pub struct ThenOptionalWhitespace<P> {
     parser: P,
@@ -313,51 +368,50 @@ where
         .parse(input)
     }
 }
+*/
 
 #[derive(Clone)]
-pub struct Repeated<P> {
+pub struct Repeated<P, E> {
     parser: P,
+    _phantom_data: PhantomData<E>,
 }
 
-impl<P> Repeated<P> {
-    pub fn new(parser: P) -> Repeated<P> {
-        Repeated { parser }
+impl<P, E> Repeated<P, E> {
+    pub fn new(parser: P) -> Repeated<P, E> {
+        Repeated {
+            parser,
+            _phantom_data: PhantomData,
+        }
     }
 }
 
-impl<P> Parser for Repeated<P>
+impl<P, E> Parser for Repeated<P, E>
 where
     P: Parser,
 {
     type Output = Vec<P::Output>;
-    type Error = P::Error;
+    type Error = E;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(Vec<P::Output>, usize), P::Error>) {
-        let mut any_commited = false;
+    fn parse(&self, input: &Span) -> Result<(Vec<P::Output>, usize), Result<E, P::FatalError>> {
         let mut values = Vec::new();
         let mut total_len = 0;
         let mut remaining_input = input.clone();
         loop {
-            let (commited, res) = self.parser.parse(&remaining_input);
-            match res {
+            match self.parser.parse(&remaining_input) {
                 Ok((value, len)) => {
                     remaining_input = remaining_input.slice(len..);
-                    any_commited |= commited;
                     total_len += len;
                     values.push(value);
                 },
-                Err(error) => {
-                    if commited {
-                        return (true, Err(error));
-                    } else {
-                        return (any_commited, Ok((values, total_len)));
-                    }
-                },
+                Err(Ok(_error)) => return Ok((values, total_len)),
+                Err(Err(error)) => return Err(Err(error)),
             }
         }
     }
 }
 
+/*
 /*
 #[derive(Clone)]
 pub struct WhileSome<P> {
@@ -400,6 +454,7 @@ where
     }
 }
 */
+*/
 
 #[derive(Clone)]
 pub struct AndThen<P, F> {
@@ -417,29 +472,28 @@ impl<P0, P1, F> Parser for AndThen<P0, F>
 where
     P0: Parser,
     F: Fn(P0::Output) -> P1,
-    P1: Parser<Error = P0::Error>,
+    P1: Parser<Error = P0::Error, FatalError = P0::FatalError>,
 {
     type Output = P1::Output;
     type Error = P0::Error;
+    type FatalError = P0::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P1::Output, usize), P0::Error>) {
-        let (commited0, res) = self.parser.parse(input);
-        let (value0, len0) = match res {
-            Ok((value0, len0)) => (value0, len0),
-            Err(error) => return (commited0, Err(error)),
-        };
-        let input = input.slice(len0..);
-        let parser1 = (self.func)(value0);
-        let (commited1, res) = parser1.parse(&input);
-        let commited = commited0 || commited1;
-        let (value1, len1) = match res {
-            Ok((value1, len1)) => (value1, len1),
-            Err(error) => return (commited, Err(error)),
-        };
-        (commited, Ok((value1, len0 + len1)))
+    fn parse(&self, input: &Span) -> Result<(P1::Output, usize), Result<P0::Error, P0::FatalError>> {
+        match self.parser.parse(input) {
+            Ok((value0, len0)) => {
+                let input = input.slice(len0..);
+                let parser = (self.func)(value0);
+                match parser.parse(&input) {
+                    Ok((value1, len1)) => Ok((value1, len0 + len1)),
+                    Err(error) => Err(error),
+                }
+            },
+            Err(error) => Err(error),
+        }
     }
 }
 
+/*
 #[derive(Clone)]
 pub struct Debug<P> {
     parser: P,
@@ -470,7 +524,9 @@ where
         }
     }
 }
+*/
 
+/*
 #[derive(Clone)]
 pub struct Commit<P> {
     parser: P,
@@ -488,16 +544,20 @@ where
 {
     type Output = P::Output;
     type Error = P::Error;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), P::Error>) {
-        let (commited, res) = self.parser.parse(input);
-        match res {
-            Ok((value, len)) => (true, Ok((value, len))),
-            Err(error) => (commited, Err(error)),
+    fn parse(&self, input: &Span)
+        -> Result<(P::Output, usize), Result<P::Error, P::FatalError>>
+    {
+        match self.parser.parse(input) {
+            Ok((value, len, _commited)) => Ok((value, len, true)),
+            Err(error) => Err(error),
         }
     }
 }
+*/
 
+/*
 #[derive(Clone)]
 pub struct Uncommit<P> {
     parser: P,
@@ -524,6 +584,7 @@ where
         }
     }
 }
+*/
 
 #[derive(Clone)]
 pub struct MapErrWithSpan<P, F> {
@@ -544,12 +605,43 @@ where
 {
     type Output = P::Output;
     type Error = E;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), E>) {
-        let (commited, res) = self.parser.parse(input);
-        match res {
-            Ok(value) => (commited, Ok(value)),
-            Err(error) => (commited, Err((self.func)(error, input.clone()))),
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<E, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => Err(Ok((self.func)(error, input.clone()))),
+            Err(Err(error)) => Err(Err(error)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct MapFatalErrWithSpan<P, F> {
+    parser: P,
+    func: F,
+}
+
+impl<P, F> MapFatalErrWithSpan<P, F> {
+    pub fn new(parser: P, func: F) -> MapFatalErrWithSpan<P, F> {
+        MapFatalErrWithSpan { parser, func }
+    }
+}
+
+impl<P, F, R> Parser for MapFatalErrWithSpan<P, F>
+where
+    P: Parser,
+    F: Fn(P::FatalError, Span) -> R,
+{
+    type Output = P::Output;
+    type Error = P::Error;
+    type FatalError = R;
+
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<P::Error, R>> {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => Err(Ok(error)),
+            Err(Err(error)) => Err(Err((self.func)(error, input.clone()))),
         }
     }
 }
@@ -573,12 +665,43 @@ where
 {
     type Output = P::Output;
     type Error = E;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), E>) {
-        let (commited, res) = self.parser.parse(input);
-        match res {
-            Ok(value) => (commited, Ok(value)),
-            Err(error) => (commited, Err((self.func)(error))),
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<E, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => Err(Ok((self.func)(error))),
+            Err(Err(error)) => Err(Err(error)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct MapFatalErr<P, F> {
+    parser: P,
+    func: F,
+}
+
+impl<P, F> MapFatalErr<P, F> {
+    pub fn new(parser: P, func: F) -> MapFatalErr<P, F> {
+        MapFatalErr { parser, func }
+    }
+}
+
+impl<P, F, R> Parser for MapFatalErr<P, F>
+where
+    P: Parser,
+    F: Fn(P::FatalError) -> R,
+{
+    type Output = P::Output;
+    type Error = P::Error;
+    type FatalError = R;
+
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<P::Error, R>> {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => Err(Ok(error)),
+            Err(Err(error)) => Err(Err((self.func)(error))),
         }
     }
 }
@@ -598,16 +721,17 @@ impl<P, F> OrElse<P, F> {
 impl<P, F, E> Parser for OrElse<P, F>
 where
     P: Parser,
-    F: Fn(P::Error) -> Result<(P::Output, usize), E>,
+    F: Fn(P::Error, &Span) -> Result<(P::Output, usize), Result<E, P::FatalError>>,
 {
     type Output = P::Output;
     type Error = E;
+    type FatalError = P::FatalError;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), E>) {
-        let (commited, res) = self.parser.parse(input);
-        match res {
-            Ok(value) => (commited, Ok(value)),
-            Err(error) => (commited, (self.func)(error)),
+    fn parse(&self, input: &Span) -> Result<(P::Output, usize), Result<E, P::FatalError>> {
+        match self.parser.parse(input) {
+            Ok(stuff) => Ok(stuff),
+            Err(Ok(error)) => (self.func)(error, input),
+            Err(Err(error)) => Err(Err(error)),
         }
     }
 }

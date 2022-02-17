@@ -1,18 +1,20 @@
 #![recursion_limit = "256"]
 
+pub enum Infallible {}
+
 mod priv_prelude;
 mod span;
 mod parser;
-mod error;
-#[macro_use]
-mod primitive;
 mod combinators;
+mod primitive;
 mod ident;
 mod tokens;
 mod brackets;
-mod punctuated;
-/*
 mod literal;
+/*
+mod error;
+#[macro_use]
+mod punctuated;
 mod path;
 mod item;
 mod array;
@@ -27,15 +29,15 @@ mod program;
 
 pub use span::*;
 pub use parser::*;
-pub use error::*;
-pub use primitive::*;
 pub use combinators::*;
+pub use primitive::*;
 pub use ident::*;
 pub use tokens::*;
 pub use brackets::*;
-pub use punctuated::*;
-/*
 pub use literal::*;
+/*
+pub use error::*;
+pub use punctuated::*;
 pub use path::*;
 pub use item::*;
 pub use array::*;

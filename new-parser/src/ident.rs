@@ -21,7 +21,7 @@ pub struct ExpectedIdentError {
     pub position: usize,
 }
 
-pub fn ident() -> impl Parser<Output = Ident, Error = ExpectedIdentError> + Clone {
+pub fn ident<R>() -> impl Parser<Output = Ident, Error = ExpectedIdentError, FatalError = R> + Clone {
     from_fn(|input| {
         let mut char_indices = input.as_str().char_indices();
         let c = match char_indices.next() {
@@ -30,14 +30,14 @@ pub fn ident() -> impl Parser<Output = Ident, Error = ExpectedIdentError> + Clon
                 let error = ExpectedIdentError {
                     position: input.start(),
                 };
-                return (false, Err(error));
+                return Err(Ok(error));
             },
         };
         if !c.is_xid_start() {
             let error = ExpectedIdentError {
                 position: input.start(),
             };
-            return (false, Err(error));
+            return Err(Ok(error));
         }
         let len = loop {
             let (i, c) = match char_indices.next() {
@@ -48,7 +48,7 @@ pub fn ident() -> impl Parser<Output = Ident, Error = ExpectedIdentError> + Clon
                 break i;
             }
         };
-        (false, Ok((Ident { span: input.slice(..len) }, len)))
+        Ok((Ident { span: input.slice(..len) }, len))
     })
 }
 

@@ -7,6 +7,7 @@ macro_rules! define_keyword (
             span: Span,
         }
 
+        #[derive(Clone)]
         pub struct $err_name {
             pub position: usize,
         }
@@ -17,16 +18,16 @@ macro_rules! define_keyword (
             }
         }
 
-        pub fn $fn_name() -> impl Parser<Output = $ty_name> + Clone {
+        pub fn $fn_name<R>() -> impl Parser<Output = $ty_name, Error = $err_name, FatalError = R> + Clone {
             ident()
             .map_err(|ExpectedIdentError { position }| $err_name { position })
             .try_map(|ident: Ident| {
                 if ident.as_str() == $s {
                     Ok($ty_name { span: ident.span() })
                 } else {
-                    Err($err_name {
+                    Err(Ok($err_name {
                         position: ident.span().start(),
-                    })
+                    }))
                 }
             })
         }
@@ -50,7 +51,7 @@ macro_rules! define_token (
             }
         }
 
-        pub fn $fn_name() -> impl Parser<Output = $ty_name, Error = $err_name> + Clone {
+        pub fn $fn_name<R>() -> impl Parser<Output = $ty_name, Error = $err_name, FatalError = R> + Clone {
             keyword($s)
             .map_err(|ExpectedKeywordError { position, .. }| $err_name { position })
             .map_with_span(|(), span| $ty_name { span })

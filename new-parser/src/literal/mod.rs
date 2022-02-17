@@ -25,63 +25,136 @@ impl Spanned for NumericSign {
     }
 }
 
-pub fn numeric_sign() -> impl Parser<Output = NumericSign> + Clone {
+pub struct ExpectedNumericSignError {
+    pub position: usize,
+}
+
+pub fn numeric_sign<R>()
+    -> impl Parser<Output = NumericSign, Error = ExpectedNumericSignError, FatalError = R> + Clone
+{
     let positive = {
         add_token()
         .map(|add_token| NumericSign::Positive { add_token })
+        .map_err(|ExpectedAddTokenError { .. }| ())
     };
     let negative = {
         sub_token()
         .map(|sub_token| NumericSign::Negative { sub_token })
+        .map_err(|ExpectedSubTokenError { .. }| ())
     };
 
-    positive
-    .or(negative)
+    or! {
+        positive,
+        negative,
+    }
+    .or_else(|(), span| Err(Ok(ExpectedNumericSignError { position: span.start() })))
 }
 
-pub fn digit(radix: u32) -> impl Parser<Output = u32> + Clone {
+pub struct ExpectedDigitError {
+    pub position: usize,
+}
+
+pub fn digit<R>(radix: u32)
+    -> impl Parser<Output = u32, Error = ExpectedDigitError, FatalError = R> + Clone
+{
     single_char()
+    .map_err_with_span(|UnexpectedEofError, span| ExpectedDigitError { position: span.start() })
     .try_map_with_span(move |c: char, span| match c.to_digit(radix) {
         Some(value) => Ok(value),
-        None => Err(ParseError::ExpectedDigit { span }),
+        None => Err(Ok(ExpectedDigitError { position: span.start() })),
     })
 }
 
-pub fn escape_code() -> impl Parser<Output = char> + Clone {
-    let newline = keyword("n").map(|()| '\n');
-    let carriage_return = keyword("r").map(|()| '\r');
-    let tab = keyword("t").map(|()| '\t');
-    let backslash = keyword("\\").map(|()| '\\');
-    let null = keyword("0").map(|()| '\0');
-    let apostrophe = keyword("'").map(|()| '\'');
-    let quote = keyword("\"").map(|()| '"');
+#[derive(Clone)]
+pub struct EscapeCodeError {
+    pub position: usize,
+}
+
+#[derive(Clone)]
+pub enum EscapeCodeFatalError {
+    ExpectedOpenBraceForUnicodeEscape  {
+        position: usize,
+    },
+    ExpectedCloseBraceOrDigitInUnicodeEscape {
+        position: usize,
+    },
+    ExpectedHexDigitForHexEscape {
+        position: usize,
+    },
+    UnicodeEscapeOutOfRange {
+        digits_span: Span,
+    },
+    InvalidUnicodeEscapeChar {
+        digits_span: Span,
+    },
+}
+
+pub fn escape_code()
+    -> impl Parser<Output = char, Error = EscapeCodeError, FatalError = EscapeCodeFatalError> + Clone
+{
+    let newline = keyword("n").map(|()| '\n').map_err(|ExpectedKeywordError { .. }| ());
+    let carriage_return = keyword("r").map(|()| '\r').map_err(|ExpectedKeywordError { .. }| ());
+    let tab = keyword("t").map(|()| '\t').map_err(|ExpectedKeywordError { .. }| ());
+    let backslash = keyword("\\").map(|()| '\\').map_err(|ExpectedKeywordError { .. }| ());
+    let null = keyword("0").map(|()| '\0').map_err(|ExpectedKeywordError { .. }| ());
+    let apostrophe = keyword("'").map(|()| '\'').map_err(|ExpectedKeywordError { .. }| ());
+    let quote = keyword("\"").map(|()| '"').map_err(|ExpectedKeywordError { .. }| ());
     let hex = {
         keyword("x")
-        .then(digit(16))
-        .then(digit(16))
-        .map(|(((), high), low)| char::try_from(high << 16 | low).unwrap())
+        .map_err(|ExpectedKeywordError { .. }| ())
+        .then(
+            digit(16)
+            .then(digit(16))
+            .map_err(|ExpectedDigitError { position }| {
+                EscapeCodeFatalError::ExpectedHexDigitForHexEscape { position }
+            })
+            .fatal()
+        )
+        //.map(|(((), high), low)| char::try_from(high << 16 | low).unwrap())
+        .map(|((), (high, low))| char::try_from(high << 16 | low).unwrap())
     };
     let unicode = {
         keyword("u")
-        .then(keyword("{"))
-        .then(digit(16).repeated().map_with_span(|digits, span| (digits, span)))
-        .then(keyword("}"))
-        .try_map(|((((), ()), (digits, digits_span)), ())| {
+        .map_err(|ExpectedKeywordError { .. }| ())
+        .then(
+            keyword("{")
+            .map_err(|ExpectedKeywordError { position, .. }| {
+                EscapeCodeFatalError::ExpectedOpenBraceForUnicodeEscape { position }
+            })
+            .then(
+                digit(16)
+                .map_err(|ExpectedDigitError { .. }| ())
+                .repeated()
+                .map_with_span(|digits, span| (digits, span))
+            )
+            .then(
+                keyword("}")
+                .map_err(|ExpectedKeywordError { position, .. }| {
+                    EscapeCodeFatalError::ExpectedCloseBraceOrDigitInUnicodeEscape { position }
+                })
+            )
+            .fatal()
+        )
+        .try_map(|((), (((), (digits, digits_span)), ()))| {
             let mut value = 0u32;
             for digit in digits {
                 value = match value.checked_mul(16) {
                     Some(value) => value,
-                    None => return Err(ParseError::UnicodeEscapeOutOfRange {
-                        span: digits_span,
-                    }),
+                    None => {
+                        let error = EscapeCodeFatalError::UnicodeEscapeOutOfRange { digits_span };
+                        return Err(Err(error));
+                    },
                 };
                 value += digit;
             }
             match char::try_from(value) {
                 Ok(c) => Ok(c),
-                Err(_) => Err(ParseError::InvalidUnicodeEscapeChar {
-                    span: digits_span,
-                }),
+                Err(_) => {
+                    let error = EscapeCodeFatalError::InvalidUnicodeEscapeChar {
+                        digits_span,
+                    };
+                    Err(Err(error))
+                },
             }
         })
     };
@@ -97,9 +170,7 @@ pub fn escape_code() -> impl Parser<Output = char> + Clone {
         hex,
         unicode,
     }
-    .try_map_with_span(|char_opt: Option<char>, span| {
-        char_opt.ok_or_else(|| ParseError::InvalidEscapeCode { span })
-    })
+    .or_else(|(), span| Err(Ok(EscapeCodeError { position: span.start() })))
 }
 
 #[derive(Clone, Debug)]
@@ -129,22 +200,34 @@ impl BasePrefix {
     }
 }
 
-pub fn base_prefix() -> impl Parser<Output = BasePrefix> + Clone {
+pub struct ExpectedBasePrefixError {
+    pub position: usize,
+}
+
+pub fn base_prefix<R>()
+    -> impl Parser<Output = BasePrefix, Error = ExpectedBasePrefixError, FatalError = R> + Clone
+{
     let hex = {
         hex_prefix_token()
         .map(BasePrefix::Hex)
+        .map_err(|ExpectedHexPrefixTokenError { .. }| ())
     };
     let octal = {
         octal_prefix_token()
         .map(BasePrefix::Octal)
+        .map_err(|ExpectedOctalPrefixTokenError { .. }| ())
     };
     let binary = {
         binary_prefix_token()
         .map(BasePrefix::Binary)
+        .map_err(|ExpectedBinaryPrefixTokenError { .. }| ())
     };
     
-    hex
-    .or(octal)
-    .or(binary)
+    or! {
+        hex,
+        octal,
+        binary,
+    }
+    .or_else(|(), span| Err(Ok(ExpectedBasePrefixError { position: span.start() })))
 }
 

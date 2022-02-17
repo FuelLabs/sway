@@ -51,71 +51,61 @@ impl Spanned for IntTy {
     }
 }
 
-pub fn big_uint(radix: u32) -> impl Parser<Output = BigUint> + Clone {
-    let inner_digit = {
-        digit(radix)
-        .map(Some)
-        .or(keyword("_").map(|()| None))
-    };
-    digit(radix)
-    .then(inner_digit.repeated())
-    .map(move |(first_digit, digits)| {
-        let mut value = BigUint::from(first_digit);
-        for digit_opt in digits {
-            if let Some(digit) = digit_opt {
-                value *= radix;
-                value += digit;
-            }
-        }
-        value
-    })
-}
-
-fn digits() -> impl Parser<Output = (Option<BasePrefix>, BigUint, Span)> + Clone {
-    base_prefix()
+pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
+    numeric_sign()
+    .map_err(|ExpectedNumericSignError { .. }| ())
     .optional()
-    .and_then(|base_prefix_opt: Option<BasePrefix>| {
-        let radix = base_prefix_opt.as_ref().map(BasePrefix::radix).unwrap_or(10);
-
-        big_uint(radix)
-        .map_with_span(move |big_uint, span| {
-            (base_prefix_opt.clone(), big_uint, span)
-        })
+    .then(digits())
+    .then(int_ty().optional())
+    .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt): ((Option<_>, _), Option<_>)| {
+        let parsed = match numeric_sign_opt {
+            Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),
+            Some(NumericSign::Positive { .. }) | None => BigInt::from(big_uint),
+        };
+        IntLiteral { numeric_sign_opt, base_prefix_opt, digits_span, ty_suffix_opt, parsed }
     })
 }
 
-pub fn int_ty() -> impl Parser<Output = Option<IntTy>> + Clone {
+pub fn int_ty<R>() -> impl Parser<Output = IntTy, Error = (), FatalError = R> + Clone {
     let i8_parser = {
         i8_token()
         .map(|i8_token| IntTy::I8(i8_token))
+        .map_err(|ExpectedI8TokenError { .. }| ())
     };
     let i16_parser = {
         i16_token()
         .map(|i16_token| IntTy::I16(i16_token))
+        .map_err(|ExpectedI16TokenError { .. }| ())
     };
     let i32_parser = {
         i32_token()
         .map(|i32_token| IntTy::I32(i32_token))
+        .map_err(|ExpectedI32TokenError { .. }| ())
     };
     let i64_parser = {
         i64_token()
         .map(|i64_token| IntTy::I64(i64_token))
+        .map_err(|ExpectedI64TokenError { .. }| ())
     };
     let u8_parser = {
         u8_token()
         .map(|u8_token| IntTy::U8(u8_token))
+        .map_err(|ExpectedU8TokenError { .. }| ())
     };
     let u16_parser = {
         u16_token()
         .map(|u16_token| IntTy::U16(u16_token))
+        .map_err(|ExpectedU16TokenError { .. }| ())
     };
     let u32_parser = {
         u32_token()
         .map(|u32_token| IntTy::U32(u32_token))
+        .map_err(|ExpectedU32TokenError { .. }| ())
     };
     let u64_parser = {
         u64_token()
         .map(|u64_token| IntTy::U64(u64_token))
+        .map_err(|ExpectedU64TokenError { .. }| ())
     };
 
     or! {
@@ -130,16 +120,56 @@ pub fn int_ty() -> impl Parser<Output = Option<IntTy>> + Clone {
     }
 }
 
-pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
-    numeric_sign()
+#[derive(Clone)]
+struct ExpectedDigitsError {
+    pub position: usize,
+}
+
+fn digits()
+    -> impl Parser<Output = (Option<BasePrefix>, BigUint, Span), Error = ExpectedDigitsError, FatalError = ExpectedBigUintError> + Clone
+{
+    base_prefix()
+    .map_err(|ExpectedBasePrefixError { .. }| ())
     .optional()
-    .then(digits())
-    .then(int_ty())
-    .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt): ((Option<_>, _), Option<_>)| {
-        let parsed = match numeric_sign_opt {
-            Some(NumericSign::Negative { .. }) => -BigInt::from(big_uint),
-            Some(NumericSign::Positive { .. }) | None => BigInt::from(big_uint),
-        };
-        IntLiteral { numeric_sign_opt, base_prefix_opt, digits_span, ty_suffix_opt, parsed }
+    .and_then(|base_prefix_opt: Option<BasePrefix>| {
+        match &base_prefix_opt {
+            Some(base_prefix) => {
+                Either::Left(big_uint(base_prefix.radix()).fatal())
+            },
+            None => {
+                Either::Right(big_uint(10).map_err(|ExpectedBigUintError { position }| ExpectedDigitsError { position }))
+            },
+        }
+        .map_with_span(move |big_uint, span| (base_prefix_opt.clone(), big_uint, span))
     })
 }
+
+#[derive(Clone)]
+pub struct ExpectedBigUintError {
+    pub position: usize,
+}
+
+pub fn big_uint<R>(radix: u32)
+    -> impl Parser<Output = BigUint, Error = ExpectedBigUintError, FatalError = R> + Clone
+{
+    let inner_digit = {
+        or! {
+            digit(radix).map(Some).map_err(|ExpectedDigitError { .. }| ()),
+            keyword("_").map(|()| None).map_err(|ExpectedKeywordError { .. }| ()),
+        }
+    };
+    digit(radix)
+    .map_err(|ExpectedDigitError { position }| ExpectedBigUintError { position })
+    .then(inner_digit.repeated())
+    .map(move |(first_digit, digits)| {
+        let mut value = BigUint::from(first_digit);
+        for digit_opt in digits {
+            if let Some(digit) = digit_opt {
+                value *= radix;
+                value += digit;
+            }
+        }
+        value
+    })
+}
+

@@ -5,65 +5,68 @@ struct FromFn<F> {
     func: F,
 }
 
-impl<T, E, F> Parser for FromFn<F>
+impl<T, E, R, F> Parser for FromFn<F>
 where
-    F: Fn(&Span) -> (bool, Result<(T, usize), E>),
+    F: Fn(&Span) -> Result<(T, usize), Result<E, R>>,
 {
     type Output = T;
     type Error = E;
+    type FatalError = R;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(T, usize), E>) {
+    fn parse(&self, input: &Span) -> Result<(T, usize), Result<E, R>> {
         (self.func)(input)
     }
 }
 
-pub fn from_fn<T, E, F>(func: F) -> impl Parser<Output = T, Error = E> + Clone
+pub fn from_fn<T, E, R, F>(func: F) -> impl Parser<Output = T, Error = E, FatalError = R> + Clone
 where
-    F: Fn(&Span) -> (bool, Result<(T, usize), E>),
+    F: Fn(&Span) -> Result<(T, usize), Result<E, R>>,
     F: Clone,
 {
     FromFn { func }
 }
 
+#[derive(Clone)]
 pub struct ExpectedKeywordError {
     pub position: usize,
     pub word: &'static str,
 }
 
-pub fn keyword(word: &'static str) -> impl Parser<Output = (), Error = ExpectedKeywordError> + Clone {
+pub fn keyword<R>(word: &'static str) -> impl Parser<Output = (), Error = ExpectedKeywordError, FatalError = R> + Clone {
     from_fn(move |input| {
         if input.as_str().starts_with(word) {
-            (false, Ok(((), word.len())))
+            Ok(((), word.len()))
         } else {
             let error = ExpectedKeywordError {
                 position: input.start(),
                 word,
             };
-            (false, Err(error))
+            Err(Ok(error))
         }
     })
 }
 
 pub struct UnexpectedEofError;
 
-pub fn single_char() -> impl Parser<Output = char, Error = UnexpectedEofError> + Clone {
+pub fn single_char<R>() -> impl Parser<Output = char, Error = UnexpectedEofError, FatalError = R> + Clone {
     from_fn(move |input| {
         let mut char_indices = input.as_str().char_indices();
         let c = match char_indices.next() {
             Some((_, c)) => c,
             None => {
                 let error = UnexpectedEofError;
-                return (false, Err(error));
+                return Err(Ok(error));
             },
         };
         let len = match char_indices.next() {
             Some((i, _)) => i,
             None => input.as_str().len(),
         };
-        (false, Ok((c, len)))
+        Ok((c, len))
     })
 }
 
+/*
 pub struct ExpectedLineCommentError {
     position: usize,
 }
@@ -349,25 +352,22 @@ pub fn eof() -> impl Parser<Output = (), Error = ExpectedEofError> + Clone {
         }
     })
 }
+*/
+*/
 
 #[macro_export]
 macro_rules! __or_inner {
     ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ()) => {
-        (false, Ok((None, 0)))
+        Err(Ok(()))
     };
     //($parsers:ident, $input:ident, ($($head_pats:pat,)*), (_, $($tail_pats:pat,)*)) => {{
     ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ($ignore:pat, $($tail_pats:pat,)*)) => {{
         let ($($head_pats,)* this_parser, $($tail_pats,)*) = &$parsers;
-        let (commited, res) = Parser::parse(&this_parser, $input);
+        let res = Parser::parse(&this_parser, $input);
         match res {
-            Ok((value, len)) => (commited, Ok((Some(value), len))),
-            Err(err) => {
-                if commited {
-                    (true, Err(err))
-                } else {
-                    __or_inner!($parsers, $input, (_, $($head_pats,)*), ($($tail_pats,)*))
-                }
-            },
+            Ok((value, len)) => Ok((value, len)),
+            Err(Ok(())) => __or_inner!($parsers, $input, (_, $($head_pats,)*), ($($tail_pats,)*)),
+            Err(Err(error)) => Err(Err(error)),
         }
     }};
 }
@@ -393,4 +393,5 @@ macro_rules! or {
         })
     }};
 }
+
 

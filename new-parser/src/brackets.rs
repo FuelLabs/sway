@@ -4,9 +4,9 @@ macro_rules! define_brackets (
     (
         $ty_name:ident,
         $err_name:ident,
+        $fatal_err_name:ident,
         $fn_name:ident,
         $ty_open:ident,
-        $name_open:ident,
         $err_open:ident,
         $fn_open:ident,
         $ty_close:ident,
@@ -21,9 +21,15 @@ macro_rules! define_brackets (
             close_token: $ty_close,
         }
 
-        pub enum $err_name<E> {
-            $name_open { position: usize },
-            Parser(E),
+        #[derive(Clone)]
+        pub struct $err_name {
+            pub position: usize,
+        }
+
+        #[derive(Clone)]
+        pub enum $fatal_err_name<E, R> {
+            Inner(E),
+            InnerFatal(R),
             $name_close { position: usize },
         }
 
@@ -56,42 +62,49 @@ macro_rules! define_brackets (
             }
         }
 
-        pub fn $fn_name<T, E, P>(parser: P) -> impl Parser<Output = $ty_name<T>, Error = $err_name<E>> + Clone
+        pub fn $fn_name<T, E, R, P>(parser: P)
+            -> impl Parser<
+                Output = $ty_name<T>,
+                Error = $err_name,
+                FatalError = $fatal_err_name<E, R>,
+            > + Clone
         where
-            P: Parser<Output = T, Error = E> + Clone,
+            P: Parser<Output = T, Error = E, FatalError = R> + Clone,
         {
             $fn_open()
-            .map_err(|$err_open { position }| $err_name::$name_open { position })
+            .map_err(|$err_open { position }| $err_name { position })
             .then(
                 parser
-                .map_err($err_name::Parser)
+                .map_err($fatal_err_name::Inner)
+                .map_fatal_err($fatal_err_name::InnerFatal)
+                .then(
+                    $fn_close()
+                    .map_err(|$err_close { position }| $fatal_err_name::$name_close { position })
+                )
+                .fatal()
             )
-            .then(
-                $fn_close()
-                .map_err(|$err_close { position }| $err_name::$name_close { position })
-            )
-            .map(|((open_token, inner), close_token)| $ty_name { open_token, inner, close_token })
+            .map(|(open_token, (inner, close_token))| $ty_name { open_token, inner, close_token })
         }
     );
 );
 
 define_brackets!(
-    Parens, ParensError, parens,
-    OpenParenToken, ExpectedOpenParen, ExpectedOpenParenTokenError, open_paren_token,
+    Parens, ParensError, ParensFatalError, parens,
+    OpenParenToken, ExpectedOpenParenTokenError, open_paren_token,
     CloseParenToken, ExpectedCloseParen, ExpectedCloseParenTokenError, close_paren_token,
 );
 define_brackets!(
-    SquareBrackets, SquareBracketsError, square_brackets,
-    OpenSquareBracketToken, ExpectedOpenSquareBracket, ExpectedOpenSquareBracketTokenError, open_square_bracket_token,
+    SquareBrackets, SquareBracketsError, SquareBracketsFatalError, square_brackets,
+    OpenSquareBracketToken, ExpectedOpenSquareBracketTokenError, open_square_bracket_token,
     CloseSquareBracketToken, ExpectedClosingSquareBracket, ExpectedCloseSquareBracketTokenError, close_square_bracket_token,
 );
 define_brackets!(
-    Braces, BracesError, braces,
-    OpenBraceToken, ExpectedOpenBrace, ExpectedOpenBraceTokenError, open_brace_token,
+    Braces, BracesError, BracesFatalError, braces,
+    OpenBraceToken, ExpectedOpenBraceTokenError, open_brace_token,
     CloseBraceToken, ExpectedCloseBrace, ExpectedCloseBraceTokenError, close_brace_token,
 );
 define_brackets!(
-    AngleBrackets, AngleBracketsError, angle_brackets,
-    LessThanToken, ExpectedOpenAngleBracket, ExpectedLessThanTokenError, less_than_token,
+    AngleBrackets, AngleBracketsError, AngleBracketsFatalError, angle_brackets,
+    LessThanToken, ExpectedLessThanTokenError, less_than_token,
     GreaterThanToken, ExpectedCloseAngleBracket, ExpectedGreaterThanTokenError, greater_than_token,
 );
