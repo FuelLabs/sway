@@ -115,7 +115,7 @@ jobs:
 
   publish:
     # Only do this job if publishing a release
-    needs: build
+    needs: [build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
@@ -159,7 +159,7 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-master-image:
-    needs: build
+    needs: [build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
