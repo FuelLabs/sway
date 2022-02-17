@@ -13,45 +13,51 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  cancel-previous-runs:
     runs-on: ubuntu-latest
-
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.3.1
-        ports:
-          - 4000:4000
-
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install toolchain
+  install-rust-toolchain:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
 
+  rustfmt-check:
+    needs: install-toolchain
+    runs-on: ubuntu-latest
+    steps:
       - name: Install rustfmt
         run: rustup component add rustfmt
-
-      - name: Set git config
-        run: |
-          git config --global core.bigfilethreshold 500m
-
-      - name: Check formatting
+      - name: Check Formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
 
-      - name: Build
+  run-fuel-core:
+    needs: install-toolchain
+    runs-on: ubuntu-latest
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core:v0.3.1
+        ports:
+          - 4000:4000
+
+  cargo-build-workspace:
+    needs: install-toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cargo Build Workspace
         uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
@@ -60,18 +66,45 @@ jobs:
         env:
           RUSTFLAGS: "-D warnings"
 
+  cargo-test-workspace:
+    needs: install-toolchain
+    runs-on: ubuntu-latest
+    steps:
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
 
-      - name: Run test crate
+  cargo-run-e2e-test:
+    needs: [install-toolchain, run-fuel-core]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cargo Run E2E Tests
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --release --bin test
-      
-      - name: Notify if Job Fails
+
+  build-sway-examples:
+    needs: install-toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
+
+  notify-slack-on-failure:
+    needs: [build-sway-examples, cargo-build-workspace, cargo-test-workspace, cargo-run-e2e-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack On Failure
         uses: ravsamhq/notify-slack-action@v1
         if: always() && github.ref == 'refs/heads/master'
         with:
@@ -83,18 +116,6 @@ jobs:
           notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
-
-      - name: Install forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-
-      - name: Build sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin build-all-examples
 
   publish:
     # Only do this job if publishing a release
