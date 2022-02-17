@@ -76,6 +76,13 @@ pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY)
 }
 
+/// Returns the user's `.forc` directory, `$HOME/.forc` by default.
+pub fn user_forc_directory() -> PathBuf {
+    dirs::home_dir()
+        .expect("unable to find the user home directory")
+        .join(".forc")
+}
+
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,

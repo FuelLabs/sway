@@ -1,6 +1,8 @@
-use crate::utils::{dependency, helpers::read_manifest};
+use crate::utils::{
+    dependency,
+    helpers::{read_manifest, user_forc_directory},
+};
 use anyhow::{anyhow, Result};
-use dirs::home_dir;
 use semver::Version;
 use std::{
     path::{Path, PathBuf},
@@ -58,14 +60,11 @@ async fn check_dependency(
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
-    let home_dir = match home_dir() {
-        None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
-        Some(p) => p.to_str().unwrap().to_owned(),
-    };
-
+    let user_forc_dir = user_forc_directory();
+    let dep_dir = user_forc_dir.join(dependency_name);
     let target_directory = match &dep.branch {
-        Some(b) => PathBuf::from(format!("{}/.forc/{}/{}", home_dir, dependency_name, &b)),
-        None => PathBuf::from(format!("{}/.forc/{}/default", home_dir, dependency_name)),
+        Some(branch) => dep_dir.join(branch),
+        None => dep_dir,
     };
 
     // Currently we only handle checks on github-based dependencies
