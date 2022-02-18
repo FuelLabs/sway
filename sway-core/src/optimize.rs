@@ -40,7 +40,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
             all_nodes: _,
         } => unimplemented!("compile library to ir"),
     }?;
-    ctx.verify()?;
+    ctx.verify().map_err(|ir_error| ir_error.to_string())?;
     Ok(ctx)
 }
 
@@ -208,10 +208,12 @@ fn create_struct_aggregate(
         .collect::<Result<Vec<_>, String>>()?;
 
     let aggregate = Aggregate::new_struct(context, Some(name), field_types);
-    context.add_aggregate_symbols(
-        aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
-    )?;
+    context
+        .add_aggregate_symbols(
+            aggregate,
+            HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
+        )
+        .map_err(|ir_error| ir_error.to_string())?;
 
     Ok(aggregate)
 }
@@ -265,10 +267,12 @@ fn create_enum_aggregate(
 
     let enum_aggregate = Aggregate::new_struct(context, Some(name.clone() + "_union"), field_types);
     // Not sure if we should do this..?  The 'field' names aren't used for enums?
-    context.add_aggregate_symbols(
-        enum_aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
-    )?;
+    context
+        .add_aggregate_symbols(
+            enum_aggregate,
+            HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
+        )
+        .map_err(|ir_error| ir_error.to_string())?;
 
     // Create the tagged union struct next.  Just by creating it here with the name it'll be added
     // to the context and can be looked up.  It isn't obvious from the name, maybe it should
@@ -965,13 +969,10 @@ impl FnCompiler {
         self.symbol_map
             .insert(name.as_str().to_owned(), local_name.clone());
 
-        let ptr = self.function.new_local_ptr(
-            context,
-            local_name,
-            return_type,
-            is_mutable.into(),
-            None,
-        )?;
+        let ptr = self
+            .function
+            .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
+            .map_err(|ir_error| ir_error.to_string())?;
 
         self.current_block
             .ins(context)
@@ -995,13 +996,9 @@ impl FnCompiler {
             let initialiser = convert_literal_to_constant(literal);
             let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
             let name = name.as_str().to_owned();
-            self.function.new_local_ptr(
-                context,
-                name.clone(),
-                return_type,
-                false,
-                Some(initialiser),
-            )?;
+            self.function
+                .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
+                .map_err(|ir_error| ir_error.to_string())?;
 
             // We still insert this into the symbol table, as itself... can they be shadowed?
             // (Hrmm, name resolution in the variable expression code could be smarter about var

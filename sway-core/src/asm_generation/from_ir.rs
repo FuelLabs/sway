@@ -498,9 +498,9 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Some(span_md_idx) => match span_md_idx.to_span(self.context) {
                     Ok(span) => span,
-                    Err(msg) => {
+                    Err(ir_error) => {
                         errors.push(CompileError::InternalOwned(
-                            msg,
+                            ir_error.to_string(),
                             instr_val
                                 .get_span(self.context)
                                 .unwrap_or_else(Self::empty_span),
