@@ -13,6 +13,7 @@ use generational_arena::Arena;
 use crate::{
     asm::AsmBlockContent,
     block::BlockContent,
+    error::IrError,
     function::FunctionContent,
     irtype::{AbiInstanceContent, Aggregate, AggregateContent},
     metadata::Metadatum,
@@ -59,10 +60,10 @@ impl Context {
         &mut self,
         aggregate: Aggregate,
         symbols: HashMap<String, u64>,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         match self.aggregate_symbols.insert(aggregate, symbols) {
             None => Ok(()),
-            Some(_) => Err("Aggregate symbols were overwritten/shadowed.".into()),
+            Some(_) => Err(IrError::ShadowedAggregates),
         }
     }
 

@@ -8,6 +8,7 @@ use crate::{
     asm::AsmArg,
     block::Block,
     context::Context,
+    error::IrError,
     function::Function,
     instruction::Instruction,
     pointer::Pointer,
@@ -21,7 +22,7 @@ use crate::{
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
-) -> Result<bool, String> {
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
         // Find the next call site.
@@ -54,7 +55,7 @@ pub fn inline_function_call(
     block: Block,
     call_site: Value,
     inlined_function: Function,
-) -> Result<(), String> {
+) -> Result<(), IrError> {
     // Split the block at right after the call site.
     let call_site_idx = context.blocks[block.0]
         .instructions

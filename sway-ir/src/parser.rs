@@ -1,17 +1,17 @@
 //! A parser for the printed IR, useful mostly for testing.
 
-use crate::context::Context;
+use crate::{context::Context, error::IrError};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
-pub fn parse(input: &str) -> Result<Context, String> {
+pub fn parse(input: &str) -> Result<Context, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
             &input[err.location.offset..]
         } else {
             &input[err.location.offset..][..20]
         };
-        format!("parse failed: {}, found: {}", err, found)
+        IrError::ParseFailure(err.to_string(), found.into())
     })?;
     ir_builder::build_context(irmod)
 }
@@ -379,6 +379,7 @@ mod ir_builder {
         block::Block,
         constant::Constant,
         context::Context,
+        error::IrError,
         function::Function,
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
@@ -579,7 +580,7 @@ mod ir_builder {
 
     use std::{collections::HashMap, iter::FromIterator, sync::Arc};
 
-    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, String> {
+    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
         let module = Module::new(&mut ctx, ir_ast_mod.kind, &ir_ast_mod.name);
         let md_map = build_metadata_map(&mut ctx, &ir_ast_mod.metadata);
@@ -594,7 +595,7 @@ mod ir_builder {
         module: Module,
         fn_decl: IrAstFnDecl,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
             .args
             .iter()
