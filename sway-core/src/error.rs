@@ -69,18 +69,6 @@ pub(crate) fn ok<T>(
     }
 }
 
-pub(crate) fn new<T>(
-    value: Option<T>,
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
-) -> CompileResult<T> {
-    CompileResult {
-        value,
-        warnings,
-        errors,
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CompileResult<T> {
     pub value: Option<T>,
@@ -106,6 +94,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+
     pub fn ok(
         mut self,
         warnings: &mut Vec<CompileWarning>,

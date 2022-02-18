@@ -696,7 +696,7 @@ fn parse_root_from_pairs(
         }
     }
 
-    new(fuel_ast_opt, warnings, errors)
+    CompileResult::new(fuel_ast_opt, warnings, errors)
 }
 
 #[test]
