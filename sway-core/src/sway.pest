@@ -42,7 +42,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
 // expressions
-expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|tuple_index|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_let_exp|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|tuple_index|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -70,7 +70,9 @@ abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
 abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
-if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
+if_exp     = {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
+if_let_exp = {"if" ~ var_decl_keyword ~ enum_scrutinee ~ assign ~ expr ~ code_block ~ ( "else" ~ code_block)?}
+
 
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|ref_keyword|deref_keyword}
@@ -99,9 +101,10 @@ struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
 field_scrutinee  =  {":" ~ scrutinee}
-enum_scrutinee   =  {enum_scrutinee_component ~ fn_args_scrutinee?}
-enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)+}
-fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
+
+// this doesn't support nested destructuring -- that is TBD
+enum_scrutinee   =  {enum_scrutinee_component ~ "(" ~ (ident|"_") ~ ")"}
+enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)*}
 tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 

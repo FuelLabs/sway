@@ -155,6 +155,12 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    IfLet {
+        scrutinee: Scrutinee,
+        expr: Box<Expression>,
+        then_branch: CodeBlock,
+        else_branch: Option<CodeBlock>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -594,8 +600,8 @@ impl Expression {
                     path,
                 };
                 let expr = check!(
-                    crate::CodeBlock::parse_from_pair(expr, config),
-                    crate::CodeBlock {
+                    CodeBlock::parse_from_pair(expr, config),
+                    CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
                     },
@@ -1008,6 +1014,12 @@ impl Expression {
             }
             Rule::array_index => check!(
                 parse_array_index(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::if_let_exp => check!(
+                parse_if_let(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1776,4 +1788,77 @@ pub fn desugar_match_expression(
         None => err(vec![], vec![]),
         Some(if_statement) => ok(if_statement, warnings, errors),
     }
+}
+
+fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let span = Span {
+        span: expr.as_span(),
+        path: path.clone(),
+    };
+    let mut if_exp_pairs = expr.into_inner();
+    let _let_keyword = if_exp_pairs.next();
+    let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
+
+    let scrutinee = check!(
+        Scrutinee::parse_from_pair(scrutinee_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let expr = check!(
+        Expression::parse_from_pair_inner(expr_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let then_branch_span = Span {
+        span: then_branch_pair.as_span(),
+        path: path.clone(),
+    };
+
+    let then_branch = check!(
+        CodeBlock::parse_from_pair(then_branch_pair, config),
+        crate::CodeBlock {
+            contents: Vec::new(),
+            whole_block_span: then_branch_span,
+        },
+        warnings,
+        errors
+    );
+
+    let maybe_else_branch = maybe_else_branch_pair.as_ref().map(|x| match x.as_rule() {
+        Rule::code_block => check!(
+            CodeBlock::parse_from_pair(x.clone(), config),
+            crate::CodeBlock {
+                contents: Vec::new(),
+                whole_block_span: {
+                    Span {
+                        span: x.as_span(),
+                        path,
+                    }
+                },
+            },
+            warnings,
+            errors
+        ),
+        Rule::if_let_exp => todo!("parse chained if let"),
+        _ => unreachable!("guaranteed by grammar"),
+    });
+    ok(
+        Expression::IfLet {
+            scrutinee,
+            expr: Box::new(expr),
+            then_branch,
+            else_branch: maybe_else_branch,
+        },
+        warnings,
+        errors,
+    )
 }
