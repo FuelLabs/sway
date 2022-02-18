@@ -80,7 +80,7 @@ pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
 pub fn user_forc_directory() -> PathBuf {
     dirs::home_dir()
         .expect("unable to find the user home directory")
-        .join(".forc")
+        .join(constants::USER_FORC_DIRECTORY)
 }
 
 pub fn print_on_success(

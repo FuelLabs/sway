@@ -64,7 +64,7 @@ async fn check_dependency(
     let dep_dir = user_forc_dir.join(dependency_name);
     let target_directory = match &dep.branch {
         Some(branch) => dep_dir.join(branch),
-        None => dep_dir,
+        None => dep_dir.join("default"),
     };
 
     // Currently we only handle checks on github-based dependencies
