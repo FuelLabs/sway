@@ -3,16 +3,16 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 license = "Apache-2.0"
 name = "tests"
-version = "0.1.0"
+version = "0.0.0"
 
 [dependencies]
-fuel-gql-client = { version = "0.2", default-features = false }
-fuel-tx = "0.2.0"
-fuels-abigen-macro = "0.3"
-fuels-contract = "0.3"
-fuels-core = "0.3"
-fuel-core = "0.3.1"
-fuel-types = "0.1"
+fuel-core = "0.3"
+fuel-gql-client = { version = "0.3", default-features = false }
+fuel-tx = "0.5"
+fuel-types = "0.2"
+fuels-abigen-macro = "0.4"
+fuels-contract = "0.4"
+fuels-core = "0.4"
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
