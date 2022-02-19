@@ -90,6 +90,9 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    SizeOf {
+        exp: Box<TypedExpression>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -202,6 +205,9 @@ impl TypedExpressionVariant {
                     variant_name.as_str(),
                     tag
                 )
+            }
+            TypedExpressionVariant::SizeOf { exp, .. } => {
+                format!("size_of({:?})", exp.pretty_print())
             }
         }
     }
@@ -317,6 +323,7 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
+            SizeOf { exp, .. } => exp.copy_types(type_mapping),
         }
     }
 }

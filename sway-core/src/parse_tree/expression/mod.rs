@@ -155,6 +155,10 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    SizeOf {
+        exp: Box<Expression>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -272,6 +276,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            SizeOf { span, .. } => span,
         })
         .clone()
     }
@@ -1012,6 +1017,12 @@ impl Expression {
                 warnings,
                 errors
             ),
+            Rule::size_of_expr => check!(
+                parse_size_of_expr(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -1129,6 +1140,32 @@ pub(crate) fn parse_array_index(
             },
         };
     }
+    ok(exp, warnings, errors)
+}
+
+pub(crate) fn parse_size_of_expr(
+    item: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let span = Span {
+        span: item.as_span(),
+        path: config.map(|c| c.path()),
+    };
+    let mut inner_iter = item.into_inner();
+    let _keyword = inner_iter.next();
+    let expr = inner_iter.next().expect("guarenteed by grammer");
+    let expr = check!(
+        Expression::parse_from_pair(expr, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let exp = Expression::SizeOf {
+        exp: Box::new(expr),
+        span,
+    };
     ok(exp, warnings, errors)
 }
 

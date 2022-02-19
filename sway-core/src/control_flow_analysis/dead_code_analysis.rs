@@ -953,6 +953,18 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
+        SizeOf { exp } => {
+            let exp = connect_expression(
+                &(*exp).expression,
+                graph,
+                leaves,
+                exit_node,
+                "size_of",
+                tree_type,
+                exp.span.clone(),
+            )?;
+            Ok(exp)
+        }
         a => {
             println!("Unimplemented: {:?}", a);
             Err(CompileError::Unimplemented(

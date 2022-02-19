@@ -298,6 +298,22 @@ impl TypedExpression {
                     opts,
                 )
             }
+            Expression::SizeOf { exp, span } => Self::type_check_size_of(
+                TypeCheckArguments {
+                    checkee: *exp,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                span,
+            ),
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
@@ -383,7 +399,6 @@ impl TypedExpression {
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             Literal::Boolean(_) => TypeInfo::Boolean,
@@ -1891,6 +1906,29 @@ impl TypedExpression {
                 ok(exp, warnings, errors)
             }
         }
+    }
+
+    fn type_check_size_of(
+        arguments: TypeCheckArguments<'_, Expression>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let exp = check!(
+            TypedExpression::type_check(arguments),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::SizeOf { exp: Box::new(exp) },
+            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
+                IntegerBits::SixtyFour,
+            )),
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
     }
 
     fn resolve_numeric_literal(

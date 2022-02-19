@@ -361,6 +361,13 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
+        TypedExpressionVariant::SizeOf { exp } => convert_size_of_expression_to_asm(
+            &*exp,
+            namespace,
+            return_register,
+            register_sequencer,
+            exp.span.clone(),
+        ),
         a => {
             println!("unimplemented: {:?}", a);
             errors.push(CompileError::Unimplemented(
@@ -435,6 +442,47 @@ fn convert_literal_to_asm(
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
+}
+
+fn convert_size_of_expression_to_asm(
+    exp: &TypedExpression,
+    namespace: &mut AsmNamespace,
+    return_register: &VirtualRegister,
+    register_sequencer: &mut RegisterSequencer,
+    span: Span,
+) -> CompileResult<Vec<Op>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut asm_buf = vec![Op::new_comment("size_of".to_string())];
+    let mut ops = check!(
+        convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
+        vec![],
+        warnings,
+        errors
+    );
+    asm_buf.append(&mut ops);
+    let ty = match resolve_type(exp.return_type, &span.clone()) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let size_in_bytes: u64 = match ty.size_in_words(&span) {
+        Ok(o) => o * 8,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    let ops = convert_literal_to_asm(
+        &Literal::U64(size_in_bytes),
+        namespace,
+        return_register,
+        register_sequencer,
+        span,
+    );
+    ok(ops, warnings, errors)
 }
 
 /// For now, all functions are handled by inlining at the time of application.
