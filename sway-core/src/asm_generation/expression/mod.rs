@@ -461,7 +461,7 @@ fn convert_size_of_expression_to_asm(
         errors
     );
     asm_buf.append(&mut ops);
-    let ty = match resolve_type(exp.return_type, &span.clone()) {
+    let ty = match resolve_type(exp.return_type, &span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());
