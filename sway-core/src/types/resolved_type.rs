@@ -1,6 +1,9 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::type_engine::*;
-use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use crate::{
+    semantic_analysis::ast_node::{OwnedTypedEnumVariant, TypedStructField},
+    CallPath, Ident,
+};
 use derivative::Derivative;
 
 #[derive(Derivative)]
@@ -38,8 +41,6 @@ pub enum ResolvedType {
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
-
-impl ResolvedType {}
 
 impl Default for ResolvedType {
     fn default() -> Self {
@@ -96,3 +97,35 @@ impl ResolvedType {
         matches!(self, ResolvedType::UnsignedInteger(_))
     }
 }
+
+/*
+impl From<ResolvedType> for TypeInfo {
+    fn from(o: ResolvedType) -> TypeInfo {
+        use ResolvedType::*;
+        match o {
+            Boolean => TypeInfo::Boolean,
+            Unit => TypeInfo::Tuple(vec![]),
+            B256 => TypeInfo::B256,
+            Byte => TypeInfo::Byte,
+            Enum {
+                variant_types,
+                name,
+                ..
+            } => insert_type(TypeInfo::Enum {
+                name: name.to_string(),
+                variant_types: variant_types
+                    .into_iter()
+                    .map(|x| OwnedTypedEnumVariant { r#type: x.into() })
+                    .collect(),
+            }),
+            Struct { fields, .. } => todo!(),
+            ContractCaller { .. } => todo!(),
+            Function { .. } => todo!(),
+            Contract { .. } => todo!(),
+            ErrorRecovery { .. } => todo!(),
+            Str(_) => todo!(),
+            UnsignedInteger(_) => todo!(),
+        }
+    }
+}
+*/

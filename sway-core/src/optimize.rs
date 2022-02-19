@@ -556,21 +556,14 @@ impl FnCompiler {
                 contents,
                 ..
             } => self.compile_enum_expr(context, enum_decl, tag, contents),
-            TypedExpressionVariant::EnumArgAccess {
-                //Prefix: Box<TypedExpression>,
-                //Arg_num_to_access: usize,
-                //Resolved_type_of_parent: TypeId,
-                ..
-            } => Err("enum arg access".into()),
-            TypedExpressionVariant::Tuple {
-               fields
-            } => self.compile_tuple_expr(context, fields),
+            TypedExpressionVariant::IfLet { .. } => Err("if let expression ".into()),
+            TypedExpressionVariant::Tuple { fields } => self.compile_tuple_expr(context, fields),
             TypedExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr( context, *prefix, tuple_type, idx, span),
+            } => self.compile_tuple_elem_expr(context, *prefix, tuple_type, idx, span),
             // XXX IGNORE FOR NOW?
             TypedExpressionVariant::AbiCast { .. } => Ok(Constant::get_unit(context)),
         }

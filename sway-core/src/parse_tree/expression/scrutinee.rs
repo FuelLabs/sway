@@ -3,6 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use crate::{
     error::{err, ok},
     parse_tree::ident,
+    type_engine::*,
     BuildConfig, CallPath, CompileError, CompileResult, Literal, Rule,
 };
 
@@ -74,6 +75,18 @@ impl Scrutinee {
             errors
         );
         ok(scrutinee, warnings, errors)
+    }
+
+    /// If this is an enum scrutinee, returns the name of the inner value that should be
+    /// assigned to upon successful destructuring.
+    /// Should only be used when destructuring enums via `if let`
+    pub fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
+        match self {
+            Scrutinee::EnumScrutinee {
+                variable_to_assign, ..
+            } => ok(variable_to_assign, vec![], vec![]),
+            _ => todo!("err cannot if let on non-enum"),
+        }
     }
 
     pub fn parse_from_pair_inner(

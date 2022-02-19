@@ -158,8 +158,9 @@ pub enum Expression {
     IfLet {
         scrutinee: Scrutinee,
         expr: Box<Expression>,
-        then_branch: CodeBlock,
-        else_branch: Option<CodeBlock>,
+        then: CodeBlock,
+        r#else: Option<CodeBlock>,
+        span: Span,
     },
 }
 
@@ -178,7 +179,8 @@ pub struct DelayedStructFieldResolution {
     pub field: Ident,
 }
 
-/// During type checking, this gets replaced with enum arg access.
+/// During type checking, this gets replaced with an if let, maybe, although that's not yet been
+/// implemented.
 #[derive(Debug, Clone)]
 pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
@@ -278,6 +280,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            IfLet { span, .. } => span,
         })
         .clone()
     }
@@ -1794,11 +1797,14 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
     let mut warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
+
     let span = Span {
         span: expr.as_span(),
         path: path.clone(),
     };
+
     let mut if_exp_pairs = expr.into_inner();
+
     let _let_keyword = if_exp_pairs.next();
     let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
     let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
@@ -1811,8 +1817,9 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
         warnings,
         errors
     );
+
     let expr = check!(
-        Expression::parse_from_pair_inner(expr_pair, config),
+        Expression::parse_from_pair(expr_pair, config),
         return err(warnings, errors),
         warnings,
         errors
@@ -1823,7 +1830,7 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
         path: path.clone(),
     };
 
-    let then_branch = check!(
+    let then = check!(
         CodeBlock::parse_from_pair(then_branch_pair, config),
         crate::CodeBlock {
             contents: Vec::new(),
@@ -1855,8 +1862,9 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
         Expression::IfLet {
             scrutinee,
             expr: Box::new(expr),
-            then_branch,
-            else_branch: maybe_else_branch,
+            then,
+            r#else: maybe_else_branch,
+            span,
         },
         warnings,
         errors,

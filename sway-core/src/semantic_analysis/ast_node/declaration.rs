@@ -296,6 +296,9 @@ pub struct TypedEnumDeclaration {
     pub(crate) visibility: Visibility,
 }
 impl TypedEnumDeclaration {
+    pub(crate) fn variants(&self) -> &[TypedEnumVariant] {
+        &self.variants
+    }
     pub(crate) fn monomorphize(&self) -> Self {
         let mut new_decl = self.clone();
         let type_mapping = insert_type_parameters(&self.type_parameters);

@@ -71,7 +71,7 @@ abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
 if_exp     = {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
-if_let_exp = {"if" ~ var_decl_keyword ~ enum_scrutinee ~ assign ~ expr ~ code_block ~ ( "else" ~ code_block)?}
+if_let_exp = {"if" ~ var_decl_keyword ~ scrutinee ~ assign ~ expr ~ code_block ~ ( "else" ~ code_block)?}
 
 
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
