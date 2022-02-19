@@ -757,6 +757,7 @@ fn connect_expression(
             Ok([then_expr, else_expr].concat())
         }
         CodeBlock(TypedCodeBlock { contents, .. }) => {
+            //            connect_code_block(
             let block_entry = graph.add_node("Code block entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, block_entry, label.into());
@@ -929,8 +930,30 @@ fn connect_expression(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
-        IfLet { .. } => {
-            todo!()
+        IfLet { then, r#else, .. } => {
+            let then_expr = connect_expression(
+                &(*then).expression,
+                graph,
+                &condition_expr,
+                exit_node,
+                "then branch",
+                tree_type,
+                (*then).span.clone(),
+            )?;
+
+            let else_expr = if let Some(else_expr) = r#else {
+                connect_expression(
+                    graph,
+                    &condition_expr,
+                    exit_node,
+                    "else branch",
+                    tree_type,
+                    else_expr.span(),
+                )?
+            } else {
+                vec![]
+            };
+            Ok([then_expr, else_expr].concat())
         }
 
         TupleElemAccess { prefix, .. } => {

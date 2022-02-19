@@ -768,12 +768,9 @@ impl TypedExpression {
         } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (enum_type, variant_type) = check!(
+        let (enum_type, variant) = check!(
             check_scrutinee_type(&scrutinee, namespace),
-            (
-                insert_type(TypeInfo::ErrorRecovery),
-                insert_type(TypeInfo::ErrorRecovery)
-            ),
+            return err(warnings, errors),
             warnings,
             errors
         );
@@ -810,14 +807,14 @@ impl TypedExpression {
             variable_to_assign.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: variable_to_assign.clone(),
-                type_ascription: variant_type,
+                type_ascription: variant.r#type,
                 is_mutable: VariableMutability::Immutable, // TODO allow mut variables in patterns? grammar can't handle it right now
                 const_decl_origin: false,
                 body: TypedExpression {
                     expression: TypedExpressionVariant::Tuple { fields: vec![] },
-                    return_type: variant_type,
+                    return_type: variant.r#type,
                     is_constant: IsConstant::No,
-                    span,
+                    span: span.clone(),
                 },
             }),
         );
@@ -893,97 +890,19 @@ impl TypedExpression {
             },
         };
 
-        todo!()
-        /*
-        let condition = Box::new(check!(
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: *condition.clone(),
-                namespace,
-                crate_namespace,
-                return_type_annotation: insert_type(TypeInfo::Boolean),
-                help_text: "The condition of an if expression must be a boolean expression.",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-                mode: Mode::NonAbi,
-                opts,
-            }),
-            error_recovery_expr(condition.span()),
-            warnings,
-            errors
-        ));
-        let then = Box::new(check!(
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: *then.clone(),
-                namespace,
-                crate_namespace,
-                return_type_annotation: type_annotation,
-                help_text: Default::default(),
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-                mode: Mode::NonAbi,
-                opts,
-            }),
-            error_recovery_expr(then.span()),
-            warnings,
-            errors
-        ));
-        let r#else = r#else.map(|expr| {
-            Box::new(check!(
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: *expr.clone(),
-                    namespace,
-                    crate_namespace,
-                    return_type_annotation: then.return_type,
-                    help_text: Default::default(),
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    dependency_graph,
-                    mode: Mode::NonAbi,
-                    opts,
-                }),
-                error_recovery_expr(expr.span()),
-                warnings,
-                errors
-            ))
-        });
-
-        let r#else_ret_ty = r#else
-            .as_ref()
-            .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
-        // if there is a type annotation, then the else branch must exist
-        match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
-            Ok(mut warn) => {
-                warnings.append(&mut warn);
-                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
-                        span: span.clone(),
-                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
-                    });
-                }
-            }
-            Err(e) => {
-                errors.push(e.into());
-            }
-        }
-
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::IfExp {
-                condition,
-                then: then.clone(),
-                r#else,
+            expression: TypedExpressionVariant::IfLet {
+                variable_to_assign: variable_to_assign.clone(),
+                enum_type,
+                variant,
+                then,
+                r#else: r#else.map(|x| x.0),
             },
             is_constant: IsConstant::No, // TODO
-            return_type: then.return_type,
+            return_type: then_branch_code_block_return_type,
             span,
         };
         ok(exp, warnings, errors)
-            */
     }
 
     #[allow(clippy::type_complexity)]
@@ -2177,7 +2096,7 @@ impl TypedExpression {
 fn check_scrutinee_type(
     scrutinee: &Scrutinee,
     namespace: NamespaceRef,
-) -> CompileResult<(TypeId, TypeId)> {
+) -> CompileResult<(TypeId, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (ty, enum_variant) = match scrutinee {
@@ -2190,7 +2109,7 @@ fn check_scrutinee_type(
         _ => todo!(),
     };
 
-    ok((ty.as_type(), enum_variant.r#type), warnings, errors)
+    ok((ty.as_type(), enum_variant), warnings, errors)
 }
 
 fn check_enum_scrutinee_type(

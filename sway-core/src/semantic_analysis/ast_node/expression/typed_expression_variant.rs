@@ -64,8 +64,11 @@ pub(crate) enum TypedExpressionVariant {
         field_to_access_span: Span,
     },
     IfLet {
-        enum_type: TypedEnumDeclaration,
+        enum_type: TypeId,
         variant: TypedEnumVariant,
+        variable_to_assign: Ident,
+        then: TypedCodeBlock,
+        r#else: Option<TypedCodeBlock>,
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
@@ -168,7 +171,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "if let {}::{}",
-                    enum_type.name.as_str(),
+                    enum_type.friendly_type_str(),
                     variant.name.as_str()
                 )
             }
@@ -277,7 +280,13 @@ impl TypedExpressionVariant {
                 ref mut enum_type,
                 ..
             } => {
-                enum_type.copy_types(type_mapping);
+                *enum_type = if let Some(matching_id) =
+                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*enum_type))
+                };
                 variant.copy_types(type_mapping);
             }
             TupleElemAccess {
