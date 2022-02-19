@@ -10,6 +10,7 @@ dep contract_id;
 dep chain;
 dep context;
 dep option;
+dep math;
 dep block;
 dep token;
 dep ecr;
