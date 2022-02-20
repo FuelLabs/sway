@@ -155,7 +155,7 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
-    SizeOf {
+    SizeOfVal {
         exp: Box<Expression>,
         span: Span,
     },
@@ -276,7 +276,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
-            SizeOf { span, .. } => span,
+            SizeOfVal { span, .. } => span,
         })
         .clone()
     }
@@ -1017,8 +1017,8 @@ impl Expression {
                 warnings,
                 errors
             ),
-            Rule::size_of_expr => check!(
-                parse_size_of_expr(expr, config),
+            Rule::size_of_val_expr => check!(
+                parse_size_of_val_expr(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1143,7 +1143,7 @@ pub(crate) fn parse_array_index(
     ok(exp, warnings, errors)
 }
 
-pub(crate) fn parse_size_of_expr(
+pub(crate) fn parse_size_of_val_expr(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<Expression> {
@@ -1162,7 +1162,7 @@ pub(crate) fn parse_size_of_expr(
         warnings,
         errors
     );
-    let exp = Expression::SizeOf {
+    let exp = Expression::SizeOfVal {
         exp: Box::new(expr),
         span,
     };

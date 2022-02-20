@@ -298,7 +298,7 @@ impl TypedExpression {
                     opts,
                 )
             }
-            Expression::SizeOf { exp, span } => Self::type_check_size_of(
+            Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
                 TypeCheckArguments {
                     checkee: *exp,
                     namespace,
@@ -1908,7 +1908,7 @@ impl TypedExpression {
         }
     }
 
-    fn type_check_size_of(
+    fn type_check_size_of_val(
         arguments: TypeCheckArguments<'_, Expression>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -1921,7 +1921,7 @@ impl TypedExpression {
             errors
         );
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOf { exp: Box::new(exp) },
+            expression: TypedExpressionVariant::SizeOfVal { exp: Box::new(exp) },
             return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
                 IntegerBits::SixtyFour,
             )),

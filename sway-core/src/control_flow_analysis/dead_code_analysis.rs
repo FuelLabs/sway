@@ -953,7 +953,7 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
-        SizeOf { exp } => {
+        SizeOfVal { exp } => {
             let exp = connect_expression(
                 &(*exp).expression,
                 graph,

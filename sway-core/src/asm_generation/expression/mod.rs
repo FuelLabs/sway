@@ -361,7 +361,7 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        TypedExpressionVariant::SizeOf { exp } => convert_size_of_expression_to_asm(
+        TypedExpressionVariant::SizeOfVal { exp } => convert_size_of_val_expression_to_asm(
             &*exp,
             namespace,
             return_register,
@@ -444,7 +444,7 @@ fn convert_literal_to_asm(
     }]
 }
 
-fn convert_size_of_expression_to_asm(
+fn convert_size_of_val_expression_to_asm(
     exp: &TypedExpression,
     namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,

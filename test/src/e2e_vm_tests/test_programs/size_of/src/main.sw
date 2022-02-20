@@ -16,5 +16,5 @@ fn main() -> u64 {
         four: 4,
         five: 5,
     };
-    size_of(x)
+    size_of_val(x)
 }
