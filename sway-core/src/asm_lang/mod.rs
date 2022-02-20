@@ -29,7 +29,7 @@ impl From<&AsmRegister> for VirtualRegister {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Op {
     pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
     /// A descriptive comment for ASM readability
@@ -1383,7 +1383,7 @@ impl fmt::Display for Op {
 
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum OrganizationalOp {
     // Labels the code for jumps, will later be interpreted into offsets
     Label(Label),

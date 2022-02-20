@@ -104,13 +104,9 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    fn allocate_registers(
-        mut self,
-        data_section: &DataSection,
-        register_sequencer: &mut RegisterSequencer,
-    ) -> InstructionSet {
+    fn allocate_registers(self, register_sequencer: &mut RegisterSequencer) -> InstructionSet {
         // Step 1: Liveness Analysis.
-        let live_out = register_allocator::liveness_analysis(&self.ops, data_section);
+        let live_out = register_allocator::liveness_analysis(&self.ops);
 
         // Step 2: Construct the interference graph.
         let (mut interference_graph, mut reg_to_node_ix) =
@@ -118,7 +114,7 @@ impl RealizedAbstractInstructionSet {
 
         // Step 3: Remove redundant MOVE instructions using the interference graph.
         let reduced_ops = register_allocator::coalesce_registers(
-            &mut self.ops,
+            &self.ops,
             &mut interference_graph,
             &mut reg_to_node_ix,
             register_sequencer,
@@ -302,22 +298,22 @@ impl AbstractInstructionSet {
 }
 
 #[derive(Debug)]
-struct RegAllocationStatus {
+struct RegisterAllocationStatus {
     reg: AllocatedRegister,
     used_by: BTreeSet<VirtualRegister>,
 }
 
 #[derive(Debug)]
-pub(crate) struct RegPool {
-    registers: Vec<RegAllocationStatus>,
+pub(crate) struct RegisterPool {
+    registers: Vec<RegisterAllocationStatus>,
 }
 
-impl RegPool {
+impl RegisterPool {
     fn init() -> Self {
-        let reg_pool: Vec<RegAllocationStatus> = (0
+        let reg_pool: Vec<RegisterAllocationStatus> = (0
             // - 1 because we reserve the final register for the data_section begin
             ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
-            .map(|x| RegAllocationStatus {
+            .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 used_by: BTreeSet::new(),
             })
@@ -331,12 +327,14 @@ impl RegPool {
         &self,
         virtual_register: &VirtualRegister,
     ) -> Option<AllocatedRegister> {
-        let allocated_reg = self
-            .registers
-            .iter()
-            .find(|RegAllocationStatus { reg: _, used_by }| used_by.contains(virtual_register));
+        let allocated_reg =
+            self.registers
+                .iter()
+                .find(|RegisterAllocationStatus { reg: _, used_by }| {
+                    used_by.contains(virtual_register)
+                });
 
-        allocated_reg.map(|RegAllocationStatus { reg, used_by: _ }| reg.clone())
+        allocated_reg.map(|RegisterAllocationStatus { reg, used_by: _ }| reg.clone())
     }
 }
 
@@ -885,7 +883,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers(&data_section, register_sequencer);
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
                     program_section,
@@ -897,7 +895,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers(&data_section, register_sequencer);
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
                     program_section,
@@ -909,7 +907,7 @@ impl JumpOptimizedAsmSet {
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
                     .realize_labels(&data_section)
-                    .allocate_registers(&data_section, register_sequencer),
+                    .allocate_registers(register_sequencer),
                 data_section,
             },
         }
@@ -1014,7 +1012,6 @@ impl RegisterAllocatedAsmSet {
     }
 }
 
-#[derive(Debug)]
 pub(crate) enum NodeAsmResult {
     JustAsm(Vec<Op>),
     ReturnStatement { asm: Vec<Op> },

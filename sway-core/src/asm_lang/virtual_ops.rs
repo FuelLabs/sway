@@ -10,7 +10,7 @@ use super::{
     virtual_register::*,
     DataId, RealizedOp,
 };
-use crate::asm_generation::RegPool;
+use crate::asm_generation::RegisterPool;
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -401,7 +401,7 @@ impl VirtualOp {
         &self,
         index: usize,
         ops: &[RealizedOp],
-        inst_index: &HashMap<usize, usize>,
+        offset_to_ix: &HashMap<u64, usize>,
     ) -> Vec<usize> {
         use VirtualOp::*;
         let next_op = if index >= ops.len() - 1 {
@@ -412,17 +412,17 @@ impl VirtualOp {
         match self {
             RVRT(_) => vec![],
             JI(i) => {
-                if *inst_index.get(&(i.value as usize)).unwrap() >= ops.len() {
+                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
                     vec![]
                 } else {
-                    vec![*inst_index.get(&(i.value as usize)).unwrap()]
+                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
                 }
             }
             JNEI(_, _, i) => {
-                if *inst_index.get(&(i.value as usize)).unwrap() >= ops.len() {
+                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
                     vec![].into_iter().chain(next_op.into_iter()).collect()
                 } else {
-                    vec![*inst_index.get(&(i.value as usize)).unwrap()]
+                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
                         .into_iter()
                         .chain(next_op.into_iter())
                         .collect()
@@ -784,7 +784,7 @@ impl VirtualOp {
         }
     }
 
-    pub(crate) fn allocate_registers(&self, pool: &RegPool) -> AllocatedOpcode {
+    pub(crate) fn allocate_registers(&self, pool: &RegisterPool) -> AllocatedOpcode {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
             .clone()
@@ -1137,7 +1137,7 @@ fn update_reg(
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 /// A label for a spot in the bytecode, to be later compiled to an offset.
 pub(crate) struct Label(pub(crate) usize);
 impl fmt::Display for Label {
