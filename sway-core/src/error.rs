@@ -94,6 +94,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+
     pub fn ok(
         mut self,
         warnings: &mut Vec<CompileWarning>,
