@@ -756,22 +756,8 @@ fn connect_expression(
 
             Ok([then_expr, else_expr].concat())
         }
-        CodeBlock(TypedCodeBlock { contents, .. }) => {
-            //            connect_code_block(
-            let block_entry = graph.add_node("Code block entry".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, block_entry, label.into());
-            }
-            let mut current_leaf = vec![block_entry];
-            for node in contents {
-                current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type)?.0;
-            }
-
-            let block_exit = graph.add_node("Code block exit".into());
-            for leaf in current_leaf {
-                graph.add_edge(leaf, block_exit, "".into());
-            }
-            Ok(vec![block_exit])
+        CodeBlock(a @ TypedCodeBlock { .. }) => {
+            connect_code_block(a, graph, leaves, exit_node, tree_type)
         }
         StructExpression {
             struct_name,
@@ -931,25 +917,10 @@ fn connect_expression(
             Ok([prefix_idx, index_idx].concat())
         }
         IfLet { then, r#else, .. } => {
-            let then_expr = connect_expression(
-                &(*then).expression,
-                graph,
-                &condition_expr,
-                exit_node,
-                "then branch",
-                tree_type,
-                (*then).span.clone(),
-            )?;
+            let then_expr = connect_code_block(then, graph, leaves, exit_node, tree_type)?;
 
             let else_expr = if let Some(else_expr) = r#else {
-                connect_expression(
-                    graph,
-                    &condition_expr,
-                    exit_node,
-                    "else branch",
-                    tree_type,
-                    else_expr.span(),
-                )?
+                connect_code_block(else_expr, graph, leaves, exit_node, tree_type)?
             } else {
                 vec![]
             };
@@ -976,6 +947,30 @@ fn connect_expression(
             ))
         }
     }
+}
+
+fn connect_code_block(
+    block: &TypedCodeBlock,
+    graph: &mut ControlFlowGraph,
+    leaves: &[NodeIndex],
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
+    let contents = &block.contents;
+    let block_entry = graph.add_node("Code block entry".into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, block_entry, "".into());
+    }
+    let mut current_leaf = vec![block_entry];
+    for node in contents {
+        current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type)?.0;
+    }
+
+    let block_exit = graph.add_node("Code block exit".into());
+    for leaf in current_leaf {
+        graph.add_edge(leaf, block_exit, "".into());
+    }
+    Ok(vec![block_exit])
 }
 
 fn connect_enum_instantiation(

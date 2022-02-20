@@ -10,6 +10,9 @@ pub(crate) struct TypedCodeBlock {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
+    pub fn span(&self) -> &Span {
+        &self.whole_block_span
+    }
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {

@@ -892,6 +892,7 @@ impl TypedExpression {
 
         let exp = TypedExpression {
             expression: TypedExpressionVariant::IfLet {
+                expr,
                 variable_to_assign: variable_to_assign.clone(),
                 enum_type,
                 variant,

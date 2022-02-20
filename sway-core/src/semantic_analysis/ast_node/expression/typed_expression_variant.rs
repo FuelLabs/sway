@@ -65,6 +65,7 @@ pub(crate) enum TypedExpressionVariant {
     },
     IfLet {
         enum_type: TypeId,
+        expr: Box<TypedExpression>,
         variant: TypedEnumVariant,
         variable_to_assign: Ident,
         then: TypedCodeBlock,
