@@ -138,6 +138,11 @@ pub fn user_forc_directory() -> PathBuf {
         .join(constants::USER_FORC_DIRECTORY)
 }
 
+/// The location at which `forc` will checkout git repositories.
+pub fn git_checkouts_directory() -> PathBuf {
+    user_forc_directory().join("git").join("checkouts")
+}
+
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,

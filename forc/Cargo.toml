@@ -16,12 +16,14 @@ clap = { version = "3.1.2", features = ["env", "derive"] }
 clap_complete = "3.1"
 dirs = "3.0.2"
 flate2 = "1.0.20"
-fuel-asm = "0.1" 
+fuel-asm = "0.1"
 fuel-gql-client = { version = "0.3", default-features = false }
 fuel-tx = "0.5"
 fuel-vm = "0.4"
 futures = "0.3"
+git2 = "0.13"
 hex = "0.4.3"
+petgraph = { version = "0.6.0", features = ["serde-1"] }
 prettydiff = "0.5.0"
 reqwest = { version = "0.11.4", default-features = false, features = ["json", "rustls-tls"] }
 semver = "1.0.3"
@@ -42,6 +44,7 @@ ureq = "2.4"
 warp = "0.3"
 whoami = "1.1"
 unicode-xid = "0.2.2"
+url = "2"
 uwuify = { version = "^0.2", optional = true }
 
 [features]
