@@ -680,6 +680,10 @@ fn convert_if_let_to_asm(
         errors
     ));
 
+    // add the data section from the then branch back to the main one
+
+    namespace.overwrite_data_section(then_branch_asm_namespace);
+
     let label_for_after_else_branch = register_sequencer.get_label();
     if let Some(r#else) = r#else {
         buf.push(Op::jump_to_label_comment(
