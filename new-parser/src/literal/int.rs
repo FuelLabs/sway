@@ -51,11 +51,28 @@ impl Spanned for IntTy {
     }
 }
 
-pub fn int_literal() -> impl Parser<Output = IntLiteral> + Clone {
+#[derive(Clone)]
+pub struct ExpectedIntLiteralError {
+    pub position: usize,
+}
+
+#[derive(Clone)]
+pub struct ExpectedIntLiteralDigitsError {
+    pub position: usize,
+}
+
+pub fn int_literal()
+    -> impl Parser<
+        Output = IntLiteral,
+        Error = ExpectedIntLiteralError,
+        FatalError = ExpectedIntLiteralDigitsError,
+    > + Clone {
     numeric_sign()
     .map_err(|ExpectedNumericSignError { .. }| ())
     .optional()
     .then(digits())
+    .map_err(|ExpectedDigitsError { position }| ExpectedIntLiteralError { position })
+    .map_fatal_err(|ExpectedBigUintError { position }| ExpectedIntLiteralDigitsError { position })
     .then(int_ty().optional())
     .map(|((numeric_sign_opt, (base_prefix_opt, big_uint, digits_span)), ty_suffix_opt): ((Option<_>, _), Option<_>)| {
         let parsed = match numeric_sign_opt {
@@ -118,11 +135,12 @@ pub fn int_ty<R>() -> impl Parser<Output = IntTy, Error = (), FatalError = R> + 
         u32_parser,
         u64_parser,
     }
+    .map_err(|((), (), (), (), (), (), (), ())| ())
 }
 
 #[derive(Clone)]
 struct ExpectedDigitsError {
-    pub position: usize,
+    position: usize,
 }
 
 fn digits()
@@ -157,6 +175,7 @@ pub fn big_uint<R>(radix: u32)
             digit(radix).map(Some).map_err(|ExpectedDigitError { .. }| ()),
             keyword("_").map(|()| None).map_err(|ExpectedKeywordError { .. }| ()),
         }
+        .map_err(|((), ())| ())
     };
     digit(radix)
     .map_err(|ExpectedDigitError { position }| ExpectedBigUintError { position })

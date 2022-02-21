@@ -104,6 +104,6 @@ fn string_char() -> impl Parser<Output = char, Error = UnexpectedCloseQuote, Fat
         escape_code,
         non_close_quote_char,
     }
-    .or_else(|(), _span| Err(Ok(UnexpectedCloseQuote)))
+    .or_else(|((), ()), _span| Err(Ok(UnexpectedCloseQuote)))
 }
 

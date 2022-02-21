@@ -31,5 +31,7 @@ pub use {
     unicode_xid::UnicodeXID,
     ariadne::{Report, ReportBuilder, ReportKind},
     crate::*,
+    new_parser_macros::or,
+    extension_trait::extension_trait,
 };
 

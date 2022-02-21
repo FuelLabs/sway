@@ -41,6 +41,7 @@ macro_rules! define_token (
             span: Span,
         }
 
+        #[derive(Clone)]
         pub struct $err_name {
             pub position: usize,
         }

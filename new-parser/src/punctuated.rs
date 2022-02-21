@@ -34,7 +34,7 @@ where
 }
 
 pub fn punctuated<T, S, U, V, E, R>(value: U, separator: V)
-    -> impl Parser<Output = Punctuated<T, S>, Error = R, FatalError = PaddedFatalError<R>> + Clone
+    -> impl Parser<Output = Punctuated<T, S>, Error = E, FatalError = PaddedFatalError<R>> + Clone
 where
     U: Parser<Output = T, Error = (), FatalError = R> + Clone + 'static,
     V: Parser<Output = S, Error = (), FatalError = R> + Clone + 'static,

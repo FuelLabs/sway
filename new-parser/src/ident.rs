@@ -17,6 +17,7 @@ impl Spanned for Ident {
     }
 }
 
+#[derive(Clone)]
 pub struct ExpectedIdentError {
     pub position: usize,
 }

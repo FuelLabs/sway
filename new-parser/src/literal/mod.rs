@@ -47,7 +47,7 @@ pub fn numeric_sign<R>()
         positive,
         negative,
     }
-    .or_else(|(), span| Err(Ok(ExpectedNumericSignError { position: span.start() })))
+    .or_else(|((), ()), span| Err(Ok(ExpectedNumericSignError { position: span.start() })))
 }
 
 pub struct ExpectedDigitError {
@@ -170,7 +170,7 @@ pub fn escape_code()
         hex,
         unicode,
     }
-    .or_else(|(), span| Err(Ok(EscapeCodeError { position: span.start() })))
+    .or_else(|((), (), (), (), (), (), (), (), ()), span| Err(Ok(EscapeCodeError { position: span.start() })))
 }
 
 #[derive(Clone, Debug)]
@@ -228,6 +228,6 @@ pub fn base_prefix<R>()
         octal,
         binary,
     }
-    .or_else(|(), span| Err(Ok(ExpectedBasePrefixError { position: span.start() })))
+    .or_else(|((), (), ()), span| Err(Ok(ExpectedBasePrefixError { position: span.start() })))
 }
 

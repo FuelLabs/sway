@@ -1,0 +1,14 @@
+[package]
+name = "new-parser-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0.84", features = ["parsing", "proc-macro"]}
+quote = "1.0.14"
+proc-macro2 = "1.0.36"
+
+

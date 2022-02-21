@@ -39,6 +39,7 @@ impl Spanned for Ty {
     }
 }
 
+#[derive(Clone)]
 pub struct ExpectedTypeError {
     pub position: usize,
 }

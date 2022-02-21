@@ -11,4 +11,6 @@ num-traits = "*"
 unicode-xid = "*"
 walkdir = "*"
 ariadne = "*"
+new-parser-macros = { path = "../new-parser-macros" }
+extension-trait = "*"
 

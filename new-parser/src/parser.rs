@@ -93,11 +93,13 @@ pub trait ParserExt: Parser {
     fn optional<E>(self) -> Optional<Self, E>
     where
         Self: Sized;
+    */
 
     fn then_optional_whitespace(self) -> ThenOptionalWhitespace<Self>
     where
         Self: Sized;
 
+    /*
     /*
     fn or<R>(self, parser: R) -> Or<Self, R>
     where
@@ -223,6 +225,7 @@ where
     {
         Optional::new(self)
     }
+    */
 
     fn then_optional_whitespace(self) -> ThenOptionalWhitespace<Self>
     where
@@ -231,6 +234,7 @@ where
         ThenOptionalWhitespace::new(self)
     }
 
+    /*
     /*
     fn or<R>(self, parser: R) -> Or<Self, R>
     where

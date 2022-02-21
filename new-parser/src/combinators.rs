@@ -257,7 +257,6 @@ where
     }
 }
 
-/*
 #[derive(Clone)]
 pub struct ThenOptionalWhitespace<P> {
     parser: P,
@@ -274,25 +273,26 @@ where
     P: Parser,
 {
     type Output = P::Output;
-    type Error = PaddedError<P::Error>;
+    type Error = P::Error;
+    type FatalError = PaddedFatalError<P::FatalError>;
 
-    fn parse(&self, input: &Span) -> (bool, Result<(P::Output, usize), PaddedError<P::Error>>) {
+    fn parse(&self, input: &Span)
+        -> Result<(P::Output, usize), Result<P::Error, PaddedFatalError<P::FatalError>>>
+    {
         (&self.parser)
-        .map_err(PaddedError::Parser)
+        .map_fatal_err(PaddedFatalError::Inner)
         .then(
             whitespace()
-            .or_else(|error| match error {
-                WhitespaceError::ExpectedWhitespaceOrComment { .. } => Ok(((), 0)),
-                WhitespaceError::UnclosedMultilineComment { start_position } => {
-                    Err(PaddedError::UnclosedMultilineComment { start_position })
-                },
-            })
+            .map_err(|ExpectedWhitespaceError { .. }| ())
+            .optional()
+            .map_fatal_err(PaddedFatalError::UnclosedMultilineComment)
         )
         .map(|(value, _opt)| value)
         .parse(input)
     }
 }
 
+/*
 /*
 #[derive(Clone)]
 pub struct Or<P0, P1> {

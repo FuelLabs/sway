@@ -208,6 +208,7 @@ pub fn whitespace()
             line_comment,
             multiline_comment,
         }
+        .map_err(|((), (), ())| ())
     };
     any_whitespace
     .clone()
@@ -259,52 +260,69 @@ where
     .map(|(_opt, value)| value)
 }
 
-/*
-/*
-pub fn padded<P>(parser: P) -> impl Parser<Output = P::Output, Error = PaddedError<P::Error>> + Clone
+pub fn padded<P>(parser: P)
+    -> impl Parser<Output = P::Output, Error = P::Error, FatalError = PaddedFatalError<P::FatalError>> + Clone
 where
     P: Parser + Clone,
+    P::Error: Clone,
 {
     optional_leading_whitespace(parser.then_optional_whitespace())
-    .map_err(|error| match error {
-        PaddedError::Parser(error) => error,
-        PaddedError::UnclosedMultilineComment { start_position } => {
-            PaddedError::UnclosedMultilineComment { start_position }
-        },
-    })
+    .map_fatal_err(PaddedFatalError::flatten)
 }
 
-pub struct Todo<T, E> {
-    _phantom_ok: PhantomData<T>,
-    _phantom_err: PhantomData<E>,
-}
-
-pub fn todo<T, E>() -> Todo<T, E> {
-    Todo {
-        _phantom_ok: PhantomData,
-        _phantom_err: PhantomData,
+impl<R> PaddedFatalError<PaddedFatalError<R>> {
+    pub fn flatten(self) -> PaddedFatalError<R> {
+        match self {
+            PaddedFatalError::UnclosedMultilineComment(error) => {
+                PaddedFatalError::UnclosedMultilineComment(error)
+            },
+            PaddedFatalError::Inner(error) => error,
+        }
     }
 }
 
-impl<T, E> Parser for Todo<T, E> {
+impl PaddedFatalError<Infallible> {
+    pub fn to_unclosed_multiline_comment_error(self) -> UnclosedMultilineCommentError {
+        match self {
+            PaddedFatalError::UnclosedMultilineComment(error) => error,
+            PaddedFatalError::Inner(infallible) => match infallible {},
+        }
+    }
+}
+
+pub struct Todo<T, E, R> {
+    _phantom_ok: PhantomData<T>,
+    _phantom_err: PhantomData<E>,
+    _phantom_fatal_err: PhantomData<R>,
+}
+
+pub fn todo<T, E, R>() -> Todo<T, E, R> {
+    Todo {
+        _phantom_ok: PhantomData,
+        _phantom_err: PhantomData,
+        _phantom_fatal_err: PhantomData,
+    }
+}
+
+impl<T, E, R> Parser for Todo<T, E, R> {
     type Output = T;
     type Error = E;
+    type FatalError = R;
 
-    fn parse(&self, _input: &Span) -> (bool, Result<(T, usize), E>) {
+    fn parse(&self, _input: &Span) -> Result<(T, usize), Result<E, R>> {
         todo!()
     }
 }
 
-impl<T, E> Clone for Todo<T, E> {
-    fn clone(&self) -> Todo<T, E> {
+impl<T, E, R> Clone for Todo<T, E, R> {
+    fn clone(&self) -> Todo<T, E, R> {
         Todo {
             _phantom_ok: PhantomData,
             _phantom_err: PhantomData,
+            _phantom_fatal_err: PhantomData,
         }
     }
 }
-*/
-*/
 
 pub fn lazy<'a, T, E, R, P, F>(func: F) -> Rc<dyn Parser<Output = T, Error = E, FatalError = R> + 'a>
 where
@@ -359,6 +377,7 @@ pub fn eof() -> impl Parser<Output = (), Error = ExpectedEofError> + Clone {
 */
 */
 
+/*
 #[macro_export]
 macro_rules! __or_inner {
     ($parsers:ident, $input:ident, ($($head_pats:pat,)*), ()) => {
@@ -397,5 +416,6 @@ macro_rules! or {
         })
     }};
 }
+*/
 
 
