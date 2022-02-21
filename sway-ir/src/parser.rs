@@ -33,9 +33,8 @@ mod ir_builder {
                 }
 
             rule script() -> IrAstModule
-                = "script" _ name:id() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
                     IrAstModule {
-                        name,
                         kind: crate::module::Kind::Script,
                         fn_decls,
                         metadata
@@ -390,7 +389,6 @@ mod ir_builder {
 
     #[derive(Debug)]
     pub(super) struct IrAstModule {
-        name: String,
         kind: Kind,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
@@ -582,7 +580,7 @@ mod ir_builder {
 
     pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
-        let module = Module::new(&mut ctx, ir_ast_mod.kind, &ir_ast_mod.name);
+        let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let md_map = build_metadata_map(&mut ctx, &ir_ast_mod.metadata);
         for fn_decl in ir_ast_mod.fn_decls {
             build_add_fn_decl(&mut ctx, module, fn_decl, &md_map)?;

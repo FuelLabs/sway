@@ -1,4 +1,4 @@
-script script {
+script {
     fn pred(self !1: { bool }) -> bool {
         entry:
         v0 = extract_value self, { bool }, 0, !2

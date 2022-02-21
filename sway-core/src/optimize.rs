@@ -52,7 +52,7 @@ fn compile_script(
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
-    let module = Module::new(context, Kind::Script, "script");
+    let module = Module::new(context, Kind::Script);
 
     compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
@@ -67,7 +67,7 @@ fn compile_contract(
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
-    let module = Module::new(context, Kind::Contract, "contract");
+    let module = Module::new(context, Kind::Contract);
 
     compile_constants(context, module, namespace, false)?;
     compile_declarations(context, module, declarations)?;
