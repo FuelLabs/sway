@@ -7,7 +7,7 @@ use crate::asm_lang::{
 };
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
+    semantic_analysis::ast_node::{TypedEnumDeclaration, TypedEnumVariant, TypedExpression},
     type_engine::resolve_type,
     CompileResult, Ident, Literal,
 };
@@ -57,6 +57,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
             return err(warnings, errors);
         }
     };
+
     if size_of_enum > EIGHTEEN_BITS {
         errors.push(CompileError::Unimplemented(
             "Stack variables which exceed 2^18 words in size are not supported yet.",

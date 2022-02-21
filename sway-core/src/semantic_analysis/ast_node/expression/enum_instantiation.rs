@@ -11,6 +11,7 @@ pub(crate) fn instantiate_enum(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
+    type_arguments: Vec<(TypeInfo, Span)>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
     self_type: TypeId,
@@ -27,7 +28,12 @@ pub(crate) fn instantiate_enum(
     let enum_decl = if enum_decl.type_parameters.is_empty() {
         enum_decl
     } else {
-        enum_decl.monomorphize()
+        check!(
+            enum_decl.monomorphize(type_arguments, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
     };
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants

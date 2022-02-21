@@ -56,6 +56,15 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
     }
 }
 
+pub(crate) fn infallible<T>(res: CompileResult<T>) -> T {
+    match res.value {
+        Some(x) if res.errors.is_empty() && res.warnings.is_empty() => x,
+        _ => {
+            panic!("Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues")
+        }
+    }
+}
+
 /// Denotes a recovered or non-error state
 pub(crate) fn ok<T>(
     value: T,

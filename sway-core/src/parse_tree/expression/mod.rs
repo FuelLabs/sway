@@ -132,7 +132,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<TypeInfo>,
+        type_arguments: Vec<(TypeInfo, Span)>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -849,11 +849,23 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
+                let file_path = path.clone();
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
-                let instantiator = parts.next();
+                let (maybe_type_args, maybe_instantiator) = {
+                    let part = parts.next();
+                    match part.as_ref().map(|x| x.as_rule()) {
+                        Some(Rule::fn_args) => (None, part),
+                        Some(Rule::type_args) => {
+                            let next_part = parts.next();
+                            (part, next_part)
+                        }
+                        None => (None, None),
+                        Some(_) => unreachable!("guaranteed by grammar"),
+                    }
+                };
                 let path = check!(
                     CallPath::parse_from_pair(path_component, config),
                     return err(warnings, errors),
@@ -861,7 +873,7 @@ impl Expression {
                     errors
                 );
 
-                let args = if let Some(inst) = instantiator {
+                let args = if let Some(inst) = maybe_instantiator {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
                         let exp = check!(
@@ -877,15 +889,39 @@ impl Expression {
                     vec![]
                 };
 
+                let maybe_type_args = maybe_type_args
+                    .map(|x| {
+                        x.into_inner()
+                            .skip(1)
+                            .next()
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
                 // if there is an expression in parenthesis, that is the instantiator.
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: file_path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg, config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 Expression::DelineatedPath {
                     call_path: path,
+                    type_arguments: type_args_buf,
                     args,
                     span,
-                    // Eventually, when we support generic enums, we want to be able to parse type
-                    // arguments on the enum name and throw them in here. TODO
-                    type_arguments: vec![],
                 }
             }
             Rule::tuple_expr => {

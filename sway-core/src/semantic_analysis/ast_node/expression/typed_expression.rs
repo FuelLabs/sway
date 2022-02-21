@@ -1427,8 +1427,7 @@ impl TypedExpression {
         call_path: CallPath,
         span: Span,
         args: Vec<Expression>,
-        // TODO these will be needed for enum instantiation
-        _type_arguments: Vec<TypeInfo>,
+        type_arguments: Vec<(TypeInfo, Span)>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
         self_type: TypeId,
@@ -1483,6 +1482,7 @@ impl TypedExpression {
                         enum_decl,
                         call_path.suffix,
                         args,
+                        type_arguments,
                         namespace,
                         crate_namespace,
                         self_type,

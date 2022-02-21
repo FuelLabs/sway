@@ -591,7 +591,7 @@ fn convert_if_let_to_asm(
     let mut buf = vec![];
     // 1.
     let expr_return_register = register_sequencer.next();
-    let expr_buf = check!(
+    let mut expr_buf = check!(
         convert_expression_to_asm(
             &**expr,
             namespace,
@@ -602,6 +602,7 @@ fn convert_if_let_to_asm(
         warnings,
         errors
     );
+    buf.append(&mut expr_buf);
     // load the tag from the evaluated value
     // as this is an enum we know the value in the register is a pointer
     // we can therefore read a word from the register and move it into another register
@@ -638,7 +639,13 @@ fn convert_if_let_to_asm(
         owning_span: Some(expr.span.clone()),
     });
     // 6.
+    // put the destructured variable into the namespace for the then branch, but not otherwise
+    let mut then_branch_asm_namespace = namespace.clone();
     let variable_to_assign_register = register_sequencer.next();
+    then_branch_asm_namespace.insert_variable(
+        variable_to_assign.clone(),
+        variable_to_assign_register.clone(),
+    );
     match look_up_type_id(variant.r#type).size_in_words(&expr.span) {
         Ok(size) => {
             if size == 1 {
@@ -662,7 +669,12 @@ fn convert_if_let_to_asm(
 
     // 6
     buf.append(&mut check!(
-        convert_code_block_to_asm(then, namespace, register_sequencer, Some(return_register)),
+        convert_code_block_to_asm(
+            then,
+            &mut then_branch_asm_namespace,
+            register_sequencer,
+            Some(return_register)
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -670,12 +682,15 @@ fn convert_if_let_to_asm(
 
     let label_for_after_else_branch = register_sequencer.get_label();
     if let Some(r#else) = r#else {
-        buf.push(Op::jump_to_label(label_for_after_else_branch.clone()));
+        buf.push(Op::jump_to_label_comment(
+            label_for_after_else_branch.clone(),
+            "jump to after the else branch",
+        ));
 
         buf.push(Op::unowned_jump_label(label_for_else_branch));
 
         buf.append(&mut check!(
-            convert_code_block_to_asm(then, namespace, register_sequencer, Some(return_register)),
+            convert_code_block_to_asm(r#else, namespace, register_sequencer, Some(return_register)),
             return err(warnings, errors),
             warnings,
             errors

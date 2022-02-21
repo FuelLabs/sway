@@ -84,6 +84,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
         ("supertraits_1", ProgramState::Return(1)),
         ("supertraits_2", ProgramState::Return(1)),
+        ("enum_if_let", ProgramState::Return(87)),
+        ("enum_destructuring", ProgramState::Return(15)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -130,6 +132,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "supertrait_dup_methods_2",
         "missing_supertrait",
         "missing_supertrait_impl",
+        "enum_if_let_invalid_variable",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

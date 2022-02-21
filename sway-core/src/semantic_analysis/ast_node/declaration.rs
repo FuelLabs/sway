@@ -299,11 +299,47 @@ impl TypedEnumDeclaration {
     pub(crate) fn variants(&self) -> &[TypedEnumVariant] {
         &self.variants
     }
-    pub(crate) fn monomorphize(&self) -> Self {
-        let mut new_decl = self.clone();
+    pub(crate) fn monomorphize(
+        &self,
+        type_arguments: Vec<(TypeInfo, Span)>,
+        self_type: TypeId,
+    ) -> CompileResult<Self> {
         let type_mapping = insert_type_parameters(&self.type_parameters);
+        let mut warnings = vec![];
+        let mut errors: Vec<CompileError> = vec![];
+        if !type_arguments.is_empty() {
+            // check type arguments against parameters
+            if self.type_parameters.len() != type_arguments.len() {
+                todo!(
+                    "incorrect number of type args err expected {} got {}",
+                    self.type_parameters.len(),
+                    type_arguments.len()
+                );
+            }
+
+            // check the type arguments
+            for ((_, decl_param), (type_argument, type_argument_span)) in
+                type_mapping.iter().zip(type_arguments.iter())
+            {
+                match unify_with_self(
+                    *decl_param,
+                    insert_type(type_argument.clone()),
+                    self_type,
+                    type_argument_span,
+                ) {
+                    Ok(mut ws) => {
+                        warnings.append(&mut ws);
+                    }
+                    Err(e) => {
+                        errors.push(e.into());
+                        continue;
+                    }
+                }
+            }
+        }
+        let mut new_decl = self.clone();
         new_decl.copy_types(&type_mapping);
-        new_decl
+        ok(new_decl, warnings, errors)
     }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.variants

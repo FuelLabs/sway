@@ -1,6 +1,9 @@
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{
+        ast_node::{declaration::insert_type_parameters, *},
+        *,
+    },
     type_engine::*,
     CallPath, Visibility,
 };
@@ -629,9 +632,13 @@ impl NamespaceWrapper for NamespaceRef {
                                 .map(TypedEnumVariant::as_owned_typed_enum_variant)
                                 .collect(),
                         };
+                        let type_mapping = insert_type_parameters(&decl.type_parameters);
                         let mut new_enum = old_enum.clone();
                         if !decl.type_parameters.is_empty() {
-                            let new_decl = decl.monomorphize();
+                            // the following line is infallible because an error can only arise
+                            // from monomorphizing if there are type arguments specified. Here, we
+                            // are passing in vec![], which therefore means this is infallible.
+                            let new_decl = infallible(decl.monomorphize(vec![], self_type));
                             new_enum = TypeInfo::Enum {
                                 name: new_decl.name.as_str().to_string(),
                                 variant_types: new_decl
