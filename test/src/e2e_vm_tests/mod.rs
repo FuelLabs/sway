@@ -86,6 +86,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("supertraits_2", ProgramState::Return(1)),
         ("enum_if_let", ProgramState::Return(143)),
         ("enum_destructuring", ProgramState::Return(15)),
+        ("enum_if_let_large_type", ProgramState::Return(42)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
