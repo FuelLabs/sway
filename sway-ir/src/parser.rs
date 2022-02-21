@@ -495,7 +495,7 @@ mod ir_builder {
                         .iter()
                         .map(|(ty, cv)| (ty.to_ir_type(context), cv.value.as_constant(context)))
                         .unzip();
-                    let aggregate = Aggregate::new_struct(context, None, types);
+                    let aggregate = Aggregate::new_struct(context, types);
                     Constant::new_struct(&aggregate, fields)
                 }
             }
@@ -555,7 +555,7 @@ mod ir_builder {
                 }
                 IrAstTy::Struct(tys) | IrAstTy::Union(tys) => {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
-                    Aggregate::new_struct(context, None, tys)
+                    Aggregate::new_struct(context, tys)
                 }
                 _otherwise => {
                     unreachable!("Converting non aggregate IR AST type to IR aggregate type.")
