@@ -20,7 +20,7 @@ impl Manifest {}
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
-    pub author: String,
+    pub authors: Vec<String>,
     pub name: String,
     pub organization: Option<String>,
     pub license: String,

@@ -1,6 +1,6 @@
 [project]
 name = "trait_impl_import"
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 
