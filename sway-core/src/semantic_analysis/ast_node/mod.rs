@@ -191,7 +191,7 @@ impl TypedAstNode {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(a, namespace, build_config, dead_code_graph,),
+                        import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -853,7 +853,7 @@ fn import_new_file(
         namespace: module,
         ..
     } = check!(
-        crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph,),
+        crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph),
         return err(warnings, errors),
         warnings,
         errors
