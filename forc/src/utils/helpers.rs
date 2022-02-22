@@ -147,9 +147,9 @@ pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
-    tree_type: TreeType,
+    tree_type: &TreeType,
 ) {
-    let type_str = match tree_type {
+    let type_str = match &tree_type {
         TreeType::Script {} => "script",
         TreeType::Contract {} => "contract",
         TreeType::Predicate {} => "predicate",
