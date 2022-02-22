@@ -180,14 +180,14 @@ fn fetch_children(
     };
     for (name, dep) in deps {
         let name = name.clone();
-        let source = dep_to_pkg_source(dep)?;
+        let source = dep_to_source(dep)?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
         let pinned = pin_pkg(&pkg)?;
         let dep_node = if let Entry::Vacant(entry) = visited.entry(pinned.clone()) {
-            let fetched = fetch_pkg_pinned(pinned)?;
+            let fetched = fetch_pinned(pinned)?;
             let node = graph.add_node(fetched);
             entry.insert(node);
             fetch_children(offline_mode, node, graph, visited)?;
@@ -201,7 +201,7 @@ fn fetch_children(
 }
 
 /// The name to use for a package's git repository under the user's forc directory.
-fn pkg_git_repo_dir_name(name: &str, repo: &Url) -> String {
+fn git_repo_dir_name(name: &str, repo: &Url) -> String {
     let repo_url_hash = hash_url(repo);
     format!("{}-{:x}", name, repo_url_hash)
 }
@@ -222,12 +222,12 @@ fn hash_url(url: &Url) -> u64 {
 /// $HOME/.forc/git/checkouts/tmp/name-<repo_url_hash>
 /// ```
 fn tmp_git_repo_dir(name: &str, repo: &Url) -> PathBuf {
-    let repo_dir_name = pkg_git_repo_dir_name(name, repo);
+    let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
 
 /// Clones the package git repo into a temporary directory and applies the given function.
-fn with_pkg_tmp_git_repo<F, O>(name: &str, source: &SourceGit, f: F) -> Result<O>
+fn with_tmp_git_repo<F, O>(name: &str, source: &SourceGit, f: F) -> Result<O>
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
@@ -261,8 +261,8 @@ where
 ///
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
-fn pin_pkg_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_pkg_tmp_git_repo(name, &source, |repo| {
+fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
+    let commit_hash = with_tmp_git_repo(name, &source, |repo| {
         // Find specified reference in repo.
         let reference = repo
             .resolve_reference_from_short_name(&source.reference)
@@ -293,7 +293,7 @@ fn pin_pkg(pkg: &Pkg) -> Result<Pinned> {
     let source = match &pkg.source {
         Source::Path(path) => SourcePinned::Path(path.clone()),
         Source::Git(ref source) => {
-            let pinned = pin_pkg_git(&pkg.name, source.clone())?;
+            let pinned = pin_git(&pkg.name, source.clone())?;
             SourcePinned::Git(pinned)
         }
         Source::Registry(ref _source) => {
@@ -314,8 +314,8 @@ fn pin_pkg(pkg: &Pkg) -> Result<Pinned> {
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-fn pkg_git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
-    let repo_dir_name = pkg_git_repo_dir_name(name, repo);
+fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
+    let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
         .join(commit_hash)
@@ -324,11 +324,11 @@ fn pkg_git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-fn fetch_pkg_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
-    let path = pkg_git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
+fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
+    let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
     // Checkout the pinned hash to the path.
-    with_pkg_tmp_git_repo(name, &pinned.source, |repo| {
+    with_tmp_git_repo(name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
@@ -353,9 +353,9 @@ fn fetch_pkg_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
 }
 
 /// Given a package's pinned source ensure we have a copy of the source on the local filesystem.
-fn fetch_pkg_pinned(pkg: Pinned) -> Result<PinnedFetched> {
+fn fetch_pinned(pkg: Pinned) -> Result<PinnedFetched> {
     let path = match &pkg.source {
-        SourcePinned::Git(pinned) => fetch_pkg_git(&pkg.name, pinned)?,
+        SourcePinned::Git(pinned) => fetch_git(&pkg.name, pinned)?,
         SourcePinned::Path(path) => path.clone(),
         SourcePinned::Registry(_pinned) => {
             unimplemented!("fetch pinned package from registry");
@@ -365,7 +365,7 @@ fn fetch_pkg_pinned(pkg: Pinned) -> Result<PinnedFetched> {
     Ok(fetched)
 }
 
-fn dep_to_pkg_source(dep: &Dependency) -> Result<Source> {
+fn dep_to_source(dep: &Dependency) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref _ver_str) => unimplemented!(),
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git, &det.branch) {
@@ -388,16 +388,16 @@ fn dep_to_pkg_source(dep: &Dependency) -> Result<Source> {
 }
 
 pub(crate) fn build_config(
-    pkg_path: PathBuf,
+    path: PathBuf,
     manifest: &Manifest,
     build_conf: &BuildConf,
 ) -> Result<BuildConfig> {
     // Prepare the build config to pass through to the compiler.
-    let main_path = find_main_path(&pkg_path, manifest);
-    let file_name = find_file_name(&pkg_path, &main_path)?;
+    let main_path = find_main_path(&path, manifest);
+    let file_name = find_file_name(&path, &main_path)?;
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
-        pkg_path.to_path_buf(),
+        path.to_path_buf(),
     )
     .use_ir(build_conf.use_ir || build_conf.print_ir) // --print-ir implies --use-ir.
     .print_finalized_asm(build_conf.print_finalized_asm)
