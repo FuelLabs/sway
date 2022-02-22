@@ -33,5 +33,11 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
         defaults::default_test_program(),
     )?;
 
+    // Ignore default `out` and `target` directories created by forc and cargo.
+    fs::write(
+        format!("{}/.gitignore", project_name),
+        defaults::default_gitignore(),
+    )?;
+
     Ok(())
 }

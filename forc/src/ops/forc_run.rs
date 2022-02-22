@@ -1,7 +1,7 @@
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
-use std::io::{self, Write};
+
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::{parse, TreeType};
@@ -10,7 +10,6 @@ use tokio::process::Child;
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
-use crate::utils::client::start_fuel_core;
 
 use crate::utils::helpers;
 use helpers::{get_main_file, read_manifest};
@@ -48,9 +47,11 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             debug_outfile: command.debug_outfile,
                             offline_mode: false,
                             silent_mode: command.silent_mode,
+                            output_directory: command.output_directory,
+                            minify_json_abi: command.minify_json_abi,
                         };
 
-                        let compiled_script = forc_build::build(build_command)?;
+                        let (compiled_script, _json_abi) = forc_build::build(build_command)?;
                         let contracts = command.contract.unwrap_or_default();
                         let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
@@ -116,23 +117,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print).await?;
             Ok(None)
         }
-        Err(_) => {
-            print!(
-                "We noticed you don't have fuel-core running, would you like to start a node [y/n]?"
-            );
-            io::stdout().flush().unwrap();
-            let mut reply = String::new();
-            io::stdin().read_line(&mut reply)?;
-            let reply = reply.trim().to_lowercase();
-
-            if reply == "y" || reply == "yes" {
-                let child = start_fuel_core(node_url, &client).await?;
-                send_tx(&client, tx, pretty_print).await?;
-                Ok(Some(child))
-            } else {
-                Ok(None)
-            }
-        }
+        Err(_) => Err(CliError::fuel_core_not_running(node_url)),
     }
 }
 

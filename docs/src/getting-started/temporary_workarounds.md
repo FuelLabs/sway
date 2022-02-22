@@ -65,4 +65,4 @@ The optimizing pass of the compiler is not yet implemented, therefore bytecode w
 
 ## Formatter
 
-Currently, we need to parse the Sway code before formatting it, and the best way to do this is to compile the code. Hence, **the formatter cannot work on Sway code that does not compile**. This requirement may be changed in the future.
+Currently, we need to parse the Sway code before formatting it. Hence, **the formatter cannot work on Sway code that does not parse correctly**. This requirement may be changed in the future.

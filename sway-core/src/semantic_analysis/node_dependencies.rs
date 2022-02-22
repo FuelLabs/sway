@@ -251,8 +251,13 @@ impl Dependencies {
                 interface_surface,
                 methods,
                 type_parameters,
+                supertraits,
                 ..
             }) => self
+                .gather_from_iter(supertraits.iter(), |deps, sup| {
+                    deps.gather_from_call_path(&sup.name, false, false)
+                        .gather_from_traits(&sup.type_parameters)
+                })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
                         deps.gather_from_typeinfo(&param.r#type)

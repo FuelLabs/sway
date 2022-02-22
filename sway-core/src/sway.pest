@@ -161,7 +161,7 @@ enum_field_name   =  {ident}
 impl_self =  {impl_keyword ~ type_params? ~ type_name ~  trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
-fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
+fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
 type_params        =  {"<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">"}
 fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name =  {ident}
@@ -179,8 +179,10 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement   =  {expr ~ ";"}
 
 // traits
-trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ trait_bounds? ~ trait_methods}
+trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ supertraits? ~ trait_bounds? ~ trait_methods}
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
+supertraits   =  {":" ~ supertrait ~ ("+" ~ supertrait)*}
+supertrait    =  {call_path ~ type_params?}
 impl_trait    =  {impl_keyword ~ call_path ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports

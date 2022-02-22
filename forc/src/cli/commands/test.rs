@@ -1,3 +1,4 @@
+use crate::ops::forc_build;
 use std::io::{BufRead, BufReader};
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
@@ -18,6 +19,9 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
+    // Ensure the project builds before running tests.
+    forc_build::build(Default::default())?;
+
     // Cargo args setup
     let mut args: Vec<String> = vec!["test".into()];
     if let Some(name) = command.test_name {

@@ -94,6 +94,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+
     pub fn ok(
         mut self,
         warnings: &mut Vec<CompileWarning>,
@@ -819,6 +827,14 @@ pub enum CompileError {
     IntegerContainsInvalidDigit { span: Span, ty: String },
     #[error("Unexpected alias after an asterisk in an import statement.")]
     AsteriskWithAlias { span: Span },
+    #[error("A trait cannot be a subtrait of an ABI.")]
+    AbiAsSupertrait { span: Span },
+    #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
+    NameDefinedMultipleTimesForTrait {
+        fn_name: String,
+        trait_name: String,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1021,6 +1037,8 @@ impl CompileError {
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
             AsteriskWithAlias { span, .. } => span,
+            AbiAsSupertrait { span, .. } => span,
+            NameDefinedMultipleTimesForTrait { span, .. } => span,
         }
     }
 

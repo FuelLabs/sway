@@ -3,7 +3,7 @@ use structopt::{self, StructOpt};
 
 /// Deploy contract project.
 /// Crafts a contract deployment transaction then sends it to a running node.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Default, StructOpt)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[structopt(short, long)]
@@ -33,6 +33,15 @@ pub struct Command {
     /// Silent mode. Don't output any warnings or errors to the command line.
     #[structopt(long = "silent", short = "s")]
     pub silent_mode: bool,
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    #[structopt(long)]
+    pub output_directory: Option<String>,
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minified", i.e. all on one line without whitespace.
+    #[structopt(long)]
+    pub minify_json_abi: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

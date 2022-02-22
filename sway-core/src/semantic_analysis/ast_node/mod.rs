@@ -334,17 +334,93 @@ impl TypedAstNode {
                         Declaration::TraitDeclaration(TraitDeclaration {
                             name,
                             interface_surface,
-                            methods,
+                            mut methods,
                             type_parameters,
+                            supertraits,
                             visibility,
                         }) => {
                             // type check the interface surface
-                            let interface_surface = check!(
+                            let mut interface_surface = check!(
                                 type_check_interface_surface(interface_surface, namespace),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
+
+                            // A HashSet to keep track of the function names available to the
+                            // trait. Mainly used for error checking currently.
+                            let mut trait_method_names = HashSet::new();
+                            for interface in &interface_surface.clone() {
+                                let name = interface.name.span().span.as_str().to_string();
+                                trait_method_names.insert(name);
+                            }
+                            for method in &methods.clone() {
+                                let name = method.name.span().span.as_str().to_string();
+                                trait_method_names.insert(name);
+                            }
+                            for supertrait in supertraits {
+                                match namespace
+                                    .get_call_path(&supertrait.name)
+                                    .ok(&mut warnings, &mut errors)
+                                {
+                                    Some(TypedDeclaration::TraitDeclaration(supertrait_decl)) => {
+                                        // Augment the interface of the trait with the interface of
+                                        // each supertrait
+                                        let mut supertrait_surface =
+                                            supertrait_decl.interface_surface;
+                                        for supertrait_interface in &supertrait_surface {
+                                            let supertrait_interface_span =
+                                                supertrait_interface.name.span();
+                                            let supertrait_interface_name =
+                                                supertrait_interface_span.span.as_str().to_string();
+                                            if trait_method_names
+                                                .contains(&supertrait_interface_name)
+                                            {
+                                                errors.push(
+                                                    CompileError::NameDefinedMultipleTimesForTrait {
+                                                        fn_name: supertrait_interface_name,
+                                                        trait_name: name.span().span.as_str().to_string(),
+                                                        span: supertrait_interface_span.clone(),
+                                                    },
+                                                );
+                                            } else {
+                                                trait_method_names
+                                                    .insert(supertrait_interface_name);
+                                            }
+                                        }
+                                        interface_surface.append(&mut supertrait_surface);
+
+                                        // Augment the set of methods of the trait with the set of
+                                        // methods of each supertrait
+                                        let mut supertrait_methods = supertrait_decl.methods;
+                                        for supertrait_method in &supertrait_methods {
+                                            let supertrait_method_span =
+                                                supertrait_method.name.span();
+                                            let supertrait_method_name =
+                                                supertrait_method_span.span.as_str().to_string();
+                                            if trait_method_names.contains(&supertrait_method_name)
+                                            {
+                                                errors.push(
+                                                    CompileError::NameDefinedMultipleTimesForTrait {
+                                                        fn_name: supertrait_method_name,
+                                                        trait_name: name.span().span.as_str().to_string(),
+                                                        span: supertrait_method_span.clone(),
+                                                    },
+                                                );
+                                            } else {
+                                                trait_method_names.insert(supertrait_method_name);
+                                            }
+                                        }
+                                        methods.append(&mut supertrait_methods);
+                                    }
+                                    _ => {
+                                        errors.push(CompileError::AbiAsSupertrait {
+                                            span: name.span().clone(),
+                                        });
+                                    }
+                                }
+                            }
+
                             let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
