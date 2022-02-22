@@ -138,6 +138,7 @@ impl Engine {
                     ..
                 },
             ) if {
+                println!("unifying enums");
                 let a_variants = a_variants.iter().map(|x| x.r#type);
                 let b_variants = b_variants.iter().map(|x| x.r#type);
 
@@ -184,12 +185,19 @@ impl Engine {
             (the_received, the_expected) => match (the_received, the_expected) {
                 (TypeInfo::ErrorRecovery, _) => Ok(vec![]),
                 (_, TypeInfo::ErrorRecovery) => Ok(vec![]),
-                _ => Err(TypeError::MismatchedType {
-                    expected,
-                    received,
-                    help_text: Default::default(),
-                    span: span.clone(),
-                }),
+                _ => {
+                    println!(
+                        "Failed to unify: {:#?} and {:#?}",
+                        self.look_up_type_id(expected),
+                        self.look_up_type_id(received)
+                    );
+                    Err(TypeError::MismatchedType {
+                        expected,
+                        received,
+                        help_text: Default::default(),
+                        span: span.clone(),
+                    })
+                }
             },
         }
     }

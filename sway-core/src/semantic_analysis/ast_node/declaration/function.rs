@@ -146,7 +146,7 @@ impl TypedFunctionDeclaration {
                     contents: vec![],
                     whole_block_span: body.whole_block_span,
                 },
-                crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
+                insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
@@ -198,18 +198,14 @@ impl TypedFunctionDeclaration {
             })
             .collect();
         for (stmt, span) in return_statements {
-            match crate::type_engine::unify_with_self(
-                stmt.return_type,
-                return_type,
-                self_type,
-                span,
-            ) {
+            match unify_with_self(stmt.return_type, return_type, self_type, span) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
                 }
                 Err(e) => {
+                    dbg!(&e);
                     errors.push(CompileError::TypeError(e));
-                } //    "Function body's return type does not match up with its return type annotation.",
+                }
             }
         }
 
@@ -253,6 +249,7 @@ impl TypedFunctionDeclaration {
                 });
             }
         }
+        dbg!(&errors);
 
         ok(
             TypedFunctionDeclaration {

@@ -336,6 +336,7 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
+        dbg!(&type_annotation.friendly_type_str());
         // if the return type cannot be cast into the annotation type then it is a type error
         match unify_with_self(
             typed_expression.return_type,
@@ -347,6 +348,8 @@ impl TypedExpression {
                 warnings.append(&mut ws);
             }
             Err(e) => {
+                println!("ERROR3\n\n\n");
+                dbg!(&e);
                 errors.push(CompileError::TypeError(e));
             }
         };
@@ -697,6 +700,10 @@ impl TypedExpression {
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
+        println!(
+            "checking block with type annotation {}",
+            type_annotation.friendly_type_str()
+        );
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
@@ -724,12 +731,12 @@ impl TypedExpression {
             errors
         );
 
-        // this could probably be cleaned up with unification instead of comparing types
         match unify_with_self(block_return_type, type_annotation, self_type, &span) {
             Ok(mut ws) => {
                 warnings.append(&mut ws);
             }
             Err(e) => {
+                dbg!(&e);
                 errors.push(e.into());
             }
         };
@@ -951,7 +958,12 @@ impl TypedExpression {
                 checkee: *then.clone(),
                 namespace,
                 crate_namespace,
-                return_type_annotation: type_annotation,
+                return_type_annotation: if r#else.is_some() {
+                    println!("adding annotation: {}", type_annotation.friendly_type_str());
+                    type_annotation
+                } else {
+                    insert_type(TypeInfo::Unknown)
+                },
                 help_text: Default::default(),
                 self_type,
                 build_config,

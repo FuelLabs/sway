@@ -57,6 +57,55 @@ impl ToJsonAbi for TypeId {
 }
 
 #[test]
+fn generic_enum_resolution() {
+    use crate::semantic_analysis::ast_node::OwnedTypedEnumVariant;
+    use crate::Ident;
+    let engine = Engine::default();
+
+    let sp = Span {
+        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+        path: None,
+    };
+
+    let ty_1 = engine.insert_type(TypeInfo::Enum {
+        name: "Result".into(),
+        variant_types: vec![OwnedTypedEnumVariant {
+            name: "a".into(),
+            tag: 0,
+            r#type: engine.insert_type(TypeInfo::UnknownGeneric {
+                name: Ident::new_with_override("T", sp.clone()),
+            }),
+        }],
+    });
+
+    let ty_2 = engine.insert_type(TypeInfo::Enum {
+        name: "Result".into(),
+        variant_types: vec![OwnedTypedEnumVariant {
+            name: "a".into(),
+            tag: 0,
+            r#type: engine.insert_type(TypeInfo::Boolean),
+        }],
+    });
+
+    // Unify them together...
+    engine.unify(ty_1, ty_2, &sp).unwrap();
+
+    if let TypeInfo::Enum {
+        name,
+        variant_types,
+    } = engine.look_up_type_id(ty_1)
+    {
+        assert_eq!(name, "Result");
+        assert_eq!(
+            engine.look_up_type_id(variant_types[0].r#type),
+            TypeInfo::Boolean
+        );
+    } else {
+        panic!()
+    }
+}
+
+#[test]
 fn basic_numeric_unknown() {
     let engine = Engine::default();
 

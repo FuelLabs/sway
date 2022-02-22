@@ -331,6 +331,8 @@ impl TypedEnumDeclaration {
                         warnings.append(&mut ws);
                     }
                     Err(e) => {
+                        println!("ERROR2\n\n\n");
+                        dbg!(&e);
                         errors.push(e.into());
                         continue;
                     }
@@ -386,11 +388,22 @@ impl TypedEnumVariant {
 }
 
 // TODO(Static span) -- remove this type and use TypedEnumVariant
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
+}
+impl std::fmt::Debug for OwnedTypedEnumVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let text = format!(
+            "variant {} {}: {:?}",
+            self.tag,
+            self.name,
+            look_up_type_id(self.r#type)
+        );
+        f.write_str(&text)
+    }
 }
 
 impl OwnedTypedEnumVariant {

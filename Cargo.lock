@@ -961,7 +961,7 @@ dependencies = [
  "fuel-asm",
  "fuel-gql-client",
  "fuel-tx",
- "fuel-vm 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-vm",
  "futures",
  "hex",
  "prettydiff 0.4.0",
@@ -1019,7 +1019,7 @@ dependencies = [
  "fuel-storage",
  "fuel-tx",
  "fuel-types",
- "fuel-vm 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-vm",
  "futures",
  "hex",
  "schemafy_lib",
@@ -1122,22 +1122,6 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.4.0"
-dependencies = [
- "fuel-asm",
- "fuel-merkle",
- "fuel-storage",
- "fuel-tx",
- "fuel-types",
- "itertools",
- "rand 0.8.4",
- "secp256k1",
- "sha3",
- "tracing",
-]
-
-[[package]]
-name = "fuel-vm"
-version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49842bf8fafcef12f61711367ba233501f2ae4304eb973746b485439ad3ce517"
 dependencies = [
@@ -1147,6 +1131,7 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "itertools",
+ "rand 0.8.4",
  "secp256k1",
  "serde",
  "sha3",
@@ -2953,7 +2938,7 @@ dependencies = [
  "fuel-asm",
  "fuel-pest",
  "fuel-pest_derive",
- "fuel-vm 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-vm",
  "generational-arena",
  "hex",
  "lazy_static",
@@ -3121,7 +3106,7 @@ dependencies = [
  "forc",
  "fuel-asm",
  "fuel-tx",
- "fuel-vm 0.4.0",
+ "fuel-vm",
  "rand 0.8.4",
  "regex",
  "serde_json",
@@ -3134,7 +3119,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "fuel-tx",
- "fuel-vm 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-vm",
  "hex",
  "secp256k1",
 ]
