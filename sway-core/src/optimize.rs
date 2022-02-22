@@ -1615,7 +1615,6 @@ mod tests {
             &TreeType::Script,
             &build_config,
             &mut dead_code_graph,
-            &mut std::collections::HashMap::new(),
         )
         .unwrap(&mut warnings, &mut errors)
     }

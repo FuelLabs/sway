@@ -4,7 +4,6 @@ use crate::parse_tree::declaration::Purity;
 use crate::semantic_analysis::{ast_node::Mode, *};
 use crate::type_engine::*;
 
-use std::collections::{HashMap, HashSet};
 pub struct TypeCheckArguments<'a, T> {
     pub checkee: T,
     pub namespace: NamespaceRef,
@@ -15,7 +14,6 @@ pub struct TypeCheckArguments<'a, T> {
     pub build_config: &'a BuildConfig,
     pub dead_code_graph: &'a mut ControlFlowGraph,
     pub mode: Mode,
-    pub dependency_graph: &'a mut HashMap<String, HashSet<String>>,
     pub opts: TCOpts,
 }
 
