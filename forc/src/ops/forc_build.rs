@@ -1,7 +1,7 @@
 use crate::{
     cli::BuildCommand,
-    utils::helpers::{default_output_directory, read_manifest},
     pkg,
+    utils::helpers::{default_output_directory, read_manifest},
 };
 use anyhow::{anyhow, Result};
 use std::{

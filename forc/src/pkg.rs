@@ -8,7 +8,6 @@ use crate::utils::{
     manifest::Manifest,
 };
 use petgraph::{self, Directed};
-use semver;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
