@@ -1,6 +1,7 @@
 #![allow(warnings)]
 mod cli;
 mod ops;
+mod pkg;
 mod utils;
 
 use anyhow::Result;
