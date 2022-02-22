@@ -2,11 +2,15 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    build, deploy, format, init, json_abi, lsp, parse_bytecode, run, test, update,
+    addr2line, build, clean, deploy, explorer, format, init, json_abi, lsp, parse_bytecode, run,
+    test, update,
 };
 
+use addr2line::Command as Addr2LineCommand;
 pub use build::Command as BuildCommand;
+pub use clean::Command as CleanCommand;
 pub use deploy::Command as DeployCommand;
+pub use explorer::Command as ExplorerCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
@@ -26,8 +30,12 @@ struct Opt {
 
 #[derive(Debug, StructOpt)]
 enum Forc {
+    #[structopt(name = "addr2line")]
+    Addr2Line(Addr2LineCommand),
     Build(BuildCommand),
+    Clean(CleanCommand),
     Deploy(DeployCommand),
+    Explorer(ExplorerCommand),
     #[structopt(name = "fmt")]
     Format(FormatCommand),
     Init(InitCommand),
@@ -42,8 +50,11 @@ enum Forc {
 pub(crate) async fn run_cli() -> Result<(), String> {
     let opt = Opt::from_args();
     match opt.command {
+        Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),
+        Forc::Clean(command) => clean::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
+        Forc::Explorer(command) => explorer::exec(command).await,
         Forc::Format(command) => format::exec(command),
         Forc::Init(command) => init::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),

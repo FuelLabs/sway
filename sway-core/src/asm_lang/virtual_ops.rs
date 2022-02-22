@@ -12,7 +12,7 @@ use super::{
 };
 use crate::asm_generation::RegisterPool;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 
 use std::fmt;
 
@@ -135,7 +135,7 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
-    pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
+    pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
             ADD(r1, r2, r3) => vec![r1, r2, r3],
@@ -226,7 +226,7 @@ impl VirtualOp {
     pub(crate) fn allocate_registers(
         &self,
         pool: &mut RegisterPool,
-        op_register_mapping: &[(RealizedOp, HashSet<VirtualRegister>)],
+        op_register_mapping: &[(RealizedOp, BTreeSet<VirtualRegister>)],
         ix: usize,
     ) -> AllocatedOpcode {
         let virtual_registers = self.registers();

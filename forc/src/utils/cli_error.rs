@@ -13,8 +13,9 @@ pub struct CliError {
 impl CliError {
     pub fn manifest_file_missing(curr_dir: PathBuf) -> Self {
         let message = format!(
-            "Manifest file not found at {:?}. Project root should contain '{}'",
-            curr_dir, MANIFEST_FILE_NAME
+            "could not find `{}` in `{}` or any parent directory",
+            MANIFEST_FILE_NAME,
+            curr_dir.display()
         );
         Self { message }
     }
@@ -36,6 +37,11 @@ impl CliError {
             "{} is not a '{}' it is a '{}'",
             project_name, wanted_type, parse_type
         );
+        Self { message }
+    }
+
+    pub fn fuel_core_not_running(node_url: &str) -> Self {
+        let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
         Self { message }
     }
 }

@@ -9,17 +9,7 @@ use sway_utils::{constants, find_manifest_dir, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
-    let build_command = BuildCommand {
-        path: None,
-        use_ir: false,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
-        print_ir: false,
-        binary_outfile: None,
-        debug_outfile: None,
-        offline_mode: false,
-        silent_mode: false,
-    };
+    let build_command = BuildCommand::default();
 
     match forc_build::build(build_command) {
         // build is successful, continue to formatting

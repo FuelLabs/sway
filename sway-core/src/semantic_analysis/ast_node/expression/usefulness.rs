@@ -43,7 +43,11 @@ impl WitnessReport {
         }
     }
 
-    fn split_into_leading_constructor(witness_report: WitnessReport, c: &Pattern, span: &Span) -> CompileResult<(Pattern, Self)> {
+    fn split_into_leading_constructor(
+        witness_report: WitnessReport,
+        c: &Pattern,
+        span: &Span,
+    ) -> CompileResult<(Pattern, Self)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match witness_report {
@@ -56,7 +60,7 @@ impl WitnessReport {
             }
             WitnessReport::Witnesses(witnesses) => {
                 println!("{:?}", witnesses);
-                if c.a()>witnesses.len()-1 {
+                if c.a() > witnesses.len() - 1 {
                     errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                         "attempting to split OOB",
                         span.clone(),
@@ -92,11 +96,11 @@ impl WitnessReport {
             }
         }
     }
-    
+
     fn len(&self) -> usize {
         match self {
             WitnessReport::NoWitnesses => 0,
-            WitnessReport::Witnesses(witnesses) => witnesses.len()
+            WitnessReport::Witnesses(witnesses) => witnesses.len(),
         }
     }
 
@@ -1143,8 +1147,8 @@ impl PatStack {
         let mut pats = PatStack::empty();
         for pat in self.pats.iter() {
             match pat {
-                Pattern::Wildcard => {},
-                pat => pats.push(pat.to_owned())
+                Pattern::Wildcard => {}
+                pat => pats.push(pat.to_owned()),
             }
         }
         pats
@@ -1260,7 +1264,9 @@ impl ConstructorFactory {
         let constructors = match type_info {
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => vec![Pattern::U64(Range::u64())],
             TypeInfo::Numeric => vec![Pattern::Numeric(Range::u64())],
-            TypeInfo::Tuple(elems) => vec![Pattern::Tuple(vec![Pattern::Wildcard; elems.len()].into())],
+            TypeInfo::Tuple(elems) => {
+                vec![Pattern::Tuple(vec![Pattern::Wildcard; elems.len()].into())]
+            }
             _ => unimplemented!(),
         };
         ConstructorFactory {
@@ -1511,7 +1517,7 @@ fn is_useful_wildcard(
                 errors
             );
             match (&witness_report, wr) {
-                (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {},
+                (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {}
                 (WitnessReport::NoWitnesses, wr) => {
                     let (pat, wr) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
@@ -1521,7 +1527,7 @@ fn is_useful_wildcard(
                     );
                     pat_stack.push(pat);
                     witness_report = wr;
-                },
+                }
                 (_, wr) => {
                     let (pat, _) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
@@ -1534,7 +1540,7 @@ fn is_useful_wildcard(
             }
         }
         match &mut witness_report {
-            WitnessReport::NoWitnesses => {},
+            WitnessReport::NoWitnesses => {}
             witness_report => {
                 let pat = check!(
                     Pattern::from_pat_stack(pat_stack, span),
@@ -1564,8 +1570,8 @@ fn is_useful_wildcard(
             warnings,
             errors
         );
-        if d_p_n != n-1 {
-            println!("  n-1: {}", n-1);
+        if d_p_n != n - 1 {
+            println!("  n-1: {}", n - 1);
             println!("d_p_n: {}", d_p_n);
             errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                 "D(P) matrix is misshappen",
@@ -1688,7 +1694,12 @@ fn is_useful_or(
     ok(witness_report, warnings, errors)
 }
 
-fn i(factory: &ConstructorFactory, p: &Matrix, n: usize, span: &Span) -> CompileResult<WitnessReport> {
+fn i(
+    factory: &ConstructorFactory,
+    p: &Matrix,
+    n: usize,
+    span: &Span,
+) -> CompileResult<WitnessReport> {
     println!("p: {:#?}", p);
     println!("n: {:?}", n);
     let mut warnings = vec![];
@@ -1736,9 +1747,9 @@ fn i(factory: &ConstructorFactory, p: &Matrix, n: usize, span: &Span) -> Compile
                         errors
                     );
                     match witness_report {
-                        WitnessReport::NoWitnesses => {},
+                        WitnessReport::NoWitnesses => {}
                         WitnessReport::Witnesses(witnesses) => {
-                            if c_k.a()>witnesses.len()-1 {
+                            if c_k.a() > witnesses.len() - 1 {
                                 errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                                     "attempting to split OOB",
                                     span.clone(),
@@ -1766,7 +1777,7 @@ fn i(factory: &ConstructorFactory, p: &Matrix, n: usize, span: &Span) -> Compile
                     errors
                 );
                 let mut witness_report = check!(
-                    i(factory, &d_p, n-1, span),
+                    i(factory, &d_p, n - 1, span),
                     return err(warnings, errors),
                     warnings,
                     errors
