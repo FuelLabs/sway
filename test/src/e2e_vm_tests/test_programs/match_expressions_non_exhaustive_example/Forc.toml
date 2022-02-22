@@ -1,9 +1,0 @@
-[project]
-author = "Fuel Labs <contact@fuel.sh>"
-license = "Apache-2.0"
-name = "match_expressions_non_exhaustive_example"
-entry = "main.sw"
-
-[dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
