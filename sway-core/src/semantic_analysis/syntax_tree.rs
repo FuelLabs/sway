@@ -17,8 +17,6 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
-use std::collections::{HashMap, HashSet};
-
 /// Represents the different variants of the AST.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TreeType {
@@ -95,7 +93,6 @@ impl TypedParseTree {
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -113,7 +110,6 @@ impl TypedParseTree {
                 crate_namespace,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
             ),
             return err(warnings, errors),
             warnings,
@@ -136,7 +132,6 @@ impl TypedParseTree {
         crate_namespace: NamespaceRef,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<Vec<TypedAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -152,7 +147,6 @@ impl TypedParseTree {
                     self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts: Default::default(),
                 })
