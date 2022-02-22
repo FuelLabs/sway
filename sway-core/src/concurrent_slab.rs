@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::sync::RwLock;
 
 #[derive(Debug, Default)]
@@ -7,7 +8,7 @@ pub struct ConcurrentSlab<T> {
 
 impl<T> ConcurrentSlab<T>
 where
-    T: Clone + PartialEq,
+    T: Clone + PartialEq + Debug,
 {
     pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();

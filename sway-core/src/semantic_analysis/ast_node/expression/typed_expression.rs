@@ -314,6 +314,26 @@ impl TypedExpression {
                 },
                 span,
             ),
+            Expression::SizeOfType {
+                type_name,
+                type_span,
+                span,
+            } => Self::type_check_size_of_type(
+                TypeCheckArguments {
+                    checkee: (type_name, type_span),
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                span,
+            ),
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
@@ -1921,7 +1941,40 @@ impl TypedExpression {
             errors
         );
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOfVal { exp: Box::new(exp) },
+            expression: TypedExpressionVariant::SizeOf {
+                variant: SizeOfVariant::Val(Box::new(exp)),
+            },
+            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
+                IntegerBits::SixtyFour,
+            )),
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_size_of_type(
+        arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        let TypeCheckArguments {
+            checkee: (type_name, type_span),
+            self_type,
+            namespace,
+            ..
+        } = arguments;
+        let type_id = namespace
+            .resolve_type_with_self(type_name, self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: type_span });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::SizeOf {
+                variant: SizeOfVariant::Type(type_id),
+            },
             return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
                 IntegerBits::SixtyFour,
             )),

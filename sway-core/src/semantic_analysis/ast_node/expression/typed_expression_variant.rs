@@ -90,9 +90,15 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    SizeOfVal {
-        exp: Box<TypedExpression>,
+    SizeOf {
+        variant: SizeOfVariant,
     },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum SizeOfVariant {
+    Type(TypeId),
+    Val(Box<TypedExpression>),
 }
 
 #[derive(Clone, Debug)]
@@ -206,9 +212,12 @@ impl TypedExpressionVariant {
                     tag
                 )
             }
-            TypedExpressionVariant::SizeOfVal { exp, .. } => {
-                format!("size_of({:?})", exp.pretty_print())
-            }
+            TypedExpressionVariant::SizeOf { variant } => match variant {
+                SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
+                SizeOfVariant::Type(type_name) => {
+                    format!("size_of({:?})", type_name.friendly_type_str())
+                }
+            },
         }
     }
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
@@ -323,7 +332,10 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
-            SizeOfVal { exp, .. } => exp.copy_types(type_mapping),
+            SizeOf { variant } => match variant {
+                SizeOfVariant::Type(_) => (),
+                SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),
+            },
         }
     }
 }

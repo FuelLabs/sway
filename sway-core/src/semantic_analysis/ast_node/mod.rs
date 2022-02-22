@@ -226,7 +226,6 @@ impl TypedAstNode {
                                     });
                                     insert_type(TypeInfo::ErrorRecovery)
                                 });
-
                             let result = {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,

@@ -573,7 +573,12 @@ impl FnCompiler {
             } => self.compile_tuple_elem_expr( context, *prefix, tuple_type, idx, span),
             // XXX IGNORE FOR NOW?
             TypedExpressionVariant::AbiCast { .. } => Ok(Constant::get_unit(context)),
-            TypedExpressionVariant::SizeOfVal { exp } => self.compile_expression(context, *exp),
+            TypedExpressionVariant::SizeOf { variant } => {
+                match variant {
+                    SizeOfVariant::Type(_) => unimplemented!(),
+                    SizeOfVariant::Val(exp) => self.compile_expression(context, *exp)
+                }
+            },
         }
     }
 

@@ -3,7 +3,9 @@ use crate::{
     asm_lang::*,
     parse_tree::{CallPath, Literal},
     semantic_analysis::{
-        ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
+        ast_node::{
+            SizeOfVariant, TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant,
+        },
         TypedExpression,
     },
     type_engine::look_up_type_id,
@@ -361,8 +363,8 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        TypedExpressionVariant::SizeOfVal { exp } => convert_size_of_val_expression_to_asm(
-            &*exp,
+        TypedExpressionVariant::SizeOf { variant } => convert_size_of_expression_to_asm(
+            variant,
             namespace,
             return_register,
             register_sequencer,
@@ -444,8 +446,8 @@ fn convert_literal_to_asm(
     }]
 }
 
-fn convert_size_of_val_expression_to_asm(
-    exp: &TypedExpression,
+fn convert_size_of_expression_to_asm(
+    variant: &SizeOfVariant,
     namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
@@ -453,36 +455,47 @@ fn convert_size_of_val_expression_to_asm(
 ) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![Op::new_comment("size_of".to_string())];
-    let mut ops = check!(
-        convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
-        vec![],
-        warnings,
-        errors
-    );
-    asm_buf.append(&mut ops);
-    let ty = match resolve_type(exp.return_type, &span) {
+    let mut asm_buf = vec![];
+    let type_id = match variant {
+        SizeOfVariant::Val(exp) => {
+            asm_buf.push(Op::new_comment("size_of_val".to_string()));
+            let mut ops = check!(
+                convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
+                vec![],
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut ops);
+            exp.return_type
+        }
+        SizeOfVariant::Type(ty) => {
+            asm_buf.push(Op::new_comment("size_of".to_string()));
+            *ty
+        }
+    };
+    let ty = match resolve_type(type_id, &span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());
             return err(warnings, errors);
         }
     };
-    let size_in_bytes: u64 = match ty.size_in_words(&span) {
-        Ok(o) => o * 8,
+    let size_in_bytes: u64 = match ty.size_in_bytes(&span) {
+        Ok(o) => o,
         Err(e) => {
             errors.push(e);
             return err(warnings, errors);
         }
     };
-    let ops = convert_literal_to_asm(
+    let mut ops = convert_literal_to_asm(
         &Literal::U64(size_in_bytes),
         namespace,
         return_register,
         register_sequencer,
         span,
     );
-    ok(ops, warnings, errors)
+    asm_buf.append(&mut ops);
+    ok(asm_buf, warnings, errors)
 }
 
 /// For now, all functions are handled by inlining at the time of application.
