@@ -200,6 +200,8 @@ impl MyMath<u64> for u64 {
 ///
 /// This represents the inclusive range `[0, 3]`. (Where '[' and ']' represent
 /// inclusive contains.) More specifically: it is equivalent to `0, 1, 2, 3`.
+/// 
+/// ---
 ///
 /// `Range<T>`s are only useful in cases in which `T` is an integer. AKA when
 /// `T` has discrete values. Because Sway does not have floats, this means that
@@ -325,6 +327,8 @@ where
     /// -> |--------------|
     /// ```
     ///
+    /// ---
+    /// 
     /// Note that becaues `Range<T>` relies on the assumption that `T` is an
     /// integer value, this algorithm joins `Range<T>`s that are within ± 1 of
     /// one another. Given these two `Range<T>`s:
@@ -709,6 +713,8 @@ where
 /// Pattern::Wildcard
 /// ```
 ///
+/// ---
+/// 
 /// A `Pattern` is semantically constructed from a "constructor" and its
 /// "arguments." Given the `Pattern`:
 ///
@@ -733,8 +739,28 @@ where
 ///     Pattern::U64(Range { first: 1, last: 1 })
 /// ]
 /// ```
+/// 
+/// Given the `Pattern`:
+/// 
+/// ```ignore
+/// Pattern::U64(Range { first: 0, last: 0 })
+/// ```
+/// 
+/// the constructor is:
+/// 
+/// ```ignore
+/// Pattern::U64(Range { first: 0, last: 0 })
+/// ```
+/// and the arguments are empty. More specifically, in the case of u64 (and
+/// other numbers), we can think of u64 as a giant enum, where every u64 value
+/// is one variant of the enum, and each of these variants maps to a `Pattern`.
+/// So "2u64" can be mapped to a `Pattern` with the constructor "2u64"
+/// (represented as a `Range<u64>`) and with empty arguments.
+/// 
 /// This idea of a constructor and arguments is used in the match exhaustivity
 /// algorithm.
+/// 
+/// ---
 ///
 /// The variants of `Pattern` can be semantically categorized into 3 categories:
 ///
@@ -885,6 +911,8 @@ impl Pattern {
     /// ])
     /// ```
     ///
+    /// ---
+    /// 
     /// If if is the case that at lease one element of *args* is a
     /// or-pattern, then *args* is first "serialized". Meaning, that all
     /// or-patterns are extracted to create a vec of `PatStack`s *args*' where
@@ -1340,22 +1368,28 @@ impl fmt::Display for StructPattern {
     }
 }
 
+/// A `PatStack` is a `Vec<Pattern>` that is implemented with special methods
+/// particular to the match exhaustivity algorithm.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct PatStack {
     pats: Vec<Pattern>,
 }
 
 impl PatStack {
+    /// Creates an empty `PatStack`.
     fn empty() -> Self {
         PatStack { pats: vec![] }
     }
 
-    fn from_pattern(pattern: Pattern) -> Self {
+    /// Given a `Pattern` *p*, creates a `PatStack` with one element *p*.
+    fn from_pattern(p: Pattern) -> Self {
         PatStack {
-            pats: vec![pattern],
+            pats: vec![p],
         }
     }
 
+    /// Given a usize *n*, creates a `PatStack` filled with *n*
+    /// `Pattern::Wildcard` elements.
     fn fill_wildcards(n: usize) -> Self {
         let mut pats = vec![];
         for _ in 0..n {
@@ -1364,6 +1398,7 @@ impl PatStack {
         PatStack { pats }
     }
 
+    /// Returns the first element of a `PatStack`.
     fn first(&self, span: &Span) -> CompileResult<Pattern> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1379,6 +1414,8 @@ impl PatStack {
         }
     }
 
+    /// Returns a tuple of the first element of a `PatStack` and the rest of the
+    /// elements.
     fn split_first(&self, span: &Span) -> CompileResult<(Pattern, PatStack)> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1399,6 +1436,7 @@ impl PatStack {
         }
     }
 
+    /// Given a usize *n*, splits the `PatStack` at *n* and returns both halves.
     fn split_at(&self, n: usize, span: &Span) -> CompileResult<(PatStack, PatStack)> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1415,10 +1453,13 @@ impl PatStack {
         ok((x, y), warnings, errors)
     }
 
+    /// Pushes a `Pattern` onto the `PatStack`
     fn push(&mut self, other: Pattern) {
         self.pats.push(other)
     }
 
+    /// Given a usize *n*, returns a mutable reference to the `PatStack` at
+    /// index *n*.
     fn get_mut(&mut self, n: usize, span: &Span) -> CompileResult<&mut Pattern> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1434,26 +1475,32 @@ impl PatStack {
         }
     }
 
+    /// Appends a `PatStack` onto the `PatStack`.
     fn append(&mut self, others: &mut PatStack) {
         self.pats.append(&mut others.pats);
     }
 
+    /// Prepends a `Pattern` onto the `PatStack`.
     fn prepend(&mut self, other: Pattern) {
         self.pats.insert(0, other);
     }
 
+    /// Returns the length of the `PatStack`.
     fn len(&self) -> usize {
         self.pats.len()
     }
 
+    /// Reports if the `PatStack` is empty.
     fn is_empty(&self) -> bool {
         self.flatten().filter_out_wildcards().pats.is_empty()
     }
 
+    /// Reports if the `PatStack` contains a given `Pattern`.
     fn contains(&self, pat: &Pattern) -> bool {
         self.pats.contains(pat)
     }
 
+    /// Reports if the `PatStack` contains an or-pattern at the top level.
     fn contains_or_pattern(&self) -> bool {
         for pat in self.pats.iter() {
             if let Pattern::Or(_) = pat {
@@ -1471,6 +1518,58 @@ impl PatStack {
         self.pats.into_iter()
     }
 
+    /// Reports if the `PatStack` Σ is a "complete signature" of the type of the
+    /// elements of Σ.
+    /// 
+    /// For example, a Σ composed of `Pattern::U64(..)`s would need to check for
+    /// if it is a complete signature for the `U64` pattern type. Versus a Σ
+    /// composed of `Pattern::Tuple([.., ..])` which would need to check for if
+    /// it is a complete signature for "`Tuple` with 2 sub-patterns" type.
+    /// 
+    /// There are several rules with which to determine if Σ is a complete
+    /// signature:
+    /// 
+    /// 1. If Σ is empty it is not a complete signature.
+    /// 2. If Σ contains only wildcard patterns, it is not a complete signature.
+    /// 3. If Σ contains all constructors for the type of the elements of Σ then
+    ///    it is a complete signature.
+    /// 
+    /// For example, given this Σ:
+    /// 
+    /// ```ignore
+    /// [
+    ///     Pattern::U64(Range { first: 0, last: 0 }),
+    ///     Pattern::U64(Range { first: 7, last: 7 })
+    /// ]
+    /// ```
+    /// 
+    /// this would not be a complete signature as it does not contain all
+    /// elements from the `U64` type.
+    /// 
+    /// Given this Σ:
+    /// 
+    /// ```ignore
+    /// [
+    ///     Pattern::U64(Range { first: std::u64::MIN, last: std::u64::MAX })
+    /// ]
+    /// ```
+    /// 
+    /// this would be a complete signature as it does contain all elements from
+    /// the `U64` type.
+    /// 
+    /// Given this Σ:
+    /// 
+    /// ```ignore
+    /// [
+    ///     Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::Wildcard
+    ///     ]),
+    /// ]
+    /// ```
+    /// 
+    /// this would also be a complete signature as it does contain all elements
+    /// from the "`Tuple` with 2 sub-patterns" type.
     fn is_complete_signature(&self, span: &Span) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1630,6 +1729,7 @@ impl PatStack {
         }
     }
 
+    /// Flattens the contents of a `PatStack` into a `PatStack`.
     fn flatten(&self) -> PatStack {
         let mut flattened = PatStack::empty();
         for pat in self.pats.iter() {
@@ -1638,6 +1738,7 @@ impl PatStack {
         flattened
     }
 
+    /// Returns the given `PatStack` with wildcard patterns filtered out.
     fn filter_out_wildcards(&self) -> PatStack {
         let mut pats = PatStack::empty();
         for pat in self.pats.iter() {
@@ -1649,6 +1750,90 @@ impl PatStack {
         pats
     }
 
+    /// Given a `PatStack` *args*, return a `Vec<PatStack>` *args*'
+    /// "serialized" from *args*.
+    /// 
+    /// Or-patterns are extracted to create a vec of `PatStack`s *args*' where
+    /// each `PatStack` is a copy of *args* where the index of the or-pattern is
+    /// instead replaced with one element from the or-patterns contents. More
+    /// specifically, given an *args* with one or-pattern that contains n
+    /// elements, this "serialization" would result in *args*' of length n.
+    /// Given an *args* with two or-patterns that contain n elements and m
+    /// elements, this would result in *args*' of length n*m.
+    ///
+    /// For example, given an *args*:
+    ///
+    /// ```ignore
+    /// [
+    ///     Pattern::Or([
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 1, last: 1 })
+    ///     ]),
+    ///     Pattern::Wildcard
+    /// ]
+    /// ```
+    ///
+    /// *args* would serialize to:
+    ///
+    /// ```ignore
+    /// [
+    ///     [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::Wildcard
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::Wildcard
+    ///     ]
+    /// ]
+    /// ```
+    /// 
+    /// Given an *args*:
+    ///
+    /// ```ignore
+    /// [
+    ///     Pattern::Or([
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 1, last: 1 })
+    ///     ]),
+    ///     Pattern::Or([
+    ///         Pattern::U64(Range { first: 2, last: 2 }),
+    ///         Pattern::U64(Range { first: 3, last: 3 }),
+    ///         Pattern::U64(Range { first: 4, last: 4 }),
+    ///     ]),
+    /// ]
+    /// ```
+    /// 
+    /// *args* would serialize to:
+    ///
+    /// ```ignore
+    /// [
+    ///     [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 2, last: 2 })
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 3, last: 3 })
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 4, last: 4 })
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::U64(Range { first: 2, last: 2 })
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::U64(Range { first: 3, last: 3 })
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::U64(Range { first: 4, last: 4 })
+    ///     ],
+    /// ]
+    /// ```
     fn serialize_multi_patterns(self, span: &Span) -> CompileResult<Vec<PatStack>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1707,38 +1892,53 @@ impl fmt::Display for PatStack {
     }
 }
 
+/// A `Matrix` is a `Vec<PatStack>` that is implemented with special methods
+/// particular to the match exhaustivity algorithm.
+/// 
+/// The number of rows of the `Matrix` is equal to the number of `PatStack`s and
+/// the number of columns of the `Matrix` is equal to the number of elements in
+/// the `PatStack`s. Each `PatStack` should contains the same number of
+/// elements.
 #[derive(Clone, Debug)]
 struct Matrix {
     rows: Vec<PatStack>,
 }
 
 impl Matrix {
+    /// Creates an empty `Matrix`.
     fn empty() -> Self {
         Matrix { rows: vec![] }
     }
 
+    /// Creates a `Matrix` with one row from a `PatStack`.
     fn from_pat_stack(pat_stack: PatStack) -> Self {
         Matrix {
             rows: vec![pat_stack],
         }
     }
 
+    /// Pushes a `PatStack` onto the `Matrix`.
     fn push(&mut self, row: PatStack) {
         self.rows.push(row);
     }
 
+    /// Appends a `Vec<PatStack>` onto the `Matrix`.
     fn append(&mut self, rows: &mut Vec<PatStack>) {
         self.rows.append(rows);
     }
 
+    /// Returns a reference to the rows of the `Matrix`.
     fn rows(&self) -> &Vec<PatStack> {
         &self.rows
     }
 
+    /// Returns the rows of the `Matrix`.
     fn into_rows(self) -> Vec<PatStack> {
         self.rows
     }
 
+    /// Returns the number of rows *m* and the number of columns *n* of the
+    /// `Matrix` in the form (*m*, *n*).
     fn m_n(&self, span: &Span) -> CompileResult<(usize, usize)> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1760,14 +1960,18 @@ impl Matrix {
         ok((self.rows.len(), n), warnings, errors)
     }
 
+    /// Reports if the `Matrix` is equivalent to a vector (aka a single
+    /// `PatStack`).
     fn is_a_vector(&self) -> bool {
         self.rows.len() == 1
     }
 
+    /// Checks to see if the `Matrix` is a vector, and if it is, returns the
+    /// single `PatStack` from its elements.
     fn unwrap_vector(&self, span: &Span) -> CompileResult<PatStack> {
         let warnings = vec![];
         let mut errors = vec![];
-        if self.rows.len() > 1 {
+        if self.is_a_vector() {
             errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                 "found invalid matrix size",
                 span.clone(),
@@ -1780,6 +1984,8 @@ impl Matrix {
         }
     }
 
+    /// Computes Σ, where Σ is a `PatStack` containing the first element of
+    /// every row of the `Matrix`.
     fn compute_sigma(&self, span: &Span) -> CompileResult<PatStack> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1804,6 +2010,43 @@ impl ConstructorFactory {
         ConstructorFactory {}
     }
 
+    /// Given Σ, computes a `Pattern` not present in Σ from the type of the
+    /// elements of Σ. If more than one `Pattern` is found, these patterns are
+    /// wrapped in an or-pattern.
+    /// 
+    /// For example, given this Σ:
+    /// 
+    /// ```ignore
+    /// [
+    ///     Pattern::U64(Range { first: std::u64::MIN, last: 3 }),
+    ///     Pattern::U64(Range { first: 16, last: std::u64::MAX })
+    /// ]
+    /// ```
+    /// 
+    /// this would result in this `Pattern`:
+    /// 
+    /// ```ignore
+    /// Pattern::U64(Range { first: 4, last: 15 })
+    /// ```
+    /// 
+    /// Given this Σ (which is more likely to occur than the above example):
+    /// 
+    /// ```ignore
+    /// [
+    ///     Pattern::U64(Range { first: 2, last: 3 }),
+    ///     Pattern::U64(Range { first: 16, last: 17 })
+    /// ]
+    /// ```
+    /// 
+    /// this would result in this `Pattern`:
+    /// 
+    /// ```ignore
+    /// Pattern::Or([
+    ///     Pattern::U64(Range { first: std::u64::MIN, last: 1 }),
+    ///     Pattern::U64(Range { first: 4, last: 15 }),
+    ///     Pattern::U64(Range { first: 18, last: std::u64::MAX })
+    /// ])
+    /// ```
     fn create_pattern_not_present(&self, sigma: PatStack, span: &Span) -> CompileResult<Pattern> {
         let mut warnings = vec![];
         let mut errors = vec![];
