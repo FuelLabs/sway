@@ -5,5 +5,5 @@ name = "match_expressions_structs"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }

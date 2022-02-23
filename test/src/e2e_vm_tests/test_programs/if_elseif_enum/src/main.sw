@@ -31,6 +31,9 @@ impl core::ops::Ord for PrimaryColor {
             r3: bool
         }
     }
+}
+
+impl core::ops::Eq for PrimaryColor {
     fn eq(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             eq r3 r1 r2;

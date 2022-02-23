@@ -1,15 +1,18 @@
 script;
 
-use core::ops::Ord;
+use core::ops::{Eq, Ord};
 
 enum X {
     Y: (),
 }
 
-impl Ord for X {
+impl Eq for X {
     fn eq(self, other: Self) -> bool {
         true
     }
+}
+
+impl Ord for X {
     fn lt(self, other: Self) -> bool {
         false
     }

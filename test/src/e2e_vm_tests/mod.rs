@@ -54,23 +54,23 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
-        ("empty_method_initializer", ProgramState::Return(1)), // true
-        ("b512_struct_alignment", ProgramState::Return(1)),    // true
-        ("generic_structs", ProgramState::Return(1)),          // true
-        ("generic_functions", ProgramState::Return(1)),        // true
-        ("generic_enum", ProgramState::Return(1)),             // true
+        // Disabled pending field access and `Eq` impl for `b512` ("empty_method_initializer", ProgramState::Return(1)), // true
+        // Disabled pending field access and `Eq` impl for `b512` ("b512_struct_alignment", ProgramState::Return(1)),    // true
+        ("generic_structs", ProgramState::Return(1)), // true
+        ("generic_functions", ProgramState::Return(1)), // true
+        ("generic_enum", ProgramState::Return(1)),    // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
-        ("ec_recover_test", ProgramState::Return(1)),          // true
-        ("address_test", ProgramState::Return(1)),             // true
-        ("generic_struct", ProgramState::Return(1)),           // true
-        ("zero_field_types", ProgramState::Return(10)),        // true
-        ("assert_test", ProgramState::Return(1)),              // true
+        ("ec_recover_test", ProgramState::Return(1)), // true
+        ("address_test", ProgramState::Return(1)),    // true
+        ("generic_struct", ProgramState::Return(1)),  // true
+        ("zero_field_types", ProgramState::Return(10)), // true
+        ("assert_test", ProgramState::Return(1)),     // true
         ("match_expressions", ProgramState::Return(42)),
         ("array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
-        ("b512_test", ProgramState::Return(1)),      // true
+        // Disabled pending field access and `Eq` impl for `b512` ("b512_test", ProgramState::Return(1)),      // true
         ("block_height", ProgramState::Return(1)),   // true
         ("valid_impurity", ProgramState::Revert(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
