@@ -1,4 +1,4 @@
-script script {
+script {
     fn eat(meal !1: { u64, { () | () | u64 } }) -> bool {
         entry:
         v0 = const bool false, !2

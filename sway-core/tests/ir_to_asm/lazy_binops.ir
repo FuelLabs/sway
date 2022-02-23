@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> bool {
         entry:
         v0 = const bool false

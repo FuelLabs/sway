@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use sway_types::span::Span;
 
-use crate::context::Context;
+use crate::{context::Context, error::IrError};
 
 pub enum Metadatum {
     FileLocation(Arc<std::path::PathBuf>, Arc<str>),
@@ -57,7 +57,7 @@ impl MetadataIndex {
         })
     }
 
-    pub fn to_span(&self, context: &Context) -> Result<Span, String> {
+    pub fn to_span(&self, context: &Context) -> Result<Span, IrError> {
         match &context.metadata[self.0] {
             Metadatum::Span {
                 loc_idx,
@@ -66,17 +66,14 @@ impl MetadataIndex {
             } => {
                 let (path, src) = match &context.metadata[loc_idx.0] {
                     Metadatum::FileLocation(path, src) => Ok((path.clone(), src.clone())),
-                    _otherwise => {
-                        Err("Metadata cannot be converted to a file location.".to_owned())
-                    }
+                    _otherwise => Err(IrError::InvalidMetadatum),
                 }?;
                 Ok(Span {
-                    span: pest::Span::new(src, *start, *end)
-                        .ok_or_else(|| "Cannot create span from invalid metadata.".to_owned())?,
+                    span: pest::Span::new(src, *start, *end).ok_or(IrError::InvalidMetadatum)?,
                     path: Some(path),
                 })
             }
-            _otherwise => Err("Metadata cannot be converted to Span.".to_owned()),
+            _otherwise => Err(IrError::InvalidMetadatum),
         }
     }
 }
