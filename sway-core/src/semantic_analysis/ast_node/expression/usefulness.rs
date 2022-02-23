@@ -13,6 +13,7 @@ use crate::CompileResult;
 use crate::Literal;
 use crate::MatchCondition;
 use crate::Scrutinee;
+use crate::StructScrutineeField;
 use crate::TypeInfo;
 
 use itertools::Itertools;
@@ -713,15 +714,22 @@ impl Pattern {
                 ..
             } => Pattern::Struct(StructPattern {
                 struct_name,
-                fields: PatStack::new(
-                    fields
-                        .into_iter()
-                        .map(|x| match x.scrutinee {
-                            Some(scrutinee) => Pattern::from_scrutinee(scrutinee),
-                            None => Pattern::Wildcard,
-                        })
-                        .collect::<Vec<_>>(),
-                ),
+                fields: fields
+                    .into_iter()
+                    .map(
+                        |StructScrutineeField {
+                             field, scrutinee, ..
+                         }| {
+                            (
+                                field.as_str().to_string(),
+                                match scrutinee {
+                                    Some(scrutinee) => Pattern::from_scrutinee(scrutinee),
+                                    None => Pattern::Wildcard,
+                                },
+                            )
+                        },
+                    )
+                    .collect::<Vec<_>>(),
             }),
             Scrutinee::Tuple { elems, .. } => Pattern::Tuple(PatStack::new(
                 elems
@@ -858,7 +866,12 @@ impl Pattern {
                 .map(|args| {
                     Pattern::Struct(StructPattern {
                         struct_name: struct_pattern.struct_name.clone(),
-                        fields: args,
+                        fields: struct_pattern
+                            .fields
+                            .iter()
+                            .zip(args.into_iter())
+                            .map(|((name, _), arg)| (name.clone(), arg))
+                            .collect::<Vec<_>>(),
                     })
                 })
                 .collect::<Vec<_>>()
@@ -954,7 +967,11 @@ impl Pattern {
         let warnings = vec![];
         let mut errors = vec![];
         let pats = match self {
-            Pattern::Struct(StructPattern { fields, .. }) => fields.to_owned(),
+            Pattern::Struct(StructPattern { fields, .. }) => fields
+                .iter()
+                .map(|(_, field)| field.to_owned())
+                .collect::<Vec<_>>()
+                .into(),
             Pattern::Tuple(elems) => elems.to_owned(),
             _ => PatStack::empty(),
         };
@@ -1006,7 +1023,7 @@ impl fmt::Display for Pattern {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct StructPattern {
     struct_name: Ident,
-    fields: PatStack,
+    fields: Vec<(String, Pattern)>,
 }
 
 impl fmt::Display for StructPattern {
@@ -1014,7 +1031,43 @@ impl fmt::Display for StructPattern {
         let mut builder = String::new();
         builder.push_str(self.struct_name.as_str());
         builder.push_str(" { ");
-        builder.push_str(&format!("{}", self.fields));
+        let mut start_of_wildcard_tail = None;
+        for (i, (_, pat)) in self.fields.iter().enumerate().rev() {
+            match (pat, start_of_wildcard_tail) {
+                (Pattern::Wildcard, None) => {}
+                (_, None) => start_of_wildcard_tail = Some(i + 1),
+                (_, _) => {}
+            }
+        }
+        let s: String = match start_of_wildcard_tail {
+            Some(start_of_wildcard_tail) => {
+                let (front, _) = self.fields.split_at(start_of_wildcard_tail);
+                let mut inner_builder = front
+                    .iter()
+                    .map(|(name, field)| {
+                        let mut inner_builder = String::new();
+                        inner_builder.push_str(name);
+                        inner_builder.push_str(": ");
+                        inner_builder.push_str(&format!("{}", field));
+                        inner_builder
+                    })
+                    .join(", ");
+                inner_builder.push_str(", ...");
+                inner_builder
+            }
+            None => self
+                .fields
+                .iter()
+                .map(|(name, field)| {
+                    let mut inner_builder = String::new();
+                    inner_builder.push_str(name);
+                    inner_builder.push_str(": ");
+                    inner_builder.push_str(&format!("{}", field));
+                    inner_builder
+                })
+                .join(", "),
+        };
+        builder.push_str(&s);
         builder.push_str(" }");
         write!(f, "{}", builder)
     }
@@ -1716,7 +1769,11 @@ impl ConstructorFactory {
             }
             Pattern::Struct(struct_pattern) => Pattern::Struct(StructPattern {
                 struct_name: struct_pattern.struct_name,
-                fields: PatStack::fill_wildcards(struct_pattern.fields.len()),
+                fields: struct_pattern
+                    .fields
+                    .into_iter()
+                    .map(|(name, _)| (name, Pattern::Wildcard))
+                    .collect::<Vec<_>>(),
             }),
             Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
             Pattern::Or(_) => unreachable!(),
