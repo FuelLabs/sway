@@ -368,21 +368,25 @@ fn fetch_pinned(pkg: Pinned) -> Result<PinnedFetched> {
 fn dep_to_source(dep: &Dependency) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref _ver_str) => unimplemented!(),
-        Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git, &det.branch) {
-            (Some(path), _, _, _) => Source::Path(PathBuf::from(path)),
-            (_, _, Some(repo), branch) => {
-                let reference = match branch {
-                    None => "master".to_string(),
-                    Some(branch) => branch.clone(),
-                };
-                let repo = Url::parse(repo)?;
-                let source = SourceGit { repo, reference };
-                Source::Git(source)
+        Dependency::Detailed(ref det) => {
+            match (&det.path, &det.version, &det.git, &det.branch, &det.tag) {
+                (Some(path), _, _, _, _) => Source::Path(PathBuf::from(path)),
+                (_, _, Some(repo), branch, tag) => {
+                    let reference = match (branch, tag) {
+                        (Some(branch), None) => branch.clone(),
+                        (None, Some(tag)) => tag.clone(),
+                        // TODO: Consider "main" or having no default at all.
+                        _ => "master".to_string(),
+                    };
+                    let repo = Url::parse(repo)?;
+                    let source = SourceGit { repo, reference };
+                    Source::Git(source)
+                }
+                _ => {
+                    bail!("unsupported set of arguments for dependency: {:?}", dep);
+                }
             }
-            _ => {
-                bail!("unsupported set of arguments for dependency: {:?}", dep);
-            }
-        },
+        }
     };
     Ok(source)
 }

@@ -34,6 +34,7 @@ pub struct DependencyDetails {
     pub(crate) path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
+    pub(crate) tag: Option<String>,
 }
 pub enum OfflineMode {
     Yes,
