@@ -252,6 +252,7 @@ pub enum Warning {
     ShadowingReservedRegister {
         reg_name: Ident,
     },
+    MatchExpressionUnreachableArm,
 }
 
 impl fmt::Display for Warning {
@@ -357,6 +358,7 @@ impl fmt::Display for Warning {
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
+            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
     }
 }

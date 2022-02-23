@@ -906,12 +906,20 @@ impl TypedExpression {
             errors
         );
         let type_info = crate::type_engine::look_up_type_id(parent.return_type);
-        let (witness_report, _arms_reachability) = check!(
+        let (witness_report, arms_reachability) = check!(
             check_match_expression_usefulness(type_info, cases_covered, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
+        for (arm, reachable) in arms_reachability.into_iter() {
+            if !reachable {
+                warnings.push(CompileWarning {
+                    span: arm.span(),
+                    warning_content: Warning::MatchExpressionUnreachableArm,
+                });
+            }
+        }
         if witness_report.has_witnesses() {
             errors.push(CompileError::MatchExpressionNonExhaustive {
                 missing_patterns: format!("{}", witness_report),
