@@ -11,7 +11,7 @@ use petgraph::{self, Directed};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use sway_core::{
     source_map::SourceMap, BuildConfig, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
@@ -172,15 +172,16 @@ fn fetch_children(
     graph: &mut Graph,
     visited: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
-    let fetched = &graph[node];
-    let manifest = read_manifest(&fetched.path)?;
+    let parent = &graph[node];
+    let parent_path = parent.path.clone();
+    let manifest = read_manifest(&parent_path)?;
     let deps = match &manifest.dependencies {
         None => return Ok(()),
         Some(deps) => deps,
     };
     for (name, dep) in deps {
         let name = name.clone();
-        let source = dep_to_source(dep)?;
+        let source = dep_to_source(&parent_path, dep)?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
@@ -365,12 +366,17 @@ fn fetch_pinned(pkg: Pinned) -> Result<PinnedFetched> {
     Ok(fetched)
 }
 
-fn dep_to_source(dep: &Dependency) -> Result<Source> {
+/// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
+/// produce the `Source` for that dependendency.
+fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref _ver_str) => unimplemented!(),
         Dependency::Detailed(ref det) => {
             match (&det.path, &det.version, &det.git, &det.branch, &det.tag) {
-                (Some(path), _, _, _, _) => Source::Path(PathBuf::from(path)),
+                (Some(relative_path), _, _, _, _) => {
+                    let path = pkg_path.join(relative_path);
+                    Source::Path(path)
+                }
                 (_, _, Some(repo), branch, tag) => {
                     let reference = match (branch, tag) {
                         (Some(branch), None) => branch.clone(),
