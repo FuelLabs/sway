@@ -12,7 +12,7 @@ use crate::{
 
 use sway_types::span::{join_spans, Span};
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
