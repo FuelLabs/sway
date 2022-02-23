@@ -189,8 +189,7 @@ impl MyMath<u64> for u64 {
     }
 }
 
-/// A `Range<T>` is a range of values of type T.
-/// Given this range:
+/// A `Range<T>` is a range of values of type T. Given this range:
 ///
 /// ```ignore
 /// Range {
@@ -199,9 +198,12 @@ impl MyMath<u64> for u64 {
 /// }
 /// ```
 ///
-/// This represents the inclusive range `[0, 3]`.
-/// (Where '[' and ']' represent inclusive contains.)
-/// More specifically: `0, 1, 2, 3`.
+/// This represents the inclusive range `[0, 3]`. (Where '[' and ']' represent
+/// inclusive contains.) More specifically: it is equivalent to `0, 1, 2, 3`.
+///
+/// `Range<T>`s are only useful in cases in which `T` is an integer. AKA when
+/// `T` has discrete values. Because Sway does not have floats, this means that
+/// `Range<T>` can be used for all numeric and integer Sway types.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Range<T>
 where
@@ -269,6 +271,8 @@ where
         + Sub<Output = T>
         + Into<u64>,
 {
+    /// Creates a `Range<T>` from a single value of type `T`, where the value is used
+    /// both as the lower inclusive contains and the upper inclusive contains.
     fn from_single(x: T) -> Range<T> {
         Range {
             first: x.clone(),
@@ -276,7 +280,7 @@ where
         }
     }
 
-    /// Create a `Range` and ensures that it is a "valid `Range`"
+    /// Creates a `Range<T>` and ensures that it is a "valid `Range<T>`"
     /// (i.e.) that `first` is <= to `last`
     fn from_double(first: T, last: T, span: &Span) -> CompileResult<Range<T>> {
         let warnings = vec![];
@@ -296,35 +300,53 @@ where
     /// in which this might be the case:
     ///
     /// ```ignore
-    /// |------------|
-    ///    |------|
-    /// ->
-    /// |------------|
+    /// A: |------------|
+    /// B:    |------|
+    /// -> |------------|
     ///
-    ///    |------|
-    /// |------------|
-    /// ->
-    /// |------------|
+    /// A:   |------|
+    /// B: |------------|
+    /// -> |------------|
     ///
-    /// |---------|
-    ///      |---------|
-    /// ->
-    /// |--------------|
+    /// A: |---------|
+    /// B:      |---------|
+    /// -> |--------------|
     ///
-    ///      |---------|
-    /// |---------|
-    /// ->
-    /// |--------------|
+    /// A:      |---------|
+    /// B: |---------|
+    /// -> |--------------|
     ///
-    /// |------|
-    ///         |------|
-    /// ->
-    /// |--------------|
+    /// A: |------|
+    /// B:         |------|
+    /// -> |--------------|
     ///
-    ///         |------|
-    /// |------|
-    /// ->
-    /// |--------------|
+    /// A:         |------|
+    /// B: |------|
+    /// -> |--------------|
+    /// ```
+    ///
+    /// Note that becaues `Range<T>` relies on the assumption that `T` is an
+    /// integer value, this algorithm joins `Range<T>`s that are within ± 1 of
+    /// one another. Given these two `Range<T>`s:
+    ///
+    /// ```ignore
+    /// Range {
+    ///     first: 0,
+    ///     last: 3
+    /// }
+    /// Range {
+    ///     first: 4,
+    ///     last: 7
+    /// }
+    /// ```
+    ///
+    /// They can be joined into this `Range<T>`:
+    ///
+    /// ```ignore
+    /// Range {
+    ///     first: 0,
+    ///     last: 7
+    /// }
     /// ```
     fn join_ranges(a: &Range<T>, b: &Range<T>, span: &Span) -> CompileResult<Range<T>> {
         let mut warnings = vec![];
@@ -366,35 +388,10 @@ where
     /// 3. For each interval do the following
     ///     3a. If the current interval does not overlap with the stack
     ///         top, push it.
-    ///     3b. If the current interval overlaps with stack top and ending
-    ///         time of current interval is more than that of stack top,
-    ///         update stack top with the ending  time of current interval.
+    ///     3b. If the current interval overlaps with stack top (or is within ± 1)
+    ///         and ending time of current interval is more than that of stack top,
+    ///         update stack top with the ending time of current interval.
     /// 4. At the end stack contains the merged intervals.
-    ///
-    /// However there is a small modification that is Sway-specific. Because Sway does not
-    /// have floating point numbers at the language level this algorithm can further condense
-    /// ranges that are located ± 1 to one another. For instance, these two `Range`s:
-    ///
-    /// ```ignore
-    /// Range {
-    ///     first: 0,
-    ///     last: 0,
-    /// }
-    ///
-    /// Range {
-    ///     first: 1,
-    ///     last: 1,
-    /// }
-    /// ```
-    ///
-    /// become this `Range`:
-    ///
-    /// ```ignore
-    /// Range {
-    ///     first: 0,
-    ///     last: 1
-    /// }
-    /// ```
     fn condense_ranges(ranges: Vec<Range<T>>, span: &Span) -> CompileResult<Vec<Range<T>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -449,26 +446,65 @@ where
         ok(stack, warnings, errors)
     }
 
+    /// Given an *oracle* `Range<T>` and a vec *guides* of `Range<T>`, this
+    /// function returns the subdivided `Range<T>`s that are both within
+    /// *oracle* not within *guides*.
+    ///
+    /// The steps are as follows:
+    ///
+    /// 1. Convert *guides* to a vec of ordered, distinct, non-overlapping
+    ///    ranges *guides*'
+    /// 2. Check to ensure that *oracle* fully encompasses all ranges in
+    ///    *guides*'. For example, this would pass the check:
+    ///    ```ignore
+    ///    oracle: |--------------|
+    ///    guides:   |--|  |--|
+    ///    ```
+    ///    But this would not:
+    ///    ```ignore
+    ///    oracle: |--------------|
+    ///    guides:   |--|  |--| |---|
+    ///    ```
+    /// 3. Given the *oracle* range `[a, b]` and the *guides*'₀ range of
+    ///    `[c, d]`, and `a != c`, construct a range of `[a, c]`.
+    /// 4. Given *guides*' of length *n*, for every *k* 0..*n-1*, find the
+    ///    *guides*'ₖ range of `[a,b]` and the *guides*'ₖ₊₁ range of `[c, d]`,
+    ///    construct a range of `[b, c]`. You can assume that `b != d` because
+    ///    of step (1)
+    /// 5. Given the *oracle* range of `[a, b]`, *guides*' of length *n*, and
+    ///    the *guides*'ₙ range of `[c, d]`, and `b != d`, construct a range of
+    ///    `[b, d]`.
+    /// 6. Combine the range given from step (3), the ranges given from step
+    ///    (4), and the range given from step (5) for your result.
     fn find_exclusionary_ranges(
-        ranges: Vec<Range<T>>,
+        guides: Vec<Range<T>>,
         oracle: Range<T>,
         span: &Span,
     ) -> CompileResult<Vec<Range<T>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // 1. Convert *guides* to a vec of ordered, distinct, non-overlapping
+        //    ranges *guides*'
         let condensed = check!(
-            Range::condense_ranges(ranges, span),
+            Range::condense_ranges(guides, span),
             return err(warnings, errors),
             warnings,
             errors
         );
-        if !oracle.overlaps_all(&condensed) {
+
+        // 2. Check to ensure that *oracle* fully encompasses all ranges in
+        //    *guides*'.
+        if !oracle.encompasses_all(&condensed) {
             errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
                 "ranges OOB with the oracle",
                 span.clone(),
             ));
             return err(warnings, errors);
         }
+
+        // 3. Given the *oracle* range `[a, b]` and the *guides*'₀ range of
+        //    `[c, d]`, and `a != c`, construct a range of `[a, c]`.
         let mut exclusionary = vec![];
         let (first, last) = match (condensed.split_first(), condensed.split_last()) {
             (Some((first, _)), Some((last, _))) => (first, last),
@@ -488,6 +524,11 @@ where
                 errors
             ));
         }
+
+        // 4. Given *guides*' of length *n*, for every *k* 0..*n-1*, find the
+        //    *guides*'ₖ range of `[a,b]` and the *guides*'ₖ₊₁ range of `[c, d]`,
+        //    construct a range of `[b, c]`. You can assume that `b != d` because
+        //    of step (1)
         for (left, right) in condensed.iter().tuple_windows() {
             exclusionary.push(check!(
                 Range::from_double(left.last.incr(), right.first.decr(), span),
@@ -496,6 +537,10 @@ where
                 errors
             ));
         }
+
+        // 5. Given the *oracle* range of `[a, b]`, *guides*' of length *n*, and
+        //    the *guides*'ₙ range of `[c, d]`, and `b != d`, construct a range of
+        //    `[b, d]`.
         if oracle.last != last.last {
             exclusionary.push(check!(
                 Range::from_double(last.last.incr(), oracle.last, span),
@@ -504,6 +549,9 @@ where
                 errors
             ));
         }
+
+        // 6. Combine the range given from step (3), the ranges given from step
+        //    (4), and the range given from step (5) for your result.
         ok(exclusionary, warnings, errors)
     }
 
@@ -539,20 +587,21 @@ where
         }
     }
 
-    /// Checks to see if two ranges overlap. There are 4 ways in which this might be the case:
+    /// Checks to see if two ranges overlap. There are 4 ways in which this
+    /// might be the case:
     ///
     /// ```ignore
-    /// |------------|
-    ///    |------|
+    /// A: |------------|
+    /// B:    |------|
     ///
-    ///    |------|
-    /// |------------|
+    /// A:    |------|
+    /// B: |------------|
     ///
-    /// |---------|
-    ///      |---------|
+    /// A: |---------|
+    /// B:      |---------|
     ///
-    ///      |---------|
-    /// |---------|
+    /// A:      |---------|
+    /// B: |---------|
     /// ```
     fn overlaps(&self, other: &Range<T>) -> bool {
         other.first >= self.first && other.last <= self.last
@@ -561,19 +610,36 @@ where
             || other.first >= self.first && other.first <= self.last && other.last >= self.last
     }
 
-    fn overlaps_all(&self, others: &[Range<T>]) -> bool {
-        others.iter().map(|other| self.overlaps(other)).all(|x| x)
-    }
-
-    /// Checks to see if two ranges are within ± 1 of one another.
-    /// There are 2 ways in which this might be the case:
+    /// Checks to see if the first range encompasses the second range. There are
+    /// 2 ways in which this might be the case:
     ///
     /// ```ignore
-    /// |------|
-    ///         |------|
+    /// A: |------------|
+    /// B:    |------|
     ///
-    ///         |------|
-    /// |------|
+    /// A: |------------|
+    /// B: |------------|
+    /// ```
+    fn encompasses(&self, other: &Range<T>) -> bool {
+        self.first <= other.first && self.last >= other.last
+    }
+
+    fn encompasses_all(&self, others: &[Range<T>]) -> bool {
+        others
+            .iter()
+            .map(|other| self.encompasses(other))
+            .all(|x| x)
+    }
+
+    /// Checks to see if two ranges are within ± 1 of one another. There are 2
+    /// ways in which this might be the case:
+    ///
+    /// ```ignore
+    /// A: |------|
+    /// B:         |------|
+    ///
+    /// A:         |------|
+    /// B: |------|
     /// ```
     fn within_one(&self, other: &Range<T>) -> bool {
         !self.overlaps(other)
@@ -615,7 +681,8 @@ where
     }
 }
 
-/// A `Pattern` represents something that could be on the LHS of a match expression arm.
+/// A `Pattern` represents something that could be on the LHS of a match
+/// expression arm.
 ///
 /// For instance this match expression:
 ///
@@ -631,44 +698,52 @@ where
 /// would result in these patterns:
 ///
 /// ```ignore
-/// Pattern::Tuple(
-///     PatStack {
-///         pats: [
-///             Pattern::U64(Range { first: 0, last: 0 }),
-///             Pattern::U64(Range { first: 1, last: 1 })
-///         ]
-///     }
-/// )
-///
-/// Pattern::Tuple(
-///     PatStack {
-///         pats: [
-///             Pattern::U64(Range { first: 2, last: 2 }),
-///             Pattern::U64(Range { first: 3, last: 3 })
-///         ]
-///     }
-/// )
-///
+/// Pattern::Tuple([
+///     Pattern::U64(Range { first: 0, last: 0 }),
+///     Pattern::U64(Range { first: 1, last: 1 })
+/// ])
+/// Pattern::Tuple([
+///     Pattern::U64(Range { first: 2, last: 2 }),
+///     Pattern::U64(Range { first: 3, last: 3 })
+/// ])
 /// Pattern::Wildcard
 /// ```
 ///
-/// A `Pattern` is semantically constructed from a "constructor" and its "arguments."
-///
-/// Given the `Pattern`:
+/// A `Pattern` is semantically constructed from a "constructor" and its
+/// "arguments." Given the `Pattern`:
 ///
 /// ```ignore
-/// Pattern::Tuple(
-///     PatStack {
-///         pats: [
-///             Pattern::U64(Range { first: 0, last: 0 }),
-///             Pattern::U64(Range { first: 1, last: 1 })
-///         ]
-///     }
-/// )
+/// Pattern::Tuple([
+///     Pattern::U64(Range { first: 0, last: 0 }),
+///     Pattern::U64(Range { first: 1, last: 1 })
+/// ])
 /// ```
 ///
-/// The constructor is "Pattern::Tuple" and its arguments are the contents of `pats`.
-/// This idea of a constructor and arguments is used in the match exhaustivity algorithm.
+/// the constructor is:
+///
+/// ```ignore
+/// Pattern::Tuple([.., ..])
+/// ```
+///
+/// and the arguments are:
+///
+/// ```ignore
+/// [
+///     Pattern::U64(Range { first: 0, last: 0 }),
+///     Pattern::U64(Range { first: 1, last: 1 })
+/// ]
+/// ```
+/// This idea of a constructor and arguments is used in the match exhaustivity
+/// algorithm.
+///
+/// The variants of `Pattern` can be semantically categorized into 3 categories:
+///
+/// 1. the wildcard pattern (Pattern::Wildcard)
+/// 2. the or pattern (Pattern::Or(..))
+/// 3. constructed patterns (everything else)
+///
+/// This idea of semantic categorization is used in the match exhaustivity
+/// algorithm.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Pattern {
     Wildcard,
@@ -687,6 +762,7 @@ pub(crate) enum Pattern {
 }
 
 impl Pattern {
+    /// Converts a `MatchCondition` to a `Pattern`.
     fn from_match_condition(match_condition: MatchCondition) -> CompileResult<Self> {
         match match_condition {
             MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, vec![], vec![]),
@@ -694,6 +770,7 @@ impl Pattern {
         }
     }
 
+    /// Converts a `Scrutinee` to a `Pattern`.
     fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -768,6 +845,9 @@ impl Pattern {
         }
     }
 
+    /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
+    /// this function returns the single element, if it is of length > 1, this
+    /// function wraps the provided `PatStack` in a `Pattern::Or(..)`.
     fn from_pat_stack(pat_stack: PatStack, span: &Span) -> CompileResult<Pattern> {
         if pat_stack.len() == 1 {
             pat_stack.first(span)
@@ -776,6 +856,106 @@ impl Pattern {
         }
     }
 
+    /// Given a `Pattern` *c* and a `PatStack` *args*, extracts the constructor
+    /// from *c* and applies it to *args*. For example, given:
+    ///
+    /// ```ignore
+    /// c:    Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 5, last: 7, }),
+    ///         Pattern::U64(Range { first: 10, last: 12 })
+    ///       ])
+    /// args: [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::U64(Range { first: 1, last: 1 })
+    ///       ]
+    /// ```
+    ///
+    /// the extracted constructor *ctor* from *c* would be:
+    ///
+    /// ```ignore
+    /// Pattern::Tuple([.., ..])
+    /// ```
+    ///
+    /// Applying *args* to *ctor* would give:
+    ///
+    /// ```ignore
+    /// Pattern::Tuple([
+    ///     Pattern::U64(Range { first: 0, last: 0 }),
+    ///     Pattern::U64(Range { first: 1, last: 1 })
+    /// ])
+    /// ```
+    ///
+    /// If if is the case that at lease one element of *args* is a
+    /// or-pattern, then *args* is first "serialized". Meaning, that all
+    /// or-patterns are extracted to create a vec of `PatStack`s *args*' where
+    /// each `PatStack` is a copy of *args* where the index of the or-pattern is
+    /// instead replaced with one element from the or-patterns contents. More
+    /// specifically, given an *args* with one or-pattern that contains n
+    /// elements, this "serialization" would result in *args*' of length n.
+    /// Given an *args* with two or-patterns that contain n elements and m
+    /// elements, this would result in *args*' of length n*m.
+    ///
+    /// Once *args*' is constructed, *ctor* is applied to every element of
+    /// *args*' and the resulting `Pattern`s are wrapped inside of an
+    /// or-pattern.
+    ///
+    /// For example, given:
+    ///
+    /// ```ignore
+    /// ctor: Pattern::Tuple([.., ..])
+    /// args: [
+    ///         Pattern::Or([
+    ///             Pattern::U64(Range { first: 0, last: 0 }),
+    ///             Pattern::U64(Range { first: 1, last: 1 })
+    ///         ]),
+    ///         Pattern::Wildcard
+    ///       ]
+    /// ```
+    ///
+    /// *args* would serialize to:
+    ///
+    /// ```ignore
+    /// [
+    ///     [
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::Wildcard
+    ///     ],
+    ///     [
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::Wildcard
+    ///     ]
+    /// ]
+    /// ```
+    ///
+    /// applying *ctor* would create:
+    ///
+    /// ```ignore
+    /// [
+    ///     Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::Wildcard
+    ///     ]),
+    ///     Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::Wildcard
+    ///     ]),
+    /// ]
+    /// ```
+    ///
+    /// and wrapping this in an or-pattern would create:
+    ///
+    /// ```ignore
+    /// Pattern::Or([
+    ///     Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 0, last: 0 }),
+    ///         Pattern::Wildcard
+    ///     ]),
+    ///     Pattern::Tuple([
+    ///         Pattern::U64(Range { first: 1, last: 1 }),
+    ///         Pattern::Wildcard
+    ///     ]),
+    /// ])
+    /// ```
     fn from_constructor_and_arguments(
         c: &Pattern,
         args: PatStack,
@@ -940,10 +1120,14 @@ impl Pattern {
         ok(pat, warnings, errors)
     }
 
+    /// Create a `Pattern::Wildcard`
     fn wild_pattern() -> Self {
         Pattern::Wildcard
     }
 
+    /// Finds the "a value" of the `Pattern`, AKA the number of sub-patterns
+    /// used in the pattern's constructor. For example, the pattern
+    /// `Pattern::Tuple([.., ..])` would have an "a value" of 2.
     fn a(&self) -> usize {
         match self {
             Pattern::U8(_) => 0,
@@ -962,6 +1146,34 @@ impl Pattern {
         }
     }
 
+    /// Checks to see if two `Pattern` have the same constructor. For example,
+    /// given the patterns:
+    ///
+    /// ```ignore
+    /// A: Pattern::U64(Range { first: 0, last: 0 })
+    /// B: Pattern::U64(Range { first: 0, last: 0 })
+    /// C: Pattern::U64(Range { first: 1, last: 1 })
+    /// ```
+    ///
+    /// A and B have the same constructor but A and C do not.
+    ///
+    /// Given the patterns:
+    ///
+    /// ```ignore
+    /// A: Pattern::Tuple([
+    ///     Pattern::U64(Range { first: 0, last: 0 }),
+    ///     Pattern::U64(Range { first: 1, last: 1 }),
+    ///    ])
+    /// B: Pattern::Tuple([
+    ///     Pattern::U64(Range { first: 2, last: 2 }),
+    ///     Pattern::U64(Range { first: 3, last: 3 }),
+    ///    ])
+    /// C: Pattern::Tuple([
+    ///     Pattern::U64(Range { first: 4, last: 4 }),
+    ///    ])
+    /// ```
+    ///
+    /// A and B have the same constructor but A and C do not.
     fn has_the_same_constructor(&self, other: &Pattern) -> bool {
         match (self, other) {
             (Pattern::Wildcard, Pattern::Wildcard) => true,
@@ -990,6 +1202,31 @@ impl Pattern {
         }
     }
 
+    /// Extracts the "sub-patterns" of a `Pattern`, aka the "arguments" to the
+    /// patterns "constructor". Some patterns have 0 sub-patterns and some
+    /// patterns have >0 sub-patterns. For example, this pattern:
+    ///
+    /// ```ignore
+    /// Pattern::U64(Range { first: 0, last: 0 }),
+    /// ```
+    ///
+    /// has 0 sub-patterns. While this pattern:
+    ///
+    /// ```ignore
+    /// Pattern::Tuple([
+    ///     Pattern::U64(Range { first: 0, last: 0 }),
+    ///     Pattern::U64(Range { first: 1, last: 1 })
+    /// ])
+    /// ```
+    ///
+    /// has 2 sub-patterns:
+    ///
+    /// ```ignore
+    /// [
+    ///     Pattern::U64(Range { first: 0, last: 0 }),
+    ///     Pattern::U64(Range { first: 1, last: 1 })
+    /// ]
+    /// ```
     fn sub_patterns(&self, span: &Span) -> CompileResult<PatStack> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -1012,6 +1249,9 @@ impl Pattern {
         ok(pats, warnings, errors)
     }
 
+    /// Flattens a `Pattern` into a `PatStack`. If the pattern is an
+    /// "or-pattern", return its contents, otherwise return the pattern as a
+    /// `PatStack`
     fn flatten(&self) -> PatStack {
         match self {
             Pattern::Or(pats) => pats.to_owned(),
