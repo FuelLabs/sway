@@ -8,7 +8,6 @@ use sway_types::Span;
 
 use crate::error::err;
 use crate::error::ok;
-use crate::type_engine::IntegerBits;
 use crate::CompileError;
 use crate::CompileResult;
 use crate::Literal;
@@ -680,7 +679,7 @@ pub(crate) enum Pattern {
     Boolean(bool),
     Byte(Range<u8>),
     Numeric(Range<u64>),
-    String(Span),
+    String(String),
     Struct(StructPattern),
     Tuple(PatStack),
     Or(PatStack),
@@ -706,7 +705,7 @@ impl Pattern {
                 Literal::Boolean(b) => Pattern::Boolean(b),
                 Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
                 Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
-                Literal::String(s) => Pattern::String(s),
+                Literal::String(s) => Pattern::String(s.as_str().to_string()),
             },
             Scrutinee::StructScrutinee {
                 struct_name,
@@ -734,8 +733,12 @@ impl Pattern {
         }
     }
 
-    fn from_pat_stack(pat_stack: PatStack) -> Pattern {
-        Pattern::Or(pat_stack)
+    fn from_pat_stack(pat_stack: PatStack, span: &Span) -> CompileResult<Pattern> {
+        if pat_stack.len() == 1 {
+            pat_stack.first(span)
+        } else {
+            ok(Pattern::Or(pat_stack), vec![], vec![])
+        }
     }
 
     fn from_constructor_and_arguments(
@@ -743,21 +746,158 @@ impl Pattern {
         args: PatStack,
         span: &Span,
     ) -> CompileResult<Self> {
-        let warnings = vec![];
+        let mut warnings = vec![];
         let mut errors = vec![];
-        match c {
-            Pattern::Tuple(elems) => {
-                if elems.len() != args.len() {
+        let pat = match c {
+            Pattern::Wildcard => unreachable!(),
+            Pattern::U8(range) => {
+                if !args.is_empty() {
                     errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                        "tuple arity mismatch",
+                        "malformed constructor request",
                         span.clone(),
                     ));
                     return err(warnings, errors);
                 }
-                ok(Pattern::Tuple(args), warnings, errors)
+                Pattern::U8(range.clone())
             }
-            _ => unimplemented!(),
-        }
+            Pattern::U16(range) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::U16(range.clone())
+            }
+            Pattern::U32(range) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::U32(range.clone())
+            }
+            Pattern::U64(range) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::U64(range.clone())
+            }
+            Pattern::B256(b) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::B256(*b)
+            }
+            Pattern::Boolean(b) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::Boolean(*b)
+            }
+            Pattern::Byte(range) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::Byte(range.clone())
+            }
+            Pattern::Numeric(range) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::Numeric(range.clone())
+            }
+            Pattern::String(s) => {
+                if !args.is_empty() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::String(s.clone())
+            }
+            Pattern::Struct(struct_pattern) => {
+                if args.len() != struct_pattern.fields.len() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                let pats: PatStack = check!(
+                    args.serialize_multi_patterns(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(|args| {
+                    Pattern::Struct(StructPattern {
+                        struct_name: struct_pattern.struct_name.clone(),
+                        fields: args,
+                    })
+                })
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(pats, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::Tuple(elems) => {
+                if elems.len() != args.len() {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                let pats: PatStack = check!(
+                    args.serialize_multi_patterns(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::Tuple)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(pats, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::Or(_) => unreachable!(),
+        };
+        ok(pat, warnings, errors)
     }
 
     fn wild_pattern() -> Self {
@@ -840,7 +980,16 @@ impl fmt::Display for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Pattern::Wildcard => "_".to_string(),
+            Pattern::U8(range) => format!("{}", range),
+            Pattern::U16(range) => format!("{}", range),
+            Pattern::U32(range) => format!("{}", range),
+            Pattern::U64(range) => format!("{}", range),
             Pattern::Numeric(range) => format!("{}", range),
+            Pattern::B256(n) => format!("{:#?}", n),
+            Pattern::Boolean(b) => format!("{}", b),
+            Pattern::Byte(range) => format!("{}", range),
+            Pattern::String(s) => s.clone(),
+            Pattern::Struct(struct_pattern) => format!("{}", struct_pattern),
             Pattern::Tuple(elems) => {
                 let mut builder = String::new();
                 builder.push('(');
@@ -848,7 +997,7 @@ impl fmt::Display for Pattern {
                 builder.push(')');
                 builder
             }
-            a => unimplemented!("{:?}", a),
+            Pattern::Or(_) => unreachable!(),
         };
         write!(f, "{}", s)
     }
@@ -858,6 +1007,17 @@ impl fmt::Display for Pattern {
 pub(crate) struct StructPattern {
     struct_name: Ident,
     fields: PatStack,
+}
+
+impl fmt::Display for StructPattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut builder = String::new();
+        builder.push_str(self.struct_name.as_str());
+        builder.push_str(" { ");
+        builder.push_str(&format!("{}", self.fields));
+        builder.push_str(" }");
+        write!(f, "{}", builder)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -943,6 +1103,21 @@ impl PatStack {
         self.pats.push(other)
     }
 
+    fn get_mut(&mut self, n: usize, span: &Span) -> CompileResult<&mut Pattern> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self.pats.get_mut(n) {
+            Some(elem) => ok(elem, warnings, errors),
+            None => {
+                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    "cant retrieve mutable reference to element",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
+    }
+
     fn append(&mut self, others: &mut PatStack) {
         self.pats.append(&mut others.pats);
     }
@@ -961,6 +1136,15 @@ impl PatStack {
 
     fn contains(&self, pat: &Pattern) -> bool {
         self.pats.contains(pat)
+    }
+
+    fn contains_or_pattern(&self) -> bool {
+        for pat in self.pats.iter() {
+            if let Pattern::Or(_) = pat {
+                return true;
+            }
+        }
+        false
     }
 
     fn iter(&self) -> Iter<'_, Pattern> {
@@ -1109,15 +1293,22 @@ impl PatStack {
                 }
                 ok(true_found && false_found, warnings, errors)
             }
-            Pattern::Tuple(elems) => {
+            ref tup @ Pattern::Tuple(_) => {
                 for pat in rest.iter() {
-                    if !pat.has_the_same_constructor(&Pattern::Tuple(elems.clone())) {
+                    if !pat.has_the_same_constructor(tup) {
                         return ok(false, warnings, errors);
                     }
                 }
                 ok(true, warnings, errors)
             }
-            Pattern::Struct(_) => unimplemented!(),
+            ref strct @ Pattern::Struct(_) => {
+                for pat in rest.iter() {
+                    if !pat.has_the_same_constructor(strct) {
+                        return ok(false, warnings, errors);
+                    }
+                }
+                ok(true, warnings, errors)
+            }
             Pattern::Wildcard => unreachable!(),
             Pattern::Or(_) => unreachable!(),
         }
@@ -1140,6 +1331,46 @@ impl PatStack {
             }
         }
         pats
+    }
+
+    fn serialize_multi_patterns(self, span: &Span) -> CompileResult<Vec<PatStack>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut output: Vec<PatStack> = vec![];
+        let mut stack: Vec<PatStack> = vec![self];
+        while !stack.is_empty() {
+            let top = match stack.pop() {
+                Some(top) => top,
+                None => {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "can't pop Vec",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+            };
+            if !top.contains_or_pattern() {
+                output.push(top);
+            } else {
+                for (i, pat) in top.clone().into_iter().enumerate() {
+                    if let Pattern::Or(elems) = pat {
+                        for elem in elems.into_iter() {
+                            let mut top = top.clone();
+                            let r = check!(
+                                top.get_mut(i, span),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let _ = std::mem::replace(r, elem);
+                            stack.push(top);
+                        }
+                    }
+                }
+            }
+        }
+        output.reverse();
+        ok(output, warnings, errors)
     }
 }
 
@@ -1250,30 +1481,14 @@ impl Matrix {
     }
 }
 
-struct ConstructorFactory {
-    constructors: PatStack,
-}
+struct ConstructorFactory {}
 
 impl ConstructorFactory {
-    fn new(type_info: TypeInfo) -> Self {
-        let constructors = match type_info {
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => vec![Pattern::U64(Range::u64())],
-            TypeInfo::Numeric => vec![Pattern::Numeric(Range::u64())],
-            TypeInfo::Tuple(elems) => {
-                vec![Pattern::Tuple(vec![Pattern::Wildcard; elems.len()].into())]
-            }
-            _ => unimplemented!(),
-        };
-        ConstructorFactory {
-            constructors: PatStack::new(constructors),
-        }
+    fn new(_type_info: TypeInfo) -> Self {
+        ConstructorFactory {}
     }
 
-    fn create_constructor_not_present(
-        &self,
-        sigma: PatStack,
-        span: &Span,
-    ) -> CompileResult<Pattern> {
+    fn create_pattern_not_present(&self, sigma: PatStack, span: &Span) -> CompileResult<Pattern> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (first, rest) = check!(
@@ -1282,7 +1497,131 @@ impl ConstructorFactory {
             warnings,
             errors
         );
-        match first {
+        let pat = match first {
+            Pattern::U8(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U8(range) => ranges.push(range),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
+                    }
+                }
+                let unincluded: PatStack = check!(
+                    Range::find_exclusionary_ranges(ranges, Range::u8(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::U8)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::U16(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U16(range) => ranges.push(range),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
+                    }
+                }
+                let unincluded: PatStack = check!(
+                    Range::find_exclusionary_ranges(ranges, Range::u16(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::U16)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::U32(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U32(range) => ranges.push(range),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
+                    }
+                }
+                let unincluded: PatStack = check!(
+                    Range::find_exclusionary_ranges(ranges, Range::u32(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::U32)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::U64(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::U64(range) => ranges.push(range),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
+                    }
+                }
+                let unincluded: PatStack = check!(
+                    Range::find_exclusionary_ranges(ranges, Range::u64(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::U64)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
             Pattern::Numeric(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
@@ -1307,10 +1646,82 @@ impl ConstructorFactory {
                 .map(Pattern::Numeric)
                 .collect::<Vec<_>>()
                 .into();
-                ok(Pattern::from_pat_stack(unincluded), warnings, errors)
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
-            a => unimplemented!("{:?}", a),
-        }
+            // we will not present every string case
+            Pattern::String(_) => Pattern::Wildcard,
+            Pattern::Wildcard => unreachable!(),
+            // we will not present every b256 case
+            Pattern::B256(_) => Pattern::Wildcard,
+            Pattern::Boolean(b) => {
+                let mut true_found = false;
+                let mut false_found = false;
+                if b {
+                    true_found = true;
+                } else {
+                    false_found = true;
+                }
+                if rest.contains(&Pattern::Boolean(true)) {
+                    true_found = true;
+                } else if rest.contains(&Pattern::Boolean(false)) {
+                    false_found = true;
+                }
+                if true_found && false_found {
+                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                        "unable to create a new pattern",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                } else if true_found {
+                    Pattern::Boolean(false)
+                } else {
+                    Pattern::Boolean(true)
+                }
+            }
+            Pattern::Byte(range) => {
+                let mut ranges = vec![range];
+                for pat in rest.into_iter() {
+                    match pat {
+                        Pattern::Byte(range) => ranges.push(range),
+                        _ => {
+                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                                "type mismatch",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
+                    }
+                }
+                let unincluded: PatStack = check!(
+                    Range::find_exclusionary_ranges(ranges, Range::u8(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::Byte)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(unincluded, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Pattern::Struct(struct_pattern) => Pattern::Struct(StructPattern {
+                struct_name: struct_pattern.struct_name,
+                fields: PatStack::fill_wildcards(struct_pattern.fields.len()),
+            }),
+            Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
+            Pattern::Or(_) => unreachable!(),
+        };
+        ok(pat, warnings, errors)
     }
 }
 
@@ -1492,8 +1903,14 @@ fn is_useful_wildcard(
         match &mut witness_report {
             WitnessReport::NoWitnesses => {}
             witness_report => {
+                let pat_stack = check!(
+                    Pattern::from_pat_stack(pat_stack, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 check!(
-                    witness_report.add_witness(Pattern::from_pat_stack(pat_stack), span),
+                    witness_report.add_witness(pat_stack, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1524,7 +1941,7 @@ fn is_useful_wildcard(
             Pattern::Wildcard
         } else {
             check!(
-                factory.create_constructor_not_present(sigma, span),
+                factory.create_pattern_not_present(sigma, span),
                 return err(warnings, errors),
                 warnings,
                 errors

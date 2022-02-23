@@ -5,26 +5,19 @@ struct Point {
     y: u64
 }
 
+struct CrazyPoint {
+    p1: Point,
+    p2: Point
+}
+
 fn main() -> u64 {
-    /*
-    let p = Point {
-        x: 3,
-        y: 4,
-    };
-
-    match p {
-        Point { x: 3, y } => { y },
-        Point { x: 3, y: 4 } => { 24 },
-        _ => { 24 },
-    }
-    */
-
     let x = 0;
     // should fail
     let y = match x {
         0 => { 0 },
         10 => { 0 },
         5 => { 0 },
+        10 => { 0 },
     };
     // should succeed
     let y = match x {
@@ -64,6 +57,34 @@ fn main() -> u64 {
         (0, 0) => { 0 },
         (1, 1) => { 0 },
         (a, b) => { 0 },
+    };
+
+    let p = Point {
+        x: 3,
+        y: 4,
+    };
+    // should fail
+    let foo = match p {
+        Point { x: 3, y } => { y },
+        Point { x: 3, y: 4 } => { 24 },
+    };
+    // should succeed
+    let foo = match p {
+        Point { x: 3, y } => { y },
+        Point { x: 3, y: 4 } => { 24 },
+        Point { x, y } => { x },
+    };
+    // should succeed
+    let foo = match p {
+        Point { x: 3, y } => { y },
+        Point { x: 3, y: 4 } => { 24 },
+        a => { 24 },
+    };
+    // should succeed
+    let foo = match p {
+        Point { x: 3, y } => { y },
+        Point { x: 3, y: 4 } => { 24 },
+        _ => { 24 },
     };
 
     42u64
