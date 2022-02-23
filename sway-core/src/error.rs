@@ -714,8 +714,8 @@ pub enum CompileError {
     MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
-    #[error("Trait \"{name}\" does not exist in this scope.")]
-    TraitNotFound { name: Ident, span: Span },
+    #[error("Cannot find trait \"{name}\" in this scope.")]
+    TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -822,6 +822,20 @@ pub enum CompileError {
     #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
     NameDefinedMultipleTimesForTrait {
         fn_name: String,
+        trait_name: String,
+        span: Span,
+    },
+    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
+    SupertraitImplMissing {
+        supertrait_name: String,
+        type_name: String,
+        span: Span,
+    },
+    #[error(
+        "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
+    )]
+    SupertraitImplRequired {
+        supertrait_name: String,
         trait_name: String,
         span: Span,
     },
@@ -1028,6 +1042,8 @@ impl CompileError {
             AsteriskWithAlias { span, .. } => span,
             AbiAsSupertrait { span, .. } => span,
             NameDefinedMultipleTimesForTrait { span, .. } => span,
+            SupertraitImplMissing { span, .. } => span,
+            SupertraitImplRequired { span, .. } => span,
         }
     }
 
