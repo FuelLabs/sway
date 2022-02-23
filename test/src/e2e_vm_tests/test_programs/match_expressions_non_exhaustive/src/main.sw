@@ -87,5 +87,20 @@ fn main() -> u64 {
         _ => { 24 },
     };
 
+    let p = CrazyPoint {
+        p1: Point {
+            x: 100,
+            y: 200
+        },
+        p2: Point {
+            x: 300,
+            y: 400
+        }
+    };
+    // should fail
+    let foo = match p {
+        CrazyPoint { p1: Point { x: 0, y: 1 }, p2 } => { 42 },
+    };
+
     42u64
 }
