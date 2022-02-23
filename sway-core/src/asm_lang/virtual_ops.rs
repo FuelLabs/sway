@@ -223,6 +223,7 @@ impl VirtualOp {
         .collect()
     }
 
+    /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
@@ -310,6 +311,8 @@ impl VirtualOp {
         .collect()
     }
 
+    /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define
+    /// exactly 0 or 1 register, so the size of this returned vector should always be at most 1.
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
@@ -397,6 +400,10 @@ impl VirtualOp {
         .collect()
     }
 
+    /// Returns a list of indices that represent the successors of `self` in the list of
+    /// instructions `ops`. For most instructions, the successor is simply the next instruction in
+    /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
+    /// which does not have any successors.
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -412,6 +419,8 @@ impl VirtualOp {
         match self {
             RVRT(_) => vec![],
             JI(i) => {
+                // Single successor indicated in the jump offset. Use `offset_to_ix` to figure out
+                // the index in `ops` that corresponds to the offset specified.
                 if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
                     vec![]
                 } else {
@@ -419,6 +428,9 @@ impl VirtualOp {
                 }
             }
             JNEI(_, _, i) => {
+                // Two possible successors: the next instruction as well as the instruction
+                // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
+                // `ops` that corresponds to the offset specified.
                 if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
                     vec![].into_iter().chain(next_op.into_iter()).collect()
                 } else {
@@ -751,6 +763,8 @@ impl VirtualOp {
         }
     }
 
+    /// Use `offset_map` to update the immediate value of a jump instruction. The map simply tells
+    /// us what the new offset should be given the existing offset.
     pub(crate) fn update_jump_immediate_values(&mut self, offset_map: &HashMap<u64, u64>) -> Self {
         use VirtualOp::*;
         match self {

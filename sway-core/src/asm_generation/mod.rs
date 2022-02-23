@@ -104,6 +104,11 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
+    /// Assigns an allocatable register to each virtual register used by some instruction in the
+    /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
+    /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
+    /// the algorithm are thoroughly explained in register_allocator.rs. 
+    ///
     fn allocate_registers(self, register_sequencer: &mut RegisterSequencer) -> InstructionSet {
         // Step 1: Liveness Analysis.
         let live_out = register_allocator::liveness_analysis(&self.ops);
