@@ -1,31 +1,31 @@
-use crate::{
-    cli::UpdateCommand,
-    ops::forc_dep_check,
-    utils::{
-        dependency,
-        helpers::{read_manifest, user_forc_directory},
-    },
-};
+use crate::{cli::UpdateCommand, utils::helpers::read_manifest};
 use anyhow::{anyhow, Result};
-use std::{path::PathBuf, str};
+use std::path::PathBuf;
 use sway_utils::find_manifest_dir;
 
-/// Forc update will update the contents inside the Forc dependencies directory.
-/// If a dependency `d` is passed as parameter, it will only try and update that specific dependency.
-/// Otherwise, it will try and update all GitHub-based dependencies in a project's `Forc.toml`.
-/// It won't automatically update dependencies that have a version specified, if you have
-/// specified a version for a dependency and want to update it you should, instead,
-/// run `forc update --check` to check for updates for all GitHub-based dependencies, and if
-/// a new version is detected and return, manually update your `Forc.toml` with this new version.
+/// Running `forc update` will check for updates for the entire dependency graph and commit new
+/// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated
+/// to the HEAD of the specified branch, or remains unchanged in the case a tag is specified. Path
+/// dependencies remain unchanged as they are always sourced directly.
+///
+/// Run `forc update --check` to perform a dry-run and produce a list of updates that will be
+/// performed across all dependencies without actually committing them to the lock file.
+///
+/// Use the `--package <package-name>` flag to update only a specific package throughout the
+/// dependency graph.
 pub async fn update(command: UpdateCommand) -> Result<()> {
     if command.check {
-        return forc_dep_check::check(command.path, command.target_dependency).await;
+        // TODO
+        unimplemented!(
+            "When set, output whether target dep may be updated but don't commit to lock file"
+        );
     }
 
     let UpdateCommand {
         path,
-        target_dependency,
         check: _,
+        // TODO: Use `package` here rather than `target_dependency`
+        ..
     } = command;
 
     let this_dir = if let Some(path) = path {
@@ -44,58 +44,10 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         }
     };
 
-    let mut manifest = read_manifest(&manifest_dir).unwrap();
+    let _manifest = read_manifest(&manifest_dir).unwrap();
 
-    let dependencies = dependency::get_detailed_dependencies(&mut manifest);
-
-    match target_dependency {
-        // Target dependency (`-d`) specified
-        Some(target_dep) => match dependencies.get(&target_dep) {
-            Some(dep) => Ok(update_dependency(&target_dep, dep).await?),
-            None => return Err(anyhow!("dependency {} not found", target_dep)),
-        },
-        // No target dependency specified, try and update all dependencies
-        None => {
-            for (dependency_name, dep) in dependencies {
-                update_dependency(&dependency_name, dep).await?;
-            }
-            Ok(())
-        }
-    }
-}
-
-async fn update_dependency(
-    dependency_name: &str,
-    dep: &dependency::DependencyDetails,
-) -> Result<()> {
-    // Currently we only handle updates on github-based dependencies
-    if let Some(git) = &dep.git {
-        match &dep.version {
-            // Automatically updating a dependency that has a tag/version specified in `Forc.toml`
-            // would mean to update the `Forc.toml` file, which I believe isn't a very
-            // nice behavior. Instead, if a tag/version is specified, the user should
-            // lookup for a desired version and manually specify it in `Forc.toml`.
-            Some(version) => println!("Ignoring update for {} at version {}: Forc update not implemented for dependencies with specified tag. To update to another tag, change the tag in `Forc.toml` and run the build command.", dependency_name, version),
-            None => {
-                let forc_dir = user_forc_directory();
-                let dep_dir = forc_dir.join(dependency_name);
-                let target_directory = match &dep.branch {
-                    Some(branch) => dep_dir.join(branch),
-                    None => dep_dir.join("default"),
-                };
-
-                let current = dependency::get_current_dependency_version(&target_directory)?;
-
-                let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch).await?;
-
-                if current.hash == latest_hash {
-                      println!("{} is up-to-date", dependency_name);
-                } else {
-                    dependency::replace_dep_version(&target_directory, git, dep)?;
-                    println!("{}: {} -> {}", dependency_name, current.hash, latest_hash);
-                }
-            }
-        }
-    }
-    Ok(())
+    // TODO
+    unimplemented!(
+        "Check the graph for git and registry changes and update the `Forc.lock` file accordingly"
+    )
 }
