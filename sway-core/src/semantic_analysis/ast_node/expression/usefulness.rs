@@ -687,57 +687,84 @@ pub(crate) enum Pattern {
 }
 
 impl Pattern {
-    fn from_match_condition(match_condition: MatchCondition) -> Self {
+    fn from_match_condition(match_condition: MatchCondition) -> CompileResult<Self> {
         match match_condition {
-            MatchCondition::CatchAll(_) => Pattern::Wildcard,
+            MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, vec![], vec![]),
             MatchCondition::Scrutinee(scrutinee) => Pattern::from_scrutinee(scrutinee),
         }
     }
 
-    fn from_scrutinee(scrutinee: Scrutinee) -> Self {
+    fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match scrutinee {
-            Scrutinee::Variable { .. } => Pattern::Wildcard,
+            Scrutinee::Variable { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Literal { value, .. } => match value {
-                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
-                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
-                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
-                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
-                Literal::B256(x) => Pattern::B256(x),
-                Literal::Boolean(b) => Pattern::Boolean(b),
-                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
-                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
-                Literal::String(s) => Pattern::String(s.as_str().to_string()),
+                Literal::U8(x) => ok(Pattern::U8(Range::from_single(x)), warnings, errors),
+                Literal::U16(x) => ok(Pattern::U16(Range::from_single(x)), warnings, errors),
+                Literal::U32(x) => ok(Pattern::U32(Range::from_single(x)), warnings, errors),
+                Literal::U64(x) => ok(Pattern::U64(Range::from_single(x)), warnings, errors),
+                Literal::B256(x) => ok(Pattern::B256(x), warnings, errors),
+                Literal::Boolean(b) => ok(Pattern::Boolean(b), warnings, errors),
+                Literal::Byte(x) => ok(Pattern::Byte(Range::from_single(x)), warnings, errors),
+                Literal::Numeric(x) => {
+                    ok(Pattern::Numeric(Range::from_single(x)), warnings, errors)
+                }
+                Literal::String(s) => ok(Pattern::String(s.as_str().to_string()), warnings, errors),
             },
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
                 ..
-            } => Pattern::Struct(StructPattern {
-                struct_name,
-                fields: fields
-                    .into_iter()
-                    .map(
-                        |StructScrutineeField {
-                             field, scrutinee, ..
-                         }| {
-                            (
-                                field.as_str().to_string(),
-                                match scrutinee {
-                                    Some(scrutinee) => Pattern::from_scrutinee(scrutinee),
-                                    None => Pattern::Wildcard,
-                                },
-                            )
-                        },
-                    )
-                    .collect::<Vec<_>>(),
-            }),
-            Scrutinee::Tuple { elems, .. } => Pattern::Tuple(PatStack::new(
-                elems
-                    .into_iter()
-                    .map(Pattern::from_scrutinee)
-                    .collect::<Vec<_>>(),
-            )),
-            _ => unreachable!(),
+            } => {
+                let mut new_fields = vec![];
+                for StructScrutineeField {
+                    field, scrutinee, ..
+                } in fields.into_iter()
+                {
+                    let f = match scrutinee {
+                        Some(scrutinee) => check!(
+                            Pattern::from_scrutinee(scrutinee),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        None => Pattern::Wildcard,
+                    };
+                    new_fields.push((field.as_str().to_string(), f));
+                }
+                let pat = Pattern::Struct(StructPattern {
+                    struct_name,
+                    fields: new_fields,
+                });
+                ok(pat, warnings, errors)
+            }
+            Scrutinee::Tuple { elems, .. } => {
+                let mut new_elems = PatStack::empty();
+                for elem in elems.into_iter() {
+                    new_elems.push(check!(
+                        Pattern::from_scrutinee(elem),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                ok(Pattern::Tuple(new_elems), warnings, errors)
+            }
+            Scrutinee::Unit { span } => {
+                errors.push(CompileError::Unimplemented(
+                    "unit exhaustivity checking",
+                    span,
+                ));
+                err(warnings, errors)
+            }
+            Scrutinee::EnumScrutinee { span, .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "enum exhaustivity checking",
+                    span,
+                ));
+                err(warnings, errors)
+            }
         }
     }
 
@@ -1081,10 +1108,6 @@ pub(crate) struct PatStack {
 impl PatStack {
     fn empty() -> Self {
         PatStack { pats: vec![] }
-    }
-
-    fn new(pats: Vec<Pattern>) -> Self {
-        PatStack { pats }
     }
 
     fn from_pattern(pattern: Pattern) -> Self {
@@ -1798,12 +1821,22 @@ pub(crate) fn check_match_expression_usefulness(
     let factory = ConstructorFactory::new(type_info);
     match arms.split_first() {
         Some((first_arm, arms_rest)) => {
-            matrix.push(PatStack::from_pattern(Pattern::from_match_condition(
-                first_arm.clone(),
-            )));
+            let pat = check!(
+                Pattern::from_match_condition(first_arm.clone()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            matrix.push(PatStack::from_pattern(pat));
             arms_reachability.push((first_arm.clone(), true));
             for arm in arms_rest.iter() {
-                let v = PatStack::from_pattern(Pattern::from_match_condition(arm.clone()));
+                let pat = check!(
+                    Pattern::from_match_condition(arm.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let v = PatStack::from_pattern(pat);
                 let witness_report = check!(
                     is_useful(&factory, &matrix, &v, &span),
                     return err(warnings, errors),
