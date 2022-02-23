@@ -19,6 +19,8 @@ use crate::TypeInfo;
 use itertools::Itertools;
 use std::fmt::Debug;
 
+/// A `WitnessReport` is a report of the witnesses to a `Pattern` being useful
+/// and is used in the match expression exhaustivity checking algorithm.
 #[derive(Debug)]
 pub(crate) enum WitnessReport {
     NoWitnesses,
@@ -26,6 +28,7 @@ pub(crate) enum WitnessReport {
 }
 
 impl WitnessReport {
+    /// Joins two `WitnessReport`s together.
     fn join_witness_reports(a: WitnessReport, b: WitnessReport) -> Self {
         match (a, b) {
             (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => WitnessReport::NoWitnesses,
@@ -43,6 +46,11 @@ impl WitnessReport {
         }
     }
 
+    /// Given a `WitnessReport` *wr* and a constructor *c* with *a* number of
+    /// sub-patterns, creates a new `Pattern` *p* and a new `WitnessReport`
+    /// *wr'*. *p* is created by applying *c* to the first *a* elements of *wr*.
+    /// *wr'* is created by taking the remaining elements of *wr* after *a*
+    /// elements have been removed from the front of *wr*.
     fn split_into_leading_constructor(
         witness_report: WitnessReport,
         c: &Pattern,
@@ -76,6 +84,7 @@ impl WitnessReport {
         }
     }
 
+    /// Prepends a witness `Pattern` onto the `WitnessReport`.
     fn add_witness(&mut self, witness: Pattern, span: &Span) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -94,6 +103,7 @@ impl WitnessReport {
         }
     }
 
+    /// Reports if this `WitnessReport` has witnesses.
     pub(crate) fn has_witnesses(&self) -> bool {
         match self {
             WitnessReport::NoWitnesses => false,
@@ -200,7 +210,7 @@ impl MyMath<u64> for u64 {
 ///
 /// This represents the inclusive range `[0, 3]`. (Where '[' and ']' represent
 /// inclusive contains.) More specifically: it is equivalent to `0, 1, 2, 3`.
-/// 
+///
 /// ---
 ///
 /// `Range<T>`s are only useful in cases in which `T` is an integer. AKA when
@@ -328,7 +338,7 @@ where
     /// ```
     ///
     /// ---
-    /// 
+    ///
     /// Note that becaues `Range<T>` relies on the assumption that `T` is an
     /// integer value, this algorithm joins `Range<T>`s that are within ± 1 of
     /// one another. Given these two `Range<T>`s:
@@ -714,7 +724,7 @@ where
 /// ```
 ///
 /// ---
-/// 
+///
 /// A `Pattern` is semantically constructed from a "constructor" and its
 /// "arguments." Given the `Pattern`:
 ///
@@ -739,15 +749,15 @@ where
 ///     Pattern::U64(Range { first: 1, last: 1 })
 /// ]
 /// ```
-/// 
+///
 /// Given the `Pattern`:
-/// 
+///
 /// ```ignore
 /// Pattern::U64(Range { first: 0, last: 0 })
 /// ```
-/// 
+///
 /// the constructor is:
-/// 
+///
 /// ```ignore
 /// Pattern::U64(Range { first: 0, last: 0 })
 /// ```
@@ -756,10 +766,10 @@ where
 /// is one variant of the enum, and each of these variants maps to a `Pattern`.
 /// So "2u64" can be mapped to a `Pattern` with the constructor "2u64"
 /// (represented as a `Range<u64>`) and with empty arguments.
-/// 
+///
 /// This idea of a constructor and arguments is used in the match exhaustivity
 /// algorithm.
-/// 
+///
 /// ---
 ///
 /// The variants of `Pattern` can be semantically categorized into 3 categories:
@@ -912,7 +922,7 @@ impl Pattern {
     /// ```
     ///
     /// ---
-    /// 
+    ///
     /// If if is the case that at lease one element of *args* is a
     /// or-pattern, then *args* is first "serialized". Meaning, that all
     /// or-patterns are extracted to create a vec of `PatStack`s *args*' where
@@ -1383,9 +1393,7 @@ impl PatStack {
 
     /// Given a `Pattern` *p*, creates a `PatStack` with one element *p*.
     fn from_pattern(p: Pattern) -> Self {
-        PatStack {
-            pats: vec![p],
-        }
+        PatStack { pats: vec![p] }
     }
 
     /// Given a usize *n*, creates a `PatStack` filled with *n*
@@ -1520,45 +1528,45 @@ impl PatStack {
 
     /// Reports if the `PatStack` Σ is a "complete signature" of the type of the
     /// elements of Σ.
-    /// 
+    ///
     /// For example, a Σ composed of `Pattern::U64(..)`s would need to check for
     /// if it is a complete signature for the `U64` pattern type. Versus a Σ
     /// composed of `Pattern::Tuple([.., ..])` which would need to check for if
     /// it is a complete signature for "`Tuple` with 2 sub-patterns" type.
-    /// 
+    ///
     /// There are several rules with which to determine if Σ is a complete
     /// signature:
-    /// 
+    ///
     /// 1. If Σ is empty it is not a complete signature.
     /// 2. If Σ contains only wildcard patterns, it is not a complete signature.
     /// 3. If Σ contains all constructors for the type of the elements of Σ then
     ///    it is a complete signature.
-    /// 
+    ///
     /// For example, given this Σ:
-    /// 
+    ///
     /// ```ignore
     /// [
     ///     Pattern::U64(Range { first: 0, last: 0 }),
     ///     Pattern::U64(Range { first: 7, last: 7 })
     /// ]
     /// ```
-    /// 
+    ///
     /// this would not be a complete signature as it does not contain all
     /// elements from the `U64` type.
-    /// 
+    ///
     /// Given this Σ:
-    /// 
+    ///
     /// ```ignore
     /// [
     ///     Pattern::U64(Range { first: std::u64::MIN, last: std::u64::MAX })
     /// ]
     /// ```
-    /// 
+    ///
     /// this would be a complete signature as it does contain all elements from
     /// the `U64` type.
-    /// 
+    ///
     /// Given this Σ:
-    /// 
+    ///
     /// ```ignore
     /// [
     ///     Pattern::Tuple([
@@ -1567,7 +1575,7 @@ impl PatStack {
     ///     ]),
     /// ]
     /// ```
-    /// 
+    ///
     /// this would also be a complete signature as it does contain all elements
     /// from the "`Tuple` with 2 sub-patterns" type.
     fn is_complete_signature(&self, span: &Span) -> CompileResult<bool> {
@@ -1752,7 +1760,7 @@ impl PatStack {
 
     /// Given a `PatStack` *args*, return a `Vec<PatStack>` *args*'
     /// "serialized" from *args*.
-    /// 
+    ///
     /// Or-patterns are extracted to create a vec of `PatStack`s *args*' where
     /// each `PatStack` is a copy of *args* where the index of the or-pattern is
     /// instead replaced with one element from the or-patterns contents. More
@@ -1787,7 +1795,7 @@ impl PatStack {
     ///     ]
     /// ]
     /// ```
-    /// 
+    ///
     /// Given an *args*:
     ///
     /// ```ignore
@@ -1803,7 +1811,7 @@ impl PatStack {
     ///     ]),
     /// ]
     /// ```
-    /// 
+    ///
     /// *args* would serialize to:
     ///
     /// ```ignore
@@ -1894,7 +1902,7 @@ impl fmt::Display for PatStack {
 
 /// A `Matrix` is a `Vec<PatStack>` that is implemented with special methods
 /// particular to the match exhaustivity algorithm.
-/// 
+///
 /// The number of rows of the `Matrix` is equal to the number of `PatStack`s and
 /// the number of columns of the `Matrix` is equal to the number of elements in
 /// the `PatStack`s. Each `PatStack` should contains the same number of
@@ -2013,33 +2021,33 @@ impl ConstructorFactory {
     /// Given Σ, computes a `Pattern` not present in Σ from the type of the
     /// elements of Σ. If more than one `Pattern` is found, these patterns are
     /// wrapped in an or-pattern.
-    /// 
+    ///
     /// For example, given this Σ:
-    /// 
+    ///
     /// ```ignore
     /// [
     ///     Pattern::U64(Range { first: std::u64::MIN, last: 3 }),
     ///     Pattern::U64(Range { first: 16, last: std::u64::MAX })
     /// ]
     /// ```
-    /// 
+    ///
     /// this would result in this `Pattern`:
-    /// 
+    ///
     /// ```ignore
     /// Pattern::U64(Range { first: 4, last: 15 })
     /// ```
-    /// 
+    ///
     /// Given this Σ (which is more likely to occur than the above example):
-    /// 
+    ///
     /// ```ignore
     /// [
     ///     Pattern::U64(Range { first: 2, last: 3 }),
     ///     Pattern::U64(Range { first: 16, last: 17 })
     /// ]
     /// ```
-    /// 
+    ///
     /// this would result in this `Pattern`:
-    /// 
+    ///
     /// ```ignore
     /// Pattern::Or([
     ///     Pattern::U64(Range { first: std::u64::MIN, last: 1 }),
@@ -2608,40 +2616,55 @@ fn is_useful_or(
     ok(witness_report, warnings, errors)
 }
 
+/// Given a `Matrix` *P*, constructs the default `Matrix` *D(P). This is done by
+/// sequentially computing the rows of *D(P)*.
 fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut d_p = Matrix::empty();
     for p_i in p.rows().iter() {
-        let (p_i_1, mut p_i_rest) = check!(
-            p_i.split_first(span),
+        d_p.append(&mut check!(
+            compute_default_matrix_row(p_i, span),
             return err(warnings, errors),
             warnings,
             errors
-        );
-        let mut rows = check!(
-            compute_default_matrix_row(&p_i_1, &mut p_i_rest, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        d_p.append(&mut rows);
+        ));
     }
     ok(d_p, warnings, errors)
 }
 
-fn compute_default_matrix_row(
-    p_i_1: &Pattern,
-    p_i_rest: &mut PatStack,
-    span: &Span,
-) -> CompileResult<Vec<PatStack>> {
+/// Given a `PatStack` *pⁱ* from `Matrix` *P*, compute the resulting row of the
+/// default `Matrix` *D(P)*.
+///
+/// Rows are defined according to the first component of the row:
+///
+/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)*:
+///
+///   no row is produced
+///
+/// - *pⁱ₁* is a wildcard pattern:
+///
+///   the resulting row equals \[pⁱ₂ ... pⁱₙ*\]
+///
+/// - *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+///
+///   Construct a new `Matrix` *P'*. Given *k* 0..*a*, the rows of *P'* are
+///   defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*. The resulting rows are the
+///   rows obtained from calling the recursive *D(P')*
+fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<PatStack>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut rows: Vec<PatStack> = vec![];
+    let (p_i_1, mut p_i_rest) = check!(
+        p_i.split_first(span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     match p_i_1 {
         Pattern::Wildcard => {
             let mut row = PatStack::empty();
-            row.append(p_i_rest);
+            row.append(&mut p_i_rest);
             rows.push(row);
         }
         Pattern::Or(pats) => {
@@ -2664,26 +2687,22 @@ fn compute_default_matrix_row(
     ok(rows, warnings, errors)
 }
 
+/// Given a constructor *c* and a `Matrix` *P*, constructs the specialized
+/// `Matrix` *S(c, P)*. This is done by sequentially computing the rows of
+/// *S(c, P)*.
 fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut s_c_p = Matrix::empty();
     for p_i in p.rows().iter() {
-        let (p_i_1, mut p_i_rest) = check!(
-            p_i.split_first(span),
+        s_c_p.append(&mut check!(
+            compute_specialized_matrix_row(c, p_i, span),
             return err(warnings, errors),
             warnings,
             errors
-        );
-        let mut rows = check!(
-            compute_specialized_matrix_row(c, &p_i_1, &mut p_i_rest, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        s_c_p.append(&mut rows);
+        ));
     }
-    let (m, _n) = check!(
+    let (m, _) = check!(
         s_c_p.m_n(span),
         return err(warnings, errors),
         warnings,
@@ -2699,19 +2718,46 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
     ok(s_c_p, warnings, errors)
 }
 
+/// Given a constructor *c* and a `PatStack` *pⁱ* from `Matrix` *P*, compute the
+/// resulting row of the specialized `Matrix` *S(c, P)*.
+///
+/// Rows are defined according to the first component of the row:
+///
+/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* == *c'*:
+///
+///   the resulting row equals \[*r₁ ... rₐ pⁱ₂ ... pⁱₙ*\]
+///
+/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* != *c'*:
+///
+///   no row is produced
+///
+/// - *pⁱ₁* is a wildcard pattern and the number of sub-patterns in *c* is *a*:
+///
+///   the resulting row equals \[*_₁ ... _ₐ pⁱ₂ ... pⁱₙ*\]
+///
+/// - *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+///
+///   Construct a new `Matrix` *P'*. Given *k* 0..*a*, the rows of *P'* are
+///   defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*. The resulting rows are the
+///   rows obtained from calling the recursive *S(c, P')*
 fn compute_specialized_matrix_row(
     c: &Pattern,
-    p_i_1: &Pattern,
-    p_i_rest: &mut PatStack,
+    p_i: &PatStack,
     span: &Span,
 ) -> CompileResult<Vec<PatStack>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut rows: Vec<PatStack> = vec![];
+    let (p_i_1, mut p_i_rest) = check!(
+        p_i.split_first(span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     match p_i_1 {
         Pattern::Wildcard => {
             let mut row: PatStack = PatStack::fill_wildcards(c.a());
-            row.append(p_i_rest);
+            row.append(&mut p_i_rest);
             rows.push(row);
         }
         Pattern::Or(pats) => {
@@ -2730,14 +2776,14 @@ fn compute_specialized_matrix_row(
             rows.append(&mut s_c_p.into_rows());
         }
         other => {
-            if c.has_the_same_constructor(other) {
+            if c.has_the_same_constructor(&other) {
                 let mut row: PatStack = check!(
                     other.sub_patterns(span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                row.append(p_i_rest);
+                row.append(&mut p_i_rest);
                 rows.push(row);
             }
         }
