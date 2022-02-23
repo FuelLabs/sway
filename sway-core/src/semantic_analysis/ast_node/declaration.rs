@@ -326,13 +326,12 @@ impl TypedEnumDeclaration {
                     insert_type(type_argument.clone()),
                     self_type,
                     type_argument_span,
+                    "Type argument is not assignable to generic type parameter.",
                 ) {
                     Ok(mut ws) => {
                         warnings.append(&mut ws);
                     }
                     Err(e) => {
-                        println!("ERROR2\n\n\n");
-                        dbg!(&e);
                         errors.push(e.into());
                         continue;
                     }

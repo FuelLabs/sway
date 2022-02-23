@@ -148,7 +148,7 @@ impl TypedParseTree {
                     namespace,
                     crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: "",
+                    help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,

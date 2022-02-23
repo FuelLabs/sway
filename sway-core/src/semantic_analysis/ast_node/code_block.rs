@@ -81,11 +81,12 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            match crate::type_engine::unify_with_self(
+            match unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
+                help_text,
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);

@@ -6,9 +6,7 @@ use crate::{
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
     semantic_analysis::*,
-    type_engine::{
-        insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
-    },
+    type_engine::*,
     CallPath, Ident,
 };
 
@@ -190,7 +188,7 @@ fn type_check_trait_implementation(
     methods: &[FunctionDeclaration],
     trait_name: &Ident,
     type_arguments: &[TypeParameter],
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     _self_type: TypeId,
     build_config: &BuildConfig,
@@ -290,11 +288,12 @@ fn type_check_trait_implementation(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match crate::type_engine::unify_with_self(
+                            match unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
+                                "",
                             ) {
                                 Ok(mut ws) => {
                                     warnings.append(&mut ws);
@@ -317,11 +316,12 @@ fn type_check_trait_implementation(
                         errors.append(&mut maybe_err);
                     }
 
-                    match crate::type_engine::unify_with_self(
+                    match unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
+                        "",
                     ) {
                         Ok(mut ws) => {
                             warnings.append(&mut ws);
@@ -380,7 +380,7 @@ fn type_check_trait_implementation(
                 namespace: local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: "",
+                help_text: Default::default(),
                 self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,

@@ -37,6 +37,63 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        match &self.expression {
+            TypedExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                let mut buf = condition.gather_return_statements();
+                buf.append(&mut then.gather_return_statements());
+                if let Some(ref r#else) = r#else {
+                    buf.append(&mut r#else.gather_return_statements());
+                }
+                buf
+            }
+            TypedExpressionVariant::IfLet {
+                expr, then, r#else, ..
+            } => {
+                let mut buf = expr.gather_return_statements();
+                for node in &then.contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                if let Some(ref r#else) = r#else {
+                    for node in &r#else.contents {
+                        buf.append(&mut node.gather_return_statements())
+                    }
+                }
+                buf
+            }
+            TypedExpressionVariant::CodeBlock(TypedCodeBlock { contents, .. }) => {
+                let mut buf = vec![];
+                for node in contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
+            // if it is impossible for an expression to contain a return _statement_ (not an
+            // implicit return!), put it in the pattern below.
+            TypedExpressionVariant::LazyOperator { .. }
+            | TypedExpressionVariant::Literal(_)
+            | TypedExpressionVariant::Tuple { .. }
+            | TypedExpressionVariant::Array { .. }
+            | TypedExpressionVariant::ArrayIndex { .. }
+            | TypedExpressionVariant::FunctionParameter { .. }
+            | TypedExpressionVariant::AsmExpression { .. }
+            | TypedExpressionVariant::StructFieldAccess { .. }
+            | TypedExpressionVariant::TupleElemAccess { .. }
+            | TypedExpressionVariant::EnumInstantiation { .. }
+            | TypedExpressionVariant::AbiCast { .. }
+            | TypedExpressionVariant::StructExpression { .. }
+            | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::FunctionApplication { .. } => vec![],
+        }
+    }
     pub(crate) fn type_check(arguments: TypeCheckArguments<'_, Expression>) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
@@ -69,7 +126,7 @@ impl TypedExpression {
                     namespace,
                     crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
+                    help_text,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -85,7 +142,7 @@ impl TypedExpression {
                     return_type_annotation: insert_type(TypeInfo::Boolean),
                     namespace,
                     crate_namespace,
-                    help_text: Default::default(),
+                    help_text,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -336,20 +393,18 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
-        dbg!(&type_annotation.friendly_type_str());
         // if the return type cannot be cast into the annotation type then it is a type error
         match unify_with_self(
             typed_expression.return_type,
             type_annotation,
             self_type,
             &expr_span,
+            help_text,
         ) {
             Ok(mut ws) => {
                 warnings.append(&mut ws);
             }
             Err(e) => {
-                println!("ERROR3\n\n\n");
-                dbg!(&e);
                 errors.push(CompileError::TypeError(e));
             }
         };
@@ -575,8 +630,7 @@ impl TypedExpression {
                         crate_namespace,
                         return_type_annotation: param.r#type,
                         help_text:
-                            "The argument that has been provided to this function's type does \
-                            not match the declared type of the parameter in the function \
+                            "This argument does not match the declared type in the function \
                             declaration.",
                         self_type,
                         build_config,
@@ -700,10 +754,6 @@ impl TypedExpression {
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        println!(
-            "checking block with type annotation {}",
-            type_annotation.friendly_type_str()
-        );
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
@@ -731,12 +781,17 @@ impl TypedExpression {
             errors
         );
 
-        match unify_with_self(block_return_type, type_annotation, self_type, &span) {
+        match unify_with_self(
+            block_return_type,
+            type_annotation,
+            self_type,
+            &span,
+            help_text,
+        ) {
             Ok(mut ws) => {
                 warnings.append(&mut ws);
             }
             Err(e) => {
-                dbg!(&e);
                 errors.push(e.into());
             }
         };
@@ -835,7 +890,7 @@ impl TypedExpression {
                 namespace: then_branch_scope,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: "",
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -888,6 +943,7 @@ impl TypedExpression {
                 insert_type(TypeInfo::Tuple(vec![])),
                 self_type,
                 &then_branch_span,
+                "Because this `if let` doesn't have an else branch, it cannot implicitly return any value."
             ) {
                 Ok(o) => None,
                 Err(e) => {
@@ -959,7 +1015,6 @@ impl TypedExpression {
                 namespace,
                 crate_namespace,
                 return_type_annotation: if r#else.is_some() {
-                    println!("adding annotation: {}", type_annotation.friendly_type_str());
                     type_annotation
                 } else {
                     insert_type(TypeInfo::Unknown)
@@ -1002,7 +1057,13 @@ impl TypedExpression {
             .map(|x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
-        match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
+        match unify_with_self(
+            then.return_type,
+            r#else_ret_ty,
+            self_type,
+            &span,
+            "The two branches of an if expression must return the same type.",
+        ) {
             Ok(mut warn) => {
                 warnings.append(&mut warn);
                 if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
@@ -1700,6 +1761,7 @@ impl TypedExpression {
                 elem_type,
                 self_type,
                 &typed_elem.span,
+                "",
             ) {
                 // In both cases, if there are warnings or errors then break here, since we don't
                 // need to spam type errors for every element once we have one.
@@ -1865,7 +1927,7 @@ impl TypedExpression {
                     namespace,
                     crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: "",
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -1940,7 +2002,7 @@ impl TypedExpression {
                     namespace,
                     crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: "",
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,

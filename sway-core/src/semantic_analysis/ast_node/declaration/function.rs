@@ -179,31 +179,25 @@ impl TypedFunctionDeclaration {
             )
             .collect::<Vec<_>>();
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &Span)> = body
+        let return_statements: Vec<&TypedExpression> = body
             .contents
             .iter()
-            .filter_map(|x| {
-                if let crate::semantic_analysis::TypedAstNode {
-                    content:
-                        crate::semantic_analysis::TypedAstNodeContent::ReturnStatement(
-                            TypedReturnStatement { ref expr },
-                        ),
-                    span,
-                } = x
-                {
-                    Some((expr, span))
-                } else {
-                    None
-                }
-            })
+            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
+            .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
-        for (stmt, span) in return_statements {
-            match unify_with_self(stmt.return_type, return_type, self_type, span) {
+        for stmt in return_statements {
+            let span = &stmt.span;
+            match unify_with_self(
+                stmt.return_type,
+                return_type,
+                self_type,
+                span,
+                "Return statement must return the declared function return type.",
+            ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
                 }
                 Err(e) => {
-                    dbg!(&e);
                     errors.push(CompileError::TypeError(e));
                 }
             }
@@ -249,7 +243,6 @@ impl TypedFunctionDeclaration {
                 });
             }
         }
-        dbg!(&errors);
 
         ok(
             TypedFunctionDeclaration {
@@ -315,6 +308,7 @@ impl TypedFunctionDeclaration {
                     insert_type(type_argument.clone()),
                     self_type,
                     type_argument_span,
+                    "Type argument is not castable to generic type paramter",
                 ) {
                     Ok(mut ws) => {
                         warnings.append(&mut ws);

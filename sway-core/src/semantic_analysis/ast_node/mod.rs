@@ -90,6 +90,31 @@ impl std::fmt::Debug for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        match &self.content {
+            TypedAstNodeContent::ReturnStatement(ref stmt) => vec![stmt],
+            TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
+                exp.gather_return_statements()
+            }
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref condition,
+                ref body,
+                ..
+            }) => {
+                let mut buf = condition.gather_return_statements();
+                for node in &body.contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
+            TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
+            TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
+        }
+    }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -544,7 +569,7 @@ impl TypedAstNode {
                                         namespace,
                                         crate_namespace,
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
-                                        help_text: "",
+                                        help_text: Default::default(),
                                         self_type: implementing_for_type_id,
                                         build_config,
                                         dead_code_graph,
