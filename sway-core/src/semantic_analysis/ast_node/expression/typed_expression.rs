@@ -139,7 +139,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     help_text: Default::default(),
                     opts,
@@ -845,7 +844,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -859,7 +857,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
