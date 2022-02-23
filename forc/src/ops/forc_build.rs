@@ -21,7 +21,6 @@ use sway_core::{
 use sway_types::JsonABI;
 
 use anyhow::Result;
-use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
@@ -70,7 +69,6 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     .print_intermediate_asm(print_intermediate_asm)
     .print_ir(print_ir);
 
-    let mut dependency_graph = HashMap::new();
     let namespace = create_module();
 
     let mut source_map = SourceMap::new();
@@ -83,7 +81,6 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
                 dependency_name,
                 dependency_details,
                 namespace,
-                &mut dependency_graph,
                 silent_mode,
                 offline_mode,
             )?;
@@ -109,7 +106,6 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
         &manifest.project.name,
         namespace,
         build_config,
-        &mut dependency_graph,
         &mut source_map,
         silent_mode,
     )?;
@@ -172,7 +168,6 @@ fn compile_dependency_lib<'manifest>(
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
     namespace: NamespaceRef,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
 ) -> Result<JsonABI, String> {
@@ -261,7 +256,6 @@ fn compile_dependency_lib<'manifest>(
                 dependency_name,
                 dependency_lib,
                 dep_namespace,
-                dependency_graph,
                 silent_mode,
                 offline_mode,
             )?;
@@ -275,7 +269,6 @@ fn compile_dependency_lib<'manifest>(
         &manifest_of_dep.project.name,
         dep_namespace,
         build_config,
-        dependency_graph,
         silent_mode,
     )?;
 
@@ -289,10 +282,9 @@ fn compile_library(
     proj_name: &str,
     namespace: NamespaceRef,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(NamespaceRef, JsonABI), String> {
-    let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(source, namespace, &build_config);
     match res {
         CompileAstResult::Success {
             parse_tree,
@@ -325,11 +317,10 @@ fn compile(
     proj_name: &str,
     namespace: NamespaceRef,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     source_map: &mut SourceMap,
     silent_mode: bool,
 ) -> Result<(Vec<u8>, JsonABI), String> {
-    let ast_res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
+    let ast_res = sway_core::compile_to_ast(source, namespace, &build_config);
     let (json_abi, tree_type, warnings) = match &ast_res {
         CompileAstResult::Success {
             parse_tree,
@@ -372,10 +363,9 @@ fn compile_to_asm(
     proj_name: &str,
     namespace: NamespaceRef,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<FinalizedAsm, String> {
-    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config);
     match res {
         CompilationResult::Success { asm, warnings } => {
             print_on_success(silent_mode, proj_name, &warnings, TreeType::Script {});

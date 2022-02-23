@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt,
+};
 
 use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
 use crate::type_engine::resolve_type;
@@ -26,6 +29,7 @@ mod declaration;
 mod expression;
 mod finalized_asm;
 pub(crate) mod from_ir;
+pub(crate) mod register_allocator;
 mod register_sequencer;
 mod while_loop;
 
@@ -100,35 +104,47 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    fn allocate_registers(self) -> InstructionSet {
-        // Eventually, we will use a cool graph-coloring algorithm.
-        // For now, just keep a pool of registers and return
-        // registers when they are not read anymore
+    /// Assigns an allocatable register to each virtual register used by some instruction in the
+    /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
+    /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
+    /// the algorithm are thoroughly explained in register_allocator.rs.
+    ///
+    fn allocate_registers(self, register_sequencer: &mut RegisterSequencer) -> InstructionSet {
+        // Step 1: Liveness Analysis.
+        let live_out = register_allocator::liveness_analysis(&self.ops);
 
-        // construct a mapping from every op to the registers it uses
-        let op_register_mapping = self
-            .ops
-            .into_iter()
-            .map(|op| {
-                (
-                    op.clone(),
-                    op.opcode.registers().into_iter().cloned().collect(),
-                )
-            })
-            .collect::<Vec<_>>();
+        // Step 2: Construct the interference graph.
+        let (mut interference_graph, mut reg_to_node_ix) =
+            register_allocator::create_interference_graph(&self.ops, &live_out);
 
-        // get registers from the pool.
-        let mut pool = RegisterPool::init();
+        // Step 3: Remove redundant MOVE instructions using the interference graph.
+        let reduced_ops = register_allocator::coalesce_registers(
+            &self.ops,
+            &mut interference_graph,
+            &mut reg_to_node_ix,
+            register_sequencer,
+        );
+
+        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
+        // each colorable node and its neighbors.
+        let mut stack = register_allocator::color_interference_graph(
+            &mut interference_graph,
+            compiler_constants::NUM_ALLOCATABLE_REGISTERS,
+        );
+
+        // Step 5: Use the stack to assign a register for each virtual register.
+        let pool = register_allocator::assign_registers(&mut stack);
+
+        // Steph 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
-        for (ix, (op, _)) in op_register_mapping.iter().enumerate() {
+        for op in &reduced_ops {
             buf.push(AllocatedOp {
-                opcode: op
-                    .opcode
-                    .allocate_registers(&mut pool, &op_register_mapping, ix),
+                opcode: op.opcode.allocate_registers(&pool),
                 comment: op.comment.clone(),
                 owning_span: op.owning_span.clone(),
             })
         }
+
         InstructionSet { ops: buf }
     }
 }
@@ -192,8 +208,10 @@ impl AbstractInstructionSet {
     /// and one to replace the labels in the organizational ops
     fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
+        let mut offset_map = vec![];
         let mut counter = 0;
         for op in &self.ops {
+            offset_map.push(counter);
             match op.opcode {
                 Either::Right(OrganizationalOp::Label(ref lab)) => {
                     label_namespace.insert(lab, counter);
@@ -225,41 +243,46 @@ impl AbstractInstructionSet {
         }
 
         let mut realized_ops = vec![];
-        for Op {
-            opcode,
-            owning_span,
-            comment,
-        } in self.ops.clone().into_iter()
+        for (
+            ix,
+            Op {
+                opcode,
+                owning_span,
+                comment,
+            },
+        ) in self.ops.clone().into_iter().enumerate()
         {
+            let offset = offset_map[ix];
             match opcode {
                 Either::Left(op) => realized_ops.push(RealizedOp {
                     opcode: op,
                     owning_span,
                     comment,
+                    offset,
                 }),
                 Either::Right(org_op) => match org_op {
                     OrganizationalOp::Jump(ref lab) => {
-                        let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate24::new_unchecked(
-                            *offset,
+                            *label_namespace.get(lab).unwrap(),
                             "Programs with more than 2^24 labels are unsupported right now",
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JI(imm),
                             owning_span,
                             comment,
+                            offset,
                         });
                     }
                     OrganizationalOp::JumpIfNotEq(r1, r2, ref lab) => {
-                        let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate12::new_unchecked(
-                            *offset,
+                            *label_namespace.get(lab).unwrap(),
                             "Programs with more than 2^12 labels are unsupported right now",
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JNEI(r1, r2, imm),
                             owning_span,
                             comment,
+                            offset,
                         });
                     }
                     OrganizationalOp::DataSectionOffsetPlaceholder => {
@@ -267,6 +290,7 @@ impl AbstractInstructionSet {
                             opcode: VirtualOp::DataSectionOffsetPlaceholder,
                             owning_span: None,
                             comment: String::new(),
+                            offset,
                         });
                     }
                     OrganizationalOp::Comment => continue,
@@ -281,8 +305,9 @@ impl AbstractInstructionSet {
 #[derive(Debug)]
 struct RegisterAllocationStatus {
     reg: AllocatedRegister,
-    in_use: Option<VirtualRegister>,
+    used_by: BTreeSet<VirtualRegister>,
 }
+
 #[derive(Debug)]
 pub(crate) struct RegisterPool {
     registers: Vec<RegisterAllocationStatus>,
@@ -290,68 +315,32 @@ pub(crate) struct RegisterPool {
 
 impl RegisterPool {
     fn init() -> Self {
-        let register_pool: Vec<RegisterAllocationStatus> = (0
+        let reg_pool: Vec<RegisterAllocationStatus> = (0
             // - 1 because we reserve the final register for the data_section begin
             ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
-                in_use: None,
+                used_by: BTreeSet::new(),
             })
             .collect();
         Self {
-            registers: register_pool,
+            registers: reg_pool,
         }
     }
 
-    /// Checks if any currently used registers are no longer in use, updates the pool,
-    /// and grabs an available register.
     pub(crate) fn get_register(
-        &mut self,
+        &self,
         virtual_register: &VirtualRegister,
-        op_register_mapping: &[(RealizedOp, std::collections::BTreeSet<VirtualRegister>)],
     ) -> Option<AllocatedRegister> {
-        // check if this register has already been allocated for
-        if let a @ Some(_) = self.registers.iter().find_map(
-            |RegisterAllocationStatus { reg, in_use }| match in_use {
-                Some(x) if x == virtual_register => Some(reg),
-                _ => None,
-            },
-        ) {
-            return a.cloned();
-        }
+        let allocated_reg =
+            self.registers
+                .iter()
+                .find(|RegisterAllocationStatus { reg: _, used_by }| {
+                    used_by.contains(virtual_register)
+                });
 
-        // scan to see if any of the old ones are no longer in use
-        for RegisterAllocationStatus { in_use, .. } in
-            self.registers.iter_mut().filter(|r| r.in_use.is_some())
-        {
-            if virtual_register_is_never_accessed_again(
-                in_use.as_ref().unwrap(),
-                op_register_mapping,
-            ) {
-                *in_use = None;
-            }
-        }
-        // find the next unused register, return it, assign it
-        let next_available = self
-            .registers
-            .iter_mut()
-            .find(|RegisterAllocationStatus { in_use, .. }| in_use.is_none());
-
-        match next_available {
-            Some(RegisterAllocationStatus { in_use, reg }) => {
-                *in_use = Some(virtual_register.clone());
-                Some(reg.clone())
-            }
-            None => None,
-        }
+        allocated_reg.map(|RegisterAllocationStatus { reg, used_by: _ }| reg.clone())
     }
-}
-
-fn virtual_register_is_never_accessed_again(
-    reg: &VirtualRegister,
-    ops: &[(RealizedOp, std::collections::BTreeSet<VirtualRegister>)],
-) -> bool {
-    !ops.iter().any(|(_, regs)| regs.contains(reg))
 }
 
 /// helper function to check if a label is used in a given buffer of ops
@@ -840,7 +829,7 @@ pub(crate) fn compile_ast_to_asm(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&mut register_sequencer)
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -887,7 +876,10 @@ impl SwayAsmSet {
 }
 
 impl JumpOptimizedAsmSet {
-    fn allocate_registers(self) -> RegisterAllocatedAsmSet {
+    fn allocate_registers(
+        self,
+        register_sequencer: &mut RegisterSequencer,
+    ) -> RegisterAllocatedAsmSet {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -896,7 +888,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers();
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
                     program_section,
@@ -908,7 +900,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers();
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
                     program_section,
@@ -920,7 +912,7 @@ impl JumpOptimizedAsmSet {
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
                     .realize_labels(&data_section)
-                    .allocate_registers(),
+                    .allocate_registers(register_sequencer),
                 data_section,
             },
         }

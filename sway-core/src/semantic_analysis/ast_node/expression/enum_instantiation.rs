@@ -16,7 +16,6 @@ pub(crate) fn instantiate_enum(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -75,7 +74,6 @@ pub(crate) fn instantiate_enum(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
