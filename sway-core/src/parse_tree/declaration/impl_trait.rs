@@ -51,7 +51,6 @@ impl ImplTrait {
         let impl_keyword = iter.next().unwrap();
         assert_eq!(impl_keyword.as_str(), "impl");
         let trait_name = iter.next().unwrap();
-        assert_eq!(trait_name.as_rule(), Rule::trait_name);
         let trait_name = check!(
             CallPath::parse_from_pair(trait_name, config),
             return err(warnings, errors),
