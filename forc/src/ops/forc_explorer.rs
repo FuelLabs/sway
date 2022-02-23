@@ -2,8 +2,8 @@ use std::fs::{create_dir_all, remove_dir_all, remove_file, rename, File};
 use std::io::Cursor;
 use std::path::PathBuf;
 
+use crate::utils::helpers::user_forc_directory;
 use ansi_term::Colour;
-use dirs;
 use reqwest;
 use serde::Deserialize;
 use tar::Archive;
@@ -36,35 +36,34 @@ impl EndPoints {
 
 struct ExplorerAppPaths {}
 
+fn explorer_directory() -> PathBuf {
+    user_forc_directory().join("explorer")
+}
+
 impl ExplorerAppPaths {
     pub fn web_app_path() -> PathBuf {
-        dirs::home_dir().unwrap().join(".fuel/explorer")
+        explorer_directory()
     }
     pub fn web_app_version_path(version: &str) -> PathBuf {
-        dirs::home_dir()
-            .unwrap()
-            .join(".fuel/explorer")
-            .join(version)
+        explorer_directory().join(version)
     }
     pub fn web_app_files_path(version: &str) -> PathBuf {
-        dirs::home_dir()
-            .unwrap()
-            .join(format!(".fuel/explorer/{}/www", version))
+        explorer_directory().join(version).join("www")
     }
     pub fn build_archive_path(version: &str) -> PathBuf {
-        dirs::home_dir()
-            .unwrap()
-            .join(format!(".fuel/explorer/{}/build.tar", version))
+        explorer_directory()
+            .join(version)
+            .join("build")
+            .with_extension("tar")
     }
     pub fn build_archive_unpack_path(version: &str) -> PathBuf {
-        dirs::home_dir()
-            .unwrap()
-            .join(format!(".fuel/explorer/{version}/build"))
+        explorer_directory().join(version).join("build")
     }
     pub fn web_app_static_assets_path(version: &str) -> PathBuf {
-        dirs::home_dir()
-            .unwrap()
-            .join(format!(".fuel/explorer/{}/www/static", version))
+        explorer_directory()
+            .join(version)
+            .join("www")
+            .join("static")
     }
 }
 

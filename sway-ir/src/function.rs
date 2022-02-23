@@ -13,6 +13,7 @@ use crate::{
     constant::Constant,
     context::Context,
     irtype::Type,
+    metadata::MetadataIndex,
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
@@ -49,14 +50,14 @@ impl Function {
         context: &mut Context,
         module: Module,
         name: String,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
     ) -> Function {
         let arguments = args
             .into_iter()
-            .map(|(name, ty)| (name, Value::new_argument(context, ty)))
+            .map(|(name, ty, span_md_idx)| (name, Value::new_argument(context, ty, span_md_idx)))
             .collect();
         let content = FunctionContent {
             name,

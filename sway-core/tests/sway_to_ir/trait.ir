@@ -1,19 +1,19 @@
 script script {
-    fn pred(self: { bool }) -> bool {
+    fn pred(self !1: { bool }) -> bool {
         entry:
-        v0 = extract_value self, { bool }, 0
+        v0 = extract_value self, { bool }, 0, !2
         ret bool v0
     }
 
-    fn pred_or(self: { bool }, other: { bool }) -> bool {
+    fn pred_or(self !3: { bool }, other !4: { bool }) -> bool {
         entry:
-        v0 = call pred(self)
-        cbr v0, block1, block0
+        v0 = call pred(self), !5
+        cbr v0, block1, block0, !6
 
         block0:
         v1 = phi(entry: v0)
-        v2 = call pred(other)
-        br block1
+        v2 = call pred(other), !7
+        br block1, !6
 
         block1:
         v3 = phi(entry: v0, block0: v2)
@@ -25,17 +25,35 @@ script script {
         local ptr { bool } foo
 
         entry:
-        v0 = const { bool } { bool undef }
-        v1 = const bool true
-        v2 = insert_value v0, { bool }, v1, 0
-        store v2, ptr { bool } foo
-        v3 = const { bool } { bool undef }
-        v4 = const bool false
-        v5 = insert_value v3, { bool }, v4, 0
-        store v5, ptr { bool } bar
-        v6 = get_ptr ptr { bool } foo
-        v7 = get_ptr ptr { bool } bar
-        v8 = call pred_or(v6, v7)
+        v0 = const { bool } { bool undef }, !8
+        v1 = const bool true, !9
+        v2 = insert_value v0, { bool }, v1, 0, !8
+        store v2, ptr { bool } foo, !10
+        v3 = const { bool } { bool undef }, !11
+        v4 = const bool false, !12
+        v5 = insert_value v3, { bool }, v4, 0, !11
+        store v5, ptr { bool } bar, !13
+        v6 = get_ptr ptr { bool } foo, !14
+        v7 = get_ptr ptr { bool } bar, !15
+        v8 = call pred_or(v6, v7), !16
         ret bool v8
     }
 }
+
+!0 = filepath "/path/to/trait.sw"
+!1 = span !0 203 207
+!2 = span !0 232 233
+!3 = span !0 68 72
+!4 = span !0 74 79
+!5 = span !0 105 116
+!6 = span !0 105 132
+!7 = span !0 120 132
+!8 = span !0 277 304
+!9 = span !0 294 298
+!10 = span !0 267 305
+!11 = span !0 320 348
+!12 = span !0 337 342
+!13 = span !0 310 349
+!14 = span !0 354 357
+!15 = span !0 366 369
+!16 = span !0 354 370
