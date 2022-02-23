@@ -731,7 +731,15 @@ impl TypedAstNode {
                                 checkee: expr.clone(),
                                 namespace,
                                 crate_namespace,
-                                return_type_annotation,
+                                // we use "unknown" here because return statements do not
+                                // necessarily follow the type annotation of their immediate
+                                // surrounding context. Because a return statement is control flow
+                                // that breaks out to the nearest function, we need to type check
+                                // it against the surrounding function.
+                                // That is impossible here, as we don't have that information. It
+                                // is the responsibility of the function declaration to type check
+                                // all return statements contained within it.
+                                return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text:
                                     "Returned value must match up with the function return type \
                                  annotation.",

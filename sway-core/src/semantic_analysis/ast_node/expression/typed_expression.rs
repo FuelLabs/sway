@@ -1017,7 +1017,7 @@ impl TypedExpression {
                 return_type_annotation: if r#else.is_some() {
                     type_annotation
                 } else {
-                    insert_type(TypeInfo::Unknown)
+                    insert_type(TypeInfo::Unit(vec![]))
                 },
                 help_text: Default::default(),
                 self_type,
