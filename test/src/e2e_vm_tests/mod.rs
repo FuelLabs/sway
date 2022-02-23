@@ -128,6 +128,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "shadow_import",
         "missing_supertrait_impl",
         "missing_fun_from_supertrait_impl",
+        "supertrait_does_not_exist",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
