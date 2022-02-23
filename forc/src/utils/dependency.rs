@@ -1,6 +1,5 @@
-use crate::utils::manifest::Manifest;
+use crate::utils::{helpers::user_forc_directory, manifest::Manifest};
 use anyhow::{anyhow, bail, Context, Result};
-use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
@@ -12,7 +11,6 @@ use std::{
     io::Cursor,
     path::{Path, PathBuf},
 };
-use sway_utils::constants;
 use tar::Archive;
 
 // A collection of remote dependency related functions
@@ -99,41 +97,21 @@ pub fn download_github_dep(
     version: &Option<String>,
     offline_mode: OfflineMode,
 ) -> Result<String> {
-    let home_dir = match home_dir() {
-        None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
-        Some(p) => p.to_str().unwrap().to_owned(),
-    };
-
     // hash the dep name into a number to avoid bad characters
     let mut s = DefaultHasher::new();
     dep_name.hash(&mut s);
     let hashed_dep_name = s.finish().to_string();
 
     // Version tag takes precedence over branch reference.
+    let forc_dir = user_forc_directory();
+    let dep_dir = forc_dir.join(hashed_dep_name);
     let out_dir = match &version {
-        Some(v) => PathBuf::from(format!(
-            "{}/{}/{}/{}",
-            home_dir,
-            constants::FORC_DEPENDENCIES_DIRECTORY,
-            hashed_dep_name,
-            v
-        )),
+        Some(v) => dep_dir.join(v),
         // If no version specified, check if a branch was specified
         None => match &branch {
-            Some(b) => PathBuf::from(format!(
-                "{}/{}/{}/{}",
-                home_dir,
-                constants::FORC_DEPENDENCIES_DIRECTORY,
-                hashed_dep_name,
-                b
-            )),
+            Some(b) => dep_dir.join(b),
             // If no version and no branch, use default
-            None => PathBuf::from(format!(
-                "{}/{}/{}/default",
-                home_dir,
-                constants::FORC_DEPENDENCIES_DIRECTORY,
-                hashed_dep_name
-            )),
+            None => dep_dir.join("default"),
         },
     };
 

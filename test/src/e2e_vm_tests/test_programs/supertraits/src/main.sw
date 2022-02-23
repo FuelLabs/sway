@@ -102,7 +102,7 @@ impl C for U {
     }
 }
 
-fn main() {
+fn main() -> bool {
     let s = S {
         x: 1,
         y: 2,
@@ -139,4 +139,6 @@ fn main() {
     assert(u.h() == 8);
     assert(u.add_h(5) == 13);
     assert(u.mul_h(5) == 40);
+
+    true
 }
