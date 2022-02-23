@@ -5,5 +5,5 @@ name = "context_testing_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
 context_testing_abi = { path = "../context_testing_abi"}
