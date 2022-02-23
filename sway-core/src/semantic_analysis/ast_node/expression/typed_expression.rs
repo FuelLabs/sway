@@ -10,7 +10,6 @@ use sway_types::join_spans;
 
 use either::Either;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
 
 mod method_application;
 use crate::type_engine::TypeId;
@@ -47,7 +46,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -73,7 +71,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 },
@@ -89,7 +86,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 },
@@ -105,7 +101,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
@@ -124,7 +119,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     help_text: Default::default(),
                     opts,
@@ -139,7 +133,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::StructExpression {
@@ -155,7 +148,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::SubfieldExpression {
@@ -171,7 +163,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::MethodApplication {
@@ -187,7 +178,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::Tuple { fields, span } => Self::type_check_tuple(
@@ -199,7 +189,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::TupleIndex {
@@ -217,7 +206,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::DelineatedPath {
@@ -235,7 +223,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::AbiCast {
@@ -251,7 +238,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::Array { contents, span } => Self::type_check_array(
@@ -262,7 +248,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::ArrayIndex {
@@ -277,7 +262,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     mode: Default::default(),
@@ -294,7 +278,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                 )
             }
@@ -306,7 +289,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     mode: Default::default(),
@@ -326,7 +308,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     mode: Default::default(),
@@ -491,7 +472,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -591,7 +571,6 @@ impl TypedExpression {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         mode: Mode::NonAbi,
                         opts,
                     })
@@ -635,7 +614,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             return_type_annotation,
             opts,
             ..
@@ -655,7 +633,6 @@ impl TypedExpression {
                 return_type_annotation,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
             }),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -672,7 +649,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -707,7 +683,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -722,7 +697,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -775,7 +749,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -791,7 +764,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -809,7 +781,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -828,7 +799,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -880,7 +850,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -915,7 +884,6 @@ impl TypedExpression {
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 mode: Mode::NonAbi,
                                 opts,
                             }),
@@ -951,7 +919,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1020,7 +987,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1075,7 +1041,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1090,7 +1055,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1150,7 +1114,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1180,7 +1143,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1215,7 +1177,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1230,7 +1191,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1287,7 +1247,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1341,7 +1300,6 @@ impl TypedExpression {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         opts,
                     ),
                     return err(warnings, errors),
@@ -1381,7 +1339,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1402,7 +1359,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1452,7 +1408,6 @@ impl TypedExpression {
                     build_config,
                     dead_code_graph,
                     mode: Mode::ImplAbiFn,
-                    dependency_graph,
                     opts,
                 }),
                 return err(warnings, errors),
@@ -1489,7 +1444,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         if contents.is_empty() {
@@ -1523,7 +1477,6 @@ impl TypedExpression {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         mode: Mode::NonAbi,
                         opts,
                     }),
@@ -1584,7 +1537,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -1601,7 +1553,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1624,7 +1575,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1668,7 +1618,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             )
         }
@@ -1691,7 +1640,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1710,7 +1658,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -1774,7 +1721,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -1867,7 +1813,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -2105,7 +2050,6 @@ mod tests {
             generated_names: Arc::new(Mutex::new(vec![])),
         };
         let mut dead_code_graph: ControlFlowGraph = Default::default();
-        let mut dependency_graph = HashMap::new();
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
@@ -2116,7 +2060,6 @@ mod tests {
             self_type,
             build_config: &build_config,
             dead_code_graph: &mut dead_code_graph,
-            dependency_graph: &mut dependency_graph,
             mode: Mode::NonAbi,
             opts: Default::default(),
         })

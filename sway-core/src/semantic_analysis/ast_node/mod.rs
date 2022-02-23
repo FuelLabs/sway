@@ -12,10 +12,7 @@ use crate::{
 
 use sway_types::span::{join_spans, Span};
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
@@ -136,7 +133,6 @@ impl TypedAstNode {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -165,7 +161,6 @@ impl TypedAstNode {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             })
@@ -196,13 +191,7 @@ impl TypedAstNode {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(
-                            a,
-                            namespace,
-                            build_config,
-                            dead_code_graph,
-                            dependency_graph
-                        ),
+                        import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -237,7 +226,6 @@ impl TypedAstNode {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph,
                                     mode: Mode::NonAbi,
                                     opts,
                                 })
@@ -317,7 +305,6 @@ impl TypedAstNode {
                                     build_config,
                                     dead_code_graph,
                                     mode: Mode::NonAbi,
-                                    dependency_graph,
                                     opts
                                 }),
                                 error_recovery_function_declaration(fn_decl),
@@ -443,7 +430,6 @@ impl TypedAstNode {
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -470,7 +456,6 @@ impl TypedAstNode {
                                         self_type,
                                         build_config,
                                         dead_code_graph,
-                                        dependency_graph,
                                         // this is unused by `reassignment`
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
                                         help_text: Default::default(),
@@ -491,7 +476,6 @@ impl TypedAstNode {
                                 crate_namespace,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 opts,
                             ),
                             return err(warnings, errors),
@@ -548,7 +532,6 @@ impl TypedAstNode {
                                         build_config,
                                         dead_code_graph,
                                         mode: Mode::NonAbi,
-                                        dependency_graph,
                                         opts
                                     }),
                                     continue,
@@ -652,7 +635,6 @@ impl TypedAstNode {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -688,7 +670,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -712,7 +693,6 @@ impl TypedAstNode {
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 mode: Mode::NonAbi,
                                 opts
                             }),
@@ -733,7 +713,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -755,7 +734,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -776,7 +754,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -826,7 +803,6 @@ fn import_new_file(
     namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -876,13 +852,7 @@ fn import_new_file(
         namespace: module,
         ..
     } = check!(
-        crate::compile_inner_dependency(
-            file_as_string,
-            dep_namespace,
-            dep_config,
-            dead_code_graph,
-            dependency_graph
-        ),
+        crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph),
         return err(warnings, errors),
         warnings,
         errors
@@ -908,7 +878,6 @@ fn reassignment(
         self_type,
         build_config,
         dead_code_graph,
-        dependency_graph,
         opts,
         ..
     } = arguments;
@@ -963,7 +932,6 @@ fn reassignment(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts
                 }),
@@ -1002,7 +970,6 @@ fn reassignment(
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         mode: Mode::NonAbi,
                         opts
                     }),
@@ -1066,7 +1033,6 @@ fn reassignment(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1158,7 +1124,6 @@ fn type_check_trait_methods(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1296,7 +1261,6 @@ fn type_check_trait_methods(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts: TCOpts { purity }
             }),

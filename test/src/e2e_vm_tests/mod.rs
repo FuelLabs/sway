@@ -85,6 +85,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("supertraits_1", ProgramState::Return(1)),
         ("supertraits_2", ProgramState::Return(1)),
         ("size_of", ProgramState::Return(1)),
+        ("new_allocator_test", ProgramState::Return(42)), // true
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
