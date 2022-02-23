@@ -2,4 +2,4 @@
 author = "Fuel Labs <contact@fuel.sh>"
 entry = "main.sw"
 license = "Apache-2.0"
-name = "missing_supertrait_impl"
+name = "missing_func_from_supertrait_impl"
