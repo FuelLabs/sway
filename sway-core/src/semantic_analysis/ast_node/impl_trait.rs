@@ -12,15 +12,12 @@ use crate::{
 
 use sway_types::span::Span;
 
-use std::collections::{HashMap, HashSet};
-
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<TypedDeclaration> {
     let mut errors = vec![];
@@ -72,7 +69,6 @@ pub(crate) fn implementation_of_trait(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::NonAbi,
-                    dependency_graph,
                     opts,
                 ),
                 return err(warnings, errors),
@@ -133,7 +129,6 @@ pub(crate) fn implementation_of_trait(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
-                    dependency_graph,
                     opts,
                 ),
                 return err(warnings, errors),
@@ -197,7 +192,6 @@ fn type_check_trait_implementation(
     type_implementing_for: TypeId,
     type_implementing_for_span: &Span,
     mode: Mode,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
@@ -227,7 +221,6 @@ fn type_check_trait_implementation(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph,
                 opts,
             }),
             continue,
@@ -385,7 +378,6 @@ fn type_check_trait_implementation(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph,
                 opts,
             }),
             continue,

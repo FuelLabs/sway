@@ -304,15 +304,46 @@ impl TypedEnumDeclaration {
         type_arguments: Vec<(TypeInfo, Span)>,
         self_type: TypeId,
     ) -> CompileResult<Self> {
-        let type_mapping = insert_type_parameters(&self.type_parameters);
+        println!(
+            "_____\nAbout to monomorphize enum. Currently, variant types are:\n{}",
+            self.variants
+                .iter()
+                .map(|x| format!(
+                    "{}({} [{:?}] id: {})",
+                    x.name.as_str(),
+                    x.r#type.friendly_type_str(),
+                    look_up_type_id_raw(x.r#type),
+                    x.r#type
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        let mut new_decl = self.clone();
+        let type_mapping = insert_type_parameters(&new_decl.type_parameters);
+        println!(
+            "\n______\n2\n{}",
+            new_decl
+                .variants
+                .iter()
+                .map(|x| format!(
+                    "{}({} [{:?}] id: {})",
+                    x.name.as_str(),
+                    x.r#type.friendly_type_str(),
+                    look_up_type_id_raw(x.r#type),
+                    x.r#type
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        new_decl.copy_types(&type_mapping);
         let mut warnings = vec![];
         let mut errors: Vec<CompileError> = vec![];
         if !type_arguments.is_empty() {
             // check type arguments against parameters
-            if self.type_parameters.len() != type_arguments.len() {
+            if new_decl.type_parameters.len() != type_arguments.len() {
                 todo!(
                     "incorrect number of type args err expected {} got {}",
-                    self.type_parameters.len(),
+                    new_decl.type_parameters.len(),
                     type_arguments.len()
                 );
             }
@@ -338,8 +369,21 @@ impl TypedEnumDeclaration {
                 }
             }
         }
-        let mut new_decl = self.clone();
-        new_decl.copy_types(&type_mapping);
+        println!(
+            "\n______\n3\n{}",
+            new_decl
+                .variants
+                .iter()
+                .map(|x| format!(
+                    "{}({} [{:?}] id: {})",
+                    x.name.as_str(),
+                    x.r#type.friendly_type_str(),
+                    look_up_type_id_raw(x.r#type),
+                    x.r#type
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
         ok(new_decl, warnings, errors)
     }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
@@ -372,8 +416,17 @@ impl TypedEnumVariant {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
+            println!(
+                "Using monomorphized type for type ref({})",
+                matching_id.friendly_type_str()
+            );
             insert_type(TypeInfo::Ref(matching_id))
         } else {
+            println!(
+                "Not using monomorphized type for {} {}",
+                self.name.as_str(),
+                self.r#type.friendly_type_str()
+            );
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }

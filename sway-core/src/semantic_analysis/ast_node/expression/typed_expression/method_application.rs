@@ -5,7 +5,7 @@ use crate::parse_tree::MethodName;
 use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::TCOpts;
 use pest::Parser;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
@@ -17,7 +17,6 @@ pub(crate) fn type_check_method_application(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -34,7 +33,6 @@ pub(crate) fn type_check_method_application(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -183,7 +181,6 @@ pub(crate) fn type_check_method_application(
                                 crate_namespace,
                                 self_type,
                                 dead_code_graph,
-                                dependency_graph,
                                 opts,
                             ),
                             return err(warnings, errors),
@@ -258,7 +255,6 @@ pub(crate) fn type_check_method_application(
                                 crate_namespace,
                                 self_type,
                                 dead_code_graph,
-                                dependency_graph,
                                 opts,
                             ),
                             return err(warnings, errors),
@@ -294,7 +290,6 @@ fn re_parse_expression(
     crate_namespace: NamespaceRef,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -346,7 +341,6 @@ fn re_parse_expression(
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             mode: Mode::NonAbi,
             opts,
         }),

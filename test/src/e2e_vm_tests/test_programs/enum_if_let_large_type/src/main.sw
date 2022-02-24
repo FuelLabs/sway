@@ -25,9 +25,10 @@ enum SaleError {
 }
 
 fn main() -> u64 {
+    let x = Result::Ok(5u64);
 
     // should return 15
-//    if let Result::Ok(y) = x { y + 10 } else { 1 }
+    if let Result::Ok(y) = x { y + 10 } else { 1 }
 }
 
 fn sell_product(product: Product) -> Result<Product, SaleError> {
@@ -38,4 +39,6 @@ fn sell_product(product: Product) -> Result<Product, SaleError> {
   product.number_sold = product.number_sold + 1;
   product.number_available = product.number_available - 1; 
   return Result::Ok(product);
+// why is this unresolved?
+// return Result::Ok::<Product, SaleError>(product);
 }

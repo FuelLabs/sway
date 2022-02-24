@@ -17,7 +17,7 @@ pub struct Module(pub generational_arena::Index);
 
 #[doc(hidden)]
 pub struct ModuleContent {
-    pub name: String,
+    pub name: String, // XXX unused; remove me
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub globals: HashMap<String, Value>,

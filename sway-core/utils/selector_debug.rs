@@ -49,7 +49,6 @@ fn main() {
         ),
         dead_code_graph: &mut Default::default(),
         mode: Mode::ImplAbiFn,
-        dependency_graph: &mut Default::default(),
         opts: Default::default(),
     })
     .unwrap(&mut warnings, &mut errors);

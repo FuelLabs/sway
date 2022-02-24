@@ -632,7 +632,6 @@ impl NamespaceWrapper for NamespaceRef {
                                 .map(TypedEnumVariant::as_owned_typed_enum_variant)
                                 .collect(),
                         };
-                        let type_mapping = insert_type_parameters(&decl.type_parameters);
                         let mut new_enum = old_enum.clone();
                         if !decl.type_parameters.is_empty() {
                             // the following line is infallible because an error can only arise
