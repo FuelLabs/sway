@@ -23,11 +23,9 @@ fn return_the_same<T>(elem: T) -> T {
   x
 }
 
-/*
 fn find_the_size_of_the_type<T>(elem: T) -> u64 {
   size_of::<T>()
 }
-*/
 
 fn main() -> u64 {
     let x = Data {
@@ -52,6 +50,6 @@ fn main() -> u64 {
     assert(size_of_val(p) == 24);
     assert(size_of_val(foo) == 8);
     assert(size_of::<Point>() == 24);
-    //assert(find_the_size_of_the_type(p) == 24);
+    assert(find_the_size_of_the_type::<u64>(foo) == 24);
     1
 }
