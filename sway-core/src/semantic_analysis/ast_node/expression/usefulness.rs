@@ -2296,10 +2296,50 @@ impl ConstructorFactory {
     }
 }
 
-/// Algorithm modeled after this paper:
+/// Given the arms of a match expression, checks to see if the arms are
+/// exhaustive and checks to see if each arm is reachable.
+/// 
+/// ---
+/// 
+/// Modeled after this paper:
 /// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
-/// and resembles the one here:
+/// 
+/// Implemented in Rust here:
 /// https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
+/// 
+/// ---
+/// 
+/// In general, match expressions are constructed as so:
+/// 
+/// ```ignore
+/// match value {
+///     pattern => result,
+///     pattern => result,
+///     pattern => result
+/// }
+/// ```
+/// 
+/// where `value` will "match" one of the `patterns` in the "match arms". A
+/// "match" happens when a `pattern` has the same "type" and "shape" as the
+/// `value`, at some level of generality. For example `1` will match `1`, `a`,
+/// and `_`, but will not match `2`.
+/// 
+/// The goal of this algorithm is to:
+/// 1. Check to see if the arms are exhaustive (i.e. all cases for which the
+///    matched value could be are included in the provided arms)
+/// 2. Check to see if each arm is reachable (i.e. if each arm is able to
+///    "catch" at least on hypothetical matched value without the previous arms
+///    "catching" all the values)
+/// 
+/// This is accomplished using some key factors:
+/// - A `Pattern` is an object that is able to be matched upon. A `Pattern` is
+///   semantically constructed of a "constructor" and its "arguments". For
+///   example, given the tuple `(1,2)` "a tuple with 2 elements" is the
+///   constructor and `1, 2` are the arguments. Given the u64 `2`, "2" is the
+///   constructor and it has no arguments (you can think of this by imagining
+///   that u64 is the enum type and each u64 value is a variant of that enum
+///   type, making the value itself a constructor).
+/// 
 pub(crate) fn check_match_expression_usefulness(
     type_info: TypeInfo,
     arms: Vec<MatchCondition>,
