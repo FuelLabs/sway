@@ -173,11 +173,15 @@ impl TypedParseTree {
         // Keep a copy of the nodes as they are.
         let all_nodes = typed_tree_nodes.clone();
 
+        // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
+        // then B is also implemented for type T
+        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
-        for node in typed_tree_nodes.clone() {
+        for node in typed_tree_nodes {
             match node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
                     if func.name.as_str() == "main" =>
@@ -196,10 +200,6 @@ impl TypedParseTree {
                 _ => (),
             };
         }
-
-        // Check that if trait B is a supertraie of trait A, and if A is implemented for type T,
-        // then B is also implemented for type T
-        errors.append(&mut check_supertraits(&typed_tree_nodes, &namespace));
 
         // impure functions are disallowed in non-contracts
         if *tree_type != TreeType::Contract {
@@ -294,7 +294,7 @@ fn check_supertraits(
             {
                 let supertraits = tr.supertraits;
                 for supertrait in &supertraits {
-                    let impl_of_supertrait = typed_tree_nodes.iter().find(|search_node| {
+                    if !typed_tree_nodes.iter().any(|search_node| {
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
                             trait_name: search_node_trait_name,
                             type_implementing_for: search_node_type_implementing_for,
@@ -320,19 +320,18 @@ fn check_supertraits(
                             }
                         }
                         false
-                    });
-                    if impl_of_supertrait.is_none() {
+                    }) {
                         // The two errors below should really be a single error (and a "note"),
                         // but we don't have a way today to point to two separate locations in the
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
-                            supertrait_name: supertrait.name.span().span.as_str().to_string(),
+                            supertrait_name: supertrait.name.to_string(),
                             type_name: type_implementing_for.friendly_type_str(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
-                            supertrait_name: supertrait.name.span().span.as_str().to_string(),
-                            trait_name: tr.name.span().span.as_str().to_string(),
+                            supertrait_name: supertrait.name.to_string(),
+                            trait_name: tr.name.to_string(),
                             span: tr.name.span().clone(),
                         });
                     }
