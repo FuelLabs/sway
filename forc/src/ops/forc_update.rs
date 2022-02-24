@@ -8,6 +8,9 @@ use sway_utils::find_manifest_dir;
 /// to the HEAD of the specified branch, or remains unchanged in the case a tag is specified. Path
 /// dependencies remain unchanged as they are always sourced directly.
 ///
+/// This is called during `forc build` in the case that there is no existing `Forc.lock` file for
+/// the project.
+///
 /// Run `forc update --check` to perform a dry-run and produce a list of updates that will be
 /// performed across all dependencies without actually committing them to the lock file.
 ///

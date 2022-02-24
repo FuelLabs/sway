@@ -7,11 +7,13 @@ use crate::utils::{
     },
     manifest::Manifest,
 };
-use petgraph::{self, Directed};
+use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map, HashMap},
+    hash::{Hash, Hasher},
     path::{Path, PathBuf},
+    str::FromStr,
 };
 use sway_core::{
     source_map::SourceMap, BuildConfig, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
@@ -21,10 +23,18 @@ use sway_types::JsonABI;
 use url::Url;
 
 type GraphIx = u32;
-type Node = PinnedFetched;
+// TODO: Use `Pinned`. Separate local `Path` handling into a separate map.
+type Node = Pinned;
 type Edge = ();
 pub type Graph = petgraph::Graph<Node, Edge, Directed, GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
+pub type PathMap = HashMap<PinnedId, PathBuf>;
+
+/// A unique ID for a pinned package.
+///
+/// The internal value is produced by hashing the package's name and `SourcePinned`.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
 pub struct Compiled {
@@ -46,17 +56,6 @@ pub struct Pkg {
 pub struct Pinned {
     pub name: String,
     pub source: SourcePinned,
-}
-
-/// A package uniquely identified by name along with its pinned source and fetched path.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub struct PinnedFetched {
-    /// The pinned package that has been fetched.
-    pub pkg: Pinned,
-    /// Path to the fetched source.
-    ///
-    /// For dependencies specified via `Path`, the original path is used.
-    pub path: PathBuf,
 }
 
 /// Specifies a base source for a package.
@@ -117,7 +116,7 @@ pub struct SourceRegistryPinned {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum SourcePinned {
     Git(SourceGitPinned),
-    Path(PathBuf),
+    Path,
     Registry(SourceRegistryPinned),
 }
 
@@ -129,40 +128,192 @@ pub(crate) struct BuildConf {
     pub(crate) print_intermediate_asm: bool,
 }
 
-impl std::ops::Deref for PinnedFetched {
-    type Target = Pinned;
-    fn deref(&self) -> &Self::Target {
-        &self.pkg
+/// Error returned upon failed parsing of `SourceGitPinned::from_str`.
+#[derive(Clone, Debug)]
+pub enum SourceGitPinnedParseError {
+    Prefix,
+    Url,
+    Reference,
+    CommitHash,
+}
+
+impl Pinned {
+    /// Retrieve the unique ID for the pinned package.
+    ///
+    /// The internal value is produced by hashing the package's name and `SourcePinned`.
+    pub fn id(&self) -> PinnedId {
+        PinnedId::new(&self.name, &self.source)
     }
 }
 
-/// Fetch all depedencies and produce the dependency graph.
+impl PinnedId {
+    /// Hash the given name and pinned source to produce a unique pinned package ID.
+    pub fn new(name: &str, source: &SourcePinned) -> Self {
+        let mut hasher = hash_map::DefaultHasher::default();
+        name.hash(&mut hasher);
+        source.hash(&mut hasher);
+        Self(hasher.finish())
+    }
+}
+
+impl ToString for SourceGitPinned {
+    fn to_string(&self) -> String {
+        // git+<url/to/repo>?reference=<reference>#<commit>
+        format!(
+            "git+{}?reference={}#{}",
+            self.source.repo, self.source.reference, self.commit_hash,
+        )
+    }
+}
+
+impl FromStr for SourceGitPinned {
+    type Err = SourceGitPinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // git+<url/to/repo>?reference=<reference>#<commit>
+        let s = s.trim();
+
+        // Check for "git+" at the start.
+        const PREFIX: &str = "git+";
+        if s.find(PREFIX) != Some(0) {
+            return Err(SourceGitPinnedParseError::Prefix);
+        }
+        let s = &s[PREFIX.len()..];
+
+        // Parse the `repo` URL.
+        let repo_str = s.split('?').next().ok_or(SourceGitPinnedParseError::Url)?;
+        let repo = Url::parse(repo_str).map_err(|_| SourceGitPinnedParseError::Url)?;
+        let s = &s[repo_str.len() + "?".len()..];
+
+        // Parse the "reference=" string.
+        // TODO: This will need updating if we want to support omitting a git reference and allow
+        // for specifying commit hashes directly in `Forc.toml` git dependencies.
+        const REFERENCE: &str = "reference=";
+        if s.find(REFERENCE) != Some(0) {
+            return Err(SourceGitPinnedParseError::Reference);
+        }
+        let s = &s[REFERENCE.len()..];
+
+        // And now retrieve the `reference` and `commit_hash` values.
+        let mut s_iter = s.split('#');
+        let reference = s_iter
+            .next()
+            .ok_or(SourceGitPinnedParseError::Reference)?
+            .to_string();
+        let commit_hash = s_iter
+            .next()
+            .ok_or(SourceGitPinnedParseError::CommitHash)?
+            .to_string();
+
+        let source = SourceGit { repo, reference };
+        Ok(Self {
+            source,
+            commit_hash,
+        })
+    }
+}
+
+/// The `pkg::Graph` is of *a -> b* where *a* depends on *b*. We can determine compilation order by
+/// performing a toposort of the graph with reversed weights. The resulting order ensures all
+/// dependencies are always compiled before their dependents.
+pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
+    let rev_pkg_graph = petgraph::visit::Reversed(&graph);
+    petgraph::algo::toposort(rev_pkg_graph, None)
+        // TODO: Show full list of packages that cycle.
+        .map_err(|e| anyhow!("dependency cycle detected: {:?}", e))
+}
+
+/// Given graph of pinned dependencies and the directory for the root node, produce a path map
+/// containing the path to the local source for every node in the graph.
+pub fn graph_to_path_map(
+    proj_manifest_dir: &Path,
+    graph: &Graph,
+    compilation_order: &[NodeIx],
+) -> Result<PathMap> {
+    let mut path_map = PathMap::new();
+
+    // We resolve all paths in reverse compilation order.
+    // That is, we follow paths starting from the project root.
+    let mut path_resolve_order = compilation_order.iter().cloned().rev();
+
+    // Add the project's package to the map.
+    let proj_node = path_resolve_order
+        .next()
+        .ok_or_else(|| anyhow!("graph must contain at least the project node"))?;
+    let proj_id = graph[proj_node].id();
+    path_map.insert(proj_id, proj_manifest_dir.to_path_buf());
+
+    // Resolve all following dependencies, knowing their parents' paths will already be resolved.
+    for dep_node in path_resolve_order {
+        let dep = &graph[dep_node];
+        let dep_path = match &dep.source {
+            SourcePinned::Git(git) => {
+                git_commit_path(&dep.name, &git.source.repo, &git.commit_hash)
+            }
+            SourcePinned::Path => {
+                let parent_node = graph
+                    .edges_directed(dep_node, Direction::Incoming)
+                    .next()
+                    .ok_or_else(|| anyhow!("more than one root package detected in graph"))?
+                    .source();
+                let parent = &graph[parent_node];
+                let parent_path = &path_map[&parent.id()];
+                let parent_manifest = read_manifest(parent_path)?;
+                let detailed = parent_manifest
+                    .dependencies
+                    .as_ref()
+                    .and_then(|deps| match &deps[&dep.name] {
+                        Dependency::Detailed(detailed) => Some(detailed),
+                        Dependency::Simple(_) => None,
+                    })
+                    .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
+                let rel_dep_path = detailed
+                    .path
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
+                parent_path.join(rel_dep_path)
+            }
+            SourcePinned::Registry(_reg) => {
+                bail!("registry dependencies are not yet supported");
+            }
+        };
+        if !dep_path.exists() {
+            bail!("pinned dependency is missing local source: try `forc update`");
+        }
+        path_map.insert(dep.id(), dep_path);
+    }
+
+    Ok(path_map)
+}
+
+/// Fetch all depedencies and produce the dependency graph along with a map from each node's unique
+/// ID to its local fetched path.
 ///
 /// This will determine pinned versions and commits for remote dependencies during traversal.
 pub(crate) fn fetch_deps(
     proj_manifest_dir: PathBuf,
     proj_manifest: &Manifest,
     offline_mode: bool,
-) -> Result<Graph> {
+) -> Result<(Graph, PathMap)> {
     let mut graph = Graph::new();
+    let mut path_map = PathMap::new();
 
     // Add the project to the graph as the root node.
     let name = proj_manifest.project.name.clone();
     let path = proj_manifest_dir;
-    let source = SourcePinned::Path(path.clone());
+    let source = SourcePinned::Path;
     let pkg = Pinned { name, source };
-    let fetched = PinnedFetched { pkg, path };
-    let root = graph.add_node(fetched);
+    path_map.insert(pkg.id(), path);
+    let root = graph.add_node(pkg);
 
     // The set of visited packages, starting with the root.
     let mut visited = HashMap::new();
-    visited.insert(graph[root].pkg.clone(), root);
+    visited.insert(graph[root].clone(), root);
 
     // Recursively fetch children and add them to the graph.
     // TODO: Convert this recursion to use loop & stack to ensure deps can't cause stack overflow.
-    fetch_children(offline_mode, root, &mut graph, &mut visited)?;
+    fetch_children(offline_mode, root, &mut graph, &mut path_map, &mut visited)?;
 
-    Ok(graph)
+    Ok((graph, path_map))
 }
 
 /// Fetch children nodes of the given node and add unvisited nodes to the graph.
@@ -170,10 +321,11 @@ fn fetch_children(
     offline_mode: bool,
     node: NodeIx,
     graph: &mut Graph,
+    path_map: &mut PathMap,
     visited: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
     let parent = &graph[node];
-    let parent_path = parent.path.clone();
+    let parent_path = path_map[&parent.id()].clone();
     let manifest = read_manifest(&parent_path)?;
     let deps = match &manifest.dependencies {
         None => return Ok(()),
@@ -186,12 +338,11 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(&pkg)?;
-        let dep_node = if let Entry::Vacant(entry) = visited.entry(pinned.clone()) {
-            let fetched = fetch_pinned(pinned)?;
-            let node = graph.add_node(fetched);
+        let pinned = pin_pkg(&pkg, path_map)?;
+        let dep_node = if let hash_map::Entry::Vacant(entry) = visited.entry(pinned.clone()) {
+            let node = graph.add_node(pinned);
             entry.insert(node);
-            fetch_children(offline_mode, node, graph, visited)?;
+            fetch_children(offline_mode, node, graph, path_map, visited)?;
             node
         } else {
             visited[&pinned]
@@ -208,8 +359,7 @@ fn git_repo_dir_name(name: &str, repo: &Url) -> String {
 }
 
 fn hash_url(url: &Url) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let mut hasher = hash_map::DefaultHasher::new();
     url.hash(&mut hasher);
     hasher.finish()
 }
@@ -290,19 +440,34 @@ fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
 }
 
 /// Given a package source, attempt to determine the pinned version or commit.
-fn pin_pkg(pkg: &Pkg) -> Result<Pinned> {
-    let source = match &pkg.source {
-        Source::Path(path) => SourcePinned::Path(path.clone()),
+///
+/// Also adds the path to the local copy of
+fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
+    let name = pkg.name.clone();
+    let pinned = match &pkg.source {
+        Source::Path(path) => {
+            let source = SourcePinned::Path;
+            let pinned = Pinned { name, source };
+            let id = pinned.id();
+            path_map.insert(id, path.clone());
+            pinned
+        }
         Source::Git(ref source) => {
-            let pinned = pin_git(&pkg.name, source.clone())?;
-            SourcePinned::Git(pinned)
+            let pinned_git = pin_git(&name, source.clone())?;
+            let path = git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+            let source = SourcePinned::Git(pinned_git.clone());
+            let pinned = Pinned { name, source };
+            let id = pinned.id();
+            if let hash_map::Entry::Vacant(entry) = path_map.entry(id) {
+                fetch_git(&pinned.name, &pinned_git)?;
+                entry.insert(path);
+            }
+            pinned
         }
         Source::Registry(ref _source) => {
             unimplemented!("determine registry pkg git URL, fetch to determine latest available semver-compatible version")
         }
     };
-    let name = pkg.name.clone();
-    let pinned = Pinned { name, source };
     Ok(pinned)
 }
 
@@ -351,19 +516,6 @@ fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     })?;
 
     Ok(path)
-}
-
-/// Given a package's pinned source ensure we have a copy of the source on the local filesystem.
-fn fetch_pinned(pkg: Pinned) -> Result<PinnedFetched> {
-    let path = match &pkg.source {
-        SourcePinned::Git(pinned) => fetch_git(&pkg.name, pinned)?,
-        SourcePinned::Path(path) => path.clone(),
-        SourcePinned::Registry(_pinned) => {
-            unimplemented!("fetch pinned package from registry");
-        }
-    };
-    let fetched = PinnedFetched { pkg, path };
-    Ok(fetched)
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
@@ -438,15 +590,16 @@ pub(crate) fn build_config(
 ///
 /// Scripts and Predicates will be compiled to bytecode and will not emit any JSON ABI.
 pub(crate) fn compile(
-    pkg: &PinnedFetched,
+    pkg: &Pinned,
+    pkg_path: &Path,
     build_conf: &BuildConf,
     namespace: NamespaceRef,
     source_map: &mut SourceMap,
     silent_mode: bool,
 ) -> Result<Compiled> {
-    let manifest = read_manifest(&pkg.path)?;
-    let source = get_main_file(&manifest, &pkg.path)?;
-    let build_config = build_config(pkg.path.clone(), &manifest, build_conf)?;
+    let manifest = read_manifest(pkg_path)?;
+    let source = get_main_file(&manifest, pkg_path)?;
+    let build_config = build_config(pkg_path.to_path_buf(), &manifest, build_conf)?;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = sway_core::compile_to_ast(source, namespace, &build_config);
@@ -504,5 +657,45 @@ fn generate_json_abi(ast: &TypedParseTree) -> JsonABI {
             abi_entries.iter().map(|x| x.generate_json_abi()).collect()
         }
         _ => vec![],
+    }
+}
+
+#[test]
+fn test_source_git_pinned_parsing() {
+    let strings = [
+        "git+https://github.com/foo/bar?reference=baz#64092602dd6158f3e41d775ed889389440a2cd86",
+        "git+https://github.com/fuellabs/sway-lib-std?reference=v0.1.0#0000000000000000000000000000000000000000",
+        "git+https://github.com/fuellabs/sway-lib-core?reference=v0.0.1#0000000000000000000000000000000000000000",
+    ];
+
+    let expected = [
+        SourceGitPinned {
+            source: SourceGit {
+                repo: Url::parse("https://github.com/foo/bar").unwrap(),
+                reference: "baz".to_string(),
+            },
+            commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
+        },
+        SourceGitPinned {
+            source: SourceGit {
+                repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
+                reference: "v0.1.0".to_string(),
+            },
+            commit_hash: "0000000000000000000000000000000000000000".to_string(),
+        },
+        SourceGitPinned {
+            source: SourceGit {
+                repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
+                reference: "v0.0.1".to_string(),
+            },
+            commit_hash: "0000000000000000000000000000000000000000".to_string(),
+        },
+    ];
+
+    for (&string, expected) in strings.iter().zip(&expected) {
+        let parsed = SourceGitPinned::from_str(string).unwrap();
+        assert_eq!(&parsed, expected);
+        let serialized = expected.to_string();
+        assert_eq!(&serialized, string);
     }
 }

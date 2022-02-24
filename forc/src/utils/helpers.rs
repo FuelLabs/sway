@@ -38,6 +38,10 @@ pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<
     Ok(file_name)
 }
 
+pub fn lock_path(manifest_dir: &Path) -> PathBuf {
+    manifest_dir.join(constants::LOCK_FILE_NAME)
+}
+
 pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest> {
     let manifest_path = {
         let mut man = PathBuf::from(manifest_dir);
