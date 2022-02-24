@@ -77,11 +77,14 @@ impl ImplTrait {
             errors
         );
 
-        let where_clause_pair = if iter.peek().unwrap().as_rule() == Rule::trait_bounds {
-            iter.next()
-        } else {
-            None
+        let where_clause_pair = match iter.peek() {
+            Some(r) => match r.as_rule() {
+                Rule::trait_bounds => iter.next(),
+                _ => None,
+            },
+            None => None,
         };
+
         let type_arguments_span = match type_params_pair {
             Some(ref x) => Span {
                 span: x.as_span(),
