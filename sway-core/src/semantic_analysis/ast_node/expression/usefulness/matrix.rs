@@ -99,7 +99,7 @@ impl Matrix {
                     "found invalid matrix size",
                     span.clone(),
                 ));
-                return err(warnings, errors);
+                err(warnings, errors)
             }
         }
     }
