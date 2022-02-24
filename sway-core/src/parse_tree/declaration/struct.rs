@@ -86,6 +86,7 @@ impl StructDeclaration {
             span: name.as_span(),
             path,
         };
+
         let name = check!(
             ident::parse_from_pair(name, config),
             return err(warnings, errors),

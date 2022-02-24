@@ -45,6 +45,8 @@ pub mod constant;
 pub use constant::*;
 pub mod context;
 pub use context::*;
+pub mod error;
+pub use error::*;
 pub mod function;
 pub use function::*;
 pub mod instruction;

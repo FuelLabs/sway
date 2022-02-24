@@ -79,6 +79,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
         ("multi_item_import", ProgramState::Return(0)), // false
+        ("use_full_path_names", ProgramState::Return(1)),
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
@@ -107,7 +108,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         // when that is re-implemented we should reenable this test
         //"infinite_dependencies",
         "top_level_vars",
-        "dependencies_parsing_error",
+        "dependency_parsing_error",
         "disallowed_gm",
         "bad_generic_annotation",
         "bad_generic_var_annotation",

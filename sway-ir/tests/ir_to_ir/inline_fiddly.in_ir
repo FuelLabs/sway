@@ -13,7 +13,7 @@
 //     not(true) || not(false)
 // }
 
-script script {
+script {
     fn not(v: bool) -> bool {
         entry:
         cbr v, block0, block1

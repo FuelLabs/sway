@@ -1,17 +1,17 @@
 //! A parser for the printed IR, useful mostly for testing.
 
-use crate::context::Context;
+use crate::{context::Context, error::IrError};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
-pub fn parse(input: &str) -> Result<Context, String> {
+pub fn parse(input: &str) -> Result<Context, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
             &input[err.location.offset..]
         } else {
             &input[err.location.offset..][..20]
         };
-        format!("parse failed: {}, found: {}", err, found)
+        IrError::ParseFailure(err.to_string(), found.into())
     })?;
     ir_builder::build_context(irmod)
 }
@@ -33,9 +33,8 @@ mod ir_builder {
                 }
 
             rule script() -> IrAstModule
-                = "script" _ name:id() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
                     IrAstModule {
-                        name,
                         kind: crate::module::Kind::Script,
                         fn_decls,
                         metadata
@@ -379,6 +378,7 @@ mod ir_builder {
         block::Block,
         constant::Constant,
         context::Context,
+        error::IrError,
         function::Function,
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
@@ -389,7 +389,6 @@ mod ir_builder {
 
     #[derive(Debug)]
     pub(super) struct IrAstModule {
-        name: String,
         kind: Kind,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
@@ -496,7 +495,7 @@ mod ir_builder {
                         .iter()
                         .map(|(ty, cv)| (ty.to_ir_type(context), cv.value.as_constant(context)))
                         .unzip();
-                    let aggregate = Aggregate::new_struct(context, None, types);
+                    let aggregate = Aggregate::new_struct(context, types);
                     Constant::new_struct(&aggregate, fields)
                 }
             }
@@ -556,7 +555,7 @@ mod ir_builder {
                 }
                 IrAstTy::Struct(tys) | IrAstTy::Union(tys) => {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
-                    Aggregate::new_struct(context, None, tys)
+                    Aggregate::new_struct(context, tys)
                 }
                 _otherwise => {
                     unreachable!("Converting non aggregate IR AST type to IR aggregate type.")
@@ -579,9 +578,9 @@ mod ir_builder {
 
     use std::{collections::HashMap, iter::FromIterator, sync::Arc};
 
-    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, String> {
+    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
-        let module = Module::new(&mut ctx, ir_ast_mod.kind, &ir_ast_mod.name);
+        let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let md_map = build_metadata_map(&mut ctx, &ir_ast_mod.metadata);
         for fn_decl in ir_ast_mod.fn_decls {
             build_add_fn_decl(&mut ctx, module, fn_decl, &md_map)?;
@@ -594,7 +593,7 @@ mod ir_builder {
         module: Module,
         fn_decl: IrAstFnDecl,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
             .args
             .iter()

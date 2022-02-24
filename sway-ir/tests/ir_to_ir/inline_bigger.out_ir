@@ -1,4 +1,4 @@
-script script {
+script {
     fn a(b: bool) -> u64 {
         local ptr u64 x
 

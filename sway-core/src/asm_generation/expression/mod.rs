@@ -361,8 +361,7 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        a => {
-            println!("unimplemented: {:?}", a);
+        _ => {
             errors.push(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
