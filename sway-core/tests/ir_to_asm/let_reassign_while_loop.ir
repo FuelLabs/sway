@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> bool {
         local ptr bool a
 

@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> u64 {
         local ptr { b256, { bool, u64 } } record
 

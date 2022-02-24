@@ -1,4 +1,4 @@
-script script {
+script {
     fn new(a !1: bool, b !2: bool) -> { bool, bool } {
         local ptr bool a_
         local ptr bool b_

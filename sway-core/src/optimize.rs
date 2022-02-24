@@ -12,7 +12,9 @@ use sway_types::{ident::Ident, span::Span};
 use sway_ir::*;
 
 // -------------------------------------------------------------------------------------------------
-// XXX This needs to return a CompileResult.
+// XXX This needs to return a CompileResult.  OTOH, retrofitting a CompileResult here would add
+// very little value and require a lot of work.  An alternative might be returning
+// Result<T, CompileError>.
 
 pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
     let mut ctx = Context::default();
@@ -40,7 +42,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
             all_nodes: _,
         } => unimplemented!("compile library to ir"),
     }?;
-    ctx.verify()?;
+    ctx.verify().map_err(|ir_error| ir_error.to_string())?;
     Ok(ctx)
 }
 
@@ -52,11 +54,13 @@ fn compile_script(
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
-    let module = Module::new(context, Kind::Script, "script");
+    let module = Module::new(context, Kind::Script);
+
+    let mut struct_names = StructSymbolMap::default();
 
     compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
-    compile_function(context, module, main_function)?;
+    compile_declarations(context, module, &mut struct_names, declarations)?;
+    compile_function(context, module, &mut struct_names, main_function)?;
 
     Ok(module)
 }
@@ -67,12 +71,14 @@ fn compile_contract(
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, String> {
-    let module = Module::new(context, Kind::Contract, "contract");
+    let module = Module::new(context, Kind::Contract);
+
+    let mut struct_names = StructSymbolMap::default();
 
     compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
+    compile_declarations(context, module, &mut struct_names, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, module, decl)?;
+        compile_abi_method(context, module, &mut struct_names, decl)?;
     }
 
     Ok(module)
@@ -156,6 +162,7 @@ fn compile_constant_expression(
 fn compile_declarations(
     context: &mut Context,
     module: Module,
+    struct_names: &mut StructSymbolMap,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), String> {
     for declaration in declarations {
@@ -166,12 +173,20 @@ fn compile_declarations(
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
-            TypedDeclaration::FunctionDeclaration(decl) => compile_function(context, module, decl)?,
+            TypedDeclaration::FunctionDeclaration(decl) => {
+                compile_function(context, module, struct_names, decl)?
+            }
             TypedDeclaration::ImplTrait {
                 methods,
                 type_implementing_for,
                 ..
-            } => compile_impl(context, module, type_implementing_for, methods)?,
+            } => compile_impl(
+                context,
+                module,
+                struct_names,
+                type_implementing_for,
+                methods,
+            )?,
 
             TypedDeclaration::StructDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
@@ -188,8 +203,49 @@ fn compile_declarations(
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Clone, Default)]
+struct StructSymbolMap {
+    aggregate_names: HashMap<String, Aggregate>,
+    aggregate_symbols: HashMap<Aggregate, HashMap<String, u64>>,
+}
+
+impl StructSymbolMap {
+    pub fn add_aggregate_symbols(
+        &mut self,
+        name: String,
+        aggregate: Aggregate,
+        symbols: Option<HashMap<String, u64>>,
+    ) -> Result<(), String> {
+        match self.aggregate_names.insert(dbg!(name), aggregate) {
+            None => Ok(()),
+            Some(_) => Err("Aggregate symbols were overwritten/shadowed.".to_owned()),
+        }?;
+        symbols
+            .map(
+                |symbols| match self.aggregate_symbols.insert(aggregate, symbols) {
+                    None => Ok(()),
+                    Some(_) => Err("Aggregate symbols were overwritten/shadowed.".to_owned()),
+                },
+            )
+            .unwrap_or(Ok(()))
+    }
+
+    pub fn get_aggregate_by_name(&self, name: &str) -> Option<Aggregate> {
+        self.aggregate_names.get(name).copied()
+    }
+
+    pub fn get_aggregate_index(&self, aggregate: &Aggregate, field_name: &str) -> Option<u64> {
+        self.aggregate_symbols
+            .get(aggregate)
+            .and_then(|idx_map| idx_map.get(field_name).copied())
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+
 fn create_struct_aggregate(
     context: &mut Context,
+    struct_names: &mut StructSymbolMap,
     name: String,
     fields: Vec<OwnedTypedStructField>,
 ) -> Result<Aggregate, String> {
@@ -197,7 +253,7 @@ fn create_struct_aggregate(
         .into_iter()
         .map(|tsf| {
             (
-                convert_resolved_typeid_no_span(context, &tsf.r#type),
+                convert_resolved_typeid_no_span(context, struct_names, &tsf.r#type),
                 tsf.name,
             )
         })
@@ -207,10 +263,13 @@ fn create_struct_aggregate(
         .into_iter()
         .collect::<Result<Vec<_>, String>>()?;
 
-    let aggregate = Aggregate::new_struct(context, Some(name), field_types);
-    context.add_aggregate_symbols(
+    let aggregate = Aggregate::new_struct(context, field_types);
+    struct_names.add_aggregate_symbols(
+        name,
         aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
+        Some(HashMap::from_iter(
+            syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64)),
+        )),
     )?;
 
     Ok(aggregate)
@@ -220,13 +279,14 @@ fn create_struct_aggregate(
 
 fn compile_enum_decl(
     context: &mut Context,
+    struct_names: &mut StructSymbolMap,
     enum_decl: TypedEnumDeclaration,
 ) -> Result<Aggregate, String> {
     let TypedEnumDeclaration {
         name,
         type_parameters,
         variants,
-        .. //span,
+        ..
     } = enum_decl;
 
     if !type_parameters.is_empty() {
@@ -235,6 +295,7 @@ fn compile_enum_decl(
 
     create_enum_aggregate(
         context,
+        struct_names,
         name.as_str().to_owned(),
         variants
             .into_iter()
@@ -245,51 +306,39 @@ fn compile_enum_decl(
 
 fn create_enum_aggregate(
     context: &mut Context,
+    struct_names: &mut StructSymbolMap,
     name: String,
     variants: Vec<OwnedTypedEnumVariant>,
 ) -> Result<Aggregate, String> {
-    // Create the enum aggregate first.
-    let (field_types, syms): (Vec<_>, Vec<_>) = variants
+    // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
+    // getting one here anyway.  They don't need to be a tagged union either.
+    let field_types: Vec<_> = variants
         .into_iter()
-        .map(|tev| {
-            (
-                convert_resolved_typeid_no_span(context, &tev.r#type),
-                tev.name,
-            )
-        })
-        .unzip();
-
-    let field_types = field_types
-        .into_iter()
+        .map(|tev| convert_resolved_typeid_no_span(context, struct_names, &tev.r#type))
         .collect::<Result<Vec<_>, String>>()?;
+    let enum_aggregate = Aggregate::new_struct(context, field_types);
+    struct_names.add_aggregate_symbols(name.clone() + "_union", enum_aggregate, None)?;
 
-    let enum_aggregate = Aggregate::new_struct(context, Some(name.clone() + "_union"), field_types);
-    // Not sure if we should do this..?  The 'field' names aren't used for enums?
-    context.add_aggregate_symbols(
-        enum_aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
-    )?;
-
-    // Create the tagged union struct next.  Just by creating it here with the name it'll be added
-    // to the context and can be looked up.  It isn't obvious from the name, maybe it should
-    // change... to create()?  insert()?  Anonymous aggregates aren't added though, so... maybe it
-    // should be separate calls to create it and then insert it by name.
-    Ok(Aggregate::new_struct(
-        context,
-        Some(name),
-        vec![Type::Uint(64), Type::Union(enum_aggregate)],
-    ))
+    // Create the tagged union struct next.
+    let tagged_union =
+        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)]);
+    struct_names.add_aggregate_symbols(name, tagged_union, None)?;
+    Ok(tagged_union)
 }
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(context: &mut Context, fields: Vec<TypeId>) -> Result<Aggregate, String> {
+fn create_tuple_aggregate(
+    context: &mut Context,
+    struct_names: &mut StructSymbolMap,
+    fields: Vec<TypeId>,
+) -> Result<Aggregate, String> {
     let field_types = fields
         .into_iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(context, &ty_id))
+        .map(|ty_id| convert_resolved_typeid_no_span(context, struct_names, &ty_id))
         .collect::<Result<Vec<_>, String>>()?;
 
-    Ok(Aggregate::new_struct(context, None, field_types))
+    Ok(Aggregate::new_struct(context, field_types))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -297,6 +346,7 @@ fn create_tuple_aggregate(context: &mut Context, fields: Vec<TypeId>) -> Result<
 fn compile_function(
     context: &mut Context,
     module: Module,
+    struct_names: &mut StructSymbolMap,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<(), String> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
@@ -308,12 +358,12 @@ fn compile_function(
             .parameters
             .iter()
             .map(|param| {
-                convert_resolved_typeid(context, &param.r#type, &param.type_span)
+                convert_resolved_typeid(context, struct_names, &param.r#type, &param.type_span)
                     .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
             })
             .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
 
-        compile_fn_with_args(context, module, ast_fn_decl, args, None)
+        compile_fn_with_args(context, module, struct_names, ast_fn_decl, args, None)
     }
 }
 
@@ -322,6 +372,7 @@ fn compile_function(
 fn compile_fn_with_args(
     context: &mut Context,
     module: Module,
+    struct_names: &mut StructSymbolMap,
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
@@ -339,7 +390,7 @@ fn compile_fn_with_args(
         .into_iter()
         .map(|(name, ty, span)| (name, ty, MetadataIndex::from_span(context, &span)))
         .collect();
-    let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+    let ret_type = convert_resolved_typeid(context, struct_names, &return_type, &return_type_span)?;
     let func = Function::new(
         context,
         module,
@@ -350,7 +401,9 @@ fn compile_fn_with_args(
         visibility == Visibility::Public,
     );
 
-    let mut compiler = FnCompiler::new(context, module, func);
+    // We clone the struct symbols here, as they contain the globals; any new local declarations
+    // may remain within the function scope.
+    let mut compiler = FnCompiler::new(context, module, func, struct_names.clone());
 
     let ret_val = compiler.compile_code_block(context, body)?;
     compiler
@@ -365,6 +418,7 @@ fn compile_fn_with_args(
 fn compile_impl(
     context: &mut Context,
     module: Module,
+    struct_names: &mut StructSymbolMap,
     self_type: TypeInfo,
     ast_methods: Vec<TypedFunctionDeclaration>,
 ) -> Result<(), String> {
@@ -374,15 +428,15 @@ fn compile_impl(
             .iter()
             .map(|param| {
                 if param.name.as_str() == "self" {
-                    convert_resolved_type(context, &self_type)
+                    convert_resolved_type(context, struct_names, &self_type)
                 } else {
-                    convert_resolved_typeid(context, &param.r#type, &param.type_span)
+                    convert_resolved_typeid(context, struct_names, &param.r#type, &param.type_span)
                 }
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
             })
             .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
 
-        compile_fn_with_args(context, module, method, args, None)?;
+        compile_fn_with_args(context, module, struct_names, method, args, None)?;
     }
     Ok(())
 }
@@ -392,6 +446,7 @@ fn compile_impl(
 fn compile_abi_method(
     context: &mut Context,
     module: Module,
+    struct_names: &mut StructSymbolMap,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<(), String> {
     let selector = ast_fn_decl.to_fn_selector_value().value.ok_or(format!(
@@ -403,12 +458,19 @@ fn compile_abi_method(
         .parameters
         .iter()
         .map(|param| {
-            convert_resolved_typeid(context, &param.r#type, &param.type_span)
+            convert_resolved_typeid(context, struct_names, &param.r#type, &param.type_span)
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
         })
         .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
 
-    compile_fn_with_args(context, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(
+        context,
+        module,
+        struct_names,
+        ast_fn_decl,
+        args,
+        Some(selector),
+    )
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -418,10 +480,16 @@ struct FnCompiler {
     function: Function,
     current_block: Block,
     symbol_map: HashMap<String, String>,
+    struct_names: StructSymbolMap,
 }
 
 impl FnCompiler {
-    fn new(context: &mut Context, module: Module, function: Function) -> Self {
+    fn new(
+        context: &mut Context,
+        module: Module,
+        function: Function,
+        struct_names: StructSymbolMap,
+    ) -> Self {
         let symbol_map = HashMap::from_iter(
             function
                 .args_iter(context)
@@ -432,6 +500,7 @@ impl FnCompiler {
             function,
             current_block: function.get_entry_block(context),
             symbol_map,
+            struct_names,
         }
     }
 
@@ -463,7 +532,7 @@ impl FnCompiler {
                         TypedDeclaration::StructDeclaration(_) => Err("struct decl".into()),
                         TypedDeclaration::EnumDeclaration(ted) => {
                             let span_md_idx = MetadataIndex::from_span(context, &ted.span);
-                            compile_enum_decl(context, ted).map(|_| ())?;
+                            compile_enum_decl(context, &mut self.struct_names, ted).map(|_| ())?;
                             Ok(Constant::get_unit(context, span_md_idx))
                         }
                         TypedDeclaration::Reassignment(tr) => {
@@ -776,7 +845,7 @@ impl FnCompiler {
                     purity: Default::default(),
                 };
 
-                compile_function(context, self.module, callee_fn_decl)?;
+                compile_function(context, self.module, &mut self.struct_names, callee_fn_decl)?;
 
                 // Then recursively create a call to it.
                 self.compile_fn_call(context, &callee_name, ast_args, None, span_md_idx)
@@ -954,7 +1023,12 @@ impl FnCompiler {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let return_type = convert_resolved_typeid(context, &body.return_type, &body.span)?;
+        let return_type = convert_resolved_typeid(
+            context,
+            &mut self.struct_names,
+            &body.return_type,
+            &body.span,
+        )?;
         let init_val = self.compile_expression(context, body)?;
 
         let local_name = match self.symbol_map.get(name.as_str()) {
@@ -970,13 +1044,10 @@ impl FnCompiler {
         self.symbol_map
             .insert(name.as_str().to_owned(), local_name.clone());
 
-        let ptr = self.function.new_local_ptr(
-            context,
-            local_name,
-            return_type,
-            is_mutable.into(),
-            None,
-        )?;
+        let ptr = self
+            .function
+            .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
+            .map_err(|ir_error| ir_error.to_string())?;
 
         self.current_block
             .ins(context)
@@ -998,15 +1069,16 @@ impl FnCompiler {
 
         if let TypedExpressionVariant::Literal(literal) = &value.expression {
             let initialiser = convert_literal_to_constant(literal);
-            let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
-            let name = name.as_str().to_owned();
-            self.function.new_local_ptr(
+            let return_type = convert_resolved_typeid(
                 context,
-                name.clone(),
-                return_type,
-                false,
-                Some(initialiser),
+                &mut self.struct_names,
+                &value.return_type,
+                &value.span,
             )?;
+            let name = name.as_str().to_owned();
+            self.function
+                .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
+                .map_err(|ir_error| ir_error.to_string())?;
 
             // We still insert this into the symbol table, as itself... can they be shadowed?
             // (Hrmm, name resolution in the variable expression code could be smarter about var
@@ -1052,7 +1124,8 @@ impl FnCompiler {
                         acc.and_then(|(mut fld_idcs, ty)| match ty {
                             Type::Struct(aggregate) => {
                                 // Get the field index and also its type for the next iteration.
-                                match context
+                                match self
+                                    .struct_names
                                     .get_aggregate_index(&aggregate, field_name.name.as_str())
                                 {
                                     None => Err(format!(
@@ -1116,7 +1189,11 @@ impl FnCompiler {
         }
 
         // Create a new aggregate, since they're not named.
-        let elem_type = convert_resolved_typeid_no_span(context, &contents[0].return_type)?;
+        let elem_type = convert_resolved_typeid_no_span(
+            context,
+            &mut self.struct_names,
+            &contents[0].return_type,
+        )?;
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
@@ -1204,7 +1281,8 @@ impl FnCompiler {
         fields: Vec<TypedStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
-        let aggregate = context
+        let aggregate = self
+            .struct_names
             .get_aggregate_by_name(struct_name)
             .ok_or_else(|| format!("Unknown aggregate {}", struct_name))?;
 
@@ -1215,7 +1293,7 @@ impl FnCompiler {
                 let name = field_value.name.as_str();
                 self.compile_expression(context, field_value.value)
                     .and_then(|insert_val| {
-                        context
+                        self.struct_names
                             .get_aggregate_index(&aggregate, name)
                             .ok_or_else(|| {
                                 format!("Unknown field name {} for aggregate {}", name, struct_name)
@@ -1268,7 +1346,8 @@ impl FnCompiler {
             )),
         }?;
 
-        let field_idx = context
+        let field_idx = self
+            .struct_names
             .get_aggregate_index(&aggregate, &ast_field.name)
             .ok_or_else(|| format!("Unknown field name {} in struct ???", ast_field.name))?;
 
@@ -1297,9 +1376,12 @@ impl FnCompiler {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = MetadataIndex::from_span(context, &enum_decl.span);
-        let aggregate = match context.get_aggregate_by_name(enum_decl.name.as_str()) {
+        let aggregate = match self
+            .struct_names
+            .get_aggregate_by_name(enum_decl.name.as_str())
+        {
             Some(agg) => Ok(agg),
-            None => compile_enum_decl(context, enum_decl),
+            None => compile_enum_decl(context, &mut self.struct_names, enum_decl),
         }?;
         let tag_value = Constant::get_uint(context, 64, tag as u64, span_md_idx);
 
@@ -1345,18 +1427,21 @@ impl FnCompiler {
             let (init_values, init_types): (Vec<Value>, Vec<Type>) = fields
                 .into_iter()
                 .map(|field_expr| {
-                    convert_resolved_typeid_no_span(context, &field_expr.return_type).and_then(
-                        |init_type| {
-                            self.compile_expression(context, field_expr)
-                                .map(|init_value| (init_value, init_type))
-                        },
+                    convert_resolved_typeid_no_span(
+                        context,
+                        &mut self.struct_names,
+                        &field_expr.return_type,
                     )
+                    .and_then(|init_type| {
+                        self.compile_expression(context, field_expr)
+                            .map(|init_value| (init_value, init_type))
+                    })
                 })
                 .collect::<Result<Vec<_>, String>>()?
                 .into_iter()
                 .unzip();
 
-            let aggregate = Aggregate::new_struct(context, None, init_types);
+            let aggregate = Aggregate::new_struct(context, init_types);
             let agg_value = Constant::get_undef(context, Type::Struct(aggregate), span_md_idx);
 
             Ok(init_values.into_iter().enumerate().fold(
@@ -1385,7 +1470,9 @@ impl FnCompiler {
         span: Span,
     ) -> Result<Value, String> {
         let tuple_value = self.compile_expression(context, tuple)?;
-        if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
+        if let Type::Struct(aggregate) =
+            convert_resolved_typeid(context, &mut self.struct_names, &tuple_type, &span)?
+        {
             let span_md_idx = MetadataIndex::from_span(context, &span);
             Ok(self.current_block.ins(context).extract_value(
                 tuple_value,
@@ -1491,6 +1578,7 @@ fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
 
 fn convert_resolved_typeid(
     context: &mut Context,
+    struct_names: &mut StructSymbolMap,
     ast_type: &TypeId,
     span: &Span,
 ) -> Result<Type, String> {
@@ -1498,22 +1586,29 @@ fn convert_resolved_typeid(
     // other than String eventually?  IrError?
     convert_resolved_type(
         context,
+        struct_names,
         &resolve_type(*ast_type, span).map_err(|ty_err| format!("{:?}", ty_err))?,
     )
 }
 
 fn convert_resolved_typeid_no_span(
     context: &mut Context,
+    struct_names: &mut StructSymbolMap,
     ast_type: &TypeId,
 ) -> Result<Type, String> {
+    let msg = "unknown source location";
     let span = crate::span::Span {
-        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+        span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
         path: None,
     };
-    convert_resolved_typeid(context, ast_type, &span)
+    convert_resolved_typeid(context, struct_names, ast_type, &span)
 }
 
-fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<Type, String> {
+fn convert_resolved_type(
+    context: &mut Context,
+    struct_names: &mut StructSymbolMap,
+    ast_type: &TypeInfo,
+) -> Result<Type, String> {
     Ok(match ast_type {
         TypeInfo::UnsignedInteger(nbits) => {
             // We need impl IntegerBits { fn num_bits() -> u64 { ... } }
@@ -1530,28 +1625,34 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
-        TypeInfo::Struct { name, fields } => match context.get_aggregate_by_name(name) {
+        TypeInfo::Struct { name, fields } => match struct_names.get_aggregate_by_name(name) {
             Some(existing_aggregate) => Type::Struct(existing_aggregate),
             None => {
                 // Let's create a new aggregate from the TypeInfo.
-                create_struct_aggregate(context, name.clone(), fields.clone()).map(&Type::Struct)?
+                create_struct_aggregate(context, struct_names, name.clone(), fields.clone())
+                    .map(&Type::Struct)?
             }
         },
         TypeInfo::Enum {
             name,
             variant_types,
         } => {
-            match context.get_aggregate_by_name(name) {
+            match struct_names.get_aggregate_by_name(name) {
                 Some(existing_aggregate) => Type::Struct(existing_aggregate),
                 None => {
                     // Let's create a new aggregate from the TypeInfo.
-                    create_enum_aggregate(context, name.clone(), variant_types.clone())
-                        .map(&Type::Struct)?
+                    create_enum_aggregate(
+                        context,
+                        struct_names,
+                        name.clone(),
+                        variant_types.clone(),
+                    )
+                    .map(&Type::Struct)?
                 }
             }
         }
         TypeInfo::Array(elem_type_id, count) => {
-            let elem_type = convert_resolved_typeid_no_span(context, elem_type_id)?;
+            let elem_type = convert_resolved_typeid_no_span(context, struct_names, elem_type_id)?;
             Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
         }
         TypeInfo::Tuple(fields) => {
@@ -1561,7 +1662,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::Unit
             } else {
-                create_tuple_aggregate(context, fields.clone()).map(Type::Struct)?
+                create_tuple_aggregate(context, struct_names, fields.clone()).map(Type::Struct)?
             }
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),
