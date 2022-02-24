@@ -40,10 +40,11 @@ use self::{
 /// }
 /// ```
 ///
-/// where `value` will "match" one of the `patterns` in the "match arms". A
-/// "match" happens when a `pattern` has the same "type" and "shape" as the
-/// `value`, at some level of generality. For example `1` will match `1`, `a`,
-/// and `_`, but will not match `2`.
+/// where `value` is the "matched value", and each `pattern => result` is a
+/// "match arm", and `value` will "match" one of the `patterns` in the match
+/// arms. A match happens when a `pattern` has the same "type" and "shape" as
+/// the `value`, at some level of generality. For example `1` will match `1`,
+/// `a`, and `_`, but will not match `2`.
 ///
 /// The goal of this algorithm is to:
 /// 1. Check to see if the arms are exhaustive (i.e. all cases for which the
@@ -52,15 +53,154 @@ use self::{
 ///    "catch" at least on hypothetical matched value without the previous arms
 ///    "catching" all the values)
 ///
-/// This is accomplished using some key factors:
-/// - A `Pattern` is an object that is able to be matched upon. A `Pattern` is
-///   semantically constructed of a "constructor" and its "arguments". For
-///   example, given the tuple `(1,2)` "a tuple with 2 elements" is the
-///   constructor and `1, 2` are the arguments. Given the u64 `2`, "2" is the
-///   constructor and it has no arguments (you can think of this by imagining
-///   that u64 is the enum type and each u64 value is a variant of that enum
-///   type, making the value itself a constructor).
+/// # `Pattern`
 ///
+/// A `Pattern` is an object that is able to be matched upon. A `Pattern` is
+/// semantically constructed of a "constructor" and its "arguments". For
+/// example, given the tuple `(1,2)` "a tuple with 2 elements" is the
+/// constructor and "1, 2" are the arguments. Given the u64 `2`, "2" is the
+/// constructor and it has no arguments (you can think of this by imagining
+/// that u64 is the enum type and each u64 value is a variant of that enum type,
+/// making the value itself a constructor).
+///
+/// `Pattern`s are semantically categorized into three categories: wildcard
+/// patterns (the catchall pattern `_` and variable binding patterns like `a`),
+/// constructed patterns (`(1,2)` aka "a tuple with 2 elements" with arguments
+/// "1, 2"), and or-patterns (`1 | 2 | .. `).
+///
+/// `Pattern`s are used in the exhaustivity algorithm.
+///
+/// # Usefulness
+///
+/// A pattern is "useful" when it covers at least one case of a possible
+/// matched value that had been left uncovered by previous patterns.
+///
+/// For example, given:
+///
+/// ```ignore
+/// let x = true;
+/// match x {
+///     true => ..,
+///     false => ..
+/// }
+/// ```
+///
+/// the pattern `false` is useful because it covers at least one case (i.e.
+/// `false`) that had been left uncovered by the previous patterns.
+///
+/// Given:
+///
+/// ```ignore
+/// let x = 5;
+/// match x {
+///     0 => ..,
+///     1 => ..,
+///     _ => ..
+/// }
+/// ```
+///
+/// the pattern `_` is useful because it covers at least one case (i.e. all
+/// cases other than 0 and 1) that had been left uncovered by the previous
+/// patterns.
+///
+/// In another example, given:
+///
+/// ```ignore
+/// let x = 5;
+/// match x {
+///     0 => ..,
+///     1 => ..,
+///     1 => .., // <--
+///     _ => ..
+/// }
+/// ```
+///
+/// the pattern `1` (noted with an arrow) is not useful as it does not cover any
+/// case that is not already covered by a previous pattern.
+///
+/// Given:
+///
+/// ```ignore
+/// let x = 5;
+/// match x {
+///     0 => ..,
+///     1 => ..,
+///     _ => ..,
+///     2 => .. // <--
+/// }
+/// ```
+///
+/// the pattern `2` is not useful as it does not cover any case that is not
+/// already covered by a previous pattern. Even though there is only one pattern
+/// `2`, any cases that the pattern `2` covers would previously be caught by the
+/// catchall pattern.
+///
+/// Usefulness used in the exhaustivity algorithm.
+///
+/// # Witnesses
+///
+/// A "witness" to a pattern is a concrete example of a matched value that would
+/// be caught by that pattern that would not have been caught by previous
+/// patterns.
+///
+/// For example, given:
+///
+/// ```ignore
+/// let x = 5;
+/// match x {
+///     0 => ..,
+///     1 => ..,
+///     _ => ..
+/// }
+/// ```
+///
+/// the witness for pattern `1` would be the pattern "1" as the pattern `1`
+/// would catch the concrete hypothetical matched value "1" and no other
+/// previous cases would have caught it. The witness for pattern `_` is an
+/// or-pattern of all of the remaining integers they wouldn't be caught by `0`
+/// and `1`, so "3 | .. | MAX".
+///
+/// Given:
+///
+/// ```ignore
+/// let x = 5;
+/// match x {
+///     0 => ..,
+///     1 => ..,
+///     1 => .., // <--
+///     _ => ..
+/// }
+/// ```
+///
+/// the pattern `1` (noted with an arrow) would not have any witnesses as there
+/// that it catches that are not caught by previous patterns.
+///
+/// # Putting it all together
+///
+/// Given the definitions above, we can say several things:
+///
+/// 1. A pattern is useful when it has witnesses to its usefulness (i.e. it has
+///    at least one hypothetical value that it catches that is not caught by
+///    previous patterns).
+/// 2. A match arm is reachable when its pattern is useful.
+/// 3. A match expression is exhaustive when, if you add an additional wildcard
+///    pattern to the existing patterns, this new wildcard pattern is not
+///    useful.
+///
+/// # Details
+///
+/// This algorithm checks is a match expression is exhaustive and if its match
+/// arms are reachable by applying the above definitions of usefulness and
+/// witnesses. This algorithm sequentionally creates a `WitnessReport` for every
+/// match arm by calling *U(P, q)*, where *P* is the `Matrix` of patterns seen
+/// so far and *q* is the current pattern under investigation for its
+/// reachability. A match arm is reachable if its `WitnessReport` is non-empty.
+/// Once all existing match arms have been analyzed, the match expression is
+/// analyzed for its exhaustivity. *U(P, q)* is called again to create another
+/// `WitnessReport`, this time where *P* is the `Matrix` of all patterns and `q`
+/// is an imaginary additional wildcard pattern. The match expression is
+/// exhaustive if the imaginary additional wildcard pattern has an empty
+/// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
     type_info: TypeInfo,
     arms: Vec<MatchCondition>,
