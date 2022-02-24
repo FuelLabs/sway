@@ -469,11 +469,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
-        if let Err(msg) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+        if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
-                    msg,
+                    ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,
@@ -487,11 +487,11 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
-        if let Err(msg) = sway_ir::optimize::combine_constants(ir, function) {
+        if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
-                    msg,
+                    ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,

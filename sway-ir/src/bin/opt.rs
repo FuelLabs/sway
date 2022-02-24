@@ -3,26 +3,29 @@ use std::{
     io::{BufReader, BufWriter, Error, ErrorKind, Read, Write},
 };
 
-use sway_ir::{function::Function, optimize, Context};
+use sway_ir::{error::IrError, function::Function, optimize, Context};
 
 // -------------------------------------------------------------------------------------------------
 
 fn main() -> std::io::Result<()> {
-    let str_to_err = |msg| Error::new(ErrorKind::Other, msg);
+    fn to_err<S: std::fmt::Display>(err: S) -> Error {
+        Error::new(ErrorKind::Other, err.to_string())
+    }
 
     // Build the config from the command line.
-    let config = ConfigBuilder::build(std::env::args()).map_err(&str_to_err)?;
+    let config = ConfigBuilder::build(std::env::args()).map_err(&to_err)?;
 
     // Read the input file, or standard in.
     let input_str = read_from_input(&config.input_path)?;
 
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(&input_str).map_err(&str_to_err)?;
+    let mut ir = sway_ir::parser::parse(&input_str).map_err(&to_err)?;
 
     // Perform optimisation passes in order.
     for pass in config.passes {
         match pass.name.as_ref() {
-            "inline" => perform_inline(&mut ir).map_err(&str_to_err)?,
+            "inline" => perform_inline(&mut ir).map_err(&to_err)?,
+            "constcombine" => perform_combine_constants(&mut ir).map_err(&to_err)?,
             _otherwise => unreachable!("Unknown pass name: {}", pass.name),
         };
     }
@@ -62,7 +65,7 @@ fn write_to_output<S: Into<String>>(ir_str: S, path_str: &Option<String>) -> std
 
 // -------------------------------------------------------------------------------------------------
 
-fn perform_inline(ir: &mut Context) -> Result<bool, String> {
+fn perform_inline(ir: &mut Context) -> Result<bool, IrError> {
     // For now we inline everything into `main()`.  Eventually we can be more selective.
     let main_fn = ir
         .functions
@@ -70,6 +73,19 @@ fn perform_inline(ir: &mut Context) -> Result<bool, String> {
         .find_map(|(idx, fc)| if fc.name == "main" { Some(idx) } else { None })
         .unwrap();
     optimize::inline_all_function_calls(ir, &Function(main_fn))
+}
+
+// -------------------------------------------------------------------------------------------------
+
+fn perform_combine_constants(ir: &mut Context) -> Result<bool, IrError> {
+    let funcs = ir.functions.iter().map(|(idx, _)| idx).collect::<Vec<_>>();
+    let mut modified = false;
+    for idx in funcs {
+        if optimize::combine_constants(ir, &Function(idx))? {
+            modified = true;
+        }
+    }
+    Ok(modified)
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -133,6 +149,7 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
                     "-o" => self.build_output(),
 
                     "inline" => self.build_inline_pass(),
+                    "constcombine" => self.build_const_combine_pass(),
 
                     _otherwise => Err(format!("Unrecognised option '{}'.", opt)),
                 }
@@ -166,6 +183,14 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
         // No args yet.  Eventually we should allow specifying which functions are to be inlined
         // or which functions are to have all embedded calls inlined.
         self.cfg.passes.push("inline".into());
+        self.next = self.rest.next();
+        self.build_root()
+    }
+
+    fn build_const_combine_pass(mut self) -> Result<Config, String> {
+        // No args yet.  Eventually we should allow specifying which functions should have consts
+        // combined.
+        self.cfg.passes.push("constcombine".into());
         self.next = self.rest.next();
         self.build_root()
     }

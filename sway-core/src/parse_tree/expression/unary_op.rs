@@ -55,6 +55,7 @@ impl UnaryOp {
                     Ident::new_with_override("ops", op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(self.to_var_name(), op_span),
+                is_absolute: false,
             },
             arguments: vec![arg],
             span,

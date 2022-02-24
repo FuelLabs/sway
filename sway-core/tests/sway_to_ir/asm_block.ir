@@ -1,4 +1,4 @@
-script script {
+script {
     fn get_global_gas() -> u64 {
         entry:
         v0 = asm() -> ggas, !1 {
