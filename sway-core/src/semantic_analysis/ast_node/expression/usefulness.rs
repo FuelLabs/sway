@@ -2358,6 +2358,19 @@ pub(crate) fn check_match_expression_usefulness(
     ok((witness_report, arms_reachability), warnings, errors)
 }
 
+/// Given a `Matrix` *P* and a `PatStack` *q*, computes a `WitnessReport` from
+/// algorithm *U(P, q)*.
+///
+/// This recursive algorithm is basically an induction proof with 2 base cases.
+/// The first base case is when *P* is the empty `Matrix`. In this case, we
+/// return a witness report where the witnesses are wildcard patterns for every
+/// element of *q*. The second base case is when *P* has at least one row but
+/// does not have any columns. In this case, we return a witness report with no
+/// witnesses. This case indicates exhaustivity. The induction case covers
+/// everything else, and what we do for induction depends on what the first
+/// element of *q* is. Depending on if the first element of *q* is a wildcard
+/// pattern, or-pattern, or constructed pattern we do something different. Each
+/// case returns a witness report that we propogate through the recursive steps.
 fn is_useful(
     factory: &ConstructorFactory,
     p: &Matrix,
@@ -2406,6 +2419,43 @@ fn is_useful(
     }
 }
 
+/// Computes a witness report from *U(P, q)* when *q* is a wildcard pattern.
+///
+/// Because *q* is a wildcard pattern, this means we are checking to see if the
+/// wildcard pattern is useful given *P*. We can do this by investigating the
+/// first column Σ of *P*. If Σ is a complete signature (that is if Σ contains
+/// every constructor for the type of elements in Σ), then we can recursively
+/// compute the witnesses for every element of Σ and aggregate them. If Σ is not
+/// a complete signature, then we can compute the default `Matrix` for *P* (i.e.
+/// a version of *P* that is agnostic to *c*) and recursively compute the
+/// witnesses for if q is useful given the new default `Matrix`.
+///
+/// ---
+///
+/// 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
+///    as root constructors of the patterns of *P*'s first column.
+/// 2. Determine if Σ is a complete signature.
+/// 3. If it is a complete signature:
+///     1. For every every *k* 0..*n*, compute the specialized `Matrix`
+///        *S(cₖ, P)*
+///     2. Compute the specialized `Matrix` *S(cₖ, q)*
+///     3. Recursively compute U(S(cₖ, P), S(cₖ, q))
+///     4. If the recursive call to (3.3) returns a non-empty witness report,
+///        create a new pattern from *cₖ* and the witness report and a create a
+///        new witness report from the elements not used to create the new
+///        pattern
+///     5. Aggregate a new patterns and new witness reports from every call of
+///        (3.4)
+///     6. Transform the aggregated patterns from (3.5) into a single pattern
+///        and prepend it to the aggregated witness report
+///     7. Return the witness report
+/// 4. If it is not a complete signature:
+///     1. Compute the default `Matrix` *D(P)*
+///     2. Compute *q'* as \[q₂ ... qₙ*\].
+///     3. Recursively compute *U(D(P), q')*.
+///     4. If Σ is empty, create a pattern not present in Σ
+///     5. Add this new pattern to the resulting witness report
+///     6. Return the witness report
 fn is_useful_wildcard(
     factory: &ConstructorFactory,
     p: &Matrix,
@@ -2414,12 +2464,17 @@ fn is_useful_wildcard(
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    // 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
+    //    as root constructors of the patterns of *P*'s first column.
     let sigma = check!(
         p.compute_sigma(span),
         return err(warnings, errors),
         warnings,
         errors
     );
+
+    // 2. Determine if Σ is a complete signature.
     let is_complete_signature = check!(
         sigma.is_complete_signature(span),
         return err(warnings, errors),
@@ -2427,15 +2482,21 @@ fn is_useful_wildcard(
         errors
     );
     if is_complete_signature {
+        // 3. If it is a complete signature:
+
         let mut witness_report = WitnessReport::NoWitnesses;
         let mut pat_stack = PatStack::empty();
         for c_k in sigma.iter() {
+            //     3.1. For every every *k* 0..*n*, compute the specialized `Matrix`
+            //        *S(cₖ, P)*
             let s_c_k_p = check!(
                 compute_specialized_matrix(c_k, p, span),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
+
+            //     3.2. Compute the specialized `Matrix` *S(cₖ, q)*
             let s_c_k_q = check!(
                 compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q.clone()), span),
                 return err(warnings, errors),
@@ -2448,12 +2509,21 @@ fn is_useful_wildcard(
                 warnings,
                 errors
             );
+
+            //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
             let wr = check!(
                 is_useful(factory, &s_c_k_p, &s_c_k_q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
+
+            //     3.4. If the recursive call to (3.3) returns a non-empty witness report,
+            //        create a new pattern from *cₖ* and the witness report and a create a
+            //        new witness report from the elements not used to create the new
+            //        pattern
+            //     3.5. Aggregate the new patterns and new witness reports from every call of
+            //        (3.4)
             match (&witness_report, wr) {
                 (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {}
                 (WitnessReport::NoWitnesses, wr) => {
@@ -2481,6 +2551,9 @@ fn is_useful_wildcard(
                 }
             }
         }
+
+        //     3.6. Transform the aggregated patterns from (3.5) into a single pattern
+        //        and prepend it to the aggregated witness report
         match &mut witness_report {
             WitnessReport::NoWitnesses => {}
             witness_report => {
@@ -2498,26 +2571,37 @@ fn is_useful_wildcard(
                 );
             }
         }
+
+        //     7. Return the witness report
         ok(witness_report, warnings, errors)
     } else {
+        // 4. If it is not a complete signature:
+
+        //     4.1. Compute the default `Matrix` *D(P)*
         let d_p = check!(
             compute_default_matrix(p, span),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        //     4.2. Compute *q'* as \[q₂ ... qₙ*\].
         let (_, q_rest) = check!(
             q.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        //     4.3. Recursively compute *U(D(P), q')*.
         let mut witness_report = check!(
             is_useful(factory, &d_p, &q_rest, span),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        //     4.4. If Σ is empty, create a pattern not present in Σ
         let witness_to_add = if sigma.is_empty() {
             Pattern::Wildcard
         } else {
@@ -2528,6 +2612,8 @@ fn is_useful_wildcard(
                 errors
             )
         };
+
+        //     4.5. Add this new pattern to the resulting witness report
         match &mut witness_report {
             WitnessReport::NoWitnesses => {}
             witness_report => check!(
@@ -2537,10 +2623,24 @@ fn is_useful_wildcard(
                 errors
             ),
         }
+
+        //     4.6. Return the witness report
         ok(witness_report, warnings, errors)
     }
 }
 
+/// Computes a witness report from *U(P, q)* when *q* is a constructed pattern
+/// *c(r₁, ..., rₐ)*.
+///
+/// Given a specialized `Matrix` that specializes *P* to *c* and another
+/// specialized `Matrix` that specializes *q* to *c*, recursively compute if the
+/// latter `Matrix` is useful to the former.
+///
+/// ---
+///
+/// 1. Extract the specialized `Matrix` *S(c, P)*
+/// 2. Extract the specialized `Matrix` *S(c, q)*
+/// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
     factory: &ConstructorFactory,
     p: &Matrix,
@@ -2550,6 +2650,8 @@ fn is_useful_constructed(
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    // 1. Extract the specialized `Matrix` *S(c, P)*
     let s_c_p = check!(
         compute_specialized_matrix(&c, p, span),
         return err(warnings, errors),
@@ -2569,6 +2671,8 @@ fn is_useful_constructed(
         ));
         return err(warnings, errors);
     }
+
+    // 2. Extract the specialized `Matrix` *S(c, q)*
     let s_c_q = check!(
         compute_specialized_matrix(&c, &Matrix::from_pat_stack(q.clone()), span),
         return err(warnings, errors),
@@ -2581,9 +2685,22 @@ fn is_useful_constructed(
         warnings,
         errors
     );
+
+    // 3. Recursively compute *U(S(c, P), S(c, q))*
     is_useful(factory, &s_c_p, &s_c_q, span)
 }
 
+/// Computes a witness report from *U(P, q)* when *q* is an or-pattern
+/// *(r₁ | ... | rₐ)*.
+///
+/// Compute the witness report for each element of q and aggregate them
+/// together.
+///
+/// ---
+///
+/// 1. For each *k* 0..*a* compute *q'* as \[*rₖ q₂ ... qₙ*\].
+/// 2. Compute the witnesses from *U(P, q')*
+/// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
     factory: &ConstructorFactory,
     p: &Matrix,
@@ -2602,8 +2719,11 @@ fn is_useful_or(
     let mut p = p.clone();
     let mut witness_report = WitnessReport::Witnesses(PatStack::empty());
     for pat in pats.into_iter() {
+        // 1. For each *k* 0..*a* compute *q'* as \[*rₖ q₂ ... qₙ*\].
         let mut v = PatStack::from_pattern(pat);
         v.append(&mut q_rest.clone());
+
+        // 2. Compute the witnesses from *U(P, q')*
         let wr = check!(
             is_useful(factory, &p, &v, span),
             return err(warnings, errors),
@@ -2611,6 +2731,8 @@ fn is_useful_or(
             errors
         );
         p.push(v);
+
+        // 3. Aggregate the witnesses from every *U(P, q')*
         witness_report = WitnessReport::join_witness_reports(witness_report, wr);
     }
     ok(witness_report, warnings, errors)
@@ -2618,6 +2740,10 @@ fn is_useful_or(
 
 /// Given a `Matrix` *P*, constructs the default `Matrix` *D(P). This is done by
 /// sequentially computing the rows of *D(P)*.
+///
+/// Intuition: A default `Matrix` is a transformation upon *P* that "shrinks"
+/// the rows of *P* depending on if the row is able to generally match all
+/// patterns in a default case.
 fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -2636,21 +2762,28 @@ fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
 /// Given a `PatStack` *pⁱ* from `Matrix` *P*, compute the resulting row of the
 /// default `Matrix` *D(P)*.
 ///
+/// A row in the default `Matrix` "shrinks itself" or "eliminates itself"
+/// depending on if its possible to make general claims the first element of the
+/// row *pⁱ₁*. It is possible to make a general claim *pⁱ₁* when *pⁱ₁* is the
+/// wildcard pattern (in which case it could match anything) and when *pⁱ₁* is
+/// an or-pattern (in which case we can do recursion while pretending that the
+/// or-pattern is itself a `Matrix`). A row "eliminates itself" when *pⁱ₁* is a
+/// constructed pattern (in which case it could only make a specific constructed
+/// pattern and we could not make any general claims about it).
+///
+/// ---
+///
 /// Rows are defined according to the first component of the row:
 ///
-/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)*:
-///
-///   no row is produced
-///
-/// - *pⁱ₁* is a wildcard pattern:
-///
-///   the resulting row equals \[pⁱ₂ ... pⁱₙ*\]
-///
-/// - *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
-///
-///   Construct a new `Matrix` *P'*. Given *k* 0..*a*, the rows of *P'* are
-///   defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*. The resulting rows are the
-///   rows obtained from calling the recursive *D(P')*
+/// 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)*:
+///     1. no row is produced
+/// 2. *pⁱ₁* is a wildcard pattern:
+///     1. the resulting row equals \[pⁱ₂ ... pⁱₙ*\]
+/// 3. *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+///     1. Construct a new `Matrix` *P'*, where given *k* 0..*a*, the rows of
+///        *P'* are defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*.
+///     2. The resulting rows are the rows obtained from calling the recursive
+///        *D(P')*
 fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<PatStack>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -2663,17 +2796,24 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
     );
     match p_i_1 {
         Pattern::Wildcard => {
+            // 2. *pⁱ₁* is a wildcard pattern:
+            //     1. the resulting row equals \[pⁱ₂ ... pⁱₙ*\]
             let mut row = PatStack::empty();
             row.append(&mut p_i_rest);
             rows.push(row);
         }
         Pattern::Or(pats) => {
+            // 3. *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+            //     1. Construct a new `Matrix` *P'*, where given *k* 0..*a*, the rows of
+            //        *P'* are defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*.
             let mut m = Matrix::empty();
             for pat in pats.iter() {
                 let mut m_row = PatStack::from_pattern(pat.clone());
                 m_row.append(&mut p_i_rest.clone());
                 m.push(m_row);
             }
+            //     2. The resulting rows are the rows obtained from calling the recursive
+            //        *D(P')*
             let d_p = check!(
                 compute_default_matrix(&m, span),
                 return err(warnings, errors),
@@ -2682,6 +2822,8 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
             );
             rows.append(&mut d_p.into_rows());
         }
+        // 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)*:
+        //     1. no row is produced
         _ => {}
     }
     ok(rows, warnings, errors)
@@ -2690,6 +2832,9 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
 /// Given a constructor *c* and a `Matrix` *P*, constructs the specialized
 /// `Matrix` *S(c, P)*. This is done by sequentially computing the rows of
 /// *S(c, P)*.
+///
+/// Intuition: A specialized `Matrix` is a transformation upon *P* that
+/// "unwraps" the rows of *P* depending on if they are congruent with *c*.
 fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -2721,25 +2866,33 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
 /// Given a constructor *c* and a `PatStack` *pⁱ* from `Matrix` *P*, compute the
 /// resulting row of the specialized `Matrix` *S(c, P)*.
 ///
+/// Intuition: a row in the specialized `Matrix` "expands itself" or "eliminates
+/// itself" depending on if its possible to furthur "drill down" into the
+/// elements of *P* given a *c* that we are specializing for. It is possible to
+/// "drill down" when the first element of a row of *P* *pⁱ₁* matches *c* (in
+/// which case it is possible to "drill down" into the arguments for *pⁱ₁*),
+/// when *pⁱ₁* is the wildcard case (in which case it is possible to "drill
+/// down" into "fake" arguments for *pⁱ₁* as it does not matter if *c* matches
+/// or not), and when *pⁱ₁* is an or-pattern (in which case we can do recursion
+/// while pretending that the or-pattern is itself a `Matrix`). A row
+/// "eliminates itself" when *pⁱ₁* does not match *c* (in which case it is not
+/// possible to "drill down").
+///
+/// ---
+///
 /// Rows are defined according to the first component of the row:
 ///
-/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* == *c'*:
-///
-///   the resulting row equals \[*r₁ ... rₐ pⁱ₂ ... pⁱₙ*\]
-///
-/// - *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* != *c'*:
-///
-///   no row is produced
-///
-/// - *pⁱ₁* is a wildcard pattern and the number of sub-patterns in *c* is *a*:
-///
-///   the resulting row equals \[*_₁ ... _ₐ pⁱ₂ ... pⁱₙ*\]
-///
-/// - *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
-///
-///   Construct a new `Matrix` *P'*. Given *k* 0..*a*, the rows of *P'* are
-///   defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*. The resulting rows are the
-///   rows obtained from calling the recursive *S(c, P')*
+/// 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* == *c'*:
+///     1. the resulting row equals \[*r₁ ... rₐ pⁱ₂ ... pⁱₙ*\]
+/// 2. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* != *c'*:
+///     1. no row is produced
+/// 3. *pⁱ₁* is a wildcard pattern and the number of sub-patterns in *c* is *a*:
+///     1. the resulting row equals \[*_₁ ... _ₐ pⁱ₂ ... pⁱₙ*\]
+/// 4. *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+///     1. Construct a new `Matrix` *P'* where, given *k* 0..*a*, the rows of
+///        *P'* are defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*
+///     2. The resulting rows are the rows obtained from calling the recursive
+///        *S(c, P')*
 fn compute_specialized_matrix_row(
     c: &Pattern,
     p_i: &PatStack,
@@ -2756,17 +2909,25 @@ fn compute_specialized_matrix_row(
     );
     match p_i_1 {
         Pattern::Wildcard => {
+            // 3. *pⁱ₁* is a wildcard pattern and the number of sub-patterns in *c* is *a*:
+            //     3.1. the resulting row equals \[*_₁ ... _ₐ pⁱ₂ ... pⁱₙ*\]
             let mut row: PatStack = PatStack::fill_wildcards(c.a());
             row.append(&mut p_i_rest);
             rows.push(row);
         }
         Pattern::Or(pats) => {
+            // 4. *pⁱ₁* is an or-pattern *(r₁ | ... | rₐ)*:
+            //     4.1. Construct a new `Matrix` *P'* where, given *k* 0..*a*, the rows of
+            //        *P'* are defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*
             let mut m = Matrix::empty();
             for pat in pats.iter() {
                 let mut m_row = PatStack::from_pattern(pat.clone());
                 m_row.append(&mut p_i_rest.clone());
                 m.push(m_row);
             }
+
+            //     4.2. The resulting rows are the rows obtained from calling the recursive
+            //        *S(c, P')*
             let s_c_p = check!(
                 compute_specialized_matrix(c, &m, span),
                 return err(warnings, errors),
@@ -2777,6 +2938,8 @@ fn compute_specialized_matrix_row(
         }
         other => {
             if c.has_the_same_constructor(&other) {
+                // 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* == *c'*:
+                //     1.1. the resulting row equals \[*r₁ ... rₐ pⁱ₂ ... pⁱₙ*\]
                 let mut row: PatStack = check!(
                     other.sub_patterns(span),
                     return err(warnings, errors),
@@ -2786,6 +2949,8 @@ fn compute_specialized_matrix_row(
                 row.append(&mut p_i_rest);
                 rows.push(row);
             }
+            // 2. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* != *c'*:
+            //     2.1. no row is produced
         }
     }
     ok(rows, warnings, errors)
