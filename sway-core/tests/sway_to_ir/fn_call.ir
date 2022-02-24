@@ -1,4 +1,4 @@
-script script {
+script {
     fn a(x !1: u64) -> u64 {
         entry:
         ret u64 x

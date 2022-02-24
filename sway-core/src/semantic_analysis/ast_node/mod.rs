@@ -414,6 +414,7 @@ impl TypedAstNode {
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
+                                    is_absolute: false,
                                 },
                                 TypeInfo::SelfType,
                                 interface_surface
@@ -542,6 +543,7 @@ impl TypedAstNode {
                             let trait_name = CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_with_override("r#Self", block_span.clone()),
+                                is_absolute: false,
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),

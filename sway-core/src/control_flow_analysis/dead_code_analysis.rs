@@ -491,8 +491,9 @@ fn connect_trait_declaration(
 ) {
     graph.namespace.add_trait(
         CallPath {
-            suffix: decl.name.clone(),
             prefixes: vec![],
+            suffix: decl.name.clone(),
+            is_absolute: false,
         },
         entry_node,
     );
@@ -506,8 +507,9 @@ fn connect_abi_declaration(
 ) {
     graph.namespace.add_trait(
         CallPath {
-            suffix: decl.name.clone(),
             prefixes: vec![],
+            suffix: decl.name.clone(),
+            is_absolute: false,
         },
         entry_node,
     );

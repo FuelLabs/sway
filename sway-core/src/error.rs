@@ -390,6 +390,8 @@ pub enum CompileError {
         span: Span,
         err: pest::error::Error<Rule>,
     },
+    #[error("Error parsing input: {err:?}")]
+    ParseError { span: Span, err: String },
     #[error(
         "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
          predicate at the top level."
@@ -929,6 +931,7 @@ impl CompileError {
             Unimplemented(_, span) => span,
             TypeError(err) => err.internal_span(),
             ParseFailure { span, .. } => span,
+            ParseError { span, .. } => span,
             InvalidTopLevelItem(_, span) => span,
             Internal(_, span) => span,
             InternalOwned(_, span) => span,

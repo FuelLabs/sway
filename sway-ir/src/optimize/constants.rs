@@ -7,13 +7,14 @@
 use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
+    error::IrError,
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
 };
 
 /// Find constant expressions which can be reduced to fewer opterations.
-pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, String> {
+pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
         if combine_const_insert_values(context, function) {

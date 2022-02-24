@@ -370,8 +370,7 @@ pub(crate) fn convert_expression_to_asm(
             register_sequencer,
             exp.span.clone(),
         ),
-        a => {
-            println!("unimplemented: {:?}", a);
+        _ => {
             errors.push(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
