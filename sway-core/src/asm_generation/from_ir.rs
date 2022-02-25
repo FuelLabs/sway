@@ -1400,7 +1400,20 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
 
                                 // Insert the value into the map.
-                                self.reg_map.insert(*value, reg.clone());
+                                //self.reg_map.insert(*value, reg.clone());
+                                //
+                                // Actually, no, don't.  It's possible for constant values to be
+                                // reused in the IR, especially with transforms which copy blocks
+                                // around, like inlining.  The `LW`/`LWDataId` instruction above
+                                // initialises that constant value but it may be in a conditional
+                                // block and not actually get evaluated for every possible
+                                // execution. So using the register later on by pulling it from
+                                // `self.reg_map` will have a potentially uninitialised register.
+                                //
+                                // By not putting it in the map we recreate the `LW` each time it's
+                                // used, which also isn't ideal.  A better solution is to put this
+                                // initialisation into the IR itself, and allow for analysis there
+                                // to determine when it may be initialised and/or reused.
 
                                 // Return register.
                                 reg
