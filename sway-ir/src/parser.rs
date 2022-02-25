@@ -703,8 +703,7 @@ mod ir_builder {
                                 immediate: imm,
                                 span_md_idx: meta_idx
                                     .as_ref()
-                                    .map(|meta_idx| md_map.get(meta_idx).copied())
-                                    .flatten(),
+                                    .and_then(|meta_idx| md_map.get(meta_idx).copied()),
                             },
                         )
                         .collect();
