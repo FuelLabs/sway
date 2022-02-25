@@ -7,13 +7,14 @@
 use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
+    error::IrError,
     function::Function,
     instruction::Instruction,
-    value::{Value, ValueContent},
+    value::{Value, ValueContent, ValueDatum},
 };
 
 /// Find constant expressions which can be reduced to fewer opterations.
-pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, String> {
+pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
         if combine_const_insert_values(context, function) {
@@ -32,7 +33,7 @@ fn combine_const_insert_values(context: &mut Context, function: &Function) -> bo
     let candidate = function
         .instruction_iter(context)
         .find_map(|(block, ins_val)| {
-            match &context.values[ins_val.0] {
+            match &context.values[ins_val.0].value {
                 // We only want inject this constant value into a constant aggregate declaration,
                 // not another `insert_value` instruction.
                 //
@@ -40,15 +41,15 @@ fn combine_const_insert_values(context: &mut Context, function: &Function) -> bo
                 // but we'd have to be careful that this constant value isn't clobbered by the
                 // chain.  It's simpler to just combine the instruction which modifies the
                 // aggregate directly and then to iterate.
-                ValueContent::Instruction(Instruction::InsertValue {
+                ValueDatum::Instruction(Instruction::InsertValue {
                     aggregate,
                     ty: _,
                     value,
                     indices,
                 }) if value.is_constant(context)
                     && matches!(
-                        &context.values[aggregate.0],
-                        ValueContent::Constant(Constant {
+                        &context.values[aggregate.0].value,
+                        ValueDatum::Constant(Constant {
                             value: ConstantValue::Struct(_),
                             ..
                         }),
@@ -88,14 +89,17 @@ fn combine_const_aggregate_field(
     indices: &[u64],
 ) -> Value {
     // Create a copy of the aggregate constant and inserted value.
-    let mut new_aggregate = match &context.values[aggregate.0] {
-        ValueContent::Constant(c) => c.clone(),
+    let (mut new_aggregate, span_md_idx) = match &context.values[aggregate.0] {
+        ValueContent {
+            value: ValueDatum::Constant(c),
+            span_md_idx,
+        } => (c.clone(), *span_md_idx),
         _otherwise => {
             unreachable!("BUG! Invalid aggregate parameter to combine_const_insert_value()")
         }
     };
-    let const_value = match &context.values[const_value.0] {
-        ValueContent::Constant(c) => c.clone(),
+    let const_value = match &context.values[const_value.0].value {
+        ValueDatum::Constant(c) => c.clone(),
         _otherwise => {
             unreachable!("BUG! Invalid const_value parameter to combine_const_insert_value()")
         }
@@ -105,7 +109,7 @@ fn combine_const_aggregate_field(
     inject_constant_into_aggregate(&mut new_aggregate, const_value, indices);
 
     // Replace the old aggregate with the new aggregate.
-    let new_aggregate_value = Value::new_constant(context, new_aggregate);
+    let new_aggregate_value = Value::new_constant(context, new_aggregate, span_md_idx);
     function.replace_value(context, aggregate, new_aggregate_value, None);
 
     // Remove the old aggregate from the context.

@@ -1,4 +1,4 @@
-script script {
+script {
     fn f(a: string<10>, b: string<10>) -> u64 {
         entry:
         v0 = const u64 2

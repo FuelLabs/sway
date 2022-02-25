@@ -1,21 +1,32 @@
-script script {
+script {
     fn main() -> u64 {
         local ptr { b256, { bool, u64 } } record
 
         entry:
-        v0 = const { bool, u64 } { bool undef, u64 undef }
-        v1 = const bool true
-        v2 = insert_value v0, { bool, u64 }, v1, 0
-        v3 = const u64 76
-        v4 = insert_value v2, { bool, u64 }, v3, 1
-        v5 = const { b256, { bool, u64 } } { b256 undef, { bool, u64 } { bool undef, u64 undef } }
-        v6 = const b256 0x0102030405060708010203040506070801020304050607080102030405060708
-        v7 = insert_value v5, { b256, { bool, u64 } }, v6, 0
-        v8 = insert_value v7, { b256, { bool, u64 } }, v4, 1
-        store v8, ptr { b256, { bool, u64 } } record
-        v9 = get_ptr ptr { b256, { bool, u64 } } record
-        v10 = extract_value v9, { b256, { bool, u64 } }, 1
-        v11 = extract_value v10, { bool, u64 }, 1
+        v0 = const { bool, u64 } { bool undef, u64 undef }, !1
+        v1 = const bool true, !2
+        v2 = insert_value v0, { bool, u64 }, v1, 0, !1
+        v3 = const u64 76, !3
+        v4 = insert_value v2, { bool, u64 }, v3, 1, !1
+        v5 = const { b256, { bool, u64 } } { b256 undef, { bool, u64 } { bool undef, u64 undef } }, !4
+        v6 = const b256 0x0102030405060708010203040506070801020304050607080102030405060708, !5
+        v7 = insert_value v5, { b256, { bool, u64 } }, v6, 0, !4
+        v8 = insert_value v7, { b256, { bool, u64 } }, v4, 1, !4
+        store v8, ptr { b256, { bool, u64 } } record, !6
+        v9 = get_ptr ptr { b256, { bool, u64 } } record, !7
+        v10 = extract_value v9, { b256, { bool, u64 } }, 1, !8
+        v11 = extract_value v10, { bool, u64 }, 1, !9
         ret u64 v11
     }
 }
+
+!0 = filepath "/path/to/struct_struct.sw"
+!1 = span !0 144 201
+!2 = span !0 167 171
+!3 = span !0 188 190
+!4 = span !0 45 207
+!5 = span !0 65 131
+!6 = span !0 32 208
+!7 = span !0 213 219
+!8 = span !0 220 221
+!9 = span !0 222 223

@@ -1,32 +1,46 @@
-script script {
+script {
     fn main() -> u64 {
         local ptr bool a
         local ptr u64 a_
         local ptr { u64 } a__
 
         entry:
-        v0 = const bool true
-        store v0, ptr bool a
-        v1 = load ptr bool a
-        cbr v1, block0, block1
+        v0 = const bool true, !1
+        store v0, ptr bool a, !2
+        v1 = load ptr bool a, !3
+        cbr v1, block0, block1, !4
 
         block0:
-        v2 = const u64 12
+        v2 = const u64 12, !5
         br block2
 
         block1:
-        v3 = const u64 21
+        v3 = const u64 21, !6
         br block2
 
         block2:
         v4 = phi(block0: v2, block1: v3)
-        store v4, ptr u64 a_
-        v5 = load ptr u64 a_
-        v6 = const { u64 } { u64 undef }
-        v7 = insert_value v6, { u64 }, v5, 0
-        store v7, ptr { u64 } a__
-        v8 = get_ptr ptr { u64 } a__
-        v9 = extract_value v8, { u64 }, 0
+        store v4, ptr u64 a_, !7
+        v5 = load ptr u64 a_, !8
+        v6 = const { u64 } { u64 undef }, !9
+        v7 = insert_value v6, { u64 }, v5, 0, !9
+        store v7, ptr { u64 } a__, !10
+        v8 = get_ptr ptr { u64 } a__, !11
+        v9 = extract_value v8, { u64 }, 0, !12
         ret u64 v9
     }
 }
+
+!0 = filepath "/path/to/shadowed_locals.sw"
+!1 = span !0 66 70
+!2 = span !0 58 71
+!3 = span !0 87 88
+!4 = span !0 87 88
+!5 = span !0 91 93
+!6 = span !0 103 105
+!7 = span !0 76 108
+!8 = span !0 128 129
+!9 = span !0 121 131
+!10 = span !0 113 132
+!11 = span !0 137 138
+!12 = span !0 139 140

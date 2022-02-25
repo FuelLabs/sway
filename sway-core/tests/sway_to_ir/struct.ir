@@ -1,16 +1,24 @@
-script script {
+script {
     fn main() -> u64 {
         local ptr { u64, u64 } record
 
         entry:
-        v0 = const { u64, u64 } { u64 undef, u64 undef }
-        v1 = const u64 40
-        v2 = insert_value v0, { u64, u64 }, v1, 0
-        v3 = const u64 2
-        v4 = insert_value v2, { u64, u64 }, v3, 1
-        store v4, ptr { u64, u64 } record
-        v5 = get_ptr ptr { u64, u64 } record
-        v6 = extract_value v5, { u64, u64 }, 0
+        v0 = const { u64, u64 } { u64 undef, u64 undef }, !1
+        v1 = const u64 40, !2
+        v2 = insert_value v0, { u64, u64 }, v1, 0, !1
+        v3 = const u64 2, !3
+        v4 = insert_value v2, { u64, u64 }, v3, 1, !1
+        store v4, ptr { u64, u64 } record, !4
+        v5 = get_ptr ptr { u64, u64 } record, !5
+        v6 = extract_value v5, { u64, u64 }, 0, !6
         ret u64 v6
     }
 }
+
+!0 = filepath "/path/to/struct.sw"
+!1 = span !0 45 88
+!2 = span !0 65 67
+!3 = span !0 80 81
+!4 = span !0 32 89
+!5 = span !0 94 100
+!6 = span !0 101 102

@@ -17,7 +17,6 @@ pub struct Module(pub generational_arena::Index);
 
 #[doc(hidden)]
 pub struct ModuleContent {
-    pub name: String,
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub globals: HashMap<String, Value>,
@@ -36,9 +35,8 @@ impl Module {
     /// Return a new named module of a specific kind.
     ///
     /// NOTE: the name is redundant and will be removed in the future.
-    pub fn new(context: &mut Context, kind: Kind, name: &str) -> Module {
+    pub fn new(context: &mut Context, kind: Kind) -> Module {
         let content = ModuleContent {
-            name: name.to_owned(),
             kind,
             functions: Vec::new(),
             globals: HashMap::new(),

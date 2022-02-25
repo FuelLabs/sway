@@ -49,7 +49,6 @@ impl TypedFunctionDeclaration {
             build_config,
             dead_code_graph,
             mode,
-            dependency_graph,
             mut opts,
             ..
         } = arguments;
@@ -137,7 +136,6 @@ impl TypedFunctionDeclaration {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),

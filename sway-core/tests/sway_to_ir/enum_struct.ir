@@ -1,17 +1,24 @@
-script script {
+script {
     fn main() -> () {
         entry:
-        v0 = const { u64, { () | { b256, bool, u64 } | () } } { u64 undef, { () | { b256, bool, u64 } | () } undef }
-        v1 = const u64 1
-        v2 = insert_value v0, { u64, { () | { b256, bool, u64 } | () } }, v1, 0
-        v3 = const { b256, bool, u64 } { b256 undef, bool undef, u64 undef }
-        v4 = const b256 0x0001010101010101000101010101010100010101010101010001010101010101
-        v5 = insert_value v3, { b256, bool, u64 }, v4, 0
-        v6 = const bool true
-        v7 = insert_value v5, { b256, bool, u64 }, v6, 1
-        v8 = const u64 53
-        v9 = insert_value v7, { b256, bool, u64 }, v8, 2
-        v10 = insert_value v2, { u64, { () | { b256, bool, u64 } | () } }, v9, 1
+        v0 = const { u64, { () | { b256, bool, u64 } | () } } { u64 undef, { () | { b256, bool, u64 } | () } undef }, !1
+        v1 = const u64 1, !1
+        v2 = insert_value v0, { u64, { () | { b256, bool, u64 } | () } }, v1, 0, !1
+        v3 = const { b256, bool, u64 } { b256 undef, bool undef, u64 undef }, !2
+        v4 = const b256 0x0001010101010101000101010101010100010101010101010001010101010101, !3
+        v5 = insert_value v3, { b256, bool, u64 }, v4, 0, !2
+        v6 = const bool true, !4
+        v7 = insert_value v5, { b256, bool, u64 }, v6, 1, !2
+        v8 = const u64 53, !5
+        v9 = insert_value v7, { b256, bool, u64 }, v8, 2, !2
+        v10 = insert_value v2, { u64, { () | { b256, bool, u64 } | () } }, v9, 1, !1
         ret () v10
     }
 }
+
+!0 = filepath "/path/to/enum_struct.sw"
+!1 = span !0 9 55
+!2 = span !0 134 256
+!3 = span !0 151 217
+!4 = span !0 230 234
+!5 = span !0 247 249
