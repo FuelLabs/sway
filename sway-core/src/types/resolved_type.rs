@@ -1,7 +1,7 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::type_engine::*;
 use crate::{
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, TypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
     CallPath, Ident,
 };
 use derivative::Derivative;
@@ -115,7 +115,7 @@ impl From<ResolvedType> for TypeInfo {
                 name: name.to_string(),
                 variant_types: variant_types
                     .into_iter()
-                    .map(|x| OwnedTypedEnumVariant { r#type: x.into() })
+                    .map(|x| TypedEnumVariant { r#type: x.into() })
                     .collect(),
             }),
             Struct { fields, .. } => todo!(),

@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, OwnedTypedStructField},
     Ident, Rule, TypeParameter,
 };
 
@@ -25,7 +25,7 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: String,
-        variant_types: Vec<OwnedTypedEnumVariant>,
+        variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
         name: String,

@@ -19,7 +19,7 @@ use method_application::type_check_method_application;
 pub struct TypedExpression {
     pub(crate) expression: TypedExpressionVariant,
     pub(crate) return_type: TypeId,
-    /// whether or not this expression is constantly evaluatable (if the result is known at compile
+    /// whether or not this expression is constantly evaluable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
     pub(crate) span: Span,

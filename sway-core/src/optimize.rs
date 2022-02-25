@@ -233,27 +233,20 @@ fn compile_enum_decl(
         return Err("Unable to compile generic enums.".into());
     }
 
-    create_enum_aggregate(
-        context,
-        name.as_str().to_owned(),
-        variants
-            .into_iter()
-            .map(|tev| tev.as_owned_typed_enum_variant())
-            .collect(),
-    )
+    create_enum_aggregate(context, name.as_str().to_owned(), variants)
 }
 
 fn create_enum_aggregate(
     context: &mut Context,
     name: String,
-    variants: Vec<OwnedTypedEnumVariant>,
+    variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, String> {
     // Create the enum aggregate first.
     let (field_types, syms): (Vec<_>, Vec<_>) = variants
         .into_iter()
         .map(|tev| {
             (
-                convert_resolved_typeid_no_span(context, &tev.r#type),
+                convert_resolved_typeid(context, &tev.r#type, &tev.span),
                 tev.name,
             )
         })
@@ -267,7 +260,11 @@ fn create_enum_aggregate(
     // Not sure if we should do this..?  The 'field' names aren't used for enums?
     context.add_aggregate_symbols(
         enum_aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
+        HashMap::from_iter(
+            syms.into_iter()
+                .enumerate()
+                .map(|(n, sym)| (sym.to_string(), n as u64)),
+        ),
     )?;
 
     // Create the tagged union struct next.  Just by creating it here with the name it'll be added

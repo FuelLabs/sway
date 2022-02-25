@@ -163,7 +163,7 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                 };
 
-            match crate::type_engine::look_up_type_id(r#type) {
+            match look_up_type_id(r#type) {
                 TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
@@ -199,7 +199,7 @@ impl NamespaceWrapper for NamespaceRef {
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
-        let ty = crate::type_engine::look_up_type_id(ty);
+        let ty = look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
@@ -621,16 +621,12 @@ impl NamespaceWrapper for NamespaceRef {
                             };
                             self.copy_methods_to_type(old_struct, new_struct.clone());
                         }
-                        crate::type_engine::insert_type(new_struct)
+                        insert_type(new_struct)
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let old_enum = TypeInfo::Enum {
                             name: decl.name.as_str().to_string(),
-                            variant_types: decl
-                                .variants
-                                .iter()
-                                .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                                .collect(),
+                            variant_types: decl.variants.clone(),
                         };
                         let mut new_enum = old_enum.clone();
                         if !decl.type_parameters.is_empty() {
@@ -640,18 +636,14 @@ impl NamespaceWrapper for NamespaceRef {
                             let new_decl = infallible(decl.monomorphize(vec![], self_type));
                             new_enum = TypeInfo::Enum {
                                 name: new_decl.name.as_str().to_string(),
-                                variant_types: new_decl
-                                    .variants
-                                    .iter()
-                                    .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                                    .collect(),
+                                variant_types: new_decl.variants,
                             };
                             self.copy_methods_to_type(old_enum, new_enum.clone());
                         }
-                        crate::type_engine::insert_type(new_enum)
+                        insert_type(new_enum)
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
+                        insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => return Err(()),
                 }
@@ -672,7 +664,7 @@ impl NamespaceWrapper for NamespaceRef {
                         name,
                         fields,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
+                    })) => insert_type(TypeInfo::Struct {
                         name: name.as_str().to_string(),
                         fields: fields
                             .iter()
@@ -683,14 +675,11 @@ impl NamespaceWrapper for NamespaceRef {
                         name,
                         variants,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
+                    })) => insert_type(TypeInfo::Enum {
                         name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
+                        variant_types: variants,
                     }),
-                    _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+                    _ => insert_type(TypeInfo::Unknown),
                 }
             }
             TypeInfo::Ref(id) => id,

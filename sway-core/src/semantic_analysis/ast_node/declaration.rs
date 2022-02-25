@@ -349,17 +349,13 @@ impl TypedEnumDeclaration {
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
-        crate::type_engine::insert_type(TypeInfo::Enum {
+        insert_type(TypeInfo::Enum {
             name: self.name.as_str().to_string(),
-            variant_types: self
-                .variants
-                .iter()
-                .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                .collect(),
+            variant_types: self.variants.clone(),
         })
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
@@ -377,38 +373,9 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
-    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
-        OwnedTypedEnumVariant {
-            name: self.name.as_str().to_string(),
-            r#type: self.r#type,
-            tag: self.tag,
-        }
-    }
-}
-
-// TODO(Static span) -- remove this type and use TypedEnumVariant
-#[derive(Clone, Eq, PartialEq, Hash)]
-pub struct OwnedTypedEnumVariant {
-    pub(crate) name: String,
-    pub(crate) r#type: TypeId,
-    pub(crate) tag: usize,
-}
-impl std::fmt::Debug for OwnedTypedEnumVariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let text = format!(
-            "variant {} {}: {:?}",
-            self.tag,
-            self.name,
-            look_up_type_id(self.r#type)
-        );
-        f.write_str(&text)
-    }
-}
-
-impl OwnedTypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
-            name: self.name.clone(),
+            name: self.name.to_string(),
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
