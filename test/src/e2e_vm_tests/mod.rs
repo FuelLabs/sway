@@ -86,6 +86,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("supertraits_1", ProgramState::Return(1)),
         ("supertraits_2", ProgramState::Return(1)),
         ("size_of", ProgramState::Return(1)),
+        ("supertraits", ProgramState::Return(1)),
         ("new_allocator_test", ProgramState::Return(42)), // true
     ];
 
@@ -129,10 +130,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "star_import_alias",
         "item_used_without_import",
         "shadow_import",
-        "supertrait_dup_methods_1",
-        "supertrait_dup_methods_2",
-        "missing_supertrait",
         "missing_supertrait_impl",
+        "missing_func_from_supertrait_impl",
+        "supertrait_does_not_exist",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

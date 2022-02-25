@@ -1,7 +1,8 @@
 script;
 
 trait A {
-    fn a();
+    fn a1();
+    fn a2();
 }
 
 trait B: A {
@@ -18,7 +19,8 @@ trait D: C + B  {
 
 struct X { x: u64 }
 impl A for X {
-    fn a() { }
+    fn a1() { }
+    fn a2() { }
 }
 impl B for X {
     fn b() { }
@@ -31,10 +33,10 @@ impl D for X {
 }
 
 struct Y { y: u64 }
-// This code shouldn't compile because the implementation of `A` below is completely missing:
-//impl A for Y {
-//    fn a() { }
-//}
+// This code shouldn't compile because the implementation of `A` below is missing `fn a2()`:
+impl A for Y {
+    fn a1() { }
+}
 impl B for Y {
     fn b() { }
 }
