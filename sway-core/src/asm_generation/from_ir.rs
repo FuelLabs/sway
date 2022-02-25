@@ -291,21 +291,25 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         // Reserve space on the stack for ALL our locals which require it.
-        if stack_base > 0 {
+        if !self.ptr_map.is_empty() {
             let base_reg = self.reg_seqr.next();
             self.bytecode.push(Op::unowned_register_move_comment(
                 base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
                 "save locals base register",
             ));
-            if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
-                todo!("Enormous stack usage for locals.");
+
+            // It's possible (though undesirable) to have empty local data structures only.
+            if stack_base != 0 {
+                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                    todo!("Enormous stack usage for locals.");
+                }
+                let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                    value: (stack_base * 8) as u32,
+                });
+                alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
+                self.bytecode.push(alloc_op);
             }
-            let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
-                value: (stack_base * 8) as u32,
-            });
-            alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
-            self.bytecode.push(alloc_op);
             self.stack_base_reg = Some(base_reg);
         }
     }
