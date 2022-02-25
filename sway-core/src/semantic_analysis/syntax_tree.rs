@@ -9,7 +9,8 @@ use crate::{
     error::*,
     parse_tree::Purity,
     semantic_analysis::{
-        ast_node::Mode, retrieve_module, Namespace, NamespaceRef, TypeCheckArguments,
+        ast_node::Mode, namespace::arena::NamespaceWrapper, retrieve_module, Namespace,
+        NamespaceRef, TypeCheckArguments,
     },
     type_engine::*,
     AstNode, ParseTree,
@@ -172,6 +173,10 @@ impl TypedParseTree {
         // Keep a copy of the nodes as they are.
         let all_nodes = typed_tree_nodes.clone();
 
+        // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
+        // then B is also implemented for type T
+        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
@@ -260,6 +265,81 @@ impl TypedParseTree {
 
         ok(typed_parse_tree, warnings, errors)
     }
+}
+
+/// Given a list of typed AST nodes and a namespace, check whether all supertrait constraints are
+/// satisfied. We're basically checking the following condition:
+///    if trait B is implemented for type T, then trait A_i is also implemented for type T for
+///    every A_i such that A_i is a supertrait of B.
+///
+/// This nicely works for transitive supertraits as well.
+///
+fn check_supertraits(
+    typed_tree_nodes: &[TypedAstNode],
+    namespace: &NamespaceRef,
+) -> Vec<CompileError> {
+    let mut errors = vec![];
+    for node in typed_tree_nodes {
+        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+            trait_name,
+            span,
+            type_implementing_for,
+            ..
+        }) = &node.content
+        {
+            if let CompileResult {
+                value: Some(TypedDeclaration::TraitDeclaration(tr)),
+                ..
+            } = namespace.get_call_path(trait_name)
+            {
+                let supertraits = tr.supertraits;
+                for supertrait in &supertraits {
+                    if !typed_tree_nodes.iter().any(|search_node| {
+                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                            trait_name: search_node_trait_name,
+                            type_implementing_for: search_node_type_implementing_for,
+                            ..
+                        }) = &search_node.content
+                        {
+                            if let (
+                                CompileResult {
+                                    value: Some(TypedDeclaration::TraitDeclaration(tr1)),
+                                    ..
+                                },
+                                CompileResult {
+                                    value: Some(TypedDeclaration::TraitDeclaration(tr2)),
+                                    ..
+                                },
+                            ) = (
+                                namespace.get_call_path(search_node_trait_name),
+                                namespace.get_call_path(&supertrait.name),
+                            ) {
+                                return (tr1.name == tr2.name)
+                                    && (type_implementing_for
+                                        == search_node_type_implementing_for);
+                            }
+                        }
+                        false
+                    }) {
+                        // The two errors below should really be a single error (and a "note"),
+                        // but we don't have a way today to point to two separate locations in the
+                        // user code with a single error.
+                        errors.push(CompileError::SupertraitImplMissing {
+                            supertrait_name: supertrait.name.to_string(),
+                            type_name: type_implementing_for.friendly_type_str(),
+                            span: span.clone(),
+                        });
+                        errors.push(CompileError::SupertraitImplRequired {
+                            supertrait_name: supertrait.name.to_string(),
+                            trait_name: tr.name.to_string(),
+                            span: tr.name.span().clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    errors
 }
 
 fn disallow_impure_functions(
