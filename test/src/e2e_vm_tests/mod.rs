@@ -83,6 +83,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
+        ("size_of", ProgramState::Return(1)),
         ("supertraits", ProgramState::Return(1)),
         ("new_allocator_test", ProgramState::Return(42)), // true
     ];

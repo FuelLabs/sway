@@ -155,6 +155,15 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    SizeOfVal {
+        exp: Box<Expression>,
+        span: Span,
+    },
+    SizeOfType {
+        type_name: TypeInfo,
+        type_span: Span,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -272,6 +281,8 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            SizeOfVal { span, .. } => span,
+            SizeOfType { span, .. } => span,
         })
         .clone()
     }
@@ -1034,6 +1045,12 @@ impl Expression {
                 warnings,
                 errors
             ),
+            Rule::size_of_expr => check!(
+                parse_size_of_expr(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -1151,6 +1168,59 @@ pub(crate) fn parse_array_index(
             },
         };
     }
+    ok(exp, warnings, errors)
+}
+
+pub(crate) fn parse_size_of_expr(
+    item: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let span = Span {
+        span: item.as_span(),
+        path: config.map(|c| c.path()),
+    };
+    let mut iter = item.into_inner();
+    let size_of = iter.next().expect("gaurenteed by grammar");
+    let exp = match size_of.as_rule() {
+        Rule::size_of_val_expr => {
+            let mut inner_iter = size_of.into_inner();
+            let _keyword = inner_iter.next();
+            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let expr = check!(
+                Expression::parse_from_pair(elem, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            Expression::SizeOfVal {
+                exp: Box::new(expr),
+                span,
+            }
+        }
+        Rule::size_of_type_expr => {
+            let mut inner_iter = size_of.into_inner();
+            let _keyword = inner_iter.next();
+            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let type_span = Span {
+                span: elem.as_span(),
+                path: config.map(|c| c.path()),
+            };
+            let type_name = check!(
+                TypeInfo::parse_from_pair(elem, config),
+                TypeInfo::ErrorRecovery,
+                warnings,
+                errors
+            );
+            Expression::SizeOfType {
+                type_name,
+                type_span,
+                span,
+            }
+        }
+        _ => unreachable!(),
+    };
     ok(exp, warnings, errors)
 }
 
