@@ -390,10 +390,6 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
-    #[error("Pattern matching algorithm failure on: {0}")]
-    PatternMatchingAlgorithmFailure(&'static str, Span),
-    #[error("Exhaustivity checking algorithm failure on: {0}")]
-    ExhaustivityCheckingAlgorithmFailure(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: expected {err:?}")]
@@ -1061,8 +1057,6 @@ impl CompileError {
             MatchWrongType { span, .. } => span,
             MatchExpressionNonExhaustive { span, .. } => span,
             NotAnEnum { span, .. } => span,
-            PatternMatchingAlgorithmFailure(_, span) => span,
-            ExhaustivityCheckingAlgorithmFailure(_, span) => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
             IntegerTooLarge { span, .. } => span,

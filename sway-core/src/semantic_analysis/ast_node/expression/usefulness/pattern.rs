@@ -320,7 +320,7 @@ impl Pattern {
             Pattern::Wildcard => unreachable!(),
             Pattern::U8(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -330,7 +330,7 @@ impl Pattern {
             }
             Pattern::U16(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -340,7 +340,7 @@ impl Pattern {
             }
             Pattern::U32(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -350,7 +350,7 @@ impl Pattern {
             }
             Pattern::U64(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -360,7 +360,7 @@ impl Pattern {
             }
             Pattern::B256(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -370,7 +370,7 @@ impl Pattern {
             }
             Pattern::Boolean(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -380,7 +380,7 @@ impl Pattern {
             }
             Pattern::Byte(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -390,7 +390,7 @@ impl Pattern {
             }
             Pattern::Numeric(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -400,7 +400,7 @@ impl Pattern {
             }
             Pattern::String(s) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -410,7 +410,7 @@ impl Pattern {
             }
             Pattern::Struct(struct_pattern) => {
                 if args.len() != struct_pattern.fields.len() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -445,7 +445,7 @@ impl Pattern {
             }
             Pattern::Tuple(elems) => {
                 if elems.len() != args.len() {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -593,7 +593,7 @@ impl Pattern {
             _ => PatStack::empty(),
         };
         if self.a() != pats.len() {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "invariant self.a() == pats.len() broken",
                 span.clone(),
             ));

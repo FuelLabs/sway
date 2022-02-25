@@ -64,7 +64,7 @@ impl Matrix {
         let n = first.len();
         for row in self.rows.iter().skip(1) {
             if row.len() != n {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                errors.push(CompileError::Internal(
                     "found invalid matrix size",
                     span.clone(),
                 ));
@@ -86,7 +86,7 @@ impl Matrix {
         let warnings = vec![];
         let mut errors = vec![];
         if !self.is_a_vector() {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "found invalid matrix size",
                 span.clone(),
             ));
@@ -95,7 +95,7 @@ impl Matrix {
         match self.rows.first() {
             Some(first) => ok(first.clone(), warnings, errors),
             None => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                errors.push(CompileError::Internal(
                     "found invalid matrix size",
                     span.clone(),
                 ));

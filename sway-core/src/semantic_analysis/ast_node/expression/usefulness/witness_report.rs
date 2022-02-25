@@ -51,7 +51,7 @@ impl WitnessReport {
         let mut errors = vec![];
         match witness_report {
             WitnessReport::NoWitnesses => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                errors.push(CompileError::Internal(
                     "expected to find witnesses to use as arguments to a constructor",
                     span.clone(),
                 ));
@@ -81,7 +81,7 @@ impl WitnessReport {
         let mut errors = vec![];
         match self {
             WitnessReport::NoWitnesses => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                errors.push(CompileError::Internal(
                     "expected to find witnesses",
                     span.clone(),
                 ));

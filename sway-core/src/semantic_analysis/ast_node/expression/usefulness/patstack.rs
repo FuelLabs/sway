@@ -45,10 +45,7 @@ impl PatStack {
         match self.pats.first() {
             Some(first) => ok(first.to_owned(), warnings, errors),
             None => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                    "empty PatStack",
-                    span.clone(),
-                ));
+                errors.push(CompileError::Internal("empty PatStack", span.clone()));
                 err(warnings, errors)
             }
         }
@@ -67,10 +64,7 @@ impl PatStack {
                 ok((first.to_owned(), pat_stack), warnings, errors)
             }
             None => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                    "empty PatStack",
-                    span.clone(),
-                ));
+                errors.push(CompileError::Internal("empty PatStack", span.clone()));
                 err(warnings, errors)
             }
         }
@@ -81,7 +75,7 @@ impl PatStack {
         let warnings = vec![];
         let mut errors = vec![];
         if n > self.len() {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "attempting to split OOB",
                 span.clone(),
             ));
@@ -106,7 +100,7 @@ impl PatStack {
         match self.pats.get_mut(n) {
             Some(elem) => ok(elem, warnings, errors),
             None => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                errors.push(CompileError::Internal(
                     "cant retrieve mutable reference to element",
                     span.clone(),
                 ));
@@ -234,10 +228,7 @@ impl PatStack {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -250,10 +241,7 @@ impl PatStack {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -266,10 +254,7 @@ impl PatStack {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -282,10 +267,7 @@ impl PatStack {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -298,10 +280,7 @@ impl PatStack {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -314,10 +293,7 @@ impl PatStack {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -338,10 +314,7 @@ impl PatStack {
                             false => false_found = true,
                         },
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -483,10 +456,7 @@ impl PatStack {
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                        "can't pop Vec",
-                        span.clone(),
-                    ));
+                    errors.push(CompileError::Internal("can't pop Vec", span.clone()));
                     return err(warnings, errors);
                 }
             };

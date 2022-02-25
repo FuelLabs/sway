@@ -181,7 +181,7 @@ where
         let warnings = vec![];
         let mut errors = vec![];
         if last < first {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "attempted to create an invalid range",
                 span.clone(),
             ));
@@ -249,7 +249,7 @@ where
         let mut warnings = vec![];
         let mut errors = vec![];
         if !a.overlaps(b) && !a.within_one(b) {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "these two ranges cannot be joined",
                 span.clone(),
             ));
@@ -302,10 +302,7 @@ where
         let (first, rest) = match ranges.split_first() {
             Some((first, rest)) => (first.to_owned(), rest.to_owned()),
             None => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                    "unable to split vec",
-                    span.clone(),
-                ));
+                errors.push(CompileError::Internal("unable to split vec", span.clone()));
                 return err(warnings, errors);
             }
         };
@@ -315,10 +312,7 @@ where
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                        "stack empty",
-                        span.clone(),
-                    ));
+                    errors.push(CompileError::Internal("stack empty", span.clone()));
                     return err(warnings, errors);
                 }
             };
@@ -393,7 +387,7 @@ where
         // 2. Check to ensure that *oracle* fully encompasses all ranges in
         //    *guides*'.
         if !oracle.encompasses_all(&condensed) {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+            errors.push(CompileError::Internal(
                 "ranges OOB with the oracle",
                 span.clone(),
             ));
@@ -406,10 +400,7 @@ where
         let (first, last) = match (condensed.split_first(), condensed.split_last()) {
             (Some((first, _)), Some((last, _))) => (first, last),
             _ => {
-                errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                    "could not split vec",
-                    span.clone(),
-                ));
+                errors.push(CompileError::Internal("could not split vec", span.clone()));
                 return err(warnings, errors);
             }
         };
@@ -473,10 +464,7 @@ where
             let first_range = match condensed_ranges.first() {
                 Some(first_range) => first_range.clone(),
                 _ => {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                        "vec empty",
-                        span.clone(),
-                    ));
+                    errors.push(CompileError::Internal("vec empty", span.clone()));
                     return err(warnings, errors);
                 }
             };

@@ -241,10 +241,7 @@ pub(crate) fn check_match_expression_usefulness(
             }
         }
         None => {
-            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                "empty match arms",
-                span,
-            ));
+            errors.push(CompileError::Internal("empty match arms", span));
             return err(warnings, errors);
         }
     }
@@ -566,7 +563,7 @@ fn is_useful_constructed(
         errors
     );
     if s_c_p_m > 0 && s_c_p_n != (c.a() + q.len() - 1) {
-        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+        errors.push(CompileError::Internal(
             "S(c,P) matrix is misshappen",
             span.clone(),
         ));
@@ -755,7 +752,7 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
         errors
     );
     if p.is_a_vector() && m > 1 {
-        errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+        errors.push(CompileError::Internal(
             "S(c,p) must be a vector",
             span.clone(),
         ));

@@ -75,10 +75,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -106,10 +103,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -137,10 +131,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -168,10 +159,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -199,10 +187,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -243,7 +228,7 @@ impl ConstructorFactory {
                     false_found = true;
                 }
                 if true_found && false_found {
-                    errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
+                    errors.push(CompileError::Internal(
                         "unable to create a new pattern",
                         span.clone(),
                     ));
@@ -260,10 +245,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::ExhaustivityCheckingAlgorithmFailure(
-                                "type mismatch",
-                                span.clone(),
-                            ));
+                            errors.push(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }

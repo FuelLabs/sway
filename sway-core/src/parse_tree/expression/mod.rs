@@ -1837,10 +1837,7 @@ pub(crate) fn desugar_match_expression(
                 });
             }
             None => {
-                let errors = vec![CompileError::PatternMatchingAlgorithmFailure(
-                    "found None",
-                    branch_span.clone(),
-                )];
+                let errors = vec![CompileError::Internal("found None", branch_span.clone())];
                 let exp = Expression::Tuple {
                     fields: vec![],
                     span: branch_span.clone(),
