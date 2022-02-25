@@ -216,7 +216,7 @@ impl StructSymbolMap {
         aggregate: Aggregate,
         symbols: Option<HashMap<String, u64>>,
     ) -> Result<(), String> {
-        match self.aggregate_names.insert(dbg!(name), aggregate) {
+        match self.aggregate_names.insert(name, aggregate) {
             None => Ok(()),
             Some(_) => Err("Aggregate symbols were overwritten/shadowed.".to_owned()),
         }?;
