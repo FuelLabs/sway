@@ -96,8 +96,8 @@ impl fmt::Display for ConstantRegister {
             ContextGas => "$cgas",
             Balance => "$bal",
             InstructionStart => "$is",
-            ReturnValue => "$rv",
-            ReturnLength => "$rl",
+            ReturnValue => "$ret",
+            ReturnLength => "$retl",
             Flags => "$flag",
             // two `$` signs denotes this is a compiler-reserved register and not a
             // VM-reserved register

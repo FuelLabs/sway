@@ -1066,8 +1066,8 @@ fn four_regs(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
-                "rl" => ReturnLength,
-                "rv" => ReturnValue,
+                "retl" => ReturnLength,
+                "ret" => ReturnValue,
                 "ds" => DataSectionStart,
                 _ => return None,
             })
