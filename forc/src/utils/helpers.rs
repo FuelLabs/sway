@@ -337,16 +337,8 @@ fn construct_window<'a>(
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    *start_ix = if *start_ix >= calculated_start_ix {
-        *start_ix - calculated_start_ix
-    } else {
-        0
-    };
-    *end_ix = if *end_ix >= calculated_start_ix {
-        *end_ix - calculated_start_ix
-    } else {
-        0
-    };
+    *start_ix -= std::cmp::min(calculated_start_ix, *start_ix);
+    *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
 }
