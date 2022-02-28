@@ -58,9 +58,9 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         let string = toml::ser::to_string_pretty(&new_lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("Updated `Forc.lock` at {}", lock_path.display());
+        println!("   Created new lock file at {}", lock_path.display());
     } else {
-        println!("`--check` enabled: `Forc.lock` was not changed");
+        println!(" `--check` enabled: `Forc.lock` was not changed");
     }
 
     Ok(())
