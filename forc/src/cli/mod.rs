@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use clap::Parser;
 
 mod commands;
 use self::commands::{
@@ -20,23 +20,23 @@ pub use run::Command as RunCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "forc", about = "Fuel Orchestrator")]
+#[derive(Debug, Parser)]
+#[clap(name = "forc", about = "Fuel Orchestrator")]
 struct Opt {
     /// the command to run
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: Forc,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Forc {
-    #[structopt(name = "addr2line")]
+    #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
     Build(BuildCommand),
     Clean(CleanCommand),
     Deploy(DeployCommand),
     Explorer(ExplorerCommand),
-    #[structopt(name = "fmt")]
+    #[clap(name = "fmt")]
     Format(FormatCommand),
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
@@ -48,7 +48,7 @@ enum Forc {
 }
 
 pub(crate) async fn run_cli() -> Result<(), String> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),
