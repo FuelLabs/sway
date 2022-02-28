@@ -21,12 +21,7 @@ pub enum Expr {
         return_token: ReturnToken,
         expr_opt: Option<Box<Expr>>,
     },
-    If {
-        if_token: IfToken,
-        condition: Box<Expr>,
-        then_block: Braces<CodeBlockContents>,
-        else_opt: Option<(ElseToken, Braces<CodeBlockContents>)>,
-    },
+    If(IfExpr),
     Match {
         match_token: MatchToken,
         condition: Box<Expr>,
@@ -150,6 +145,43 @@ pub enum Expr {
         eq_token: EqToken,
         expr: Box<Expr>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct IfExpr {
+    pub if_token: IfToken,
+    pub condition: Box<Expr>,
+    pub then_block: Braces<CodeBlockContents>,
+    pub else_opt: Option<(ElseToken, ControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>)>,
+}
+
+impl Parse for IfExpr {
+    fn parse(parser: &mut Parser) -> ParseResult<IfExpr> {
+        println!("parsing if expr: {:#?}", parser.debug_tokens());
+        let if_token = parser.parse()?;
+        println!("got if token");
+        let condition = parser.parse()?;
+        println!("got condition");
+        let then_block = parser.parse()?;
+        println!("got then block");
+        let else_opt = match parser.take() {
+            Some(else_token) => {
+                let else_body = match parser.peek::<IfToken>() {
+                    Some(..) => {
+                        let if_expr = parser.parse()?;
+                        ControlFlow::Continue(Box::new(if_expr))
+                    },
+                    None => {
+                        let else_block = parser.parse()?;
+                        ControlFlow::Break(else_block)
+                    },
+                };
+                Some((else_token, else_body))
+            },
+            None => None,
+        };
+        Ok(IfExpr { if_token, condition, then_block, else_opt })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -302,11 +334,14 @@ fn parse_logical_and(parser: &mut Parser) -> ParseResult<Expr> {
 }
 
 fn parse_comparison(parser: &mut Parser) -> ParseResult<Expr> {
+    println!("parsing comparison: {:#?}", parser.debug_tokens());
     let mut expr = parse_bit_or(parser)?;
     loop {
         if let Some(double_eq_token) = parser.take() {
+            println!("got double-eq token, parser now at: {:#?}", parser.debug_tokens());
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser)?);
+            println!("got rhs");
             expr = Expr::Equal { lhs, double_eq_token, rhs };
             continue;
         }
@@ -492,6 +527,7 @@ fn parse_func_app(parser: &mut Parser) -> ParseResult<Expr> {
 }
 
 fn parse_atom(parser: &mut Parser) -> ParseResult<Expr> {
+    println!("parsing atom: {:#?}", parser.debug_tokens());
     if let Some(code_block_inner) = Braces::try_parse(parser)? {
         return Ok(Expr::Block(code_block_inner));
     }
@@ -529,17 +565,9 @@ fn parse_atom(parser: &mut Parser) -> ParseResult<Expr> {
         let expr = parser.parse()?;
         return Ok(Expr::Return { return_token, expr_opt: Some(expr) });
     }
-    if let Some(if_token) = parser.take() {
-        let condition = parser.parse()?;
-        let then_block = parser.parse()?;
-        let else_opt = match parser.take() {
-            None => None,
-            Some(else_token) => {
-                let else_block = parser.parse()?;
-                Some((else_token, else_block))
-            },
-        };
-        return Ok(Expr::If { if_token, condition, then_block, else_opt });
+    if parser.peek::<IfToken>().is_some() {
+        let if_expr = parser.parse()?;
+        return Ok(Expr::If(if_expr));
     }
     if let Some(match_token) = parser.take() {
         let condition = parser.parse()?;
@@ -551,6 +579,7 @@ fn parse_atom(parser: &mut Parser) -> ParseResult<Expr> {
         parser.peek::<DoubleColonToken>().is_some() ||
         parser.peek::<Ident>().is_some()
     } {
+        println!("parsing atom, looks like an ident: {:#?}", parser.debug_tokens());
         let path = parser.parse()?;
         let expr = match Braces::try_parse(parser)? {
             Some(fields) => Expr::Struct { path, fields },

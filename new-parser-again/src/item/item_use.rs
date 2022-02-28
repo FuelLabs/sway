@@ -34,25 +34,21 @@ pub enum UseTree {
 
 impl Parse for UseTree {
     fn parse(parser: &mut Parser) -> ParseResult<UseTree> {
-        println!("parsing use tree: {:#?}", parser.debug_tokens());
         if let Some(imports) = Braces::try_parse(parser)? {
             return Ok(UseTree::Group { imports });
         }
         if let Some(star_token) = parser.take() {
             return Ok(UseTree::Glob { star_token });
         }
-        //let name = match parser.take() {
-        let name = match parser.take::<Ident>() {
+        let name = match parser.take() {
             Some(name) => name,
             None => return Err(parser.emit_error("expected an import")),
         };
-        println!("parsed name {}", name.as_str());
         if let Some(as_token) = parser.take() {
             let alias = parser.parse()?;
             return Ok(UseTree::Rename { name, as_token, alias });
         }
         if let Some(double_colon_token) = parser.take() {
-            println!("parsed double colon");
             let suffix = parser.parse()?;
             return Ok(UseTree::Path { prefix: name, double_colon_token, suffix });
         }

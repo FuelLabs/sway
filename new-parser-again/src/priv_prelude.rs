@@ -2,6 +2,7 @@ pub use {
     std::{
         mem, fmt,
         marker::PhantomData,
+        ops::ControlFlow,
         str::FromStr,
         sync::Arc,
     },

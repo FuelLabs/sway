@@ -64,7 +64,7 @@ define_keyword!(MutToken, "mut");
 define_keyword!(LetToken, "let");
 
 macro_rules! define_token (
-    ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*]) => {
+    ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
         #[derive(Clone, Debug)]
         pub struct $ty_name {
             span: Span,
@@ -78,7 +78,10 @@ macro_rules! define_token (
 
         impl Peek for $ty_name {
             fn peek(peeker: Peeker<'_>) -> Option<$ty_name> {
-                let span = peeker.peek_punct_kinds(&[$(PunctKind::$punct_kinds,)*]).ok()?;
+                let span = peeker.peek_punct_kinds(
+                    &[$(PunctKind::$punct_kinds,)*],
+                    &[$(PunctKind::$not_followed_by,)*],
+                ).ok()?;
                 Some($ty_name { span })
             }
         }
@@ -94,32 +97,32 @@ macro_rules! define_token (
     };
 );
 
-define_token!(SemicolonToken, "a semicolon", [Semicolon]);
-define_token!(ForwardSlashToken, "a forward slash", [ForwardSlash]);
-define_token!(DoubleColonToken, "a double colon (::)", [Colon, Colon]);
-define_token!(StarToken, "an asterisk (*)", [Star]);
-define_token!(CommaToken, "a comma", [Comma]);
-define_token!(ColonToken, "a colon", [Colon]);
-define_token!(RightArrowToken, "`->`", [Sub, GreaterThan]);
-define_token!(LessThanToken, "`<`", [LessThan]);
-define_token!(GreaterThanToken, "`>`", [GreaterThan]);
-define_token!(TildeToken, "`~`", [Tilde]);
-define_token!(EqToken, "`=`", [Equals]);
-define_token!(FatRightArrowToken, "`=>`", [Equals, GreaterThan]);
-define_token!(DotToken, "`.`", [Dot]);
-define_token!(BangToken, "`!`", [Bang]);
-define_token!(PercentToken, "`%`", [Percent]);
-define_token!(AddToken, "`+`", [Add]);
-define_token!(SubToken, "`-`", [Sub]);
-define_token!(ShrToken, "`>>`", [GreaterThan, GreaterThan]);
-define_token!(ShlToken, "`<<`", [LessThan, LessThan]);
-define_token!(AmpersandToken, "`&`", [Ampersand]);
-define_token!(CaretToken, "`^`", [Caret]);
-define_token!(PipeToken, "`|`", [Pipe]);
-define_token!(DoubleEqToken, "`==`", [Equals, Equals]);
-define_token!(BangEqToken, "`!=`", [Bang, Equals]);
-define_token!(GreaterThanEqToken, "`>=`", [GreaterThan, Equals]);
-define_token!(LessThanEqToken, "`<=`", [LessThan, Equals]);
-define_token!(DoubleAmpersandToken, "`&&`", [Ampersand, Ampersand]);
-define_token!(DoublePipeToken, "`||`", [Pipe, Pipe]);
+define_token!(SemicolonToken, "a semicolon", [Semicolon], []);
+define_token!(ForwardSlashToken, "a forward slash", [ForwardSlash], []);
+define_token!(DoubleColonToken, "a double colon (::)", [Colon, Colon], [Colon]);
+define_token!(StarToken, "an asterisk (*)", [Star], []);
+define_token!(CommaToken, "a comma", [Comma], []);
+define_token!(ColonToken, "a colon", [Colon], [Colon]);
+define_token!(RightArrowToken, "`->`", [Sub, GreaterThan], [GreaterThan, Equals]);
+define_token!(LessThanToken, "`<`", [LessThan], [LessThan, Equals]);
+define_token!(GreaterThanToken, "`>`", [GreaterThan], [GreaterThan, Equals]);
+define_token!(TildeToken, "`~`", [Tilde], []);
+define_token!(EqToken, "`=`", [Equals], [GreaterThan, Equals]);
+define_token!(FatRightArrowToken, "`=>`", [Equals, GreaterThan], [GreaterThan, Equals]);
+define_token!(DotToken, "`.`", [Dot], []);
+define_token!(BangToken, "`!`", [Bang], [Equals]);
+define_token!(PercentToken, "`%`", [Percent], []);
+define_token!(AddToken, "`+`", [Add], []);
+define_token!(SubToken, "`-`", [Sub], []);
+define_token!(ShrToken, "`>>`", [GreaterThan, GreaterThan], [GreaterThan, Equals]);
+define_token!(ShlToken, "`<<`", [LessThan, LessThan], [LessThan, Equals]);
+define_token!(AmpersandToken, "`&`", [Ampersand], [Ampersand]);
+define_token!(CaretToken, "`^`", [Caret], []);
+define_token!(PipeToken, "`|`", [Pipe], [Pipe]);
+define_token!(DoubleEqToken, "`==`", [Equals, Equals], [Equals, GreaterThan]);
+define_token!(BangEqToken, "`!=`", [Bang, Equals], [Equals, GreaterThan]);
+define_token!(GreaterThanEqToken, "`>=`", [GreaterThan, Equals], [Equals, GreaterThan]);
+define_token!(LessThanEqToken, "`<=`", [LessThan, Equals], [Equals, GreaterThan]);
+define_token!(DoubleAmpersandToken, "`&&`", [Ampersand, Ampersand], [Ampersand]);
+define_token!(DoublePipeToken, "`||`", [Pipe, Pipe], [Pipe]);
 
