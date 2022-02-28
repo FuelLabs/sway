@@ -8,44 +8,10 @@ use anyhow::{anyhow, bail, Result};
 use std::{
     fs::{self, File},
     io::Write,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use sway_core::{create_module, source_map::SourceMap};
 use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
-
-struct BuildPlan {
-    pkg_graph: pkg::Graph,
-    pkg_path_map: pkg::PathMap,
-    compilation_order: Vec<pkg::NodeIx>,
-}
-
-impl BuildPlan {
-    /// Create a new build plan for the project by fetching and pinning dependenies.
-    pub fn new(manifest_dir: &Path, offline: bool) -> Result<Self> {
-        let manifest = read_manifest(manifest_dir)?;
-        let (graph, path_map) = pkg::fetch_deps(manifest_dir.to_path_buf(), &manifest, offline)?;
-        let compilation_order = pkg::compilation_order(&graph)?;
-        Ok(Self {
-            pkg_graph: graph,
-            pkg_path_map: path_map,
-            compilation_order,
-        })
-    }
-
-    /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path) -> Result<Self> {
-        let proj_path = lock_path.parent().unwrap();
-        let lock = Lock::from_path(lock_path)?;
-        let graph = lock.to_graph()?;
-        let compilation_order = pkg::compilation_order(&graph)?;
-        let path_map = pkg::graph_to_path_map(proj_path, &graph, &compilation_order)?;
-        Ok(Self {
-            pkg_graph: graph,
-            pkg_path_map: path_map,
-            compilation_order,
-        })
-    }
-}
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
@@ -90,13 +56,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // Attempt to load the build plan or otherwise create a new one.
     let lock_path = lock_path(&manifest_dir);
-    let plan = match BuildPlan::from_lock_file(&lock_path) {
+    let plan = match pkg::BuildPlan::from_lock_file(&lock_path) {
         Ok(plan) => plan,
         Err(e) => {
             println!("Unable to create build plan from lock file: {}", e);
             println!("Updating build plan and lock file...");
-            let plan = BuildPlan::new(&manifest_dir, offline)?;
-            let lock = Lock::from_graph(&plan.pkg_graph);
+            let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
+            let lock = Lock::from_graph(&plan.graph);
             let string = toml::ser::to_string_pretty(&lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(&lock_path, &string)
@@ -112,8 +78,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let mut json_abi = vec![];
     let mut bytecode = vec![];
     for node in plan.compilation_order {
-        let pkg = &plan.pkg_graph[node];
-        let path = &plan.pkg_path_map[&pkg.id()];
+        let pkg = &plan.graph[node];
+        let path = &plan.path_map[&pkg.id()];
         let compiled = pkg::compile(pkg, path, &build_conf, namespace, &mut source_map, silent)?;
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;

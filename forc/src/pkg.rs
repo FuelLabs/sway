@@ -1,11 +1,14 @@
 use anyhow::{anyhow, bail, Result};
-use crate::utils::{
-    dependency::Dependency,
-    helpers::{
-        find_file_name, find_main_path, get_main_file, git_checkouts_directory, print_on_failure,
-        print_on_success, print_on_success_library, read_manifest,
+use crate::{
+    lock::Lock,
+    utils::{
+        dependency::Dependency,
+        helpers::{
+            find_file_name, find_main_path, get_main_file, git_checkouts_directory,
+            print_on_failure, print_on_success, print_on_success_library, read_manifest,
+        },
+        manifest::Manifest,
     },
-    manifest::Manifest,
 };
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
@@ -23,7 +26,6 @@ use sway_types::JsonABI;
 use url::Url;
 
 type GraphIx = u32;
-// TODO: Use `Pinned`. Separate local `Path` handling into a separate map.
 type Node = Pinned;
 type Edge = ();
 pub type Graph = petgraph::Graph<Node, Edge, Directed, GraphIx>;
@@ -120,6 +122,13 @@ pub enum SourcePinned {
     Registry(SourceRegistryPinned),
 }
 
+/// Represents the full build plan for a project.
+pub(crate) struct BuildPlan {
+    pub(crate) graph: Graph,
+    pub(crate) path_map: PathMap,
+    pub(crate) compilation_order: Vec<NodeIx>,
+}
+
 // Parameters to pass through to the `BuildConfig` during compilation.
 pub(crate) struct BuildConf {
     pub(crate) use_ir: bool,
@@ -135,6 +144,34 @@ pub enum SourceGitPinnedParseError {
     Url,
     Reference,
     CommitHash,
+}
+
+impl BuildPlan {
+    /// Create a new build plan for the project by fetching and pinning dependenies.
+    pub fn new(manifest_dir: &Path, offline: bool) -> Result<Self> {
+        let manifest = read_manifest(manifest_dir)?;
+        let (graph, path_map) = fetch_deps(manifest_dir.to_path_buf(), &manifest, offline)?;
+        let compilation_order = compilation_order(&graph)?;
+        Ok(Self {
+            graph,
+            path_map,
+            compilation_order,
+        })
+    }
+
+    /// Attempt to load the build plan from the `Forc.lock` file.
+    pub fn from_lock_file(lock_path: &Path) -> Result<Self> {
+        let proj_path = lock_path.parent().unwrap();
+        let lock = Lock::from_path(lock_path)?;
+        let graph = lock.to_graph()?;
+        let compilation_order = compilation_order(&graph)?;
+        let path_map = graph_to_path_map(proj_path, &graph, &compilation_order)?;
+        Ok(Self {
+            graph,
+            path_map,
+            compilation_order,
+        })
+    }
 }
 
 impl Pinned {
