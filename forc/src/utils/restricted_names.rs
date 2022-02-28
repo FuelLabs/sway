@@ -11,11 +11,11 @@ pub fn is_non_ascii_name(name: &str) -> bool {
 pub fn is_keyword(name: &str) -> bool {
     // See https://doc.rust-lang.org/reference/keywords.html
     [
-        "Self", "abstract", "as", "async", "await", "become", "box", "break", "const", "continue",
-        "crate", "do", "dyn", "else", "enum", "extern", "false", "final", "fn", "for", "if",
-        "impl", "in", "let", "loop", "macro", "match", "mod", "move", "mut", "override", "priv",
-        "pub", "ref", "return", "self", "static", "struct", "super", "trait", "true", "try",
-        "type", "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
+        "Self", "abstract", "as", "await", "become", "box", "break", "const", "continue", "dep",
+        "do", "dyn", "else", "enum", "extern", "false", "final", "fn", "for", "if", "impl", "in",
+        "let", "loop", "macro", "match", "move", "mut", "override", "priv", "pub", "ref", "return",
+        "self", "static", "struct", "super", "trait", "true", "try", "type", "typeof", "unsafe",
+        "unsized", "use", "virtual", "where", "while", "yield",
     ]
     .contains(&name)
 }
