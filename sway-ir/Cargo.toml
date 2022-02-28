@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -16,4 +16,4 @@ generational-arena = "0.2"
 peg = "0.7"
 pest = { version = "3.0.4", package = "fuel-pest" }
 prettydiff = "0.5"
-sway-types = { version = "0.4.0", path = "../sway-types" }
+sway-types = { version = "0.5.0", path = "../sway-types" }
