@@ -68,6 +68,12 @@ pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<(), String> {
             ));
         }
     }
+    if name.is_empty() {
+        return Err(format!(
+            "{use_case} cannot be left empty, \n
+            please use a valid name"
+        ));
+    }
     Ok(())
 }
 
@@ -84,4 +90,38 @@ pub fn is_windows_reserved_path(path: &Path) -> bool {
 /// Returns `true` if the name contains any glob pattern wildcards.
 pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
     name.as_ref().contains(&['*', '?', '[', ']'][..])
+}
+
+#[test]
+fn test_invalid_char() {
+    assert_eq!(
+        contains_invalid_char("test#proj", "package name"),
+        std::result::Result::Err(
+            "invalid character `#` in package name: `test#proj`, \n
+                characters must be Unicode XID characters \n
+                (numbers, `-`, `_`, or most letters)"
+                .into()
+        )
+    );
+    assert_eq!(
+        contains_invalid_char("test proj", "package name"),
+        std::result::Result::Err(
+            "invalid character ` ` in package name: `test proj`, \n
+                characters must be Unicode XID characters \n
+                (numbers, `-`, `_`, or most letters)"
+                .into()
+        )
+    );
+    assert_eq!(
+        contains_invalid_char("", "package name"),
+        std::result::Result::Err(
+            "package name cannot be left empty, \n
+            please use a valid name"
+                .into()
+        )
+    );
+    assert_eq!(
+        contains_invalid_char("test_proj", "package name"),
+        std::result::Result::Ok(())
+    );
 }
