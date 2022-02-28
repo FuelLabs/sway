@@ -218,6 +218,11 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
     .unwrap();
 }
 
+pub(crate) fn print_lock_diff(proj_name: &str, diff: &crate::lock::Diff) {
+    print_removed_pkgs(proj_name, diff.removed.iter().cloned());
+    print_added_pkgs(proj_name, diff.added.iter().cloned());
+}
+
 pub(crate) fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
 where
     I: IntoIterator<Item = &'a crate::lock::PkgLock>,

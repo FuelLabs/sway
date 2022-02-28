@@ -2,7 +2,7 @@ use crate::{
     cli::UpdateCommand,
     lock::Lock,
     pkg,
-    utils::helpers::{lock_path, print_added_pkgs, print_removed_pkgs, read_manifest},
+    utils::helpers::{lock_path, print_lock_diff, read_manifest},
 };
 use anyhow::{anyhow, Result};
 use std::{fs, path::PathBuf};
@@ -51,9 +51,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let new_plan = pkg::BuildPlan::new(&manifest_dir, offline).map_err(|e| anyhow!("{}", e))?;
     let new_lock = Lock::from_graph(&new_plan.graph);
     let diff = new_lock.diff(&old_lock);
-
-    print_removed_pkgs(&manifest.project.name, diff.removed.iter().cloned());
-    print_added_pkgs(&manifest.project.name, diff.added.iter().cloned());
+    print_lock_diff(&manifest.project.name, &diff);
 
     // If we're not only `check`ing, write the updated lock file.
     if !check {

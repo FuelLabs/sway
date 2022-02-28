@@ -2,7 +2,7 @@ use crate::{
     cli::BuildCommand,
     lock::Lock,
     pkg,
-    utils::helpers::{default_output_directory, lock_path, print_added_pkgs, read_manifest},
+    utils::helpers::{default_output_directory, lock_path, print_lock_diff, read_manifest},
 };
 use anyhow::{anyhow, bail, Result};
 use std::{
@@ -53,25 +53,35 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         }
     };
     let manifest = read_manifest(&manifest_dir)?;
-
-    // Attempt to load the build plan or otherwise create a new one.
     let lock_path = lock_path(&manifest_dir);
-    let plan = match pkg::BuildPlan::from_lock_file(&lock_path) {
-        Ok(plan) => plan,
-        Err(e) => {
-            println!("Unable to create build plan from lock file: {}", e);
-            println!("Creating a new lock file...");
-            let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
-            let lock = Lock::from_graph(&plan.graph);
-            print_added_pkgs(&manifest.project.name, &lock.package);
-            let string = toml::ser::to_string_pretty(&lock)
-                .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-            fs::write(&lock_path, &string)
-                .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-            println!("Updated `Forc.lock` written to {}", lock_path.display());
-            plan
-        }
-    };
+
+    // Load the build plan from the lock file.
+    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path);
+
+    // Retrieve the old lock file state so we can produce a diff.
+    let old_lock = plan_result
+        .as_ref()
+        .ok()
+        .map(|plan| Lock::from_graph(&plan.graph))
+        .unwrap_or_default();
+
+    // Validate the loaded build plan for the current manifest.
+    let plan_result = plan_result.and_then(|plan| plan.validate(&manifest).map(|_| plan));
+
+    // If necessary, construct a new build plan.
+    let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+        println!("Creating a new lock file");
+        println!("  Cause: {}", e);
+        let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
+        let lock = Lock::from_graph(&plan.graph);
+        let diff = lock.diff(&old_lock);
+        print_lock_diff(&manifest.project.name, &diff);
+        let string = toml::ser::to_string_pretty(&lock)
+            .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+        println!("Lock file written to {}", lock_path.display());
+        Ok(plan)
+    })?;
 
     // Iterate over and compile all packages.
     let namespace = create_module();

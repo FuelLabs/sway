@@ -13,7 +13,7 @@ use crate::{
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, HashMap},
+    collections::{hash_map, BTreeSet, HashMap},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -45,7 +45,7 @@ pub struct Compiled {
 }
 
 /// A package uniquely identified by name along with its source.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Pkg {
     /// The unique name of the package.
     pub name: String,
@@ -67,7 +67,7 @@ pub struct Pinned {
 ///
 /// Note that a `Source` does not specify a specific, pinned version. Rather, it specifies a source
 /// at which the current latest version may be located.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
@@ -78,7 +78,7 @@ pub enum Source {
 }
 
 /// A git repo with a `Forc.toml` manifest at its root.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct SourceGit {
     /// The URL at which the repository is located.
     pub repo: Url,
@@ -87,7 +87,7 @@ pub struct SourceGit {
 }
 
 /// A package from the official registry.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct SourceRegistry {
     /// The base version specified for the package.
     pub version: semver::Version,
@@ -123,6 +123,7 @@ pub enum SourcePinned {
 }
 
 /// Represents the full build plan for a project.
+#[derive(Clone)]
 pub(crate) struct BuildPlan {
     pub(crate) graph: Graph,
     pub(crate) path_map: PathMap,
@@ -159,10 +160,9 @@ impl BuildPlan {
         })
     }
 
-    /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path) -> Result<Self> {
-        let proj_path = lock_path.parent().unwrap();
-        let lock = Lock::from_path(lock_path)?;
+
+    /// Attempt to load the build plan from the `Lock`.
+    pub fn from_lock(proj_path: &Path, lock: &Lock) -> Result<Self> {
         let graph = lock.to_graph()?;
         let compilation_order = compilation_order(&graph)?;
         let path_map = graph_to_path_map(proj_path, &graph, &compilation_order)?;
@@ -172,6 +172,51 @@ impl BuildPlan {
             compilation_order,
         })
     }
+
+    /// Attempt to load the build plan from the `Forc.lock` file.
+    pub fn from_lock_file(lock_path: &Path) -> Result<Self> {
+        let proj_path = lock_path.parent().unwrap();
+        let lock = Lock::from_path(lock_path)?;
+        Self::from_lock(proj_path, &lock)
+    }
+
+    /// Ensure that the build plan is valid for the given manifest.
+    pub fn validate(&self, manifest: &Manifest) -> Result<()> {
+        // Retrieve project's graph node.
+        let proj_node = *self
+            .compilation_order
+            .last()
+            .ok_or_else(|| anyhow!("Invalid Graph"))?;
+
+        // Collect dependency `Source`s from graph.
+        let plan_dep_pkgs: BTreeSet<_> = self
+            .graph
+            .edges_directed(proj_node, Direction::Outgoing)
+            .map(|e| self.graph[e.target()].unpinned(&self.path_map))
+            .collect();
+
+        // Collect dependency `Source`s from manifest.
+        let proj_id = self.graph[proj_node].id();
+        let proj_path = &self.path_map[&proj_id];
+        let manifest_dep_pkgs = manifest
+            .dependencies
+            .as_ref()
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+            .map(|(name, dep)| {
+                let name = name.clone();
+                let source = dep_to_source(proj_path, dep)?;
+                Ok(Pkg { name, source })
+            })
+            .collect::<Result<BTreeSet<_>>>()?;
+
+        // Ensure both `pkg::Source` are equal. If not, error.
+        if plan_dep_pkgs != manifest_dep_pkgs {
+            bail!("Manifest dependencies do not match");
+        }
+
+        Ok(())
+    }
 }
 
 impl Pinned {
@@ -180,6 +225,18 @@ impl Pinned {
     /// The internal value is produced by hashing the package's name and `SourcePinned`.
     pub fn id(&self) -> PinnedId {
         PinnedId::new(&self.name, &self.source)
+    }
+
+    /// Retrieve the unpinned version of this source.
+    pub fn unpinned(&self, path_map: &PathMap) -> Pkg {
+        let id = self.id();
+        let source = match &self.source {
+            SourcePinned::Git(git) => Source::Git(git.source.clone()),
+            SourcePinned::Path => Source::Path(path_map[&id].to_path_buf()),
+            SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
+        };
+        let name = self.name.clone();
+        Pkg { name, source }
     }
 }
 
