@@ -25,8 +25,7 @@ pub(crate) struct FieldMemoryLayoutDescriptor<N> {
     size: u64,
 }
 
-// TODO(static span) this String should be an Ident
-impl ContiguousMemoryLayoutDescriptor<String> {
+impl ContiguousMemoryLayoutDescriptor<Ident> {
     /// Calculates the offset in words from the start of a struct to a specific field.
     pub(crate) fn offset_to_field_name(&self, name: &str, span: Span) -> CompileResult<u64> {
         let field_ix = if let Some(ix) =
@@ -127,6 +126,7 @@ pub(crate) fn get_contiguous_memory_layout<N: Clone>(
         let stack_size = match ty.size_in_words(span) {
             Ok(o) => o,
             Err(e) => {
+                println!("`here3");
                 errors.push(e);
                 return err(warnings, errors);
             }
@@ -234,6 +234,7 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
             Ok(o) => match o.size_in_words(span) {
                 Ok(o) => o,
                 Err(e) => {
+                    println!("`here4");
                     errors.push(e);
                     return err(warnings, errors);
                 }

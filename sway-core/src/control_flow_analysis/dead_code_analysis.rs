@@ -798,12 +798,11 @@ fn connect_expression(
         }
         StructFieldAccess {
             field_to_access,
-            field_to_access_span,
             resolved_type_of_parent,
             ..
         } => {
             let resolved_type_of_parent =
-                resolve_type(*resolved_type_of_parent, field_to_access_span)
+                resolve_type(*resolved_type_of_parent, &field_to_access.span)
                     .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
@@ -815,7 +814,7 @@ fn connect_expression(
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
-                .find_struct_field_idx(&resolved_type_of_parent, field_name)
+                .find_struct_field_idx(resolved_type_of_parent.as_str(), field_name.as_str())
             {
                 Some(ix) => *ix,
                 None => graph.add_node("external struct".into()),

@@ -1233,13 +1233,10 @@ impl TypedExpression {
                 });
             }
         }
-        let struct_type_id = crate::type_engine::insert_type(TypeInfo::Struct {
-            name: definition.name.as_str().to_string(),
+        let struct_type_id = insert_type(TypeInfo::Struct {
+            name: definition.name.clone(),
             fields: definition
-                .fields
-                .iter()
-                .map(TypedStructField::as_owned_typed_struct_field)
-                .collect::<Vec<_>>(),
+                .fields.clone()
         });
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
@@ -1296,7 +1293,7 @@ impl TypedExpression {
         );
         let field = if let Some(field) = fields
             .iter()
-            .find(|OwnedTypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
         {
             field
         } else {
@@ -1304,11 +1301,11 @@ impl TypedExpression {
                 span: field_to_access.span().clone(),
                 available_fields: fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, .. }| name.to_string())
+                    .map(|TypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.clone(),
-                struct_name,
+                struct_name: struct_name.to_string(),
             });
             return err(warnings, errors);
         };
@@ -1318,7 +1315,6 @@ impl TypedExpression {
                 resolved_type_of_parent: parent.return_type,
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
-                field_to_access_span: span.clone(),
             },
             return_type: field.r#type,
             is_constant: IsConstant::No,
@@ -1974,7 +1970,7 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
-                if struct_name.as_str() != other_struct_name {
+                if struct_name.as_str() != other_struct_name.as_str() {
                     errors.push(CompileError::MatchWrongType {
                         expected: parent.return_type,
                         span: struct_name.span().clone(),
@@ -1984,7 +1980,7 @@ impl TypedExpression {
                 }
                 let mut field_to_access = None;
                 for struct_field in struct_fields.iter() {
-                    if struct_field.name == *field.as_str() {
+                    if struct_field.name.as_str() == field.as_str() {
                         field_to_access = Some(struct_field.clone())
                     }
                 }
@@ -2004,7 +2000,6 @@ impl TypedExpression {
                         resolved_type_of_parent: parent.return_type,
                         prefix: Box::new(parent),
                         field_to_access: field_to_access.clone(),
-                        field_to_access_span: field.span().clone(),
                     },
                     return_type: field_to_access.r#type,
                     is_constant: IsConstant::No,

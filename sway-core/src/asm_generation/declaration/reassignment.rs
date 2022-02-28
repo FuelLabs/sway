@@ -6,7 +6,7 @@ use crate::{
     },
     asm_lang::{VirtualImmediate12, VirtualOp},
     constants::VM_WORD_SIZE,
-    semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
+    semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     type_engine::*,
     type_engine::{resolve_type, TypeInfo},
 };
@@ -124,7 +124,7 @@ pub(crate) fn convert_reassignment_to_asm(
                 };
                 let fields_for_layout = fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, r#type, .. }| {
+                    .map(|TypedStructField { name, r#type, .. }| {
                         (*r#type, span.clone(), name.clone())
                     })
                     .collect::<Vec<_>>();
@@ -179,6 +179,7 @@ pub(crate) fn convert_reassignment_to_asm(
             let size_of_ty = look_up_type_id(reassignment.rhs.return_type)
                 .size_in_words(&reassignment.rhs.span)
                 .unwrap_or_else(|e| {
+                    println!("here???2");
                     errors.push(e);
                     0
                 });

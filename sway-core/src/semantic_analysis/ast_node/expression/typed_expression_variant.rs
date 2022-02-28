@@ -59,9 +59,8 @@ pub(crate) enum TypedExpressionVariant {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression>,
-        field_to_access: OwnedTypedStructField,
+        field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
-        field_to_access_span: Span,
     },
     IfLet {
         enum_type: TypeId,

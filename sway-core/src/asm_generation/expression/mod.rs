@@ -271,12 +271,10 @@ pub(crate) fn convert_expression_to_asm(
             resolved_type_of_parent,
             prefix,
             field_to_access,
-            field_to_access_span,
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &field_to_access.name,
-            field_to_access_span.clone(),
+            field_to_access.name.clone(),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
@@ -292,30 +290,12 @@ pub(crate) fn convert_expression_to_asm(
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &format!("{}", elem_to_access_num),
-            elem_to_access_span.clone(),
+            Ident::new_with_override("tuple field access", elem_to_access_span.clone()),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
             return_register,
         ),
-        /*
-        TypedExpressionVariant::EnumArgAccess {
-            prefix,
-            variant_to_access,
-            arg_num_to_access,
-            resolved_type_of_parent,
-        } => convert_enum_arg_expression_to_asm(
-            &exp.span,
-            prefix,
-            variant_to_access,
-            arg_num_to_access.to_owned(),
-            *resolved_type_of_parent,
-            namespace,
-            register_sequencer,
-            return_register,
-        ),
-        */
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
             variant_name,

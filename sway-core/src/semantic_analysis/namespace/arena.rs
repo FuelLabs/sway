@@ -84,7 +84,7 @@ pub trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)>;
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)>;
     fn get_tuple_elems(
         &self,
         ty: TypeId,
@@ -145,8 +145,8 @@ impl NamespaceWrapper for NamespaceRef {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.as_str()) {
+            let TypedStructField { r#type, .. } =
+                match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -155,7 +155,7 @@ impl NamespaceWrapper for NamespaceRef {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name,
+                            struct_name: struct_name.to_string(),
                             available_fields: available_fields.join(", "),
                             span: ident.span().clone(),
                         });
@@ -193,12 +193,14 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
+    /// Returns a tuple of all of the fields of a struct and the struct's name.
     fn get_struct_type_fields(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
         let ty = look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
@@ -601,23 +603,15 @@ impl NamespaceWrapper for NamespaceRef {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         let old_struct = TypeInfo::Struct {
-                            name: decl.name.as_str().to_string(),
-                            fields: decl
-                                .fields
-                                .iter()
-                                .map(TypedStructField::as_owned_typed_struct_field)
-                                .collect::<Vec<_>>(),
+                            name: decl.name.clone(),
+                            fields: decl.fields.clone(),
                         };
                         let mut new_struct = old_struct.clone();
                         if !decl.type_parameters.is_empty() {
                             let new_decl = decl.monomorphize();
                             new_struct = TypeInfo::Struct {
-                                name: new_decl.name.as_str().to_string(),
-                                fields: new_decl
-                                    .fields
-                                    .iter()
-                                    .map(TypedStructField::as_owned_typed_struct_field)
-                                    .collect::<Vec<_>>(),
+                                name: new_decl.name.clone(),
+                                fields: new_decl.fields.clone(),
                             };
                             self.copy_methods_to_type(old_struct, new_struct.clone());
                         }
@@ -625,7 +619,7 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let old_enum = TypeInfo::Enum {
-                            name: decl.name.as_str().to_string(),
+                            name: decl.name.clone(),
                             variant_types: decl.variants.clone(),
                         };
                         let mut new_enum = old_enum.clone();
@@ -635,7 +629,7 @@ impl NamespaceWrapper for NamespaceRef {
                             // are passing in vec![], which therefore means this is infallible.
                             let new_decl = infallible(decl.monomorphize(vec![], self_type));
                             new_enum = TypeInfo::Enum {
-                                name: new_decl.name.as_str().to_string(),
+                                name: new_decl.name.clone(),
                                 variant_types: new_decl.variants,
                             };
                             self.copy_methods_to_type(old_enum, new_enum.clone());
@@ -665,18 +659,15 @@ impl NamespaceWrapper for NamespaceRef {
                         fields,
                         ..
                     })) => insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
+                        name: name.clone(),
+                        fields: fields.clone(),
                     }),
                     Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                         name,
                         variants,
                         ..
                     })) => insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
+                        name: name.clone(),
                         variant_types: variants,
                     }),
                     _ => insert_type(TypeInfo::Unknown),

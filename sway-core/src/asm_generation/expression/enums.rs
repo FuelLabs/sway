@@ -53,6 +53,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
     let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(variant_name.span()) {
         Ok(o) => o,
         Err(e) => {
+            println!("IN ENUMS");
             errors.push(e);
             return err(warnings, errors);
         }

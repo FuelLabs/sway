@@ -18,14 +18,13 @@ pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
 use declaration::TypedTraitFn;
-pub(crate) use declaration::{
-    OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration,
-    VariableMutability,
-};
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
     TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
     TypedStructField,
+};
+pub(crate) use declaration::{
+    TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
 };
 
 pub mod impl_trait;

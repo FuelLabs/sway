@@ -3,7 +3,7 @@ use std::iter::FromIterator;
 
 use crate::{
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
-    semantic_analysis::{ast_node::TypedCodeBlock, ast_node::*, *},
+    semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
 
@@ -190,8 +190,8 @@ fn compile_declarations(
 
 fn create_struct_aggregate(
     context: &mut Context,
-    name: String,
-    fields: Vec<OwnedTypedStructField>,
+    name: Ident,
+    fields: Vec<TypedStructField>,
 ) -> Result<Aggregate, String> {
     let (field_types, syms): (Vec<_>, Vec<_>) = fields
         .into_iter()
@@ -207,10 +207,14 @@ fn create_struct_aggregate(
         .into_iter()
         .collect::<Result<Vec<_>, String>>()?;
 
-    let aggregate = Aggregate::new_struct(context, Some(name), field_types);
+    let aggregate = Aggregate::new_struct(context, Some(name.to_string()), field_types);
     context.add_aggregate_symbols(
         aggregate,
-        HashMap::from_iter(syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64))),
+        HashMap::from_iter(
+            syms.into_iter()
+                .enumerate()
+                .map(|(n, sym)| (sym.to_string(), n as u64)),
+        ),
     )?;
 
     Ok(aggregate)
@@ -233,12 +237,12 @@ fn compile_enum_decl(
         return Err("Unable to compile generic enums.".into());
     }
 
-    create_enum_aggregate(context, name.as_str().to_owned(), variants)
+    create_enum_aggregate(context, &name, variants)
 }
 
 fn create_enum_aggregate(
     context: &mut Context,
-    name: String,
+    name: &Ident,
     variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, String> {
     // Create the enum aggregate first.
@@ -256,7 +260,8 @@ fn create_enum_aggregate(
         .into_iter()
         .collect::<Result<Vec<_>, String>>()?;
 
-    let enum_aggregate = Aggregate::new_struct(context, Some(name.clone() + "_union"), field_types);
+    let enum_aggregate =
+        Aggregate::new_struct(context, Some(name.to_string() + "_union"), field_types);
     // Not sure if we should do this..?  The 'field' names aren't used for enums?
     context.add_aggregate_symbols(
         enum_aggregate,
@@ -273,7 +278,7 @@ fn create_enum_aggregate(
     // should be separate calls to create it and then insert it by name.
     Ok(Aggregate::new_struct(
         context,
-        Some(name),
+        Some(name.to_string()),
         vec![Type::Uint(64), Type::Union(enum_aggregate)],
     ))
 }
@@ -560,10 +565,9 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
-                field_to_access_span,
                 ..
             } => {
-                let span_md_idx = MetadataIndex::from_span(context, &field_to_access_span);
+                let span_md_idx = MetadataIndex::from_span(context, &field_to_access.span);
                 self.compile_struct_field_expr(
                     context,
                     *prefix,
@@ -1236,7 +1240,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_struct_expr: TypedExpression,
-        ast_field: OwnedTypedStructField,
+        ast_field: TypedStructField,
         _ast_parent_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
@@ -1258,7 +1262,7 @@ impl FnCompiler {
         }?;
 
         let field_idx = context
-            .get_aggregate_index(&aggregate, &ast_field.name)
+            .get_aggregate_index(&aggregate, &ast_field.name.as_str())
             .ok_or_else(|| format!("Unknown field name {} in struct ???", ast_field.name))?;
 
         Ok(self.current_block.ins(context).extract_value(
@@ -1519,7 +1523,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
-        TypeInfo::Struct { name, fields } => match context.get_aggregate_by_name(name) {
+        TypeInfo::Struct { name, fields } => match context.get_aggregate_by_name(name.as_str()) {
             Some(existing_aggregate) => Type::Struct(existing_aggregate),
             None => {
                 // Let's create a new aggregate from the TypeInfo.
@@ -1530,11 +1534,11 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
             name,
             variant_types,
         } => {
-            match context.get_aggregate_by_name(name) {
+            match context.get_aggregate_by_name(name.as_str()) {
                 Some(existing_aggregate) => Type::Struct(existing_aggregate),
                 None => {
                     // Let's create a new aggregate from the TypeInfo.
-                    create_enum_aggregate(context, name.clone(), variant_types.clone())
+                    create_enum_aggregate(context, name, variant_types.clone())
                         .map(&Type::Struct)?
                 }
             }

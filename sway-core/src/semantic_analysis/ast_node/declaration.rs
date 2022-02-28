@@ -94,12 +94,9 @@ impl TypedDeclaration {
                     name,
                     fields,
                     ..
-                }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.as_str().to_string(),
-                    fields: fields
-                        .iter()
-                        .map(TypedStructField::as_owned_typed_struct_field)
-                        .collect(),
+                }) => insert_type(TypeInfo::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
@@ -242,34 +239,14 @@ pub struct TypedStructField {
     pub(crate) span: Span,
 }
 
-// TODO(Static span) -- remove this type and use TypedStructField
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct OwnedTypedStructField {
-    pub(crate) name: String,
-    pub(crate) r#type: TypeId,
-}
-
-impl OwnedTypedStructField {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        };
-    }
-
+impl TypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
-            name: self.name.clone(),
+            name: self.name.to_string(),
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
     }
-}
-
-impl TypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
@@ -278,12 +255,6 @@ impl TypedStructField {
         } else {
             insert_type(look_up_type_id_raw(self.r#type))
         };
-    }
-    pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
-        OwnedTypedStructField {
-            name: self.name.as_str().to_string(),
-            r#type: self.r#type,
-        }
     }
 }
 
@@ -350,7 +321,7 @@ impl TypedEnumDeclaration {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         insert_type(TypeInfo::Enum {
-            name: self.name.as_str().to_string(),
+            name: self.name.clone(),
             variant_types: self.variants.clone(),
         })
     }

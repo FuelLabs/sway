@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{TypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
     Ident, Rule, TypeParameter,
 };
 
@@ -24,12 +24,12 @@ pub enum TypeInfo {
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: String,
+        name: Ident,
         variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
-        name: String,
-        fields: Vec<OwnedTypedStructField>,
+        name: Ident,
+        fields: Vec<TypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -355,7 +355,7 @@ impl TypeInfo {
                 let field_names = {
                     let names = fields
                         .iter()
-                        .map(|OwnedTypedStructField { r#type, .. }| {
+                        .map(|TypedStructField { r#type, .. }| {
                             resolve_type(*r#type, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
@@ -458,10 +458,13 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::TypeMustBeKnown {
-                ty: self.friendly_type_str(),
-                span: err_span.clone(),
-            }),
+            | TypeInfo::UnknownGeneric { .. } => {
+                println!("in size in words");
+                Err(CompileError::TypeMustBeKnown {
+                    ty: self.friendly_type_str(),
+                    span: err_span.clone(),
+                })
+            }
             TypeInfo::Ref(id) => look_up_type_id(*id).size_in_words(err_span),
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
