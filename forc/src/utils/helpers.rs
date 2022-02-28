@@ -1,5 +1,4 @@
 use crate::utils::restricted_names;
-// use crate::core::Shell;
 use super::manifest::Manifest;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
@@ -72,52 +71,42 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
     restricted_names::contains_invalid_char(name, "package name")?;
 
     if restricted_names::is_keyword(name) {
-        Err(format!(
+        return Err(format!(
             "the name `{name}` cannot be used as a package name, it is a Sway keyword"
         ));
     }
     if restricted_names::is_conflicting_artifact_name(name) {
-        if has_bin {
-            Err(format!(
-                "the name `{name}` cannot be used as a package name, \
-                it conflicts with cargo's build directory names"
-            ));
-        } else {
-            shell.warn(format!(
-                "the name `{name}` will not support binary \
-                executables with that name, \
-                it conflicts with cargo's build directory names"
-            ))?;
-        }
-    }
-    if name == "test" {
-        Err(format!(
-            "the name `test` cannot be used as a package name, \
-            it conflicts with Rust's built-in test library{}",
-            bin_help()
+        return Err(format!(
+            "the name `{name}` cannot be used as a package name, \
+            it conflicts with cargo's build directory names"
         ));
     }
+    if name == "test" {
+        return Err(
+            "the name `test` cannot be used as a package name, \
+            it conflicts with Rust's built-in test library".into()
+        );
+    }
     if restricted_names::is_conflicting_suffix(name) {
-        shell.warn(format!(
+        return Err(format!(
             "the name `{name}` is part of Rust's standard library\n\
-            It is recommended to use a different name to avoid problems.{}",
-            bin_help()
+            It is recommended to use a different name to avoid problems."
         ))?;
     }
     if restricted_names::is_windows_reserved(name) {
         if cfg!(windows) {
-            Err(format!(
+            return Err(format!(
                 "cannot use name `{name}`, it is a reserved Windows filename"
             ));
         } else {
-            shell.warn(format!(
+            return Err(format!(
                 "the name `{name}` is a reserved Windows filename\n\
                 This package will not work on Windows platforms."
             ))?;
         }
     }
     if restricted_names::is_non_ascii_name(name) {
-        shell.warn(format!(
+        return Err(format!(
             "the name `{name}` contains non-ASCII characters\n\
             Support for non-ASCII crate names is experimental and only valid \
             on the nightly toolchain."

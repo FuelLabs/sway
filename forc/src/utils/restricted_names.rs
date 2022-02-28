@@ -41,18 +41,18 @@ pub fn is_conflicting_artifact_name(name: &str) -> bool {
 }
 
 /// Check the package name for invalid characters.
-pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<bool, String> {
+pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<(), String> {
     let mut chars = name.chars();
     if let Some(ch) = chars.next() {
         if ch.is_digit(10) {
             // A specific error for a potentially common case.
-            Err(format!(
+            return Err(format!(
                 "the name `{name}` cannot be used as a {use_case}, \n
                 the name cannot start with a digit"
             ));
         }
         if !(unicode_xid::UnicodeXID::is_xid_start(ch) || ch == '_') {
-            Err(format!(
+            return Err(format!(
                 "invalid character `{ch}` in {use_case}: `{name}`, \n
                 the first character must be a Unicode XID start character \n
                 (most letters or `_`)"
@@ -61,14 +61,14 @@ pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<bool, String>
     }
     for ch in chars {
         if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-') {
-            Err(format!(
+            return Err(format!(
                 "invalid character `{ch}` in {use_case}: `{name}`, \n
                 characters must be Unicode XID characters \n
                 (numbers, `-`, `_`, or most letters)"
             ));
         }
     }
-    Ok(false)
+    Ok(())
 }
 
 /// Check the entire path for names reserved in Windows.
