@@ -1,4 +1,4 @@
-script script {
+script {
     fn cmp(a !1: b256, b !2: b256) -> bool {
         entry:
         v0 = asm(lhs: a, rhs: b, sz, res) -> res, !3 {

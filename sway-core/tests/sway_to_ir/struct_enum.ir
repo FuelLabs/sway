@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> bool {
         local ptr { bool, { u64, { () | () | u64 } } } record
 

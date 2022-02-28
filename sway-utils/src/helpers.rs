@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Continually go up in the file tree until a manifest (Forc.toml) is found.
+#[allow(clippy::branches_sharing_code)]
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");

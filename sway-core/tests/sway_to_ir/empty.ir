@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> () {
         entry:
         v0 = const unit ()

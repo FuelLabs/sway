@@ -1,17 +1,17 @@
 use crate::ops::forc_explorer;
-use structopt::StructOpt;
+use clap::Parser;
 
 /// Run the network explorer.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Command {
     /// The port number
-    #[structopt(short = "p", long = "port", default_value = "3030")]
+    #[clap(short = 'p', long = "port", default_value = "3030")]
     pub port: String,
-    #[structopt(subcommand)] // Note that we mark a field as a subcommand
+    #[clap(subcommand)] // Note that we mark a field as a subcommand
     pub clean: Option<CleanCommand>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub enum CleanCommand {
     Clean,
 }

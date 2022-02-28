@@ -1,6 +1,6 @@
 [package]
 name = "sway-utils"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"

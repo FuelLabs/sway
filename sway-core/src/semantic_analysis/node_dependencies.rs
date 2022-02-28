@@ -373,8 +373,9 @@ impl Dependencies {
                 fields,
                 ..
             } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.as_str().to_string()));
+                self.deps.insert(DependentSymbol::Symbol(
+                    struct_name.suffix.as_str().to_string(),
+                ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
@@ -422,6 +423,8 @@ impl Dependencies {
             Expression::IfLet {
                 expr, scrutinee, ..
             } => self.gather_from_expr(expr).gather_from_scrutinee(scrutinee),
+            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
+            Expression::SizeOfType { .. } => self,
         }
     }
 

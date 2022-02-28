@@ -38,7 +38,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     // of libraries and link against them, rather than recompile everything each time.
     assert!(ir.module_iter().count() == 1);
     let module = ir.module_iter().next().unwrap();
-    let (data_section, mut ops, _) = check!(
+    let (data_section, mut ops, mut reg_seqr) = check!(
         compile_module_to_asm(reg_seqr, ir, module),
         return err(warnings, errors),
         warnings,
@@ -64,7 +64,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&mut reg_seqr)
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -498,9 +498,9 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Some(span_md_idx) => match span_md_idx.to_span(self.context) {
                     Ok(span) => span,
-                    Err(msg) => {
+                    Err(ir_error) => {
                         errors.push(CompileError::InternalOwned(
-                            msg,
+                            ir_error.to_string(),
                             instr_val
                                 .get_span(self.context)
                                 .unwrap_or_else(Self::empty_span),

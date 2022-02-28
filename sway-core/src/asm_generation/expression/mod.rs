@@ -4,7 +4,7 @@ use crate::{
     parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{
-            declaration::TypedEnumVariant, TypedAsmRegisterDeclaration, TypedCodeBlock,
+            SizeOfVariant, TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant,
             TypedExpressionVariant,
         },
         TypedExpression,
@@ -364,8 +364,14 @@ pub(crate) fn convert_expression_to_asm(
             namespace,
             register_sequencer,
         ),
-        a => {
-            println!("unimplemented: {:?}", a);
+        TypedExpressionVariant::SizeOf { variant } => convert_size_of_expression_to_asm(
+            variant,
+            namespace,
+            return_register,
+            register_sequencer,
+            exp.span.clone(),
+        ),
+        _ => {
             errors.push(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
@@ -438,6 +444,58 @@ fn convert_literal_to_asm(
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
+}
+
+fn convert_size_of_expression_to_asm(
+    variant: &SizeOfVariant,
+    namespace: &mut AsmNamespace,
+    return_register: &VirtualRegister,
+    register_sequencer: &mut RegisterSequencer,
+    span: Span,
+) -> CompileResult<Vec<Op>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut asm_buf = vec![];
+    let type_id = match variant {
+        SizeOfVariant::Val(exp) => {
+            asm_buf.push(Op::new_comment("size_of_val".to_string()));
+            let mut ops = check!(
+                convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
+                vec![],
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut ops);
+            exp.return_type
+        }
+        SizeOfVariant::Type(ty) => {
+            asm_buf.push(Op::new_comment("size_of".to_string()));
+            *ty
+        }
+    };
+    let ty = match resolve_type(type_id, &span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let size_in_bytes: u64 = match ty.size_in_bytes(&span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    let mut ops = convert_literal_to_asm(
+        &Literal::U64(size_in_bytes),
+        namespace,
+        return_register,
+        register_sequencer,
+        span,
+    );
+    asm_buf.append(&mut ops);
+    ok(asm_buf, warnings, errors)
 }
 
 /// For now, all functions are handled by inlining at the time of application.

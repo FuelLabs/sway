@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> () {
         entry:
         v0 = const { u64, { () | { u64, { () | bool | () } } | () } } { u64 undef, { () | { u64, { () | bool | () } } | () } undef }, !1

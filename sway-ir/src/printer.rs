@@ -96,14 +96,13 @@ fn module_to_doc<'a>(
     module: &'a ModuleContent,
 ) -> Doc {
     Doc::line(Doc::Text(format!(
-        "{} {} {{",
+        "{} {{",
         match module.kind {
             Kind::Contract => "contract",
             Kind::Library => "library",
             Kind::Predicate => "predicate ",
             Kind::Script => "script",
-        },
-        &module.name
+        }
     )))
     .append(Doc::indent(
         4,
