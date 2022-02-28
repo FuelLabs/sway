@@ -1005,7 +1005,7 @@ dependencies = [
  "termcolor",
  "tokio",
  "toml",
- "unicode-xid 0.2.2",
+ "unicode-xid",
  "ureq",
  "uwuify",
  "warp",
