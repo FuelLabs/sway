@@ -114,6 +114,7 @@ mod ir_builder {
                 / op_insert_element()
                 / op_insert_value()
                 / op_load()
+                / op_nop()
                 / op_phi()
                 / op_ret()
                 / op_store()
@@ -173,6 +174,11 @@ mod ir_builder {
             rule op_load() -> IrAstOperation
                 = "load" _ ("mut" _)? "ptr" _ ast_ty() src:id() {
                     IrAstOperation::Load(src)
+                }
+
+            rule op_nop() -> IrAstOperation
+                = "nop" _ {
+                    IrAstOperation::Nop
                 }
 
             rule op_phi() -> IrAstOperation
@@ -380,6 +386,7 @@ mod ir_builder {
         context::Context,
         error::IrError,
         function::Function,
+        instruction::Instruction,
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
@@ -434,6 +441,7 @@ mod ir_builder {
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
         Load(String),
+        Nop,
         Phi(Vec<(String, String)>),
         Ret(IrAstTy, String),
         Store(String, String),
@@ -582,9 +590,11 @@ mod ir_builder {
         let mut ctx = Context::default();
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let md_map = build_metadata_map(&mut ctx, &ir_ast_mod.metadata);
+        let mut unresolved_calls = Vec::new();
         for fn_decl in ir_ast_mod.fn_decls {
-            build_add_fn_decl(&mut ctx, module, fn_decl, &md_map)?;
+            build_add_fn_decl(&mut ctx, module, fn_decl, &md_map, &mut unresolved_calls)?;
         }
+        resolve_calls(&mut ctx, unresolved_calls)?;
         Ok(ctx)
     }
 
@@ -593,6 +603,7 @@ mod ir_builder {
         module: Module,
         fn_decl: IrAstFnDecl,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
+        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
     ) -> Result<(), IrError> {
         let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
             .args
@@ -658,6 +669,7 @@ mod ir_builder {
                 &ptr_map,
                 &mut arg_map,
                 md_map,
+                unresolved_calls,
             );
         }
         Ok(())
@@ -670,6 +682,7 @@ mod ir_builder {
         ptr_map: &HashMap<String, Pointer>,
         val_map: &mut HashMap<String, Value>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
+        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
     ) {
         let block = named_blocks.get(&ir_block.label).unwrap();
         for ins in ir_block.instructions {
@@ -717,26 +730,21 @@ mod ir_builder {
                     block.ins(context).branch(*to_block, None, opt_ins_md_idx)
                 }
                 IrAstOperation::Call(callee, args) => {
-                    let function = context
-                        .functions
-                        .iter()
-                        .find_map(|(idx, content)| {
-                            if content.name == callee {
-                                Some(Function(idx))
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap();
-                    block.ins(context).call(
-                        function,
-                        &args
-                            .iter()
+                    // We can't resolve calls to other functions until we've done a first pass and
+                    // created them first.  So we can insert a NOP here, save the call params and
+                    // replace it with a CALL in a second pass.
+                    let nop = block.ins(context).nop();
+                    unresolved_calls.push((
+                        *block,
+                        nop,
+                        callee,
+                        args.iter()
                             .map(|arg_name| val_map.get(arg_name).unwrap())
                             .cloned()
                             .collect::<Vec<Value>>(),
                         opt_ins_md_idx,
-                    )
+                    ));
+                    nop
                 }
                 IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => {
                     block.ins(context).conditional_branch(
@@ -792,6 +800,7 @@ mod ir_builder {
                 IrAstOperation::Load(src_name) => block
                     .ins(context)
                     .load(*ptr_map.get(&src_name).unwrap(), opt_ins_md_idx),
+                IrAstOperation::Nop => block.ins(context).nop(),
                 IrAstOperation::Phi(pairs) => {
                     for (block_name, val_name) in pairs {
                         block.add_phi(
@@ -854,6 +863,33 @@ mod ir_builder {
             }
         }
         md_map
+    }
+
+    fn resolve_calls(
+        context: &mut Context,
+        unresolved_calls: Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
+    ) -> Result<(), IrError> {
+        // All of the call instructions are currently NOPs which need to be replaced with actual
+        // calls.  We couldn't do it above until we'd gone and created all the functions first.
+        //
+        // Now we can loop and find the callee function for each call and replace the NOPs.
+        for (block, nop, callee, args, opt_ins_md_idx) in unresolved_calls {
+            let function = context
+                .functions
+                .iter()
+                .find_map(|(idx, content)| {
+                    if content.name == callee {
+                        Some(Function(idx))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            let call_val =
+                Value::new_instruction(context, Instruction::Call(function, args), opt_ins_md_idx);
+            block.replace_instruction(context, nop, call_val)?;
+        }
+        Ok(())
     }
 }
 

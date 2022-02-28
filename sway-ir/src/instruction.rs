@@ -65,6 +65,8 @@ pub enum Instruction {
     },
     /// Read a value from a memory pointer.
     Load(Pointer),
+    /// No-op, handy as a placeholder instruction.
+    Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
     /// Return from a function.
@@ -101,6 +103,9 @@ impl Instruction {
             Instruction::InsertElement { .. } => None,
             Instruction::InsertValue { .. } => None,
             Instruction::Store { .. } => None,
+
+            // No-op is also no-type.
+            Instruction::Nop => None,
         }
     }
 
@@ -175,6 +180,7 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::Load(_) => (),
+            Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::Store { stored_val, .. } => {
@@ -428,6 +434,12 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(load_val);
         load_val
+    }
+
+    pub fn nop(self) -> Value {
+        let nop_val = Value::new_instruction(self.context, Instruction::Nop, None);
+        self.context.blocks[self.block.0].instructions.push(nop_val);
+        nop_val
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {

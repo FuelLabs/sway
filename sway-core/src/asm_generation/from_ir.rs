@@ -408,6 +408,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                 } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
                 Instruction::Load(ptr) => self.compile_load(instr_val, ptr),
+                Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
                 Instruction::Store { ptr, stored_val } => {
