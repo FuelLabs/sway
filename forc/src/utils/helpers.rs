@@ -64,11 +64,10 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
 
 // Using (https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs#L570 +
 // https://github.com/rust-lang/cargo/blob/master/src/cargo/ops/cargo_new.rs#L166) for reference
-fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
-    let name = &manifest.project.name;
 
+fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
     // if true returns formatted error
-    restricted_names::contains_invalid_char(name, "package name")?;
+    restricted_names::contains_invalid_char(name, use_case)?;
 
     if restricted_names::is_keyword(name) {
         return Err(format!(
@@ -83,12 +82,12 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
     }
     if name == "test" {
         return Err("the name `test` cannot be used as a package name, \
-            it conflicts with Rust's built-in test library"
+            it conflicts with Sway's built-in test library"
             .into());
     }
     if restricted_names::is_conflicting_suffix(name) {
         return Err(format!(
-            "the name `{name}` is part of Rust's standard library\n\
+            "the name `{name}` is part of Sway's standard library\n\
             It is recommended to use a different name to avoid problems."
         ));
     }
@@ -108,8 +107,16 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
         return Err(format!(
             "the name `{name}` contains non-ASCII characters\n\
             Support for non-ASCII crate names is experimental and only valid \
-            on the nightly toolchain."
+            on Rust's nightly toolchain."
         ));
+    }
+    Ok(())
+}
+
+fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
+    validate_name(&manifest.project.name, "package name")?;
+    if let Some(ref org) = manifest.project.organization {
+        validate_name(org, "organization name")?;
     }
 
     Ok(manifest)

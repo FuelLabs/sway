@@ -47,14 +47,14 @@ pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<(), String> {
         if ch.is_digit(10) {
             // A specific error for a potentially common case.
             return Err(format!(
-                "the name `{name}` cannot be used as a {use_case}, \n
+                "the name `{name}` cannot be used as a {use_case}, \
                 the name cannot start with a digit"
             ));
         }
         if !(unicode_xid::UnicodeXID::is_xid_start(ch) || ch == '_') {
             return Err(format!(
-                "invalid character `{ch}` in {use_case}: `{name}`, \n
-                the first character must be a Unicode XID start character \n
+                "invalid character `{ch}` in {use_case}: `{name}`, \
+                the first character must be a Unicode XID start character \
                 (most letters or `_`)"
             ));
         }
@@ -62,15 +62,15 @@ pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<(), String> {
     for ch in chars {
         if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-') {
             return Err(format!(
-                "invalid character `{ch}` in {use_case}: `{name}`, \n
-                characters must be Unicode XID characters \n
+                "invalid character `{ch}` in {use_case}: `{name}`, \
+                characters must be Unicode XID characters \
                 (numbers, `-`, `_`, or most letters)"
             ));
         }
     }
     if name.is_empty() {
         return Err(format!(
-            "{use_case} cannot be left empty, \n
+            "{use_case} cannot be left empty, \
             please use a valid name"
         ));
     }
@@ -97,8 +97,8 @@ fn test_invalid_char() {
     assert_eq!(
         contains_invalid_char("test#proj", "package name"),
         std::result::Result::Err(
-            "invalid character `#` in package name: `test#proj`, \n
-                characters must be Unicode XID characters \n
+            "invalid character `#` in package name: `test#proj`, \
+                characters must be Unicode XID characters \
                 (numbers, `-`, `_`, or most letters)"
                 .into()
         )
@@ -106,8 +106,8 @@ fn test_invalid_char() {
     assert_eq!(
         contains_invalid_char("test proj", "package name"),
         std::result::Result::Err(
-            "invalid character ` ` in package name: `test proj`, \n
-                characters must be Unicode XID characters \n
+            "invalid character ` ` in package name: `test proj`, \
+                characters must be Unicode XID characters \
                 (numbers, `-`, `_`, or most letters)"
                 .into()
         )
@@ -115,7 +115,7 @@ fn test_invalid_char() {
     assert_eq!(
         contains_invalid_char("", "package name"),
         std::result::Result::Err(
-            "package name cannot be left empty, \n
+            "package name cannot be left empty, \
             please use a valid name"
                 .into()
         )

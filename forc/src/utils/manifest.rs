@@ -49,6 +49,6 @@ fn default_url() -> String {
 fn try_parse() {
     println!(
         "{:#?}",
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test#proj")).unwrap()
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap()
     )
 }
