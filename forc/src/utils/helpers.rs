@@ -1,5 +1,5 @@
-use crate::utils::restricted_names;
 use super::manifest::Manifest;
+use crate::utils::restricted_names;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
@@ -82,10 +82,9 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
         ));
     }
     if name == "test" {
-        return Err(
-            "the name `test` cannot be used as a package name, \
-            it conflicts with Rust's built-in test library".into()
-        );
+        return Err("the name `test` cannot be used as a package name, \
+            it conflicts with Rust's built-in test library"
+            .into());
     }
     if restricted_names::is_conflicting_suffix(name) {
         return Err(format!(
