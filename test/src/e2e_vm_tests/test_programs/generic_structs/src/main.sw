@@ -23,6 +23,3 @@ fn main() -> bool {
   double_a.first
 }
 
-impl DoubleIdentity<T, F> {
-  fn test(a: T) {  }
-}
