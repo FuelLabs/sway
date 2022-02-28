@@ -1,8 +1,8 @@
 //! Used to debug function selectors
 //! Given an input function declaration, return the selector for it in hexidecimal.
+use clap::Parser;
 use pest::Parser;
 use std::sync::Arc;
-use clap::Parser;
 use sway_core::{
     create_module,
     parse_tree::declaration::FunctionDeclaration,

@@ -1,9 +1,9 @@
 use crate::ops::forc_build;
+use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 use std::thread;
-use clap::Parser;
 
 /// Run Rust-based tests on current project.
 /// As of now, `forc test` is a simple wrapper on
