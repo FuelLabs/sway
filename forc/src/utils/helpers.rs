@@ -90,7 +90,7 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
         return Err(format!(
             "the name `{name}` is part of Rust's standard library\n\
             It is recommended to use a different name to avoid problems."
-        ))?;
+        ));
     }
     if restricted_names::is_windows_reserved(name) {
         if cfg!(windows) {
@@ -101,7 +101,7 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
             return Err(format!(
                 "the name `{name}` is a reserved Windows filename\n\
                 This package will not work on Windows platforms."
-            ))?;
+            ));
         }
     }
     if restricted_names::is_non_ascii_name(name) {
@@ -109,7 +109,7 @@ fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
             "the name `{name}` contains non-ASCII characters\n\
             Support for non-ASCII crate names is experimental and only valid \
             on the nightly toolchain."
-        ))?;
+        ));
     }
 
     Ok(manifest)
