@@ -1,6 +1,11 @@
-use crate::{cli::UpdateCommand, utils::helpers::read_manifest};
+use crate::{
+    cli::UpdateCommand,
+    lock::Lock,
+    pkg,
+    utils::helpers::{lock_path, print_added_pkgs, print_removed_pkgs, read_manifest},
+};
 use anyhow::{anyhow, Result};
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 use sway_utils::find_manifest_dir;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
@@ -17,26 +22,18 @@ use sway_utils::find_manifest_dir;
 /// Use the `--package <package-name>` flag to update only a specific package throughout the
 /// dependency graph.
 pub async fn update(command: UpdateCommand) -> Result<()> {
-    if command.check {
-        // TODO
-        unimplemented!(
-            "When set, output whether target dep may be updated but don't commit to lock file"
-        );
-    }
-
     let UpdateCommand {
         path,
-        check: _,
+        check,
         // TODO: Use `package` here rather than `target_dependency`
+        target_dependency: _,
         ..
     } = command;
 
-    let this_dir = if let Some(path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
+    let this_dir = match path {
+        Some(path) => PathBuf::from(path),
+        None => std::env::current_dir()?,
     };
-
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -47,10 +44,26 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         }
     };
 
-    let _manifest = read_manifest(&manifest_dir).unwrap();
+    let manifest = read_manifest(&manifest_dir).map_err(|e| anyhow!("{}", e))?;
+    let lock_path = lock_path(&manifest_dir);
+    let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
+    let offline = false;
+    let new_plan = pkg::BuildPlan::new(&manifest_dir, offline).map_err(|e| anyhow!("{}", e))?;
+    let new_lock = Lock::from_graph(&new_plan.graph);
+    let diff = new_lock.diff(&old_lock);
 
-    // TODO
-    unimplemented!(
-        "Check the graph for git and registry changes and update the `Forc.lock` file accordingly"
-    )
+    print_removed_pkgs(&manifest.project.name, diff.removed.iter().cloned());
+    print_added_pkgs(&manifest.project.name, diff.added.iter().cloned());
+
+    // If we're not only `check`ing, write the updated lock file.
+    if !check {
+        let string = toml::ser::to_string_pretty(&new_lock)
+            .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+        println!("Updated `Forc.lock` at {}", lock_path.display());
+    } else {
+        println!("`--check` enabled: `Forc.lock` was not changed");
+    }
+
+    Ok(())
 }

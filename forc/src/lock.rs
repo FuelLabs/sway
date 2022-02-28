@@ -2,18 +2,31 @@ use anyhow::{anyhow, Result};
 use crate::pkg;
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::Path, str::FromStr};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fs,
+    path::Path,
+    str::FromStr,
+};
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct Lock {
     // Named `package` so that each entry serializes to lock file under `[[package]]` like cargo.
-    package: Vec<PkgLock>,
+    pub(crate) package: BTreeSet<PkgLock>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+/// Packages that have been removed and added between two `Lock` instances.
+///
+/// The result of `new_lock.diff(&old_lock)`.
+pub(crate) struct Diff<'a> {
+    pub(crate) removed: BTreeSet<&'a PkgLock>,
+    pub(crate) added: BTreeSet<&'a PkgLock>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub(crate) struct PkgLock {
-    name: String,
+    pub(crate) name: String,
     // TODO: Cargo *always* includes version, whereas we don't even parse it when reading a
     // project's `Manifest` yet. If we decide to enforce versions, we'll want to remove the
     // `Option`.
@@ -91,11 +104,10 @@ impl Lock {
 
     /// Given a graph of pinned packages, create a `toml` table representing the `Forc.lock` file.
     pub fn from_graph(graph: &pkg::Graph) -> Self {
-        let mut package: Vec<_> = graph
+        let package: BTreeSet<_> = graph
             .node_indices()
             .map(|node| PkgLock::from_node(graph, node))
             .collect();
-        package.sort_by(|a, b| a.name.cmp(&b.name));
         Self { package }
     }
 
@@ -138,6 +150,15 @@ impl Lock {
         }
 
         Ok(graph)
+    }
+
+    /// Create a diff between `self` and the `old` `Lock`.
+    ///
+    /// Useful for showing the user which dependencies are out of date, or which have been updated.
+    pub fn diff<'a>(&'a self, old: &'a Self) -> Diff<'a> {
+        let added = self.package.difference(&old.package).collect();
+        let removed = old.package.difference(&self.package).collect();
+        Diff { added, removed }
     }
 }
 

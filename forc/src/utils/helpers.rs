@@ -218,6 +218,28 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
     .unwrap();
 }
 
+pub(crate) fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_red(&format!("  Removing {}", pkg.unique_string()));
+        }
+    }
+}
+
+pub(crate) fn print_added_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_green(&format!("    Adding {}", pkg.unique_string()));
+        }
+    }
+}
+
 pub fn println_red(txt: &str) -> io::Result<()> {
     println_std_out(txt, TermColor::Red)
 }

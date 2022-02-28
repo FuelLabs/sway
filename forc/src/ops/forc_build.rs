@@ -2,7 +2,7 @@ use crate::{
     cli::BuildCommand,
     lock::Lock,
     pkg,
-    utils::helpers::{default_output_directory, lock_path, read_manifest},
+    utils::helpers::{default_output_directory, lock_path, print_added_pkgs, read_manifest},
 };
 use anyhow::{anyhow, bail, Result};
 use std::{
@@ -60,9 +60,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         Ok(plan) => plan,
         Err(e) => {
             println!("Unable to create build plan from lock file: {}", e);
-            println!("Updating build plan and lock file...");
+            println!("Creating a new lock file...");
             let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
             let lock = Lock::from_graph(&plan.graph);
+            print_added_pkgs(&manifest.project.name, &lock.package);
             let string = toml::ser::to_string_pretty(&lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(&lock_path, &string)
