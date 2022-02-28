@@ -2,7 +2,7 @@
 //! Given an input function declaration, return the selector for it in hexidecimal.
 use pest::Parser;
 use std::sync::Arc;
-use structopt::StructOpt;
+use clap::Parser;
 use sway_core::{
     create_module,
     parse_tree::declaration::FunctionDeclaration,
@@ -14,8 +14,8 @@ use sway_core::{
     BuildConfig, Rule, SwayParser,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
+#[derive(Debug, Parser)]
+#[clap(name = "example", about = "An example of Clap Parser usage.")]
 struct Opt {
     fn_decl: String,
 }

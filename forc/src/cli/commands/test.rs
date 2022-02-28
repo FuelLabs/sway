@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 use std::thread;
-use structopt::{self, StructOpt};
+use clap::Parser;
 
 /// Run Rust-based tests on current project.
 /// As of now, `forc test` is a simple wrapper on
@@ -12,7 +12,7 @@ use structopt::{self, StructOpt};
 /// You can opt to either run these Rust tests by
 /// using `forc test` or going inside the package
 /// and using `cargo test`.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     /// If specified, only run tests containing this string in their names
     pub test_name: Option<String>,

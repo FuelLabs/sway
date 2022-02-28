@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
-use structopt::{self, StructOpt};
+use clap::Parser;
 
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
@@ -12,19 +12,19 @@ use annotate_snippets::{
 use sway_core::source_map::{LocationRange, SourceMap};
 
 /// Show location and context of an opcode address in its source file
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     /// Where to search for the project root
-    #[structopt(short = "s", long, default_value = ".")]
+    #[clap(short = 's', long, default_value = ".")]
     pub search_dir: PathBuf,
     /// Source file mapping in JSON format
-    #[structopt(short = "g", long)]
+    #[clap(short = 'g', long)]
     pub sourcemap_path: PathBuf,
     /// How many lines of context to show
-    #[structopt(short, long, default_value = "2")]
+    #[clap(short, long, default_value = "2")]
     pub context: usize,
     /// Opcode index
-    #[structopt(short = "i", long)]
+    #[clap(short = 'i', long)]
     pub opcode_index: usize,
 }
 
