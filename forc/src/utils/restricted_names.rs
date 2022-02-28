@@ -31,7 +31,7 @@ pub fn is_windows_reserved(name: &str) -> bool {
 
 /// These names conflict with library, macro or heap allocation suffixes, or keywords.
 pub fn is_conflicting_suffix(name: &str) -> bool {
-    ["core", "std", "alloc", "proc_macro", "proc-macro"].contains(&name)
+    ["alloc", "proc_macro", "proc-macro"].contains(&name)
 }
 
 // Bikeshedding necessary to determine if relevant
