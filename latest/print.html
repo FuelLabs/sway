@@ -220,7 +220,7 @@ $ tree .
 </code></pre>
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <pre><code class="language-toml">[project]
-author = &quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;
+authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
 entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
 name = &quot;hello_world&quot;
@@ -1085,7 +1085,7 @@ impl Add for u64 {
 </code></pre>
 <p>Libraries are composed of just a <code>Forc.toml</code> file and a <code>src</code> folder, unlike usual Sway projects which usually contain a <code>tests</code> folder and a <code>Cargo.toml</code> file as well. An example of a Library's <code>Forc.toml</code>: </p>
 <pre><code class="language-toml=">[project]
-author = &quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;
+authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
 entry = &quot;lib.sw&quot;
 license = &quot;Apache-2.0&quot;
 name = &quot;lib-std&quot;
