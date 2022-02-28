@@ -102,7 +102,8 @@ impl Lock {
         toml::de::from_str(&string).map_err(|e| anyhow!("failed to parse lock file: {}", e))
     }
 
-    /// Given a graph of pinned packages, create a `toml` table representing the `Forc.lock` file.
+    /// Given a graph of pinned packages, create a `Lock` representing the `Forc.lock` file
+    /// structure.
     pub fn from_graph(graph: &pkg::Graph) -> Self {
         let package: BTreeSet<_> = graph
             .node_indices()
@@ -111,7 +112,7 @@ impl Lock {
         Self { package }
     }
 
-    /// Given the toml loaded from a `Forc.lock` file, produce the graph of pinned dependencies.
+    /// Given a `Lock` loaded from a `Forc.lock` file, produce the graph of pinned dependencies.
     pub fn to_graph(&self) -> Result<pkg::Graph> {
         let mut graph = pkg::Graph::new();
 

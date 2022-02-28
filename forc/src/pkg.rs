@@ -687,7 +687,7 @@ pub(crate) fn compile(
     }
 }
 
-// TODO: Update this to match behaviour described in `compile_pkg` above.
+// TODO: Update this to match behaviour described in the `compile` doc comment above.
 fn generate_json_abi(ast: &TypedParseTree) -> JsonABI {
     match ast {
         TypedParseTree::Contract { abi_entries, .. } => {
