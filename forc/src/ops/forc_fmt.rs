@@ -176,7 +176,7 @@ mod tests {
     fn test_forc_indentation() {
         let correct_forc_manifest = r#"
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "Fuel example project"
 
@@ -193,7 +193,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
         assert_eq!(formatted_content, correct_forc_manifest);
         let indented_forc_manifest = r#"
         [project]
-    author = "Fuel Labs <contact@fuel.sh>"
+    authors = ["Fuel Labs <contact@fuel.sh>"]
                     license = "Apache-2.0"
     name = "Fuel example project"
 
@@ -207,7 +207,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
         assert_eq!(formatted_content, correct_forc_manifest);
         let whitespace_forc_manifest = r#"
 [project]
- author="Fuel Labs <contact@fuel.sh>"
+ authors=["Fuel Labs <contact@fuel.sh>"]
 license   =                                   "Apache-2.0"
 name = "Fuel example project"
 
@@ -224,7 +224,7 @@ std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"  , ve
     fn test_forc_alphabetization() {
         let correct_forc_manifest = r#"
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "Fuel example project"
 
@@ -243,7 +243,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 [project]
 name = "Fuel example project"
 license = "Apache-2.0"
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 
 
 [dependencies]

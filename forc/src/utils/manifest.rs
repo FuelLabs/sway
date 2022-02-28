@@ -20,7 +20,9 @@ impl Manifest {}
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
-    pub author: String,
+    #[deprecated = "use the authors field instead, the author field will be removed soon."]
+    pub author: Option<String>,
+    pub authors: Option<Vec<String>>,
     pub name: String,
     pub organization: Option<String>,
     pub license: String,
