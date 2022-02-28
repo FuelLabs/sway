@@ -1,0 +1,13 @@
+[package]
+name = "new-parser-again"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[dependencies]
+num-bigint = "*"
+num-traits = "*"
+unicode-xid = "*"
+extension-trait = "*"
+walkdir = "*"
+
