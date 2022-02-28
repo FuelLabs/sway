@@ -458,13 +458,10 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => {
-                println!("in size in words");
-                Err(CompileError::TypeMustBeKnown {
-                    ty: self.friendly_type_str(),
-                    span: err_span.clone(),
-                })
-            }
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
+                ty: self.friendly_type_str(),
+                span: err_span.clone(),
+            }),
             TypeInfo::Ref(id) => look_up_type_id(*id).size_in_words(err_span),
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)

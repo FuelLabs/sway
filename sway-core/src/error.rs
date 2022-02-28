@@ -676,8 +676,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -993,7 +993,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,

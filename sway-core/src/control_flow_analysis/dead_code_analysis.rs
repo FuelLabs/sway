@@ -706,15 +706,19 @@ fn connect_expression(
         EnumInstantiation {
             enum_decl,
             variant_name,
+            contents,
             ..
         } => {
             // connect this particular instantiation to its variants declaration
-            Ok(connect_enum_instantiation(
+            connect_enum_instantiation(
                 enum_decl,
+                contents,
                 variant_name,
                 graph,
                 leaves,
-            ))
+                exit_node,
+                tree_type,
+            )
         }
         IfExp {
             condition,
@@ -974,10 +978,13 @@ fn connect_code_block(
 
 fn connect_enum_instantiation(
     enum_decl: &TypedEnumDeclaration,
+    contents: &Option<Box<TypedExpression>>,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-) -> Vec<NodeIndex> {
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
     let enum_name = &enum_decl.name;
     let (decl_ix, variant_index) = graph
         .namespace
@@ -1004,10 +1011,26 @@ fn connect_enum_instantiation(
         graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
     }
 
+    // add edge from the entry of the enum instantiation to the body of the instantiation
+    if let Some(instantiator) = contents {
+        let instantiator_contents = connect_expression(
+            &instantiator.expression,
+            graph,
+            &[enum_instantiation_entry_idx],
+            exit_node,
+            "",
+            tree_type,
+            enum_decl.span.clone(),
+        )?;
+        for leaf in instantiator_contents.clone() {
+            graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
+        }
+    }
+
     graph.add_edge(decl_ix, variant_index, "".into());
     graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
 
-    vec![enum_instantiation_exit_idx]
+    Ok(vec![enum_instantiation_exit_idx])
 }
 
 /// Given a `TypedAstNode` that we know is not reached in the graph, construct a warning

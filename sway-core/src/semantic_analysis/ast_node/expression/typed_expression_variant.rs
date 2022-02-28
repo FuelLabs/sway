@@ -83,6 +83,9 @@ pub(crate) enum TypedExpressionVariant {
         variant_name: Ident,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
+        /// If there is an error regarding this instantiation of the enum,
+        /// use this span as it points to the call site and not the declaration.
+        instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,

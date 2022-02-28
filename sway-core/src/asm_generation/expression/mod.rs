@@ -290,7 +290,7 @@ pub(crate) fn convert_expression_to_asm(
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            Ident::new_with_override("tuple field access", elem_to_access_span.clone()),
+            Ident::new(elem_to_access_span.clone()),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
@@ -301,6 +301,7 @@ pub(crate) fn convert_expression_to_asm(
             variant_name,
             tag,
             contents,
+            instantiation_span,
         } => convert_enum_instantiation_to_asm(
             enum_decl,
             variant_name,
@@ -309,6 +310,7 @@ pub(crate) fn convert_expression_to_asm(
             return_register,
             namespace,
             register_sequencer,
+            instantiation_span,
         ),
         TypedExpressionVariant::IfExp {
             condition,

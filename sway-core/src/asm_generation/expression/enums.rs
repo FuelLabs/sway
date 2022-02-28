@@ -11,6 +11,7 @@ use crate::{
     type_engine::resolve_type,
     CompileResult, Ident, Literal,
 };
+use sway_types::Span;
 
 pub(crate) fn convert_enum_instantiation_to_asm(
     decl: &TypedEnumDeclaration,
@@ -20,6 +21,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
     return_register: &VirtualRegister,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
+    instantiation_span: &Span,
 ) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -50,10 +52,9 @@ pub(crate) fn convert_enum_instantiation_to_asm(
             return err(warnings, errors);
         }
     };
-    let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(variant_name.span()) {
+    let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(instantiation_span) {
         Ok(o) => o,
         Err(e) => {
-            println!("IN ENUMS");
             errors.push(e);
             return err(warnings, errors);
         }
