@@ -14,6 +14,8 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
+pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
@@ -139,10 +141,21 @@ pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<
     Ok(main_file)
 }
 
+pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
+    manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY)
+}
+
+/// Returns the user's `.forc` directory, `$HOME/.forc` by default.
+pub fn user_forc_directory() -> PathBuf {
+    dirs::home_dir()
+        .expect("unable to find the user home directory")
+        .join(constants::USER_FORC_DIRECTORY)
+}
+
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
-    warnings: Vec<CompileWarning>,
+    warnings: &[CompileWarning],
     tree_type: TreeType,
 ) {
     let type_str = match tree_type {
@@ -173,7 +186,7 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
     if !silent_mode {
         warnings.iter().for_each(format_warning);
     }
@@ -194,16 +207,12 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Ve
     }
 }
 
-pub fn print_on_failure(
-    silent_mode: bool,
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
-) {
+pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
     if !silent_mode {
         warnings.iter().for_each(format_warning);
-        errors.into_iter().for_each(|error| format_err(&error));
+        errors.iter().for_each(format_err);
     }
 
     println_red_err(&format!(
@@ -368,6 +377,7 @@ fn construct_window<'a>(
     const NUM_LINES_BUFFER: usize = 2;
 
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
+    debug_assert!(end.line >= start.line);
     let total_lines_of_highlight = end.line - start.line;
     debug_assert!(total_lines_in_input > total_lines_of_highlight);
 
@@ -380,7 +390,7 @@ fn construct_window<'a>(
             current_line += 1
         }
 
-        if current_line >= start.line - NUM_LINES_BUFFER && calculated_start_ix.is_none() {
+        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
             calculated_start_ix = Some(ix);
             lines_to_start_of_snippet = current_line;
         }
@@ -396,8 +406,8 @@ fn construct_window<'a>(
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    *start_ix -= calculated_start_ix;
-    *end_ix -= calculated_start_ix;
+    *start_ix -= std::cmp::min(calculated_start_ix, *start_ix);
+    *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
 }

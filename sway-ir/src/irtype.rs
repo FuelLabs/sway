@@ -88,16 +88,12 @@ pub enum AggregateContent {
 
 impl Aggregate {
     /// Return a new struct specific aggregate.
-    pub fn new_struct(context: &mut Context, name: Option<String>, field_types: Vec<Type>) -> Self {
-        let aggregate = Aggregate(
+    pub fn new_struct(context: &mut Context, field_types: Vec<Type>) -> Self {
+        Aggregate(
             context
                 .aggregates
                 .insert(AggregateContent::FieldTypes(field_types)),
-        );
-        if let Some(name) = name {
-            context.aggregate_names.insert(name, aggregate);
-        };
-        aggregate
+        )
     }
 
     /// Returna new array specific aggregate.

@@ -9,9 +9,10 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway core language."
 
 [features]
-selector-debug = ["structopt", "hex"]
+selector-debug = ["clap", "hex"]
 
 [dependencies]
+clap = { version = "3.1.2", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
@@ -24,10 +25,10 @@ pest = { version = "3.0.4", package = "fuel-pest" }
 pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
 petgraph = "0.5"
 prettydiff = "0.5"
+regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-structopt = { version = "0.3", default-features = false, optional = true }
 sway-ir = { version = "0.4.0", path = "../sway-ir" }
 sway-types = { version = "0.4.0", path = "../sway-types" }
 generational-arena = "0.2"

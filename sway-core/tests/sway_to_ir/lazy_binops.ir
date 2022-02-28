@@ -1,26 +1,33 @@
-script script {
+script {
     fn main() -> bool {
         entry:
-        v0 = const bool false
-        v0 = const bool false
-        cbr v0, block0, block1
+        v0 = const bool false, !1
+        v0 = const bool false, !1
+        cbr v0, block0, block1, !2
 
         block0:
         v1 = phi(entry: v0)
-        v2 = const bool true
-        br block1
+        v2 = const bool true, !3
+        br block1, !2
 
         block1:
         v3 = phi(entry: v0, block0: v2)
-        cbr v3, block3, block2
+        cbr v3, block3, block2, !4
 
         block2:
         v4 = phi(block1: v3)
-        v5 = const bool true
-        br block3
+        v5 = const bool true, !5
+        br block3, !4
 
         block3:
         v6 = phi(block1: v3, block2: v5)
         ret bool v6
     }
 }
+
+!0 = filepath "/path/to/lazy_binops.sw"
+!1 = span !0 34 39
+!2 = span !0 34 47
+!3 = span !0 43 47
+!4 = span !0 34 56
+!5 = span !0 52 56

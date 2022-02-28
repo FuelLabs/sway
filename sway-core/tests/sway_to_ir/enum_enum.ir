@@ -1,13 +1,17 @@
-script script {
+script {
     fn main() -> () {
         entry:
-        v0 = const { u64, { () | { u64, { () | bool | () } } | () } } { u64 undef, { () | { u64, { () | bool | () } } | () } undef }
-        v1 = const u64 1
-        v2 = insert_value v0, { u64, { () | { u64, { () | bool | () } } | () } }, v1, 0
-        v3 = const { u64, { () | bool | () } } { u64 undef, { () | bool | () } undef }
-        v4 = const u64 0
-        v5 = insert_value v3, { u64, { () | bool | () } }, v4, 0
-        v6 = insert_value v2, { u64, { () | { u64, { () | bool | () } } | () } }, v5, 1
+        v0 = const { u64, { () | { u64, { () | bool | () } } | () } } { u64 undef, { () | { u64, { () | bool | () } } | () } undef }, !1
+        v1 = const u64 1, !1
+        v2 = insert_value v0, { u64, { () | { u64, { () | bool | () } } | () } }, v1, 0, !1
+        v3 = const { u64, { () | bool | () } } { u64 undef, { () | bool | () } undef }, !2
+        v4 = const u64 0, !2
+        v5 = insert_value v3, { u64, { () | bool | () } }, v4, 0, !2
+        v6 = insert_value v2, { u64, { () | { u64, { () | bool | () } } | () } }, v5, 1, !1
         ret () v6
     }
 }
+
+!0 = filepath "/path/to/enum_enum.sw"
+!1 = span !0 9 55
+!2 = span !0 57 104

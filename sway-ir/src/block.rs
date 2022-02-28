@@ -14,7 +14,7 @@ use crate::{
     context::Context,
     function::Function,
     instruction::{Instruction, InstructionInserter, InstructionIterator},
-    value::{Value, ValueContent},
+    value::{Value, ValueDatum},
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -39,7 +39,7 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()));
+        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None);
         let content = BlockContent {
             label,
             function,
@@ -75,8 +75,8 @@ impl Block {
     /// use `phi_value`.
     pub fn add_phi(&self, context: &mut Context, from_block: Block, phi_value: Value) {
         let phi_val = self.get_phi(context);
-        match &mut context.values[phi_val.0] {
-            ValueContent::Instruction(Instruction::Phi(list)) => {
+        match &mut context.values[phi_val.0].value {
+            ValueDatum::Instruction(Instruction::Phi(list)) => {
                 list.push((from_block, phi_value));
             }
             _ => unreachable!("First value in block instructions is not a phi."),
@@ -88,7 +88,7 @@ impl Block {
     /// Returns `None` if `from_block` isn't found.
     pub fn get_phi_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
         let phi_val = self.get_phi(context);
-        if let ValueContent::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0] {
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0].value {
             pairs.iter().find_map(|(block, value)| {
                 if block == from_block {
                     Some(*value)
@@ -111,8 +111,8 @@ impl Block {
         new_source: Block,
     ) {
         let phi_val = self.get_phi(context);
-        if let ValueContent::Instruction(Instruction::Phi(ref mut pairs)) =
-            &mut context.values[phi_val.0]
+        if let ValueDatum::Instruction(Instruction::Phi(ref mut pairs)) =
+            &mut context.values[phi_val.0].value
         {
             for (block, _) in pairs {
                 if *block == old_source {
@@ -130,7 +130,7 @@ impl Block {
     pub fn get_term_inst<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
         context.blocks[self.0].instructions.last().and_then(|val| {
             // It's guaranteed to be an instruction value.
-            if let ValueContent::Instruction(term_inst) = &context.values[val.0] {
+            if let ValueDatum::Instruction(term_inst) = &context.values[val.0].value {
                 Some(term_inst)
             } else {
                 None

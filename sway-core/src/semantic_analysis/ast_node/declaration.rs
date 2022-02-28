@@ -383,6 +383,7 @@ pub struct TypedTraitDeclaration {
     pub(crate) interface_surface: Vec<TypedTraitFn>,
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) supertraits: Vec<Supertrait>,
     pub(crate) visibility: Visibility,
 }
 impl TypedTraitDeclaration {

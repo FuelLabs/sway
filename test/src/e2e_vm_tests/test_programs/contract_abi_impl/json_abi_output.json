@@ -1,1 +1,90 @@
-[{"inputs":[{"components":null,"name":"gas","type":"u64"},{"components":null,"name":"coin","type":"u64"},{"components":null,"name":"asset_id","type":"b256"},{"components":[{"components":null,"name":"field_1","type":"bool"},{"components":null,"name":"field_2","type":"u64"}],"name":"input","type":"struct InputStruct"}],"name":"foo","outputs":[{"components":[{"components":null,"name":"field_1","type":"bool"},{"components":null,"name":"field_2","type":"u64"}],"name":"","type":"struct InputStruct"}],"type":"function"},{"inputs":[{"components":null,"name":"gas","type":"u64"},{"components":null,"name":"coin","type":"u64"},{"components":null,"name":"asset_id","type":"b256"},{"components":null,"name":"input","type":"bool"}],"name":"baz","outputs":[{"components":null,"name":"","type":"()"}],"type":"function"}]
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "gas",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "coin",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "asset_id",
+        "type": "b256"
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "field_1",
+            "type": "bool"
+          },
+          {
+            "components": null,
+            "name": "field_2",
+            "type": "u64"
+          }
+        ],
+        "name": "input",
+        "type": "struct InputStruct"
+      }
+    ],
+    "name": "foo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "field_1",
+            "type": "bool"
+          },
+          {
+            "components": null,
+            "name": "field_2",
+            "type": "u64"
+          }
+        ],
+        "name": "",
+        "type": "struct InputStruct"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "gas",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "coin",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "asset_id",
+        "type": "b256"
+      },
+      {
+        "components": null,
+        "name": "input",
+        "type": "bool"
+      }
+    ],
+    "name": "baz",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  }
+]

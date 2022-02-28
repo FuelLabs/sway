@@ -1,1 +1,35 @@
-[{"inputs":[{"components":null,"name":"gas","type":"u64"},{"components":null,"name":"coins","type":"u64"},{"components":null,"name":"asset_id","type":"b256"},{"components":null,"name":"input","type":"()"}],"name":"impure_func","outputs":[{"components":null,"name":"","type":"bool"}],"type":"function"}]
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "gas",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "coins",
+        "type": "u64"
+      },
+      {
+        "components": null,
+        "name": "asset_id",
+        "type": "b256"
+      },
+      {
+        "components": null,
+        "name": "input",
+        "type": "()"
+      }
+    ],
+    "name": "impure_func",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  }
+]

@@ -12,7 +12,9 @@ use crate::{
     block::{Block, BlockIterator, Label},
     constant::Constant,
     context::Context,
+    error::IrError,
     irtype::Type,
+    metadata::MetadataIndex,
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
@@ -49,14 +51,14 @@ impl Function {
         context: &mut Context,
         module: Module,
         name: String,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
     ) -> Function {
         let arguments = args
             .into_iter()
-            .map(|(name, ty)| (name, Value::new_argument(context, ty)))
+            .map(|(name, ty, span_md_idx)| (name, Value::new_argument(context, ty, span_md_idx)))
             .collect();
         let content = FunctionContent {
             name,
@@ -99,7 +101,7 @@ impl Function {
         context: &mut Context,
         other: &Block,
         label: Option<Label>,
-    ) -> Result<Block, String> {
+    ) -> Result<Block, IrError> {
         // We need to create the new block first (even though we may not use it on Err below) since
         // we can't borrow context mutably twice.
         let new_block = Block::new(context, *self, label);
@@ -111,7 +113,10 @@ impl Function {
                 func.blocks.insert(idx, new_block);
                 new_block
             })
-            .ok_or_else(|| "Cannot insert block before other, not found in function.".into())
+            .ok_or_else(|| {
+                let label = &context.blocks[other.0].label;
+                IrError::MissingBlock(label.clone())
+            })
     }
 
     /// Create and insert a new [`Block`] into this function.
@@ -122,7 +127,7 @@ impl Function {
         context: &mut Context,
         other: &Block,
         label: Option<Label>,
-    ) -> Result<Block, String> {
+    ) -> Result<Block, IrError> {
         // We need to create the new block first (even though we may not use it on Err below) since
         // we can't borrow context mutably twice.
         let new_block = Block::new(context, *self, label);
@@ -134,7 +139,10 @@ impl Function {
                 func.blocks.insert(idx + 1, new_block);
                 new_block
             })
-            .ok_or_else(|| "Cannot insert block after other, not found in function.".into())
+            .ok_or_else(|| {
+                let label = &context.blocks[other.0].label;
+                IrError::MissingBlock(label.clone())
+            })
     }
 
     /// Get a new unique block label.
@@ -237,17 +245,13 @@ impl Function {
         local_type: Type,
         is_mutable: bool,
         initializer: Option<Constant>,
-    ) -> Result<Pointer, String> {
+    ) -> Result<Pointer, IrError> {
         let ptr = Pointer::new(context, local_type, is_mutable, initializer);
         let func = context.functions.get_mut(self.0).unwrap();
-        if func.local_storage.insert(name.clone(), ptr).is_some() {
-            Err(format!(
-                "Local storage for function {} already has entry for {}.",
-                func.name, name
-            ))
-        } else {
-            Ok(ptr)
-        }
+        func.local_storage
+            .insert(name.clone(), ptr)
+            .map(|_| Err(IrError::FunctionLocalClobbered(func.name.clone(), name)))
+            .unwrap_or(Ok(ptr))
     }
 
     /// Add a value to the function local storage, by forcing the name to be unique if needed.
@@ -302,7 +306,7 @@ impl Function {
         &self,
         context: &mut Context,
         other: Function,
-    ) -> Result<HashMap<Pointer, Pointer>, String> {
+    ) -> Result<HashMap<Pointer, Pointer>, IrError> {
         let mut ptr_map = HashMap::new();
         let old_ptrs: Vec<(String, Pointer, PointerContent)> = context.functions[other.0]
             .local_storage

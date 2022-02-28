@@ -9,17 +9,7 @@ use sway_utils::{constants, find_manifest_dir, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
-    let build_command = BuildCommand {
-        path: None,
-        use_ir: false,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
-        print_ir: false,
-        binary_outfile: None,
-        debug_outfile: None,
-        offline_mode: false,
-        silent_mode: false,
-    };
+    let build_command = BuildCommand::default();
 
     match forc_build::build(build_command) {
         // build is successful, continue to formatting
@@ -186,7 +176,7 @@ mod tests {
     fn test_forc_indentation() {
         let correct_forc_manifest = r#"
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "Fuel example project"
 
@@ -203,7 +193,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
         assert_eq!(formatted_content, correct_forc_manifest);
         let indented_forc_manifest = r#"
         [project]
-    author = "Fuel Labs <contact@fuel.sh>"
+    authors = ["Fuel Labs <contact@fuel.sh>"]
                     license = "Apache-2.0"
     name = "Fuel example project"
 
@@ -217,7 +207,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
         assert_eq!(formatted_content, correct_forc_manifest);
         let whitespace_forc_manifest = r#"
 [project]
- author="Fuel Labs <contact@fuel.sh>"
+ authors=["Fuel Labs <contact@fuel.sh>"]
 license   =                                   "Apache-2.0"
 name = "Fuel example project"
 
@@ -234,7 +224,7 @@ std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"  , ve
     fn test_forc_alphabetization() {
         let correct_forc_manifest = r#"
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "Fuel example project"
 
@@ -253,7 +243,7 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 [project]
 name = "Fuel example project"
 license = "Apache-2.0"
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 
 
 [dependencies]

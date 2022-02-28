@@ -6,11 +6,6 @@ use crate::{
     semantic_analysis::ast_node::*,
     type_engine::{insert_type, IntegerBits},
 };
-use sway_types::join_spans;
-
-use either::Either;
-use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
 
 mod method_application;
 use crate::type_engine::TypeId;
@@ -47,7 +42,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -73,7 +67,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 },
@@ -89,7 +82,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 },
@@ -105,7 +97,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
@@ -124,7 +115,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     help_text: Default::default(),
                     opts,
@@ -139,7 +129,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::StructExpression {
@@ -155,7 +144,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::SubfieldExpression {
@@ -171,7 +159,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::MethodApplication {
@@ -187,7 +174,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::Tuple { fields, span } => Self::type_check_tuple(
@@ -199,7 +185,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::TupleIndex {
@@ -217,7 +202,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::DelineatedPath {
@@ -235,7 +219,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::AbiCast {
@@ -251,7 +234,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::Array { contents, span } => Self::type_check_array(
@@ -262,7 +244,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             ),
             Expression::ArrayIndex {
@@ -277,7 +258,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     mode: Default::default(),
@@ -294,10 +274,43 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     opts,
                 )
             }
+            Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
+                TypeCheckArguments {
+                    checkee: *exp,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                span,
+            ),
+            Expression::SizeOfType {
+                type_name,
+                type_span,
+                span,
+            } => Self::type_check_size_of_type(
+                TypeCheckArguments {
+                    checkee: (type_name, type_span),
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                span,
+            ),
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
@@ -383,7 +396,6 @@ impl TypedExpression {
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             Literal::Boolean(_) => TypeInfo::Boolean,
@@ -456,7 +468,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -468,124 +479,38 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let TypedFunctionDeclaration {
-            parameters,
-            return_type,
-            body,
-            span,
-            purity,
-            ..
-        } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
-            // if this is a generic function, monomorphize its internal types and insert the resulting
-            // declaration into the namespace. Then, use that instead.
-            if decl.type_parameters.is_empty() {
-                decl
+        let typed_function_decl =
+            if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
+                // if this is a generic function, monomorphize its internal types and insert the resulting
+                // declaration into the namespace. Then, use that instead.
+                if decl.type_parameters.is_empty() {
+                    decl
+                } else {
+                    check!(
+                        decl.monomorphize(type_arguments, self_type),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
             } else {
-                check!(
-                    decl.monomorphize(type_arguments, self_type),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
-        } else {
-            errors.push(CompileError::NotAFunction {
-                name: name.span().as_str().to_string(),
-                span: name.span(),
-                what_it_is: function_declaration.friendly_name(),
-            });
-            return err(warnings, errors);
-        };
-
-        if opts.purity != purity {
-            errors.push(CompileError::PureCalledImpure { span: name.span() });
-        }
-
-        match arguments.len().cmp(&parameters.len()) {
-            Ordering::Greater => {
-                let arguments_span = arguments.iter().fold(
-                    arguments
-                        .get(0)
-                        .map(|x| x.span())
-                        .unwrap_or_else(|| name.span()),
-                    |acc, arg| join_spans(acc, arg.span()),
-                );
-                errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: arguments_span,
-                    method_name: name.suffix.clone(),
-                    expected: parameters.len(),
-                    received: arguments.len(),
+                errors.push(CompileError::NotAFunction {
+                    name: name.span().as_str().to_string(),
+                    span: name.span(),
+                    what_it_is: function_declaration.friendly_name(),
                 });
-            }
-            Ordering::Less => {
-                let arguments_span = arguments.iter().fold(
-                    arguments
-                        .get(0)
-                        .map(|x| x.span())
-                        .unwrap_or_else(|| name.span()),
-                    |acc, arg| join_spans(acc, arg.span()),
-                );
-                errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: arguments_span,
-                    method_name: name.suffix.clone(),
-                    expected: parameters.len(),
-                    received: arguments.len(),
-                });
-            }
-            Ordering::Equal => {}
-        }
-        // type check arguments in function application vs arguments in function
-        // declaration. Use parameter type annotations as annotations for the
-        // arguments
-        //
-        let typed_call_arguments = arguments
-            .into_iter()
-            .zip(parameters.iter())
-            .map(|(arg, param)| {
-                (
-                    param.name.clone(),
-                    TypedExpression::type_check(TypeCheckArguments {
-                        checkee: arg.clone(),
-                        namespace,
-                        crate_namespace,
-                        return_type_annotation: param.r#type,
-                        help_text:
-                            "The argument that has been provided to this function's type does \
-                            not match the declared type of the parameter in the function \
-                            declaration.",
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph,
-                        mode: Mode::NonAbi,
-                        opts,
-                    })
-                    .unwrap_or_else(&mut warnings, &mut errors, || {
-                        error_recovery_expr(arg.span())
-                    }),
-                )
-            })
-            .collect();
-
-        ok(
-            TypedExpression {
-                return_type,
-                // now check the function call return type
-                // FEATURE this IsConstant can be true if the function itself is
-                // constant-able const functions would be an
-                // advanced feature and are not supported right
-                // now
-                is_constant: IsConstant::No,
-                expression: TypedExpressionVariant::FunctionApplication {
-                    arguments: typed_call_arguments,
-                    name,
-                    function_body: body,
-                    selector: None, // regular functions cannot be in a contract call; only methods
-                },
-                span,
-            },
-            warnings,
-            errors,
+                return err(warnings, errors);
+            };
+        instantiate_function_application(
+            typed_function_decl,
+            name,
+            arguments,
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            opts,
         )
     }
 
@@ -600,7 +525,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             return_type_annotation,
             opts,
             ..
@@ -620,7 +544,6 @@ impl TypedExpression {
                 return_type_annotation,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
             }),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -637,7 +560,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -672,7 +594,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -687,7 +608,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -740,7 +660,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -756,7 +675,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -774,7 +692,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -793,7 +710,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -845,7 +761,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -880,7 +795,6 @@ impl TypedExpression {
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 mode: Mode::NonAbi,
                                 opts,
                             }),
@@ -909,38 +823,47 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         span: Span,
-        struct_name: Ident,
+        call_path: CallPath,
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let module_result = namespace
+            .find_module_relative(&call_path.prefixes)
+            .ok(&mut warnings, &mut errors);
         let mut typed_fields_buf = vec![];
-
-        let definition: TypedStructDeclaration =
-            match namespace.clone().get_symbol(&struct_name).value {
+        let definition = match module_result {
+            Some(module) => match module.clone().get_symbol(&call_path.suffix).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st,
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
-                        name: struct_name.clone(),
+                        name: call_path.suffix.clone(),
                         span,
                     });
                     return err(warnings, errors);
                 }
                 None => {
                     errors.push(CompileError::StructNotFound {
-                        name: struct_name.clone(),
+                        name: call_path.suffix.clone(),
                         span,
                     });
                     return err(warnings, errors);
                 }
-            };
+            },
+            None => {
+                errors.push(CompileError::StructNotFound {
+                    name: call_path.suffix,
+                    span,
+                });
+                return err(warnings, errors);
+            }
+        };
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
@@ -985,7 +908,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1040,7 +962,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1055,7 +976,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1115,7 +1035,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1145,7 +1064,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1180,7 +1098,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1195,7 +1112,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1252,16 +1168,15 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // The first step is to determine if the call path refers to a module or an enum.
+        // The first step is to determine if the call path refers to a module, enum, or function.
         // We could rely on the capitalization convention, where modules are lowercase
         // and enums are uppercase, but this is not robust in the long term.
-        // Instead, we try to resolve both paths.
-        // If only one exists, then we use that one. Otherwise, if both exist, it is
+        // Instead, we try to resolve all paths.
+        // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
@@ -1279,60 +1194,91 @@ impl TypedExpression {
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
-        // enum instantiation
-        let this_thing: Either<TypedDeclaration, TypedExpression> =
-            match (module_result, enum_module_combined_result) {
-                (Some(_module), Some(_enum_res)) => {
-                    errors.push(CompileError::AmbiguousPath { span });
-                    return err(warnings, errors);
-                }
-                (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
-                    Some(decl) => Either::Left(decl),
-                    None => {
-                        errors.push(CompileError::SymbolNotFound {
-                            name: call_path.suffix.as_str().to_string(),
-                            span: call_path.suffix.span().clone(),
+        // enum instantiation, and if it is not either of those things, then it might be a
+        // function application
+        let exp: TypedExpression = match (module_result, enum_module_combined_result) {
+            (Some(_module), Some(_enum_res)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
+                Some(decl) => match decl {
+                    TypedDeclaration::EnumDeclaration(enum_decl) => {
+                        check!(
+                            instantiate_enum(
+                                enum_decl,
+                                call_path.suffix,
+                                args,
+                                namespace,
+                                crate_namespace,
+                                self_type,
+                                build_config,
+                                dead_code_graph,
+                                opts,
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                    TypedDeclaration::FunctionDeclaration(func_decl) => check!(
+                        instantiate_function_application(
+                            func_decl,
+                            call_path,
+                            args,
+                            namespace,
+                            crate_namespace,
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            opts,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                    a => {
+                        errors.push(CompileError::NotAnEnum {
+                            name: call_path.friendly_name(),
+                            span,
+                            actually: a.friendly_name().to_string(),
                         });
                         return err(warnings, errors);
                     }
                 },
-                (None, Some(enum_decl)) => Either::Right(check!(
-                    instantiate_enum(
-                        enum_decl,
-                        call_path.suffix,
-                        args,
-                        namespace,
-                        crate_namespace,
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph,
-                        opts,
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )),
-                (None, None) => {
+                None => {
                     errors.push(CompileError::SymbolNotFound {
-                        span,
                         name: call_path.suffix.as_str().to_string(),
+                        span: call_path.suffix.span().clone(),
                     });
                     return err(warnings, errors);
                 }
-            };
-
-        let exp = match this_thing {
-            Either::Left(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "Unable to refer to declarations in other modules directly. Try \
-                     importing it instead.",
+            },
+            (None, Some(enum_decl)) => check!(
+                instantiate_enum(
+                    enum_decl,
+                    call_path.suffix,
+                    args,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            (None, None) => {
+                errors.push(CompileError::SymbolNotFound {
                     span,
-                ));
+                    name: call_path.suffix.as_str().to_string(),
+                });
                 return err(warnings, errors);
             }
-            Either::Right(expr) => expr,
         };
+
         ok(exp, warnings, errors)
     }
 
@@ -1346,7 +1292,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1367,7 +1312,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1417,7 +1361,6 @@ impl TypedExpression {
                     build_config,
                     dead_code_graph,
                     mode: Mode::ImplAbiFn,
-                    dependency_graph,
                     opts,
                 }),
                 return err(warnings, errors),
@@ -1454,7 +1397,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         if contents.is_empty() {
@@ -1488,7 +1430,6 @@ impl TypedExpression {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         mode: Mode::NonAbi,
                         opts,
                     }),
@@ -1549,7 +1490,6 @@ impl TypedExpression {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -1566,7 +1506,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -1589,7 +1528,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1620,9 +1558,9 @@ impl TypedExpression {
                         Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: Ident::new_with_override("index", span.clone()),
+                    is_absolute: true,
                 },
                 type_name: None,
-                is_absolute: true,
             };
             type_check_method_application(
                 method_name,
@@ -1633,7 +1571,6 @@ impl TypedExpression {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 opts,
             )
         }
@@ -1656,7 +1593,6 @@ impl TypedExpression {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1675,7 +1611,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -1739,7 +1674,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -1832,7 +1766,6 @@ impl TypedExpression {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 };
@@ -1891,6 +1824,62 @@ impl TypedExpression {
                 ok(exp, warnings, errors)
             }
         }
+    }
+
+    fn type_check_size_of_val(
+        arguments: TypeCheckArguments<'_, Expression>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let exp = check!(
+            TypedExpression::type_check(arguments),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::SizeOf {
+                variant: SizeOfVariant::Val(Box::new(exp)),
+            },
+            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
+                IntegerBits::SixtyFour,
+            )),
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_size_of_type(
+        arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        let TypeCheckArguments {
+            checkee: (type_name, type_span),
+            self_type,
+            namespace,
+            ..
+        } = arguments;
+        let type_id = namespace
+            .resolve_type_with_self(type_name, self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: type_span });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::SizeOf {
+                variant: SizeOfVariant::Type(type_id),
+            },
+            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
+                IntegerBits::SixtyFour,
+            )),
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
     }
 
     fn resolve_numeric_literal(
@@ -2014,7 +2003,6 @@ mod tests {
             generated_names: Arc::new(Mutex::new(vec![])),
         };
         let mut dead_code_graph: ControlFlowGraph = Default::default();
-        let mut dependency_graph = HashMap::new();
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
@@ -2025,7 +2013,6 @@ mod tests {
             self_type,
             build_config: &build_config,
             dead_code_graph: &mut dead_code_graph,
-            dependency_graph: &mut dependency_graph,
             mode: Mode::NonAbi,
             opts: Default::default(),
         })

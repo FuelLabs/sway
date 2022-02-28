@@ -28,7 +28,7 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
@@ -244,7 +244,6 @@ pub(crate) fn compile_inner_dependency(
     initial_namespace: NamespaceRef,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<InnerDependencyCompileResult> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -274,7 +273,6 @@ pub(crate) fn compile_inner_dependency(
             &parse_tree.tree_type,
             &build_config,
             dead_code_graph,
-            dependency_graph,
         ),
         return err(warnings, errors),
         warnings,
@@ -309,7 +307,6 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: &BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -333,7 +330,6 @@ pub fn compile_to_ast(
             &parse_tree.tree_type,
             &build_config.clone(),
             &mut dead_code_graph,
-            dependency_graph,
         ),
         return CompileAstResult::Failure { errors, warnings },
         warnings,
@@ -367,9 +363,15 @@ pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult {
-    match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
+    let ast_res = compile_to_ast(input, initial_namespace, &build_config);
+    ast_to_asm(ast_res, &build_config)
+}
+
+/// Given an AST compilation result, compile to a [CompilationResult] which contains the asm in
+/// opcode form (not raw bytes/bytecode).
+pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> CompilationResult {
+    match ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             CompilationResult::Failure { warnings, errors }
         }
@@ -383,9 +385,9 @@ pub fn compile_to_asm(
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
                         if build_config.use_ir {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, &build_config)
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
                         } else {
-                            compile_ast_to_asm(*parse_tree, &build_config)
+                            compile_ast_to_asm(*parse_tree, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
@@ -467,11 +469,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
-        if let Err(msg) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+        if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
-                    msg,
+                    ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,
@@ -485,11 +487,11 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
-        if let Err(msg) = sway_ir::optimize::combine_constants(ir, function) {
+        if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
-                    msg,
+                    ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,
@@ -507,10 +509,19 @@ pub fn compile_to_bytecode(
     input: Arc<str>,
     initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
-    match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
+    let asm_res = compile_to_asm(input, initial_namespace, build_config);
+    asm_to_bytecode(asm_res, source_map)
+}
+
+/// Given a [CompilationResult] containing the assembly (opcodes), compile to a
+/// [BytecodeCompilationResult] which contains the asm in bytecode form.
+pub fn asm_to_bytecode(
+    asm_res: CompilationResult,
+    source_map: &mut SourceMap,
+) -> BytecodeCompilationResult {
+    match asm_res {
         CompilationResult::Success {
             mut asm,
             mut warnings,
@@ -679,8 +690,7 @@ fn parse_root_from_pairs(
         }
     }
 
-    let fuel_ast = fuel_ast_opt.unwrap();
-    ok(fuel_ast, warnings, errors)
+    CompileResult::new(fuel_ast_opt, warnings, errors)
 }
 
 #[test]

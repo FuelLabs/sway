@@ -40,7 +40,7 @@ Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usu
 
 ```toml=
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
 name = "lib-std"

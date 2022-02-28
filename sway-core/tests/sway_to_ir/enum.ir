@@ -1,7 +1,7 @@
-script script {
-    fn eat(meal: { u64, { () | () | u64 } }) -> bool {
+script {
+    fn eat(meal !1: { u64, { () | () | u64 } }) -> bool {
         entry:
-        v0 = const bool false
+        v0 = const bool false, !2
         ret bool v0
     }
 
@@ -9,18 +9,29 @@ script script {
         local ptr { u64, { () | () | u64 } } lunch
 
         entry:
-        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v1 = const u64 1
-        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
-        store v2, ptr { u64, { () | () | u64 } } lunch
-        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch
-        v4 = call eat(v3)
-        v5 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v6 = const u64 2
-        v7 = insert_value v5, { u64, { () | () | u64 } }, v6, 0
-        v8 = const u64 3
-        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 1
-        v10 = call eat(v9)
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !3
+        v1 = const u64 1, !3
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0, !3
+        store v2, ptr { u64, { () | () | u64 } } lunch, !4
+        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch, !5
+        v4 = call eat(v3), !6
+        v5 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !7
+        v6 = const u64 2, !7
+        v7 = insert_value v5, { u64, { () | () | u64 } }, v6, 0, !7
+        v8 = const u64 3, !8
+        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 1, !7
+        v10 = call eat(v9), !9
         ret () v10
     }
 }
+
+!0 = filepath "/path/to/enum.sw"
+!1 = span !0 169 173
+!2 = span !0 196 201
+!3 = span !0 9 71
+!4 = span !0 89 115
+!5 = span !0 124 129
+!6 = span !0 162 203
+!7 = span !0 9 71
+!8 = span !0 154 155
+!9 = span !0 162 203
