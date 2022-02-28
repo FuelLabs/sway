@@ -13,5 +13,3 @@ Cargo.lock
 
 # Forc's build directory
 out
-
-.vscode
