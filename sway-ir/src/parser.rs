@@ -598,6 +598,7 @@ mod ir_builder {
         Ok(ctx)
     }
 
+    #[allow(clippy::type_complexity)]
     fn build_add_fn_decl(
         context: &mut Context,
         module: Module,
@@ -675,6 +676,7 @@ mod ir_builder {
         Ok(())
     }
 
+    #[allow(clippy::type_complexity)]
     fn build_add_block_instructions(
         context: &mut Context,
         ir_block: IrAstBlock,
@@ -865,6 +867,7 @@ mod ir_builder {
         md_map
     }
 
+    #[allow(clippy::type_complexity)]
     fn resolve_calls(
         context: &mut Context,
         unresolved_calls: Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,

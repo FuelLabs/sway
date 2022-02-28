@@ -179,7 +179,6 @@ fn compile_declarations(
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, struct_names, decl).map(|_| ())?
-                ()
             }
             TypedDeclaration::ImplTrait {
                 methods: _,
@@ -195,7 +194,6 @@ fn compile_declarations(
                 //    type_implementing_for,
                 //    methods,
                 //)?,
-                ()
             }
 
             TypedDeclaration::StructDeclaration(_)
@@ -783,12 +781,8 @@ impl FnCompiler {
             let callee_name = context.get_unique_name();
             let callee_name_len = callee_name.len();
             let callee_ident = Ident::new(crate::span::Span {
-                span: pest::Span::new(
-                    std::sync::Arc::from(callee_name.clone()),
-                    0,
-                    callee_name_len,
-                )
-                .unwrap(),
+                span: pest::Span::new(std::sync::Arc::from(callee_name), 0, callee_name_len)
+                    .unwrap(),
                 path: None,
             });
 
