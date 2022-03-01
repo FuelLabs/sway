@@ -534,7 +534,7 @@ fn connect_enum_declaration(
     // keep a mapping of each variant
     for variant in &enum_decl.variants {
         let variant_index = graph.add_node(ControlFlowGraphNode::from_enum_variant(
-            variant.into(),
+            variant,
             enum_decl.visibility != Visibility::Private,
         ));
 
@@ -1050,7 +1050,7 @@ fn connect_enum_instantiation(
             tree_type,
             enum_decl.span.clone(),
         )?;
-        for leaf in instantiator_contents.clone() {
+        for leaf in instantiator_contents {
             graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
         }
     }

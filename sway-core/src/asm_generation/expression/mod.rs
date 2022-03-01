@@ -587,8 +587,9 @@ pub(crate) fn convert_abi_fn_to_asm(
     ok(asm_buf, warnings, errors)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn convert_if_let_to_asm(
-    expr: &Box<TypedExpression>,
+    expr: &TypedExpression,
     _enum_type: TypeId,
     variant: &TypedEnumVariant,
     then: &TypedCodeBlock,
@@ -613,12 +614,7 @@ fn convert_if_let_to_asm(
     // 1.
     let expr_return_register = register_sequencer.next();
     let mut expr_buf = check!(
-        convert_expression_to_asm(
-            &**expr,
-            namespace,
-            &expr_return_register,
-            register_sequencer
-        ),
+        convert_expression_to_asm(&*expr, namespace, &expr_return_register, register_sequencer),
         vec![],
         warnings,
         errors
@@ -709,7 +705,6 @@ fn convert_if_let_to_asm(
         }
         Err(e) => {
             errors.push(e);
-            ()
         }
     }
 

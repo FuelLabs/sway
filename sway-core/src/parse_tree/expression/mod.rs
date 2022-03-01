@@ -884,7 +884,7 @@ impl Expression {
                     span: expr.as_span(),
                     path: path.clone(),
                 };
-                let file_path = path.clone();
+                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
                 let (maybe_type_args, maybe_instantiator) = {
@@ -925,8 +925,7 @@ impl Expression {
                 let maybe_type_args = maybe_type_args
                     .map(|x| {
                         x.into_inner()
-                            .skip(1)
-                            .next()
+                            .nth(1)
                             .expect("guaranteed by grammar")
                             .into_inner()
                             .collect::<Vec<_>>()

@@ -170,7 +170,7 @@ impl Engine {
                 .map_err(|_| TypeError::MismatchedType {
                     expected,
                     received,
-                    help_text: help_text.into(),
+                    help_text,
                     span: span.clone(),
                 }),
 
@@ -189,7 +189,7 @@ impl Engine {
                 _ => Err(TypeError::MismatchedType {
                     expected,
                     received,
-                    help_text: help_text.into(),
+                    help_text,
                     span: span.clone(),
                 }),
             },

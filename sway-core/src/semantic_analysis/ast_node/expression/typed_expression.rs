@@ -848,7 +848,7 @@ impl TypedExpression {
                     (
                         TypedCodeBlock {
                             contents: Default::default(),
-                            whole_block_span: then_branch_span.clone()
+                            whole_block_span: then_branch_span
                         },
                         insert_type(TypeInfo::ErrorRecovery)
                     ),
@@ -1919,7 +1919,7 @@ impl TypedExpression {
                     "Pattern matching of enum types in this position has not yet been implemented",
                     call_path.span(),
                 ));
-                return err(warnings, errors);
+                err(warnings, errors)
             }
             DelayedResolutionVariant::StructField(DelayedStructFieldResolution {
                 exp,

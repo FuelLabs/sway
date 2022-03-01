@@ -608,7 +608,7 @@ impl NamespaceWrapper for NamespaceRef {
                             let new_decl = decl.monomorphize();
                             new_struct = TypeInfo::Struct {
                                 name: new_decl.name.clone(),
-                                fields: new_decl.fields.clone(),
+                                fields: new_decl.fields,
                             };
                             self.copy_methods_to_type(old_struct, new_struct.clone());
                         }
@@ -655,16 +655,13 @@ impl NamespaceWrapper for NamespaceRef {
                         name,
                         fields,
                         ..
-                    })) => insert_type(TypeInfo::Struct {
-                        name: name.clone(),
-                        fields: fields.clone(),
-                    }),
+                    })) => insert_type(TypeInfo::Struct { name, fields }),
                     Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                         name,
                         variants,
                         ..
                     })) => insert_type(TypeInfo::Enum {
-                        name: name.clone(),
+                        name,
                         variant_types: variants,
                     }),
                     _ => insert_type(TypeInfo::Unknown),

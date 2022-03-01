@@ -295,12 +295,7 @@ fn compile_enum_decl(
         return Err("Unable to compile generic enums.".into());
     }
 
-    create_enum_aggregate(
-        context,
-        struct_names,
-        name.as_str().to_owned(),
-        variants.clone(),
-    )
+    create_enum_aggregate(context, struct_names, name.as_str().to_owned(), variants)
 }
 
 fn create_enum_aggregate(
@@ -1341,7 +1336,7 @@ impl FnCompiler {
 
         let field_idx = self
             .struct_names
-            .get_aggregate_index(&aggregate, &ast_field.name.as_str())
+            .get_aggregate_index(&aggregate, ast_field.name.as_str())
             .ok_or_else(|| format!("Unknown field name {} in struct ???", ast_field.name))?;
 
         Ok(self.current_block.ins(context).extract_value(

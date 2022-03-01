@@ -161,13 +161,13 @@ fn match_enum(
     _arg: &Ident,
     span: &Span,
 ) -> CompileResult<MatcherResult> {
-    return err(
+    err(
         vec![],
         vec![CompileError::Unimplemented(
             "Matching enums has not yet been implemented.",
             span.clone(),
         )],
-    );
+    )
 }
 
 fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileResult<MatcherResult> {
