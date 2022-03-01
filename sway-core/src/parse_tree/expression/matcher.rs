@@ -1,8 +1,7 @@
 use crate::{
     error::{err, ok},
-    CallPath, CompileError, CompileResult, DelayedEnumVariantResolution, DelayedResolutionVariant,
-    DelayedStructFieldResolution, DelayedTupleVariantResolution, Expression, Ident, Literal,
-    Scrutinee, StructScrutineeField,
+    CallPath, CompileError, CompileResult, DelayedResolutionVariant, DelayedStructFieldResolution,
+    DelayedTupleVariantResolution, Expression, Ident, Literal, Scrutinee, StructScrutineeField,
 };
 
 use sway_types::span::Span;
@@ -157,9 +156,9 @@ fn match_struct(
 }
 
 fn match_enum(
-    exp: &Expression,
-    call_path: &CallPath,
-    arg: &Ident,
+    _exp: &Expression,
+    _call_path: &CallPath,
+    _arg: &Ident,
     span: &Span,
 ) -> CompileResult<MatcherResult> {
     return err(

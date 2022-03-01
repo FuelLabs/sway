@@ -3,7 +3,6 @@ use std::{path::PathBuf, sync::Arc};
 use crate::{
     error::{err, ok},
     parse_tree::ident,
-    type_engine::*,
     BuildConfig, CallPath, CompileError, CompileResult, Literal, Rule,
 };
 

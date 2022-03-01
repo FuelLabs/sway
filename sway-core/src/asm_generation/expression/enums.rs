@@ -7,15 +7,14 @@ use crate::asm_lang::{
 };
 use crate::{
     error::*,
-    semantic_analysis::ast_node::{TypedEnumDeclaration, TypedEnumVariant, TypedExpression},
+    semantic_analysis::ast_node::{TypedEnumDeclaration, TypedExpression},
     type_engine::resolve_type,
-    CompileResult, Ident, Literal,
+    CompileResult, Literal,
 };
 use sway_types::Span;
 
 pub(crate) fn convert_enum_instantiation_to_asm(
     decl: &TypedEnumDeclaration,
-    variant_name: &Ident,
     tag: usize,
     contents: &Option<Box<TypedExpression>>,
     return_register: &VirtualRegister,

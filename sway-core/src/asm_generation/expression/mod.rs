@@ -267,8 +267,8 @@ pub(crate) fn convert_expression_to_asm(
         TypedExpressionVariant::TupleElemAccess {
             resolved_type_of_parent,
             prefix,
-            elem_to_access_num,
             elem_to_access_span,
+            ..
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
@@ -280,13 +280,12 @@ pub(crate) fn convert_expression_to_asm(
         ),
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
-            variant_name,
             tag,
             contents,
             instantiation_span,
+            ..
         } => convert_enum_instantiation_to_asm(
             enum_decl,
-            variant_name,
             *tag,
             contents,
             return_register,
@@ -590,7 +589,7 @@ pub(crate) fn convert_abi_fn_to_asm(
 
 fn convert_if_let_to_asm(
     expr: &Box<TypedExpression>,
-    enum_type: TypeId,
+    _enum_type: TypeId,
     variant: &TypedEnumVariant,
     then: &TypedCodeBlock,
     r#else: &Option<TypedCodeBlock>,
@@ -698,7 +697,10 @@ fn convert_if_let_to_asm(
                     opcode: Either::Left(VirtualOp::MCPI(
                         variable_to_assign_register,
                         expr_return_register,
-                        VirtualImmediate12::new_unchecked(size, "enums this large are not supported"),
+                        VirtualImmediate12::new_unchecked(
+                            size,
+                            "enums this large are not supported",
+                        ),
                     )),
                     owning_span: Some(then.span().clone()),
                     comment: "Increment pointer to skip tag in enum destructuring".into(),
@@ -708,7 +710,7 @@ fn convert_if_let_to_asm(
         Err(e) => {
             errors.push(e);
             ()
-        },
+        }
     }
 
     // 6

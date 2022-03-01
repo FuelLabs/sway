@@ -1,9 +1,6 @@
 use crate::{
     error::*,
-    semantic_analysis::{
-        ast_node::{declaration::insert_type_parameters, *},
-        *,
-    },
+    semantic_analysis::{ast_node::*, *},
     type_engine::*,
     CallPath, Visibility,
 };

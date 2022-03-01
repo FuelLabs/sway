@@ -6,7 +6,6 @@ use crate::{
     semantic_analysis::ast_node::*,
     type_engine::{insert_type, IntegerBits},
 };
-use either::Either;
 
 mod method_application;
 use crate::type_engine::TypeId;
@@ -865,7 +864,7 @@ impl TypedExpression {
                 &then_branch_span,
                 "Because this `if let` doesn't have an else branch, it cannot implicitly return any value."
             ) {
-                Ok(o) => None,
+                Ok(_) => None,
                 Err(e) => {
                     errors.push(e.into());
                     return err(warnings, errors);
@@ -1913,9 +1912,8 @@ impl TypedExpression {
                 ok(exp, warnings, errors)
             }
             DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
-                exp,
                 call_path,
-                arg_num,
+                ..
             }) => {
                 errors.push(CompileError::Unimplemented(
                     "Pattern matching of enum types in this position has not yet been implemented",
