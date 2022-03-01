@@ -1,11 +1,11 @@
+use clap::Parser;
 use std::fs::{self, File};
 use std::io::Read;
-use structopt::{self, StructOpt};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 
 /// Parse bytecode file into a debug format.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     file_path: String,
 }

@@ -1,4 +1,5 @@
 use super::manifest::Manifest;
+use crate::utils::restricted_names;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
@@ -52,10 +53,71 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
             ))
         }
     };
-    match toml::from_str(&manifest) {
+
+    let manifest = match toml::from_str(&manifest) {
         Ok(o) => Ok(o),
         Err(e) => Err(format!("Error parsing manifest: {}.", e)),
+    }?;
+
+    validate_manifest(manifest)
+}
+
+// Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
+// https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
+
+fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
+    // if true returns formatted error
+    restricted_names::contains_invalid_char(name, use_case)?;
+
+    if restricted_names::is_keyword(name) {
+        return Err(format!(
+            "the name `{name}` cannot be used as a package name, it is a Sway keyword"
+        ));
     }
+    if restricted_names::is_conflicting_artifact_name(name) {
+        return Err(format!(
+            "the name `{name}` cannot be used as a package name, \
+            it conflicts with Forc's build directory names"
+        ));
+    }
+    if name == "test" {
+        return Err("the name `test` cannot be used as a package name, \
+            it conflicts with Sway's built-in test library"
+            .into());
+    }
+    if restricted_names::is_conflicting_suffix(name) {
+        return Err(format!(
+            "the name `{name}` is part of Sway's standard library\n\
+            It is recommended to use a different name to avoid problems."
+        ));
+    }
+    if restricted_names::is_windows_reserved(name) {
+        if cfg!(windows) {
+            return Err(format!(
+                "cannot use name `{name}`, it is a reserved Windows filename"
+            ));
+        } else {
+            return Err(format!(
+                "the name `{name}` is a reserved Windows filename\n\
+                This package will not work on Windows platforms."
+            ));
+        }
+    }
+    if restricted_names::is_non_ascii_name(name) {
+        return Err(format!(
+            "the name `{name}` contains non-ASCII characters which are unsupported"
+        ));
+    }
+    Ok(())
+}
+
+fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
+    validate_name(&manifest.project.name, "package name")?;
+    if let Some(ref org) = manifest.project.organization {
+        validate_name(org, "organization name")?;
+    }
+
+    Ok(manifest)
 }
 
 pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
@@ -308,6 +370,7 @@ fn construct_window<'a>(
     const NUM_LINES_BUFFER: usize = 2;
 
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
+    debug_assert!(end.line >= start.line);
     let total_lines_of_highlight = end.line - start.line;
     debug_assert!(total_lines_in_input > total_lines_of_highlight);
 
@@ -320,7 +383,7 @@ fn construct_window<'a>(
             current_line += 1
         }
 
-        if current_line >= start.line - NUM_LINES_BUFFER && calculated_start_ix.is_none() {
+        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
             calculated_start_ix = Some(ix);
             lines_to_start_of_snippet = current_line;
         }
@@ -336,8 +399,8 @@ fn construct_window<'a>(
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    *start_ix -= calculated_start_ix;
-    *end_ix -= calculated_start_ix;
+    *start_ix -= std::cmp::min(calculated_start_ix, *start_ix);
+    *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
 }

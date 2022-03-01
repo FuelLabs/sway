@@ -5,7 +5,7 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
 
     format!(
         r#"[project]
-author = "{real_name}"
+authors = ["{real_name}"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "{project_name}"

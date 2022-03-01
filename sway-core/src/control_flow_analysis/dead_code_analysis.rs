@@ -4,8 +4,8 @@ use crate::{
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
-            TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
+            SizeOfVariant, TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration,
+            TypedDeclaration, TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop,
@@ -955,6 +955,21 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
+        SizeOf { variant } => match variant {
+            SizeOfVariant::Type(_) => Ok(vec![]),
+            SizeOfVariant::Val(exp) => {
+                let exp = connect_expression(
+                    &(*exp).expression,
+                    graph,
+                    leaves,
+                    exit_node,
+                    "size_of",
+                    tree_type,
+                    exp.span.clone(),
+                )?;
+                Ok(exp)
+            }
+        },
         a => {
             println!("Unimplemented: {:?}", a);
             Err(CompileError::Unimplemented(

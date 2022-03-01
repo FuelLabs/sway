@@ -420,6 +420,8 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
+            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
+            Expression::SizeOfType { .. } => self,
         }
     }
 

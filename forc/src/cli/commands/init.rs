@@ -1,8 +1,8 @@
 use crate::ops::forc_init;
-use structopt::{self, StructOpt};
+use clap::Parser;
 
 /// Create a new Forc project.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     project_name: String,
 }

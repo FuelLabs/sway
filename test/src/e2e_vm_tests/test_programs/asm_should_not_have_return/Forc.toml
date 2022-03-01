@@ -1,5 +1,5 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "asm_should_not_have_return"
 entry = "main.sw"

@@ -1,7 +1,7 @@
-use structopt::StructOpt;
+use clap::Parser;
 use sway_server::start;
 /// Run the LSP server.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {}
 
 pub(crate) async fn exec(_command: Command) -> Result<(), String> {
