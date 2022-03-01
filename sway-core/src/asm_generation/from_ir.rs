@@ -1663,13 +1663,8 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::Bool(b) => Literal::Boolean(*b),
         ConstantValue::Uint(n) => Literal::U64(*n),
         ConstantValue::B256(bs) => Literal::B256(*bs),
-        ConstantValue::String(_) => Literal::String(crate::span::Span {
-            span: pest::Span::new(
-                "STRINGS ARE UNIMPLEMENTED UNTIL WE REDO DATASECTION".into(),
-                0,
-                51,
-            )
-            .unwrap(),
+        ConstantValue::String(str) => Literal::String(crate::span::Span {
+            span: pest::Span::new(std::sync::Arc::from(str.as_str()), 0, str.len()).unwrap(),
             path: None,
         }),
         ConstantValue::Array(_) => unimplemented!(),
