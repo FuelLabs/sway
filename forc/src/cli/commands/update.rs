@@ -1,22 +1,22 @@
 use crate::ops::forc_update;
-use structopt::{self, StructOpt};
+use clap::Parser;
 
 /// Update dependencies in the Forc dependencies directory.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub path: Option<String>,
 
     /// Dependency to be updated.
     /// If not set, all dependencies will be updated.
-    #[structopt(short = "d")]
+    #[clap(short = 'd')]
     pub target_dependency: Option<String>,
 
     /// Checks if the dependencies have newer versions.
     /// Won't actually perform the update, will output which
     /// ones are up-to-date and outdated.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub check: bool,
 }
 
