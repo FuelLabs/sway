@@ -683,14 +683,31 @@ fn convert_if_let_to_asm(
                     comment: "Load destructured value into register".into(),
                 });
             } else {
-                todo!("use MCPI")
+                // add one word to the pointer (8 bytes) to skip the tag -- the result of this is $rA
+                // mcpi variable_to_assign_register, $rA, size_of_enum
+                buf.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        expr_return_register.clone(),
+                        expr_return_register.clone(),
+                        VirtualImmediate12::new_unchecked(8, "infallible"),
+                    )),
+                    owning_span: Some(then.span().clone()),
+                    comment: "Increment pointer to skip tag in enum destructuring".into(),
+                });
+                buf.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        variable_to_assign_register,
+                        expr_return_register,
+                        VirtualImmediate12::new_unchecked(size, "enums this large are not supported"),
+                    )),
+                    owning_span: Some(then.span().clone()),
+                    comment: "Increment pointer to skip tag in enum destructuring".into(),
+                });
             }
         }
         Err(e) => {
-
             errors.push(e);
             ()
-
         },
     }
 
