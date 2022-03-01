@@ -1,4 +1,5 @@
 use super::manifest::Manifest;
+use crate::utils::restricted_names;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
@@ -52,10 +53,71 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
             ))
         }
     };
-    match toml::from_str(&manifest) {
+
+    let manifest = match toml::from_str(&manifest) {
         Ok(o) => Ok(o),
         Err(e) => Err(format!("Error parsing manifest: {}.", e)),
+    }?;
+
+    validate_manifest(manifest)
+}
+
+// Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
+// https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
+
+fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
+    // if true returns formatted error
+    restricted_names::contains_invalid_char(name, use_case)?;
+
+    if restricted_names::is_keyword(name) {
+        return Err(format!(
+            "the name `{name}` cannot be used as a package name, it is a Sway keyword"
+        ));
     }
+    if restricted_names::is_conflicting_artifact_name(name) {
+        return Err(format!(
+            "the name `{name}` cannot be used as a package name, \
+            it conflicts with Forc's build directory names"
+        ));
+    }
+    if name == "test" {
+        return Err("the name `test` cannot be used as a package name, \
+            it conflicts with Sway's built-in test library"
+            .into());
+    }
+    if restricted_names::is_conflicting_suffix(name) {
+        return Err(format!(
+            "the name `{name}` is part of Sway's standard library\n\
+            It is recommended to use a different name to avoid problems."
+        ));
+    }
+    if restricted_names::is_windows_reserved(name) {
+        if cfg!(windows) {
+            return Err(format!(
+                "cannot use name `{name}`, it is a reserved Windows filename"
+            ));
+        } else {
+            return Err(format!(
+                "the name `{name}` is a reserved Windows filename\n\
+                This package will not work on Windows platforms."
+            ));
+        }
+    }
+    if restricted_names::is_non_ascii_name(name) {
+        return Err(format!(
+            "the name `{name}` contains non-ASCII characters which are unsupported"
+        ));
+    }
+    Ok(())
+}
+
+fn validate_manifest(manifest: Manifest) -> Result<Manifest, String> {
+    validate_name(&manifest.project.name, "package name")?;
+    if let Some(ref org) = manifest.project.organization {
+        validate_name(org, "organization name")?;
+    }
+
+    Ok(manifest)
 }
 
 pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
