@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
@@ -13,6 +14,7 @@ pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         name: CallPath,
+        contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then

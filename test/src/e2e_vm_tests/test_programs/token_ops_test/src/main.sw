@@ -9,13 +9,12 @@ use std::token::*;
 use test_fuel_coin_abi::*;
 
 struct Opts {
-        gas: u64,
-        coins: u64,
-        id: ContractId,
-    }
+    gas: u64,
+    coins: u64,
+    id: ContractId,
+}
 
 fn main() -> bool {
-
     let default = Opts {
         gas: 1_000_000_000_000,
         coins: 0,
@@ -32,26 +31,29 @@ fn main() -> bool {
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
-    fuel_coin.mint(default.gas, default.coins, default.id.value, 11);
+    fuel_coin.mint {
+        gas: default.gas, coins: default.coins, asset_id: default.id.value
+    }
+    (11);
 
     // check that the mint was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 11);
 
-    fuel_coin.burn(default.gas, default.coins, default.id.value, 7);
+    fuel_coin.burn {
+        gas: default.gas, coins: default.coins, asset_id: default.id.value
+    }
+    (7);
 
     // check that the burn was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 4);
 
-    let force_transfer_args = ParamsForceTransfer {
-        coins: 3,
-        asset_id: fuelcoin_id,
-        c_id: balance_test_id,
-    };
-
     // force transfer coins
-    fuel_coin.force_transfer(default.gas, default.coins, default.id.value, force_transfer_args);
+    fuel_coin.force_transfer {
+        gas: default.gas, coins: default.coins, asset_id: default.id.value
+    }
+    (3, fuelcoin_id, balance_test_id);
 
     // check that the transfer was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);

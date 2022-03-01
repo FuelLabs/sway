@@ -1,20 +1,37 @@
 contract;
 
-use std::token::*;
+use std::{contract_id::ContractId, token::*};
 use test_fuel_coin_abi::*;
 
+pub fn balance() -> u64 {
+    asm() {
+        bal
+    }
+}
+
+pub fn context_gas() -> u64 {
+    asm() {
+        cgas
+    }
+}
+
+pub fn frame_ptr() -> u64 {
+    asm() {
+        fp
+    }
+}
+
 impl TestFuelCoin for Contract {
-
     // TODO add event logging
-    fn mint(gas: u64, coins: u64, asset_id: b256, mint_amount: u64) {
-        mint(coins);
+    fn mint(mint_amount: u64) {
+        mint(balance());
     }
 
-    fn burn(gas: u64, coins: u64, asset_id: b256, burn_amount: u64) {
-        burn(coins);
+    fn burn(burn_amount: u64) {
+        burn(balance());
     }
 
-    fn force_transfer(gas: u64, coins: u64, asset_id: b256, params: ParamsForceTransfer) {
-        force_transfer(params.coins, params.asset_id, params.c_id)
+    fn force_transfer(coins: u64, asset_id: ContractId, c_id: ContractId) {
+        force_transfer(coins, asset_id, c_id)
     }
 }

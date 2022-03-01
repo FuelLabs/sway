@@ -3,34 +3,13 @@
     "inputs": [
       {
         "components": null,
-        "name": "gas",
-        "type": "u64"
+        "name": "field_1",
+        "type": "bool"
       },
       {
         "components": null,
-        "name": "coin",
+        "name": "field_2",
         "type": "u64"
-      },
-      {
-        "components": null,
-        "name": "asset_id",
-        "type": "b256"
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "field_1",
-            "type": "bool"
-          },
-          {
-            "components": null,
-            "name": "field_2",
-            "type": "u64"
-          }
-        ],
-        "name": "input",
-        "type": "struct InputStruct"
       }
     ],
     "name": "foo",
@@ -56,21 +35,6 @@
   },
   {
     "inputs": [
-      {
-        "components": null,
-        "name": "gas",
-        "type": "u64"
-      },
-      {
-        "components": null,
-        "name": "coin",
-        "type": "u64"
-      },
-      {
-        "components": null,
-        "name": "asset_id",
-        "type": "b256"
-      },
       {
         "components": null,
         "name": "input",

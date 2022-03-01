@@ -11,7 +11,7 @@ pub struct ParamsForceTransfer {
 }
 
 abi TestFuelCoin {
-    fn mint(gas: u64, coins: u64, asset_id: b256, mint_amount: u64);
-    fn burn(gas: u64, coins: u64, asset_id: b256, burn_amount: u64);
-    fn force_transfer(gas: u64, coins: u64, asset_id: b256, params: ParamsForceTransfer);
+    fn mint(mint_amount: u64);
+    fn burn(burn_amount: u64);
+    fn force_transfer(coins: u64, asset_id: ContractId, c_id: ContractId);
 }
