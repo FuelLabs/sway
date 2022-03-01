@@ -2165,7 +2165,13 @@ fn check_scrutinee_type(
             warnings,
             errors
         ),
-        _ => todo!(),
+        _ => {
+            errors.push(CompileError::Unimplemented(
+                "Destructuring this type is not yet implemented.",
+                scrutinee.span(),
+            ));
+            return err(warnings, errors);
+        }
     };
 
     ok((ty.as_type(), enum_variant), warnings, errors)
@@ -2188,7 +2194,12 @@ fn check_enum_scrutinee_type(
     );
     let enum_decl = match decl {
         TypedDeclaration::EnumDeclaration(decl) => decl,
-        _ => todo!("err can't destructure a non-enum"),
+        _ => {
+            errors.push(CompileError::IfLetNonEnum {
+                span: call_path.span(),
+            });
+            return err(warnings, errors);
+        }
     };
     let enum_decl = if !enum_decl.type_parameters.is_empty() {
         // infallible because it is an invariant that monomorphization can only fail if
@@ -2207,7 +2218,14 @@ fn check_enum_scrutinee_type(
         .cloned();
     match matching_variant {
         Some(variant) => ok((enum_decl, variant), warnings, errors),
-        None => todo!("variant didn't exist on enum err"),
+        None => {
+            errors.push(CompileError::UnknownEnumVariant {
+                variant_name: enum_variant,
+                enum_name: enum_decl.name,
+                span: call_path.span(),
+            });
+            err(warnings, errors)
+        }
     }
 }
 
