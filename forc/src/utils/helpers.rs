@@ -62,8 +62,8 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     validate_manifest(manifest)
 }
 
-// Using (https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs#L570 +
-// https://github.com/rust-lang/cargo/blob/master/src/cargo/ops/cargo_new.rs#L166) for reference
+// Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
+// https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
 
 fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
     // if true returns formatted error
@@ -77,7 +77,7 @@ fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
     if restricted_names::is_conflicting_artifact_name(name) {
         return Err(format!(
             "the name `{name}` cannot be used as a package name, \
-            it conflicts with forc's build directory names"
+            it conflicts with Forc's build directory names"
         ));
     }
     if name == "test" {
@@ -105,9 +105,7 @@ fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
     }
     if restricted_names::is_non_ascii_name(name) {
         return Err(format!(
-            "the name `{name}` contains non-ASCII characters\n\
-            Support for non-ASCII crate names is experimental and only valid \
-            on Rust's nightly toolchain."
+            "the name `{name}` contains non-ASCII characters which are unsupported"
         ));
     }
     Ok(())

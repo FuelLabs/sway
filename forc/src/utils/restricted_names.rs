@@ -1,4 +1,5 @@
-//! Helpers for validating and checking names like package and crate names.
+//! Helpers for validating and checking names like package and organization names.
+// This is based on https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/restricted_names.rs
 
 use std::path::Path;
 
