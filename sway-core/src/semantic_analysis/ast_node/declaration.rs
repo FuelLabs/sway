@@ -283,11 +283,16 @@ impl TypedEnumDeclaration {
         if !type_arguments.is_empty() {
             // check type arguments against parameters
             if new_decl.type_parameters.len() != type_arguments.len() {
-                todo!(
-                    "incorrect number of type args err expected {} got {}",
-                    new_decl.type_parameters.len(),
-                    type_arguments.len()
-                );
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: new_decl.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
+                return err(warnings, errors);
             }
 
             // check the type arguments

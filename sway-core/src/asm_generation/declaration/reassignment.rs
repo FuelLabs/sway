@@ -179,7 +179,6 @@ pub(crate) fn convert_reassignment_to_asm(
             let size_of_ty = look_up_type_id(reassignment.rhs.return_type)
                 .size_in_words(&reassignment.rhs.span)
                 .unwrap_or_else(|e| {
-                    println!("here???2");
                     errors.push(e);
                     0
                 });
