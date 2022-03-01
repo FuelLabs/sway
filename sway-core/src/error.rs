@@ -859,6 +859,8 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1065,6 +1067,7 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
         }
     }
 

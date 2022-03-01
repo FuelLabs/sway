@@ -84,7 +84,12 @@ impl Scrutinee {
             Scrutinee::EnumScrutinee {
                 variable_to_assign, ..
             } => ok(variable_to_assign, vec![], vec![]),
-            _ => todo!("err cannot if let on non-enum"),
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::IfLetNonEnum { span: self.span() }],
+                );
+            }
         }
     }
 

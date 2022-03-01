@@ -294,7 +294,15 @@ impl TypedFunctionDeclaration {
         if !type_arguments.is_empty() {
             // check type arguments against parameters
             if self.type_parameters.len() != type_arguments.len() {
-                todo!("incorrect number of type args err");
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: self.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
             }
 
             // check the type arguments
