@@ -42,7 +42,7 @@ script {
 
 !0 = filepath "/path/to/trait.sw"
 !1 = span !0 203 207
-!2 = span !0 232 233
+!2 = span !0 159 160
 !3 = span !0 68 72
 !4 = span !0 74 79
 !5 = span !0 105 116

@@ -68,34 +68,36 @@ fn generic_enum_resolution() {
     };
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
-        name: "Result".into(),
+        name: Ident::new_with_override("Result", sp.clone()),
         variant_types: vec![TypedEnumVariant {
-            name: "a".into(),
+            name: Ident::new_with_override("a", sp.clone()),
             tag: 0,
             r#type: engine.insert_type(TypeInfo::UnknownGeneric {
                 name: Ident::new_with_override("T", sp.clone()),
             }),
+            span: sp.clone(),
         }],
     });
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {
-        name: "Result".into(),
+        name: Ident::new_with_override("Result", sp.clone()),
         variant_types: vec![TypedEnumVariant {
-            name: "a".into(),
+            name: Ident::new_with_override("a", sp.clone()),
             tag: 0,
             r#type: engine.insert_type(TypeInfo::Boolean),
+            span: sp.clone(),
         }],
     });
 
     // Unify them together...
-    engine.unify(ty_1, ty_2, &sp).unwrap();
+    engine.unify(ty_1, ty_2, &sp, "").unwrap();
 
     if let TypeInfo::Enum {
         name,
         variant_types,
     } = engine.look_up_type_id(ty_1)
     {
-        assert_eq!(name, "Result");
+        assert_eq!(name.as_str(), "Result");
         assert_eq!(
             engine.look_up_type_id(variant_types[0].r#type),
             TypeInfo::Boolean
@@ -118,7 +120,7 @@ fn basic_numeric_unknown() {
     let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id, id2, &sp).unwrap();
+    engine.unify(id, id2, &sp, "").unwrap();
 
     assert_eq!(
         engine.resolve_type(id, &sp).unwrap(),
@@ -139,7 +141,7 @@ fn chain_of_refs() {
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id4, id2, &sp).unwrap();
+    engine.unify(id4, id2, &sp, "").unwrap();
 
     assert_eq!(
         engine.resolve_type(id3, &sp).unwrap(),
@@ -160,7 +162,7 @@ fn chain_of_refs_2() {
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id2, id4, &sp).unwrap();
+    engine.unify(id2, id4, &sp, "").unwrap();
 
     assert_eq!(
         engine.resolve_type(id3, &sp).unwrap(),

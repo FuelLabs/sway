@@ -88,11 +88,11 @@ fn test_struct_memory_layout() {
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![
             FieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.as_str().to_string(),
+                name_of_field: first_field_name.clone(),
                 size: 1,
             },
             FieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.as_str().to_string(),
+                name_of_field: second_field_name.clone(),
                 size: 1,
             },
         ],
