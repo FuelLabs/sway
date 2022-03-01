@@ -1982,7 +1982,7 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
             warnings,
             errors
         ),
-        Rule::if_let_exp => todo!("parse chained if let"),
+        Rule::if_let_exp => parse_if_let(todo!()),
         _ => unreachable!("guaranteed by grammar"),
     });
     ok(

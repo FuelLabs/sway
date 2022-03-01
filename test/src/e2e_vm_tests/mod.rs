@@ -92,6 +92,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("size_of", ProgramState::Return(1)),
         ("supertraits", ProgramState::Return(1)),
         ("new_allocator_test", ProgramState::Return(42)), // true
+        ("chained_if_let", ProgramState::Return(5)),      // true
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -139,6 +140,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "enum_bad_type_inference",
         "missing_func_from_supertrait_impl",
         "supertrait_does_not_exist",
+        "chained_if_let_missing_branch",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
