@@ -35,7 +35,7 @@ pub fn is_conflicting_suffix(name: &str) -> bool {
 }
 
 // Bikeshedding necessary to determine if relevant
-/// An artifact with this name will conflict with one of Cargo's build directories.
+/// An artifact with this name will conflict with one of forc's build directories.
 pub fn is_conflicting_artifact_name(name: &str) -> bool {
     ["deps", "examples", "build", "incremental"].contains(&name)
 }

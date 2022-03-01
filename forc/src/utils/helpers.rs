@@ -77,7 +77,7 @@ fn validate_name(name: &str, use_case: &str) -> Result<(), String> {
     if restricted_names::is_conflicting_artifact_name(name) {
         return Err(format!(
             "the name `{name}` cannot be used as a package name, \
-            it conflicts with cargo's build directory names"
+            it conflicts with forc's build directory names"
         ));
     }
     if name == "test" {
