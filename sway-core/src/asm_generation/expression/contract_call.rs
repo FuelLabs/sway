@@ -33,36 +33,46 @@ pub(crate) fn convert_contract_call_to_asm(
         owning_span: Some(span.clone()),
     });
 
-    // create a struct expression that bundles the arguments in order
-    let mut typed_fields_buf = vec![];
-    for (name, arg) in arguments {
-        typed_fields_buf.push(TypedStructExpressionField {
-            value: arg.clone(),
-            name: name.clone(),
-        });
-    }
-    let bundled_arguments = TypedExpression {
-        expression: TypedExpressionVariant::StructExpression {
-            struct_name: Ident::new_with_override("new struct", span.clone()),
-            fields: typed_fields_buf,
-        },
-        return_type: 0,
-        is_constant: IsConstant::No,
-        span: span.clone(),
+    // Bundle the arguments into a struct if needed. If we only have a single argument, there is no
+    // need to bundle.
+    let bundled_arguments = match arguments.len() {
+        0 => None,
+        1 => Some(arguments[0].1.clone()),
+        _ => {
+            // create a struct expression that bundles the arguments in order
+            let mut typed_fields_buf = vec![];
+            for (name, arg) in arguments {
+                typed_fields_buf.push(TypedStructExpressionField {
+                    value: arg.clone(),
+                    name: name.clone(),
+                });
+            }
+            Some(TypedExpression {
+                expression: TypedExpressionVariant::StructExpression {
+                    struct_name: Ident::new_with_override("bundled_arguments", span.clone()),
+                    fields: typed_fields_buf,
+                },
+                return_type: 0,
+                is_constant: IsConstant::No,
+                span: span.clone(),
+            })
+        }
     };
 
     // evaluate the bundle of arguments
-    asm_buf.append(&mut check!(
-        convert_expression_to_asm(
-            &bundled_arguments,
-            namespace,
-            &bundled_arguments_register,
-            register_sequencer
-        ),
-        vec![],
-        warnings,
-        errors
-    ));
+    if let Some(bundled_arguments) = &bundled_arguments {
+        asm_buf.append(&mut check!(
+            convert_expression_to_asm(
+                bundled_arguments,
+                namespace,
+                &bundled_arguments_register,
+                register_sequencer
+            ),
+            vec![],
+            warnings,
+            errors
+        ));
+    }
 
     // evaluate the gas to forward to the contract. If no user-specified gas parameter is found,
     // simply load $cgas.
@@ -163,15 +173,17 @@ pub(crate) fn convert_contract_call_to_asm(
     });
 
     // write the user argument to bytes 40-48
-    asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::SW(
-            ra_pointer.clone(),
-            bundled_arguments_register,
-            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
-        )),
-        comment: "move user param for call".into(),
-        owning_span: Some(span.clone()),
-    });
+    if bundled_arguments.is_some() {
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::SW(
+                ra_pointer.clone(),
+                bundled_arguments_register,
+                VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+            )),
+            comment: "move user param for call".into(),
+            owning_span: Some(span.clone()),
+        });
+    }
 
     // now, $rA (ra_pointer) points to the beginning of a section of contiguous memory that
     // contains the contract address, function selector, and user parameter.

@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
     asm_lang::*,
-    constants,
     parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{
@@ -552,9 +551,6 @@ fn convert_fn_app_to_asm(
 pub(crate) fn convert_abi_fn_to_asm(
     decl: &TypedFunctionDeclaration,
     arguments: &[(Ident, VirtualRegister)],
-    gas_register: VirtualRegister,
-    coins_register: VirtualRegister,
-    asset_id_register: VirtualRegister,
     parent_namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
@@ -570,27 +566,6 @@ pub(crate) fn convert_abi_fn_to_asm(
     for arg in arguments {
         namespace.insert_variable(arg.clone().0, arg.clone().1);
     }
-    namespace.insert_variable(
-        Ident::new_with_override(
-            constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
-            decl.parameters_span(),
-        ),
-        gas_register,
-    );
-    namespace.insert_variable(
-        Ident::new_with_override(
-            constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
-            decl.parameters_span(),
-        ),
-        coins_register,
-    );
-    namespace.insert_variable(
-        Ident::new_with_override(
-            constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME,
-            decl.parameters_span(),
-        ),
-        asset_id_register,
-    );
     // evaluate the function body
     let mut body = check!(
         convert_code_block_to_asm(

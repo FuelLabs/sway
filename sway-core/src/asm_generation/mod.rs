@@ -1284,73 +1284,68 @@ fn compile_contract_to_selectors(
         let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
-        // load the call frame argument into the function argument register
-        let bundled_arguments_register = register_sequencer.next();
+
         let mut arguments = vec![];
+        match decl.parameters.len() {
+            0 => {}
+            1 => {
+                let arg_register = register_sequencer.next();
+                asm_buf.push(load_bundled_arguments(arg_register.clone()));
+                arguments.push((decl.parameters[0].name.clone(), arg_register));
+            }
+            _ => {
+                // load the call frame argument into the function argument register
+                let bundled_arguments_register = register_sequencer.next();
 
-        // Create a new struct type that contains all the arguments. Then, for each argument,
-        // create a register for it and load it using some utilities from expression::subfield.
-        let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
-            name: "bundled_arguments".to_string(),
-            fields: decl
-                .parameters
-                .iter()
-                .map(|p| OwnedTypedStructField {
-                    name: p.name.to_string(),
-                    r#type: p.r#type,
-                })
-                .collect::<Vec<_>>(),
-        });
+                // Create a new struct type that contains all the arguments. Then, for each argument,
+                // create a register for it and load it using some utilities from expression::subfield.
+                let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
+                    name: "bundled_arguments".to_string(),
+                    fields: decl
+                        .parameters
+                        .iter()
+                        .map(|p| OwnedTypedStructField {
+                            name: p.name.to_string(),
+                            r#type: p.r#type,
+                        })
+                        .collect::<Vec<_>>(),
+                });
 
-        let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);
+                let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);
 
-        let descriptor = check!(
-            get_contiguous_memory_layout(&subfields_for_layout.clone()[..]),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+                let descriptor = check!(
+                    get_contiguous_memory_layout(&subfields_for_layout.clone()[..]),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
 
-        asm_buf.push(load_bundled_arguments(bundled_arguments_register.clone()));
+                asm_buf.push(load_bundled_arguments(bundled_arguments_register.clone()));
 
-        for param in &decl.parameters {
-            let arg_register = register_sequencer.next();
+                for param in &decl.parameters {
+                    let arg_register = register_sequencer.next();
 
-            asm_buf.append(&mut check!(
-                convert_subfield_to_asm(
-                    bundled_arguments_register.clone(),
-                    param.name.as_str(),
-                    param.type_span.clone(),
-                    arg_register.clone(),
-                    &subfields_for_layout,
-                    &descriptor,
-                ),
-                vec![],
-                warnings,
-                errors
-            ));
+                    asm_buf.append(&mut check!(
+                        convert_subfield_to_asm(
+                            bundled_arguments_register.clone(),
+                            param.name.as_str(),
+                            param.type_span.clone(),
+                            arg_register.clone(),
+                            &subfields_for_layout,
+                            &descriptor,
+                        ),
+                        vec![],
+                        warnings,
+                        errors
+                    ));
 
-            arguments.push((param.name.clone(), arg_register));
+                    arguments.push((param.name.clone(), arg_register));
+                }
+            }
         }
 
-        // Load registers corresponding to the contract parameters
-        let gas_register = register_sequencer.next();
-        let coins_register = register_sequencer.next();
-        let asset_id_register = register_sequencer.next();
-        asm_buf.push(load_gas(gas_register.clone()));
-        asm_buf.push(load_coins(coins_register.clone()));
-        asm_buf.push(load_asset_id(asset_id_register.clone()));
-
         asm_buf.append(&mut check!(
-            convert_abi_fn_to_asm(
-                &decl,
-                &arguments,
-                gas_register,
-                coins_register,
-                asset_id_register,
-                namespace,
-                register_sequencer
-            ),
+            convert_abi_fn_to_asm(&decl, &arguments, namespace, register_sequencer),
             vec![],
             warnings,
             errors

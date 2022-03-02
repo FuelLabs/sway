@@ -22,11 +22,13 @@ fn main() -> bool {
     };
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0xe92f8eda3411f75d4cb1f6cb8c9b0825421456de6b32e2bc8edcc992ecd2c0e4);
-    let balance_test_id = ~ContractId::from(0x7e4f67697c313eea120d7fa62b49526f6451ea489a539bf0ebfd43cc5b5d9213);
+    let fuelcoin_id = ~ContractId::from(0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
+
+    // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
+    let balance_test_id = ~ContractId::from(0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322);
 
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0xe92f8eda3411f75d4cb1f6cb8c9b0825421456de6b32e2bc8edcc992ecd2c0e4);
+    let fuel_coin = abi(TestFuelCoin, 0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);

@@ -1,11 +1,6 @@
 library context_testing_abi;
 use std::contract_id::ContractId;
 
-pub struct ParamsContractBalance {
-    asset_id: b256,
-    contract_id: ContractId,
-}
-
 abi ContextTesting {
     fn get_id() -> b256;
     fn get_this_balance(asset_id: b256) -> u64;

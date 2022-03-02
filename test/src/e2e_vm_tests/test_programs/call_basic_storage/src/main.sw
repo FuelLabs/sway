@@ -2,7 +2,7 @@ script;
 use basic_storage_abi::StoreU64;
 
 fn main() -> u64 {
-    let addr = abi(StoreU64, 0x5ff92b1b01eff2708c9edef22aaae84191680f429b7b12d220632ce5567456d5);
+    let addr = abi(StoreU64, 0xc664e47a0de686a029134e5122383d99d0d29e54179e14c92dd433413a07620a);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 

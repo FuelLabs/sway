@@ -5,10 +5,12 @@ use context_testing_abi::*;
 fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
-    let other_contract_id = ~ContractId::from(0x7e4f67697c313eea120d7fa62b49526f6451ea489a539bf0ebfd43cc5b5d9213);
-    let deployed_contract_id = 0xe2fd097748309f388c9c14206647ff479b998980a17e0f72a7073ae861705d48;
+    let other_contract_id = ~ContractId::from(0x285dafd64feb42477cfb3da8193ceb28b5f5277c17591d7c10000661cacdd0c9);
 
-    let test_contract = abi(ContextTesting, 0xe2fd097748309f388c9c14206647ff479b998980a17e0f72a7073ae861705d48);
+    // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
+    let deployed_contract_id = 0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322;
+
+    let test_contract = abi(ContextTesting, 0x285dafd64feb42477cfb3da8193ceb28b5f5277c17591d7c10000661cacdd0c9);
 
     // test Context::contract_id():
     let returned_contract_id = test_contract.get_id {
