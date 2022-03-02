@@ -94,34 +94,36 @@ pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
     name.as_ref().contains(&['*', '?', '[', ']'][..])
 }
 
-// unfortunately there's not a good way to test after converting to `anyhow`,
-// but the tests did work before conversion, and these are my failed attempts
-// at getting them working again.
-//
-// #[test]
-// fn test_invalid_char() {
-//     let x: Result<(), &str> = Err("invalid character `#` in package name: `test#proj`, \
-//     characters must be Unicode XID characters \
-//     (numbers, `-`, `_`, or most letters)");
-//     assert_eq!(
-//         contains_invalid_char("test#proj", "package name").contains(&x), true
-//         );
-//
-//     let y: Result<(), &str> = Err("invalid character ` ` in package name: `test proj`, \
-//     characters must be Unicode XID characters \
-//     (numbers, `-`, `_`, or most letters)");
-//     assert_eq!(
-//         contains_invalid_char("test proj", "package name").contains(&y), true
-//         );
-//
-//     let z: Result<(), &str> = Err("package name cannot be left empty, \
-//         please use a valid name");
-//     assert_eq!(
-//         contains_invalid_char("", "package name").contains(&z), true
-//         );
-//
-//     assert!(matches!(
-//         contains_invalid_char("test_proj", "package name"),
-//         std::result::Result::Ok(())
-//     ));
-// }
+#[test]
+fn test_invalid_char() {
+    let x: Result<(), String> = Err("invalid character `#` in package name: `test#proj`, \
+    characters must be Unicode XID characters \
+    (numbers, `-`, `_`, or most letters)"
+        .to_string());
+    assert_eq!(
+        contains_invalid_char("test#proj", "package name").map_err(|e| e.to_string()),
+        x
+    );
+
+    let y: Result<(), String> = Err("invalid character ` ` in package name: `test proj`, \
+    characters must be Unicode XID characters \
+    (numbers, `-`, `_`, or most letters)"
+        .to_string());
+    assert_eq!(
+        contains_invalid_char("test proj", "package name").map_err(|e| e.to_string()),
+        y
+    );
+
+    let z: Result<(), String> = Err("package name cannot be left empty, \
+    please use a valid name"
+        .to_string());
+    assert_eq!(
+        contains_invalid_char("", "package name").map_err(|e| e.to_string()),
+        z
+    );
+
+    assert!(matches!(
+        contains_invalid_char("test_proj", "package name"),
+        std::result::Result::Ok(())
+    ));
+}
