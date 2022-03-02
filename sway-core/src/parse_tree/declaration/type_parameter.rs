@@ -32,72 +32,85 @@ impl TypeParameter {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = vec![];
-        let mut params: Vec<TypeParameter> = match type_params_pair {
-            Some(type_params_pair) => {
-                let mut buf = vec![];
-                for pair in type_params_pair.into_inner() {
-                    buf.push(TypeParameter {
-                        name_ident: check!(
-                            ident::parse_from_pair(pair.clone(), config),
-                            continue,
-                            warnings,
-                            errors
-                        ),
-                        name: check!(
-                            TypeInfo::parse_from_pair(pair.clone(), config),
-                            continue,
-                            warnings,
-                            errors
-                        ),
-                        trait_constraints: Vec::new(),
+        let params = match (type_params_pair, where_clause_pair) {
+            (Some(type_params_pair), Some(where_clause_pair)) => {
+                let mut params = check!(
+                    TypeParameter::parse_from_type_params(type_params_pair, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut pair = where_clause_pair.into_inner().peekable();
+                while pair.peek().is_some() {
+                    let type_param = ident::parse_from_pair(pair.next().unwrap(), config)
+                        .value
+                        .unwrap();
+                    let trait_constraint = ident::parse_from_pair(pair.next().unwrap(), config)
+                        .value
+                        .unwrap();
+                    // assign trait constraints to above parsed type params
+                    // find associated type name
+                    let param_to_edit =
+                        match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
+                            name_ident.as_str() == type_param.as_str()
+                        }) {
+                            Some(o) => o,
+                            None => {
+                                errors.push(CompileError::ConstrainedNonExistentType {
+                                    type_name: type_param,
+                                    trait_name: trait_constraint.clone(),
+                                    span: trait_constraint.span().clone(),
+                                });
+                                continue;
+                            }
+                        };
+                    param_to_edit.trait_constraints.push(TraitConstraint {
+                        name: trait_constraint,
                     });
                 }
-                buf
+                params
             }
-            None => {
-                // no type params specified, ensure where clause is empty
-                if let Some(where_clause_pair) = where_clause_pair {
-                    return err(
-                        Vec::new(),
-                        vec![CompileError::UnexpectedWhereClause(Span {
-                            span: where_clause_pair.as_span(),
-                            path,
-                        })],
-                    );
-                }
-                Vec::new()
+            (Some(type_params_pair), None) => check!(
+                TypeParameter::parse_from_type_params(type_params_pair, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            (None, Some(where_clause_pair)) => {
+                errors.push(CompileError::UnexpectedWhereClause(Span {
+                    span: where_clause_pair.as_span(),
+                    path,
+                }));
+                return err(warnings, errors);
             }
+            (None, None) => vec![],
         };
-        if let Some(where_clause_pair) = where_clause_pair {
-            let mut pair = where_clause_pair.into_inner().peekable();
-            while pair.peek().is_some() {
-                let type_param = ident::parse_from_pair(pair.next().unwrap(), config)
-                    .value
-                    .unwrap();
-                let trait_constraint = ident::parse_from_pair(pair.next().unwrap(), config)
-                    .value
-                    .unwrap();
-                // assign trait constraints to above parsed type params
-                // find associated type name
-                let param_to_edit =
-                    match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                        name_ident.as_str() == type_param.as_str()
-                    }) {
-                        Some(o) => o,
-                        None => {
-                            errors.push(CompileError::ConstrainedNonExistentType {
-                                type_name: type_param,
-                                trait_name: trait_constraint.clone(),
-                                span: trait_constraint.span().clone(),
-                            });
-                            continue;
-                        }
-                    };
+        ok(params, warnings, errors)
+    }
 
-                param_to_edit.trait_constraints.push(TraitConstraint {
-                    name: trait_constraint,
-                });
-            }
+    fn parse_from_type_params(
+        type_params_pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Vec<TypeParameter>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut params = vec![];
+        for pair in type_params_pair.into_inner() {
+            params.push(TypeParameter {
+                name_ident: check!(
+                    ident::parse_from_pair(pair.clone(), config),
+                    continue,
+                    warnings,
+                    errors
+                ),
+                name: check!(
+                    TypeInfo::parse_from_pair(pair.clone(), config),
+                    continue,
+                    warnings,
+                    errors
+                ),
+                trait_constraints: Vec::new(),
+            });
         }
         ok(params, warnings, errors)
     }

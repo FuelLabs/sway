@@ -170,12 +170,16 @@ impl ImplSelf {
             },
             None => type_name_span.clone(),
         };
-        let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
+        let type_arguments = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
 
         let mut fn_decls_buf = vec![];
 
