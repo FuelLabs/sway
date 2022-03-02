@@ -371,7 +371,18 @@ pub fn graph_to_path_map(
             }
         };
         if !dep_path.exists() {
-            bail!("pinned dependency is missing local source: try `forc update`");
+            match &dep.source {
+                SourcePinned::Path => {
+                    bail!("pinned `path` dependency \"{}\" source missing", dep.name);
+                }
+                SourcePinned::Git(git) => {
+                    println!("  Fetching {}", git.to_string());
+                    fetch_git(&dep.name, git)?;
+                }
+                SourcePinned::Registry(_reg) => {
+                    bail!("registry dependencies are not yet supported");
+                }
+            }
         }
         path_map.insert(dep.id(), dep_path);
     }
@@ -535,7 +546,7 @@ fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
 
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
-/// Also adds the path to the local copy of
+/// Also updates the `path_map` with a path to the local copy of the source.
 fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
@@ -553,13 +564,23 @@ fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
             let pinned = Pinned { name, source };
             let id = pinned.id();
             if let hash_map::Entry::Vacant(entry) = path_map.entry(id) {
-                fetch_git(&pinned.name, &pinned_git)?;
+                // TODO: Here we assume that if the local path already exists, that it contains the full and
+                // correct source for that commit and hasn't been tampered with. This is probably fine for most
+                // cases as users should never be touching these directories, however we should add some code
+                // to validate this. E.g. can we recreate the git hash by hashing the directory or something
+                // along these lines using git?
+                if !path.exists() {
+                    println!("  Fetching {}", pinned_git.to_string());
+                    fetch_git(&pinned.name, &pinned_git)?;
+                }
                 entry.insert(path);
             }
             pinned
         }
         Source::Registry(ref _source) => {
-            unimplemented!("determine registry pkg git URL, fetch to determine latest available semver-compatible version")
+            // TODO: determine registry pkg git URL, fetch to determine latest available
+            // semver-compatible version
+            bail!("registry dependencies are not yet supported");
         }
     };
     Ok(pinned)
@@ -593,10 +614,6 @@ fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        // If it already exists, remove it as we're about to replace it.
-        // In theory we could just leave it and use the existing directory as it *should* match what
-        // we're about to clone into it, but we replace it just in case the directory has been tampered
-        // with or is corrupted for whatever reason.
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
