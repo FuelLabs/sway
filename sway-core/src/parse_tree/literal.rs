@@ -60,7 +60,7 @@ impl Literal {
                     lit_inner
                         .as_str()
                         .trim()
-                        .replace("_", "")
+                        .replace('_', "")
                         .parse()
                         .map(Literal::Numeric)
                         .map_err(|e| {

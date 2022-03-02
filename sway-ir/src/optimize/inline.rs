@@ -285,6 +285,7 @@ fn inline_instruction(
                 span_md_idx,
             ),
             Instruction::Load(ptr) => new_block.ins(context).load(map_ptr(ptr), span_md_idx),
+            Instruction::Nop => new_block.ins(context).nop(),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {
                 new_block

@@ -109,6 +109,7 @@ impl Context {
                     indices,
                 } => self.verify_insert_values(aggregate, ty, value, indices)?,
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
+                Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
                 Instruction::Store { ptr, stored_val } => self.verify_store(ptr, stored_val)?,

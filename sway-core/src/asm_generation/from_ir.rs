@@ -291,21 +291,25 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         // Reserve space on the stack for ALL our locals which require it.
-        if stack_base > 0 {
+        if !self.ptr_map.is_empty() {
             let base_reg = self.reg_seqr.next();
             self.bytecode.push(Op::unowned_register_move_comment(
                 base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
                 "save locals base register",
             ));
-            if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
-                todo!("Enormous stack usage for locals.");
+
+            // It's possible (though undesirable) to have empty local data structures only.
+            if stack_base != 0 {
+                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                    todo!("Enormous stack usage for locals.");
+                }
+                let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                    value: (stack_base * 8) as u32,
+                });
+                alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
+                self.bytecode.push(alloc_op);
             }
-            let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
-                value: (stack_base * 8) as u32,
-            });
-            alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
-            self.bytecode.push(alloc_op);
             self.stack_base_reg = Some(base_reg);
         }
     }
@@ -404,6 +408,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                 } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
                 Instruction::Load(ptr) => self.compile_load(instr_val, ptr),
+                Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
                 Instruction::Store { ptr, stored_val } => {
@@ -1400,7 +1405,20 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
 
                                 // Insert the value into the map.
-                                self.reg_map.insert(*value, reg.clone());
+                                //self.reg_map.insert(*value, reg.clone());
+                                //
+                                // Actually, no, don't.  It's possible for constant values to be
+                                // reused in the IR, especially with transforms which copy blocks
+                                // around, like inlining.  The `LW`/`LWDataId` instruction above
+                                // initialises that constant value but it may be in a conditional
+                                // block and not actually get evaluated for every possible
+                                // execution. So using the register later on by pulling it from
+                                // `self.reg_map` will have a potentially uninitialised register.
+                                //
+                                // By not putting it in the map we recreate the `LW` each time it's
+                                // used, which also isn't ideal.  A better solution is to put this
+                                // initialisation into the IR itself, and allow for analysis there
+                                // to determine when it may be initialised and/or reused.
 
                                 // Return register.
                                 reg
