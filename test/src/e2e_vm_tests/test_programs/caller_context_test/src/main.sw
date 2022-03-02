@@ -5,10 +5,10 @@ use context_testing_abi::*;
 fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
-    let other_contract_id = ~ContractId::from(0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f);
+    let other_contract_id = ~ContractId::from(0x7e4f67697c313eea120d7fa62b49526f6451ea489a539bf0ebfd43cc5b5d9213);
     let deployed_contract_id = 0xe2fd097748309f388c9c14206647ff479b998980a17e0f72a7073ae861705d48;
 
-    let test_contract = abi(ContextTesting, deployed_contract_id);
+    let test_contract = abi(ContextTesting, 0xe2fd097748309f388c9c14206647ff479b998980a17e0f72a7073ae861705d48);
 
     // test Context::contract_id():
     let returned_contract_id = test_contract.get_id {
