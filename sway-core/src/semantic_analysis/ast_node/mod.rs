@@ -462,9 +462,12 @@ impl TypedAstNode {
                             block_span,
                             ..
                         }) => {
+                            // Resolve the Self type as it's most likely still 'Custom' and use the
+                            // resolved type for self instead.
                             let implementing_for_type_id =
                                 namespace.resolve_type_without_self(&type_implementing_for);
-                            // check, if this is a custom type, if it is in scope or a generic.
+                            let type_implementing_for = look_up_type_id(implementing_for_type_id);
+
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
                                 errors.push(CompileError::Internal(

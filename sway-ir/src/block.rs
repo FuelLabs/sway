@@ -12,6 +12,7 @@
 
 use crate::{
     context::Context,
+    error::IrError,
     function::Function,
     instruction::{Instruction, InstructionInserter, InstructionIterator},
     value::{Value, ValueDatum},
@@ -158,6 +159,36 @@ impl Block {
         let ins = &mut context.blocks[self.0].instructions;
         if let Some(pos) = ins.iter().position(|iv| *iv == instr_val) {
             ins.remove(pos);
+        }
+    }
+
+    /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
+    /// Any use of the old instruction value will also be replaced by the new value throughout the
+    /// owning function.
+    pub fn replace_instruction(
+        &self,
+        context: &mut Context,
+        old_instr_val: Value,
+        new_instr_val: Value,
+    ) -> Result<(), IrError> {
+        match context.blocks[self.0]
+            .instructions
+            .iter_mut()
+            .find(|instr_val| *instr_val == &old_instr_val)
+        {
+            None => Err(IrError::ValueNotFound(
+                "Attempting to replace instruction.".to_owned(),
+            )),
+            Some(instr_val) => {
+                *instr_val = new_instr_val;
+                self.get_function(context).replace_value(
+                    context,
+                    old_instr_val,
+                    new_instr_val,
+                    Some(*self),
+                );
+                Ok(())
+            }
         }
     }
 
