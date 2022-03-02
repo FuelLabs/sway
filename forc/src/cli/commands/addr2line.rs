@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::collections::VecDeque;
 use std::fs::{self, File};
@@ -28,14 +29,15 @@ pub(crate) struct Command {
     pub opcode_index: usize,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     let contents = fs::read(&command.sourcemap_path)
-        .map_err(|err| format!("{:?}: could not read: {:?}", command.sourcemap_path, err))?;
+        .map_err(|err| anyhow!("{:?}: could not read: {:?}", command.sourcemap_path, err))?;
 
     let sm: SourceMap = serde_json::from_slice(&contents).map_err(|err| {
-        format!(
+        anyhow!(
             "{:?}: invalid source map json: {}",
-            command.sourcemap_path, err
+            command.sourcemap_path,
+            err
         )
     })?;
 
@@ -45,7 +47,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
         }
 
         let rr = read_range(&path, range, command.context)
-            .map_err(|err| format!("{:?}: could not read: {:?}", path, err))?;
+            .map_err(|err| anyhow!("{:?}: could not read: {:?}", path, err))?;
 
         let path_str = format!("{:?}", path);
         let snippet = Snippet {
@@ -71,7 +73,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
 
         Ok(())
     } else {
-        Err("Address did not map to any source code location".to_owned())
+        Err(anyhow!("Address did not map to any source code location"))
     }
 }
 

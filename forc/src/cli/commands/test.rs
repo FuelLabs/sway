@@ -1,4 +1,5 @@
 use crate::ops::forc_build;
+use anyhow::Result;
 use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process::Command as ProcessCommand;
@@ -18,7 +19,7 @@ pub(crate) struct Command {
     pub test_name: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     // Ensure the project builds before running tests.
     forc_build::build(Default::default())?;
 
