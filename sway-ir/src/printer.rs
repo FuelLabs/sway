@@ -443,6 +443,7 @@ fn instruction_to_doc<'a>(
                     md_namer.meta_as_string(context, span_md_idx, true),
                 ))
             }
+            Instruction::Nop => Doc::text_line(format!("{} = nop", namer.name(context, ins_value))),
             Instruction::Phi(pairs) => {
                 if pairs.is_empty() {
                     Doc::Empty

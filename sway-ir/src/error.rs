@@ -8,6 +8,7 @@ pub enum IrError {
     MissingTerminator(String),
     NonUniquePhiLabels,
     ParseFailure(String, String),
+    ValueNotFound(String),
 }
 
 use std::fmt;
@@ -34,6 +35,9 @@ impl fmt::Display for IrError {
             IrError::NonUniquePhiLabels => write!(f, "PHI must have unique block labels."),
             IrError::ParseFailure(expecting, found) => {
                 write!(f, "Parse failure: expecting '{expecting}', found '{found}'")
+            }
+            IrError::ValueNotFound(reason) => {
+                write!(f, "Invalid value: {reason}")
             }
         }
     }
