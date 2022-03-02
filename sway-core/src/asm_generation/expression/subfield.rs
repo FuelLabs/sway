@@ -69,7 +69,9 @@ pub(crate) fn convert_subfield_expression_to_asm(
             .iter()
             .enumerate()
             .map(|(pos, elem)| {
-                let access_ident = Ident::new(span.clone());
+                // sorry
+                let leaked_ix: &'static str = Box::leak(Box::new(pos.to_string()));
+                let access_ident = Ident::new_with_override(leaked_ix, span.clone());
                 (*elem, access_ident.span().clone(), access_ident)
             })
             .collect::<Vec<_>>(),
@@ -104,7 +106,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
             }
         })
         .expect(
-            "Accessing a subfield that is not no the struct would be caught during type checking",
+            "Accessing a subfield that is not on the struct would be caught during type checking",
         );
 
     let span = sway_types::span::Span {

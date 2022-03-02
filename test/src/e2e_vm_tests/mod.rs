@@ -83,8 +83,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
-        ("supertraits_1", ProgramState::Return(1)),
-        ("supertraits_2", ProgramState::Return(1)),
         ("enum_if_let", ProgramState::Return(143)),
         ("enum_destructuring", ProgramState::Return(15)),
         ("enum_if_let_large_type", ProgramState::Return(42)),

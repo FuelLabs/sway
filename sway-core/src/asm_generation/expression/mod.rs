@@ -268,16 +268,20 @@ pub(crate) fn convert_expression_to_asm(
             resolved_type_of_parent,
             prefix,
             elem_to_access_span,
-            ..
-        } => convert_subfield_expression_to_asm(
-            &exp.span,
-            prefix,
-            Ident::new(elem_to_access_span.clone()),
-            *resolved_type_of_parent,
-            namespace,
-            register_sequencer,
-            return_register,
-        ),
+            elem_to_access_num,
+        } => {
+            let leaked_ix: &'static str = Box::leak(Box::new(elem_to_access_num.to_string()));
+            let access_ident = Ident::new_with_override(leaked_ix, elem_to_access_span.clone());
+            convert_subfield_expression_to_asm(
+                &exp.span,
+                prefix,
+                access_ident,
+                *resolved_type_of_parent,
+                namespace,
+                register_sequencer,
+                return_register,
+            )
+        }
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
             tag,
