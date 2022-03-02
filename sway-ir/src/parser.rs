@@ -61,8 +61,8 @@ mod ir_builder {
                 }
 
             rule fn_local() -> (IrAstTy, String, bool, Option<IrAstOperation>)
-                = "local" _ im:("mut" _)? "ptr" _ ty:ast_ty() name:id() init:fn_local_init()? {
-                    (ty, name, im.is_some(), init)
+                = "local" _ im:mut_ptr() ty:ast_ty() name:id() init:fn_local_init()? {
+                    (ty, name, im, init)
                 }
 
             rule fn_local_init() -> IrAstOperation
@@ -116,7 +116,10 @@ mod ir_builder {
                 / op_load()
                 / op_nop()
                 / op_phi()
+                / op_ptr_cast()
                 / op_ret()
+                / op_state_load()
+                / op_state_store()
                 / op_store()
 
             rule op_asm() -> IrAstOperation
@@ -157,7 +160,7 @@ mod ir_builder {
                 }
 
             rule op_get_ptr() -> IrAstOperation
-                = "get_ptr" _ ("mut" _)? "ptr" _ ty:ast_ty() name:id() {
+                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id() {
                     IrAstOperation::GetPtr(name)
                 }
 
@@ -172,7 +175,7 @@ mod ir_builder {
                 }
 
             rule op_load() -> IrAstOperation
-                = "load" _ ("mut" _)? "ptr" _ ast_ty() src:id() {
+                = "load" _ ptr() src:id() {
                     IrAstOperation::Load(src)
                 }
 
@@ -186,14 +189,29 @@ mod ir_builder {
                     IrAstOperation::Phi(pairs)
                 }
 
+            rule op_ptr_cast() -> IrAstOperation
+                = "ptr_cast" _ ptr() vn:id() "to" _ ptr() ty:ast_ty() {
+                    IrAstOperation::PtrCast(vn, ty)
+            }
+
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
                     IrAstOperation::Ret(ty, vn)
                 }
 
+            rule op_state_load() -> IrAstOperation
+                = "state_load" _ ptr() dst:id() comma() "key" _ key:id() {
+                    IrAstOperation::StateLoad(dst, key)
+                }
+
+            rule op_state_store() -> IrAstOperation
+                = "state_store" _ ptr() src:id() comma() "key" _ key:id() {
+                    IrAstOperation::StateStore(src, key)
+                }
+
             rule op_store() -> IrAstOperation
-                = "store" _ dst:id() comma() ("mut" _)? "ptr" _ ast_ty() vn:id() {
-                    IrAstOperation::Store(dst, vn)
+                = "store" _ val:id() comma() ptr() dst:id() {
+                    IrAstOperation::Store(val, dst)
                 }
 
             rule asm_arg() -> (Ident, Option<IrAstAsmArgInit>)
@@ -356,6 +374,14 @@ mod ir_builder {
                     ds.parse::<u64>().unwrap()
                 }
 
+            rule ptr()
+                = "ptr" _
+
+            rule mut_ptr() -> bool
+                = m:("mut" _)? ptr() {
+                    m.is_some()
+                }
+
             rule comma()
                 = quiet!{ "," _ }
 
@@ -443,7 +469,10 @@ mod ir_builder {
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
+        PtrCast(String, IrAstTy),
         Ret(IrAstTy, String),
+        StateLoad(String, String),
+        StateStore(String, String),
         Store(String, String),
     }
 
@@ -801,7 +830,7 @@ mod ir_builder {
                 }
                 IrAstOperation::Load(src_name) => block
                     .ins(context)
-                    .load(*ptr_map.get(&src_name).unwrap(), opt_ins_md_idx),
+                    .load(*val_map.get(&src_name).unwrap(), opt_ins_md_idx),
                 IrAstOperation::Nop => block.ins(context).nop(),
                 IrAstOperation::Phi(pairs) => {
                     for (block_name, val_name) in pairs {
@@ -813,14 +842,32 @@ mod ir_builder {
                     }
                     block.get_phi(context)
                 }
+                IrAstOperation::PtrCast(value_name, ty) => {
+                    let ty = ty.to_ir_type(context);
+                    block.ins(context).ptr_cast(
+                        *val_map.get(&value_name).unwrap(),
+                        ty,
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);
                     block
                         .ins(context)
                         .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
                 }
-                IrAstOperation::Store(stored_val_name, ptr_name) => block.ins(context).store(
-                    *ptr_map.get(&ptr_name).unwrap(),
+                IrAstOperation::StateLoad(dst, key) => block.ins(context).state_load(
+                    *val_map.get(&dst).unwrap(),
+                    *val_map.get(&key).unwrap(),
+                    opt_ins_md_idx,
+                ),
+                IrAstOperation::StateStore(src, key) => block.ins(context).state_store(
+                    *val_map.get(&src).unwrap(),
+                    *val_map.get(&key).unwrap(),
+                    opt_ins_md_idx,
+                ),
+                IrAstOperation::Store(stored_val_name, dst_val_name) => block.ins(context).store(
+                    *val_map.get(&dst_val_name).unwrap(),
                     *val_map.get(&stored_val_name).unwrap(),
                     opt_ins_md_idx,
                 ),

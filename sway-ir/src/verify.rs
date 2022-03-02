@@ -111,8 +111,18 @@ impl Context {
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
                 Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
+                Instruction::PointerCast(ptr_val, ty) => self.verify_ptr_cast(ptr_val, ty)?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
-                Instruction::Store { ptr, stored_val } => self.verify_store(ptr, stored_val)?,
+                Instruction::StateLoad { load_val, key } => {
+                    self.verify_state_load(load_val, key)?
+                }
+                Instruction::StateStore { stored_val, key } => {
+                    self.verify_state_store(stored_val, key)?
+                }
+                Instruction::Store {
+                    dst_val,
+                    stored_val,
+                } => self.verify_store(dst_val, stored_val)?,
             }
         } else {
             unreachable!("Verify instruction is not an instruction.");
@@ -195,7 +205,8 @@ impl Context {
         Ok(())
     }
 
-    fn verify_load(&self, _ptr: &Pointer) -> Result<(), IrError> {
+    fn verify_load(&self, _src_val: &Value) -> Result<(), IrError> {
+        // XXX src_val must be a pointer.
         // XXX We should check the pointer type matches this load type.
         Ok(())
     }
@@ -209,6 +220,12 @@ impl Context {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_ptr_cast(&self, _ptr_val: &Value, _ty: &Type) -> Result<(), IrError> {
+        // XXX Make sure the pointer itself doesn't change, just the type, and is definitely either
+        // a get_ptr or ptr_cast.
+        Ok(())
     }
 
     fn verify_ret(
@@ -228,8 +245,20 @@ impl Context {
         }
     }
 
-    fn verify_store(&self, _ptr: &Pointer, _stored_val: &Value) -> Result<(), IrError> {
+    fn verify_state_load(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_state_store(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_store(&self, _dst_val: &Value, _stored_val: &Value) -> Result<(), IrError> {
         // XXX When we have some type info available from instructions...
+        // XXX dst must be a pointer.
+        // XXX Pointer destinations must be mutable.
         //if ptr_val.get_type(self) != stored_val.get_type(self) {
         //    Err("Stored value type must match pointer type.".into())
         //} else {

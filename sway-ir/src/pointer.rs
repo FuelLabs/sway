@@ -39,7 +39,10 @@ impl Pointer {
     }
 
     /// Return whether this pointer is to a [`Type::Struct`] in particular.
-    pub fn is_struct_ptr(&self, context: &Context) -> bool {
-        matches!(&context.pointers[self.0].ty, Type::Struct(_))
+    pub fn is_aggregate_ptr(&self, context: &Context) -> bool {
+        matches!(
+            &context.pointers[self.0].ty,
+            Type::Array(_) | Type::Struct(_) | Type::Union(_)
+        )
     }
 }
