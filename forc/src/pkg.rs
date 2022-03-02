@@ -204,6 +204,18 @@ impl BuildPlan {
             .into_iter()
             .flat_map(|deps| deps.iter())
             .map(|(name, dep)| {
+                // NOTE: Temporarily warn about `version` until we have support for registries.
+                if let Dependency::Detailed(det) = dep {
+                    if det.version.is_some() {
+                        crate::utils::helpers::println_yellow_err(&format!(
+                            "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
+                            consider using `branch` or `tag` instead",
+                            name
+                        ))
+                        .unwrap();
+                    }
+                }
+
                 let name = name.clone();
                 let source = dep_to_source(proj_path, dep)?;
                 Ok(Pkg { name, source })
