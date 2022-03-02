@@ -57,26 +57,11 @@ pub fn init(command: InitCommand) -> Result<(), String> {
                     Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")
                         .unwrap()
                 }
-                _ => {
-                    if template.contains("https") {
-                        Url::parse(&template)
-                            .map_err(|e| format!("Not a valid URL {}", e))
-                            .unwrap()
-                    } else {
-                        Url::from_file_path(&template)
-                            .map_err(|()| "Not a valid local path".to_string())
-                            .unwrap()
-                    }
-                }
+                _ => Url::parse(&template)
+                    .map_err(|e| format!("Not a valid URL {}", e))
+                    .unwrap(),
             };
-            match template_url.host() {
-                Some(_) => {
-                    init_from_git_template(project_name, &template_url).map_err(|e| e.to_string())
-                }
-                None => {
-                    init_from_local_template(project_name, &template_url).map_err(|e| e.to_string())
-                }
-            }
+            init_from_git_template(project_name, &template_url).map_err(|e| e.to_string())
         }
         None => init_new_project(project_name).map_err(|e| e.to_string()),
     }
@@ -163,25 +148,6 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
     Ok(())
 }
 
-pub(crate) fn init_from_local_template(project_name: String, local_path: &Url) -> Result<()> {
-    // Get the path of the example we are using
-    let path = std::env::current_dir()?;
-    let out_dir = path.join(&project_name);
-    let src_dir = local_path
-        .to_file_path()
-        .map_err(|()| anyhow!("unable to convert file path"))?;
-    let real_name = whoami::realname();
-
-    copy_folder(&src_dir, &out_dir)?;
-
-    // Change the project name and author of the Forc.toml file
-    edit_forc_toml(&out_dir, &project_name, &real_name)?;
-    // Change the project name and authors of the Cargo.toml file
-    edit_cargo_toml(&out_dir, &project_name, &real_name)?;
-
-    Ok(())
-}
-
 fn parse_github_link(url: &Url) -> Result<GitPathInfo> {
     let mut path_segments = url.path_segments().context("cannot be base")?;
 
@@ -214,7 +180,7 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     file.read_to_string(&mut toml)?;
     let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
 
-    let mut authors = toml_edit::Array::default();
+    let mut authors = Vec::new();
     let forc_toml: toml::Value = toml::de::from_str(&toml)?;
     if let Some(table) = forc_toml.as_table() {
         if let Some(package) = table.get("project") {
@@ -222,7 +188,7 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
             if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
                 for author in authors_vec {
                     if let toml::value::Value::String(name) = &author {
-                        authors.push(name);
+                        authors.push(name.clone());
                     }
                 }
             } else {
@@ -234,14 +200,19 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
                         .context("Unable to get forc manifest as table")?
                         .remove("author")
                     {
-                        authors.push(name.value());
+                        authors.push(name.value().clone());
                     }
                 }
             }
         }
     }
-    authors.push(real_name);
 
+    // Only append the users name to the authors field if it isn't already in the list
+    if authors.iter().any(|e| e != real_name) {
+        authors.push(real_name.to_string());
+    }
+
+    let authors: toml_edit::Array = authors.iter().collect();
     manifest_toml["project"]["authors"] = toml_edit::value(authors);
     manifest_toml["project"]["name"] = toml_edit::value(project_name);
 
@@ -315,49 +286,6 @@ fn download_contents(url: &str, out_dir: &Path, responses: &[ContentResponse]) -
                         download_contents(&url, &dir, &responses)?;
                     }
                     _ => (),
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn copy_folder(src_dir: &Path, out_dir: &Path) -> Result<()> {
-    let mut stack = vec![PathBuf::from(src_dir)];
-
-    let output_root = PathBuf::from(out_dir);
-    let input_root = PathBuf::from(src_dir).components().count();
-
-    while let Some(working_path) = stack.pop() {
-        // Generate a relative path
-        let src: PathBuf = working_path.components().skip(input_root).collect();
-
-        // Create a destination if missing
-        let dest = if src.components().count() == 0 {
-            output_root.clone()
-        } else {
-            output_root.join(&src)
-        };
-
-        if fs::metadata(&dest).is_err() {
-            fs::create_dir_all(&dest)?;
-        }
-
-        for entry in fs::read_dir(working_path)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-            } else {
-                match path.file_name() {
-                    Some(filename) => {
-                        let dest_path = dest.join(filename);
-                        fs::copy(&path, &dest_path)?;
-                    }
-                    None => {
-                        println!("failed: {:?}", path);
-                    }
                 }
             }
         }
