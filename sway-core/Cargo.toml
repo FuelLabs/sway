@@ -12,7 +12,7 @@ description = "Sway core language."
 selector-debug = ["clap", "hex"]
 
 [dependencies]
-clap = { version = "3.1.2", features = ["derive"], optional = true }
+clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
