@@ -104,7 +104,7 @@ pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
 //     characters must be Unicode XID characters \
 //     (numbers, `-`, `_`, or most letters)");
 //     assert_eq!(
-//         contains_invalid_char("test#proj", "package name").contains(&x), true 
+//         contains_invalid_char("test#proj", "package name").contains(&x), true
 //         );
 //
 //     let y: Result<(), &str> = Err("invalid character ` ` in package name: `test proj`, \

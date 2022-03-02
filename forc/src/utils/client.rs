@@ -1,8 +1,8 @@
+use anyhow::{bail, Result};
 use fuel_gql_client::client::FuelClient;
 use std::process::Stdio;
 use tokio::process::{Child, Command};
 use tokio::time::{sleep, Duration};
-use anyhow::{bail, Result};
 
 pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Child> {
     let mut url_parts = node_url.split(':').collect::<Vec<&str>>();
