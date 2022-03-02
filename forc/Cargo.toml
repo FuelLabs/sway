@@ -20,7 +20,7 @@ fuel-gql-client = { version = "0.3", default-features = false }
 fuel-tx = "0.5"
 fuel-vm = "0.4"
 futures = "0.3"
-git2 = "0.13"
+git2 = "0.14"
 hex = "0.4.3"
 petgraph = { version = "0.6.0", features = ["serde-1"] }
 prettydiff = "0.5.0"
