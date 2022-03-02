@@ -13,7 +13,7 @@ use crate::{
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap},
+    collections::{hash_map, BTreeSet, HashMap, HashSet},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -679,6 +679,32 @@ pub(crate) fn build_config(
     Ok(build_config)
 }
 
+/// Builds the dependency namespace for the package at the given node index within the graph.
+///
+/// This function is designed to be called for each node in order of compilation.
+pub(crate) fn dependency_namespace(
+    namespace_map: &HashMap<NodeIx, NamespaceRef>,
+    graph: &Graph,
+    compilation_order: &[NodeIx],
+    node: NodeIx,
+) -> NamespaceRef {
+    use petgraph::visit::{Dfs, Walker};
+
+    // Find all nodes that are a dependency of this one with a depth-first search.
+    let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
+
+    // In order of compilation, accumulate dependency namespace refs.
+    let namespace = sway_core::create_module();
+    for dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
+        if *dep_node == node {
+            break;
+        }
+        namespace.insert_module_ref(graph[*dep_node].name.clone(), namespace_map[dep_node]);
+    }
+
+    namespace
+}
+
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -687,11 +713,8 @@ pub(crate) fn build_config(
 ///
 /// ### Library Packages
 ///
-/// A Library package will have JSON ABI generated for all publicly exposed `abi`s. The parsed AST
-/// will be added as a module to the given overall namespace so that its items are accessible to
-/// successively compiled packages. NOTE: This namespace is currently global, so be aware that
-/// calling this multiple times for the same package will result in duplicate/shadowed name
-/// conflicts.
+/// A Library package will have JSON ABI generated for all publicly exposed `abi`s. The library's
+/// namespace is returned as the second argument of the tuple.
 ///
 /// ### Contract
 ///
@@ -707,7 +730,7 @@ pub(crate) fn compile(
     namespace: NamespaceRef,
     source_map: &mut SourceMap,
     silent_mode: bool,
-) -> Result<Compiled> {
+) -> Result<(Compiled, Option<NamespaceRef>)> {
     let manifest = read_manifest(pkg_path)?;
     let source = get_main_file(&manifest, pkg_path)?;
     let build_config = build_config(pkg_path.to_path_buf(), &manifest, build_conf)?;
@@ -732,8 +755,8 @@ pub(crate) fn compile(
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
                     let lib_namespace = parse_tree.clone().get_namespace_ref();
-                    namespace.insert_module_ref(pkg.name.clone(), lib_namespace);
-                    Ok(Compiled { json_abi, bytecode })
+                    let compiled = Compiled { json_abi, bytecode };
+                    Ok((compiled, Some(lib_namespace)))
                 }
 
                 // For all other program types, we'll compile the bytecode.
@@ -745,7 +768,8 @@ pub(crate) fn compile(
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
                             let bytecode = bytes;
-                            Ok(Compiled { json_abi, bytecode })
+                            let compiled = Compiled { json_abi, bytecode };
+                            Ok((compiled, None))
                         }
                         BytecodeCompilationResult::Library { .. } => {
                             unreachable!("compilation of library program types is handled above")

@@ -10,7 +10,7 @@ use std::{
     io::Write,
     path::PathBuf,
 };
-use sway_core::{create_module, source_map::SourceMap};
+use sway_core::source_map::SourceMap;
 use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
@@ -84,14 +84,20 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     })?;
 
     // Iterate over and compile all packages.
-    let namespace = create_module();
+    let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
     let mut bytecode = vec![];
-    for node in plan.compilation_order {
+    for &node in &plan.compilation_order {
+        let dep_namespace =
+            pkg::dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
-        let compiled = pkg::compile(pkg, path, &build_conf, namespace, &mut source_map, silent)?;
+        let res = pkg::compile(pkg, path, &build_conf, dep_namespace, &mut source_map, silent)?;
+        let (compiled, maybe_namespace) = res;
+        if let Some(namespace) = maybe_namespace {
+            namespace_map.insert(node, namespace);
+        }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;
         source_map.insert_dependency(path.clone());
