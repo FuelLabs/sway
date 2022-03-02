@@ -1,6 +1,5 @@
 library std;
 
-dep result;
 dep hash;
 dep storage;
 dep constants;
@@ -9,7 +8,6 @@ dep address;
 dep contract_id;
 dep chain;
 dep context;
-dep option;
 dep math;
 dep block;
 dep token;
