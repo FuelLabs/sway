@@ -1,0 +1,21 @@
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+dependencies = []
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#c3f1b914c7099d5115c72c01fd0ea640cc3ad6dc'
+dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
+
+[[package]]
+name = 'trait_override_bug'
+dependencies = [
+    'core git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa',
+    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#c3f1b914c7099d5115c72c01fd0ea640cc3ad6dc',
+]

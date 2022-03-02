@@ -93,7 +93,14 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             pkg::dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
-        let res = pkg::compile(pkg, path, &build_conf, dep_namespace, &mut source_map, silent)?;
+        let res = pkg::compile(
+            pkg,
+            path,
+            &build_conf,
+            dep_namespace,
+            &mut source_map,
+            silent,
+        )?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace);
