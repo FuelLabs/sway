@@ -58,9 +58,7 @@ impl TypedExpression {
                     buf.append(&mut node.gather_return_statements())
                 }
                 if let Some(ref r#else) = r#else {
-                    for node in &r#else.contents {
-                        buf.append(&mut node.gather_return_statements())
-                    }
+                    buf.append(&mut r#else.gather_return_statements())
                 }
                 buf
             }
@@ -734,7 +732,12 @@ impl TypedExpression {
     fn type_check_if_let_expression(
         arguments: TypeCheckArguments<
             '_,
-            (Scrutinee, Box<Expression>, CodeBlock, Option<CodeBlock>),
+            (
+                Scrutinee,
+                Box<Expression>,
+                CodeBlock,
+                Option<Box<Expression>>,
+            ),
         >,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -830,10 +833,11 @@ impl TypedExpression {
         );
 
         let r#else = match r#else {
-            Some(code_block) => {
+            Some(expr) => {
+                let expr_span = expr.span();
                 let type_checked = check!(
-                    TypedCodeBlock::type_check(TypeCheckArguments {
-                        checkee: code_block,
+                    TypedExpression::type_check(TypeCheckArguments {
+                        checkee: *expr,
                         namespace,
                         crate_namespace,
                         return_type_annotation: then_branch_code_block_return_type,
@@ -845,17 +849,11 @@ impl TypedExpression {
                         mode: Mode::NonAbi,
                         opts,
                     }),
-                    (
-                        TypedCodeBlock {
-                            contents: Default::default(),
-                            whole_block_span: then_branch_span
-                        },
-                        insert_type(TypeInfo::ErrorRecovery)
-                    ),
+                    error_recovery_expr(expr_span),
                     warnings,
                     errors
                 );
-                Some(type_checked)
+                Some(Box::new(type_checked))
             }
             None => match unify_with_self(
                 then_branch_code_block_return_type,
@@ -879,7 +877,7 @@ impl TypedExpression {
                 enum_type,
                 variant,
                 then,
-                r#else: r#else.map(|x| x.0),
+                r#else: r#else,
             },
             is_constant: IsConstant::No, // TODO
             return_type: then_branch_code_block_return_type,

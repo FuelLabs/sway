@@ -159,7 +159,7 @@ pub enum Expression {
         scrutinee: Scrutinee,
         expr: Box<Expression>,
         then: CodeBlock,
-        r#else: Option<CodeBlock>,
+        r#else: Option<Box<Expression>>,
         span: Span,
     },
     SizeOfVal {
@@ -1967,24 +1967,42 @@ fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult
         errors
     );
 
-    let maybe_else_branch = maybe_else_branch_pair.as_ref().map(|x| match x.as_rule() {
-        Rule::code_block => check!(
-            CodeBlock::parse_from_pair(x.clone(), config),
-            crate::CodeBlock {
-                contents: Vec::new(),
-                whole_block_span: {
-                    Span {
-                        span: x.as_span(),
-                        path,
-                    }
-                },
-            },
-            warnings,
-            errors
-        ),
-        Rule::if_let_exp => parse_if_let(todo!()),
-        _ => unreachable!("guaranteed by grammar"),
-    });
+    let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
+        let else_span = Span {
+            path,
+            span: else_branch.as_span(),
+        };
+        match else_branch.as_rule() {
+            Rule::code_block => {
+                let block = check!(
+                    CodeBlock::parse_from_pair(else_branch.clone(), config),
+                    CodeBlock {
+                        contents: Vec::new(),
+                        whole_block_span: else_span.clone(),
+                    },
+                    warnings,
+                    errors
+                );
+                let exp = Expression::CodeBlock {
+                    contents: block,
+                    span: else_span,
+                };
+                Some(Box::new(exp))
+            }
+            Rule::if_let_exp => {
+                let r#else = check!(
+                    parse_if_let(else_branch.clone(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Some(Box::new(r#else))
+            }
+            _ => unreachable!("guaranteed by grammar"),
+        }
+    } else {
+        None
+    };
     ok(
         Expression::IfLet {
             scrutinee,

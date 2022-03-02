@@ -936,7 +936,15 @@ fn connect_expression(
             let then_expr = connect_code_block(then, graph, leaves, exit_node, tree_type)?;
 
             let else_expr = if let Some(else_expr) = r#else {
-                connect_code_block(else_expr, graph, leaves, exit_node, tree_type)?
+                connect_expression(
+                    &else_expr.expression,
+                    graph,
+                    leaves,
+                    exit_node,
+                    "if let: else branch",
+                    tree_type,
+                    (**else_expr).span.clone(),
+                )?
             } else {
                 vec![]
             };

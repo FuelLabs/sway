@@ -593,7 +593,7 @@ fn convert_if_let_to_asm(
     _enum_type: TypeId,
     variant: &TypedEnumVariant,
     then: &TypedCodeBlock,
-    r#else: &Option<TypedCodeBlock>,
+    r#else: &Option<Box<TypedExpression>>,
     variable_to_assign: &Ident,
     return_register: &VirtualRegister,
     namespace: &mut AsmNamespace,
@@ -735,7 +735,7 @@ fn convert_if_let_to_asm(
         buf.push(Op::unowned_jump_label(label_for_else_branch));
 
         buf.append(&mut check!(
-            convert_code_block_to_asm(r#else, namespace, register_sequencer, Some(return_register)),
+            convert_expression_to_asm(r#else, namespace, return_register, register_sequencer),
             return err(warnings, errors),
             warnings,
             errors

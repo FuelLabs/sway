@@ -68,7 +68,7 @@ pub(crate) enum TypedExpressionVariant {
         variant: TypedEnumVariant,
         variable_to_assign: Ident,
         then: TypedCodeBlock,
-        r#else: Option<TypedCodeBlock>,
+        r#else: Option<Box<TypedExpression>>,
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
