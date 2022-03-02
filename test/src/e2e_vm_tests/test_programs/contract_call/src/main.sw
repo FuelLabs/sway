@@ -13,7 +13,7 @@ abi MyContract {
 }
 
 fn main() -> u64 {
-    let x = abi(MyContract, 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae);
+    let x = abi(MyContract, 0x4486a2fec1fd4c76c7bab957e45d8b89d0b082c4ecca62083a5e56e9f1234a61);
     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     x.foo {
         gas: 5000, coins: 0, asset_id: asset_id

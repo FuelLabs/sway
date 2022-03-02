@@ -26,7 +26,7 @@ fn main() -> bool {
     let balance_test_id = ~ContractId::from(0x27eb552a9458aec1db874930ae86fe91df49b4e0c221e08f7ffcf3fadadee0a3);
 
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0xbaf516b8b50c51953a6d2f20ec1f5ff09ced2b80a9c72ea376aaf23dd6af467e);
+    let fuel_coin = abi(TestFuelCoin, 0x7b9ab71147cf24967a0b4a2ab64cc44248d784db164054ee8a8ee5bebee367b1);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);

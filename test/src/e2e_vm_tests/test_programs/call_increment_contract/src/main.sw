@@ -2,7 +2,7 @@ script;
 use increment_abi::Incrementor;
 use std::constants::ETH_ID;
 fn main() {
-    let abi = abi(Incrementor, 0x19a4738f92544ccf46d2de5b84e273507512e42058dd8efd652546f576ac8bc0);
+    let abi = abi(Incrementor, 0x2b613882f0c2cfd1a18ceb7fd8b9579d7c475ad613991db46a3525932c2984e3);
     abi.initialize {
         gas: 10000, coins: 0, asset_id: ETH_ID
     }
