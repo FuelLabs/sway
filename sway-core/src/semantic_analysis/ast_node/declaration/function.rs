@@ -349,7 +349,7 @@ impl TypedFunctionDeclaration {
         } else {
             insert_type(look_up_type_id_raw(new_decl.return_type))
         };
-
+        
         ok(new_decl, warnings, errors)
     }
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

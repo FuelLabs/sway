@@ -32,15 +32,15 @@ pub(crate) fn instantiate_function_application(
         errors.push(CompileError::PureCalledImpure { span: name.span() });
     }
 
+    let arguments_span = arguments.iter().fold(
+        arguments
+            .get(0)
+            .map(|x| x.span())
+            .unwrap_or_else(|| name.span()),
+        |acc, arg| join_spans(acc, arg.span()),
+    );
     match arguments.len().cmp(&parameters.len()) {
         Ordering::Greater => {
-            let arguments_span = arguments.iter().fold(
-                arguments
-                    .get(0)
-                    .map(|x| x.span())
-                    .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
-            );
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: arguments_span,
                 method_name: name.suffix.clone(),
@@ -49,13 +49,6 @@ pub(crate) fn instantiate_function_application(
             });
         }
         Ordering::Less => {
-            let arguments_span = arguments.iter().fold(
-                arguments
-                    .get(0)
-                    .map(|x| x.span())
-                    .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
-            );
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: arguments_span,
                 method_name: name.suffix.clone(),
@@ -73,22 +66,23 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(parameters.iter())
         .map(|(arg, param)| {
+            let args = TypeCheckArguments {
+                checkee: arg.clone(),
+                namespace,
+                crate_namespace,
+                return_type_annotation: param.r#type,
+                help_text: "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration.",
+                self_type,
+                build_config,
+                dead_code_graph,
+                mode: Mode::NonAbi,
+                opts,
+            };
             (
                 param.name.clone(),
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: arg.clone(),
-                    namespace,
-                    crate_namespace,
-                    return_type_annotation: param.r#type,
-                    help_text: "The argument that has been provided to this function's type does \
-                        not match the declared type of the parameter in the function \
-                        declaration.",
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    mode: Mode::NonAbi,
-                    opts,
-                })
+                TypedExpression::type_check(args)
                 .unwrap_or_else(&mut warnings, &mut errors, || {
                     error_recovery_expr(arg.span())
                 }),
