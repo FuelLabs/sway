@@ -853,6 +853,8 @@ pub enum CompileError {
         "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
     )]
     UnrecognizedContractParam { param_name: String, span: Span },
+    #[error("Attempting to specify a contract method parameter for a non-contract function call")]
+    CallParamForNonContractCallMethod { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1059,6 +1061,7 @@ impl CompileError {
             SupertraitImplRequired { span, .. } => span,
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
+            CallParamForNonContractCallMethod { span, .. } => span,
         }
     }
 

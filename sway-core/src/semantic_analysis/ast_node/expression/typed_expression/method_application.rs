@@ -101,7 +101,13 @@ pub(crate) fn type_check_method_application(
         None
     };
 
-    if method.is_contract_call {
+    if !method.is_contract_call {
+        if !contract_call_params.is_empty() {
+            errors.push(CompileError::CallParamForNonContractCallMethod {
+                span: contract_call_params[0].name.span().clone(),
+            });
+        }
+    } else {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
             constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
