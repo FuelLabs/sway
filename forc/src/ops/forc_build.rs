@@ -39,7 +39,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
+        std::env::current_dir()?
     };
 
     let manifest_dir = match find_manifest_dir(&this_dir) {
@@ -119,8 +119,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         fs::write(
             outfile,
             &serde_json::to_vec(&source_map).expect("JSON serialization failed"),
-        )
-        .map_err(|e| e)?;
+        )?;
     }
 
     // TODO: We may support custom build profiles in the future.
@@ -131,7 +130,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .map(PathBuf::from)
         .unwrap_or_else(|| default_output_directory(&manifest_dir).join(profile));
     if !output_dir.exists() {
-        fs::create_dir_all(&output_dir).map_err(|e| e)?;
+        fs::create_dir_all(&output_dir)?;
     }
 
     // Place build artifacts into the output directory.
@@ -142,13 +141,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     if !json_abi.is_empty() {
         let json_abi_stem = format!("{}-abi", manifest.project.name);
         let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
-        let file = File::create(json_abi_path).map_err(|e| e)?;
+        let file = File::create(json_abi_path)?;
         let res = if minify_json_abi {
             serde_json::to_writer(&file, &json_abi)
         } else {
             serde_json::to_writer_pretty(&file, &json_abi)
         };
-        res.map_err(|e| e)?;
+        res?;
     }
 
     println!("  Bytecode size is {} bytes.", bytecode.len());
