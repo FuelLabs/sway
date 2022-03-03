@@ -1,4 +1,5 @@
 use crate::ops::forc_explorer;
+use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Run the network explorer.
@@ -16,9 +17,9 @@ pub enum CleanCommand {
     Clean,
 }
 
-pub(crate) async fn exec(_command: Command) -> Result<(), String> {
+pub(crate) async fn exec(_command: Command) -> Result<()> {
     match forc_explorer::exec(_command).await {
-        Err(e) => Err(e.to_string()),
+        Err(e) => bail!(e),
         _ => Ok(()),
     }
 }

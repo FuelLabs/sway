@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 
 mod commands;
@@ -50,7 +51,7 @@ enum Forc {
     Lsp(LspCommand),
 }
 
-pub(crate) async fn run_cli() -> Result<(), String> {
+pub(crate) async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
 
     match opt.command {

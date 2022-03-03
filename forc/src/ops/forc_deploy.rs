@@ -6,6 +6,7 @@ use sway_core::{parse, TreeType};
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
+use anyhow::Result;
 
 use crate::utils::helpers;
 use helpers::{get_main_file, read_manifest};

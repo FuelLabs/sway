@@ -6,6 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
+anyhow = "1.0.41"
 forc = { version = "0.5.0", path = "../forc", features = ["test"], default-features = false }
 fuel-asm = "0.1"
 fuel-tx = "0.5"

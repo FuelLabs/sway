@@ -1,5 +1,5 @@
 use crate::utils::{helpers::user_forc_directory, manifest::Manifest};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
@@ -135,10 +135,10 @@ pub fn download_github_dep(
     // If it's offline mode and the dependency already exists
     // locally, then it would've been returned in the block above.
     if let OfflineMode::Yes = offline_mode {
-        return Err(anyhow!(
+        bail!(
             "Can't build dependency: dependency {} doesn't exist locally and offline mode is enabled",
             dep_name
-        ));
+        );
     }
 
     let github_api_url = build_github_repo_api_url(repo_base_url, branch, version);
@@ -150,7 +150,7 @@ pub fn download_github_dep(
 
     match download_tarball(&github_api_url, &out_dir) {
         Ok(downloaded_dir) => Ok(downloaded_dir),
-        Err(e) => Err(anyhow!("couldn't download from {}: {}", &github_api_url, e)),
+        Err(e) => bail!("couldn't download from {}: {}", &github_api_url, e),
     }
 }
 
@@ -230,10 +230,10 @@ pub fn download_tarball(url: &str, out_dir: &Path) -> Result<String> {
         }
     }
 
-    Err(anyhow!(
+    bail!(
         "couldn't find downloaded dependency in directory: {}",
         out_dir.display(),
-    ))
+    )
 }
 
 pub fn replace_dep_version(
@@ -250,11 +250,11 @@ pub fn replace_dep_version(
     match fs::remove_dir_all(current.path) {
         Ok(_) => Ok(()),
         Err(e) => {
-            return Err(anyhow!(
+            bail!(
                 "failed to remove old version of the dependency ({}): {}",
                 git,
                 e
-            ))
+            )
         }
     }
 }

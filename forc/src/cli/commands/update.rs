@@ -1,4 +1,5 @@
 use crate::ops::forc_update;
+use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Update dependencies in the Forc dependencies directory.
@@ -20,9 +21,9 @@ pub struct Command {
     pub check: bool,
 }
 
-pub(crate) async fn exec(command: Command) -> Result<(), String> {
+pub(crate) async fn exec(command: Command) -> Result<()> {
     match forc_update::update(command).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("couldn't update dependencies: {}", e)),
+        Err(e) => bail!("couldn't update dependencies: {}", e),
     }
 }

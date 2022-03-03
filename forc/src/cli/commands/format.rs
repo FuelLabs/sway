@@ -1,4 +1,5 @@
 use crate::ops::forc_fmt;
+use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Format all Sway files of the current project.
@@ -12,9 +13,9 @@ pub struct Command {
 }
 
 // todo: add formatting options in the command line
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     match forc_fmt::format(command) {
-        Err(e) => Err(e.message),
+        Err(e) => bail!(e.message),
         _ => Ok(()),
     }
 }
