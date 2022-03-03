@@ -1,22 +1,32 @@
-script script {
+script {
     fn main() -> bool {
         local ptr [bool; 3] a
 
         entry:
-        v0 = const [bool; 3] [bool undef, bool undef, bool undef]
-        v1 = const bool false
-        v2 = const u64 0
-        v3 = insert_element v0, [bool; 3], v1, v2
-        v4 = const bool true
-        v5 = const u64 1
-        v6 = insert_element v3, [bool; 3], v4, v5
-        v7 = const bool false
-        v8 = const u64 2
-        v9 = insert_element v6, [bool; 3], v7, v8
-        store v9, ptr [bool; 3] a
-        v10 = load ptr [bool; 3] a
-        v11 = const u64 1
-        v12 = extract_element v10, [bool; 3], v11
+        v0 = const [bool; 3] [bool undef, bool undef, bool undef], !1
+        v1 = const bool false, !2
+        v2 = const u64 0, !1
+        v3 = insert_element v0, [bool; 3], v1, v2, !1
+        v4 = const bool true, !3
+        v5 = const u64 1, !1
+        v6 = insert_element v3, [bool; 3], v4, v5, !1
+        v7 = const bool false, !4
+        v8 = const u64 2, !1
+        v9 = insert_element v6, [bool; 3], v7, v8, !1
+        store v9, ptr [bool; 3] a, !5
+        v10 = load ptr [bool; 3] a, !6
+        v11 = const u64 1, !7
+        v12 = extract_element v10, [bool; 3], v11, !8
         ret bool v12
     }
 }
+
+!0 = filepath "/path/to/array_simple.sw"
+!1 = span !0 42 60
+!2 = span !0 42 47
+!3 = span !0 49 53
+!4 = span !0 55 60
+!5 = span !0 33 62
+!6 = span !0 67 68
+!7 = span !0 69 70
+!8 = span !0 67 72

@@ -157,7 +157,7 @@ impl TypeInfo {
                     }
                     Some(array_elem_count_pair) => {
                         match array_elem_count_pair.as_rule() {
-                            Rule::u64_integer => {
+                            Rule::basic_integer => {
                                 // Parse the count directly to a usize.
                                 check!(
                                     array_elem_count_pair
@@ -407,6 +407,9 @@ impl TypeInfo {
             }
         };
         ok(name, vec![], vec![])
+    }
+    pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {
+        Ok(self.size_in_words(err_span)? * 8)
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {

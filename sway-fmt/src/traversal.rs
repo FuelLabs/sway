@@ -48,7 +48,7 @@ pub fn traverse_for_changes(parse_tree: &SwayParseTree) -> Vec<Change> {
     let mut changes = vec![];
 
     for node in &parse_tree.tree.root_nodes {
-        traverse_ast_node(node, &mut changes)
+        traverse_ast_node(node, &mut changes);
     }
 
     changes.sort_by(|a, b| a.start.cmp(&b.start));
@@ -69,7 +69,17 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
         }
 
         AstNodeContent::UseStatement(_) => {
-            changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+            // The AST generates one root node per use statement, we must avoid duplicating them
+            // while formatting
+            let next_span = &ast_node.span;
+            match changes.last() {
+                Some(last_change) => {
+                    if last_change.start != next_span.start() {
+                        changes.push(Change::new(next_span, ChangeType::UseStatement));
+                    }
+                }
+                _ => changes.push(Change::new(next_span, ChangeType::UseStatement)),
+            }
         }
 
         AstNodeContent::IncludeStatement(_) => {

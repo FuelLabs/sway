@@ -1,15 +1,14 @@
 use crate::{
     cli::UpdateCommand,
     ops::forc_dep_check,
-    utils::{dependency, helpers::read_manifest},
+    utils::{
+        dependency,
+        helpers::{read_manifest, user_forc_directory},
+    },
 };
 use anyhow::{anyhow, Result};
-use dirs::home_dir;
 use std::{path::PathBuf, str};
-use sway_utils::{
-    constants::{self},
-    find_manifest_dir,
-};
+use sway_utils::find_manifest_dir;
 
 /// Forc update will update the contents inside the Forc dependencies directory.
 /// If a dependency `d` is passed as parameter, it will only try and update that specific dependency.
@@ -69,11 +68,6 @@ async fn update_dependency(
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
-    let home_dir = match home_dir() {
-        None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
-        Some(p) => p.to_str().unwrap().to_owned(),
-    };
-
     // Currently we only handle updates on github-based dependencies
     if let Some(git) = &dep.git {
         match &dep.version {
@@ -83,9 +77,11 @@ async fn update_dependency(
             // lookup for a desired version and manually specify it in `Forc.toml`.
             Some(version) => println!("Ignoring update for {} at version {}: Forc update not implemented for dependencies with specified tag. To update to another tag, change the tag in `Forc.toml` and run the build command.", dependency_name, version),
             None => {
+                let forc_dir = user_forc_directory();
+                let dep_dir = forc_dir.join(dependency_name);
                 let target_directory = match &dep.branch {
-                    Some(b) => PathBuf::from(format!("{}/{}/{}/{}", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name, &b)),
-                    None => PathBuf::from(format!("{}/{}/{}/default", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name)),
+                    Some(branch) => dep_dir.join(branch),
+                    None => dep_dir.join("default"),
                 };
 
                 let current = dependency::get_current_dependency_version(&target_directory)?;

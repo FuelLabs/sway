@@ -1,41 +1,67 @@
-script script {
-    fn pred(self: { bool }) -> bool {
+script {
+    fn main() -> bool {
+        local ptr { bool } bar
+        local ptr { bool } foo
+
         entry:
-        v0 = extract_value self, { bool }, 0
-        ret bool v0
+        v0 = const { bool } { bool undef }, !1
+        v1 = const bool true, !2
+        v2 = insert_value v0, { bool }, v1, 0, !1
+        store v2, ptr { bool } foo, !3
+        v3 = const { bool } { bool undef }, !4
+        v4 = const bool false, !5
+        v5 = insert_value v3, { bool }, v4, 0, !4
+        store v5, ptr { bool } bar, !6
+        v6 = get_ptr ptr { bool } foo, !7
+        v7 = get_ptr ptr { bool } bar, !8
+        v8 = call anon_0(v6, v7), !9
+        ret bool v8
     }
 
-    fn pred_or(self: { bool }, other: { bool }) -> bool {
+    fn anon_0(self !10: { bool }, other !11: { bool }) -> bool {
         entry:
-        v0 = call pred(self)
-        cbr v0, block1, block0
+        v0 = call anon_1(self), !12
+        cbr v0, block1, block0, !13
 
         block0:
         v1 = phi(entry: v0)
-        v2 = call pred(other)
-        br block1
+        v2 = call anon_2(other), !14
+        br block1, !13
 
         block1:
         v3 = phi(entry: v0, block0: v2)
         ret bool v3
     }
 
-    fn main() -> bool {
-        local ptr { bool } bar
-        local ptr { bool } foo
-
+    fn anon_1(self !15: { bool }) -> bool {
         entry:
-        v0 = const { bool } { bool undef }
-        v1 = const bool true
-        v2 = insert_value v0, { bool }, v1, 0
-        store v2, ptr { bool } foo
-        v3 = const { bool } { bool undef }
-        v4 = const bool false
-        v5 = insert_value v3, { bool }, v4, 0
-        store v5, ptr { bool } bar
-        v6 = get_ptr ptr { bool } foo
-        v7 = get_ptr ptr { bool } bar
-        v8 = call pred_or(v6, v7)
-        ret bool v8
+        v0 = extract_value self, { bool }, 0, !16
+        ret bool v0
+    }
+
+    fn anon_2(self !17: { bool }) -> bool {
+        entry:
+        v0 = extract_value self, { bool }, 0, !18
+        ret bool v0
     }
 }
+
+!0 = filepath "/path/to/trait.sw"
+!1 = span !0 277 304
+!2 = span !0 294 298
+!3 = span !0 267 305
+!4 = span !0 320 348
+!5 = span !0 337 342
+!6 = span !0 310 349
+!7 = span !0 354 357
+!8 = span !0 366 369
+!9 = span !0 354 370
+!10 = span !0 68 72
+!11 = span !0 74 79
+!12 = span !0 105 116
+!13 = span !0 105 132
+!14 = span !0 120 132
+!15 = span !0 203 207
+!16 = span !0 232 233
+!17 = span !0 203 207
+!18 = span !0 232 233

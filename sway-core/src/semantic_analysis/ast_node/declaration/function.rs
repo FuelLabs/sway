@@ -49,7 +49,6 @@ impl TypedFunctionDeclaration {
             build_config,
             dead_code_graph,
             mode,
-            dependency_graph,
             mut opts,
             ..
         } = arguments;
@@ -118,6 +117,7 @@ impl TypedFunctionDeclaration {
                         span: name.span().clone(),
                     },
                     is_mutable: VariableMutability::Immutable,
+                    const_decl_origin: false,
                     type_ascription: r#type,
                 }),
             );
@@ -136,7 +136,6 @@ impl TypedFunctionDeclaration {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),

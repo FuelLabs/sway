@@ -3,7 +3,7 @@ use std::fmt;
 /// Represents virtual registers that have yet to be allocated.
 /// Note that only the Virtual variant will be allocated, and the Constant variant refers to
 /// reserved registers.
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum VirtualRegister {
     Virtual(String),
     Constant(ConstantRegister),
@@ -26,7 +26,7 @@ impl fmt::Display for VirtualRegister {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 /// These are the special registers defined in the spec
 pub enum ConstantRegister {
     // Below are VM-reserved registers
@@ -96,8 +96,8 @@ impl fmt::Display for ConstantRegister {
             ContextGas => "$cgas",
             Balance => "$bal",
             InstructionStart => "$is",
-            ReturnValue => "$rv",
-            ReturnLength => "$rl",
+            ReturnValue => "$ret",
+            ReturnLength => "$retl",
             Flags => "$flag",
             // two `$` signs denotes this is a compiler-reserved register and not a
             // VM-reserved register

@@ -1,26 +1,45 @@
-script script {
-    fn eat(meal: { u64, { () | () | u64 } }) -> bool {
-        entry:
-        v0 = const bool false
-        ret bool v0
-    }
-
+script {
     fn main() -> () {
         local ptr { u64, { () | () | u64 } } lunch
 
         entry:
-        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v1 = const u64 1
-        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
-        store v2, ptr { u64, { () | () | u64 } } lunch
-        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch
-        v4 = call eat(v3)
-        v5 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v6 = const u64 2
-        v7 = insert_value v5, { u64, { () | () | u64 } }, v6, 0
-        v8 = const u64 3
-        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 1
-        v10 = call eat(v9)
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !1
+        v1 = const u64 1, !1
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0, !1
+        store v2, ptr { u64, { () | () | u64 } } lunch, !2
+        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch, !3
+        v4 = call anon_0(v3), !4
+        v5 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !5
+        v6 = const u64 2, !5
+        v7 = insert_value v5, { u64, { () | () | u64 } }, v6, 0, !5
+        v8 = const u64 3, !6
+        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 1, !5
+        v10 = call anon_1(v9), !7
         ret () v10
     }
+
+    fn anon_0(meal !8: { u64, { () | () | u64 } }) -> bool {
+        entry:
+        v0 = const bool false, !9
+        ret bool v0
+    }
+
+    fn anon_1(meal !10: { u64, { () | () | u64 } }) -> bool {
+        entry:
+        v0 = const bool false, !11
+        ret bool v0
+    }
 }
+
+!0 = filepath "/path/to/enum.sw"
+!1 = span !0 9 71
+!2 = span !0 89 115
+!3 = span !0 124 129
+!4 = span !0 162 203
+!5 = span !0 9 71
+!6 = span !0 154 155
+!7 = span !0 162 203
+!8 = span !0 169 173
+!9 = span !0 196 201
+!10 = span !0 169 173
+!11 = span !0 196 201

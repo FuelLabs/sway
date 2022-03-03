@@ -4,6 +4,8 @@
 //! crates were assessed but didn't seem to work as well as this simple version, which is quite
 //! effective.
 
+use std::collections::{BTreeMap, HashMap};
+
 use crate::{
     asm::*,
     block::Block,
@@ -12,9 +14,10 @@ use crate::{
     function::{Function, FunctionContent},
     instruction::Instruction,
     irtype::Type,
+    metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     pointer::{Pointer, PointerContent},
-    value::{Value, ValueContent},
+    value::{Value, ValueContent, ValueDatum},
 };
 
 #[derive(Debug)]
@@ -76,25 +79,30 @@ impl Doc {
 ///
 /// The ouput from this function must always be suitable for [`crate::parser::parse`].
 pub fn to_string(context: &Context) -> String {
+    let mut md_namer = MetadataNamer::new();
     context
         .modules
         .iter()
         .fold(Doc::Empty, |doc, (_, module)| {
-            doc.append(module_to_doc(context, module))
+            doc.append(module_to_doc(context, &mut md_namer, module))
         })
+        .append(metadata_to_doc(context, &md_namer))
         .build()
 }
 
-fn module_to_doc<'a>(context: &'a Context, module: &'a ModuleContent) -> Doc {
+fn module_to_doc<'a>(
+    context: &'a Context,
+    md_namer: &mut MetadataNamer,
+    module: &'a ModuleContent,
+) -> Doc {
     Doc::line(Doc::Text(format!(
-        "{} {} {{",
+        "{} {{",
         match module.kind {
             Kind::Contract => "contract",
             Kind::Library => "library",
             Kind::Predicate => "predicate ",
             Kind::Script => "script",
-        },
-        &module.name
+        }
     )))
     .append(Doc::indent(
         4,
@@ -105,6 +113,7 @@ fn module_to_doc<'a>(context: &'a Context, module: &'a ModuleContent) -> Doc {
                 .map(|function| {
                     function_to_doc(
                         context,
+                        md_namer,
                         &mut Namer::new(*function),
                         &context.functions[function.0],
                     )
@@ -118,6 +127,7 @@ fn module_to_doc<'a>(context: &'a Context, module: &'a ModuleContent) -> Doc {
 
 fn function_to_doc<'a>(
     context: &'a Context,
+    md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     function: &'a FunctionContent,
 ) -> Doc {
@@ -139,11 +149,18 @@ fn function_to_doc<'a>(
                 .arguments
                 .iter()
                 .map(|(name, arg_val)| {
-                    let ty = match &context.values[arg_val.0] {
-                        ValueContent::Argument(ty) => ty,
+                    let (ty, span_md_idx) = match &context.values[arg_val.0] {
+                        ValueContent {
+                            value: ValueDatum::Argument(ty),
+                            span_md_idx,
+                        } => (ty, span_md_idx),
                         _ => unreachable!("Unexpected non argument value for function arguments."),
                     };
-                    Doc::text(format!("{}: {}", name, ty.as_string(context),))
+                    Doc::text(format!(
+                        "{name}{}: {}",
+                        md_namer.meta_as_string(context, span_md_idx, false),
+                        ty.as_string(context),
+                    ))
                 })
                 .collect(),
         ))
@@ -180,7 +197,7 @@ fn function_to_doc<'a>(
                     function
                         .blocks
                         .iter()
-                        .map(|block| block_to_doc(context, namer, block))
+                        .map(|block| block_to_doc(context, md_namer, namer, block))
                         .collect(),
                     Doc::line(Doc::Empty),
                 ),
@@ -191,28 +208,52 @@ fn function_to_doc<'a>(
     .append(Doc::line(Doc::text("}")))
 }
 
-fn block_to_doc<'a>(context: &'a Context, namer: &mut Namer, block: &Block) -> Doc {
+fn block_to_doc<'a>(
+    context: &'a Context,
+    md_namer: &mut MetadataNamer,
+    namer: &mut Namer,
+    block: &Block,
+) -> Doc {
     let block_content = &context.blocks[block.0];
     Doc::line(Doc::text(format!("{}:", block_content.label))).append(Doc::List(
         block_content
             .instructions
             .iter()
-            .map(|ins| instruction_to_doc(context, namer, block, ins))
+            .map(|ins| instruction_to_doc(context, md_namer, namer, block, ins))
             .collect(),
     ))
 }
 
-fn constant_to_doc(context: &Context, namer: &mut Namer, const_val: &Value) -> Doc {
-    Doc::text_line(format!(
-        "{} = const {}",
-        namer.name(context, const_val),
-        const_val.as_lit_string(context)
-    ))
+fn constant_to_doc(
+    context: &Context,
+    md_namer: &mut MetadataNamer,
+    namer: &mut Namer,
+    const_val: &Value,
+) -> Doc {
+    if let ValueContent {
+        value: ValueDatum::Constant(constant),
+        span_md_idx,
+    } = &context.values[const_val.0]
+    {
+        Doc::text_line(format!(
+            "{} = const {}{}",
+            namer.name(context, const_val),
+            constant.as_lit_string(context),
+            md_namer.meta_as_string(context, span_md_idx, true),
+        ))
+    } else {
+        unreachable!("Not a constant value.")
+    }
 }
 
-fn maybe_constant_to_doc(context: &Context, namer: &mut Namer, maybe_const_val: &Value) -> Doc {
+fn maybe_constant_to_doc(
+    context: &Context,
+    md_namer: &mut MetadataNamer,
+    namer: &mut Namer,
+    maybe_const_val: &Value,
+) -> Doc {
     if maybe_const_val.is_constant(context) {
-        constant_to_doc(context, namer, maybe_const_val)
+        constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty
     }
@@ -220,17 +261,18 @@ fn maybe_constant_to_doc(context: &Context, namer: &mut Namer, maybe_const_val: 
 
 fn maybe_constant_phi_to_doc(
     context: &Context,
+    md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     caller: &Block,
     callee: &Block,
 ) -> Doc {
-    if let ValueContent::Instruction(Instruction::Phi(pairs)) =
-        &context.values[callee.get_phi(context).0]
+    if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+        &context.values[callee.get_phi(context).0].value
     {
         pairs
             .iter()
             .find(|(block, _)| block == caller)
-            .map(|(_, phi_val)| maybe_constant_to_doc(context, namer, phi_val))
+            .map(|(_, phi_val)| maybe_constant_to_doc(context, md_namer, namer, phi_val))
             .unwrap_or(Doc::Empty)
     } else {
         unreachable!("Phi must be an instruction.")
@@ -239,28 +281,31 @@ fn maybe_constant_phi_to_doc(
 
 fn instruction_to_doc<'a>(
     context: &'a Context,
+    md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,
     ins_value: &'a Value,
 ) -> Doc {
     match &context.values[ins_value.0] {
-        ValueContent::Instruction(instruction) => match instruction {
+        ValueContent {
+            value: ValueDatum::Instruction(instruction),
+            span_md_idx,
+        } => match instruction {
             Instruction::AsmBlock(asm, args) => {
-                asm_block_to_doc(context, namer, ins_value, asm, args)
+                asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, span_md_idx)
             }
-            Instruction::Branch(to_block) => {
-                maybe_constant_phi_to_doc(context, namer, block, to_block).append(Doc::text_line(
-                    format!("br {}", context.blocks[to_block.0].label),
-                ))
-            }
+            Instruction::Branch(to_block) => maybe_constant_phi_to_doc(
+                context, md_namer, namer, block, to_block,
+            )
+            .append(Doc::text_line(format!(
+                "br {}{}",
+                context.blocks[to_block.0].label,
+                md_namer.meta_as_string(context, span_md_idx, true)
+            ))),
             Instruction::Call(func, args) => args
                 .iter()
                 .fold(Doc::Empty, |doc, arg_val| {
-                    if arg_val.is_constant(context) {
-                        doc.append(constant_to_doc(context, namer, arg_val))
-                    } else {
-                        doc
-                    }
+                    doc.append(maybe_constant_to_doc(context, md_namer, namer, arg_val))
                 })
                 .append(Doc::line(
                     Doc::text(format!(
@@ -272,7 +317,11 @@ fn instruction_to_doc<'a>(
                         args.iter()
                             .map(|arg_val| Doc::text(namer.name(context, arg_val)))
                             .collect(),
-                    )),
+                    ))
+                    .append(match span_md_idx {
+                        None => Doc::Empty,
+                        Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
+                    }),
                 )),
             Instruction::ConditionalBranch {
                 cond_value,
@@ -281,28 +330,28 @@ fn instruction_to_doc<'a>(
             } => {
                 let true_label = &context.blocks[true_block.0].label;
                 let false_label = &context.blocks[false_block.0].label;
-                maybe_constant_phi_to_doc(context, namer, block, true_block)
-                    .append(maybe_constant_to_doc(context, namer, cond_value))
+                maybe_constant_phi_to_doc(context, md_namer, namer, block, true_block)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, cond_value))
                     .append(Doc::text_line(format!(
-                        "cbr {}, {}, {}",
+                        "cbr {}, {true_label}, {false_label}{}",
                         namer.name(context, cond_value),
-                        true_label,
-                        false_label
+                        md_namer.meta_as_string(context, span_md_idx, true),
                     )))
             }
             Instruction::ExtractElement {
                 array,
                 ty,
                 index_val,
-            } => maybe_constant_to_doc(context, namer, index_val).append(Doc::line(Doc::text(
-                format!(
-                    "{} = extract_element {}, {}, {}",
+            } => maybe_constant_to_doc(context, md_namer, namer, index_val).append(Doc::line(
+                Doc::text(format!(
+                    "{} = extract_element {}, {}, {}{}",
                     namer.name(context, ins_value),
                     namer.name(context, array),
                     Type::Array(*ty).as_string(context),
                     namer.name(context, index_val),
-                ),
-            ))),
+                    md_namer.meta_as_string(context, span_md_idx, true),
+                )),
+            )),
             Instruction::ExtractValue {
                 aggregate,
                 ty,
@@ -317,10 +366,14 @@ fn instruction_to_doc<'a>(
                 .append(Doc::list_sep(
                     indices
                         .iter()
-                        .map(|idx| Doc::text(format!("{}", idx)))
+                        .map(|idx| Doc::text(format!("{idx}")))
                         .collect(),
                     Doc::Comma,
-                )),
+                ))
+                .append(match span_md_idx {
+                    None => Doc::Empty,
+                    Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
+                }),
             ),
             Instruction::GetPointer(ptr) => {
                 let name = block
@@ -328,9 +381,10 @@ fn instruction_to_doc<'a>(
                     .lookup_local_name(context, ptr)
                     .unwrap();
                 Doc::text_line(format!(
-                    "{} = get_ptr {}",
+                    "{} = get_ptr {}{}",
                     namer.name(context, ins_value),
-                    ptr.as_string(context, name)
+                    ptr.as_string(context, name),
+                    md_namer.meta_as_string(context, span_md_idx, true),
                 ))
             }
             Instruction::InsertElement {
@@ -338,24 +392,25 @@ fn instruction_to_doc<'a>(
                 ty,
                 value,
                 index_val,
-            } => maybe_constant_to_doc(context, namer, array)
-                .append(maybe_constant_to_doc(context, namer, value))
-                .append(maybe_constant_to_doc(context, namer, index_val))
+            } => maybe_constant_to_doc(context, md_namer, namer, array)
+                .append(maybe_constant_to_doc(context, md_namer, namer, value))
+                .append(maybe_constant_to_doc(context, md_namer, namer, index_val))
                 .append(Doc::line(Doc::text(format!(
-                    "{} = insert_element {}, {}, {}, {}",
+                    "{} = insert_element {}, {}, {}, {}{}",
                     namer.name(context, ins_value),
                     namer.name(context, array),
                     Type::Array(*ty).as_string(context),
                     namer.name(context, value),
                     namer.name(context, index_val),
+                    md_namer.meta_as_string(context, span_md_idx, true),
                 )))),
             Instruction::InsertValue {
                 aggregate,
                 ty,
                 value,
                 indices,
-            } => maybe_constant_to_doc(context, namer, aggregate)
-                .append(maybe_constant_to_doc(context, namer, value))
+            } => maybe_constant_to_doc(context, md_namer, namer, aggregate)
+                .append(maybe_constant_to_doc(context, md_namer, namer, value))
                 .append(Doc::line(
                     Doc::text(format!(
                         "{} = insert_value {}, {}, {}, ",
@@ -367,10 +422,14 @@ fn instruction_to_doc<'a>(
                     .append(Doc::list_sep(
                         indices
                             .iter()
-                            .map(|idx| Doc::text(format!("{}", idx)))
+                            .map(|idx| Doc::text(format!("{idx}")))
                             .collect(),
                         Doc::Comma,
-                    )),
+                    ))
+                    .append(match span_md_idx {
+                        None => Doc::Empty,
+                        Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
+                    }),
                 )),
             Instruction::Load(ptr) => {
                 let name = block
@@ -378,11 +437,13 @@ fn instruction_to_doc<'a>(
                     .lookup_local_name(context, ptr)
                     .unwrap();
                 Doc::text_line(format!(
-                    "{} = load {}",
+                    "{} = load {}{}",
                     namer.name(context, ins_value),
-                    ptr.as_string(context, name)
+                    ptr.as_string(context, name),
+                    md_namer.meta_as_string(context, span_md_idx, true),
                 ))
             }
+            Instruction::Nop => Doc::text_line(format!("{} = nop", namer.name(context, ins_value))),
             Instruction::Phi(pairs) => {
                 if pairs.is_empty() {
                     Doc::Empty
@@ -407,10 +468,11 @@ fn instruction_to_doc<'a>(
                 }
             }
             Instruction::Ret(v, t) => {
-                maybe_constant_to_doc(context, namer, v).append(Doc::text_line(format!(
-                    "ret {} {}",
+                maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::text_line(format!(
+                    "ret {} {}{}",
                     t.as_string(context),
-                    namer.name(context, v)
+                    namer.name(context, v),
+                    md_namer.meta_as_string(context, span_md_idx, true),
                 )))
             }
             Instruction::Store { ptr, stored_val } => {
@@ -418,11 +480,14 @@ fn instruction_to_doc<'a>(
                     .get_function(context)
                     .lookup_local_name(context, ptr)
                     .unwrap();
-                maybe_constant_to_doc(context, namer, stored_val).append(Doc::text_line(format!(
-                    "store {}, {}",
-                    namer.name(context, stored_val),
-                    ptr.as_string(context, name),
-                )))
+                maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::text_line(
+                    format!(
+                        "store {}, {}{}",
+                        namer.name(context, stored_val),
+                        ptr.as_string(context, name),
+                        md_namer.meta_as_string(context, span_md_idx, true),
+                    ),
+                ))
             }
         },
         _ => unreachable!("Unexpected non instruction for block contents."),
@@ -431,10 +496,12 @@ fn instruction_to_doc<'a>(
 
 fn asm_block_to_doc(
     context: &Context,
+    md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     ins_value: &Value,
     asm: &AsmBlock,
     args: &[AsmArg],
+    span_md_idx: &Option<MetadataIndex>,
 ) -> Doc {
     let AsmBlockContent {
         body, return_name, ..
@@ -444,7 +511,7 @@ fn asm_block_to_doc(
             Doc::Empty,
             |doc, AsmArg { initializer, .. }| match initializer {
                 Some(init_val) if init_val.is_constant(context) => {
-                    doc.append(constant_to_doc(context, namer, init_val))
+                    doc.append(constant_to_doc(context, md_namer, namer, init_val))
                 }
                 _otherwise => doc,
             },
@@ -464,7 +531,10 @@ fn asm_block_to_doc(
                         .collect(),
                 ))
                 .append(match return_name {
-                    Some(rn) => Doc::text(format!(" -> {} {{", rn)),
+                    Some(rn) => Doc::text(format!(
+                        " -> {rn}{} {{",
+                        md_namer.meta_as_string(context, span_md_idx, true)
+                    )),
                     None => Doc::text(" {"),
                 }),
         ))
@@ -477,6 +547,7 @@ fn asm_block_to_doc(
                              name,
                              args,
                              immediate,
+                             span_md_idx,
                          }| {
                             Doc::line(
                                 Doc::text(format!("{:6} ", name.as_str())).append(
@@ -485,9 +556,12 @@ fn asm_block_to_doc(
                                         Doc::text(" "),
                                     )
                                     .append(match immediate {
-                                        Some(imm_str) => Doc::text(format!(" {}", imm_str)),
+                                        Some(imm_str) => Doc::text(format!(" {imm_str}")),
                                         None => Doc::Empty,
-                                    }),
+                                    })
+                                    .append(Doc::text(
+                                        md_namer.meta_as_string(context, span_md_idx, true),
+                                    )),
                                 ),
                             )
                         },
@@ -498,13 +572,29 @@ fn asm_block_to_doc(
         .append(Doc::text_line("}"))
 }
 
-impl Value {
-    fn as_lit_string(&self, context: &Context) -> String {
-        if let ValueContent::Constant(c) = &context.values[self.0] {
-            c.as_lit_string(context)
-        } else {
-            unreachable!("Not a literal value.")
-        }
+fn metadata_to_doc(context: &Context, md_namer: &MetadataNamer) -> Doc {
+    let md_lines = md_namer
+        .values_sorted()
+        .filter_map(|(ref_idx, md_idx)| {
+            match &context.metadata[md_idx.0] {
+                Metadatum::FileLocation(path, _) => Some(format!("!{ref_idx} = filepath {path:?}")),
+                Metadatum::Span {
+                    loc_idx,
+                    start,
+                    end,
+                } => md_namer
+                    .get(loc_idx)
+                    .map(|loc_ref_idx| format!("!{ref_idx} = span !{loc_ref_idx} {start} {end}")),
+            }
+            .map(&Doc::text_line)
+        })
+        .collect::<Vec<_>>();
+
+    // We want to add an empty line only when there are metadata.
+    if md_lines.is_empty() {
+        Doc::Empty
+    } else {
+        Doc::line(Doc::Empty).append(Doc::List(md_lines))
     }
 }
 
@@ -518,11 +608,11 @@ impl Constant {
             ConstantValue::B256(bs) => format!(
                 "b256 0x{}",
                 bs.iter()
-                    .map(|b| format!("{:02x}", b))
+                    .map(|b| format!("{b:02x}"))
                     .collect::<Vec<String>>()
                     .concat()
             ),
-            ConstantValue::String(s) => format!("{} \"{}\"", self.ty.as_string(context), s),
+            ConstantValue::String(s) => format!("{} \"{s}\"", self.ty.as_string(context)),
             ConstantValue::Array(elems) => format!(
                 "{} [{}]",
                 self.ty.as_string(context),
@@ -549,49 +639,110 @@ impl Pointer {
     fn as_string(&self, context: &Context, name: &str) -> String {
         let PointerContent { ty, is_mutable, .. } = &context.pointers[self.0];
         let mut_tag = if *is_mutable { "mut " } else { "" };
-        format!("{}ptr {} {}", mut_tag, ty.as_string(context), name)
+        format!("{mut_tag}ptr {} {name}", ty.as_string(context))
     }
-
-    //fn as_string_no_type(&self, context: &Context, name: &str) -> String {
-    //    let PointerContent { is_mutable, .. } = &context.pointers[self.0];
-    //    let mut_tag = if *is_mutable { "mut " } else { "" };
-    //    format!("{}ptr {}", mut_tag, name)
-    //}
 }
 
 struct Namer {
     function: Function,
-    next_idx: u64,
-    names: std::collections::HashMap<Value, String>,
+
+    names: HashMap<Value, String>,
+    next_value_idx: u64,
 }
 
 impl Namer {
     fn new(function: Function) -> Self {
         Namer {
             function,
-            next_idx: 0,
-            names: std::collections::HashMap::new(),
+            names: HashMap::new(),
+            next_value_idx: 0,
         }
     }
 
     fn name(&mut self, context: &Context, value: &Value) -> String {
-        match &context.values[value.0] {
-            ValueContent::Argument(_) => self
+        match &context.values[value.0].value {
+            ValueDatum::Argument(_) => self
                 .function
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
-            ValueContent::Constant(_) => self.default_name(value),
-            ValueContent::Instruction(_) => self.default_name(value),
+            ValueDatum::Constant(_) => self.default_name(value),
+            ValueDatum::Instruction(_) => self.default_name(value),
         }
     }
 
     fn default_name(&mut self, value: &Value) -> String {
         self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("v{}", self.next_idx);
-            self.next_idx += 1;
+            let new_name = format!("v{}", self.next_value_idx);
+            self.next_value_idx += 1;
             self.names.insert(*value, new_name.clone());
             new_name
+        })
+    }
+}
+
+struct MetadataNamer {
+    md_map: BTreeMap<MetadataIndex, u64>,
+    next_md_idx: u64,
+}
+
+impl MetadataNamer {
+    // Use Default instead?
+    fn new() -> Self {
+        MetadataNamer {
+            md_map: BTreeMap::new(),
+            next_md_idx: 0,
+        }
+    }
+
+    fn values_sorted(&self) -> impl Iterator<Item = (u64, MetadataIndex)> {
+        let mut items = self
+            .md_map
+            .clone()
+            .into_iter()
+            .map(|(a, b)| (b, a))
+            .collect::<Vec<_>>();
+        items.sort_unstable();
+        items.into_iter()
+    }
+
+    fn get(&self, md_idx: &MetadataIndex) -> Option<u64> {
+        self.md_map.get(md_idx).copied()
+    }
+
+    // This method is how we introduce 'valid' metadata to the namer, as only valid metadata are
+    // printed at the end.  Since metadata are stored globally to the context there may be a bunch
+    // in there which aren't relevant (e.g., library code).  Hopefully this will go away when the
+    // Sway compiler becomes properly modular and eschews all the inlining it does.
+    //
+    // So, we insert a reference index into the namer whenever we see a new metadata index passed
+    // here.  But we also need to recursively 'validate' any other metadata referred to, i.e., the
+    // file paths.  It's done in `get_or_add()` below.
+    fn meta_as_string(
+        &mut self,
+        context: &Context,
+        md_idx: &Option<MetadataIndex>,
+        comma_prefix: bool,
+    ) -> String {
+        md_idx
+            .map(|md_idx| {
+                // We prefix always with a space here, comma or not, so it can be used up against
+                // its owner.
+                let idx = self.get_or_add(context, &md_idx);
+                format!("{} !{idx}", if comma_prefix { "," } else { "" })
+            })
+            .unwrap_or_else(|| "".to_owned())
+    }
+
+    fn get_or_add(&mut self, context: &Context, md_idx: &MetadataIndex) -> u64 {
+        if let Metadatum::Span { loc_idx, .. } = &context.metadata[md_idx.0] {
+            self.get_or_add(context, loc_idx);
+        }
+        self.md_map.get(md_idx).copied().unwrap_or_else(|| {
+            let new_idx = self.next_md_idx;
+            self.next_md_idx += 1;
+            self.md_map.insert(*md_idx, new_idx);
+            new_idx
         })
     }
 }

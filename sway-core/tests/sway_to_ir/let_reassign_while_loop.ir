@@ -1,32 +1,42 @@
-script script {
+script {
     fn main() -> bool {
         local mut ptr bool a
 
         entry:
-        v0 = const bool true
-        store v0, mut ptr bool a
+        v0 = const bool true, !1
+        store v0, mut ptr bool a, !2
         br while
 
         while:
-        v1 = load mut ptr bool a
+        v1 = load mut ptr bool a, !3
         cbr v1, while_body, end_while
 
         while_body:
-        v2 = load mut ptr bool a
-        cbr v2, block0, block1
+        v2 = load mut ptr bool a, !4
+        cbr v2, block0, block1, !5
 
         block0:
         v3 = phi(while_body: v2)
-        v4 = const bool false
-        br block1
+        v4 = const bool false, !6
+        br block1, !5
 
         block1:
         v5 = phi(while_body: v2, block0: v4)
-        store v5, mut ptr bool a
+        store v5, mut ptr bool a, !7
         br while
 
         end_while:
-        v6 = load mut ptr bool a
+        v6 = load mut ptr bool a, !8
         ret bool v6
     }
 }
+
+!0 = filepath "/path/to/let_reassign_while_loop.sw"
+!1 = span !0 45 49
+!2 = span !0 33 50
+!3 = span !0 61 62
+!4 = span !0 77 78
+!5 = span !0 77 87
+!6 = span !0 82 87
+!7 = span !0 73 88
+!8 = span !0 99 100

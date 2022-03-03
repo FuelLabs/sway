@@ -60,8 +60,8 @@ pub(crate) enum TypedExpressionVariant {
     StructFieldAccess {
         prefix: Box<TypedExpression>,
         field_to_access: OwnedTypedStructField,
-        field_to_access_span: Span,
         resolved_type_of_parent: TypeId,
+        field_to_access_span: Span,
     },
     EnumArgAccess {
         prefix: Box<TypedExpression>,
@@ -72,8 +72,8 @@ pub(crate) enum TypedExpressionVariant {
     TupleElemAccess {
         prefix: Box<TypedExpression>,
         elem_to_access_num: usize,
-        elem_to_access_span: Span,
         resolved_type_of_parent: TypeId,
+        elem_to_access_span: Span,
     },
     EnumInstantiation {
         /// for printing
@@ -90,6 +90,15 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    SizeOf {
+        variant: SizeOfVariant,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum SizeOfVariant {
+    Type(TypeId),
+    Val(Box<TypedExpression>),
 }
 
 #[derive(Clone, Debug)]
@@ -116,6 +125,7 @@ impl TypedExpressionVariant {
                     Literal::U16(content) => content.to_string(),
                     Literal::U32(content) => content.to_string(),
                     Literal::U64(content) => content.to_string(),
+                    Literal::Numeric(content) => content.to_string(),
                     Literal::String(content) => content.as_str().to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),
@@ -202,6 +212,12 @@ impl TypedExpressionVariant {
                     tag
                 )
             }
+            TypedExpressionVariant::SizeOf { variant } => match variant {
+                SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
+                SizeOfVariant::Type(type_name) => {
+                    format!("size_of({:?})", type_name.friendly_type_str())
+                }
+            },
         }
     }
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
@@ -316,6 +332,10 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
+            SizeOf { variant } => match variant {
+                SizeOfVariant::Type(_) => (),
+                SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),
+            },
         }
     }
 }

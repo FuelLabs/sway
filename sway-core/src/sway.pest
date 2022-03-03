@@ -1,32 +1,34 @@
 // tweakable things
-var_decl_keyword    =  {"let"}
-fn_decl_keyword     =  {"fn"}
-trait_decl_keyword  =  {"trait"}
-return_keyword      =  {"return"}
-storage_keyword     =  {"storage"}
-use_keyword         =  {"use"}
-as_keyword          =  {"as"}
-enum_keyword        = @{"enum"}
-struct_keyword      = @{"struct"}
-impl_keyword        =  {"impl"}
-asm_keyword         =  {"asm"}
-while_keyword       =  {"while"}
-match_keyword       =  {"match"}
-mut_keyword         =  {"mut"}
-assign              = _{"="}
-line_comment_open   =  {"//"}
-block_comment_open  =  {"/*"}
-block_comment_close =  {"*/"}
-fn_returns          =  {"->"}
-path_separator      =  {"::"}
-include_keyword     =  {"dep"}
-abi_keyword         =  {"abi"}
-ref_keyword         =  {"ref "}
-deref_keyword       =  {"deref "}
-true_keyword        =  {"true"}
-false_keyword       =  {"false"}
-const_decl_keyword  =  {"const"}
-impurity_keyword    =  {"impure"}
+var_decl_keyword     =  {"let"}
+fn_decl_keyword      =  {"fn"}
+trait_decl_keyword   =  {"trait"}
+return_keyword       =  {"return"}
+storage_keyword      =  {"storage"}
+use_keyword          =  {"use"}
+as_keyword           =  {"as"}
+enum_keyword         = @{"enum"}
+struct_keyword       = @{"struct"}
+impl_keyword         =  {"impl"}
+asm_keyword          =  {"asm"}
+while_keyword        =  {"while"}
+match_keyword        =  {"match"}
+mut_keyword          =  {"mut"}
+assign               = _{"="}
+line_comment_open    =  {"//"}
+block_comment_open   =  {"/*"}
+block_comment_close  =  {"*/"}
+fn_returns           =  {"->"}
+path_separator       =  {"::"}
+include_keyword      =  {"dep"}
+abi_keyword          =  {"abi"}
+ref_keyword          =  {"ref "}
+deref_keyword        =  {"deref "}
+true_keyword         =  {"true"}
+false_keyword        =  {"false"}
+const_decl_keyword   =  {"const"}
+impurity_keyword     =  {"impure"}
+size_of_type_keyword =  {"size_of"}
+size_of_val_keyword  =  {"size_of_val"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -41,13 +43,29 @@ predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_stateme
 file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
-// expressions
-expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+
+// this call path is used when there are 0+ prefixes in the call path
+// examples:
+// thing
+// thing::thing2
+// thing::thing2::thing3
+call_path           =  {relative_call_path|absolute_call_path}
+relative_call_path  =  {ident ~ (path_separator ~ ident)*}
+absolute_call_path  =  {path_separator ~ ident ~ (path_separator ~ ident)*}
+// this call path is used when there are 1+ prefixes in the call path
+// examples:
+// thing::thing2
+// thing::thing2::thing3
+call_path_          =  {relative_call_path_|absolute_call_path_}
+relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
+absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
+
+expr_inner               = _{unary_op_expr|asm_expression|size_of_expr|match_expression|abi_cast|if_exp|code_block|tuple_index|struct_expression|delineated_path|func_app|literal_value|method_exp|struct_field_access|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {ident ~ type_args? ~ fn_args}
+func_app                 =  {call_path ~ type_args? ~ fn_args}
 type_args                =  {path_separator ~ type_params}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 var_exp                  =  {var_name_ident}
@@ -55,18 +73,20 @@ var_name_ident           =  {ident}
 struct_field_access      =  {subfield_path}
 method_exp               =  {subfield_exp | fully_qualified_method}
 subfield_exp             =  {subfield_path ~ fn_args}
-// TODO subfield path should allow parenthesized expressions _or_ just idents
 subfield_path            =  {(sub_subfield_path ~ ".")+ ~ call_item}
 sub_subfield_path        =  {array_index|call_item}
-fully_qualified_method   =  {path_separator? ~ (path_ident ~ path_separator)* ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
+fully_qualified_method   =  {call_path? ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
-delineated_path          =  {path_component ~ fn_args?}
-path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
-path_ident               =  {ident}
+delineated_path          =  {call_path_ ~ fn_args?}
 array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 
+// size_of
+size_of_expr      =  {size_of_type_expr|size_of_val_expr}
+size_of_type_expr =  {size_of_type_keyword ~ "::<" ~ type_name ~ ">" ~ "(" ~ ")"}
+size_of_val_expr  =  {size_of_val_keyword ~ "(" ~ expr ~ ")"}
+
 // abi blocks and abi casting
-abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
+abi_cast = {abi_keyword ~ "(" ~ call_path ~ "," ~ expr ~ ")"}
 abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
@@ -75,17 +95,16 @@ if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|ref_keyword|deref_keyword}
 
-literal_value =  {integer|byte|string|boolean}
+literal_value =  {typed_integer|basic_integer|byte|string|boolean}
 
 boolean          =  {true_keyword|false_keyword}
 string           = ${"\"" ~ char* ~ "\""}
-integer          =  {(u8_integer|u16_integer|u32_integer|u64_integer)}
+typed_integer    =  {(u8_integer|u16_integer|u32_integer|u64_integer)}
 basic_integer    = @{!("0b"|"0x") ~ ASCII_DIGIT ~ (ASCII_DIGIT|"_")*}
 u8_integer       =  {basic_integer ~ "u8"}
 u16_integer      =  {basic_integer ~ "u16"}
 u32_integer      =  {basic_integer ~ "u32"}
-// default is u64
-u64_integer      =  {basic_integer ~ "u64"?}
+u64_integer      =  {basic_integer ~ "u64"}
 byte             =  {binary_byte|hex_byte}
 binary_byte      = @{"0b" ~ ("1"|"0"|"_")*}
 hex_byte         = @{"0x" ~ hex_digit*}
@@ -100,30 +119,31 @@ struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
 field_scrutinee  =  {":" ~ scrutinee}
-enum_scrutinee   =  {enum_scrutinee_component ~ fn_args_scrutinee?}
-enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)+}
+enum_scrutinee   =  {call_path_ ~ fn_args_scrutinee?}
 fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
 tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
-struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
+struct_expression  =  {call_path ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
 // for the value and the count, but Sway doesn't yet have constant expression resolution, so for now
 // we can use a literal and an integer.
-array_elems        =  {literal_value ~ ";" ~ u64_integer|expr ~ ("," ~ expr)*}
+array_elems        =  {literal_value ~ ";" ~ basic_integer|expr ~ ("," ~ expr)*}
 
 // declarations
 declaration               =  {(non_var_decl|var_decl|reassignment)}
 non_var_decl              =  {(enum_decl|storage_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
-var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
+var_decl                  =  {var_decl_keyword ~ var_lhs ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
 fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
-var_name                  =  {ident}
+var_lhs                   =  {var_name|var_tuple}
+var_name                  =  {mut_keyword? ~ ident}
+var_tuple                 =  {"(" ~ (var_lhs ~ ("," ~ var_lhs)* ~ ","?)? ~ ")" }
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
@@ -147,17 +167,17 @@ enum_field_name   =  {ident}
 impl_self =  {impl_keyword ~ type_params? ~ type_name ~  trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
-fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
+fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
 type_params        =  {"<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">"}
 fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name =  {ident}
 fn_decl_name       =  {ident}
 type_name          =  {str_type|ident ~ type_params?|tuple_type|array_type}
 str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
-trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
+trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ call_path) ~ ("," ~ generic_type_param ~ ":" ~ call_path)*}
 generic_type_param =  {ident}
 // Array size can be any constant u64 expression, but we don't properly support constant expressions.  See `array_elems rule above.
-array_type         =  {"[" ~ type_name ~ ";" ~ u64_integer~ "]"}
+array_type         =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
@@ -165,18 +185,20 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement   =  {expr ~ ";"}
 
 // traits
-trait_decl    =  {visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods}
+trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ supertraits? ~ trait_bounds? ~ trait_methods}
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
-trait_name    =  {ident ~ (path_separator ~ ident)*}
-impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+supertraits   =  {":" ~ supertrait ~ ("+" ~ supertrait)*}
+supertrait    =  {call_path ~ type_params?}
+impl_trait    =  {impl_keyword ~ call_path ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
 use_statement           =  {relative_use_statement | absolute_use_statement}
 relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
 absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
-import_path             =  {star|(ident ~ (path_separator ~ ident)* ~ ((path_separator ~ star)|import_items|alias)?)}
+import_path             =  {(star ~ alias?)|(self_keyword ~ alias?)|(ident ~ (path_separator ~ ident)* ~ ((path_separator ~ star ~ alias?)|import_items|alias)?)}
 import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ "}"}
 star                    =  {"*"}
+self_keyword            =  {"self"}
 
 // loops
 while_loop =  {while_keyword ~ expr ~ code_block}
@@ -187,8 +209,13 @@ asm_registers            =  {"(" ~ (asm_register_declaration ~ ("," ~ asm_regist
 asm_register_declaration =  {ident ~ (":" ~ expr)?}
 asm_op                   =  {opcode ~ (asm_immediate|asm_register)* ~ ";"}
 asm_register             =  {ident}
-asm_immediate            =  {"i" ~ u64_integer}
+asm_immediate            =  {"i" ~ basic_integer}
 opcode                   =  {ident}
+
+// tuples
+tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
+tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
+tuple_index    =  {call_item ~ "." ~ basic_integer}
 
 // control flow
 control_flow = _{while_loop|return_statement}
@@ -203,8 +230,6 @@ char           = @{
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
-tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
-reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
+reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword|size_of_type_keyword|size_of_val_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 

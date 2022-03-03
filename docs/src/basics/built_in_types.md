@@ -30,7 +30,7 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 10          // base-10
 100_000     // underscore delineated base-10
 0x1111_0000 // underscore delineated binary
-0xfff_aaa   // underscore delineated binary
+0xfff_aaa   // underscore delineated hexadecimal
 ```
 
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.

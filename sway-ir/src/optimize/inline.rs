@@ -8,10 +8,11 @@ use crate::{
     asm::AsmArg,
     block::Block,
     context::Context,
+    error::IrError,
     function::Function,
     instruction::Instruction,
     pointer::Pointer,
-    value::{Value, ValueContent},
+    value::{Value, ValueContent, ValueDatum},
 };
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
@@ -21,14 +22,14 @@ use crate::{
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
-) -> Result<bool, String> {
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
         // Find the next call site.
         let call_data = function
             .instruction_iter(context)
-            .find_map(|(block, call_val)| match context.values[call_val.0] {
-                ValueContent::Instruction(Instruction::Call(inlined_function, _)) => {
+            .find_map(|(block, call_val)| match context.values[call_val.0].value {
+                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
                     Some((block, call_val, inlined_function))
                 }
                 _ => None,
@@ -54,7 +55,7 @@ pub fn inline_function_call(
     block: Block,
     call_site: Value,
     inlined_function: Function,
-) -> Result<(), String> {
+) -> Result<(), IrError> {
     // Split the block at right after the call site.
     let call_site_idx = context.blocks[block.0]
         .instructions
@@ -81,8 +82,8 @@ pub fn inline_function_call(
     let mut value_map = HashMap::new();
 
     // Add the mapping from argument values in the inlined function to the args passed to the call.
-    if let ValueContent::Instruction(Instruction::Call(_, passed_vals)) =
-        &context.values[call_site.0]
+    if let ValueDatum::Instruction(Instruction::Call(_, passed_vals)) =
+        &context.values[call_site.0].value
     {
         for (arg_val, passed_val) in context.functions[inlined_function.0]
             .arguments
@@ -150,8 +151,8 @@ pub fn inline_function_call(
     for old_block in inlined_blocks {
         let new_block = block_map.get(&old_block).unwrap();
         let old_phi_val = old_block.get_phi(context);
-        if let ValueContent::Instruction(Instruction::Phi(pairs)) =
-            context.values[old_phi_val.0].clone()
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            context.values[old_phi_val.0].value.clone()
         {
             for (from_block, phi_value) in pairs {
                 new_block.add_phi(
@@ -182,7 +183,6 @@ fn inline_instruction(
     // Util to translate old values to new.  If an old value isn't in the map then it (should be)
     // a const, which we can just keep using.
     let map_value = |old_val: Value| value_map.get(&old_val).copied().unwrap_or(old_val);
-    let map_value_ref = |old_val: &Value| map_value(*old_val);
     let map_ptr = |old_ptr| ptr_map.get(&old_ptr).copied().unwrap();
 
     // The instruction needs to be cloned into the new block, with each value and/or block
@@ -192,7 +192,11 @@ fn inline_instruction(
     //
     // We need to clone the instruction here, which is unfortunate.  Maybe in the future we
     // restructure instructions somehow, so we don't need a persistent `&Context` to access them.
-    if let ValueContent::Instruction(old_ins) = context.values[instruction.0].clone() {
+    if let ValueContent {
+        value: ValueDatum::Instruction(old_ins),
+        span_md_idx,
+    } = context.values[instruction.0].clone()
+    {
         let new_ins = match old_ins {
             Instruction::AsmBlock(asm, args) => {
                 let new_args = args
@@ -204,17 +208,24 @@ fn inline_instruction(
                     .collect();
 
                 // We can re-use the old asm block with the updated args.
-                new_block.ins(context).asm_block_from_asm(asm, new_args)
+                new_block
+                    .ins(context)
+                    .asm_block_from_asm(asm, new_args, span_md_idx)
             }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
-            Instruction::Branch(b) => new_block.ins(context).branch(map_block(b), None),
+            Instruction::Branch(b) => {
+                new_block
+                    .ins(context)
+                    .branch(map_block(b), None, span_md_idx)
+            }
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,
                 args.iter()
-                    .map(&map_value_ref)
+                    .map(|old_val: &Value| map_value(*old_val))
                     .collect::<Vec<Value>>()
                     .as_slice(),
+                span_md_idx,
             ),
             Instruction::ConditionalBranch {
                 cond_value,
@@ -225,22 +236,30 @@ fn inline_instruction(
                 map_block(true_block),
                 map_block(false_block),
                 None,
+                span_md_idx,
             ),
             Instruction::ExtractElement {
                 array,
                 ty,
                 index_val,
-            } => new_block
-                .ins(context)
-                .extract_element(map_value(array), ty, map_value(index_val)),
+            } => new_block.ins(context).extract_element(
+                map_value(array),
+                ty,
+                map_value(index_val),
+                span_md_idx,
+            ),
             Instruction::ExtractValue {
                 aggregate,
                 ty,
                 indices,
-            } => new_block
-                .ins(context)
-                .extract_value(map_value(aggregate), ty, indices),
-            Instruction::GetPointer(ptr) => new_block.ins(context).get_ptr(map_ptr(ptr)),
+            } => {
+                new_block
+                    .ins(context)
+                    .extract_value(map_value(aggregate), ty, indices, span_md_idx)
+            }
+            Instruction::GetPointer(ptr) => {
+                new_block.ins(context).get_ptr(map_ptr(ptr), span_md_idx)
+            }
             Instruction::InsertElement {
                 array,
                 ty,
@@ -251,6 +270,7 @@ fn inline_instruction(
                 ty,
                 map_value(value),
                 map_value(index_val),
+                span_md_idx,
             ),
             Instruction::InsertValue {
                 aggregate,
@@ -262,15 +282,21 @@ fn inline_instruction(
                 ty,
                 map_value(value),
                 indices,
+                span_md_idx,
             ),
-            Instruction::Load(ptr) => new_block.ins(context).load(map_ptr(ptr)),
+            Instruction::Load(ptr) => new_block.ins(context).load(map_ptr(ptr), span_md_idx),
+            Instruction::Nop => new_block.ins(context).nop(),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
-            Instruction::Ret(val, _) => new_block
-                .ins(context)
-                .branch(*post_block, Some(map_value(val))),
-            Instruction::Store { ptr, stored_val } => new_block
-                .ins(context)
-                .store(map_ptr(ptr), map_value(stored_val)),
+            Instruction::Ret(val, _) => {
+                new_block
+                    .ins(context)
+                    .branch(*post_block, Some(map_value(val)), span_md_idx)
+            }
+            Instruction::Store { ptr, stored_val } => {
+                new_block
+                    .ins(context)
+                    .store(map_ptr(ptr), map_value(stored_val), span_md_idx)
+            }
 
             // NOTE: We're not translating the phi value yet, since this is the single instance of
             // use of a value which may not be mapped yet -- a branch from a subsequent block,

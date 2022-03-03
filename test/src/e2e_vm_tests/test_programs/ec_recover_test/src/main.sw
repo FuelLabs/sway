@@ -38,8 +38,8 @@ fn main() -> bool {
 
     // recover the public key:
     let recovered_pubkey: B512 = ec_recover(signature, msg_hash);
-    assert(recovered_pubkey.hi == pubkey.hi);
-    assert(recovered_pubkey.lo == pubkey.lo);
+    assert((recovered_pubkey.bytes)[0] == (pubkey.bytes)[0]);
+    assert((recovered_pubkey.bytes)[1] == (pubkey.bytes)[1]);
 
     true
 }

@@ -1,18 +1,26 @@
-script script {
+script {
     fn main() -> bool {
         local ptr { bool, { u64, { () | () | u64 } } } record
 
         entry:
-        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v1 = const u64 0
-        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
-        v3 = const { bool, { u64, { () | () | u64 } } } { bool undef, { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef } }
-        v4 = const bool false
-        v5 = insert_value v3, { bool, { u64, { () | () | u64 } } }, v4, 0
-        v6 = insert_value v5, { bool, { u64, { () | () | u64 } } }, v2, 1
-        store v6, ptr { bool, { u64, { () | () | u64 } } } record
-        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record
-        v8 = extract_value v7, { bool, { u64, { () | () | u64 } } }, 0
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !1
+        v1 = const u64 0, !1
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0, !1
+        v3 = const { bool, { u64, { () | () | u64 } } } { bool undef, { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef } }, !2
+        v4 = const bool false, !3
+        v5 = insert_value v3, { bool, { u64, { () | () | u64 } } }, v4, 0, !2
+        v6 = insert_value v5, { bool, { u64, { () | () | u64 } } }, v2, 1, !2
+        store v6, ptr { bool, { u64, { () | () | u64 } } } record, !4
+        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, !5
+        v8 = extract_value v7, { bool, { u64, { () | () | u64 } } }, 0, !6
         ret bool v8
     }
 }
+
+!0 = filepath "/path/to/struct_enum.sw"
+!1 = span !0 167 229
+!2 = span !0 46 103
+!3 = span !0 66 71
+!4 = span !0 33 104
+!5 = span !0 109 115
+!6 = span !0 116 117

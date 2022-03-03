@@ -1,20 +1,21 @@
+use anyhow::{anyhow, Result};
+use clap::Parser;
 use std::fs::{self, File};
 use std::io::Read;
-use structopt::{self, StructOpt};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 
 /// Parse bytecode file into a debug format.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     file_path: String,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     let mut f = File::open(&command.file_path)
-        .map_err(|_| format!("{}: file not found", command.file_path))?;
+        .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
     let metadata = fs::metadata(&command.file_path)
-        .map_err(|_| format!("{}: file not found", command.file_path))?;
+        .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
     let mut buffer = vec![0; metadata.len() as usize];
     f.read_exact(&mut buffer).expect("buffer overflow");
     let mut instructions = vec![];

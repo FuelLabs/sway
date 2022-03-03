@@ -74,13 +74,13 @@ impl Engine {
             }
 
             (
-                ref received_info @ UnsignedInteger(recieved_width),
+                ref received_info @ UnsignedInteger(received_width),
                 ref expected_info @ UnsignedInteger(expected_width),
             ) => {
                 // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
                 // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
                 // `u64`.  So we're casting received TO expected.
-                let warn = match numeric_cast_compat(expected_width, recieved_width) {
+                let warn = match numeric_cast_compat(expected_width, received_width) {
                     NumericCastCompatResult::CastableWithWarning(warn) => {
                         vec![CompileWarning {
                             span: span.clone(),
@@ -92,7 +92,7 @@ impl Engine {
                     }
                 };
 
-                // Cast the expected type to the recieved type.
+                // Cast the expected type to the received type.
                 self.slab
                     .replace(received, received_info, expected_info.clone());
                 Ok(warn)

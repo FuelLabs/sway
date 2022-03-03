@@ -1,8 +1,8 @@
 //! Used to debug function selectors
 //! Given an input function declaration, return the selector for it in hexidecimal.
+use clap::Parser as ClapParser;
 use pest::Parser;
 use std::sync::Arc;
-use structopt::StructOpt;
 use sway_core::{
     create_module,
     parse_tree::declaration::FunctionDeclaration,
@@ -14,14 +14,14 @@ use sway_core::{
     BuildConfig, Rule, SwayParser,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
+#[derive(Debug, ClapParser)]
+#[clap(name = "example", about = "An example of Clap Parser usage.")]
 struct Opt {
     fn_decl: String,
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     let fn_decl = opt.fn_decl;
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -49,7 +49,6 @@ fn main() {
         ),
         dead_code_graph: &mut Default::default(),
         mode: Mode::ImplAbiFn,
-        dependency_graph: &mut Default::default(),
         opts: Default::default(),
     })
     .unwrap(&mut warnings, &mut errors);

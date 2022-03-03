@@ -13,65 +13,134 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  cancel-previous-runs:
     runs-on: ubuntu-latest
-
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.2.1
-        ports:
-          - 4000:4000
-
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+  build-sway-examples:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          override: true
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
 
-      - name: Install rustfmt
-        run: rustup component add rustfmt
+  cargo-build-workspace:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/cargo@v1
+        name: Cargo Build Workspace
+        with:
+          command: build
+          args: --workspace --all-features --all-targets
+        env:
+          RUSTFLAGS: "-D warnings"
 
-      - name: Set git config
-        run: |
-          git config --global core.bigfilethreshold 500m
+  cargo-clippy:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/clippy-check@v1.0.7
+        name: Check Clippy Linter
+        with:
+          token: ${{ github.token }}
+          args: --all-features --all-targets -- -D warnings
 
-      - name: Check formatting
+  cargo-fmt-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check Formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
 
-      - name: Build
-        uses: actions-rs/cargo@v1
+  cargo-run-e2e-test:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core:v0.3.1
+        ports:
+          - 4000:4000
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          command: build
-        env:
-          RUSTFLAGS: "-D warnings"
-
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-      - name: Run test crate
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Cargo Run E2E Tests
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --release --bin test
 
+  cargo-test-workspace:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  notify-slack-on-failure:
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack On Failure
+        uses: ravsamhq/notify-slack-action@v1
+        if: always() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+
   publish:
     # Only do this job if publishing a release
-    needs: build
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
@@ -100,9 +169,22 @@ jobs:
       with:
           publish-delay: 30000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    
+    - name: Notify if Job Fails
+      uses: ravsamhq/notify-slack-action@v1
+      if: always()
+      with:
+        status: ${{ job.status }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        notification_title: '{workflow} has {status_message}'
+        message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+        footer: ''
+        notify_when: 'failure'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-master-image:
-    needs: build
+    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -146,6 +228,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
@@ -188,3 +283,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}

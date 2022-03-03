@@ -1,26 +1,40 @@
-script script {
-    fn new(a: bool, b: bool) -> { bool, bool } {
+script {
+    fn main() -> () {
+        entry:
+        v0 = const bool true, !1
+        v1 = const bool false, !2
+        v2 = call anon_0(v0, v1), !3
+        ret () v2
+    }
+
+    fn anon_0(a !4: bool, b !5: bool) -> { bool, bool } {
         local ptr bool a_
         local ptr bool b_
 
         entry:
-        v0 = const bool false
-        store v0, ptr bool a_
-        v1 = const bool true
-        store v1, ptr bool b_
-        v2 = load ptr bool a_
-        v3 = load ptr bool b_
-        v4 = const { bool, bool } { bool undef, bool undef }
-        v5 = insert_value v4, { bool, bool }, v2, 0
-        v6 = insert_value v5, { bool, bool }, v3, 1
+        v0 = const bool false, !6
+        store v0, ptr bool a_, !7
+        v1 = const bool true, !8
+        store v1, ptr bool b_, !9
+        v2 = load ptr bool a_, !10
+        v3 = load ptr bool b_, !11
+        v4 = const { bool, bool } { bool undef, bool undef }, !12
+        v5 = insert_value v4, { bool, bool }, v2, 0, !12
+        v6 = insert_value v5, { bool, bool }, v3, 1, !12
         ret { bool, bool } v6
     }
-
-    fn main() -> () {
-        entry:
-        v0 = const bool true
-        v1 = const bool false
-        v2 = call new(v0, v1)
-        ret () v2
-    }
 }
+
+!0 = filepath "/path/to/shadowed_struct_init.sw"
+!1 = span !0 249 253
+!2 = span !0 255 260
+!3 = span !0 49 227
+!4 = span !0 56 57
+!5 = span !0 65 66
+!6 = span !0 93 98
+!7 = span !0 85 99
+!8 = span !0 112 116
+!9 = span !0 104 117
+!10 = span !0 137 138
+!11 = span !0 217 218
+!12 = span !0 122 225

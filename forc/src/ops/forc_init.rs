@@ -1,8 +1,9 @@
 use crate::utils::defaults;
+use anyhow::Result;
 use std::fs;
 use sway_utils::constants;
 
-pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn init_new_project(project_name: String) -> Result<()> {
     // Make a new directory for the project
     fs::create_dir_all(format!("{}/src", project_name))?;
 
@@ -31,6 +32,12 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
     fs::write(
         format!("{}/tests/harness.rs", project_name),
         defaults::default_test_program(),
+    )?;
+
+    // Ignore default `out` and `target` directories created by forc and cargo.
+    fs::write(
+        format!("{}/.gitignore", project_name),
+        defaults::default_gitignore(),
     )?;
 
     Ok(())

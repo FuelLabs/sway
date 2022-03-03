@@ -13,40 +13,45 @@ use crate::{
     asm::{AsmArg, AsmBlock},
     block::{Block, BlockContent},
     context::Context,
+    error::IrError,
     function::{Function, FunctionContent},
     instruction::Instruction,
     irtype::{Aggregate, Type},
     module::ModuleContent,
     pointer::Pointer,
-    value::{Value, ValueContent},
+    value::{Value, ValueDatum},
 };
 
 impl Context {
     /// Verify the contents of this [`Context`] is valid.
-    pub fn verify(&self) -> Result<(), String> {
+    pub fn verify(&self) -> Result<(), IrError> {
         for (_, module) in &self.modules {
             self.verify_module(module)?;
         }
         Ok(())
     }
 
-    fn verify_module(&self, module: &ModuleContent) -> Result<(), String> {
+    fn verify_module(&self, module: &ModuleContent) -> Result<(), IrError> {
         for function in &module.functions {
             self.verify_function(&self.functions[function.0])?;
         }
         Ok(())
     }
 
-    fn verify_function(&self, function: &FunctionContent) -> Result<(), String> {
+    fn verify_function(&self, function: &FunctionContent) -> Result<(), IrError> {
         for block in &function.blocks {
             self.verify_block(function, &self.blocks[block.0])?;
         }
         Ok(())
     }
 
-    fn verify_block(&self, function: &FunctionContent, block: &BlockContent) -> Result<(), String> {
+    fn verify_block(
+        &self,
+        function: &FunctionContent,
+        block: &BlockContent,
+    ) -> Result<(), IrError> {
         for ins in &block.instructions {
-            self.verify_instruction(function, &self.values[ins.0])?;
+            self.verify_instruction(function, &self.values[ins.0].value)?;
         }
         let (last_is_term, num_terms) =
             block.instructions.iter().fold((false, 0), |(_, n), ins| {
@@ -56,11 +61,10 @@ impl Context {
                     (false, n)
                 }
             });
-        if !last_is_term || num_terms != 1 {
-            Err(format!(
-                "Block {} must have single terminator as its last instruction.\n\n{}",
-                block.label, self
-            ))
+        if !last_is_term {
+            Err(IrError::MissingTerminator(block.label.clone()))
+        } else if num_terms != 1 {
+            Err(IrError::MisplacedTerminator(block.label.clone()))
         } else {
             Ok(())
         }
@@ -69,9 +73,9 @@ impl Context {
     fn verify_instruction(
         &self,
         function: &FunctionContent,
-        instruction: &ValueContent,
-    ) -> Result<(), String> {
-        if let ValueContent::Instruction(instruction) = instruction {
+        instruction: &ValueDatum,
+    ) -> Result<(), IrError> {
+        if let ValueDatum::Instruction(instruction) = instruction {
             match instruction {
                 Instruction::AsmBlock(asm, args) => self.verify_asm_block(asm, args)?,
                 Instruction::Branch(block) => self.verify_br(block)?,
@@ -105,6 +109,7 @@ impl Context {
                     indices,
                 } => self.verify_insert_values(aggregate, ty, value, indices)?,
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
+                Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
                 Instruction::Store { ptr, stored_val } => self.verify_store(ptr, stored_val)?,
@@ -115,15 +120,15 @@ impl Context {
         Ok(())
     }
 
-    fn verify_asm_block(&self, _asm: &AsmBlock, _args: &[AsmArg]) -> Result<(), String> {
+    fn verify_asm_block(&self, _asm: &AsmBlock, _args: &[AsmArg]) -> Result<(), IrError> {
         Ok(())
     }
 
-    fn verify_br(&self, _block: &Block) -> Result<(), String> {
+    fn verify_br(&self, _block: &Block) -> Result<(), IrError> {
         Ok(())
     }
 
-    fn verify_call(&self, _callee: &Function, _args: &[Value]) -> Result<(), String> {
+    fn verify_call(&self, _callee: &Function, _args: &[Value]) -> Result<(), IrError> {
         // XXX We should confirm the function arg types are all correct and the return type matches
         // the call value type... but all they type info isn't stored at this stage, and it
         // should've all been checked in the typed AST.
@@ -135,7 +140,7 @@ impl Context {
         _cond_val: &Value,
         _true_block: &Block,
         _false_block: &Block,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         // XXX When we have some type info available from instructions...
         //if !cond_val.is_bool_ty(self) {
         //    Err("Condition for branch must be a bool.".into())
@@ -149,7 +154,7 @@ impl Context {
         _array: &Value,
         _ty: &Aggregate,
         _index_val: &Value,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         Ok(())
     }
 
@@ -158,13 +163,13 @@ impl Context {
         _aggregate: &Value,
         _ty: &Aggregate,
         _indices: &[u64],
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         // XXX Are we checking the context knows about the aggregate and the indices are valid?  Or
         // is that the type checker's problem?
         Ok(())
     }
 
-    fn verify_get_ptr(&self, _ptr: &Pointer) -> Result<(), String> {
+    fn verify_get_ptr(&self, _ptr: &Pointer) -> Result<(), IrError> {
         // XXX get_ptr() shouldn't exist in the final IR?
         Ok(())
     }
@@ -175,7 +180,7 @@ impl Context {
         _ty: &Aggregate,
         _value: &Value,
         _index_val: &Value,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         Ok(())
     }
 
@@ -185,22 +190,22 @@ impl Context {
         _ty: &Aggregate,
         _value: &Value,
         _idcs: &[u64],
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         // XXX The types should all line up.
         Ok(())
     }
 
-    fn verify_load(&self, _ptr: &Pointer) -> Result<(), String> {
+    fn verify_load(&self, _ptr: &Pointer) -> Result<(), IrError> {
         // XXX We should check the pointer type matches this load type.
         Ok(())
     }
 
-    fn verify_phi(&self, pairs: &[(Block, Value)]) -> Result<(), String> {
+    fn verify_phi(&self, pairs: &[(Block, Value)]) -> Result<(), IrError> {
         let label_set = std::collections::HashSet::<&String>::from_iter(
             pairs.iter().map(|(block, _)| &(self.blocks[block.0].label)),
         );
         if label_set.len() != pairs.len() {
-            Err("Phi must have unique block labels.".into())
+            Err(IrError::NonUniquePhiLabels)
         } else {
             Ok(())
         }
@@ -211,13 +216,10 @@ impl Context {
         function: &FunctionContent,
         _val: &Value,
         ty: &Type,
-    ) -> Result<(), String> {
+    ) -> Result<(), IrError> {
         if &function.return_type != ty {
             println!("{:?} != {:?}", &function.return_type, ty);
-            Err(format!(
-                "Function {} return type must match ret instructions.",
-                function.name
-            ))
+            Err(IrError::MismatchedReturnTypes(function.name.clone()))
         // XXX When we have some type info available from instructions...
         //} else if val.get_type(self) != Some(*ty) {
         //    Err("Ret value type must match return type.".into())
@@ -226,7 +228,7 @@ impl Context {
         }
     }
 
-    fn verify_store(&self, _ptr: &Pointer, _stored_val: &Value) -> Result<(), String> {
+    fn verify_store(&self, _ptr: &Pointer, _stored_val: &Value) -> Result<(), IrError> {
         // XXX When we have some type info available from instructions...
         //if ptr_val.get_type(self) != stored_val.get_type(self) {
         //    Err("Stored value type must match pointer type.".into())

@@ -1,19 +1,29 @@
-script script {
+script {
     fn main() -> u64 {
         local mut ptr { u64, u64 } record
 
         entry:
-        v0 = const { u64, u64 } { u64 undef, u64 undef }
-        v1 = const u64 40
-        v2 = insert_value v0, { u64, u64 }, v1, 0
-        v3 = const u64 2
-        v4 = insert_value v2, { u64, u64 }, v3, 1
-        store v4, mut ptr { u64, u64 } record
-        v5 = get_ptr mut ptr { u64, u64 } record
-        v6 = const u64 50
-        v7 = insert_value v5, { u64, u64 }, v6, 0
-        v8 = get_ptr mut ptr { u64, u64 } record
-        v9 = extract_value v8, { u64, u64 }, 1
+        v0 = const { u64, u64 } { u64 undef, u64 undef }, !1
+        v1 = const u64 40, !2
+        v2 = insert_value v0, { u64, u64 }, v1, 0, !1
+        v3 = const u64 2, !3
+        v4 = insert_value v2, { u64, u64 }, v3, 1, !1
+        store v4, mut ptr { u64, u64 } record, !4
+        v5 = get_ptr mut ptr { u64, u64 } record, !5
+        v6 = const u64 50, !6
+        v7 = insert_value v5, { u64, u64 }, v6, 0, !5
+        v8 = get_ptr mut ptr { u64, u64 } record, !7
+        v9 = extract_value v8, { u64, u64 }, 1, !8
         ret u64 v9
     }
 }
+
+!0 = filepath "/path/to/mutable_struct.sw"
+!1 = span !0 49 92
+!2 = span !0 69 71
+!3 = span !0 84 85
+!4 = span !0 32 93
+!5 = span !0 98 112
+!6 = span !0 109 111
+!7 = span !0 117 123
+!8 = span !0 124 125

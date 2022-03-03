@@ -6,10 +6,11 @@ edition = "2018"
 publish = false
 
 [dependencies]
-forc = { version = "0.3.1", path = "../forc", features = ["test"], default-features = false }
+anyhow = "1.0.41"
+forc = { version = "0.5.0", path = "../forc", features = ["test"], default-features = false }
 fuel-asm = "0.1"
-fuel-tx = "0.2"
-fuel-vm = { version = "0.2", features = ["random"] }
+fuel-tx = "0.5"
+fuel-vm = { version = "0.4", features = ["random"] }
 rand = "0.8"
 regex = "1"
 tokio = "1.12"

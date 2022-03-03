@@ -1,4 +1,4 @@
-script script {
+script {
     fn main() -> u64 {
         entry:
         v0 = asm(r1) -> r1 {

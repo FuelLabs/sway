@@ -22,6 +22,7 @@ use crate::{
 };
 
 use sway_ir::*;
+use sway_types::span::Span;
 
 use either::Either;
 
@@ -37,7 +38,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     // of libraries and link against them, rather than recompile everything each time.
     assert!(ir.module_iter().count() == 1);
     let module = ir.module_iter().next().unwrap();
-    let (data_section, mut ops, _) = check!(
+    let (data_section, mut ops, mut reg_seqr) = check!(
         compile_module_to_asm(reg_seqr, ir, module),
         return err(warnings, errors),
         warnings,
@@ -63,7 +64,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&mut reg_seqr)
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -197,13 +198,6 @@ pub(super) enum Storage {
 }
 
 impl<'ir> AsmBuilder<'ir> {
-    fn empty_span() -> crate::span::Span {
-        crate::span::Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        }
-    }
-
     fn new(data_section: DataSection, reg_seqr: RegisterSequencer, context: &'ir Context) -> Self {
         AsmBuilder {
             data_section,
@@ -215,6 +209,19 @@ impl<'ir> AsmBuilder<'ir> {
             aggregate_layouts: HashMap::new(),
             context,
             bytecode: Vec::new(),
+        }
+    }
+
+    // This is here temporarily for in the case when the IR can't absolutely provide a valid span,
+    // until we can improve ASM block parsing and verification mostly. It's where it's needed the
+    // most, for returning failure errors.  If we move ASM verification to the parser and semantic
+    // analysis then ASM block conversion shouldn't/can't fail and we won't need to provide a
+    // guaranteed to be available span.
+    fn empty_span() -> Span {
+        let msg = "unknown source location";
+        Span {
+            span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
+            path: None,
         }
     }
 
@@ -284,16 +291,25 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         // Reserve space on the stack for ALL our locals which require it.
-        if stack_base > 0 {
+        if !self.ptr_map.is_empty() {
             let base_reg = self.reg_seqr.next();
-            self.bytecode.push(Op::register_move(
+            self.bytecode.push(Op::unowned_register_move_comment(
                 base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
-                Self::empty_span(),
+                "save locals base register",
             ));
-            self.bytecode.push(Op::unowned_stack_allocate_memory(
-                VirtualImmediate24::new(stack_base * 8, Self::empty_span()).unwrap(),
-            ));
+
+            // It's possible (though undesirable) to have empty local data structures only.
+            if stack_base != 0 {
+                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                    todo!("Enormous stack usage for locals.");
+                }
+                let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                    value: (stack_base * 8) as u32,
+                });
+                alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
+                self.bytecode.push(alloc_op);
+            }
             self.stack_base_reg = Some(base_reg);
         }
     }
@@ -301,19 +317,18 @@ impl<'ir> AsmBuilder<'ir> {
     fn add_block_label(&mut self, block: Block) {
         if &block.get_label(self.context) != "entry" {
             let label = self.block_to_label(&block);
-            self.bytecode
-                .push(Op::jump_label(label, Self::empty_span()))
+            self.bytecode.push(Op::unowned_jump_label(label))
         }
     }
 
     fn add_label(&mut self) -> Label {
         let label = self.reg_seqr.get_label();
-        self.bytecode
-            .push(Op::jump_label(label.clone(), Self::empty_span()));
+        self.bytecode.push(Op::unowned_jump_label(label.clone()));
         label
     }
 
     fn finalize(self) -> CompileResult<(DataSection, Vec<Op>, RegisterSequencer)> {
+        // XXX Assuming no warnings...
         ok(
             (self.data_section, self.bytecode, self.reg_seqr),
             Vec::new(),
@@ -323,9 +338,10 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
         // Compile instructions.
+        self.add_locals(function);
+
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        self.add_locals(function);
         for block in function.block_iter(self.context) {
             self.add_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
@@ -343,7 +359,7 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<()> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        if let ValueContent::Instruction(instruction) = &self.context.values[instr_val.0] {
+        if let ValueDatum::Instruction(instruction) = &self.context.values[instr_val.0].value {
             match instruction {
                 Instruction::AsmBlock(asm, args) => {
                     check!(
@@ -357,7 +373,9 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::Call(..) => {
                     errors.push(CompileError::Internal(
                         "Calls are not yet supported.",
-                        Self::empty_span(),
+                        instr_val
+                            .get_span(self.context)
+                            .unwrap_or_else(Self::empty_span),
                     ));
                     return err(warnings, errors);
                 }
@@ -390,14 +408,19 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                 } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
                 Instruction::Load(ptr) => self.compile_load(instr_val, ptr),
+                Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::Ret(ret_val, ty) => self.compile_ret(ret_val, ty),
-                Instruction::Store { ptr, stored_val } => self.compile_store(ptr, stored_val),
+                Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
+                Instruction::Store { ptr, stored_val } => {
+                    self.compile_store(instr_val, ptr, stored_val)
+                }
             }
         } else {
             errors.push(CompileError::Internal(
                 "Value not an instruction.",
-                Self::empty_span(),
+                instr_val
+                    .get_span(self.context)
+                    .unwrap_or_else(Self::empty_span),
             ));
         }
         ok((), warnings, errors)
@@ -422,7 +445,7 @@ impl<'ir> AsmBuilder<'ir> {
             assert_or_warn!(
                 ConstantRegister::parse_register_name(name.as_str()).is_none(),
                 warnings,
-                Self::empty_span(),
+                name.span().clone(),
                 Warning::ShadowingReservedRegister {
                     reg_name: name.clone()
                 }
@@ -449,7 +472,7 @@ impl<'ir> AsmBuilder<'ir> {
                 .map(|reg_name| -> Result<_, CompileError> {
                     realize_register(reg_name.as_str()).ok_or_else(|| {
                         CompileError::UnknownRegister {
-                            span: Self::empty_span(),
+                            span: reg_name.span().clone(),
                             initialized_registers: inline_reg_map
                                 .iter()
                                 .map(|(name, _)| *name)
@@ -468,12 +491,35 @@ impl<'ir> AsmBuilder<'ir> {
                 .collect::<Vec<VirtualRegister>>();
 
             // Parse the actual op and registers.
+            let op_span = match op.span_md_idx {
+                None => {
+                    // XXX This sucks.  We have two options: not needing a span to parse the opcode
+                    // (which is used for the error) or force a span from the IR somehow, maybe by
+                    // using a .ir file?  OK, we have a third and best option: do the parsing of
+                    // asm blocks in the parser itself, so we can verify them all the way back then
+                    // and not have to worry about them being malformed all the way down here in
+                    // codegen.
+                    Self::empty_span()
+                }
+                Some(span_md_idx) => match span_md_idx.to_span(self.context) {
+                    Ok(span) => span,
+                    Err(ir_error) => {
+                        errors.push(CompileError::InternalOwned(
+                            ir_error.to_string(),
+                            instr_val
+                                .get_span(self.context)
+                                .unwrap_or_else(Self::empty_span),
+                        ));
+                        return err(warnings, errors);
+                    }
+                },
+            };
             let opcode = check!(
                 Op::parse_opcode(
                     &op.name,
                     &replaced_registers,
                     &op.immediate,
-                    Self::empty_span(), // Whole op span.
+                    op_span.clone(),
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -482,8 +528,8 @@ impl<'ir> AsmBuilder<'ir> {
 
             inline_ops.push(Op {
                 opcode: either::Either::Left(opcode),
-                comment: String::new(),
-                owning_span: None,
+                comment: "asm block".into(),
+                owning_span: Some(op_span),
             });
         }
 
@@ -495,22 +541,22 @@ impl<'ir> AsmBuilder<'ir> {
                 Some(reg) => reg,
                 None => {
                     errors.push(CompileError::UnknownRegister {
-                        span: Self::empty_span(),
                         initialized_registers: inline_reg_map
                             .iter()
                             .map(|(name, _)| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
+                        span: ret_reg_name.span().clone(),
                     });
                     return err(warnings, errors);
                 }
             };
             let instr_reg = self.reg_seqr.next();
-            inline_ops.push(Op::unowned_register_move_comment(
-                instr_reg.clone(),
-                ret_reg,
-                "return value from inline asm",
-            ));
+            inline_ops.push(Op {
+                opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
+                comment: "return value from inline asm".into(),
+                owning_span: instr_val.get_span(self.context),
+            });
             self.reg_map.insert(*instr_val, instr_reg);
         }
 
@@ -554,7 +600,7 @@ impl<'ir> AsmBuilder<'ir> {
             let local_reg = self.value_to_register(&local_val);
             let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
             self.bytecode
-                .push(Op::register_move(phi_reg, local_reg, Self::empty_span()));
+                .push(Op::unowned_register_move(phi_reg, local_reg));
         }
     }
 
@@ -584,13 +630,13 @@ impl<'ir> AsmBuilder<'ir> {
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "extract_element relative offset".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::ADD(elem_offs_reg.clone(), base_reg, index_reg)),
                 comment: "extract_element absolute offset".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LW(
@@ -599,19 +645,38 @@ impl<'ir> AsmBuilder<'ir> {
                     VirtualImmediate12 { value: 0 },
                 )),
                 comment: "extract_element".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
         } else {
             // Value too big for a register, so we return the memory offset.
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
-                    instr_reg.clone(),
-                    index_reg,
-                    VirtualImmediate12::new(elem_size, Self::empty_span()).unwrap(),
-                )),
-                comment: "extract_element relative offset".into(),
-                owning_span: None,
-            });
+            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let size_data_id = self
+                    .data_section
+                    .insert_data_value(&Literal::U64(elem_size));
+                let size_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                    owning_span: instr_val.get_span(self.context),
+                    comment: "loading element size for relative offset".into(),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MUL(instr_reg.clone(), index_reg, size_reg)),
+                    comment: "extract_element relative offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MULI(
+                        instr_reg.clone(),
+                        index_reg,
+                        VirtualImmediate12 {
+                            value: elem_size as u16,
+                        },
+                    )),
+                    comment: "extract_element relative offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::ADD(
                     instr_reg.clone(),
@@ -619,7 +684,7 @@ impl<'ir> AsmBuilder<'ir> {
                     instr_reg.clone(),
                 )),
                 comment: "extract_element absolute offset".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
         }
 
@@ -639,33 +704,89 @@ impl<'ir> AsmBuilder<'ir> {
 
         let instr_reg = self.reg_seqr.next();
         if value_size <= 8 {
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LW(
-                    instr_reg.clone(),
-                    base_reg,
-                    VirtualImmediate12::new(extract_offset, Self::empty_span()).unwrap(),
-                )),
-                comment: format!(
-                    "extract_value @ {}",
-                    indices
-                        .iter()
-                        .map(|idx| format!("{}", idx))
-                        .collect::<Vec<String>>()
-                        .join(",")
-                ),
-                owning_span: None,
-            });
+            if extract_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let offset_reg = self.reg_seqr.next();
+                self.number_to_reg(
+                    extract_offset,
+                    &offset_reg,
+                    instr_val.get_span(self.context),
+                );
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        offset_reg.clone(),
+                        base_reg.clone(),
+                        base_reg,
+                    )),
+                    comment: "add array base to offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        instr_reg.clone(),
+                        offset_reg,
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: format!(
+                        "extract_value @ {}",
+                        indices
+                            .iter()
+                            .map(|idx| format!("{}", idx))
+                            .collect::<Vec<String>>()
+                            .join(",")
+                    ),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        instr_reg.clone(),
+                        base_reg,
+                        VirtualImmediate12 {
+                            value: extract_offset as u16,
+                        },
+                    )),
+                    comment: format!(
+                        "extract_value @ {}",
+                        indices
+                            .iter()
+                            .map(|idx| format!("{}", idx))
+                            .collect::<Vec<String>>()
+                            .join(",")
+                    ),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
         } else {
             // Value too big for a register, so we return the memory offset.
-            self.bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::ADDI(
-                    instr_reg.clone(),
-                    base_reg,
-                    VirtualImmediate12::new(extract_offset * 8, Self::empty_span()).unwrap(),
-                )),
-                comment: "extract address".into(),
-                owning_span: None,
-            });
+            if extract_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let offset_reg = self.reg_seqr.next();
+                self.number_to_reg(
+                    extract_offset * 8,
+                    &offset_reg,
+                    instr_val.get_span(self.context),
+                );
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::ADD(
+                        instr_reg.clone(),
+                        base_reg,
+                        offset_reg,
+                    )),
+                    comment: "extract address".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::ADDI(
+                        instr_reg.clone(),
+                        base_reg,
+                        VirtualImmediate12 {
+                            value: (extract_offset * 8) as u16,
+                        },
+                    )),
+                    comment: "extract address".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
         }
 
         self.reg_map.insert(*instr_val, instr_reg);
@@ -675,25 +796,32 @@ impl<'ir> AsmBuilder<'ir> {
         // `get_ptr` is like a `load` except the value isn't dereferenced.
         match self.ptr_map.get(ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
-            Some(storage) => match storage {
+            Some(storage) => match storage.clone() {
                 Storage::Data(_data_id) => {
                     // Not sure if we'll ever need this.
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
                 Storage::Register(var_reg) => {
-                    self.reg_map.insert(*instr_val, var_reg.clone());
+                    self.reg_map.insert(*instr_val, var_reg);
                 }
                 Storage::Stack(word_offs) => {
+                    let word_offs = word_offs * 8;
                     let instr_reg = self.reg_seqr.next();
-                    self.bytecode.push(Op {
-                        opcode: either::Either::Left(VirtualOp::ADDI(
-                            instr_reg.clone(),
-                            self.stack_base_reg.as_ref().unwrap().clone(),
-                            VirtualImmediate12::new(*word_offs * 8, Self::empty_span()).unwrap(),
-                        )),
-                        comment: "get_ptr".into(),
-                        owning_span: None,
-                    });
+                    if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        self.number_to_reg(word_offs, &instr_reg, instr_val.get_span(self.context));
+                    } else {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADDI(
+                                instr_reg.clone(),
+                                self.stack_base_reg.as_ref().unwrap().clone(),
+                                VirtualImmediate12 {
+                                    value: (word_offs) as u16,
+                                },
+                            )),
+                            comment: "get_ptr".into(),
+                            owning_span: instr_val.get_span(self.context),
+                        });
+                    }
                     self.reg_map.insert(*instr_val, instr_reg);
                 }
             },
@@ -724,7 +852,7 @@ impl<'ir> AsmBuilder<'ir> {
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "insert_element relative offset".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.bytecode.push(Op {
@@ -734,7 +862,7 @@ impl<'ir> AsmBuilder<'ir> {
                     index_reg,
                 )),
                 comment: "insert_element absolute offset".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::SW(
@@ -743,38 +871,46 @@ impl<'ir> AsmBuilder<'ir> {
                     VirtualImmediate12 { value: 0 },
                 )),
                 comment: "insert_element".into(),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
             });
         } else {
             // Element size is larger than 8; we switch to bytewise offsets and sizes and use MCP.
-            let elem_index_offs_reg = self.reg_seqr.next();
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
-                    elem_index_offs_reg.clone(),
-                    index_reg,
-                    VirtualImmediate12::new(elem_size, Self::empty_span()).unwrap(),
-                )),
-                comment: "insert_element relative offset".into(),
-                owning_span: None,
-            });
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
-                    elem_index_offs_reg.clone(),
-                    base_reg.clone(),
-                    elem_index_offs_reg.clone(),
-                )),
-                comment: "insert_element absolute offset".into(),
-                owning_span: None,
-            });
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MCPI(
-                    elem_index_offs_reg,
-                    insert_reg,
-                    VirtualImmediate12::new(elem_size, Self::empty_span()).unwrap(),
-                )),
-                comment: "insert_element store value".into(),
-                owning_span: None,
-            });
+            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                todo!("array element size bigger than 4k")
+            } else {
+                let elem_index_offs_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MULI(
+                        elem_index_offs_reg.clone(),
+                        index_reg,
+                        VirtualImmediate12 {
+                            value: elem_size as u16,
+                        },
+                    )),
+                    comment: "insert_element relative offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        elem_index_offs_reg.clone(),
+                        base_reg.clone(),
+                        elem_index_offs_reg.clone(),
+                    )),
+                    comment: "insert_element absolute offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        elem_index_offs_reg,
+                        insert_reg,
+                        VirtualImmediate12 {
+                            value: elem_size as u16,
+                        },
+                    )),
+                    comment: "insert_element store value".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
         }
 
         // We set the 'instruction' register to the base register, so that cascading inserts will
@@ -796,43 +932,88 @@ impl<'ir> AsmBuilder<'ir> {
         let insert_reg = self.value_to_register(value);
         let (insert_offs, value_size) = self.aggregate_idcs_to_field_layout(ty, indices);
 
+        let indices_str = indices
+            .iter()
+            .map(|idx| format!("{}", idx))
+            .collect::<Vec<String>>()
+            .join(",");
         if value_size <= 8 {
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::SW(
-                    base_reg.clone(),
-                    insert_reg,
-                    VirtualImmediate12::new(insert_offs, Self::empty_span()).unwrap(),
-                )),
-                comment: format!(
-                    "insert_value @ {}",
-                    indices
-                        .iter()
-                        .map(|idx| format!("{}", idx))
-                        .collect::<Vec<String>>()
-                        .join(",")
-                ),
-                owning_span: None,
-            });
+            if insert_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let insert_offs_reg = self.reg_seqr.next();
+                self.number_to_reg(
+                    insert_offs,
+                    &insert_offs_reg,
+                    instr_val.get_span(self.context),
+                );
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        base_reg.clone(),
+                        base_reg.clone(),
+                        insert_offs_reg,
+                    )),
+                    comment: "insert_value absolute offset".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        base_reg.clone(),
+                        insert_reg,
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: format!("insert_value @ {}", indices_str),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        base_reg.clone(),
+                        insert_reg,
+                        VirtualImmediate12 {
+                            value: insert_offs as u16,
+                        },
+                    )),
+                    comment: format!("insert_value @ {}", indices_str),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
         } else {
             let offs_reg = self.reg_seqr.next();
-            self.bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::ADDI(
-                    offs_reg.clone(),
-                    base_reg.clone(),
-                    VirtualImmediate12::new(insert_offs * 8, Self::empty_span()).unwrap(),
-                )),
-                comment: "insert_value get offset".into(),
-                owning_span: None,
-            });
-            self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MCPI(
-                    offs_reg,
-                    insert_reg,
-                    VirtualImmediate12::new(value_size, Self::empty_span()).unwrap(),
-                )),
-                comment: "insert_value store value".into(),
-                owning_span: None,
-            });
+            if insert_offs * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                self.number_to_reg(insert_offs * 8, &offs_reg, instr_val.get_span(self.context));
+            } else {
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::ADDI(
+                        offs_reg.clone(),
+                        base_reg.clone(),
+                        VirtualImmediate12 {
+                            value: (insert_offs * 8) as u16,
+                        },
+                    )),
+                    comment: format!("get struct field(s) {} offset", indices_str),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+            if value_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let size_reg = self.reg_seqr.next();
+                self.number_to_reg(value_size, &size_reg, instr_val.get_span(self.context));
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCP(offs_reg, insert_reg, size_reg)),
+                    comment: "store struct field value".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        offs_reg,
+                        insert_reg,
+                        VirtualImmediate12 {
+                            value: value_size as u16,
+                        },
+                    )),
+                    comment: "store struct field value".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
         }
 
         // We set the 'instruction' register to the base register, so that cascading inserts will
@@ -846,46 +1027,92 @@ impl<'ir> AsmBuilder<'ir> {
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
-            Some(storage) => match storage {
+            Some(storage) => match storage.clone() {
                 Storage::Data(data_id) => {
-                    self.bytecode.push(Op::unowned_load_data_comment(
-                        instr_reg.clone(),
-                        data_id.clone(),
-                        "load constant",
-                    ));
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LWDataId(instr_reg.clone(), data_id)),
+                        comment: "load constant".into(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
                 }
                 Storage::Register(var_reg) => {
-                    self.bytecode.push(Op::register_move(
-                        instr_reg.clone(),
-                        var_reg.clone(),
-                        Self::empty_span(),
-                    ));
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg)),
+                        comment: String::new(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
                 }
                 Storage::Stack(word_offs) => {
+                    let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
                     // XXX Need to check for zero sized types?
                     if load_size_in_words == 1 {
                         // Value can fit in a register, so we load the value.
-                        self.bytecode.push(Op {
-                            opcode: Either::Left(VirtualOp::LW(
-                                instr_reg.clone(),
-                                self.stack_base_reg.as_ref().unwrap().clone(),
-                                VirtualImmediate12::new(*word_offs, Self::empty_span()).unwrap(),
-                            )),
-                            comment: "load value".into(),
-                            owning_span: None,
-                        });
+                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    base_reg.clone(),
+                                    base_reg,
+                                    offs_reg.clone(),
+                                )),
+                                comment: "insert_value absolute offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    instr_reg.clone(),
+                                    offs_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "load value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    instr_reg.clone(),
+                                    base_reg,
+                                    VirtualImmediate12 {
+                                        value: word_offs as u16,
+                                    },
+                                )),
+                                comment: "load value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        }
                     } else {
                         // Value too big for a register, so we return the memory offset.  This is
                         // what LW to the data section does, via LWDataId.
-                        self.bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADDI(
-                                instr_reg.clone(),
-                                self.stack_base_reg.as_ref().unwrap().clone(),
-                                VirtualImmediate12::new(word_offs * 8, Self::empty_span()).unwrap(),
-                            )),
-                            comment: "load address".into(),
-                            owning_span: None,
-                        });
+                        let word_offs = word_offs * 8;
+                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs,
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADD(
+                                    instr_reg.clone(),
+                                    base_reg,
+                                    offs_reg,
+                                )),
+                                comment: "load address".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADDI(
+                                    instr_reg.clone(),
+                                    base_reg,
+                                    VirtualImmediate12 {
+                                        value: word_offs as u16,
+                                    },
+                                )),
+                                comment: "load address".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        }
                     }
                 }
             },
@@ -893,8 +1120,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    // XXX This is copied from ret_or_retd_value() above, streamlined for IR types.
-    fn compile_ret(&mut self, ret_val: &Value, ret_type: &Type) {
+    fn compile_ret(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
         if ret_type == &Type::Unit {
             // Unit returns should always be zero, although because they can be omitted from
             // functions, the register is sometimes uninitialized. Manually return zero in this
@@ -903,7 +1129,7 @@ impl<'ir> AsmBuilder<'ir> {
                 opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
                     ConstantRegister::Zero,
                 ))),
-                owning_span: None,
+                owning_span: instr_val.get_span(self.context),
                 comment: "returning unit as zero".into(),
             });
         } else {
@@ -912,7 +1138,7 @@ impl<'ir> AsmBuilder<'ir> {
 
             if size_in_bytes <= 8 {
                 self.bytecode.push(Op {
-                    owning_span: None,
+                    owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
                     comment: "".into(),
                 });
@@ -927,11 +1153,11 @@ impl<'ir> AsmBuilder<'ir> {
 
                 self.bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
-                    owning_span: None,
+                    owning_span: instr_val.get_span(self.context),
                     comment: "loading size for RETD".into(),
                 });
                 self.bytecode.push(Op {
-                    owning_span: None,
+                    owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RETD(ret_reg, size_reg)),
                     comment: "".into(),
                 });
@@ -939,7 +1165,7 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
-    fn compile_store(&mut self, ptr: &Pointer, stored_val: &Value) {
+    fn compile_store(&mut self, instr_val: &Value, ptr: &Pointer, stored_val: &Value) {
         let stored_reg = self.value_to_register(stored_val);
         let is_struct_ptr = ptr.is_struct_ptr(self.context);
         match self.ptr_map.get(ptr) {
@@ -947,11 +1173,11 @@ impl<'ir> AsmBuilder<'ir> {
             Some(storage) => match storage {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
                 Storage::Register(reg) => {
-                    self.bytecode.push(Op::register_move(
-                        reg.clone(),
-                        stored_reg,
-                        Self::empty_span(),
-                    ));
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MOVE(reg.clone(), stored_reg)),
+                        comment: String::new(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
                 }
                 Storage::Stack(word_offs) => {
                     let word_offs = *word_offs;
@@ -962,6 +1188,8 @@ impl<'ir> AsmBuilder<'ir> {
                         // We can have empty sized types which we can ignore.
                         0 => (),
                         1 => {
+                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+
                             // A single word can be stored with SW.
                             let stored_reg = if !is_struct_ptr {
                                 // stored_reg is a value.
@@ -976,47 +1204,116 @@ impl<'ir> AsmBuilder<'ir> {
                                         VirtualImmediate12 { value: 0 },
                                     )),
                                     comment: "load for store".into(),
-                                    owning_span: None,
+                                    owning_span: instr_val.get_span(self.context),
                                 });
                                 tmp_reg
                             };
-                            self.bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::SW(
-                                    self.stack_base_reg.as_ref().unwrap().clone(),
-                                    stored_reg,
-                                    VirtualImmediate12::new(word_offs, Self::empty_span()).unwrap(),
-                                )),
-                                comment: "store value".into(),
-                                owning_span: None,
-                            });
+                            if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                                let offs_reg = self.reg_seqr.next();
+                                self.number_to_reg(
+                                    word_offs,
+                                    &offs_reg,
+                                    instr_val.get_span(self.context),
+                                );
+                                self.bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::ADD(
+                                        base_reg.clone(),
+                                        base_reg,
+                                        offs_reg.clone(),
+                                    )),
+                                    comment: "store absolute offset".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                                self.bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::SW(
+                                        offs_reg,
+                                        stored_reg,
+                                        VirtualImmediate12 { value: 0 },
+                                    )),
+                                    comment: "store value".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            } else {
+                                self.bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::SW(
+                                        base_reg,
+                                        stored_reg,
+                                        VirtualImmediate12 {
+                                            value: word_offs as u16,
+                                        },
+                                    )),
+                                    comment: "store value".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            }
                         }
                         _ => {
-                            // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
-                            let dest_reg = self.reg_seqr.next();
-                            self.bytecode.push(Op {
-                                opcode: either::Either::Left(VirtualOp::ADDI(
-                                    dest_reg.clone(),
-                                    self.stack_base_reg.as_ref().unwrap().clone(),
-                                    VirtualImmediate12::new(word_offs * 8, Self::empty_span())
-                                        .unwrap(),
-                                )),
-                                comment: "store get offset".into(),
-                                owning_span: None,
-                            });
+                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
-                            self.bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::MCPI(
-                                    dest_reg,
-                                    stored_reg,
-                                    VirtualImmediate12::new(
-                                        store_size_in_words * 8,
-                                        Self::empty_span(),
-                                    )
-                                    .unwrap(),
-                                )),
-                                comment: "store value".into(),
-                                owning_span: None,
-                            });
+                            // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
+                            let dest_offs_reg = self.reg_seqr.next();
+                            if word_offs * 8
+                                > crate::asm_generation::compiler_constants::TWELVE_BITS
+                            {
+                                self.number_to_reg(
+                                    word_offs * 8,
+                                    &dest_offs_reg,
+                                    instr_val.get_span(self.context),
+                                );
+                                self.bytecode.push(Op {
+                                    opcode: either::Either::Left(VirtualOp::ADD(
+                                        dest_offs_reg.clone(),
+                                        base_reg,
+                                        dest_offs_reg.clone(),
+                                    )),
+                                    comment: "get store offset".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            } else {
+                                self.bytecode.push(Op {
+                                    opcode: either::Either::Left(VirtualOp::ADDI(
+                                        dest_offs_reg.clone(),
+                                        base_reg,
+                                        VirtualImmediate12 {
+                                            value: (word_offs * 8) as u16,
+                                        },
+                                    )),
+                                    comment: "get store offset".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            }
+
+                            if store_size_in_words * 8
+                                > crate::asm_generation::compiler_constants::TWELVE_BITS
+                            {
+                                let size_reg = self.reg_seqr.next();
+                                self.number_to_reg(
+                                    store_size_in_words * 8,
+                                    &size_reg,
+                                    instr_val.get_span(self.context),
+                                );
+                                self.bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::MCP(
+                                        dest_offs_reg,
+                                        stored_reg,
+                                        size_reg,
+                                    )),
+                                    comment: "store value".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            } else {
+                                self.bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::MCPI(
+                                        dest_offs_reg,
+                                        stored_reg,
+                                        VirtualImmediate12 {
+                                            value: (store_size_in_words * 8) as u16,
+                                        },
+                                    )),
+                                    comment: "store value".into(),
+                                    owning_span: instr_val.get_span(self.context),
+                                });
+                            }
                         }
                     }
                 }
@@ -1028,9 +1325,9 @@ impl<'ir> AsmBuilder<'ir> {
         match self.reg_map.get(value) {
             Some(reg) => reg.clone(),
             None => {
-                match &self.context.values[value.0] {
+                match &self.context.values[value.0].value {
                     // Handle constants.
-                    ValueContent::Constant(constant) => {
+                    ValueDatum::Constant(constant) => {
                         match &constant.value {
                             ConstantValue::Struct(_) | ConstantValue::Array(_) => {
                                 // A constant struct or array.  We still allocate space for it on
@@ -1041,25 +1338,45 @@ impl<'ir> AsmBuilder<'ir> {
                                 let total_size = size_bytes_round_up_to_word_alignment!(
                                     self.constant_size_in_bytes(constant)
                                 );
+                                if total_size
+                                    > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS
+                                {
+                                    todo!("Enormous stack usage for locals.");
+                                }
 
                                 let start_reg = self.reg_seqr.next();
 
                                 // We can have zero sized structs and maybe arrays?
                                 if total_size > 0 {
                                     // Save the stack pointer.
-                                    self.bytecode.push(Op::register_move(
+                                    self.bytecode.push(Op::unowned_register_move_comment(
                                         start_reg.clone(),
                                         VirtualRegister::Constant(ConstantRegister::StackPointer),
-                                        Self::empty_span(),
+                                        "save register for temporary stack value",
                                     ));
 
-                                    self.bytecode.push(Op::unowned_stack_allocate_memory(
-                                        VirtualImmediate24::new(total_size, Self::empty_span())
-                                            .unwrap(),
-                                    ));
+                                    let mut alloc_op =
+                                        Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                                            value: total_size as u32,
+                                        });
+                                    alloc_op.comment = format!(
+                                        "allocate {} bytes for temporary {}",
+                                        total_size,
+                                        if matches!(&constant.value, ConstantValue::Struct(_)) {
+                                            "struct"
+                                        } else {
+                                            "array"
+                                        },
+                                    );
+                                    self.bytecode.push(alloc_op);
 
                                     // Fill in the fields.
-                                    self.initialise_constant_memory(constant, &start_reg, 0);
+                                    self.initialise_constant_memory(
+                                        constant,
+                                        &start_reg,
+                                        0,
+                                        value.get_span(self.context),
+                                    );
                                 }
 
                                 // Return the start ptr.
@@ -1084,11 +1401,24 @@ impl<'ir> AsmBuilder<'ir> {
                                         data_id,
                                     )),
                                     comment: "literal instantiation".into(),
-                                    owning_span: None,
+                                    owning_span: value.get_span(self.context),
                                 });
 
                                 // Insert the value into the map.
-                                self.reg_map.insert(*value, reg.clone());
+                                //self.reg_map.insert(*value, reg.clone());
+                                //
+                                // Actually, no, don't.  It's possible for constant values to be
+                                // reused in the IR, especially with transforms which copy blocks
+                                // around, like inlining.  The `LW`/`LWDataId` instruction above
+                                // initialises that constant value but it may be in a conditional
+                                // block and not actually get evaluated for every possible
+                                // execution. So using the register later on by pulling it from
+                                // `self.reg_map` will have a potentially uninitialised register.
+                                //
+                                // By not putting it in the map we recreate the `LW` each time it's
+                                // used, which also isn't ideal.  A better solution is to put this
+                                // initialisation into the IR itself, and allow for analysis there
+                                // to determine when it may be initialised and/or reused.
 
                                 // Return register.
                                 reg
@@ -1105,6 +1435,45 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             }
         }
+    }
+
+    fn number_to_reg(&mut self, offset: u64, offset_reg: &VirtualRegister, span: Option<Span>) {
+        if offset > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+            todo!("Absolutely giant arrays.");
+        }
+
+        // Use bitwise ORs and SHIFTs to crate a 24 bit value in a register.
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::ORI(
+                offset_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: (offset >> 12) as u16,
+                },
+            )),
+            comment: "get extract offset high bits".into(),
+            owning_span: span.clone(),
+        });
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::SLLI(
+                offset_reg.clone(),
+                offset_reg.clone(),
+                VirtualImmediate12 { value: 12 },
+            )),
+            comment: "shift extract offset high bits".into(),
+            owning_span: span.clone(),
+        });
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::ORI(
+                offset_reg.clone(),
+                offset_reg.clone(),
+                VirtualImmediate12 {
+                    value: (offset & 0xfff) as u16,
+                },
+            )),
+            comment: "get extract offset low bits".into(),
+            owning_span: span,
+        });
     }
 
     fn constant_size_in_bytes(&mut self, constant: &Constant) -> u64 {
@@ -1133,6 +1502,7 @@ impl<'ir> AsmBuilder<'ir> {
         constant: &Constant,
         start_reg: &VirtualRegister,
         offs_in_words: u64,
+        span: Option<Span>,
     ) -> u64 {
         match &constant.value {
             ConstantValue::Undef => {
@@ -1143,8 +1513,7 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Unit
             | ConstantValue::Bool(_)
             | ConstantValue::Uint(_)
-            | ConstantValue::B256(_)
-            | ConstantValue::String(_) => {
+            | ConstantValue::B256(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -1154,35 +1523,105 @@ impl<'ir> AsmBuilder<'ir> {
                 self.bytecode.push(Op {
                     opcode: either::Either::Left(VirtualOp::LWDataId(init_reg.clone(), data_id)),
                     comment: "literal instantiation for aggregate field".into(),
-                    owning_span: None,
+                    owning_span: span.clone(),
                 });
 
-                // Write the initialiser to memory.
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        start_reg.clone(),
-                        init_reg,
-                        VirtualImmediate12::new(offs_in_words, Self::empty_span()).unwrap(),
-                    )),
-                    comment: format!(
-                        "initialise aggregate field at stack offset {}",
-                        offs_in_words
-                    ),
-                    owning_span: None,
-                });
+                // Write the initialiser to memory.  Most Literals are 1 word, B256 is 32 bytes and
+                // needs to use a MCP instruction.
+                if matches!(lit, Literal::B256(_)) {
+                    let offs_reg = self.reg_seqr.next();
+                    if offs_in_words * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                offs_reg.clone(),
+                                start_reg.clone(),
+                                offs_reg.clone(),
+                            )),
+                            comment: "calculate byte offset to aggregate field".into(),
+                            owning_span: span.clone(),
+                        });
+                    } else {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADDI(
+                                offs_reg.clone(),
+                                start_reg.clone(),
+                                VirtualImmediate12 {
+                                    value: (offs_in_words * 8) as u16,
+                                },
+                            )),
+                            comment: "calculate byte offset to aggregate field".into(),
+                            owning_span: span.clone(),
+                        });
+                    }
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCPI(
+                            offs_reg,
+                            init_reg,
+                            VirtualImmediate12 { value: 32 },
+                        )),
+                        comment: "initialise aggregate field".into(),
+                        owning_span: span,
+                    });
 
-                // Return the constant size in words.
-                match &constant.value {
-                    ConstantValue::B256(_) => 4,
-                    ConstantValue::String(s) => size_bytes_in_words!(s.len() as u64),
-                    _otherwise => 1,
+                    4 // 32 bytes is 4 words.
+                } else {
+                    if offs_in_words > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        let offs_reg = self.reg_seqr.next();
+                        self.number_to_reg(offs_in_words, &offs_reg, span.clone());
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                start_reg.clone(),
+                                start_reg.clone(),
+                                offs_reg.clone(),
+                            )),
+                            comment: "calculate byte offset to aggregate field".into(),
+                            owning_span: span.clone(),
+                        });
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::SW(
+                                start_reg.clone(),
+                                init_reg,
+                                VirtualImmediate12 { value: 0 },
+                            )),
+                            comment: "initialise aggregate field".into(),
+                            owning_span: span,
+                        });
+                    } else {
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::SW(
+                                start_reg.clone(),
+                                init_reg,
+                                VirtualImmediate12 {
+                                    value: offs_in_words as u16,
+                                },
+                            )),
+                            comment: "initialise aggregate field".into(),
+                            owning_span: span,
+                        });
+                    }
+
+                    1
                 }
+            }
+
+            ConstantValue::String(_) => {
+                // These are still not properly implemented until we refactor for spans!  There's
+                // an issue on GitHub for it.
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::NOOP),
+                    comment: "strings aren't implemented!".into(),
+                    owning_span: span,
+                });
+
+                0
             }
 
             ConstantValue::Array(items) | ConstantValue::Struct(items) => {
                 let mut cur_offs = offs_in_words;
                 for item in items {
-                    let item_size = self.initialise_constant_memory(item, start_reg, cur_offs);
+                    let item_size =
+                        self.initialise_constant_memory(item, start_reg, cur_offs, span.clone());
                     cur_offs += item_size;
                 }
                 cur_offs
@@ -1385,6 +1824,7 @@ mod tests {
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,
+                generated_names: std::sync::Arc::new(std::sync::Mutex::new(vec![])),
             },
         );
 
