@@ -270,6 +270,7 @@ pub(crate) fn convert_expression_to_asm(
             elem_to_access_span,
             elem_to_access_num,
         } => {
+            // sorry
             let leaked_ix: &'static str = Box::leak(Box::new(elem_to_access_num.to_string()));
             let access_ident = Ident::new_with_override(leaked_ix, elem_to_access_span.clone());
             convert_subfield_expression_to_asm(
@@ -693,17 +694,32 @@ fn convert_if_let_to_asm(
                     owning_span: Some(then.span().clone()),
                     comment: "Increment pointer to skip tag in enum destructuring".into(),
                 });
+                // since we are copying here, we need to ensure enough space has been allocated for
+                // the variable to assign to be written
+
+                let size_to_allocate_in_bytes = size * 8;
+                let size_to_allocate_in_bytes_imm = VirtualImmediate24::new_unchecked(
+                    size_to_allocate_in_bytes,
+                    "enums can't be this large -- unsupported",
+                );
+                buf.push(Op::unowned_register_move(
+                    variable_to_assign_register.clone(),
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                ));
+                buf.push(Op::unowned_stack_allocate_memory(
+                    size_to_allocate_in_bytes_imm,
+                ));
                 buf.push(Op {
                     opcode: Either::Left(VirtualOp::MCPI(
-                        variable_to_assign_register,
+                        variable_to_assign_register.clone(),
                         expr_return_register,
                         VirtualImmediate12::new_unchecked(
-                            size,
+                            size_to_allocate_in_bytes,
                             "enums this large are not supported",
                         ),
                     )),
                     owning_span: Some(then.span().clone()),
-                    comment: "Increment pointer to skip tag in enum destructuring".into(),
+                    comment: "copy enum contents".into(),
                 });
             }
         }
