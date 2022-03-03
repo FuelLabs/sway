@@ -96,30 +96,33 @@ pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
 
 #[test]
 fn test_invalid_char() {
-    let x: Result<(), String> = Err("invalid character `#` in package name: `test#proj`, \
-    characters must be Unicode XID characters \
-    (numbers, `-`, `_`, or most letters)"
-        .to_string());
     assert_eq!(
         contains_invalid_char("test#proj", "package name").map_err(|e| e.to_string()),
-        x
+        std::result::Result::Err(
+            "invalid character `#` in package name: `test#proj`, \
+        characters must be Unicode XID characters \
+        (numbers, `-`, `_`, or most letters)"
+                .into()
+        )
     );
 
-    let y: Result<(), String> = Err("invalid character ` ` in package name: `test proj`, \
-    characters must be Unicode XID characters \
-    (numbers, `-`, `_`, or most letters)"
-        .to_string());
     assert_eq!(
         contains_invalid_char("test proj", "package name").map_err(|e| e.to_string()),
-        y
+        std::result::Result::Err(
+            "invalid character ` ` in package name: `test proj`, \
+        characters must be Unicode XID characters \
+        (numbers, `-`, `_`, or most letters)"
+                .into()
+        )
     );
 
-    let z: Result<(), String> = Err("package name cannot be left empty, \
-    please use a valid name"
-        .to_string());
     assert_eq!(
         contains_invalid_char("", "package name").map_err(|e| e.to_string()),
-        z
+        std::result::Result::Err(
+            "package name cannot be left empty, \
+        please use a valid name"
+                .into()
+        )
     );
 
     assert!(matches!(
