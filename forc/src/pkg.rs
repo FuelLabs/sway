@@ -1,4 +1,3 @@
-use anyhow::{anyhow, bail, Result};
 use crate::{
     lock::Lock,
     utils::{
@@ -10,6 +9,7 @@ use crate::{
         manifest::Manifest,
     },
 };
+use anyhow::{anyhow, bail, Result};
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -159,7 +159,6 @@ impl BuildPlan {
             compilation_order,
         })
     }
-
 
     /// Attempt to load the build plan from the `Lock`.
     pub fn from_lock(proj_path: &Path, lock: &Lock) -> Result<Self> {
@@ -510,7 +509,9 @@ where
     let repo = git2::Repository::clone(&repo_url_string, &repo_dir).map_err(|e| {
         anyhow!(
             "failed to clone package '{}' from '{}': {}",
-            name, source.repo, e
+            name,
+            source.repo,
+            e
         )
     })?;
 
@@ -537,7 +538,9 @@ fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
             .map_err(|e| {
                 anyhow!(
                     "failed to find git ref '{}' for package '{}': {}",
-                    source.reference, name, e
+                    source.reference,
+                    name,
+                    e
                 )
             })?;
 
@@ -545,7 +548,9 @@ fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
         let commit = reference.peel_to_commit().map_err(|e| {
             anyhow!(
                 "failed to obtain commit for ref '{}' of package '{}': {}",
-                source.reference, name, e
+                source.reference,
+                name,
+                e
             )
         })?;
         Ok(format!("{}", commit.id()))
