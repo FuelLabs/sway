@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Command as ClapCommand;
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Generator, Shell};
@@ -121,7 +122,7 @@ pub struct Command {
     shell: Shell,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     let mut cmd = super::super::Opt::command();
     print_completions(command.shell, &mut cmd);
     Ok(())
