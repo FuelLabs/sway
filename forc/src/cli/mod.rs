@@ -35,6 +35,7 @@ enum Forc {
     Addr2Line(Addr2LineCommand),
     Build(BuildCommand),
     Clean(CleanCommand),
+    #[clap(after_help = completions::COMPLETIONS_HELP)]
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
     Explorer(ExplorerCommand),
