@@ -86,12 +86,13 @@ async fn harness() {
     // Build the contract
     let salt: [u8; 32] = rng.gen();
     let salt = Salt::from(salt);
+
     let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
+    println!("Contract deployed @ {:x}", contract_id);
 
-    // Launch a local network and deploy the contract
-    let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
-
-    let contract_instance = MyContract::new(compiled, client);
+    let contract_instance = MyContract::new(contract_id.to_string(), client);
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
@@ -144,7 +145,9 @@ let salt = Salt::from(salt);
 let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 
 // Launch a local network and deploy the contract
-let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
+let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+let client = Provider::launch(Config::local_node()).await.unwrap();
+let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
 ```
 
 ## Update (`forc update`)
