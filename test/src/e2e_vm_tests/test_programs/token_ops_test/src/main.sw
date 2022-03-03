@@ -15,11 +15,7 @@ struct Opts {
 }
 
 fn main() -> bool {
-    let default = Opts {
-        gas: 1_000_000_000_000,
-        coins: 0,
-        id: ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000),
-    };
+    let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
     let fuelcoin_id = ~ContractId::from(0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
@@ -34,7 +30,7 @@ fn main() -> bool {
     assert(fuelcoin_balance == 0);
 
     fuel_coin.mint {
-        gas: default.gas, coins: default.coins, asset_id: default.id.value
+        gas: default_gas
     }
     (11);
 
@@ -43,7 +39,7 @@ fn main() -> bool {
     assert(fuelcoin_balance == 11);
 
     fuel_coin.burn {
-        gas: default.gas, coins: default.coins, asset_id: default.id.value
+        gas: default_gas
     }
     (7);
 
@@ -53,7 +49,7 @@ fn main() -> bool {
 
     // force transfer coins
     fuel_coin.force_transfer {
-        gas: default.gas, coins: default.coins, asset_id: default.id.value
+        gas: default_gas
     }
     (3, fuelcoin_id, balance_test_id);
 

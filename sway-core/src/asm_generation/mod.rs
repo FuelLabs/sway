@@ -1380,30 +1380,6 @@ fn load_gas(return_register: VirtualRegister) -> Op {
         owning_span: None,
     }
 }
-/// Given a register, load the current value of $bal into it
-fn load_coins(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::Balance),
-            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
-        )),
-        comment: "loading $bal (coin balance) into abi function".into(),
-        owning_span: None,
-    }
-}
-/// Given a register, load a pointer to the current coin asset ID into it
-fn load_asset_id(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::FramePointer),
-            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
-        )),
-        comment: "loading $fp (asset_id) into abi function".into(),
-        owning_span: None,
-    }
-}
 
 /// Given a [TypedFunctionDeclaration] and a `return_register`, return
 /// the return value of the function using either a `RET` or a `RETD` opcode.

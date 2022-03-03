@@ -95,7 +95,16 @@ pub(crate) fn convert_contract_call_to_asm(
             warnings,
             errors
         )),
-        None => asm_buf.push(load_coins(coins_register.clone())),
+        None => {
+            let coins_default = namespace.insert_data_value(&Literal::U64(
+                constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE,
+            ));
+            asm_buf.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(coins_register.clone(), coins_default)),
+                owning_span: None,
+                comment: "loading the default coins value for call".into(),
+            })
+        }
     }
 
     // evaluate the asset_id expression to forward to the contract. If no user-specified asset_id parameter
@@ -109,7 +118,19 @@ pub(crate) fn convert_contract_call_to_asm(
             warnings,
             errors
         )),
-        None => asm_buf.push(load_asset_id(asset_id_register.clone())),
+        None => {
+            let asset_id_default = namespace.insert_data_value(&Literal::B256(
+                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE,
+            ));
+            asm_buf.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(
+                    asset_id_register.clone(),
+                    asset_id_default,
+                )),
+                owning_span: None,
+                comment: "loading the default asset_id value for call".into(),
+            })
+        }
     }
 
     // evaluate the contract address for the contract
