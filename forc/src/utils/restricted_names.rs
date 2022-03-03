@@ -1,6 +1,7 @@
 //! Helpers for validating and checking names like package and organization names.
 // This is based on https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/restricted_names.rs
 
+use anyhow::{bail, Result};
 use std::path::Path;
 
 /// Returns `true` if the name contains non-ASCII characters.
@@ -42,38 +43,38 @@ pub fn is_conflicting_artifact_name(name: &str) -> bool {
 }
 
 /// Check the package name for invalid characters.
-pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<(), String> {
+pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<()> {
     let mut chars = name.chars();
     if let Some(ch) = chars.next() {
         if ch.is_digit(10) {
             // A specific error for a potentially common case.
-            return Err(format!(
+            bail!(
                 "the name `{name}` cannot be used as a {use_case}, \
                 the name cannot start with a digit"
-            ));
+            );
         }
         if !(unicode_xid::UnicodeXID::is_xid_start(ch) || ch == '_') {
-            return Err(format!(
+            bail!(
                 "invalid character `{ch}` in {use_case}: `{name}`, \
                 the first character must be a Unicode XID start character \
                 (most letters or `_`)"
-            ));
+            );
         }
     }
     for ch in chars {
         if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-') {
-            return Err(format!(
+            bail!(
                 "invalid character `{ch}` in {use_case}: `{name}`, \
                 characters must be Unicode XID characters \
                 (numbers, `-`, `_`, or most letters)"
-            ));
+            );
         }
     }
     if name.is_empty() {
-        return Err(format!(
+        bail!(
             "{use_case} cannot be left empty, \
             please use a valid name"
-        ));
+        );
     }
     Ok(())
 }
@@ -96,33 +97,36 @@ pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
 #[test]
 fn test_invalid_char() {
     assert_eq!(
-        contains_invalid_char("test#proj", "package name"),
+        contains_invalid_char("test#proj", "package name").map_err(|e| e.to_string()),
         std::result::Result::Err(
             "invalid character `#` in package name: `test#proj`, \
-                characters must be Unicode XID characters \
-                (numbers, `-`, `_`, or most letters)"
+        characters must be Unicode XID characters \
+        (numbers, `-`, `_`, or most letters)"
                 .into()
         )
     );
+
     assert_eq!(
-        contains_invalid_char("test proj", "package name"),
+        contains_invalid_char("test proj", "package name").map_err(|e| e.to_string()),
         std::result::Result::Err(
             "invalid character ` ` in package name: `test proj`, \
-                characters must be Unicode XID characters \
-                (numbers, `-`, `_`, or most letters)"
+        characters must be Unicode XID characters \
+        (numbers, `-`, `_`, or most letters)"
                 .into()
         )
     );
+
     assert_eq!(
-        contains_invalid_char("", "package name"),
+        contains_invalid_char("", "package name").map_err(|e| e.to_string()),
         std::result::Result::Err(
             "package name cannot be left empty, \
-            please use a valid name"
+        please use a valid name"
                 .into()
         )
     );
-    assert_eq!(
+
+    assert!(matches!(
         contains_invalid_char("test_proj", "package name"),
         std::result::Result::Ok(())
-    );
+    ));
 }

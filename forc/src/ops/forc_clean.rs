@@ -1,24 +1,25 @@
 use crate::{cli::CleanCommand, utils::helpers::default_output_directory};
+use anyhow::{anyhow, bail, Result};
 use std::{path::PathBuf, process};
 use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
-pub fn clean(command: CleanCommand) -> Result<(), String> {
+pub fn clean(command: CleanCommand) -> Result<()> {
     let CleanCommand { path } = command;
 
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
-            return Err(format!(
+            bail!(
                 "could not find `{}` in `{}` or any parent directory",
                 MANIFEST_FILE_NAME,
                 this_dir.display(),
-            ))
+            )
         }
     };
 
@@ -34,7 +35,7 @@ pub fn clean(command: CleanCommand) -> Result<(), String> {
         .stderr(process::Stdio::inherit())
         .stdout(process::Stdio::inherit())
         .output()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e)?;
 
     Ok(())
 }

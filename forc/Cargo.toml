@@ -13,6 +13,7 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 ansi_term = "0.12"
 anyhow = "1.0.41"
 clap = { version = "3.1.2", features = ["env", "derive"] }
+clap_complete = "3.1"
 dirs = "3.0.2"
 flate2 = "1.0.20"
 fuel-asm = "0.1" 

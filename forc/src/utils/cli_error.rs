@@ -81,3 +81,11 @@ impl From<AddrParseError> for CliError {
         }
     }
 }
+
+impl From<anyhow::Error> for CliError {
+    fn from(e: anyhow::Error) -> Self {
+        CliError {
+            message: e.to_string(),
+        }
+    }
+}

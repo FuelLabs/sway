@@ -1,4 +1,5 @@
 use crate::ops::forc_clean;
+use anyhow::Result;
 use clap::Parser;
 
 /// Removes the default forc compiler output artifact directory, i.e. `<project-name>/out`. Also
@@ -11,6 +12,6 @@ pub struct Command {
     pub path: Option<String>,
 }
 
-pub fn exec(command: Command) -> Result<(), String> {
+pub fn exec(command: Command) -> Result<()> {
     forc_clean::clean(command)
 }

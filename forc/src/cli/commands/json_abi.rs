@@ -1,4 +1,5 @@
 use crate::ops::forc_abi_json;
+use anyhow::Result;
 use clap::Parser;
 
 /// Output the JSON associated with the ABI.
@@ -23,7 +24,7 @@ pub struct Command {
     pub minify: bool,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     forc_abi_json::build(command)?;
     Ok(())
 }
