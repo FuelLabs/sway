@@ -40,3 +40,7 @@
   - [Native Assets](./blockchain-concepts/native_assets.md)
 - [Conventions](./style/index.md)
   - [Capitalization](./style/capitalization.md)
+- [Reference](./reference/index.md)
+  - [Temporary Workarounds](./reference/temporary_workarounds.md)
+  - [Differences From Solidity](./reference/solidity_differences.md)
+  - [Differences From Rust](./reference/rust_differences.md)
