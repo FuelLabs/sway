@@ -1,8 +1,9 @@
 library std;
 
+dep constants;
+dep registers;
 dep hash;
 dep storage;
-dep constants;
 dep b512;
 dep address;
 dep contract_id;
