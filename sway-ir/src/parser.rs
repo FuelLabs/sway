@@ -13,7 +13,7 @@ pub fn parse(input: &str) -> Result<Context, IrError> {
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod)
+    ir_builder::build_context(irmod)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -148,7 +148,13 @@ mod ir_builder {
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
                     ops:asm_op()*
                 "}" _ {
-                    IrAstOperation::Asm(args, ret, ops, meta_idx)
+                    IrAstOperation::Asm(
+                        args,
+                        ret.clone().map(|(ty, _)| ty).unwrap_or(IrAstTy::Unit),
+                        ret.map(|(_, nm)| nm),
+                        ops,
+                        meta_idx
+                    )
                 }
 
             rule op_branch() -> IrAstOperation
@@ -267,9 +273,9 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> Ident
-                = "->" _ ret:id_id() {
-                    ret
+            rule asm_ret() -> (IrAstTy, Ident)
+                = "->" _ ty:ast_ty() ret:id_id() {
+                    (ty, ret)
                 }
 
             rule asm_op() -> IrAstAsmOp
@@ -343,6 +349,10 @@ mod ir_builder {
                     (ty.clone(), IrAstConst { value: IrAstConstValue::Undef(ty), meta_idx: None })
                 }
 
+            // NOTE: a struct with a single element and a union with a single variant have the same
+            // syntax, and below we assume it to be a struct.  A union with a single variant isn't
+            // really a union, but they *could* exist, so perhaps the syntax should change to be
+            // unambiguous.
             rule ast_ty() -> IrAstTy
                 = ("unit" / "()") _ { IrAstTy::Unit }
                 / "bool" _ { IrAstTy::Bool }
@@ -350,15 +360,15 @@ mod ir_builder {
                 / "b256" _ { IrAstTy::B256 }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
-                / enum_ty()
                 / struct_ty()
+                / union_ty()
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
                     IrAstTy::Array(Box::new(ty), c)
                 }
 
-            rule enum_ty() -> IrAstTy
+            rule union_ty() -> IrAstTy
                 = "{" _ tys:(ast_ty() ++ ("|" _)) "}" _ {
                     IrAstTy::Union(tys)
                 }
@@ -485,6 +495,7 @@ mod ir_builder {
     enum IrAstOperation {
         Asm(
             Vec<(Ident, Option<IrAstAsmArgInit>)>,
+            IrAstTy,
             Option<Ident>,
             Vec<IrAstAsmOp>,
             Option<MdIdxRef>,
@@ -754,7 +765,7 @@ mod ir_builder {
         for ins in ir_block.instructions {
             let opt_ins_md_idx = ins.meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
             let ins_val = match ins.op {
-                IrAstOperation::Asm(args, return_name, ops, meta_idx) => {
+                IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                     let args = args
                         .into_iter()
                         .map(|(name, opt_init)| AsmArg {
@@ -787,9 +798,10 @@ mod ir_builder {
                         )
                         .collect();
                     let md_idx = meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
+                    let return_type = return_type.to_ir_type(context);
                     block
                         .ins(context)
-                        .asm_block(args, body, return_name, md_idx)
+                        .asm_block(args, body, return_type, return_name, md_idx)
                 }
                 IrAstOperation::Br(to_block_name) => {
                     let to_block = named_blocks.get(&to_block_name).unwrap();

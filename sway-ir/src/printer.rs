@@ -12,7 +12,7 @@ use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
     function::{Function, FunctionContent},
-    instruction::Instruction,
+    instruction::{Instruction, Predicate},
     irtype::Type,
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
@@ -323,6 +323,20 @@ fn instruction_to_doc<'a>(
                         Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                     }),
                 )),
+            Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                let pred_str = match pred {
+                    Predicate::Equal => "eq",
+                };
+                maybe_constant_to_doc(context, md_namer, namer, lhs_value)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, rhs_value))
+                    .append(Doc::text_line(format!(
+                        "{} = cmp {pred_str} {} {}{}",
+                        namer.name(context, ins_value),
+                        namer.name(context, lhs_value),
+                        namer.name(context, rhs_value),
+                        md_namer.meta_as_string(context, span_md_idx, true)
+                    )))
+            }
             Instruction::ConditionalBranch {
                 cond_value,
                 true_block,
@@ -553,7 +567,10 @@ fn asm_block_to_doc(
     span_md_idx: &Option<MetadataIndex>,
 ) -> Doc {
     let AsmBlockContent {
-        body, return_name, ..
+        body,
+        return_type,
+        return_name,
+        ..
     } = &context.asm_blocks[asm.0];
     args.iter()
         .fold(
@@ -581,7 +598,8 @@ fn asm_block_to_doc(
                 ))
                 .append(match return_name {
                     Some(rn) => Doc::text(format!(
-                        " -> {rn}{} {{",
+                        " -> {} {rn}{} {{",
+                        return_type.as_string(context),
                         md_namer.meta_as_string(context, span_md_idx, true)
                     )),
                     None => Doc::text(" {"),

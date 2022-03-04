@@ -29,6 +29,8 @@ pub enum Instruction {
     Branch(Block),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
+    /// Comparison between two values using various comparators and retuning a boolean.
+    Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
@@ -98,6 +100,13 @@ pub enum Instruction {
     Store { dst_val: Value, stored_val: Value },
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Predicate {
+    /// Equivalence.
+    Equal,
+    // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
+}
+
 impl Instruction {
     /// Some [`Instruction`]s can return a value, but for some a return value doesn't make sense.
     ///
@@ -108,8 +117,11 @@ impl Instruction {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::ContractCall { .. } => None, // TODO fix this
+            Instruction::Cmp(..) => Some(Type::Bool),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
+            Instruction::InsertElement { array, .. } => array.get_type(context),
+            Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
                     ins.get_type(context)
@@ -117,8 +129,11 @@ impl Instruction {
                     None
                 }
             }
-            Instruction::Phi(_alts) => {
-                unimplemented!("phi get type -- I think we should put the type in the enum.")
+            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
+            Instruction::Phi(alts) => {
+                // Assuming each alt has the same type, we can take the first one. Note: `verify()`
+                // confirms the types are all the same.
+                alts.get(0).and_then(|(_, val)| val.get_type(context))
             }
 
             // These can be recursed to via Load, so we return the pointer type.
@@ -131,10 +146,7 @@ impl Instruction {
             Instruction::Ret(..) => None,
 
             // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::InsertElement { .. } => None,
-            Instruction::InsertValue { .. } => None,
             Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::StateStoreQuadWord { .. } => None,
             Instruction::StateStoreWord { .. } => None,
             Instruction::Store { .. } => None,
@@ -189,6 +201,10 @@ impl Instruction {
             }),
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
+            Instruction::Cmp(_, lhs_val, rhs_val) => {
+                replace(lhs_val);
+                replace(rhs_val);
+            }
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
             Instruction::ContractCall {
                 params,
@@ -311,6 +327,7 @@ impl<'a> InstructionInserter<'a> {
         self,
         args: Vec<AsmArg>,
         body: Vec<AsmInstruction>,
+        return_type: Type,
         return_name: Option<Ident>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
@@ -318,6 +335,7 @@ impl<'a> InstructionInserter<'a> {
             self.context,
             args.iter().map(|arg| arg.name.clone()).collect(),
             body,
+            return_type,
             return_name,
         );
         self.asm_block_from_asm(asm, args, span_md_idx)
@@ -365,6 +383,22 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(call_val);
         call_val
+    }
+
+    pub fn cmp(
+        self,
+        pred: Predicate,
+        lhs_value: Value,
+        rhs_value: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let cmp_val = Value::new_instruction(
+            self.context,
+            Instruction::Cmp(pred, lhs_value, rhs_value),
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0].instructions.push(cmp_val);
+        cmp_val
     }
 
     pub fn conditional_branch(

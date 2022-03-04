@@ -227,6 +227,12 @@ fn inline_instruction(
                     .as_slice(),
                 span_md_idx,
             ),
+            Instruction::Cmp(pred, lhs_value, rhs_value) => new_block.ins(context).cmp(
+                pred,
+                map_value(lhs_value),
+                map_value(rhs_value),
+                span_md_idx,
+            ),
             Instruction::ConditionalBranch {
                 cond_value,
                 true_block,
