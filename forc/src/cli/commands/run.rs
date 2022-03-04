@@ -1,4 +1,5 @@
 use crate::ops::forc_run;
+use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Run script project.
@@ -74,9 +75,9 @@ pub struct Command {
     pub minify_json_abi: bool,
 }
 
-pub(crate) async fn exec(command: Command) -> Result<(), String> {
+pub(crate) async fn exec(command: Command) -> Result<()> {
     match forc_run::run(command).await {
-        Err(e) => Err(e.message),
+        Err(e) => bail!(e.message),
         _ => Ok(()),
     }
 }

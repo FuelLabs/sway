@@ -1,4 +1,5 @@
 use crate::ops::forc_build;
+use anyhow::Result;
 use clap::Parser;
 
 /// Compile the current or target project.
@@ -48,7 +49,7 @@ pub struct Command {
     pub minify_json_abi: bool,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
     forc_build::build(command)?;
     Ok(())
 }

@@ -509,6 +509,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df6f3613c0a3cddfd78b41b10203eb322cb29b600cbdf808a7d3db95691b8e25"
+dependencies = [
+ "clap 3.1.2",
+]
+
+[[package]]
 name = "clap_derive"
 version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -981,6 +990,7 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "clap 3.1.2",
+ "clap_complete",
  "dirs 3.0.2",
  "flate2",
  "fuel-asm",
@@ -3082,6 +3092,7 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "forc",
  "fuel-asm",
  "fuel-tx",

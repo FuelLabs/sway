@@ -1,4 +1,5 @@
 use crate::ops::forc_deploy;
+use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Deploy contract project.
@@ -44,9 +45,9 @@ pub struct Command {
     pub minify_json_abi: bool,
 }
 
-pub(crate) async fn exec(command: Command) -> Result<(), String> {
+pub(crate) async fn exec(command: Command) -> Result<()> {
     match forc_deploy::deploy(command).await {
-        Err(e) => Err(e.message),
+        Err(e) => bail!(e.message),
         _ => Ok(()),
     }
 }

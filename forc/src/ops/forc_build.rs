@@ -20,10 +20,10 @@ use sway_core::{
 };
 use sway_types::JsonABI;
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use std::path::{Path, PathBuf};
 
-pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
+pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI)> {
     let BuildCommand {
         path,
         binary_outfile,
@@ -42,13 +42,13 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
 
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
-            return Err(format!(
+            return Err(anyhow!(
                 "could not find `{}` in `{}` or any parent directory",
                 MANIFEST_FILE_NAME,
                 this_dir.display(),
@@ -113,8 +113,8 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
     json_abi.extend(main_json_abi);
 
     if let Some(outfile) = binary_outfile {
-        let mut file = File::create(outfile).map_err(|e| e.to_string())?;
-        file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+        let mut file = File::create(outfile).map_err(|e| e)?;
+        file.write_all(main.as_slice()).map_err(|e| e)?;
     }
 
     if let Some(outfile) = debug_outfile {
@@ -122,7 +122,7 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
             outfile,
             &serde_json::to_vec(&source_map).expect("JSON serialization failed"),
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e)?;
     }
 
     // TODO: We may support custom build profiles in the future.
@@ -133,24 +133,24 @@ pub fn build(command: BuildCommand) -> Result<(Vec<u8>, JsonABI), String> {
         .map(PathBuf::from)
         .unwrap_or_else(|| default_output_directory(&manifest_dir).join(profile));
     if !output_dir.exists() {
-        fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&output_dir).map_err(|e| e)?;
     }
 
     // Place build artifacts into the output directory.
     let bin_path = output_dir
         .join(&manifest.project.name)
         .with_extension("bin");
-    std::fs::write(&bin_path, main.as_slice()).map_err(|e| e.to_string())?;
+    std::fs::write(&bin_path, main.as_slice()).map_err(|e| e)?;
     if !json_abi.is_empty() {
         let json_abi_stem = format!("{}-abi", manifest.project.name);
         let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
-        let file = File::create(json_abi_path).map_err(|e| e.to_string())?;
+        let file = File::create(json_abi_path).map_err(|e| e)?;
         let res = if minify_json_abi {
             serde_json::to_writer(&file, &json_abi)
         } else {
             serde_json::to_writer_pretty(&file, &json_abi)
         };
-        res.map_err(|e| e.to_string())?;
+        res.map_err(|e| e)?;
     }
 
     println!("  Bytecode size is {} bytes.", main.len());
@@ -170,12 +170,10 @@ fn compile_dependency_lib<'manifest>(
     namespace: NamespaceRef,
     silent_mode: bool,
     offline_mode: bool,
-) -> Result<JsonABI, String> {
+) -> Result<JsonABI> {
     let mut details = match dependency_lib {
         Dependency::Simple(..) => {
-            return Err(
-                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
-            )
+            bail!("Not yet implemented: Simple version-spec dependencies require a registry.")
         }
         Dependency::Detailed(ref mut details) => details,
     };
@@ -193,10 +191,11 @@ fn compile_dependency_lib<'manifest>(
         ) {
             Ok(path) => path,
             Err(e) => {
-                return Err(format!(
+                bail!(
                     "Couldn't download dependency ({:?}): {:?}",
-                    dependency_name, e
-                ))
+                    dependency_name,
+                    e
+                )
             }
         };
 
@@ -205,22 +204,18 @@ fn compile_dependency_lib<'manifest>(
     }
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
-            return Err(
-                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
-            )
+            bail!("Not yet implemented: Simple version-spec dependencies require a registry.")
         }
         Dependency::Detailed(DependencyDetails { path, .. }) => path,
     };
 
-    let dep_path =
-        match dep_path {
-            Some(p) => p,
-            None => return Err(
-                "Only simple path imports are supported right now. Please supply a path relative \
+    let dep_path = match dep_path {
+        Some(p) => p,
+        None => bail!(
+            "Only simple path imports are supported right now. Please supply a path relative \
                  to the manifest file."
-                    .into(),
-            ),
-        };
+        ),
+    };
 
     // dependency paths are relative to the path of the project being compiled
     let mut project_path = PathBuf::from(project_file_path);
@@ -231,10 +226,7 @@ fn compile_dependency_lib<'manifest>(
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
         None => {
-            return Err(format!(
-                "Manifest not found for dependency {:?}.",
-                project_path
-            ))
+            bail!("Manifest not found for dependency {:?}.", project_path)
         }
     };
     let mut manifest_of_dep = read_manifest(&manifest_dir)?;
@@ -283,7 +275,7 @@ fn compile_library(
     namespace: NamespaceRef,
     build_config: BuildConfig,
     silent_mode: bool,
-) -> Result<(NamespaceRef, JsonABI), String> {
+) -> Result<(NamespaceRef, JsonABI)> {
     let res = sway_core::compile_to_ast(source, namespace, &build_config);
     match res {
         CompileAstResult::Success {
@@ -301,13 +293,13 @@ fn compile_library(
                 }
                 _ => {
                     print_on_failure(silent_mode, &warnings, &errors);
-                    Err(format!("Failed to compile {}", proj_name))
+                    bail!("Failed to compile {}", proj_name)
                 }
             }
         }
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, &warnings, &errors);
-            Err(format!("Failed to compile {}", proj_name))
+            bail!("Failed to compile {}", proj_name)
         }
     }
 }
@@ -319,7 +311,7 @@ fn compile(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     silent_mode: bool,
-) -> Result<(Vec<u8>, JsonABI), String> {
+) -> Result<(Vec<u8>, JsonABI)> {
     let ast_res = sway_core::compile_to_ast(source, namespace, &build_config);
     let (json_abi, tree_type, warnings) = match &ast_res {
         CompileAstResult::Success {
@@ -329,7 +321,7 @@ fn compile(
         } => (generate_json_abi(&*parse_tree), tree_type, warnings),
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            bail!("Failed to compile {}", proj_name);
         }
     };
 
@@ -352,7 +344,7 @@ fn compile(
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, &warnings, &errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            bail!("Failed to compile {}", proj_name);
         }
     };
     Ok((bytes, json_abi))
@@ -364,7 +356,7 @@ fn compile_to_asm(
     namespace: NamespaceRef,
     build_config: BuildConfig,
     silent_mode: bool,
-) -> Result<FinalizedAsm, String> {
+) -> Result<FinalizedAsm> {
     let res = sway_core::compile_to_asm(source, namespace, build_config);
     match res {
         CompilationResult::Success { asm, warnings } => {
@@ -377,7 +369,7 @@ fn compile_to_asm(
         }
         CompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, &warnings, &errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            bail!("Failed to compile {}", proj_name);
         }
     }
 }

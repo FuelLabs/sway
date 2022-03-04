@@ -2,7 +2,7 @@ use crate::utils::{
     dependency,
     helpers::{read_manifest, user_forc_directory},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use semver::Version;
 use std::{
     path::{Path, PathBuf},
@@ -29,10 +29,10 @@ pub async fn check(path: Option<String>, target_dependency: Option<String>) -> R
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
-            return Err(anyhow!(
+            bail!(
                 "No manifest file found in this directory or any parent directories of it: {:?}",
                 this_dir
-            ))
+            )
         }
     };
 
@@ -44,7 +44,7 @@ pub async fn check(path: Option<String>, target_dependency: Option<String>) -> R
         // Target dependency (`-d`) specified
         Some(target_dep) => match dependencies.get(&target_dep) {
             Some(dep) => Ok(check_dependency(&target_dep, dep).await?),
-            None => return Err(anyhow!("dependency {} not found", target_dep)),
+            None => bail!("dependency {} not found", target_dep),
         },
         // No target dependency specified, try and update all dependencies
         None => {
