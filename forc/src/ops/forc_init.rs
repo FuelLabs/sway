@@ -4,6 +4,8 @@ use std::fs;
 use sway_utils::constants;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<()> {
+    let neat_name: String = project_name.split('/').last().unwrap().to_string();
+
     // Make a new directory for the project
     fs::create_dir_all(format!("{}/src", project_name))?;
 
@@ -13,13 +15,13 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
     // Insert default manifest file
     fs::write(
         format!("{}/{}", project_name, constants::MANIFEST_FILE_NAME),
-        defaults::default_manifest(&project_name),
+        defaults::default_manifest(&neat_name),
     )?;
 
     // Insert default test manifest file
     fs::write(
         format!("{}/{}", project_name, constants::TEST_MANIFEST_FILE_NAME),
-        defaults::default_tests_manifest(&project_name),
+        defaults::default_tests_manifest(&neat_name),
     )?;
 
     // Insert default main function

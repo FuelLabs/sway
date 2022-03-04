@@ -18,6 +18,15 @@ enum PrimaryColor {
     Blue: (),
 }
 
+impl core::ops::Eq for PrimaryColor {
+    fn eq(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            eq r3 r1 r2;
+            r3: bool
+        }
+    }
+}
+
 impl core::ops::Ord for PrimaryColor {
     fn lt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
@@ -28,12 +37,6 @@ impl core::ops::Ord for PrimaryColor {
     fn gt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             gt r3 r1 r2;
-            r3: bool
-        }
-    }
-    fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
             r3: bool
         }
     }
