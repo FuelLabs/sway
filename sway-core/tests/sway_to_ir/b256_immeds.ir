@@ -3,12 +3,14 @@ script {
         local ptr b256 a
 
         entry:
-        v0 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !1
-        store v0, ptr b256 a, !2
-        v1 = load ptr b256 a, !3
-        v2 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !4
-        v3 = call anon_0(v1, v2), !5
-        ret bool v3
+        v0 = get_ptr ptr b256 a, !1
+        v1 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !2
+        store v1, ptr v0, !1
+        v2 = get_ptr ptr b256 a, !3
+        v3 = load ptr v2, !3
+        v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !4
+        v5 = call anon_0(v3, v4), !5
+        ret bool v5
     }
 
     fn anon_0(a !6: b256, b !7: b256) -> bool {
@@ -22,8 +24,8 @@ script {
 }
 
 !0 = filepath "/path/to/b256_immeds.sw"
-!1 = span !0 41 107
-!2 = span !0 33 108
+!1 = span !0 33 108
+!2 = span !0 41 107
 !3 = span !0 117 118
 !4 = span !0 120 186
 !5 = span !0 191 340

@@ -27,13 +27,23 @@ A `tests/` directory is also created. The `Cargo.toml` in the root directory con
 
 ## Build (`forc build`)
 
-Compiles Sway files.
+Compile the sway files of the current project.
 
 ```console
 $ forc build
 Compiled script "my-fuel-project".
 Bytecode size is 28 bytes.
 ```
+
+The output produced will depend on the project's program type. Building script, predicate and contract projects will produce their bytecode in binary format `<project-name>.bin`. Building contracts and libraries will also produce the public ABI in JSON format `<project-name>-abi.json`.
+
+By default, these artifacts are placed in the `out/` directory.
+
+If a `Forc.lock` file did not yet exist, it will be created in order to pin each of the dependencies listed in `Forc.toml` to a specific commit or version.
+
+## Update (`forc update`)
+
+Updates each of the dependencies so that they point to the latest suitable commit or version given their dependency declaration. The result is written to the `Forc.lock` file.
 
 ## Test (`forc test`)
 
@@ -146,10 +156,6 @@ let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 // Launch a local network and deploy the contract
 let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
 ```
-
-## Update (`forc update`)
-
-Update dependencies in the Forc dependencies directory.
 
 ## Format (`forc fmt`)
 

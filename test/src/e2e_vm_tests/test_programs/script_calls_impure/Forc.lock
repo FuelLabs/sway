@@ -1,0 +1,3 @@
+[[package]]
+name = 'script_calls_impure'
+dependencies = []

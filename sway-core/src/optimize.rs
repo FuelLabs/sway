@@ -1012,10 +1012,11 @@ impl FnCompiler {
             .get(name)
             .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
-            Ok(if ptr.is_struct_ptr(context) {
-                self.current_block.ins(context).get_ptr(ptr, span_md_idx)
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            Ok(if ptr.is_aggregate_ptr(context) {
+                ptr_val
             } else {
-                self.current_block.ins(context).load(ptr, span_md_idx)
+                self.current_block.ins(context).load(ptr_val, span_md_idx)
             })
         } else if let Some(val) = self.function.get_arg(context, name) {
             Ok(val)
@@ -1069,9 +1070,10 @@ impl FnCompiler {
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
             .map_err(|ir_error| ir_error.to_string())?;
 
+        let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
         self.current_block
             .ins(context)
-            .store(ptr, init_val, span_md_idx);
+            .store(ptr_val, init_val, span_md_idx);
         Ok(init_val)
     }
 
@@ -1120,7 +1122,7 @@ impl FnCompiler {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
         let name = ast_reassignment.lhs[0].name.as_str();
-        let ptr_val = self
+        let ptr = self
             .function
             .get_local_ptr(context, name)
             .ok_or(format!("variable not found: {}", name))?;
@@ -1129,6 +1131,7 @@ impl FnCompiler {
 
         if ast_reassignment.lhs.len() == 1 {
             // A non-aggregate; use a `store`.
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
             self.current_block
                 .ins(context)
                 .store(ptr_val, reassign_val, span_md_idx);
@@ -1138,7 +1141,7 @@ impl FnCompiler {
             let field_idcs = ast_reassignment.lhs[1..]
                 .iter()
                 .fold(
-                    Ok((Vec::new(), *ptr_val.get_type(context))),
+                    Ok((Vec::new(), *ptr.get_type(context))),
                     |acc, field_name| {
                         // Make sure we have an aggregate to index into.
                         acc.and_then(|(mut fld_idcs, ty)| match ty {
@@ -1171,19 +1174,16 @@ impl FnCompiler {
                 )?
                 .0;
 
-            let ty = match ptr_val.get_type(context) {
+            let ty = match ptr.get_type(context) {
                 Type::Struct(aggregate) => *aggregate,
                 _otherwise => {
                     return Err("Reassignment with multiple accessors to non-aggregate.".into())
                 }
             };
 
-            let get_ptr_val = self
-                .current_block
-                .ins(context)
-                .get_ptr(ptr_val, span_md_idx);
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
             self.current_block.ins(context).insert_value(
-                get_ptr_val,
+                ptr_val,
                 ty,
                 reassign_val,
                 field_idcs,
@@ -1735,7 +1735,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
@@ -1788,7 +1788,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
