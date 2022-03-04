@@ -10,6 +10,8 @@ Before we begin, it may be helpful to understand terminology that will used thro
 - **Sway** - refers to domain-specific language crafted for the Fuel virtual machine; it is inspired by Rust
 - **Forc** - refers to the build system and package manager for Sway, similar to Cargo for Rust.
 
+Go [here](./sway-toolchain.md) for more detailed information about each of these components
+
 ## 1. Installing Fuel and Sway
 
 ### a) Install Rust as a dependency
@@ -45,6 +47,8 @@ export OPENSSL_INCLUDE_DIR="/usr/include/openssl-1.0"
 ```console
 cargo install forc fuel-core
 ```
+
+Go [here](./installation) for instructions on how to install fuel-core from source.
 
 ## 2. Understand Sway program types
 
@@ -240,10 +244,3 @@ It's now time to deploy the wallet contract and call it on a Fuel node. You have
 - [Using fuel-core from the command line](./deploy-and-call-with-cli.md)
 
 If you are building an application on the Fuel blockchain, you will likely want to choose the Rust or Typescript SDK.
-
-<!-- - [Installation](./installation.md)
-- [The Sway Toolchain](./sway-toolchain.md)
-- [A Forc Project](./forc_project.md)
-- [Temporary Workarounds](./temporary_workarounds.md)
-- [Differences From Solidity](./solidity_differences.md)
-- [Differences From Rust](./rust_differences.md) -->

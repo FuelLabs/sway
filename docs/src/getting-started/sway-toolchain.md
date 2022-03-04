@@ -6,7 +6,7 @@ The Sway toolchain consists of several components.
 
 The "Fuel Orchestrator" [Forc](https://github.com/FuelLabs/sway/tree/master/forc) is our equivalent of Rust's [Cargo](https://doc.rust-lang.org/cargo/). It is the primary entry point for creating, building, testing, and deploying Sway projects. The next pages in this section will introduce how to use Forc.
 
-### Sway Language Server (`forc lsp`)
+## Sway Language Server (`forc lsp`)
 
 The Sway Language Server `forc lsp` is provided to expose features to IDEs. Currently, only [Visual Studio Code is supported through a plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin). Vim support is forthcoming, though [syntax highlighting is provided](https://github.com/FuelLabs/sway.vim).
 
