@@ -1826,7 +1826,7 @@ mod tests {
                 Some("asm") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
