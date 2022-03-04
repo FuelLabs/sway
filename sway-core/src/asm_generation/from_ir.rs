@@ -1667,8 +1667,9 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
             span: pest::Span::new(std::sync::Arc::from(str.as_str()), 0, str.len()).unwrap(),
             path: None,
         }),
-        ConstantValue::Array(_) => unimplemented!(),
-        ConstantValue::Struct(_) => unimplemented!(),
+        ConstantValue::Array(_) | ConstantValue::Struct(_) => {
+            unreachable!("Cannot convert aggregates to a literal.")
+        }
     }
 }
 
@@ -1704,7 +1705,8 @@ impl TypeAnalyzer {
                 32
             }
             Type::Contract => {
-                unimplemented!("do contract/contract caller have/need a size?")
+                // A Contract is a pseudo-type of no size.
+                0
             }
         }
     }
