@@ -2,12 +2,12 @@
 name = 'caller_context_test'
 dependencies = [
     'context_testing_abi',
-    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6',
+    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd',
 ]
 
 [[package]]
 name = 'context_testing_abi'
-dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226']
+dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd']
 
 [[package]]
 name = 'core'
@@ -16,10 +16,5 @@ dependencies = []
 
 [[package]]
 name = 'std'
-source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6'
-dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
-
-[[package]]
-name = 'std'
-source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd'
 dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
