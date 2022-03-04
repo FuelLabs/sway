@@ -401,7 +401,7 @@ fn construct_window<'a>(
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
     debug_assert!(end.line >= start.line);
     let total_lines_of_highlight = end.line - start.line;
-    debug_assert!(total_lines_in_input > total_lines_of_highlight);
+    debug_assert!(total_lines_in_input >= total_lines_of_highlight);
 
     let mut current_line = 0;
     let mut lines_to_start_of_snippet = 0;
