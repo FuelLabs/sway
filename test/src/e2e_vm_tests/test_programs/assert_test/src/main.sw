@@ -1,6 +1,5 @@
 script;
-use std::chain::*;
-use core::ops::*;
+use std::chain::assert;
 
 // @todo add a test using this in a contract.
 // @todo add a test confirming that assert(false) does panic/revert

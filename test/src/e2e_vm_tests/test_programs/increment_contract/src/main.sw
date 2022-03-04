@@ -3,7 +3,7 @@ contract;
 use increment_abi::Incrementor;
 use std::storage::{get, store};
 
-const key = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const KEY = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl Incrementor for Contract {
     fn initialize(initial_value: u64) -> u64 {
