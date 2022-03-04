@@ -5,5 +5,5 @@ name = "unary_not_basic"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", tag = "v0.0.1" }

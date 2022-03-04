@@ -38,6 +38,10 @@ pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<
     Ok(file_name)
 }
 
+pub fn lock_path(manifest_dir: &Path) -> PathBuf {
+    manifest_dir.join(constants::LOCK_FILE_NAME)
+}
+
 pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest> {
     let manifest_path = {
         let mut man = PathBuf::from(manifest_dir);
@@ -138,13 +142,18 @@ pub fn user_forc_directory() -> PathBuf {
         .join(constants::USER_FORC_DIRECTORY)
 }
 
+/// The location at which `forc` will checkout git repositories.
+pub fn git_checkouts_directory() -> PathBuf {
+    user_forc_directory().join("git").join("checkouts")
+}
+
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
-    tree_type: TreeType,
+    tree_type: &TreeType,
 ) {
-    let type_str = match tree_type {
+    let type_str = match &tree_type {
         TreeType::Script {} => "script",
         TreeType::Contract {} => "contract",
         TreeType::Predicate {} => "predicate",
@@ -207,6 +216,33 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
         if e_len > 1 { "errors" } else { "error" }
     ))
     .unwrap();
+}
+
+pub(crate) fn print_lock_diff(proj_name: &str, diff: &crate::lock::Diff) {
+    print_removed_pkgs(proj_name, diff.removed.iter().cloned());
+    print_added_pkgs(proj_name, diff.added.iter().cloned());
+}
+
+pub(crate) fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_red(&format!("  Removing {}", pkg.unique_string()));
+        }
+    }
+}
+
+pub(crate) fn print_added_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_green(&format!("    Adding {}", pkg.unique_string()));
+        }
+    }
 }
 
 pub fn println_red(txt: &str) -> io::Result<()> {
