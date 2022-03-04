@@ -20,7 +20,6 @@ pub struct ParamsTransferToOutput {
 pub struct ParamsGetBalance {
     target: b256,
     asset_id: ContractId,
-    salt: u64, // temp, see:https://github.com/FuelLabs/fuels-rs/issues/89
 }
 
 abi TestFuelCoin {
