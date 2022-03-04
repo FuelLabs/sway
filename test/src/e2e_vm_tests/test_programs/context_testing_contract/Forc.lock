@@ -1,0 +1,20 @@
+[[package]]
+name = 'context_testing_abi'
+dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226']
+
+[[package]]
+name = 'context_testing_contract'
+dependencies = [
+    'context_testing_abi',
+    'std git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226',
+]
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226'
+dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']

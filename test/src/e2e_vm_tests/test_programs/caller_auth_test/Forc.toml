@@ -5,6 +5,6 @@ license = "Apache-2.0"
 name = "caller_auth_test"
 
 [dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", tag = "v0.0.1" }
 auth_testing_abi = { path = "../auth_testing_abi" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }

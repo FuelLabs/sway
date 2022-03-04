@@ -1,0 +1,3 @@
+[[package]]
+name = 'storage_declaration'
+dependencies = []

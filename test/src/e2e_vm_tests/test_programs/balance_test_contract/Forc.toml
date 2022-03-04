@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "balance_test_contract"
 
 [dependencies]
-balance_test_abi = { path = "../balance_test_abi" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
+balance_test_abi = { path = "../balance_test_abi"}

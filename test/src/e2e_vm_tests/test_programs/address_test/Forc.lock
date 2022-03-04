@@ -1,0 +1,21 @@
+[[package]]
+name = 'address_test'
+dependencies = [
+    'core git+http://github.com/FuelLabs/sway-lib-core?reference=v0.1.0#5ff3559f067f50c9550bf3d1b7c74f5cede78b6f',
+    'std git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.2#888f0abce5621525af7b8bc6d41a1a570f30c920',
+]
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+dependencies = []
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=v0.1.0#5ff3559f067f50c9550bf3d1b7c74f5cede78b6f'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.2#888f0abce5621525af7b8bc6d41a1a570f30c920'
+dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
