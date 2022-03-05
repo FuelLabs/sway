@@ -431,18 +431,12 @@ fn instruction_to_doc<'a>(
                         Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                     }),
                 )),
-            Instruction::Load(ptr) => {
-                let name = block
-                    .get_function(context)
-                    .lookup_local_name(context, ptr)
-                    .unwrap();
-                Doc::text_line(format!(
-                    "{} = load {}{}",
-                    namer.name(context, ins_value),
-                    ptr.as_string(context, name),
-                    md_namer.meta_as_string(context, span_md_idx, true),
-                ))
-            }
+            Instruction::Load(src_value) => Doc::text_line(format!(
+                "{} = load ptr {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, src_value),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
             Instruction::Nop => Doc::text_line(format!("{} = nop", namer.name(context, ins_value))),
             Instruction::Phi(pairs) => {
                 if pairs.is_empty() {
@@ -467,6 +461,13 @@ fn instruction_to_doc<'a>(
                     )
                 }
             }
+            Instruction::PointerCast(ptr_value, ty) => Doc::text_line(format!(
+                "{} = ptr_cast ptr {} to ptr {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, ptr_value),
+                ty.as_string(context),
+                md_namer.meta_as_string(context, span_md_idx, true)
+            )),
             Instruction::Ret(v, t) => {
                 maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::text_line(format!(
                     "ret {} {}{}",
@@ -475,20 +476,29 @@ fn instruction_to_doc<'a>(
                     md_namer.meta_as_string(context, span_md_idx, true),
                 )))
             }
-            Instruction::Store { ptr, stored_val } => {
-                let name = block
-                    .get_function(context)
-                    .lookup_local_name(context, ptr)
-                    .unwrap();
-                maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::text_line(
-                    format!(
-                        "store {}, {}{}",
-                        namer.name(context, stored_val),
-                        ptr.as_string(context, name),
-                        md_namer.meta_as_string(context, span_md_idx, true),
-                    ),
-                ))
-            }
+            Instruction::StateLoad { load_val, key } => Doc::text_line(format!(
+                "state_load ptr {}, key {}{}",
+                namer.name(context, load_val),
+                namer.name(context, key),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
+            Instruction::StateStore { stored_val, key } => Doc::text_line(format!(
+                "state_store ptr {}, key {}{}",
+                namer.name(context, stored_val),
+                namer.name(context, key),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
+            Instruction::Store {
+                dst_val,
+                stored_val,
+            } => maybe_constant_to_doc(context, md_namer, namer, stored_val).append(
+                Doc::text_line(format!(
+                    "store {}, ptr {}{}",
+                    namer.name(context, stored_val),
+                    namer.name(context, dst_val),
+                    md_namer.meta_as_string(context, span_md_idx, true),
+                )),
+            ),
         },
         _ => unreachable!("Unexpected non instruction for block contents."),
     }

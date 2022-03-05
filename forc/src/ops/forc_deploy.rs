@@ -59,9 +59,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                             minify_json_abi,
                         };
 
-                        let (compiled_contract, _json_abi) = forc_build::build(build_command)?;
+                        let compiled = forc_build::build(build_command)?;
                         let (tx, contract_id) = create_contract_tx(
-                            compiled_contract,
+                            compiled.bytecode,
                             Vec::<fuel_tx::Input>::new(),
                             Vec::<fuel_tx::Output>::new(),
                         );

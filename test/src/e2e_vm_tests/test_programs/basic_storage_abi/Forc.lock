@@ -1,0 +1,3 @@
+[[package]]
+name = 'basic_storage_abi'
+dependencies = []

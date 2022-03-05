@@ -1,0 +1,21 @@
+[[package]]
+name = 'const_decl_in_library'
+dependencies = [
+    'core git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa',
+    'std git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226',
+]
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+dependencies = []
+
+[[package]]
+name = 'core'
+source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=v0.0.1#5a0938f8248d820ef178b6efd9c105463c543226'
+dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
