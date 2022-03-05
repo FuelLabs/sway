@@ -8,4 +8,3 @@ name = "token_ops_test"
 std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.2" }
 core = { git = "http://github.com/FuelLabs/sway-lib-core", tag = "v0.1.0" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }
-

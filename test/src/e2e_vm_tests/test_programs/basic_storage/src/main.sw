@@ -4,12 +4,11 @@ use std::hash::*;
 use basic_storage_abi::*;
 
 impl StoreU64 for Contract {
-  fn store_u64(gas_to_forward: u64, coins_to_forward: u64, asset_id_of_coins: b256, storage: StoreU64Request) {
-   store(storage.key, storage.value);
-  }
+    fn store_u64(key: b256, value: u64) {
+        store(key, value);
+    }
 
-  fn get_u64(gas_to_forward: u64, coins_to_forward: u64, asset_id_of_coins: b256, storage_key: b256) -> u64 {
-    get(storage_key)
-  }
+    fn get_u64(storage_key: b256) -> u64 {
+        get(storage_key)
+    }
 }
-
