@@ -5,4 +5,4 @@ name = "b512_test"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
