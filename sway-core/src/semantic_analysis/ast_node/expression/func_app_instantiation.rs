@@ -4,6 +4,7 @@ use crate::error::*;
 use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
 use crate::type_engine::TypeId;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -107,6 +108,7 @@ pub(crate) fn instantiate_function_application(
             is_constant: IsConstant::No,
             expression: TypedExpressionVariant::FunctionApplication {
                 arguments: typed_call_arguments,
+                contract_call_params: HashMap::new(),
                 name,
                 function_body: body,
                 selector: None, // regular functions cannot be in a contract call; only methods

@@ -1,0 +1,3 @@
+[[package]]
+name = 'bad_generic_annotation'
+dependencies = []

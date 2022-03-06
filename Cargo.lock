@@ -425,6 +425,9 @@ name = "cc"
 version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cfg-if"
@@ -506,6 +509,15 @@ dependencies = [
  "strsim 0.10.0",
  "termcolor",
  "textwrap 0.14.2",
+]
+
+[[package]]
+name = "clap_complete"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df6f3613c0a3cddfd78b41b10203eb322cb29b600cbdf808a7d3db95691b8e25"
+dependencies = [
+ "clap 3.1.2",
 ]
 
 [[package]]
@@ -940,9 +952,9 @@ dependencies = [
 
 [[package]]
 name = "fixedbitset"
-version = "0.2.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
+checksum = "279fb028e20b3c4c320317955b77c5e0c9701f05a1d309905d6fc702cdc5053e"
 
 [[package]]
 name = "flate2"
@@ -981,14 +993,16 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "clap 3.1.2",
+ "clap_complete",
  "dirs 3.0.2",
- "flate2",
  "fuel-asm",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures",
+ "git2",
  "hex",
+ "petgraph",
  "prettydiff",
  "reqwest",
  "semver 1.0.4",
@@ -1007,6 +1021,7 @@ dependencies = [
  "toml",
  "unicode-xid",
  "ureq",
+ "url",
  "uwuify",
  "warp",
  "whoami",
@@ -1331,6 +1346,21 @@ checksum = "97304e4cd182c3846f7575ced3890c53012ce534ad9114046b0a9e00bb30a375"
 dependencies = [
  "opaque-debug",
  "polyval",
+]
+
+[[package]]
+name = "git2"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e7d3b96ec1fcaa8431cf04a4f1ef5caafe58d5cf7bcc31f09c1626adddb0ffe"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libgit2-sys",
+ "log",
+ "openssl-probe",
+ "openssl-sys",
+ "url",
 ]
 
 [[package]]
@@ -1663,6 +1693,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
 
 [[package]]
+name = "jobserver"
+version = "0.1.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1710,6 +1749,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b03d17f364a3a042d5e5d46b053bbbf82c92c9430c592dd4c064dc6ee997125"
 
 [[package]]
+name = "libgit2-sys"
+version = "0.13.1+1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43e598aa7a4faedf1ea1b4608f582b06f0f40211eec551b7ef36019ae3f62def"
+dependencies = [
+ "cc",
+ "libc",
+ "libssh2-sys",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+]
+
+[[package]]
 name = "libnghttp2-sys"
 version = "0.1.7+1.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1717,6 +1770,20 @@ checksum = "57ed28aba195b38d5ff02b9170cbff627e336a20925e43b4945390401c5dc93f"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "libssh2-sys"
+version = "0.2.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b094a36eb4b8b8c8a7b4b8ae43b2944502be3e59cd87687595cf6b0a71b3f4ca"
+dependencies = [
+ "cc",
+ "libc",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+ "vcpkg",
 ]
 
 [[package]]
@@ -2086,12 +2153,14 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "petgraph"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
+checksum = "4a13a2fa9d0b63e5f22328828741e523766fff0ee9e779316902290dff3f824f"
 dependencies = [
  "fixedbitset",
  "indexmap",
+ "serde",
+ "serde_derive",
 ]
 
 [[package]]
@@ -3097,6 +3166,7 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "forc",
  "fuel-asm",
  "fuel-tx",

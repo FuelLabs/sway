@@ -167,6 +167,14 @@ impl From<io::Error> for FormatError {
     }
 }
 
+impl From<anyhow::Error> for FormatError {
+    fn from(e: anyhow::Error) -> Self {
+        FormatError {
+            message: e.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::taplo_fmt;

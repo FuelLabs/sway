@@ -1,32 +1,37 @@
 script {
     fn main() -> bool {
-        local ptr bool a
+        local mut ptr bool a
 
         entry:
-        v0 = const bool true
-        store v0, ptr bool a
+        v0 = get_ptr mut ptr bool a
+        v1 = const bool true
+        store v1, ptr v0
         br while
 
         while:
-        v1 = load ptr bool a
-        cbr v1, while_body, end_while
+        v2 = get_ptr mut ptr bool a
+        v3 = load ptr v2
+        cbr v3, while_body, end_while
 
         while_body:
-        v2 = load ptr bool a
-        cbr v2, block0, block1
+        v4 = get_ptr mut ptr bool a
+        v5 = load ptr v4
+        cbr v5, block0, block1
 
         block0:
-        v3 = phi(while_body: v2)
-        v4 = const bool false
+        v6 = phi(while_body: v5)
+        v7 = const bool false
         br block1
 
         block1:
-        v5 = phi(while_body: v2, block0: v4)
-        store v5, ptr bool a
+        v8 = phi(while_body: v5, block0: v7)
+        v9 = get_ptr mut ptr bool a
+        store v8, ptr v9
         br while
 
         end_while:
-        v6 = load ptr bool a
-        ret bool v6
+        v10 = get_ptr mut ptr bool a
+        v11 = load ptr v10
+        ret bool v11
     }
 }

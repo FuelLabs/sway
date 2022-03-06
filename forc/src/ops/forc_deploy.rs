@@ -6,6 +6,7 @@ use sway_core::{parse, TreeType};
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
+use anyhow::Result;
 
 use crate::utils::helpers;
 use helpers::{get_main_file, read_manifest};
@@ -58,9 +59,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                             minify_json_abi,
                         };
 
-                        let (compiled_contract, _json_abi) = forc_build::build(build_command)?;
+                        let compiled = forc_build::build(build_command)?;
                         let (tx, contract_id) = create_contract_tx(
-                            compiled_contract,
+                            compiled.bytecode,
                             Vec::<fuel_tx::Input>::new(),
                             Vec::<fuel_tx::Output>::new(),
                         );

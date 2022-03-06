@@ -14,6 +14,7 @@ use crate::{
     },
     type_engine::{look_up_type_id, TypeId},
 };
+use expression::structs::ContiguousMemoryLayoutDescriptor;
 use sway_types::{ident::Ident, span::Span};
 
 pub(crate) fn convert_subfield_expression_to_asm(
@@ -47,6 +48,34 @@ pub(crate) fn convert_subfield_expression_to_asm(
     // now the pointer to the struct is in the prefix_reg, and we can access the subfield off
     // of that address
     // step 1
+    let fields_for_layout = get_subfields_for_layout(resolved_type_of_parent);
+
+    let descriptor = check!(
+        get_contiguous_memory_layout(&fields_for_layout[..]),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    asm_buf.append(&mut check!(
+        convert_subfield_to_asm(
+            prefix_reg,
+            &field_to_access,
+            return_register.clone(),
+            &fields_for_layout,
+            &descriptor,
+        ),
+        vec![],
+        warnings,
+        errors
+    ));
+
+    return ok(asm_buf, warnings, errors);
+}
+
+pub(crate) fn get_subfields_for_layout(
+    resolved_type_of_parent: TypeId,
+) -> Vec<(TypeId, Span, Ident)> {
     // TODO(static span): str should be ident below
     let span = sway_types::span::Span {
         span: pest::Span::new(
@@ -58,7 +87,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
         path: None,
     };
 
-    let fields_for_layout = match look_up_type_id(resolved_type_of_parent) {
+    match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields
             .iter()
             .map(|TypedStructField { name, r#type, .. }| {
@@ -78,15 +107,22 @@ pub(crate) fn convert_subfield_expression_to_asm(
         _ => {
             unreachable!("Accessing a field or element on non-viable type should be caught during type checking.")
         }
-    };
+    }
+}
 
-    let descriptor = check!(
-        get_contiguous_memory_layout(&fields_for_layout[..]),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+pub(crate) fn convert_subfield_to_asm(
+    prefix_reg: VirtualRegister,
+    field_to_access: &Ident,
+    return_register: VirtualRegister,
+    fields_for_layout: &[(TypeId, Span, Ident)],
+    descriptor: &ContiguousMemoryLayoutDescriptor<Ident>,
+) -> CompileResult<Vec<Op>> {
+    let mut asm_buf = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
 
+    let field_to_access_span = field_to_access.span().clone();
+    let field_to_access_name = field_to_access.to_string();
     // step 2
     let offset_in_words = check!(
         descriptor.offset_to_field_name(field_to_access.as_str(), field_to_access.span().clone()),
@@ -116,7 +152,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register
-    let resolved_type_of_this_field = match resolve_type(type_of_this_field, &span) {
+    let resolved_type_of_this_field = match resolve_type(*type_of_this_field, &span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());
@@ -140,7 +176,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
             )),
             comment: format!(
                 "Loading copy type: {}",
-                look_up_type_id(type_of_this_field).friendly_type_str()
+                look_up_type_id(*type_of_this_field).friendly_type_str()
             ),
             owning_span: Some(span.clone()),
         }
@@ -168,5 +204,5 @@ pub(crate) fn convert_subfield_expression_to_asm(
         }
     });
 
-    return ok(asm_buf, warnings, errors);
+    ok(asm_buf, warnings, errors)
 }

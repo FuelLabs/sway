@@ -51,12 +51,12 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             minify_json_abi: command.minify_json_abi,
                         };
 
-                        let (compiled_script, _json_abi) = forc_build::build(build_command)?;
+                        let compiled = forc_build::build(build_command)?;
                         let contracts = command.contract.unwrap_or_default();
                         let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
-                            compiled_script,
+                            compiled.bytecode,
                             script_data,
                             inputs,
                             outputs,

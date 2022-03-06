@@ -9,49 +9,49 @@ use std::token::*;
 use test_fuel_coin_abi::*;
 
 struct Opts {
-        gas: u64,
-        coins: u64,
-        id: ContractId,
-    }
+    gas: u64,
+    coins: u64,
+    id: ContractId,
+}
 
 fn main() -> bool {
-
-    let default = Opts {
-        gas: 1_000_000_000_000,
-        coins: 0,
-        id: ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000),
-    };
+    let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0xbaf516b8b50c51953a6d2f20ec1f5ff09ced2b80a9c72ea376aaf23dd6af467e);
-    let balance_test_id = ~ContractId::from(0x27eb552a9458aec1db874930ae86fe91df49b4e0c221e08f7ffcf3fadadee0a3);
+    let fuelcoin_id = ~ContractId::from(0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
+
+    // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
+    let balance_test_id = ~ContractId::from(0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322);
 
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0xbaf516b8b50c51953a6d2f20ec1f5ff09ced2b80a9c72ea376aaf23dd6af467e);
+    let fuel_coin = abi(TestFuelCoin, 0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
-    fuel_coin.mint(default.gas, default.coins, default.id.value, 11);
+    fuel_coin.mint {
+        gas: default_gas
+    }
+    (11);
 
     // check that the mint was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 11);
 
-    fuel_coin.burn(default.gas, default.coins, default.id.value, 7);
+    fuel_coin.burn {
+        gas: default_gas
+    }
+    (7);
 
     // check that the burn was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 4);
 
-    let force_transfer_args = ParamsForceTransfer {
-        coins: 3,
-        asset_id: fuelcoin_id,
-        c_id: balance_test_id,
-    };
-
     // force transfer coins
-    fuel_coin.force_transfer(default.gas, default.coins, default.id.value, force_transfer_args);
+    fuel_coin.force_transfer {
+        gas: default_gas
+    }
+    (3, fuelcoin_id, balance_test_id);
 
     // check that the transfer was successful
     fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
