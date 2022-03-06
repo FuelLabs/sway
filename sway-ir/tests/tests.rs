@@ -26,14 +26,14 @@ fn ir_to_ir_tests() {
                 } else {
                     panic!(
                         "File which doesn't match valid passes: {:?}",
-                        path.file_name().unwrap_or_else(|| path.as_os_str())
+                        path.file_name().unwrap_or(path.as_os_str())
                     );
                 }
             }
             Some("out_ir") => (),
             _ => panic!(
                 "File with invalid extension in tests dir: {:?}",
-                path.file_name().unwrap_or_else(|| path.as_os_str())
+                path.file_name().unwrap_or(path.as_os_str())
             ),
         }
     }
@@ -50,7 +50,14 @@ fn test_inline(mut path: PathBuf) {
     let expected_bytes = std::fs::read(&path).unwrap();
     let expected = String::from_utf8_lossy(&expected_bytes);
 
-    let mut ir = sway_ir::parser::parse(&input).unwrap();
+    let mut ir = match sway_ir::parser::parse(&input) {
+        Ok(ir) => ir,
+        Err(parse_err) => {
+            println!("{parse_err}");
+            panic!()
+        }
+    };
+
     let main_fn = ir
         .functions
         .iter()
@@ -77,7 +84,13 @@ fn test_constants(mut path: PathBuf) {
     let expected_bytes = std::fs::read(&path).unwrap();
     let expected = String::from_utf8_lossy(&expected_bytes);
 
-    let mut ir = sway_ir::parser::parse(&input).unwrap();
+    let mut ir = match sway_ir::parser::parse(&input) {
+        Ok(ir) => ir,
+        Err(parse_err) => {
+            println!("{parse_err}");
+            panic!()
+        }
+    };
 
     let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
     for fn_idx in fn_idcs {

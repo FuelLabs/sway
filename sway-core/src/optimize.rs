@@ -162,7 +162,7 @@ fn compile_constant_expression(
 fn compile_declarations(
     context: &mut Context,
     module: Module,
-    struct_names: &mut StructSymbolMap,
+    _struct_names: &mut StructSymbolMap,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), String> {
     for declaration in declarations {
@@ -173,20 +173,28 @@ fn compile_declarations(
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
-            TypedDeclaration::FunctionDeclaration(decl) => {
-                compile_function(context, module, struct_names, decl)?
+            TypedDeclaration::FunctionDeclaration(_decl) => {
+                // We no longer compile functions other than `main()` until we can improve the name
+                // resolution.  Currently there isn't enough information in the AST to fully
+                // distinguish similarly named functions and especially trait methods.
+                //
+                //compile_function(context, module, struct_names, decl).map(|_| ())?
             }
             TypedDeclaration::ImplTrait {
-                methods,
-                type_implementing_for,
+                methods: _,
+                type_implementing_for: _,
                 ..
-            } => compile_impl(
-                context,
-                module,
-                struct_names,
-                type_implementing_for,
-                methods,
-            )?,
+            } => {
+                // And for the same reason we don't need to compile impls at all.
+                //
+                // compile_impl(
+                //    context,
+                //    module,
+                //    struct_names,
+                //    type_implementing_for,
+                //    methods,
+                //)?,
+            }
 
             TypedDeclaration::StructDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
@@ -216,7 +224,7 @@ impl StructSymbolMap {
         aggregate: Aggregate,
         symbols: Option<HashMap<String, u64>>,
     ) -> Result<(), String> {
-        match self.aggregate_names.insert(dbg!(name), aggregate) {
+        match self.aggregate_names.insert(name, aggregate) {
             None => Ok(()),
             Some(_) => Err("Aggregate symbols were overwritten/shadowed.".to_owned()),
         }?;
@@ -348,11 +356,11 @@ fn compile_function(
     module: Module,
     struct_names: &mut StructSymbolMap,
     ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<(), String> {
+) -> Result<Option<Function>, String> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
-        Ok(())
+        Ok(None)
     } else {
         let args = ast_fn_decl
             .parameters
@@ -363,7 +371,7 @@ fn compile_function(
             })
             .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
 
-        compile_fn_with_args(context, module, struct_names, ast_fn_decl, args, None)
+        compile_fn_with_args(context, module, struct_names, ast_fn_decl, args, None).map(&Some)
     }
 }
 
@@ -376,7 +384,7 @@ fn compile_fn_with_args(
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
-) -> Result<(), String> {
+) -> Result<Function, String> {
     let TypedFunctionDeclaration {
         name,
         body,
@@ -410,10 +418,12 @@ fn compile_fn_with_args(
         .current_block
         .ins(context)
         .ret(ret_val, ret_type, None);
-    Ok(())
+    Ok(func)
 }
 
 // -------------------------------------------------------------------------------------------------
+
+/* Disabled until we can improve symbol resolution.  See comments above in compile_declarations().
 
 fn compile_impl(
     context: &mut Context,
@@ -440,6 +450,7 @@ fn compile_impl(
     }
     Ok(())
 }
+*/
 
 // -------------------------------------------------------------------------------------------------
 
@@ -448,7 +459,7 @@ fn compile_abi_method(
     module: Module,
     struct_names: &mut StructSymbolMap,
     ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<(), String> {
+) -> Result<Function, String> {
     let selector = ast_fn_decl.to_fn_selector_value().value.ok_or(format!(
         "Cannot generate selector for ABI method: {}",
         ast_fn_decl.name.as_str()
@@ -747,7 +758,7 @@ impl FnCompiler {
     fn compile_fn_call(
         &mut self,
         context: &mut Context,
-        ast_name: &str,
+        _ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
         span_md_idx: Option<MetadataIndex>,
@@ -765,91 +776,69 @@ impl FnCompiler {
         // Eventually we need to Do It Properly and inline only when necessary, and compile the
         // standard library to an actual module.
 
-        // Edge case: take note as to whether the called function has the same name as this
-        // function.  If so we'll get confused and try and recurse.  This is only a problem while
-        // we don't have absolute paths to callees and while function bodies are inlined at call
-        // sites.
-        let has_same_name = self.function.get_name(context) == ast_name;
-
-        match context
-            .module_iter()
-            .flat_map(|module| module.function_iter(context))
-            .find(|function| !has_same_name && function.get_name(context) == ast_name)
         {
-            Some(callee) => {
-                let args = ast_args
-                    .into_iter()
-                    .map(|(_, expr)| self.compile_expression(context, expr))
-                    .collect::<Result<Vec<Value>, String>>()?;
-                Ok(self
-                    .current_block
-                    .ins(context)
-                    .call(callee, &args, span_md_idx))
-            }
-
-            None if callee_body.is_none() => Err(format!("function not found: {}", ast_name)),
-
-            None => {
-                // Firstly create the single-use callee by fudging an AST declaration.
-                let callee_name = context.get_unique_name();
-                let callee_name_len = callee_name.len();
-                let callee_ident = Ident::new(crate::span::Span {
-                    span: pest::Span::new(
-                        std::sync::Arc::from(callee_name.clone()),
-                        0,
-                        callee_name_len,
-                    )
+            // Firstly create the single-use callee by fudging an AST declaration.
+            let callee_name = context.get_unique_name();
+            let callee_name_len = callee_name.len();
+            let callee_ident = Ident::new(crate::span::Span {
+                span: pest::Span::new(std::sync::Arc::from(callee_name), 0, callee_name_len)
                     .unwrap(),
-                    path: None,
-                });
+                path: None,
+            });
 
-                let parameters = ast_args
-                    .iter()
-                    .map(|(name, expr)| TypedFunctionParameter {
-                        name: name.clone(),
-                        r#type: expr.return_type,
-                        type_span: crate::span::Span {
-                            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                            path: None,
-                        },
-                    })
-                    .collect();
+            let parameters = ast_args
+                .iter()
+                .map(|(name, expr)| TypedFunctionParameter {
+                    name: name.clone(),
+                    r#type: expr.return_type,
+                    type_span: crate::span::Span {
+                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+                        path: None,
+                    },
+                })
+                .collect();
 
-                let callee_body = callee_body.unwrap();
+            let callee_body = callee_body.unwrap();
 
-                // We're going to have to reverse engineer the return type.
-                let return_type =
-                    Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
+            // We're going to have to reverse engineer the return type.
+            let return_type = Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
                     // This code block is missing a return or implicit return.  The only time I've
                     // seen it happen (whether it's 'valid' or not) is in std::storage::store(),
                     // which has a single asm block which also returns nothing.  In this case, it
                     // actually is Unit.
                     insert_type(TypeInfo::Tuple(Vec::new())));
 
-                let callee_fn_decl = TypedFunctionDeclaration {
-                    name: callee_ident,
-                    body: callee_body,
-                    parameters,
-                    span: crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
-                    return_type,
-                    type_parameters: Vec::new(),
-                    return_type_span: crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
-                    visibility: Visibility::Private,
-                    is_contract_call: false,
-                    purity: Default::default(),
-                };
+            let callee_fn_decl = TypedFunctionDeclaration {
+                name: callee_ident,
+                body: callee_body,
+                parameters,
+                span: crate::span::Span {
+                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+                    path: None,
+                },
+                return_type,
+                type_parameters: Vec::new(),
+                return_type_span: crate::span::Span {
+                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+                    path: None,
+                },
+                visibility: Visibility::Private,
+                is_contract_call: false,
+                purity: Default::default(),
+            };
 
+            let callee =
                 compile_function(context, self.module, &mut self.struct_names, callee_fn_decl)?;
 
-                // Then recursively create a call to it.
-                self.compile_fn_call(context, &callee_name, ast_args, None, span_md_idx)
-            }
+            // Now actually call the new function.
+            let args = ast_args
+                .into_iter()
+                .map(|(_, expr)| self.compile_expression(context, expr))
+                .collect::<Result<Vec<Value>, String>>()?;
+            Ok(self
+                .current_block
+                .ins(context)
+                .call(callee.unwrap(), &args, span_md_idx))
         }
     }
 
@@ -992,10 +981,11 @@ impl FnCompiler {
             .get(name)
             .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
-            Ok(if ptr.is_struct_ptr(context) {
-                self.current_block.ins(context).get_ptr(ptr, span_md_idx)
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            Ok(if ptr.is_aggregate_ptr(context) {
+                ptr_val
             } else {
-                self.current_block.ins(context).load(ptr, span_md_idx)
+                self.current_block.ins(context).load(ptr_val, span_md_idx)
             })
         } else if let Some(val) = self.function.get_arg(context, name) {
             Ok(val)
@@ -1049,9 +1039,10 @@ impl FnCompiler {
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
             .map_err(|ir_error| ir_error.to_string())?;
 
+        let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
         self.current_block
             .ins(context)
-            .store(ptr, init_val, span_md_idx);
+            .store(ptr_val, init_val, span_md_idx);
         Ok(init_val)
     }
 
@@ -1100,7 +1091,7 @@ impl FnCompiler {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
         let name = ast_reassignment.lhs[0].name.as_str();
-        let ptr_val = self
+        let ptr = self
             .function
             .get_local_ptr(context, name)
             .ok_or(format!("variable not found: {}", name))?;
@@ -1109,6 +1100,7 @@ impl FnCompiler {
 
         if ast_reassignment.lhs.len() == 1 {
             // A non-aggregate; use a `store`.
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
             self.current_block
                 .ins(context)
                 .store(ptr_val, reassign_val, span_md_idx);
@@ -1118,7 +1110,7 @@ impl FnCompiler {
             let field_idcs = ast_reassignment.lhs[1..]
                 .iter()
                 .fold(
-                    Ok((Vec::new(), *ptr_val.get_type(context))),
+                    Ok((Vec::new(), *ptr.get_type(context))),
                     |acc, field_name| {
                         // Make sure we have an aggregate to index into.
                         acc.and_then(|(mut fld_idcs, ty)| match ty {
@@ -1151,19 +1143,16 @@ impl FnCompiler {
                 )?
                 .0;
 
-            let ty = match ptr_val.get_type(context) {
+            let ty = match ptr.get_type(context) {
                 Type::Struct(aggregate) => *aggregate,
                 _otherwise => {
                     return Err("Reassignment with multiple accessors to non-aggregate.".into())
                 }
             };
 
-            let get_ptr_val = self
-                .current_block
-                .ins(context)
-                .get_ptr(ptr_val, span_md_idx);
+            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
             self.current_block.ins(context).insert_value(
-                get_ptr_val,
+                ptr_val,
                 ty,
                 reassign_val,
                 field_idcs,
@@ -1715,7 +1704,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
@@ -1768,7 +1757,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }

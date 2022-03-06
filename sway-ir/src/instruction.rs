@@ -18,7 +18,7 @@ use crate::{
     irtype::{Aggregate, Type},
     metadata::MetadataIndex,
     pointer::Pointer,
-    value::Value,
+    value::{Value, ValueDatum},
 };
 
 #[derive(Debug, Clone)]
@@ -64,13 +64,23 @@ pub enum Instruction {
         indices: Vec<u64>,
     },
     /// Read a value from a memory pointer.
-    Load(Pointer),
+    Load(Value),
+    /// No-op, handy as a placeholder instruction.
+    Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
+    /// A cast from one pointer type to another.  Value must be either a GetPointer instruction or
+    /// another PointerCast.
+    PointerCast(Value, Type),
     /// Return from a function.
     Ret(Value, Type),
+    /// Read a value from a storage slot.  Type of `load_val` must be a Uint(64) or B256 ptr.
+    StateLoad { load_val: Value, key: Value },
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(64) or B256 ptr.
+    StateStore { stored_val: Value, key: Value },
     /// Write a value to a memory pointer.
-    Store { ptr: Pointer, stored_val: Value },
+    Store { dst_val: Value, stored_val: Value },
 }
 
 impl Instruction {
@@ -84,30 +94,42 @@ impl Instruction {
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
-            Instruction::Load(ptr) => Some(context.pointers[ptr.0].ty),
+            Instruction::Load(ptr_val) => {
+                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
+                    ins.get_type(context)
+                } else {
+                    None
+                }
+            }
             Instruction::Phi(_alts) => {
                 unimplemented!("phi get type -- I think we should put the type in the enum.")
             }
+
+            // These can be recursed to via Load, so we return the pointer type.
+            Instruction::GetPointer(ptr) => Some(context.pointers[ptr.0].ty),
+            Instruction::PointerCast(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // GetPointer returns a pointer type which we don't expose.
-            Instruction::GetPointer(_) => None,
-
             // These write values but don't return one.  If we're explicit we could return Unit.
             Instruction::InsertElement { .. } => None,
             Instruction::InsertValue { .. } => None,
+            Instruction::StateLoad { .. } => None,
+            Instruction::StateStore { .. } => None,
             Instruction::Store { .. } => None,
+
+            // No-op is also no-type.
+            Instruction::Nop => None,
         }
     }
 
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
-            Instruction::GetPointer(ptr) | Instruction::Load(ptr) => match ptr.get_type(context) {
+            Instruction::GetPointer(ptr) => match ptr.get_type(context) {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -175,8 +197,18 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::Load(_) => (),
+            Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
+            Instruction::PointerCast(..) => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
+            Instruction::StateLoad { load_val, key } => {
+                replace(load_val);
+                replace(key);
+            }
+            Instruction::StateStore { stored_val, key } => {
+                replace(key);
+                replace(stored_val);
+            }
             Instruction::Store { stored_val, .. } => {
                 replace(stored_val);
             }
@@ -232,7 +264,9 @@ impl<'a> InstructionInserter<'a> {
     }
 
     //
-    // XXX maybe these should return result, in case they get bad args?
+    // XXX Maybe these should return result, in case they get bad args?
+    //
+    // XXX Also, these are all the same and could probably be created with a local macro.
     //
 
     /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
@@ -422,12 +456,31 @@ impl<'a> InstructionInserter<'a> {
         insert_val
     }
 
-    pub fn load(self, ptr: Pointer, span_md_idx: Option<MetadataIndex>) -> Value {
-        let load_val = Value::new_instruction(self.context, Instruction::Load(ptr), span_md_idx);
+    pub fn load(self, src_val: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+        let load_val =
+            Value::new_instruction(self.context, Instruction::Load(src_val), span_md_idx);
         self.context.blocks[self.block.0]
             .instructions
             .push(load_val);
         load_val
+    }
+
+    pub fn nop(self) -> Value {
+        let nop_val = Value::new_instruction(self.context, Instruction::Nop, None);
+        self.context.blocks[self.block.0].instructions.push(nop_val);
+        nop_val
+    }
+
+    pub fn ptr_cast(self, ptr_val: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
+        let ptr_cast_val = Value::new_instruction(
+            self.context,
+            Instruction::PointerCast(ptr_val, ty),
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(ptr_cast_val);
+        ptr_cast_val
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
@@ -437,15 +490,52 @@ impl<'a> InstructionInserter<'a> {
         ret_val
     }
 
+    pub fn state_load(
+        self,
+        load_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_load_val = Value::new_instruction(
+            self.context,
+            Instruction::StateLoad { load_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_load_val);
+        state_load_val
+    }
+
+    pub fn state_store(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStore { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
     pub fn store(
         self,
-        ptr: Pointer,
+        dst_val: Value,
         stored_val: Value,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let store_val = Value::new_instruction(
             self.context,
-            Instruction::Store { ptr, stored_val },
+            Instruction::Store {
+                dst_val,
+                stored_val,
+            },
             span_md_idx,
         );
         self.context.blocks[self.block.0]

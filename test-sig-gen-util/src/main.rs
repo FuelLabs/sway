@@ -1,7 +1,7 @@
 //! This utility generates data used for testing Sway's ec_recover function (stdlib/ecr.sw).
 //! NOT to be used for key-generation as this is NEITHER SECURE NOR RANDOM !!!
 
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 
 use fuel_vm::crypto;
 use fuel_vm::prelude::*;

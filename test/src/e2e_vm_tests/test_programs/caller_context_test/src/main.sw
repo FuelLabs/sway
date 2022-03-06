@@ -1,48 +1,67 @@
 script;
-use std::{constants::{ETH_ID, ZERO}, chain::assert, contract_id::ContractId};
+use std::{chain::assert, constants::{ETH_ID, ZERO}, contract_id::ContractId};
 use context_testing_abi::*;
 
 fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
-    let other_contract_id = ~ContractId::from(0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f);
-    let deployed_contract_id = 0x2890a0a3fb38e88d4ef887d78db0cd4483583a00506c30b572dff1aa73305b3e;
+    let other_contract_id = ~ContractId::from(0x285dafd64feb42477cfb3da8193ceb28b5f5277c17591d7c10000661cacdd0c9);
 
-    let test_contract = abi(ContextTesting, deployed_contract_id);
+    // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
+    let deployed_contract_id = 0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322;
+
+    let test_contract = abi(ContextTesting, 0x285dafd64feb42477cfb3da8193ceb28b5f5277c17591d7c10000661cacdd0c9);
 
     // test Context::contract_id():
-    let returned_contract_id = test_contract.get_id(gas, 0, ETH_ID, ());
+    let returned_contract_id = test_contract.get_id {
+        gas: gas, coins: 0, asset_id: ETH_ID
+    }
+    ();
     assert(returned_contract_id == deployed_contract_id);
 
     // @todo set up a test contract to mint some tokens for testing balances.
     // test Context::this_balance():
-    let returned_this_balance = test_contract.get_this_balance(gas, 0, ETH_ID, ETH_ID);
+    let returned_this_balance = test_contract.get_this_balance {
+        gas: gas, coins: 0, asset_id: ETH_ID
+    }
+    (ETH_ID);
     assert(returned_this_balance == 0);
 
-    let params = ParamsContractBalance {
-        asset_id: ETH_ID,
-        contract_id: other_contract_id
-    };
     // test Context::balance_of_contract():
-    let returned_contract_balance = test_contract.get_balance_of_contract(gas, 0, ETH_ID, params);
+    let returned_contract_balance = test_contract.get_balance_of_contract {
+        gas: gas, coins: 0, asset_id: ETH_ID
+    }
+    (ETH_ID, other_contract_id);
     assert(returned_contract_balance == 0);
 
     // test Context::msg_value():
-    let returned_amount = test_contract.get_amount(gas, amount, ETH_ID, ());
+    let returned_amount = test_contract.get_amount {
+        gas: gas, coins: amount, asset_id: ETH_ID
+    }
+    ();
     assert(returned_amount == amount);
 
     // test Context::msg_asset_id():
-    let returned_asset_id = test_contract.get_asset_id(gas, amount, ETH_ID, ());
+    let returned_asset_id = test_contract.get_asset_id {
+        gas: gas, coins: amount, asset_id: ETH_ID
+    }
+    ();
     assert(returned_asset_id == ETH_ID);
 
     // test Context::msg_gas():
     // @todo expect the correct gas here... this should fail using `1000`
-    let gas = test_contract.get_gas(gas, amount, ETH_ID, ());
+    let gas = test_contract.get_gas {
+        gas: gas, coins: amount, asset_id: ETH_ID
+    }
+    ();
     assert(gas == 1000);
 
     // test Context::global_gas():
     // @todo expect the correct gas here... this should fail using `1000`
-    let global_gas = test_contract.get_global_gas(gas, amount, ETH_ID, ());
+    let global_gas = test_contract.get_global_gas {
+        gas: gas, coins: amount, asset_id: ETH_ID
+    }
+    ();
     assert(global_gas == 1000);
 
     true

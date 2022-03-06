@@ -163,8 +163,8 @@ struct AsmBuilder<'ir> {
     // Label map is from IR block to label name.
     label_map: HashMap<Block, Label>,
 
-    // Reg map, const map and var map are all tracking IR values to VM values.  Var map has an
-    // optional (None) register until its first assignment.
+    // Reg map is tracking IR values to VM values.  Ptr map is tracking IR pointers to local
+    // storage types.
     reg_map: HashMap<Value, VirtualRegister>,
     ptr_map: HashMap<Pointer, Storage>,
 
@@ -291,21 +291,25 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         // Reserve space on the stack for ALL our locals which require it.
-        if stack_base > 0 {
+        if !self.ptr_map.is_empty() {
             let base_reg = self.reg_seqr.next();
             self.bytecode.push(Op::unowned_register_move_comment(
                 base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
                 "save locals base register",
             ));
-            if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
-                todo!("Enormous stack usage for locals.");
+
+            // It's possible (though undesirable) to have empty local data structures only.
+            if stack_base != 0 {
+                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                    todo!("Enormous stack usage for locals.");
+                }
+                let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                    value: (stack_base * 8) as u32,
+                });
+                alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
+                self.bytecode.push(alloc_op);
             }
-            let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
-                value: (stack_base * 8) as u32,
-            });
-            alloc_op.comment = format!("allocate {} bytes for all locals", stack_base * 8);
-            self.bytecode.push(alloc_op);
             self.stack_base_reg = Some(base_reg);
         }
     }
@@ -403,12 +407,27 @@ impl<'ir> AsmBuilder<'ir> {
                     value,
                     indices,
                 } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
-                Instruction::Load(ptr) => self.compile_load(instr_val, ptr),
+                Instruction::Load(src_val) => check!(
+                    self.compile_load(instr_val, src_val),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
+                Instruction::PointerCast(..) => todo!(),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
-                Instruction::Store { ptr, stored_val } => {
-                    self.compile_store(instr_val, ptr, stored_val)
-                }
+                Instruction::StateLoad { .. } => todo!(),
+                Instruction::StateStore { .. } => todo!(),
+                Instruction::Store {
+                    dst_val,
+                    stored_val,
+                } => check!(
+                    self.compile_store(instr_val, dst_val, stored_val),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
             }
         } else {
             errors.push(CompileError::Internal(
@@ -1016,11 +1035,16 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, base_reg);
     }
 
-    fn compile_load(&mut self, instr_val: &Value, ptr: &Pointer) {
+    fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
+        let ptr = self.resolve_ptr(src_val);
+        if ptr.value.is_none() {
+            return ptr.map(|_| ());
+        }
+        let ptr = ptr.value.unwrap();
         let load_size_in_words =
             size_bytes_in_words!(self.ir_type_size_in_bytes(ptr.get_type(self.context)));
         let instr_reg = self.reg_seqr.next();
-        match self.ptr_map.get(ptr) {
+        match self.ptr_map.get(&ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
             Some(storage) => match storage.clone() {
                 Storage::Data(data_id) => {
@@ -1113,6 +1137,7 @@ impl<'ir> AsmBuilder<'ir> {
             },
         }
         self.reg_map.insert(*instr_val, instr_reg);
+        ok((), Vec::new(), Vec::new())
     }
 
     fn compile_ret(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
@@ -1160,10 +1185,20 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
-    fn compile_store(&mut self, instr_val: &Value, ptr: &Pointer, stored_val: &Value) {
+    fn compile_store(
+        &mut self,
+        instr_val: &Value,
+        dst_val: &Value,
+        stored_val: &Value,
+    ) -> CompileResult<()> {
+        let ptr = self.resolve_ptr(dst_val);
+        if ptr.value.is_none() {
+            return ptr.map(|_| ());
+        }
+        let ptr = ptr.value.unwrap();
         let stored_reg = self.value_to_register(stored_val);
-        let is_struct_ptr = ptr.is_struct_ptr(self.context);
-        match self.ptr_map.get(ptr) {
+        let is_aggregate_ptr = ptr.is_aggregate_ptr(self.context);
+        match self.ptr_map.get(&ptr) {
             None => unreachable!("Bug! Trying to store to an unknown pointer."),
             Some(storage) => match storage {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
@@ -1186,7 +1221,7 @@ impl<'ir> AsmBuilder<'ir> {
                             let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
                             // A single word can be stored with SW.
-                            let stored_reg = if !is_struct_ptr {
+                            let stored_reg = if !is_aggregate_ptr {
                                 // stored_reg is a value.
                                 stored_reg
                             } else {
@@ -1314,6 +1349,24 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             },
         };
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<Pointer> {
+        match &self.context.values[ptr_val.0].value {
+            ValueDatum::Instruction(Instruction::GetPointer(ptr)) => {
+                ok(*ptr, Vec::new(), Vec::new())
+            }
+            _otherwise => err(
+                Vec::new(),
+                vec![CompileError::Internal(
+                    "Pointer arg for load/store is not a get_ptr instruction.",
+                    ptr_val
+                        .get_span(self.context)
+                        .unwrap_or_else(Self::empty_span),
+                )],
+            ),
+        }
     }
 
     fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
@@ -1400,7 +1453,20 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
 
                                 // Insert the value into the map.
-                                self.reg_map.insert(*value, reg.clone());
+                                //self.reg_map.insert(*value, reg.clone());
+                                //
+                                // Actually, no, don't.  It's possible for constant values to be
+                                // reused in the IR, especially with transforms which copy blocks
+                                // around, like inlining.  The `LW`/`LWDataId` instruction above
+                                // initialises that constant value but it may be in a conditional
+                                // block and not actually get evaluated for every possible
+                                // execution. So using the register later on by pulling it from
+                                // `self.reg_map` will have a potentially uninitialised register.
+                                //
+                                // By not putting it in the map we recreate the `LW` each time it's
+                                // used, which also isn't ideal.  A better solution is to put this
+                                // initialisation into the IR itself, and allow for analysis there
+                                // to determine when it may be initialised and/or reused.
 
                                 // Return register.
                                 reg
@@ -1780,7 +1846,7 @@ mod tests {
                 Some("asm") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }

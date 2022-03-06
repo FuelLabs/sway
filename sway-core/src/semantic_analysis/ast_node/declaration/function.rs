@@ -65,7 +65,7 @@ impl TypedFunctionDeclaration {
             visibility,
             purity,
             ..
-        } = fn_decl.clone();
+        } = fn_decl;
         opts.purity = purity;
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
@@ -208,47 +208,6 @@ impl TypedFunctionDeclaration {
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));
                 } //    "Function body's return type does not match up with its return type annotation.",
-            }
-        }
-
-        // if this is an abi function, it is required that it begins with
-        // the three parameters related to contract calls
-        //  gas_to_forward: u64,
-        //  coins_to_forward: u64,
-        //  color_of_coins: b256,
-        //
-        //  eventually this will be a `ContractRequest`
-        //
-        //  not spending _too_ much time on particularly specific error messages here since
-        //  it is a temporary workaround
-        if mode == Mode::ImplAbiFn {
-            if parameters.len() == 4 {
-                if look_up_type_id(parameters[0].r#type)
-                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[0].type_span.clone(),
-                    });
-                }
-                if look_up_type_id(parameters[1].r#type)
-                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[1].type_span.clone(),
-                    });
-                }
-                if look_up_type_id(parameters[2].r#type) != TypeInfo::B256 {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[2].type_span.clone(),
-                    });
-                }
-            } else {
-                errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                    span: parameters
-                        .get(0)
-                        .map(|x| x.type_span.clone())
-                        .unwrap_or_else(|| fn_decl.name.span().clone()),
-                });
             }
         }
 
