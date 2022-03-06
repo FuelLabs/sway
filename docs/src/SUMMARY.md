@@ -3,6 +3,7 @@
 [The Sway Programming Language](./README.md)
 
 - [Getting Started](./getting-started/index.md)
+  - [Overview](./getting-started/overview.md)
   - [Installation](./getting-started/installation.md)
   - [The Sway Toolchain](./getting-started/sway-toolchain.md)
   - [A Forc Project](./getting-started/forc_project.md)
