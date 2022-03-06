@@ -23,23 +23,6 @@ struct Sent {
 }
 
 ////////////////////////////////////////
-// ABI method parameter declarations
-////////////////////////////////////////
-
-/// Parameters for `mint` method.
-struct ParamsMint {
-    receiver: b256,
-    amount: u64,
-}
-
-/// Parameters for `send` method.
-struct ParamsSend {
-    sender: b256,
-    receiver: b256,
-    amount: u64,
-}
-
-////////////////////////////////////////
 // ABI declarations
 ////////////////////////////////////////
 
@@ -47,17 +30,12 @@ struct ParamsSend {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint);
+    fn mint(receiver: b256, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend);
+    fn send(sender: b256, receiver: b256, amount: u64);
 }
-
-// Note: ABI methods for now must explicitly have as parameters:
-//  gas_ to forward: u64
-//  coins_ to forward: u64
-//  asset_id_ of coins: b256
 
 ////////////////////////////////////////
 // Constants
@@ -81,14 +59,14 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint) {
+    fn mint(receiver: b256, amount: u64) {
         // Note: authentication is not yet implemented, for now just trust params
         // See https://github.com/FuelLabs/sway/issues/195
-        if args.receiver == MINTER {
+        if receiver == MINTER {
             let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
 
             let mut amount = get::<u64>(storage_slot);
-            amount = amount + args.amount;
+            amount = amount + amount;
             store(storage_slot, amount);
         } else {
             // Revert with error `69`, chosen arbitrarily
@@ -96,17 +74,17 @@ impl Token for Contract {
         }
     }
 
-    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend) {
-        let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
+    fn send(sender: b256, receiver: b256, amount: u64) {
+        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender, HashMethod::Sha256);
 
         let mut sender_amount = get::<u64>(sender_storage_slot);
-        sender_amount = sender_amount - args.amount;
+        sender_amount = sender_amount - amount;
         store(sender_storage_slot, sender_amount);
 
-        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, args.receiver, HashMethod::Sha256);
+        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver, HashMethod::Sha256);
 
         let mut receiver_amount = get::<u64>(receiver_storage_slot);
-        receiver_amount = receiver_amount + args.amount;
+        receiver_amount = receiver_amount + amount;
         store(receiver_storage_slot, receiver_amount);
     }
 }
