@@ -18,7 +18,7 @@ forc deploy
 
 from the root of the `wallet_contract` directory.
 
-This should produce some output in stdout that looks like this:
+This should produce some output in `stdout` that looks like this:
 
 ```console
   Compiled library "lib-std" with 7 warnings.
