@@ -10,7 +10,7 @@ anyhow = "1.0.41"
 forc = { version = "0.5.0", path = "../forc", features = ["test"], default-features = false }
 fuel-asm = "0.1"
 fuel-tx = "0.5"
-fuel-vm = { path = "../../fuel-vm", version = "0.4", features = ["random"] }
+fuel-vm = { version = "0.4", features = ["random"] }
 rand = "0.8"
 regex = "1"
 tokio = "1.12"
