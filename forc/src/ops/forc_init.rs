@@ -56,7 +56,11 @@ pub fn init(command: InitCommand) -> Result<()> {
                 "counter" => {
                     Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")?
                 }
-                _ => Url::parse(&template)?,
+                _ => {
+                    return Err(anyhow!(
+                        "Unrecognized template: \n Example Templates:\n - counter"
+                    ));
+                }
             };
             init_from_git_template(project_name, &template_url)
         }

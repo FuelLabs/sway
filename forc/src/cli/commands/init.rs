@@ -4,13 +4,8 @@ use clap::Parser;
 
 static TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
 
-Option 1: 
-Create a new project using supported examples from FuelLabs.
 Example Templates: 
- - counter
-
-Option 2: 
-Create a new project from a GitHub URL containing a sway project."#;
+ - counter"#;
 
 /// Create a new Forc project.
 #[derive(Debug, Parser)]
