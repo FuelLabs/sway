@@ -1009,7 +1009,7 @@ dependencies = [
  "git2",
  "hex",
  "petgraph",
- "prettydiff 0.6.1",
+ "prettydiff",
  "reqwest",
  "semver 1.0.4",
  "serde",
@@ -2251,17 +2251,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prettydiff"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b6176190f1637d46034820b82fbe758727ccb40da9c9fc2255d695eb05ea29c"
-dependencies = [
- "ansi_term",
- "prettytable-rs",
- "structopt",
-]
-
-[[package]]
 name = "prettytable-rs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3047,7 +3036,7 @@ dependencies = [
  "lazy_static",
  "nanoid",
  "petgraph",
- "prettydiff 0.5.1",
+ "prettydiff",
  "regex",
  "serde",
  "sha2",
@@ -3073,7 +3062,7 @@ dependencies = [
  "fuel-pest",
  "generational-arena",
  "peg",
- "prettydiff 0.5.1",
+ "prettydiff",
  "sway-types",
 ]
 
