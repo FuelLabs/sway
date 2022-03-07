@@ -85,7 +85,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
         ("enum_if_let", ProgramState::Return(143)),
         ("enum_destructuring", ProgramState::Return(15)),
-        ("enum_if_let_large_type", ProgramState::Return(42)),
+        ("enum_if_let_large_type", ProgramState::Return(15)),
         ("enum_type_inference", ProgramState::Return(5)),
         ("size_of", ProgramState::Return(1)),
         ("supertraits", ProgramState::Return(1)),

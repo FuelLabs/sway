@@ -25,23 +25,19 @@ enum SaleError {
 }
 
 fn main() -> u64 {
-/*    let x = sell_product(Product {
+    let x = sell_product(Product {
         details: ItemDetails {
             name: "shoe", price: 100, 
         },
         inventory_number: 0, number_sold: 10, number_available: 5
-    });*/
-    let x = Result::Ok::<ItemDetails, u64>(ItemDetails { name: "shoe", price: 100 });
-    if let Result::Ok(y) = x { y.price - 85 } else { 1 }
+    });
 
-/*
     // should return 15
     if let Result::Ok(y) = x {
         y.number_sold + 4
     } else {
         1
     }
-    */
 }
 
 fn sell_product(product: Product) -> Result<Product, SaleError> {

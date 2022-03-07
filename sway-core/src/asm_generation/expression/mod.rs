@@ -658,65 +658,17 @@ fn convert_if_let_to_asm(
         variable_to_assign.clone(),
         variable_to_assign_register.clone(),
     );
-    match look_up_type_id(variant.r#type).size_in_words(&expr.span) {
-        Ok(size) => {
-            if size == 1 {
-                // load the word that is at the expr return register + 1 word
-                // + 1 word is to account for the enum tag
-                buf.push(Op {
-                    opcode: Either::Left(VirtualOp::LW(
-                        variable_to_assign_register,
-                        expr_return_register,
-                        VirtualImmediate12::new_unchecked(1, "infallible"),
-                    )),
-                    owning_span: Some(then.span().clone()),
-                    comment: "Load destructured value into register".into(),
-                });
-            } else {
-                // add one word to the pointer (8 bytes) to skip the tag -- the result of this is $rA
-                // mcpi variable_to_assign_register, $rA, size_of_enum
-                buf.push(Op {
-                    opcode: Either::Left(VirtualOp::ADDI(
-                        expr_return_register.clone(),
-                        expr_return_register.clone(),
-                        VirtualImmediate12::new_unchecked(8, "infallible"),
-                    )),
-                    owning_span: Some(then.span().clone()),
-                    comment: "Increment pointer to skip tag in enum destructuring".into(),
-                });
-                // since we are copying here, we need to ensure enough space has been allocated for
-                // the variable to assign to be written
-
-                let size_to_allocate_in_bytes = size * 8;
-                let size_to_allocate_in_bytes_imm = VirtualImmediate24::new_unchecked(
-                    size_to_allocate_in_bytes,
-                    "enums can't be this large -- unsupported",
-                );
-                buf.push(Op::unowned_register_move(
-                    variable_to_assign_register.clone(),
-                    VirtualRegister::Constant(ConstantRegister::StackPointer),
-                ));
-                buf.push(Op::unowned_stack_allocate_memory(
-                    size_to_allocate_in_bytes_imm,
-                ));
-                buf.push(Op {
-                    opcode: Either::Left(VirtualOp::MCPI(
-                        variable_to_assign_register.clone(),
-                        expr_return_register,
-                        VirtualImmediate12::new_unchecked(
-                            size_to_allocate_in_bytes,
-                            "enums this large are not supported",
-                        ),
-                    )),
-                    owning_span: Some(then.span().clone()),
-                    comment: "copy enum contents".into(),
-                });
-            }
-        }
-        Err(e) => {
-            errors.push(e);
-        }
-    }
+    // load the word that is at the expr return register + 1 word
+    // + 1 word is to account for the enum tag
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::LW(
+            variable_to_assign_register,
+            expr_return_register,
+            VirtualImmediate12::new_unchecked(1, "infallible"),
+        )),
+        owning_span: Some(then.span().clone()),
+        comment: "Load destructured value into register".into(),
+    });
 
     // 6
     buf.append(&mut check!(
