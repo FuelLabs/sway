@@ -10,7 +10,7 @@ script {
 
         v3 = load ptr v2
         v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303
-        v5 = asm(lhs: v3, rhs: v4, sz, res) -> res {
+        v5 = asm(lhs: v3, rhs: v4, sz, res) -> bool res {
             addi   sz zero i32
             meq    res lhs rhs sz
         }

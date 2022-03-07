@@ -15,7 +15,7 @@ script {
 
     fn anon_0(a !6: b256, b !7: b256) -> bool {
         entry:
-        v0 = asm(lhs: a, rhs: b, sz, res) -> res, !8 {
+        v0 = asm(lhs: a, rhs: b, sz, res) -> bool res, !8 {
             addi   sz zero i32, !9
             meq    res lhs rhs sz, !10
         }
