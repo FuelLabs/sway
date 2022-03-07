@@ -5,7 +5,6 @@ fn main() {
   foo()
 }
 
-
 impure fn foo() {
   
 }

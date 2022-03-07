@@ -4,7 +4,7 @@ use std::{context::*, contract_id::ContractId};
 use context_testing_abi::*;
 
 impl ContextTesting for Contract {
-    fn get_id() -> b256 {
+    fn get_id() -> ContractId<b256> {
         contract_id()
     }
 
@@ -20,7 +20,7 @@ impl ContextTesting for Contract {
         msg_amount()
     }
 
-    fn get_asset_id() -> b256 {
+    fn get_asset_id() -> ContractId<b256> {
         msg_asset_id()
     }
 

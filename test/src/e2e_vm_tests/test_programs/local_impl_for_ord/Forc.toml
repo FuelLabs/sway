@@ -5,5 +5,4 @@ name = "local_impl_for_ord"
 entry = "main.sw"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.1.0" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }
