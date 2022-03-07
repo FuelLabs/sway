@@ -993,7 +993,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2118,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -3021,7 +3021,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "clap 3.1.2",
  "derivative",
@@ -3048,7 +3048,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3057,7 +3057,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -3068,7 +3068,7 @@ dependencies = [
 
 [[package]]
 name = "sway-server"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "dashmap",
  "lspower",
@@ -3083,7 +3083,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3095,7 +3095,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "syn"
