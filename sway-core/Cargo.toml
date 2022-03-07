@@ -16,8 +16,8 @@ clap = { version = "3.1.2", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.1"
-fuel-vm = "0.4"
+fuel-asm = "0.2"
+fuel-vm = "0.5"
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
 nanoid = "0.4"

@@ -15,10 +15,10 @@ anyhow = "1.0.41"
 clap = { version = "3.1.2", features = ["env", "derive"] }
 clap_complete = "3.1"
 dirs = "3.0.2"
-fuel-asm = "0.1"
-fuel-gql-client = { version = "0.3", default-features = false }
-fuel-tx = "0.5"
-fuel-vm = "0.4"
+fuel-asm = "0.2"
+fuel-gql-client = { version = "0.4", default-features = false }
+fuel-tx = "0.6"
+fuel-vm = "0.5"
 futures = "0.3"
 git2 = "0.14"
 hex = "0.4.3"
