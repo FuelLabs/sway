@@ -879,7 +879,7 @@ impl TypedExpression {
                 enum_type,
                 variant,
                 then,
-                r#else: r#else,
+                r#else,
             },
             is_constant: IsConstant::No, // TODO
             return_type: then_branch_code_block_return_type,
