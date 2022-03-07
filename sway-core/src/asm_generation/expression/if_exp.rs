@@ -1,4 +1,8 @@
-use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
+use crate::asm_generation::{
+    convert_expression_to_asm, AsmNamespace,
+    Either::{Left, Right},
+    RegisterSequencer,
+};
 use crate::asm_lang::{ConstantRegister, Op, VirtualRegister};
 use crate::error::*;
 
@@ -65,13 +69,27 @@ pub(crate) fn convert_if_exp_to_asm(
         warnings,
         errors
     );
+
+    // has then_branch_result register been defined?
+    let return_reg_defined = then_branch.iter().any(|op| {
+        match &op.opcode {
+            Left(inst) => inst.def_registers().contains(&then_branch_result),
+            Right(_) => false, // Organizational Ops don't def registers
+        }
+    });
+
     asm_buf.append(&mut then_branch);
-    // move the result of the then branch into the return register
-    asm_buf.push(Op::register_move(
-        return_register.clone(),
-        then_branch_result,
-        then.clone().span,
-    ));
+
+    // move the result of the then branch into the return register if then_branch_result has been
+    // defined
+    if return_reg_defined {
+        asm_buf.push(Op::register_move(
+            return_register.clone(),
+            then_branch_result,
+            then.clone().span,
+        ));
+    }
+
     asm_buf.push(Op::jump_to_label_comment(
         after_else_label.clone(),
         "end of then branch",
@@ -89,14 +107,26 @@ pub(crate) fn convert_if_exp_to_asm(
             warnings,
             errors
         );
+
+        // Has else_branch_result register been defined?
+        let return_reg_defined = else_branch.iter().any(|op| {
+            match &op.opcode {
+                Left(inst) => inst.def_registers().contains(&else_branch_result),
+                Right(_) => false, // Organizational Ops don't def registers
+            }
+        });
+
         asm_buf.append(&mut else_branch);
 
-        // move the result of the else branch into the return register
-        asm_buf.push(Op::register_move(
-            return_register.clone(),
-            else_branch_result,
-            r#else.clone().span,
-        ));
+        // move the result of the else branch into the return register if else_branch_result been
+        // defined
+        if return_reg_defined {
+            asm_buf.push(Op::register_move(
+                return_register.clone(),
+                else_branch_result,
+                r#else.clone().span,
+            ));
+        }
     }
 
     asm_buf.push(Op::unowned_jump_label_comment(
