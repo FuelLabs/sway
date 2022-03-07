@@ -499,7 +499,7 @@ where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
     // Clear existing temporary directory if it exists.
-    let repo_dir = tmp_git_repo_dir(name, &source);
+    let repo_dir = tmp_git_repo_dir(name, source);
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
