@@ -23,7 +23,7 @@ use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
 
 #[derive(Debug, Parser)]
-#[clap(name = "forc", about = "Fuel Orchestrator")]
+#[clap(name = "forc", about = "Fuel Orchestrator", version)]
 struct Opt {
     /// the command to run
     #[clap(subcommand)]
