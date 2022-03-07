@@ -47,23 +47,20 @@ struct ContentResponse {
     url: String,
 }
 
-pub fn init(command: InitCommand) -> Result<(), String> {
+pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
 
     match command.template {
         Some(template) => {
             let template_url = match template.as_str() {
                 "counter" => {
-                    Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")
-                        .unwrap()
+                    Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")?
                 }
-                _ => Url::parse(&template)
-                    .map_err(|e| format!("Not a valid URL {}", e))
-                    .unwrap(),
+                _ => Url::parse(&template)?,
             };
-            init_from_git_template(project_name, &template_url).map_err(|e| e.to_string())
+            init_from_git_template(project_name, &template_url)
         }
-        None => init_new_project(project_name).map_err(|e| e.to_string()),
+        None => init_new_project(project_name),
     }
 }
 
