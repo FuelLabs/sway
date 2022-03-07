@@ -3,7 +3,9 @@ use std::{
     fmt,
 };
 
-use crate::semantic_analysis::ast_node::{TypedStructField, TypedVariableDeclaration, VariableMutability};
+use crate::semantic_analysis::ast_node::{
+    TypedStructField, TypedVariableDeclaration, VariableMutability,
+};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -15,8 +17,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        read_module, TypedAstNode, TypedAstNodeContent,
-        TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -1302,8 +1304,12 @@ fn compile_contract_to_selectors(
             _ => {
                 // load the call frame argument into the function argument register
                 let bundled_arguments_register = register_sequencer.next();
-                let bundled_arguments_span = decl.parameters.iter()
-                .fold(decl.parameters[0].name.span().clone(), |acc, x| join_spans(acc, x.name.span().clone()));
+                let bundled_arguments_span = decl
+                    .parameters
+                    .iter()
+                    .fold(decl.parameters[0].name.span().clone(), |acc, x| {
+                        join_spans(acc, x.name.span().clone())
+                    });
 
                 // Create a new struct type that contains all the arguments. Then, for each argument,
                 // create a register for it and load it using some utilities from expression::subfield.
@@ -1316,7 +1322,6 @@ fn compile_contract_to_selectors(
                             name: p.name.clone(),
                             r#type: p.r#type,
                             span: p.name.span().clone(),
-                        
                         })
                         .collect::<Vec<_>>(),
                 });
