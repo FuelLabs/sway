@@ -65,9 +65,9 @@ impl Token for Contract {
         if receiver == MINTER {
             let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
 
-            let mut amount = get::<u64>(storage_slot);
-            amount = amount + amount;
-            store(storage_slot, amount);
+            let mut receiver_amount = get::<u64>(storage_slot);
+            receiver_amount = receiver_amount + amount;
+            store(storage_slot, receiver_amount);
         } else {
             // Revert with error `69`, chosen arbitrarily
             panic(69);
