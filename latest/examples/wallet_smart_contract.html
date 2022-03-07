@@ -186,29 +186,24 @@ const ETH_ID: b256 = 0x000000000000000000000000000000000000000000000000000000000
 // }
 
 abi Wallet {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ());
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
+    fn receive_funds();
+    fn send_funds(amount_to_send: u64, recipient_address: b256);
 }
 
 impl Wallet for Contract {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
+    fn receive_funds() {
         // if asset_id == ETH_ID {
         //     let balance = storage.balance.write();
         //     deref balance = balance + coins_to_forward;
         // };
     }
 
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest) {
+    fn send_funds(amount_to_send: u64, recipient_address: b256) {
         // assert(sender() == OWNER_ADDRESS);
         // assert(storage.balance &gt; req.amount_to_send);
         // storage.balance = storage.balance - req.amount_to_send;
         // transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
     }
-}
-
-struct SendFundsRequest {
-    amount_to_send: u64,
-    recipient_address: b256,
 }
 </code></pre>
 

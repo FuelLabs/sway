@@ -279,23 +279,23 @@ $ tree .
 <p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
 <pre><code class="language-sway">contract;
 
-use std::storage::*;
 use std::constants::*;
+use std::storage::*;
 
 abi TestContract {
-    fn initialize_counter(gas_: u64, amount_: u64, coin_: b256, value: u64) -&gt; u64;
-    fn increment_counter(gas_: u64, amount_: u64, coin_: b256, amount: u64) -&gt; u64;
+    fn initialize_counter(value: u64) -&gt; u64;
+    fn increment_counter(amount: u64) -&gt; u64;
 }
 
 const SLOT = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl TestContract for Contract {
-    fn initialize_counter(gas_: u64, amount_: u64, color_: b256, value: u64) -&gt; u64 {
+    fn initialize_counter(value: u64) -&gt; u64 {
         store(SLOT, value);
         value
     }
 
-    fn increment_counter(gas_: u64, amount_: u64, color_: b256, amount: u64) -&gt; u64 {
+    fn increment_counter(amount: u64) -&gt; u64 {
         let storedVal: u64 = get(SLOT);
         let value = storedVal + amount;
         store(SLOT, value);
@@ -507,23 +507,6 @@ struct Sent {
 }
 
 ////////////////////////////////////////
-// ABI method parameter declarations
-////////////////////////////////////////
-
-/// Parameters for `mint` method.
-struct ParamsMint {
-    receiver: b256,
-    amount: u64,
-}
-
-/// Parameters for `send` method.
-struct ParamsSend {
-    sender: b256,
-    receiver: b256,
-    amount: u64,
-}
-
-////////////////////////////////////////
 // ABI declarations
 ////////////////////////////////////////
 
@@ -531,17 +514,12 @@ struct ParamsSend {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint);
+    fn mint(receiver: b256, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend);
+    fn send(sender: b256, receiver: b256, amount: u64);
 }
-
-// Note: ABI methods for now must explicitly have as parameters:
-//  gas_ to forward: u64
-//  coins_ to forward: u64
-//  asset_id_ of coins: b256
 
 ////////////////////////////////////////
 // Constants
@@ -565,32 +543,32 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint) {
+    fn mint(receiver: b256, amount: u64) {
         // Note: authentication is not yet implemented, for now just trust params
         // See https://github.com/FuelLabs/sway/issues/195
-        if args.receiver == MINTER {
+        if receiver == MINTER {
             let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
 
-            let mut amount = get::&lt;u64&gt;(storage_slot);
-            amount = amount + args.amount;
-            store(storage_slot, amount);
+            let mut receiver_amount = get::&lt;u64&gt;(storage_slot);
+            receiver_amount = receiver_amount + amount;
+            store(storage_slot, receiver_amount);
         } else {
             // Revert with error `69`, chosen arbitrarily
             panic(69);
         }
     }
 
-    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend) {
-        let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
+    fn send(sender: b256, receiver: b256, amount: u64) {
+        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender, HashMethod::Sha256);
 
         let mut sender_amount = get::&lt;u64&gt;(sender_storage_slot);
-        sender_amount = sender_amount - args.amount;
+        sender_amount = sender_amount - amount;
         store(sender_storage_slot, sender_amount);
 
-        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, args.receiver, HashMethod::Sha256);
+        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver, HashMethod::Sha256);
 
         let mut receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
-        receiver_amount = receiver_amount + args.amount;
+        receiver_amount = receiver_amount + amount;
         store(receiver_storage_slot, receiver_amount);
     }
 }
@@ -645,29 +623,24 @@ const ETH_ID: b256 = 0x000000000000000000000000000000000000000000000000000000000
 // }
 
 abi Wallet {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ());
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
+    fn receive_funds();
+    fn send_funds(amount_to_send: u64, recipient_address: b256);
 }
 
 impl Wallet for Contract {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
+    fn receive_funds() {
         // if asset_id == ETH_ID {
         //     let balance = storage.balance.write();
         //     deref balance = balance + coins_to_forward;
         // };
     }
 
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest) {
+    fn send_funds(amount_to_send: u64, recipient_address: b256) {
         // assert(sender() == OWNER_ADDRESS);
         // assert(storage.balance &gt; req.amount_to_send);
         // storage.balance = storage.balance - req.amount_to_send;
         // transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
     }
-}
-
-struct SendFundsRequest {
-    amount_to_send: u64,
-    recipient_address: b256,
 }
 </code></pre>
 <h1 id="basics"><a class="header" href="#basics">Basics</a></h1>
