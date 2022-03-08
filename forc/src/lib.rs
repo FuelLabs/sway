@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 mod cli;
+mod lock;
 mod ops;
+mod pkg;
 mod utils;
 
 #[cfg(feature = "test")]

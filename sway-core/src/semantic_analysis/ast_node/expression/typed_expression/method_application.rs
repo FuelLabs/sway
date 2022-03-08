@@ -1,15 +1,17 @@
 use super::*;
 use crate::build_config::BuildConfig;
+use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::parse_tree::MethodName;
+use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::TCOpts;
 use pest::Parser;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
     method_name: MethodName,
+    contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
     namespace: NamespaceRef,
@@ -22,6 +24,7 @@ pub(crate) fn type_check_method_application(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
+    let mut contract_call_params_map = HashMap::new();
     for arg in arguments {
         args_buf.push_back(check!(
             TypedExpression::type_check(TypeCheckArguments {
@@ -98,6 +101,75 @@ pub(crate) fn type_check_method_application(
         None
     };
 
+    if !method.is_contract_call {
+        if !contract_call_params.is_empty() {
+            errors.push(CompileError::CallParamForNonContractCallMethod {
+                span: contract_call_params[0].name.span().clone(),
+            });
+        }
+    } else {
+        for param_name in &[
+            constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
+            constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
+            constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME,
+        ] {
+            if contract_call_params
+                .iter()
+                .filter(|&param| param.name.span().as_str() == *param_name)
+                .count()
+                > 1
+            {
+                errors.push(CompileError::ContractCallParamRepeated {
+                    param_name: param_name.to_string(),
+                    span: span.clone(),
+                });
+            }
+        }
+
+        for param in contract_call_params {
+            match param.name.span().as_str() {
+                constants::CONTRACT_CALL_GAS_PARAMETER_NAME
+                | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
+                | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    contract_call_params_map.insert(
+                        param.name.to_string(),
+                        check!(
+                            TypedExpression::type_check(TypeCheckArguments {
+                                checkee: param.value,
+                                namespace,
+                                crate_namespace,
+                                return_type_annotation: match param.name.span().as_str() {
+                                    constants::CONTRACT_CALL_GAS_PARAMETER_NAME
+                                    | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => insert_type(
+                                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                                    ),
+                                    constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME =>
+                                        insert_type(TypeInfo::B256),
+                                    _ => unreachable!(),
+                                },
+                                help_text: Default::default(),
+                                self_type,
+                                build_config,
+                                dead_code_graph,
+                                mode: Mode::NonAbi,
+                                opts,
+                            }),
+                            error_recovery_expr(span.clone()),
+                            warnings,
+                            errors
+                        ),
+                    );
+                }
+                _ => {
+                    errors.push(CompileError::UnrecognizedContractParam {
+                        param_name: param.name.to_string(),
+                        span: param.name.span().clone(),
+                    });
+                }
+            };
+        }
+    }
+
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
@@ -155,6 +227,7 @@ pub(crate) fn type_check_method_application(
                         suffix: method_name,
                         is_absolute: false,
                     },
+                    contract_call_params: contract_call_params_map,
                     arguments: args_and_names,
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {
@@ -231,6 +304,7 @@ pub(crate) fn type_check_method_application(
             TypedExpression {
                 expression: TypedExpressionVariant::FunctionApplication {
                     name: call_path.clone(),
+                    contract_call_params: contract_call_params_map,
                     arguments: args_and_names,
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {

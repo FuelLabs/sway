@@ -1,9 +1,10 @@
+use anyhow::{bail, Result};
 use fuel_gql_client::client::FuelClient;
 use std::process::Stdio;
 use tokio::process::{Child, Command};
 use tokio::time::{sleep, Duration};
 
-pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Child, String> {
+pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Child> {
     let mut url_parts = node_url.split(':').collect::<Vec<&str>>();
     let port = url_parts.pop().unwrap_or("4000");
     let ip = url_parts.join(":");
@@ -25,8 +26,8 @@ pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Chil
                 }
             }
 
-            Err("Could not start fuel-core".into())
+            bail!("Could not start fuel-core")
         }
-        Err(e) => Err(format!("Failed to spawn: {:?}. Error: {:?}", cmd, e)),
+        Err(e) => bail!("Failed to spawn: {:?}. Error: {:?}", cmd, e),
     }
 }

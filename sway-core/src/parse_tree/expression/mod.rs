@@ -94,6 +94,7 @@ pub enum Expression {
     },
     MethodApplication {
         method_name: MethodName,
+        contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         span: Span,
     },
@@ -237,6 +238,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -255,6 +257,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -690,6 +693,44 @@ impl Expression {
                             .expect("Guaranteed by grammar.")
                             .into_inner()
                             .collect::<Vec<_>>();
+                        let contract_call_params =
+                            match pair.peek().expect("Guaranteed by grammar").as_rule() {
+                                Rule::contract_call_params => pair.next(),
+                                _ => None,
+                            };
+
+                        let mut fields_buf = Vec::new();
+                        if let Some(params) = contract_call_params {
+                            let fields = params
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .collect::<Vec<_>>();
+                            for i in (0..fields.len()).step_by(2) {
+                                let name = check!(
+                                    ident::parse_from_pair(fields[i].clone(), config),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                );
+                                let span = Span {
+                                    span: fields[i].as_span(),
+                                    path: path.clone(),
+                                };
+                                let value = check!(
+                                    Expression::parse_from_pair(fields[i + 1].clone(), config),
+                                    Expression::Tuple {
+                                        fields: vec![],
+                                        span: span.clone()
+                                    },
+                                    warnings,
+                                    errors
+                                );
+                                fields_buf.push(StructExpressionField { name, value, span });
+                            }
+                        }
+
                         let function_arguments =
                             pair.next().expect("Guaranteed by grammar").into_inner();
                         // remove the last field from the subfield exp, since it is the method name
@@ -753,6 +794,7 @@ impl Expression {
                         arguments_buf.push_front(expr);
                         Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
+                            contract_call_params: fields_buf,
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
@@ -861,6 +903,7 @@ impl Expression {
 
                         Expression::MethodApplication {
                             method_name,
+                            contract_call_params: vec![],
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }

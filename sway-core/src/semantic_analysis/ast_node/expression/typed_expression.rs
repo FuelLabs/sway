@@ -163,10 +163,12 @@ impl TypedExpression {
             ),
             Expression::MethodApplication {
                 method_name,
+                contract_call_params,
                 arguments,
                 span,
             } => type_check_method_application(
                 method_name,
+                contract_call_params,
                 arguments,
                 span,
                 namespace,
@@ -1564,6 +1566,7 @@ impl TypedExpression {
             };
             type_check_method_application(
                 method_name,
+                vec![],
                 vec![prefix, index],
                 span,
                 namespace,

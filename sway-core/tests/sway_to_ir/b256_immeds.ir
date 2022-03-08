@@ -1,34 +1,36 @@
 script {
-    fn cmp(a !1: b256, b !2: b256) -> bool {
-        entry:
-        v0 = asm(lhs: a, rhs: b, sz, res) -> res, !3 {
-            addi   sz zero i32, !4
-            meq    res lhs rhs sz, !5
-        }
-        ret bool v0
-    }
-
     fn main() -> bool {
         local ptr b256 a
 
         entry:
-        v0 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !6
-        store v0, ptr b256 a, !7
-        v1 = load ptr b256 a, !8
-        v2 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !9
-        v3 = call cmp(v1, v2), !10
-        ret bool v3
+        v0 = get_ptr ptr b256 a, !1
+        v1 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !2
+        store v1, ptr v0, !1
+        v2 = get_ptr ptr b256 a, !3
+        v3 = load ptr v2, !3
+        v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !4
+        v5 = call anon_0(v3, v4), !5
+        ret bool v5
+    }
+
+    fn anon_0(a !6: b256, b !7: b256) -> bool {
+        entry:
+        v0 = asm(lhs: a, rhs: b, sz, res) -> res, !8 {
+            addi   sz zero i32, !9
+            meq    res lhs rhs sz, !10
+        }
+        ret bool v0
     }
 }
 
 !0 = filepath "/path/to/b256_immeds.sw"
-!1 = span !0 198 199
-!2 = span !0 207 208
-!3 = span !0 230 338
-!4 = span !0 269 286
-!5 = span !0 295 314
-!6 = span !0 41 107
-!7 = span !0 33 108
-!8 = span !0 117 118
-!9 = span !0 120 186
-!10 = span !0 191 340
+!1 = span !0 33 108
+!2 = span !0 41 107
+!3 = span !0 117 118
+!4 = span !0 120 186
+!5 = span !0 191 340
+!6 = span !0 198 199
+!7 = span !0 207 208
+!8 = span !0 230 338
+!9 = span !0 269 286
+!10 = span !0 295 314

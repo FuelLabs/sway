@@ -80,11 +80,13 @@ impl ControlFlowGraph {
                 .filter(|idx| *idx != exit_point)
                 .collect();
             let mut next_rovers = vec![];
-            let mut last_discovered_span = None;
+            let mut last_discovered_span;
             for rover in rovers {
-                if let ControlFlowGraphNode::ProgramNode(ref node) = self.graph[rover] {
-                    last_discovered_span = Some(node.span.clone());
-                }
+                last_discovered_span = match &self.graph[rover] {
+                    ControlFlowGraphNode::ProgramNode(node) => Some(node.span.clone()),
+                    ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
+                    _ => None,
+                };
 
                 let mut neighbors = self
                     .graph
@@ -94,10 +96,14 @@ impl ControlFlowGraph {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
-                            errors.push(CompileError::Internal("Attempted to construct return path error but no source span was found.", Span {
-                                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                                path: None
-                            }));
+                            errors.push(CompileError::Internal(
+                                "Attempted to construct return path error \
+                                    but no source span was found.",
+                                Span {
+                                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+                                    path: None,
+                                },
+                            ));
                             return errors;
                         }
                     };
