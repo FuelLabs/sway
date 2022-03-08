@@ -48,4 +48,4 @@ $ forc completions --shell=powershell | Out-String | Invoke-Expression
 
 Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.
 
-![alt text](https://github.com/FuelLabs/sway/tree/master/docs/media/forc_auto_complete.gif)
+![auto_completions](https://raw.githubusercontent.com/FuelLabs/sway/edd82d706e931da2999b4126b8a2ecfeebfeceee/docs/media/forc_auto_complete.gif)
