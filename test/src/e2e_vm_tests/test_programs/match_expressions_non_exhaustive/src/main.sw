@@ -10,6 +10,27 @@ struct CrazyPoint {
     p2: Point
 }
 
+fn a(x: u64) -> u64 {
+    match x {
+        7 => { 0 },
+        _ => { 1 },
+    }
+}
+
+fn b(x: u64) -> u64 {
+    match x {
+        14 => { 7 },
+        _ => { 1 },
+    }
+}
+
+fn c(x: u64) -> u64 {
+    match x {
+        21 => { 7 },
+        _ => { 1 },
+    }
+}
+
 fn main() -> u64 {
     let x = 0;
     // should fail
@@ -115,6 +136,16 @@ fn main() -> u64 {
         }) {
         0 => { 42 },
         _ => { 0 },
+    };
+
+    let q = 21;
+    let foo = match a(match q {
+        14 => { b(q) },
+        21 => { c(q) },
+        _ => { q },
+    }) {
+        0 => { 42 },
+        _ => { 24 },
     };
 
     42u64
