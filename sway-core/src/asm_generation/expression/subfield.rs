@@ -145,8 +145,8 @@ pub(crate) fn convert_subfield_to_asm(
         path: None,
     };
     // step 3
-    // if this is a copy type (primitives that fit in a word), copy it into the register.
-    // Otherwise, load the pointer to the field into the register
+    // if this type fits in a word, copy it into the register. Otherwise, load the pointer to the
+    // field into the register
     let resolved_type_of_this_field = match resolve_type(*type_of_this_field, &span) {
         Ok(o) => o,
         Err(e) => {

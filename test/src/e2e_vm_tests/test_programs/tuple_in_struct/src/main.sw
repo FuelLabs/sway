@@ -17,6 +17,10 @@ struct S {
     t2: T,
 }
 
+struct U {
+    u: u64
+}
+
 fn main() -> bool {
     let s = S {
         t0: W {
@@ -41,5 +45,11 @@ fn main() -> bool {
     assert((((s.t0).t6).2).0 == 8);
     assert((((s.t0).t6).2).1 == 9);
     assert(((s.t0).t6).3 == 10);
+
+    let u = U {
+        u: 22 
+    };
+    assert(u.u == 22);
+
     true
 }
