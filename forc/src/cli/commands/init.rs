@@ -2,7 +2,7 @@ use crate::ops::forc_init;
 use anyhow::Result;
 use clap::Parser;
 
-static TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
+const TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
 
 Example Templates: 
  - counter"#;
