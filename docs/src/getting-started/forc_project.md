@@ -72,6 +72,14 @@ forc json-abi > my-contract-abi.json
 There is currently not a convention for where ABI files should be placed; one
 common choice is loose in the root directory.
 
+## Initializing a new Sway Project from a Template
+
+Pass the `--template` flag to `forc init` to create a new project using one of the provided templates. Currently, only the `counter` example is available. More templates will be available in the future.
+
+```console
+forc init --template counter my_sway_project
+```
+
 ## Testing a Sway Project with Forc
 
 If you look again at the project structure when you create a new Forc project, you can see a directory called `tests/`:
