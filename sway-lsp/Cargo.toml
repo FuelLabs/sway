@@ -1,5 +1,5 @@
 [package]
-name = "sway-server"
+name = "sway-lsp"
 version = "0.6.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
