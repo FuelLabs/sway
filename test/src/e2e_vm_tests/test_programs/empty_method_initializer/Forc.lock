@@ -4,16 +4,8 @@ source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20
 dependencies = []
 
 [[package]]
-name = 'core'
-source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa'
-dependencies = []
-
-[[package]]
 name = 'empty_method_initializer'
-dependencies = [
-    'core git+http://github.com/FuelLabs/sway-lib-core?reference=v0.0.1#45c54ab37abde32a10e20964264cf7362dd73caa',
-    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd',
-]
+dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd']
 
 [[package]]
 name = 'std'

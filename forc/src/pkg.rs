@@ -494,23 +494,23 @@ fn tmp_git_repo_dir(name: &str, repo: &Url) -> PathBuf {
 }
 
 /// Clones the package git repo into a temporary directory and applies the given function.
-fn with_tmp_git_repo<F, O>(name: &str, source: &SourceGit, f: F) -> Result<O>
+fn with_tmp_git_repo<F, O>(name: &str, source: &Url, f: F) -> Result<O>
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
     // Clear existing temporary directory if it exists.
-    let repo_dir = tmp_git_repo_dir(name, &source.repo);
+    let repo_dir = tmp_git_repo_dir(name, source);
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
     // Clone repo into temporary directory.
-    let repo_url_string = format!("{}", source.repo);
+    let repo_url_string = format!("{}", source);
     let repo = git2::Repository::clone(&repo_url_string, &repo_dir).map_err(|e| {
         anyhow!(
             "failed to clone package '{}' from '{}': {}",
             name,
-            source.repo,
+            source,
             e
         )
     })?;
@@ -531,7 +531,7 @@ where
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
 fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_tmp_git_repo(name, &source, |repo| {
+    let commit_hash = with_tmp_git_repo(name, &source.repo, |repo| {
         // Find specified reference in repo.
         let reference = repo
             .resolve_reference_from_short_name(&source.reference)
@@ -626,7 +626,7 @@ fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
     // Checkout the pinned hash to the path.
-    with_tmp_git_repo(name, &pinned.source, |repo| {
+    with_tmp_git_repo(name, &pinned.source.repo, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;

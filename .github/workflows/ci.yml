@@ -165,7 +165,7 @@ jobs:
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-server/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
     - name: Publish crate

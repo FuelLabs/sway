@@ -5,6 +5,5 @@ license = "Apache-2.0"
 name = "caller_context_test"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.1" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", tag = "v0.0.1" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
 context_testing_abi = { path = "../context_testing_abi" }

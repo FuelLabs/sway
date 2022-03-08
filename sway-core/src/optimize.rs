@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 
 use crate::{
+    asm_generation::from_ir::TypeAnalyzer,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
@@ -486,6 +487,7 @@ struct FnCompiler {
     current_block: Block,
     symbol_map: HashMap<String, String>,
     struct_names: StructSymbolMap,
+    type_analyzer: TypeAnalyzer,
 }
 
 impl FnCompiler {
@@ -506,6 +508,7 @@ impl FnCompiler {
             current_block: function.get_entry_block(context),
             symbol_map,
             struct_names,
+            type_analyzer: TypeAnalyzer::default(),
         }
     }
 
@@ -668,9 +671,38 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
             }
-            TypedExpressionVariant::SizeOf { variant } => match variant {
-                SizeOfVariant::Type(_) => unimplemented!(),
-                SizeOfVariant::Val(exp) => self.compile_expression(context, *exp),
+            TypedExpressionVariant::SizeOf { variant } => {
+                match variant {
+                    SizeOfVariant::Type(type_id) => {
+                        let ir_type = convert_resolved_typeid_no_span(
+                            context, &mut self.struct_names, &type_id
+                        )?;
+                        Ok(Constant::get_uint(
+                            context,
+                            64,
+                            self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
+                            None
+                        ))
+                    }
+                    SizeOfVariant::Val(exp) => {
+                        let ir_type = convert_resolved_typeid(
+                            context,
+                            &mut self.struct_names,
+                            &exp.return_type,
+                            &exp.span
+                        )?;
+
+                        // Compile the expression in case of side-effects but ignore its value.
+                        self.compile_expression(context, *exp)?;
+
+                        Ok(Constant::get_uint(
+                            context,
+                            64,
+                            self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
+                            None
+                        ))
+                    }
+                }
             },
         }
     }
