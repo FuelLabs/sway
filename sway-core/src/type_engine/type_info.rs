@@ -46,10 +46,9 @@ pub enum TypeInfo {
         //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
         //        address: Box<TypedExpression>,
     },
-    /// A custom type could be a struct or similar if the name is in scope,
-    /// or just a generic parameter if it is not.
-    /// At parse time, there is no sense of scope, so this determination is not made
-    /// until the semantic analysis stage.
+    /// A custom type could be a user-defined type, but this is not known at
+    /// parse time, so this determination is not made until the semantic
+    /// analysis stage.
     Custom {
         name: Ident,
     },
@@ -408,9 +407,11 @@ impl TypeInfo {
         };
         ok(name, vec![], vec![])
     }
+
     pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {
         Ok(self.size_in_words(err_span)? * 8)
     }
+
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
@@ -471,6 +472,7 @@ impl TypeInfo {
             }
         }
     }
+
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
             TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
@@ -564,9 +566,9 @@ impl TypeInfo {
                 }
                 None
             }
-            TypeInfo::UnknownGeneric { name, .. } => {
+            TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name == (TypeInfo::Custom { name: name.clone() }) {
+                    if param.name == *self {
                         return Some(*ty_id);
                     }
                 }

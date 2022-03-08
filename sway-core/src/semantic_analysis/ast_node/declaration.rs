@@ -142,42 +142,46 @@ impl TypedDeclaration {
     }
 
     pub(crate) fn pretty_print(&self) -> String {
-        format!(
-            "{} declaration ({})",
-            self.friendly_name(),
-            match self {
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable,
-                    name,
-                    ..
-                }) => format!(
-                    "{} {}",
-                    match is_mutable {
-                        VariableMutability::Mutable => "mut",
-                        VariableMutability::Immutable => "",
-                        VariableMutability::ExportedConst => "pub const",
-                    },
-                    name.as_str()
-                ),
-                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                    name, ..
-                }) => {
-                    name.as_str().into()
+        let decl_str = match self {
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                is_mutable,
+                name,
+                type_ascription,
+                ..
+            }) => {
+                let mut builder = String::new();
+                match is_mutable {
+                    VariableMutability::Mutable => builder.push_str("mut "),
+                    VariableMutability::ExportedConst => builder.push_str("pub const"),
+                    _ => {}
                 }
-                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
-                    .iter()
-                    .map(|x| x.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join("."),
-                _ => String::new(),
+                builder.push_str(name.as_str());
+                builder.push_str(": ");
+                builder.push_str(
+                    &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
+                );
+                builder
             }
-        )
+            TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration { name, .. }) => {
+                name.as_str().into()
+            }
+            TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) => {
+                name.as_str().into()
+            }
+            TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) => {
+                name.as_str().into()
+            }
+            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) => {
+                name.as_str().into()
+            }
+            TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
+                .iter()
+                .map(|x| x.name.as_str())
+                .collect::<Vec<_>>()
+                .join("."),
+            _ => String::new(),
+        };
+        format!("{} declaration ({})", self.friendly_name(), decl_str)
     }
 
     pub(crate) fn visibility(&self) -> Visibility {

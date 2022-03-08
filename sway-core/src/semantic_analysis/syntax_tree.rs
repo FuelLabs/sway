@@ -104,9 +104,7 @@ impl TypedParseTree {
             warnings,
             errors
         );
-        for node in ordered_nodes.iter() {
-            println!("{:?}", node.span.as_str());
-        }
+
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,

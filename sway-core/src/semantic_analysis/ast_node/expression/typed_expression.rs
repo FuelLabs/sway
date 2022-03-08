@@ -328,19 +328,17 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
-        match unify_with_self(
-            typed_expression.return_type,
-            type_annotation,
-            self_type,
-            &expr_span,
-        ) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(e) => {
-                errors.push(CompileError::TypeError(e));
-            }
-        };
+        check!(
+            CompileResult::<()>::from(unify_with_self(
+                typed_expression.return_type,
+                type_annotation,
+                self_type,
+                &expr_span,
+            )),
+            (),
+            warnings,
+            errors
+        );
         // The annotation may result in a cast, which is handled in the type engine.
 
         typed_expression.return_type = namespace
@@ -479,31 +477,21 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let typed_function_decl =
-            if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
-                // if this is a generic function, monomorphize its internal types and insert the resulting
-                // declaration into the namespace. Then, use that instead.
-                if decl.type_parameters.is_empty() {
-                    decl
-                } else {
-                    check!(
-                        decl.monomorphize(type_arguments, self_type),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-            } else {
+        let typed_function_decl = match function_declaration {
+            TypedDeclaration::FunctionDeclaration(decl) => decl,
+            _ => {
                 errors.push(CompileError::NotAFunction {
                     name: name.span().as_str().to_string(),
                     span: name.span(),
                     what_it_is: function_declaration.friendly_name(),
                 });
                 return err(warnings, errors);
-            };
+            }
+        };
         instantiate_function_application(
             typed_function_decl,
             name,
+            type_arguments,
             arguments,
             namespace,
             crate_namespace,
@@ -623,14 +611,17 @@ impl TypedExpression {
         );
 
         // this could probably be cleaned up with unification instead of comparing types
-        match unify_with_self(block_return_type, type_annotation, self_type, &span) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(e) => {
-                errors.push(e.into());
-            }
-        };
+        check!(
+            CompileResult::<()>::from(unify_with_self(
+                block_return_type,
+                type_annotation,
+                self_type,
+                &span
+            )),
+            (),
+            warnings,
+            errors
+        );
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
@@ -723,21 +714,24 @@ impl TypedExpression {
             .as_ref()
             .map(|x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
-        // if there is a type annotation, then the else branch must exist
-        match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
-            Ok(mut warn) => {
-                warnings.append(&mut warn);
-                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
-                        span: span.clone(),
-                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
-                    });
-                }
-            }
-            Err(e) => {
-                errors.push(e.into());
-            }
+        if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+            errors.push(CompileError::NoElseBranch {
+                span: span.clone(),
+                r#type: look_up_type_id(type_annotation).friendly_type_str(),
+            });
         }
+        // if there is a type annotation, then the else branch must exist
+        check!(
+            CompileResult::<()>::from(unify_with_self(
+                then.return_type,
+                r#else_ret_ty,
+                self_type,
+                &span
+            )),
+            (),
+            warnings,
+            errors
+        );
 
         let exp = TypedExpression {
             expression: TypedExpressionVariant::IfExp {
@@ -1225,6 +1219,7 @@ impl TypedExpression {
                         instantiate_function_application(
                             func_decl,
                             call_path,
+                            vec!(), // the type arguments in this position are alwasy empty because of how parsing works
                             args,
                             namespace,
                             crate_namespace,
@@ -1442,26 +1437,17 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            match unify_with_self(
-                typed_elem.return_type,
-                elem_type,
-                self_type,
-                &typed_elem.span,
-            ) {
-                // In both cases, if there are warnings or errors then break here, since we don't
-                // need to spam type errors for every element once we have one.
-                Ok(mut ws) => {
-                    let no_warnings = ws.is_empty();
-                    warnings.append(&mut ws);
-                    if !no_warnings {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                    break;
-                }
-            };
+            check!(
+                CompileResult::<()>::from(unify_with_self(
+                    typed_elem.return_type,
+                    elem_type,
+                    self_type,
+                    &typed_elem.span,
+                )),
+                break,
+                warnings,
+                errors
+            );
         }
 
         let array_count = typed_contents.len();

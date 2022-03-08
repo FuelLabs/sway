@@ -76,12 +76,12 @@ pub struct CompileResult<T> {
     pub errors: Vec<CompileError>,
 }
 
-impl<T> From<Result<T, TypeError>> for CompileResult<T> {
-    fn from(o: Result<T, TypeError>) -> Self {
+impl From<Result<Vec<CompileWarning>, TypeError>> for CompileResult<()> {
+    fn from(o: Result<Vec<CompileWarning>, TypeError>) -> Self {
         match o {
             Ok(o) => CompileResult {
-                value: Some(o),
-                warnings: vec![],
+                value: Some(()),
+                warnings: o,
                 errors: vec![],
             },
             Err(e) => CompileResult {
@@ -530,6 +530,32 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
+        "Function \"{method_name}\" expects {expected} type arguments but you provided {received}."
+    )]
+    TooManyTypeArgumentsForFunction {
+        span: Span,
+        method_name: Ident,
+        expected: usize,
+        received: usize,
+    },
+    #[error(
+        "Function \"{method_name}\" expects {expected} type arguments but you provided {received}."
+    )]
+    TooFewTypeArgumentsForFunction {
+        span: Span,
+        method_name: Ident,
+        expected: usize,
+        received: usize,
+    },
+    #[error("Function \"{method_name}\" does not take type arguments.")]
+    DoesNotTakeTypeArguments { span: Span, method_name: Ident },
+    #[error("Cannot infer type for type parameter \"{param}\" on function \"{method_name}\".")]
+    CannotInferTypeParameter {
+        method_name: Ident,
+        param: Ident,
+        span: Span,
+    },
+    #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
@@ -974,6 +1000,10 @@ impl CompileError {
             FunctionNotAPartOfInterfaceSurface { span, .. } => span,
             MissingInterfaceSurfaceMethods { span, .. } => span,
             IncorrectNumberOfTypeArguments { span, .. } => span,
+            TooManyTypeArgumentsForFunction { span, .. } => span,
+            TooFewTypeArgumentsForFunction { span, .. } => span,
+            DoesNotTakeTypeArguments { span, .. } => span,
+            CannotInferTypeParameter { span, .. } => span,
             StructNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,

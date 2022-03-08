@@ -76,20 +76,17 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            match crate::type_engine::unify_with_self(
-                return_type,
-                type_annotation,
-                self_type,
-                &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
-            ) {
-                Ok(mut ws) => {
-                    warnings.append(&mut ws);
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            };
-            // The annotation will result in a cast, so set the return type accordingly.
+            check!(
+                CompileResult::<()>::from(crate::type_engine::unify_with_self(
+                    return_type,
+                    type_annotation,
+                    self_type,
+                    &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
+                )),
+                (),
+                warnings,
+                errors
+            );
         }
 
         ok(

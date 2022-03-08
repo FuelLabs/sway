@@ -102,16 +102,62 @@ impl FunctionDeclaration {
             }
         }
 
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        )
+        .into_iter()
+        .map(|type_param| {
+            let mut type_param = type_param;
+            match type_param.name.clone() {
+                TypeInfo::Custom { name } => {
+                    type_param.name = TypeInfo::UnknownGeneric { name };
+                }
+                _ => {
+                    errors.push(CompileError::Internal(
+                        "Unable to convert type param to generic",
+                        Span {
+                            span: pair.as_span(),
+                            path: path.clone(),
+                        },
+                    ));
+                }
+            }
+            type_param
+        })
+        .collect::<Vec<_>>();
+
         // these are non-optional in a func decl
         let parameters_pair = parameters_pair.unwrap();
         let parameters_span = parameters_pair.as_span();
 
+        // parameter type ascriptions that are meant to be UnknownGeneric are pared as Custom,
+        // so we need to manually correct them to UnknownGeneric
         let parameters = check!(
             FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
             errors
-        );
+        )
+        .into_iter()
+        .map(|param| {
+            let mut param = param;
+            if let Some(possible_generic) = FunctionDeclaration::possible_generic_from_type_params(
+                &param.r#type,
+                &type_parameters,
+            ) {
+                param.r#type = possible_generic;
+            }
+            param
+        })
+        .collect::<Vec<_>>();
+
         let return_type_span = Span {
             span: if let Some(ref pair) = return_type_pair {
                 pair.as_span()
@@ -122,20 +168,23 @@ impl FunctionDeclaration {
             path: path.clone(),
         };
         let return_type = match return_type_pair {
-            Some(ref pair) => check!(
-                TypeInfo::parse_from_pair(pair.clone(), config),
-                TypeInfo::Tuple(Vec::new()),
-                warnings,
-                errors
-            ),
+            Some(ref pair) => {
+                let type_info = check!(
+                    TypeInfo::parse_from_pair(pair.clone(), config),
+                    TypeInfo::Tuple(Vec::new()),
+                    warnings,
+                    errors
+                );
+                match FunctionDeclaration::possible_generic_from_type_params(
+                    &type_info,
+                    &type_parameters,
+                ) {
+                    Some(type_info) => type_info,
+                    None => type_info,
+                }
+            }
             None => TypeInfo::Tuple(Vec::new()),
         };
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         let body = parts.next().unwrap();
         let whole_block_span = Span {
@@ -189,6 +238,28 @@ impl FunctionDeclaration {
                 type_field: self.return_type.friendly_type_str(),
                 components: None,
             }],
+        }
+    }
+
+    #[allow(clippy::needless_collect)]
+    fn possible_generic_from_type_params(
+        type_info: &TypeInfo,
+        type_params: &[TypeParameter],
+    ) -> Option<TypeInfo> {
+        let type_parameters_simple = type_params
+            .iter()
+            .map(|type_param| type_param.name.clone())
+            .collect::<Vec<_>>();
+        match type_info {
+            TypeInfo::Custom { name } => {
+                let possible_generic = TypeInfo::UnknownGeneric { name: name.clone() };
+                if type_parameters_simple.contains(&possible_generic) {
+                    Some(possible_generic)
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }

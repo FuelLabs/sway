@@ -63,13 +63,13 @@ pub(crate) enum TypedAstNodeContent {
     SideEffect,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypedAstNode {
     pub(crate) content: TypedAstNodeContent,
     pub(crate) span: Span,
 }
 
-impl std::fmt::Debug for TypedAstNode {
+impl std::fmt::Display for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
