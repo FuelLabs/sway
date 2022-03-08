@@ -134,11 +134,3 @@ fn default_entry() -> String {
 fn default_url() -> String {
     constants::DEFAULT_NODE_URL.into()
 }
-
-#[test]
-fn try_parse() {
-    println!(
-        "{:#?}",
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap()
-    )
-}
