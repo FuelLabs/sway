@@ -10,7 +10,7 @@ description = "Building, locking, fetching and updating sway projects as Forc pa
 
 [dependencies]
 anyhow = "1"
-forc-util = { version = "0.6", path = "../forc-util" }
+forc-util = { version = "0.6.0", path = "../forc-util" }
 git2 = "0.14"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
