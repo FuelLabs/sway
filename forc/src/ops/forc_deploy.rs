@@ -1,16 +1,13 @@
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::{Output, Salt, Transaction};
-use fuel_vm::prelude::*;
-use sway_core::{parse, TreeType};
-
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 use anyhow::Result;
-
-use crate::utils::helpers;
-use helpers::{get_main_file, read_manifest};
+use forc_pkg::Manifest;
+use fuel_gql_client::client::FuelClient;
+use fuel_tx::{Output, Salt, Transaction};
+use fuel_vm::prelude::*;
 use std::path::PathBuf;
+use sway_core::{parse, TreeType};
 use sway_utils::{constants::*, find_manifest_dir};
 
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
@@ -36,12 +33,12 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
 
     match find_manifest_dir(&curr_dir) {
         Some(manifest_dir) => {
-            let manifest = read_manifest(&manifest_dir)?;
+            let manifest = Manifest::from_dir(&manifest_dir)?;
             let project_name = &manifest.project.name;
-            let main_file = get_main_file(&manifest, &manifest_dir)?;
+            let entry_string = manifest.entry_string(&manifest_dir)?;
 
-            // parse the main file and check is it a contract
-            let parsed_result = parse(main_file, None);
+            // Parse the main file and check is it a contract.
+            let parsed_result = parse(entry_string, None);
             match parsed_result.value {
                 Some(parse_tree) => match parse_tree.tree_type {
                     TreeType::Contract => {

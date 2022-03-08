@@ -1,6 +1,6 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use crate::utils::helpers::{println_green, println_red};
+use forc_util::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::{fmt, fs, io, path::Path, sync::Arc};
