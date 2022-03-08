@@ -84,7 +84,6 @@ pub enum Expression {
     },
     MatchExp {
         if_exp: Box<Expression>,
-        variable_created: Ident,
         cases_covered: Vec<MatchCondition>,
         span: Span,
     },
@@ -221,10 +220,10 @@ pub struct StructExpressionField {
     pub(crate) span: Span,
 }
 
-pub(crate) fn error_recovery_parse_result<T>(value: T) -> ParseResult<T> {
-    ParseResult {
-        var_decls: vec![],
-        value,
+pub(crate) fn error_recovery_exp(span: Span) -> Expression {
+    Expression::Tuple {
+        fields: vec![],
+        span,
     }
 }
 
@@ -301,7 +300,7 @@ impl Expression {
     pub(crate) fn parse_from_pair(
         expr: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -311,17 +310,14 @@ impl Expression {
         let first_expr = expr_iter.next().unwrap();
         let first_expr_result = check!(
             Expression::parse_from_pair_inner(first_expr.clone(), config),
-            error_recovery_parse_result(Expression::Tuple {
-                fields: vec![],
-                span: Span {
-                    span: first_expr.as_span(),
-                    path: path.clone(),
-                }
-            }),
+            ParserLifter::empty(error_recovery_exp(Span {
+                span: first_expr.as_span(),
+                path: path.clone(),
+            })),
             warnings,
             errors
         );
-        let mut expr_result_or_op_buf: Vec<Either<Op, ParseResult<Expression>>> =
+        let mut expr_result_or_op_buf: Vec<Either<Op, ParserLifter<Expression>>> =
             vec![Either::Right(first_expr_result.clone())];
         // sometimes exprs are followed by ops in the same expr
         while let Some(op) = expr_iter.next() {
@@ -342,13 +338,10 @@ impl Expression {
             let next_expr_result = match expr_iter.next() {
                 Some(o) => check!(
                     Expression::parse_from_pair_inner(o.clone(), config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: Span {
-                            span: o.as_span(),
-                            path: path.clone()
-                        }
-                    }),
+                    ParserLifter::empty(error_recovery_exp(Span {
+                        span: o.as_span(),
+                        path: path.clone()
+                    })),
                     warnings,
                     errors
                 ),
@@ -360,10 +353,7 @@ impl Expression {
                             path: path.clone(),
                         },
                     });
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: op_span,
-                    })
+                    ParserLifter::empty(error_recovery_exp(op_span))
                 }
             };
             // pushing these into a vec in this manner so we can re-associate according to order of
@@ -387,13 +377,10 @@ impl Expression {
                 },
             )
             .unwrap_or_else(&mut warnings, &mut errors, || {
-                error_recovery_parse_result(Expression::Tuple {
-                    fields: vec![],
-                    span: Span {
-                        span: expr_for_debug.as_span(),
-                        path: path.clone(),
-                    },
-                })
+                ParserLifter::empty(error_recovery_exp(Span {
+                    span: expr_for_debug.as_span(),
+                    path: path.clone(),
+                }))
             });
             ok(expr_result, warnings, errors)
         }
@@ -402,7 +389,7 @@ impl Expression {
     pub(crate) fn parse_from_pair_inner(
         expr: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -414,15 +401,9 @@ impl Expression {
         let mut maybe_type_args = Vec::new();
         let parsed_result = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr, config)
-                .map(|(value, span)| ParseResult {
-                    var_decls: vec![],
-                    value: Expression::Literal { value, span },
-                })
+                .map(|(value, span)| ParserLifter::empty(Expression::Literal { value, span }))
                 .unwrap_or_else(&mut warnings, &mut errors, || {
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span,
-                    })
+                    ParserLifter::empty(error_recovery_exp(span))
                 }),
             Rule::func_app => {
                 let span = Span {
@@ -453,13 +434,10 @@ impl Expression {
                 for argument in arguments.into_inner() {
                     let arg = check!(
                         Expression::parse_from_pair(argument.clone(), config),
-                        error_recovery_parse_result(Expression::Tuple {
-                            fields: vec![],
-                            span: Span {
-                                span: argument.as_span(),
-                                path: path.clone()
-                            }
-                        }),
+                        ParserLifter::empty(error_recovery_exp(Span {
+                            span: argument.as_span(),
+                            path: path.clone()
+                        })),
                         warnings,
                         errors
                     );
@@ -496,7 +474,7 @@ impl Expression {
                     span,
                     type_arguments: type_args_buf,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -521,25 +499,16 @@ impl Expression {
                 // this is non-optional and part of the parse rule so it won't fail
                 let name = name.unwrap();
                 let exp = Expression::VariableExpression { name, span };
-                ParseResult {
-                    var_decls: vec![],
-                    value: exp,
-                }
+                ParserLifter::empty(exp)
             }
             Rule::array_exp => match expr.into_inner().next() {
-                None => ParseResult {
-                    var_decls: vec![],
-                    value: Expression::Array {
-                        contents: Vec::new(),
-                        span,
-                    },
-                },
+                None => ParserLifter::empty(Expression::Array {
+                    contents: Vec::new(),
+                    span,
+                }),
                 Some(array_elems) => check!(
                     parse_array_elems(array_elems, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span,
-                    }),
+                    ParserLifter::empty(error_recovery_exp(span)),
                     warnings,
                     errors
                 ),
@@ -548,10 +517,7 @@ impl Expression {
                 let mut expr_iter = expr.into_inner();
                 let primary_expression_result = check!(
                     Expression::parse_from_pair(expr_iter.next().unwrap(), config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: span.clone()
-                    }),
+                    ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
                     errors
                 );
@@ -589,11 +555,10 @@ impl Expression {
                 });
                 let exp = Expression::MatchExp {
                     if_exp: Box::new(if_exp),
-                    variable_created: var_decl_name,
                     cases_covered,
                     span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -623,10 +588,7 @@ impl Expression {
                     };
                     let mut value_result = check!(
                         Expression::parse_from_pair(fields[i + 1].clone(), config),
-                        error_recovery_parse_result(Expression::Tuple {
-                            fields: vec![],
-                            span: span.clone()
-                        }),
+                        ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
                         errors
                     );
@@ -643,7 +605,7 @@ impl Expression {
                     fields: fields_buf,
                     span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -651,13 +613,10 @@ impl Expression {
             Rule::parenthesized_expression => {
                 check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: Span {
-                            span: expr.as_span(),
-                            path,
-                        }
-                    }),
+                    ParserLifter::empty(error_recovery_exp(Span {
+                        span: expr.as_span(),
+                        path,
+                    })),
                     warnings,
                     errors
                 )
@@ -681,10 +640,7 @@ impl Expression {
                     span,
                 };
                 // this assumes that all of the var_decls will be injected into the code block
-                ParseResult {
-                    var_decls: vec![],
-                    value: exp,
-                }
+                ParserLifter::empty(exp)
             }
             Rule::if_exp => {
                 let span = Span {
@@ -697,29 +653,20 @@ impl Expression {
                 let else_pair = if_exp_pairs.next();
                 let condition_result = check!(
                     Expression::parse_from_pair(condition_pair, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: span.clone()
-                    }),
+                    ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
                     errors
                 );
                 let mut then_result = check!(
                     Expression::parse_from_pair_inner(then_pair, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: span.clone()
-                    }),
+                    ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
                     errors
                 );
                 let r#else_result = else_pair.map(|else_pair| {
                     check!(
                         Expression::parse_from_pair_inner(else_pair, config),
-                        error_recovery_parse_result(Expression::Tuple {
-                            fields: vec![],
-                            span: span.clone()
-                        }),
+                        ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
                         errors
                     )
@@ -737,7 +684,7 @@ impl Expression {
                     r#else: r#else_result.map(|x| Box::new(x.value)),
                     span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -757,7 +704,7 @@ impl Expression {
                     asm: asm_result.value,
                     span: whole_block_span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls: asm_result.var_decls,
                     value: exp,
                 }
@@ -803,15 +750,12 @@ impl Expression {
                                     span: fields[i].as_span(),
                                     path: path.clone(),
                                 };
-                                let ParseResult {
+                                let ParserLifter {
                                     value,
                                     mut var_decls,
                                 } = check!(
                                     Expression::parse_from_pair(fields[i + 1].clone(), config),
-                                    error_recovery_parse_result(Expression::Tuple {
-                                        fields: vec![],
-                                        span: span.clone()
-                                    }),
+                                    ParserLifter::empty(error_recovery_exp(span.clone())),
                                     warnings,
                                     errors
                                 );
@@ -837,18 +781,15 @@ impl Expression {
                         );
                         let mut argument_buf = VecDeque::new();
                         for argument in function_arguments {
-                            let ParseResult {
+                            let ParserLifter {
                                 value,
                                 mut var_decls,
                             } = check!(
                                 Expression::parse_from_pair(argument.clone(), config),
-                                error_recovery_parse_result(Expression::Tuple {
-                                    fields: vec![],
-                                    span: Span {
-                                        span: argument.as_span(),
-                                        path: path.clone()
-                                    }
-                                }),
+                                ParserLifter::empty(error_recovery_exp(Span {
+                                    span: argument.as_span(),
+                                    path: path.clone()
+                                })),
                                 warnings,
                                 errors
                             );
@@ -858,7 +799,7 @@ impl Expression {
                         // the first thing is either an exp or a var, everything subsequent must be
                         // a field
                         let mut name_parts = name_parts.into_iter();
-                        let ParseResult {
+                        let ParserLifter {
                             value,
                             mut var_decls,
                         } = check!(
@@ -896,7 +837,7 @@ impl Expression {
                             arguments: argument_buf.into_iter().collect(),
                             span: whole_exp_span,
                         };
-                        ParseResult {
+                        ParserLifter {
                             var_decls: var_decls_buf,
                             value: exp,
                         }
@@ -989,13 +930,10 @@ impl Expression {
                             for argument in arguments.into_inner() {
                                 let arg_result = check!(
                                     Expression::parse_from_pair(argument.clone(), config),
-                                    error_recovery_parse_result(Expression::Tuple {
-                                        fields: vec![],
-                                        span: Span {
-                                            span: argument.as_span(),
-                                            path: path.clone()
-                                        }
-                                    }),
+                                    ParserLifter::empty(error_recovery_exp(Span {
+                                        span: argument.as_span(),
+                                        path: path.clone()
+                                    })),
                                     warnings,
                                     errors
                                 );
@@ -1017,7 +955,7 @@ impl Expression {
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         };
-                        ParseResult {
+                        ParserLifter {
                             var_decls,
                             value: exp,
                         }
@@ -1073,7 +1011,7 @@ impl Expression {
                     // arguments on the enum name and throw them in here. TODO
                     type_arguments: vec![],
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -1084,10 +1022,7 @@ impl Expression {
                 for field in fields {
                     let value_result = check!(
                         Expression::parse_from_pair(field.clone(), config),
-                        error_recovery_parse_result(Expression::Tuple {
-                            fields: vec![],
-                            span: span.clone()
-                        }),
+                        ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
                         errors
                     );
@@ -1105,7 +1040,7 @@ impl Expression {
                     fields: fields_buf,
                     span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls,
                     value: exp,
                 }
@@ -1151,7 +1086,7 @@ impl Expression {
                     index_span: the_integer_span,
                     span,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls: prefix_result.var_decls,
                     value: exp,
                 }
@@ -1182,7 +1117,7 @@ impl Expression {
                             errors
                         ),
                     };
-                    expr_result = ParseResult {
+                    expr_result = ParserLifter {
                         var_decls: expr_result.var_decls,
                         value: new_expr,
                     };
@@ -1216,7 +1151,7 @@ impl Expression {
                     address: Box::new(address_result.value.clone()),
                     abi_name,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls: address_result.var_decls,
                     value: exp,
                 }
@@ -1256,13 +1191,10 @@ impl Expression {
                     },
                 ));
                 // construct unit expression for error recovery
-                error_recovery_parse_result(Expression::Tuple {
-                    fields: vec![],
-                    span: Span {
-                        span: expr.as_span(),
-                        path,
-                    },
-                })
+                ParserLifter::empty(error_recovery_exp(Span {
+                    span: expr.as_span(),
+                    path,
+                }))
             }
         };
         ok(parsed_result, warnings, errors)
@@ -1272,7 +1204,7 @@ impl Expression {
 fn convert_unary_to_fn_calls(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
     let mut warnings = vec![];
@@ -1311,7 +1243,7 @@ fn convert_unary_to_fn_calls(
             join_spans(op_span.clone(), expr_result.value.span()),
             op_span,
         );
-        expr_result = ParseResult {
+        expr_result = ParserLifter {
             var_decls: expr_result.var_decls,
             value: exp,
         };
@@ -1322,7 +1254,7 @@ fn convert_unary_to_fn_calls(
 pub(crate) fn parse_array_index(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -1369,7 +1301,7 @@ pub(crate) fn parse_array_index(
         };
     }
     ok(
-        ParseResult {
+        ParserLifter {
             var_decls,
             value: exp,
         },
@@ -1381,7 +1313,7 @@ pub(crate) fn parse_array_index(
 pub(crate) fn parse_size_of_expr(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let span = Span {
@@ -1405,7 +1337,7 @@ pub(crate) fn parse_size_of_expr(
                 exp: Box::new(expr_result.value),
                 span,
             };
-            ParseResult {
+            ParserLifter {
                 var_decls: expr_result.var_decls,
                 value: exp,
             }
@@ -1429,10 +1361,7 @@ pub(crate) fn parse_size_of_expr(
                 type_span,
                 span,
             };
-            ParseResult {
-                var_decls: vec![],
-                value: exp,
-            }
+            ParserLifter::empty(exp)
         }
         _ => unreachable!(),
     };
@@ -1442,7 +1371,7 @@ pub(crate) fn parse_size_of_expr(
 fn parse_subfield_path(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -1465,13 +1394,10 @@ fn parse_subfield_path(
                 },
             ));
             // construct unit expression for error recovery
-            let exp_result = error_recovery_parse_result(Expression::Tuple {
-                fields: vec![],
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
-            });
+            let exp_result = ParserLifter::empty(error_recovery_exp(Span {
+                span: item.as_span(),
+                path,
+            }));
             ok(exp_result, warnings, errors)
         }
     }
@@ -1483,7 +1409,7 @@ fn parse_subfield_path(
 fn parse_call_item(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
@@ -1502,10 +1428,7 @@ fn parse_call_item(
                     path: config.map(|c| c.path()),
                 },
             };
-            ParseResult {
-                var_decls: vec![],
-                value: exp,
-            }
+            ParserLifter::empty(exp)
         }
         Rule::expr => check!(
             Expression::parse_from_pair(item, config),
@@ -1521,7 +1444,7 @@ fn parse_call_item(
 fn parse_array_elems(
     elems: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
@@ -1538,15 +1461,9 @@ fn parse_array_elems(
             // The form [initialiser; count].
             let span = first_elem.as_span();
             let init = Literal::parse_from_pair(first_elem, config)
-                .map(|(value, span)| ParseResult {
-                    var_decls: vec![],
-                    value: Expression::Literal { value, span },
-                })
+                .map(|(value, span)| ParserLifter::empty(Expression::Literal { value, span }))
                 .unwrap_or_else(&mut warnings, &mut errors, || {
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: Span { span, path },
-                    })
+                    ParserLifter::empty(error_recovery_exp(Span { span, path }))
                 });
 
             // This is a constant integer expression we need to parse now into a count.  Currently
@@ -1568,13 +1485,10 @@ fn parse_array_elems(
             let span = first_elem.as_span();
             let first_elem_expr_result = check!(
                 Expression::parse_from_pair(first_elem, config),
-                error_recovery_parse_result(Expression::Tuple {
-                    fields: vec![],
-                    span: Span {
-                        span,
-                        path: path.clone()
-                    }
-                }),
+                ParserLifter::empty(error_recovery_exp(Span {
+                    span,
+                    path: path.clone()
+                })),
                 warnings,
                 errors
             );
@@ -1582,13 +1496,10 @@ fn parse_array_elems(
                 let span = pair.as_span();
                 elems.push(check!(
                     Expression::parse_from_pair(pair, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: Span {
-                            span,
-                            path: path.clone()
-                        }
-                    }),
+                    ParserLifter::empty(error_recovery_exp(Span {
+                        span,
+                        path: path.clone()
+                    })),
                     warnings,
                     errors
                 ));
@@ -1606,7 +1517,7 @@ fn parse_array_elems(
         contents: exps,
         span,
     };
-    let parse_result = ParseResult {
+    let parse_result = ParserLifter {
         var_decls,
         value: exp,
     };
@@ -1743,12 +1654,12 @@ impl OpVariant {
 }
 
 fn arrange_by_order_of_operations(
-    expression_results: Vec<Either<Op, ParseResult<Expression>>>,
+    expression_results: Vec<Either<Op, ParserLifter<Expression>>>,
     debug_span: Span,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let mut errors = Vec::new();
     let warnings = Vec::new();
-    let mut expression_result_stack: Vec<ParseResult<Expression>> = Vec::new();
+    let mut expression_result_stack: Vec<ParserLifter<Expression>> = Vec::new();
     let mut op_stack = Vec::new();
 
     for expr_result_or_op in expression_results {
@@ -1798,7 +1709,7 @@ fn arrange_by_order_of_operations(
                             debug_span.clone(),
                         ),
                     };
-                    expression_result_stack.push(ParseResult {
+                    expression_result_stack.push(ParserLifter {
                         var_decls: new_var_decls,
                         value: new_exp,
                     });
@@ -1847,7 +1758,7 @@ fn arrange_by_order_of_operations(
             },
             _ => Expression::core_ops(op, vec![lhs.value.clone(), rhs.value.clone()], span),
         };
-        expression_result_stack.push(ParseResult {
+        expression_result_stack.push(ParserLifter {
             var_decls: new_var_decls,
             value: new_exp,
         });

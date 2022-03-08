@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, TypeInfo,
+    CompileError, CompileResult,
 };
 
 use super::{
@@ -14,7 +14,7 @@ use super::{
 pub(crate) struct ConstructorFactory {}
 
 impl ConstructorFactory {
-    pub(crate) fn new(_type_info: TypeInfo) -> Self {
+    pub(crate) fn new() -> Self {
         ConstructorFactory {}
     }
 

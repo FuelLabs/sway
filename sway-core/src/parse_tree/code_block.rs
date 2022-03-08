@@ -4,17 +4,17 @@ use crate::{
     error::*,
     parse_tree::{Expression, ReturnStatement},
     parser::Rule,
-    AstNode, AstNodeContent, Declaration,
+    AstNode, AstNodeContent, Declaration, VariableDeclaration,
 };
 
-use sway_types::span;
+use sway_types::span::Span;
 
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
     pub contents: Vec<AstNode>,
-    pub(crate) whole_block_span: span::Span,
+    pub(crate) whole_block_span: Span,
 }
 
 impl CodeBlock {
@@ -25,13 +25,17 @@ impl CodeBlock {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let whole_block_span = span::Span {
+        let whole_block_span = Span {
             span: block.as_span(),
             path: path.clone(),
         };
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
+            let span = Span {
+                span: pair.as_span(),
+                path: path.clone(),
+            };
             let mut ast_nodes = match pair.as_rule() {
                 Rule::declaration => check!(
                     Declaration::parse_from_pair(pair.clone(), config),
@@ -42,14 +46,14 @@ impl CodeBlock {
                 .into_iter()
                 .map(|content| AstNode {
                     content: AstNodeContent::Declaration(content),
-                    span: span::Span {
+                    span: Span {
                         span: pair.as_span(),
                         path: path.clone(),
                     },
                 })
                 .collect::<Vec<_>>(),
                 Rule::expr_statement => {
-                    let evaluated_node_result = check!(
+                    let ParserLifter { value, var_decls } = check!(
                         Expression::parse_from_pair(
                             pair.clone().into_inner().next().unwrap().clone(),
                             config
@@ -58,109 +62,53 @@ impl CodeBlock {
                         warnings,
                         errors
                     );
-                    let mut ast_node_contents = evaluated_node_result
-                        .var_decls
-                        .into_iter()
-                        .map(|x| AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                x,
-                            )),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
-                        })
-                        .collect::<Vec<_>>();
+                    let mut ast_node_contents = collect_var_decls(var_decls, span.clone());
                     ast_node_contents.push(AstNode {
-                        content: AstNodeContent::Expression(evaluated_node_result.value),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        content: AstNodeContent::Expression(value),
+                        span,
                     });
                     ast_node_contents
                 }
                 Rule::return_statement => {
-                    let res_result = check!(
+                    let ParserLifter { value, var_decls } = check!(
                         ReturnStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
                     );
-                    let mut ast_node_contents = res_result
-                        .var_decls
-                        .into_iter()
-                        .map(|x| AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                x,
-                            )),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
-                        })
-                        .collect::<Vec<_>>();
+                    let mut ast_node_contents = collect_var_decls(var_decls, span.clone());
                     ast_node_contents.push(AstNode {
-                        content: AstNodeContent::ReturnStatement(res_result.value),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        content: AstNodeContent::ReturnStatement(value),
+                        span,
                     });
                     ast_node_contents
                 }
                 Rule::expr => {
-                    let res_result = check!(
+                    let ParserLifter { value, var_decls } = check!(
                         Expression::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
                     );
-                    let mut ast_node_contents = res_result
-                        .var_decls
-                        .into_iter()
-                        .map(|x| AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                x,
-                            )),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
-                        })
-                        .collect::<Vec<_>>();
+                    let mut ast_node_contents = collect_var_decls(var_decls, span.clone());
+                    let expr_span = value.span();
                     ast_node_contents.push(AstNode {
-                        content: AstNodeContent::ImplicitReturnExpression(res_result.value.clone()),
-                        span: res_result.value.span(),
+                        content: AstNodeContent::ImplicitReturnExpression(value),
+                        span: expr_span,
                     });
                     ast_node_contents
                 }
                 Rule::while_loop => {
-                    let res_result = check!(
+                    let ParserLifter { value, var_decls } = check!(
                         WhileLoop::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
                     );
-                    let mut ast_node_contents = res_result
-                        .var_decls
-                        .into_iter()
-                        .map(|x| AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                x,
-                            )),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
-                        })
-                        .collect::<Vec<_>>();
+                    let mut ast_node_contents = collect_var_decls(var_decls, span.clone());
                     ast_node_contents.push(AstNode {
-                        content: AstNodeContent::WhileLoop(res_result.value),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        content: AstNodeContent::WhileLoop(value),
+                        span,
                     });
                     ast_node_contents
                 }
@@ -168,7 +116,7 @@ impl CodeBlock {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     errors.push(CompileError::UnimplementedRule(
                         a,
-                        span::Span {
+                        Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
@@ -188,4 +136,14 @@ impl CodeBlock {
             errors,
         )
     }
+}
+
+fn collect_var_decls(var_decls: Vec<VariableDeclaration>, span: Span) -> Vec<AstNode> {
+    var_decls
+        .into_iter()
+        .map(|x| AstNode {
+            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(x)),
+            span: span.clone(),
+        })
+        .collect::<Vec<_>>()
 }

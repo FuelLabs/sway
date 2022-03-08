@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{ok, ParseResult},
-    error_recovery_parse_result,
+    error::{ok, ParserLifter},
+    error_recovery_exp,
     parser::Rule,
     CompileResult, Expression,
 };
@@ -19,7 +19,7 @@ impl ReturnStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let span = span::Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),
@@ -37,25 +37,19 @@ impl ReturnStatement {
                         span,
                     },
                 };
-                ParseResult {
-                    var_decls: vec![],
-                    value: stmt,
-                }
+                ParserLifter::empty(stmt)
             }
             Some(expr_pair) => {
                 let expr_result = check!(
                     Expression::parse_from_pair(expr_pair, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span
-                    }),
+                    ParserLifter::empty(error_recovery_exp(span)),
                     warnings,
                     errors
                 );
                 let stmt = ReturnStatement {
                     expr: expr_result.value,
                 };
-                ParseResult {
+                ParserLifter {
                     var_decls: expr_result.var_decls,
                     value: stmt,
                 }

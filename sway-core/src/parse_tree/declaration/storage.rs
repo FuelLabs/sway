@@ -33,7 +33,7 @@ impl StorageField {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         conf: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut iter = pair.into_inner();
@@ -65,7 +65,7 @@ impl StorageField {
             initializer: initializer_result.value.clone(),
         };
         ok(
-            ParseResult {
+            ParserLifter {
                 var_decls: initializer_result.var_decls,
                 value: res,
             },
@@ -79,7 +79,7 @@ impl StorageDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         debug_assert_eq!(pair.as_rule(), Rule::storage_decl);
         let path = config.map(|c| c.path());
         let mut errors = vec![];
@@ -94,7 +94,7 @@ impl StorageDeclaration {
             storage_keyword.map(|x| x.as_rule()),
             Some(Rule::storage_keyword)
         );
-        let fields_results: Vec<CompileResult<ParseResult<StorageField>>> = iter
+        let fields_results: Vec<CompileResult<ParserLifter<StorageField>>> = iter
             .next()
             .unwrap()
             .into_inner()
@@ -109,7 +109,7 @@ impl StorageDeclaration {
         }
         let res = StorageDeclaration { fields, span };
         ok(
-            ParseResult {
+            ParserLifter {
                 var_decls,
                 value: res,
             },

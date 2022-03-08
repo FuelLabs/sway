@@ -23,7 +23,7 @@ impl AsmExpression {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
             span: pair.as_span(),
@@ -93,7 +93,7 @@ impl AsmExpression {
         };
 
         ok(
-            ParseResult {
+            ParserLifter {
                 var_decls: asm_register_result.var_decls,
                 value: exp,
             },
@@ -193,7 +193,7 @@ impl AsmRegisterDeclaration {
     fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Vec<Self>>> {
+    ) -> CompileResult<ParserLifter<Vec<Self>>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -234,7 +234,7 @@ impl AsmRegisterDeclaration {
         }
 
         ok(
-            ParseResult {
+            ParserLifter {
                 var_decls: var_decl_buf,
                 value: reg_buf,
             },

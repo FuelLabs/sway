@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{err, ok, CompileError, CompileResult, ParseResult},
-    error_recovery_parse_result, parse_array_index,
+    error::{err, ok, CompileError, CompileResult, ParserLifter},
+    error_recovery_exp, parse_array_index,
     parse_tree::{ident, Expression},
     parser::Rule,
 };
@@ -23,7 +23,7 @@ impl Reassignment {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Reassignment>> {
+    ) -> CompileResult<ParserLifter<Reassignment>> {
         let path = config.map(|c| c.path());
         let span = Span {
             span: pair.as_span(),
@@ -45,13 +45,10 @@ impl Reassignment {
                 let body = iter.next().unwrap();
                 let mut body_result = check!(
                     Expression::parse_from_pair(body.clone(), config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: Span {
-                            span: body.as_span(),
-                            path
-                        }
-                    }),
+                    ParserLifter::empty(error_recovery_exp(Span {
+                        span: body.as_span(),
+                        path
+                    })),
                     warnings,
                     errors
                 );
@@ -64,7 +61,7 @@ impl Reassignment {
                     span,
                 };
                 ok(
-                    ParseResult {
+                    ParserLifter {
                         var_decls,
                         value: reassign,
                     },
@@ -82,10 +79,7 @@ impl Reassignment {
                 };
                 let body_result = check!(
                     Expression::parse_from_pair(rhs, config),
-                    error_recovery_parse_result(Expression::Tuple {
-                        fields: vec![],
-                        span: rhs_span
-                    }),
+                    ParserLifter::empty(error_recovery_exp(rhs_span)),
                     warnings,
                     errors
                 );
@@ -124,7 +118,7 @@ impl Reassignment {
                             errors
                         ),
                     };
-                    expr_result = ParseResult {
+                    expr_result = ParserLifter {
                         var_decls: expr_result.var_decls,
                         value: expr,
                     };
@@ -138,7 +132,7 @@ impl Reassignment {
                     span,
                 };
                 ok(
-                    ParseResult {
+                    ParserLifter {
                         var_decls,
                         value: exp,
                     },
@@ -154,7 +148,7 @@ impl Reassignment {
 fn parse_subfield_path_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -177,13 +171,10 @@ fn parse_subfield_path_ensure_only_var(
                 },
             ));
             // construct unit expression for error recovery
-            let exp_result = error_recovery_parse_result(Expression::Tuple {
-                fields: vec![],
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
-            });
+            let exp_result = ParserLifter::empty(error_recovery_exp(Span {
+                span: item.as_span(),
+                path,
+            }));
             ok(exp_result, warnings, errors)
         }
     }
@@ -203,7 +194,7 @@ fn parse_subfield_path_ensure_only_var(
 fn parse_call_item_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<ParseResult<Expression>> {
+) -> CompileResult<ParserLifter<Expression>> {
     let path = config.map(|c| c.path());
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -234,7 +225,7 @@ fn parse_call_item_ensure_only_var(
         a => unreachable!("{:?}", a),
     };
     ok(
-        ParseResult {
+        ParserLifter {
             var_decls: vec![],
             value: exp,
         },

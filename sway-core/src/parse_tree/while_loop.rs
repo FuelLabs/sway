@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{ok, CompileResult, ParseResult},
-    error_recovery_parse_result,
+    error::{ok, CompileResult, ParserLifter},
+    error_recovery_exp,
     parser::Rule,
     CodeBlock, Expression,
 };
@@ -21,7 +21,7 @@ impl WhileLoop {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ParseResult<Self>> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -36,13 +36,10 @@ impl WhileLoop {
 
         let condition_result = check!(
             Expression::parse_from_pair(condition.clone(), config),
-            error_recovery_parse_result(Expression::Tuple {
-                fields: vec![],
-                span: Span {
-                    span: condition.as_span(),
-                    path,
-                }
-            }),
+            ParserLifter::empty(error_recovery_exp(Span {
+                span: condition.as_span(),
+                path,
+            })),
             warnings,
             errors
         );
@@ -62,7 +59,7 @@ impl WhileLoop {
         };
 
         ok(
-            ParseResult {
+            ParserLifter {
                 var_decls: condition_result.var_decls,
                 value: while_loop,
             },
