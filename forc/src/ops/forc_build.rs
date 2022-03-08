@@ -58,7 +58,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let old_lock = plan_result
         .as_ref()
         .ok()
-        .map(|plan| Lock::from_graph(&plan.graph()))
+        .map(|plan| Lock::from_graph(plan.graph()))
         .unwrap_or_default();
 
     // Validate the loaded build plan for the current manifest.
@@ -69,7 +69,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         println!("  Creating a new `Forc.lock` file");
         println!("    Cause: {}", e);
         let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
-        let lock = Lock::from_graph(&plan.graph());
+        let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);
         lock::print_diff(&manifest.project.name, &diff);
         let string = toml::ser::to_string_pretty(&lock)

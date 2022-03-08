@@ -46,7 +46,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
     let new_plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
-    let new_lock = Lock::from_graph(&new_plan.graph());
+    let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     lock::print_diff(&manifest.project.name, &diff);
 

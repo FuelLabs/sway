@@ -78,7 +78,7 @@ async fn exec_start(command: ExplorerCommand) -> Result<(), reqwest::Error> {
     let releases = get_github_releases().await?;
     let version = get_latest_release_name(releases.as_slice());
     let message = format!("Fuel Network Explorer {}", version);
-    let _ = println_green(&format!("{}", message));
+    let _ = println_green(&message);
     let is_downloaded = check_version_path(version);
 
     if !is_downloaded {
