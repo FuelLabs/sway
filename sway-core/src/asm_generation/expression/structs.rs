@@ -126,7 +126,6 @@ pub(crate) fn get_contiguous_memory_layout<N: Clone>(
         let stack_size = match ty.size_in_words(span) {
             Ok(o) => o,
             Err(e) => {
-                println!("`here3");
                 errors.push(e);
                 return err(warnings, errors);
             }
@@ -234,7 +233,6 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
             Ok(o) => match o.size_in_words(span) {
                 Ok(o) => o,
                 Err(e) => {
-                    println!("`here4");
                     errors.push(e);
                     return err(warnings, errors);
                 }

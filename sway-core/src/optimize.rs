@@ -675,13 +675,15 @@ impl FnCompiler {
                 match variant {
                     SizeOfVariant::Type(type_id) => {
                         let ir_type = convert_resolved_typeid_no_span(
-                            context, &mut self.struct_names, &type_id
+                            context,
+                            &mut self.struct_names,
+                            &type_id,
                         )?;
                         Ok(Constant::get_uint(
                             context,
                             64,
                             self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
-                            None
+                            None,
                         ))
                     }
                     SizeOfVariant::Val(exp) => {
@@ -689,7 +691,7 @@ impl FnCompiler {
                             context,
                             &mut self.struct_names,
                             &exp.return_type,
-                            &exp.span
+                            &exp.span,
                         )?;
 
                         // Compile the expression in case of side-effects but ignore its value.
@@ -699,11 +701,11 @@ impl FnCompiler {
                             context,
                             64,
                             self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
-                            None
+                            None,
                         ))
                     }
                 }
-            },
+            }
         }
     }
 

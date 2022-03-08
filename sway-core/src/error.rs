@@ -28,7 +28,6 @@ macro_rules! check_std_result {
         match $result_expr {
             Ok(res) => res,
             Err(e) => {
-                println!("in std result");
                 $errors.push(e.into());
                 return err($warnings, $errors);
             }
