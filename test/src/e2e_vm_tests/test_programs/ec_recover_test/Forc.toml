@@ -5,5 +5,4 @@ name = "ec_recover_test"
 entry = "main.sw"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.1.0" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }

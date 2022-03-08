@@ -95,6 +95,7 @@ pub enum Expression {
     },
     MethodApplication {
         method_name: MethodName,
+        contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         span: Span,
     },
@@ -245,6 +246,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -263,6 +265,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -774,6 +777,49 @@ impl Expression {
                             .expect("Guaranteed by grammar.")
                             .into_inner()
                             .collect::<Vec<_>>();
+                        let contract_call_params =
+                            match pair.peek().expect("Guaranteed by grammar").as_rule() {
+                                Rule::contract_call_params => pair.next(),
+                                _ => None,
+                            };
+
+                        let mut var_decls_buf = Vec::new();
+                        let mut fields_buf = Vec::new();
+                        if let Some(params) = contract_call_params {
+                            let fields = params
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .collect::<Vec<_>>();
+                            for i in (0..fields.len()).step_by(2) {
+                                let name = check!(
+                                    ident::parse_from_pair(fields[i].clone(), config),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                );
+                                let span = Span {
+                                    span: fields[i].as_span(),
+                                    path: path.clone(),
+                                };
+                                let ParseResult {
+                                    value,
+                                    mut var_decls,
+                                } = check!(
+                                    Expression::parse_from_pair(fields[i + 1].clone(), config),
+                                    error_recovery_parse_result(Expression::Tuple {
+                                        fields: vec![],
+                                        span: span.clone()
+                                    }),
+                                    warnings,
+                                    errors
+                                );
+                                var_decls_buf.append(&mut var_decls);
+                                fields_buf.push(StructExpressionField { name, value, span });
+                            }
+                        }
+
                         let function_arguments =
                             pair.next().expect("Guaranteed by grammar").into_inner();
                         // remove the last field from the subfield exp, since it is the method name
@@ -789,9 +835,12 @@ impl Expression {
                             warnings,
                             errors
                         );
-                        let mut argument_results_buf = VecDeque::new();
+                        let mut argument_buf = VecDeque::new();
                         for argument in function_arguments {
-                            let arg_result = check!(
+                            let ParseResult {
+                                value,
+                                mut var_decls,
+                            } = check!(
                                 Expression::parse_from_pair(argument.clone(), config),
                                 error_recovery_parse_result(Expression::Tuple {
                                     fields: vec![],
@@ -803,12 +852,16 @@ impl Expression {
                                 warnings,
                                 errors
                             );
-                            argument_results_buf.push_back(arg_result);
+                            var_decls_buf.append(&mut var_decls);
+                            argument_buf.push_back(value);
                         }
                         // the first thing is either an exp or a var, everything subsequent must be
                         // a field
                         let mut name_parts = name_parts.into_iter();
-                        let mut expr_result = check!(
+                        let ParseResult {
+                            value,
+                            mut var_decls,
+                        } = check!(
                             parse_subfield_path(
                                 name_parts.next().expect("guaranteed by grammar"),
                                 config
@@ -817,10 +870,12 @@ impl Expression {
                             warnings,
                             errors
                         );
+                        let mut expr = value;
+                        var_decls_buf.append(&mut var_decls);
 
                         for name_part in name_parts {
-                            let new_expr = Expression::SubfieldExpression {
-                                prefix: Box::new(expr_result.value.clone()),
+                            expr = Expression::SubfieldExpression {
+                                prefix: Box::new(expr.clone()),
                                 span: Span {
                                     span: name_part.as_span(),
                                     path: path.clone(),
@@ -832,28 +887,17 @@ impl Expression {
                                     errors
                                 ),
                             };
-                            expr_result = ParseResult {
-                                var_decls: expr_result.var_decls,
-                                value: new_expr,
-                            };
                         }
 
-                        argument_results_buf.push_front(expr_result);
-                        let var_decls = argument_results_buf
-                            .iter()
-                            .flat_map(|x| x.var_decls.clone())
-                            .collect::<Vec<_>>();
-                        let arguments_buf = argument_results_buf
-                            .into_iter()
-                            .map(|x| x.value)
-                            .collect::<Vec<_>>();
+                        argument_buf.push_front(expr);
                         let exp = Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
-                            arguments: arguments_buf,
+                            contract_call_params: fields_buf,
+                            arguments: argument_buf.into_iter().collect(),
                             span: whole_exp_span,
                         };
                         ParseResult {
-                            var_decls,
+                            var_decls: var_decls_buf,
                             value: exp,
                         }
                     }
@@ -969,6 +1013,7 @@ impl Expression {
                             .collect::<Vec<_>>();
                         let exp = Expression::MethodApplication {
                             method_name,
+                            contract_call_params: vec![],
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         };

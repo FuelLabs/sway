@@ -18,7 +18,7 @@ mod enums;
 mod if_exp;
 mod lazy_op;
 mod structs;
-mod subfield;
+pub(crate) mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
@@ -51,26 +51,16 @@ pub(crate) fn convert_expression_to_asm(
         ),
         TypedExpressionVariant::FunctionApplication {
             name,
+            contract_call_params,
             arguments,
             function_body,
             selector,
         } => {
             if let Some(metadata) = selector {
-                assert_eq!(
-                    arguments.len(),
-                    4,
-                    "this is verified in the semantic analysis stage"
-                );
                 convert_contract_call_to_asm(
                     metadata,
-                    // gas to forward
-                    &arguments[0].1,
-                    // coins to forward
-                    &arguments[1].1,
-                    // color of coins
-                    &arguments[2].1,
-                    // user parameter
-                    &arguments[3].1,
+                    contract_call_params,
+                    arguments,
                     register_sequencer,
                     return_register,
                     namespace,
@@ -551,15 +541,16 @@ fn convert_fn_app_to_asm(
     ok(asm_buf, warnings, errors)
 }
 
-/// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
-/// takes four registers where the registers are expected to be pre-loaded with the desired values
-/// when this function is jumped to.
+/// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this takes
+/// a list of registers corresponding to the arguments and three additional registers corresponding
+/// to the contract call parameters (gas, coins, asset_id).  
+///
+/// All registers are expected to be
+/// pre-loaded with the desired values when this function is jumped to.
+///
 pub(crate) fn convert_abi_fn_to_asm(
     decl: &TypedFunctionDeclaration,
-    user_argument: (Ident, VirtualRegister),
-    cgas: (Ident, VirtualRegister),
-    bal: (Ident, VirtualRegister),
-    coin_color: (Ident, VirtualRegister),
+    arguments: &[(Ident, VirtualRegister)],
     parent_namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
@@ -572,10 +563,9 @@ pub(crate) fn convert_abi_fn_to_asm(
     let return_register = register_sequencer.next();
 
     // insert the arguments into the asm namespace with their registers mapped
-    namespace.insert_variable(user_argument.0, user_argument.1);
-    namespace.insert_variable(cgas.0, cgas.1);
-    namespace.insert_variable(bal.0, bal.1);
-    namespace.insert_variable(coin_color.0, coin_color.1);
+    for arg in arguments {
+        namespace.insert_variable(arg.clone().0, arg.clone().1);
+    }
     // evaluate the function body
     let mut body = check!(
         convert_code_block_to_asm(

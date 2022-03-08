@@ -1,14 +1,13 @@
 use super::*;
-use crate::semantic_analysis::ast_node::*;
+use crate::{constants, semantic_analysis::ast_node::*};
 use either::Either;
+
 /// Converts a function application of a contract ABI function into assembly
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn convert_contract_call_to_asm(
     metadata: &ContractCallMetadata,
-    cgas: &TypedExpression,
-    bal: &TypedExpression,
-    coin_color: &TypedExpression,
-    user_argument: &TypedExpression,
+    contract_call_parameters: &HashMap<String, TypedExpression>,
+    arguments: &[(Ident, TypedExpression)],
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
     namespace: &mut AsmNamespace,
@@ -18,10 +17,10 @@ pub(crate) fn convert_contract_call_to_asm(
     let mut errors = vec![];
     let mut asm_buf = vec![];
 
-    let user_argument_register = register_sequencer.next();
-    let gas_to_forward = register_sequencer.next();
-    let bal_register = register_sequencer.next();
-    let coin_color_register = register_sequencer.next();
+    let bundled_arguments_register = register_sequencer.next();
+    let gas_register = register_sequencer.next();
+    let coins_register = register_sequencer.next();
+    let asset_id_register = register_sequencer.next();
     let contract_address = register_sequencer.next();
 
     // load the function selector from the data section into a register
@@ -34,54 +33,111 @@ pub(crate) fn convert_contract_call_to_asm(
         owning_span: Some(span.clone()),
     });
 
-    // evaluate the user provided argument to the contract
-    asm_buf.append(&mut check!(
-        convert_expression_to_asm(
-            user_argument,
-            namespace,
-            &user_argument_register,
-            register_sequencer
-        ),
-        vec![],
-        warnings,
-        errors
-    ));
+    // Bundle the arguments into a struct if needed. If we only have a single argument, there is no
+    // need to bundle.
+    let bundled_arguments = match arguments.len() {
+        0 => None,
+        1 => Some(arguments[0].1.clone()),
+        _ => {
+            // create a struct expression that bundles the arguments in order
+            let mut typed_fields_buf = vec![];
+            for (name, arg) in arguments {
+                typed_fields_buf.push(TypedStructExpressionField {
+                    value: arg.clone(),
+                    name: name.clone(),
+                });
+            }
+            Some(TypedExpression {
+                expression: TypedExpressionVariant::StructExpression {
+                    struct_name: Ident::new_with_override("bundled_arguments", span.clone()),
+                    fields: typed_fields_buf,
+                },
+                return_type: 0,
+                is_constant: IsConstant::No,
+                span: span.clone(),
+            })
+        }
+    };
 
-    // evaluate the gas to forward to the contract
-    asm_buf.append(&mut check!(
-        convert_expression_to_asm(cgas, namespace, &gas_to_forward, register_sequencer),
-        vec![],
-        warnings,
-        errors
-    ));
+    // evaluate the bundle of arguments
+    if let Some(bundled_arguments) = &bundled_arguments {
+        asm_buf.append(&mut check!(
+            convert_expression_to_asm(
+                bundled_arguments,
+                namespace,
+                &bundled_arguments_register,
+                register_sequencer
+            ),
+            vec![],
+            warnings,
+            errors
+        ));
+    }
 
-    // evaluate the balance to forward to the contract
-    asm_buf.append(&mut check!(
-        convert_expression_to_asm(bal, namespace, &bal_register, register_sequencer),
-        vec![],
-        warnings,
-        errors
-    ));
+    // evaluate the gas to forward to the contract. If no user-specified gas parameter is found,
+    // simply load $cgas.
+    match contract_call_parameters.get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string()) {
+        Some(exp) => asm_buf.append(&mut check!(
+            convert_expression_to_asm(exp, namespace, &gas_register, register_sequencer),
+            vec![],
+            warnings,
+            errors
+        )),
+        None => asm_buf.push(load_gas(gas_register.clone())),
+    }
 
-    // evaluate the coin color expression to forward to the contract
-    asm_buf.append(&mut check!(
-        convert_expression_to_asm(
-            // investigation: changing this value also results in a different color
-            coin_color,
-            namespace,
-            &coin_color_register,
-            register_sequencer
-        ),
-        vec![],
-        warnings,
-        errors
-    ));
+    // evaluate the coins balance to forward to the contract. If no user-specified coins parameter
+    // is found, simply load $bal.
+    match contract_call_parameters.get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string()) {
+        Some(exp) => asm_buf.append(&mut check!(
+            convert_expression_to_asm(exp, namespace, &coins_register, register_sequencer),
+            vec![],
+            warnings,
+            errors
+        )),
+        None => {
+            let coins_default = namespace.insert_data_value(&Literal::U64(
+                constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE,
+            ));
+            asm_buf.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(coins_register.clone(), coins_default)),
+                owning_span: None,
+                comment: "loading the default coins value for call".into(),
+            })
+        }
+    }
+
+    // evaluate the asset_id expression to forward to the contract. If no user-specified asset_id parameter
+    // is found, simply load $fp.
+    match contract_call_parameters
+        .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
+    {
+        Some(exp) => asm_buf.append(&mut check!(
+            convert_expression_to_asm(exp, namespace, &asset_id_register, register_sequencer),
+            vec![],
+            warnings,
+            errors
+        )),
+        None => {
+            let asset_id_default = namespace.insert_data_value(&Literal::B256(
+                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE,
+            ));
+            asm_buf.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(
+                    asset_id_register.clone(),
+                    asset_id_default,
+                )),
+                owning_span: None,
+                comment: "loading the default asset_id value for call".into(),
+            })
+        }
+    }
 
     // evaluate the contract address for the contract
     asm_buf.append(&mut check!(
         convert_expression_to_asm(
             // investigation: changing the value in the contract_address register
-            // impacts the color that the VM sees
+            // impacts the asset_id that the VM sees
             &*metadata.contract_address,
             namespace,
             &contract_address,
@@ -138,15 +194,17 @@ pub(crate) fn convert_contract_call_to_asm(
     });
 
     // write the user argument to bytes 40-48
-    asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::SW(
-            ra_pointer.clone(),
-            user_argument_register,
-            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
-        )),
-        comment: "move user param for call".into(),
-        owning_span: Some(span.clone()),
-    });
+    if bundled_arguments.is_some() {
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::SW(
+                ra_pointer.clone(),
+                bundled_arguments_register,
+                VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+            )),
+            comment: "move user param for call".into(),
+            owning_span: Some(span.clone()),
+        });
+    }
 
     // now, $rA (ra_pointer) points to the beginning of a section of contiguous memory that
     // contains the contract address, function selector, and user parameter.
@@ -154,9 +212,9 @@ pub(crate) fn convert_contract_call_to_asm(
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::CALL(
             ra_pointer,
-            bal_register,
-            coin_color_register,
-            gas_to_forward,
+            coins_register,
+            asset_id_register,
+            gas_register,
         )),
         comment: "call external contract".into(),
         owning_span: Some(span.clone()),

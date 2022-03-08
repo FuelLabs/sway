@@ -65,10 +65,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/clippy-check@v1.0.7
-        name: Check Clippy Linter
+      - uses: actions-rs/toolchain@v1
         with:
-          token: ${{ github.token }}
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Check Clippy Linter
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
           args: --all-features --all-targets -- -D warnings
 
   cargo-fmt-check:
@@ -90,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.3.1
+        image: ghcr.io/fuellabs/fuel-core:v0.4.1
         ports:
           - 4000:4000
     steps:

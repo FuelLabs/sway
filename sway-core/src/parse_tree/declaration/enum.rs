@@ -180,6 +180,7 @@ impl EnumVariant {
             errors,
         )
     }
+
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,

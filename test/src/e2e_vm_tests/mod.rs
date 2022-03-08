@@ -87,12 +87,19 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("size_of", ProgramState::Return(1)),
         ("supertraits", ProgramState::Return(1)),
         ("new_allocator_test", ProgramState::Return(42)), // true
+        ("inline_if_expr_const", ProgramState::Return(0)),
+        ("method_on_empty_struct", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-            assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
+            // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
+            // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
+            assert!(matches!(
+                crate::e2e_vm_tests::harness::test_json_abi(name),
+                Ok(())
+            ));
             acc + 1
         } else {
             acc

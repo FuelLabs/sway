@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use forc::test::{
     forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
     RunCommand,
@@ -103,7 +104,7 @@ pub(crate) fn does_not_compile(file_name: &str) {
 
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
-pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
     println!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let (verbose, use_ir) = get_test_config_from_env();
@@ -116,10 +117,10 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         silent_mode: !verbose,
         ..Default::default()
     })
-    .map(|(bytes, _json_abi)| bytes)
+    .map(|compiled| compiled.bytecode)
 }
 
-pub(crate) fn test_json_abi(file_name: &str) -> Result<(), String> {
+pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
     let _script = compile_to_json_abi(file_name)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
@@ -131,22 +132,22 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<(), String> {
         manifest_dir, file_name, "json_abi_output.json"
     );
     if fs::metadata(oracle_path.clone()).is_err() {
-        return Err("JSON ABI oracle file does not exist for this test.".to_string());
+        bail!("JSON ABI oracle file does not exist for this test.");
     }
     if fs::metadata(output_path.clone()).is_err() {
-        return Err("JSON ABI output file does not exist for this test.".to_string());
+        bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
         fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
         fs::read_to_string(output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
-        return Err("Mismatched ABI JSON output.".to_string());
+        bail!("Mismatched ABI JSON output.");
     }
     Ok(())
 }
 
-fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
+fn compile_to_json_abi(file_name: &str) -> Result<Value> {
     println!("   ABI gen {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_abi_json::build(JsonAbiCommand {

@@ -1,8 +1,8 @@
 [package]
 name = "sway-core"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2018"
+edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
@@ -12,26 +12,26 @@ description = "Sway core language."
 selector-debug = ["clap", "hex"]
 
 [dependencies]
-clap = { version = "3.1.2", features = ["derive"], optional = true }
+clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.1"
-fuel-vm = "0.4"
+fuel-asm = "0.2"
+fuel-vm = "0.5"
 hex = { version = "0.4", optional = true }
 itertools = "0.10.3"
 lazy_static = "1.4"
 nanoid = "0.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
 pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
-petgraph = "0.5"
+petgraph = "0.6"
 prettydiff = "0.5"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ir = { version = "0.5.0", path = "../sway-ir" }
-sway-types = { version = "0.5.0", path = "../sway-types" }
+sway-ir = { version = "0.6.0", path = "../sway-ir" }
+sway-types = { version = "0.6.0", path = "../sway-types" }
 generational-arena = "0.2"
 thiserror = "1.0"
 
