@@ -99,7 +99,7 @@ async fn get_github_releases() -> Result<Vec<GitHubRelease>, reqwest::Error> {
         .header("User-Agent", "warp")
         .send()
         .await?;
-    Ok(response.json().await?)
+    response.json().await
 }
 
 fn check_version_path(version: &str) -> bool {

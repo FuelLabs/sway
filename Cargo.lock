@@ -1090,7 +1090,6 @@ dependencies = [
  "futures",
  "hex",
  "prettydiff",
- "reqwest",
  "serde",
  "serde_json",
  "sway-core",
@@ -1098,7 +1097,6 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "taplo",
- "tar",
  "term-table",
  "tokio",
  "toml",
@@ -1106,7 +1104,6 @@ dependencies = [
  "ureq",
  "url",
  "uwuify",
- "warp",
  "whoami",
 ]
 
