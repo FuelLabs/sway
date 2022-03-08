@@ -225,6 +225,10 @@ Bytecode size is 28 bytes.
 </code></pre>
 <p>There is currently not a convention for where ABI files should be placed; one
 common choice is loose in the root directory.</p>
+<h2 id="initializing-a-new-sway-project-from-a-template"><a class="header" href="#initializing-a-new-sway-project-from-a-template">Initializing a new Sway Project from a Template</a></h2>
+<p>Pass the <code>--template</code> flag to <code>forc init</code> to create a new project using one of the provided templates. Currently, only the <code>counter</code> example is available. More templates will be available in the future.</p>
+<pre><code class="language-console">forc init --template counter my_sway_project
+</code></pre>
 <h2 id="testing-a-sway-project-with-forc"><a class="header" href="#testing-a-sway-project-with-forc">Testing a Sway Project with Forc</a></h2>
 <p>If you look again at the project structure when you create a new Forc project, you can see a directory called <code>tests/</code>:</p>
 <pre><code class="language-plaintext">$ forc init my-fuel-project

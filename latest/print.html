@@ -195,6 +195,27 @@
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
 <p>The Sway toolchain can be built from source by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>.</p>
 <p>The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
+<h2 id="enable-tab-completion-for-bash-fish-zsh-or-powershell"><a class="header" href="#enable-tab-completion-for-bash-fish-zsh-or-powershell">Enable tab completion for Bash, Fish, Zsh, or PowerShell</a></h2>
+<p><code>forc</code> now supports generating completion scripts for Bash, Fish, Zsh, and PowerShell. See <code>forc completions --help</code> for full details, but the gist is as simple as using one of the following:</p>
+<pre><code># Bash
+$ forc completions --shell=bash &gt; ~/.local/share/bash-completion/completions/forc
+
+# Bash (macOS/Homebrew)
+$ forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+
+# Fish
+$ mkdir -p ~/.config/fish/completions
+$ forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
+
+# Zsh
+$ forc completions --shell=zsh &gt; ~/.zfunc/_forc
+
+# PowerShell v5.0+
+$ forc completions --shell=powershell &gt;&gt; $PROFILE.CurrentUserCurrentHost
+# or
+$ forc completions --shell=powershell | Out-String | Invoke-Expression
+</code></pre>
+<p>Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.</p>
 <h1 id="the-sway-toolchain"><a class="header" href="#the-sway-toolchain">The Sway Toolchain</a></h1>
 <p>The Sway toolchain consists of several components.</p>
 <h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
@@ -262,6 +283,10 @@ Bytecode size is 28 bytes.
 </code></pre>
 <p>There is currently not a convention for where ABI files should be placed; one
 common choice is loose in the root directory.</p>
+<h2 id="initializing-a-new-sway-project-from-a-template"><a class="header" href="#initializing-a-new-sway-project-from-a-template">Initializing a new Sway Project from a Template</a></h2>
+<p>Pass the <code>--template</code> flag to <code>forc init</code> to create a new project using one of the provided templates. Currently, only the <code>counter</code> example is available. More templates will be available in the future.</p>
+<pre><code class="language-console">forc init --template counter my_sway_project
+</code></pre>
 <h2 id="testing-a-sway-project-with-forc"><a class="header" href="#testing-a-sway-project-with-forc">Testing a Sway Project with Forc</a></h2>
 <p>If you look again at the project structure when you create a new Forc project, you can see a directory called <code>tests/</code>:</p>
 <pre><code class="language-plaintext">$ forc init my-fuel-project
