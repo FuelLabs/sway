@@ -16,6 +16,14 @@ The Sway toolchain and Fuel Core full node can be installed with:
 cargo install forc fuel-core
 ```
 
+### Updating `forc`
+
+You can update `forc` with:
+
+```sh
+cargo install forc
+```
+
 ## Building from Source
 
 The Sway toolchain can be built from source by following instructions at <https://github.com/FuelLabs/sway>.
