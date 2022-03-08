@@ -6,7 +6,7 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "Fuel Orchestrator."
+description = "Utility items shared between forc crates."
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }

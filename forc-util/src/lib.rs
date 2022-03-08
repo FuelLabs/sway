@@ -1,3 +1,5 @@
+//! Utility items shared between forc crates.
+
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
