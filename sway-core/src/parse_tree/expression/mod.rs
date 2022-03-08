@@ -547,7 +547,7 @@ impl Expression {
                 );
                 let mut var_decls = primary_expression_result.var_decls;
                 var_decls.push(VariableDeclaration {
-                    name: var_decl_name.clone(),
+                    name: var_decl_name,
                     type_ascription: TypeInfo::Unknown,
                     type_ascription_span: None,
                     is_mutable: false,

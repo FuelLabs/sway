@@ -102,5 +102,20 @@ fn main() -> u64 {
         CrazyPoint { p1: Point { x: 0, y: 1 }, p2 } => { 42 },
     };
 
+    // should fail
+    let foo = match 42 {
+        0 => { newvariable},
+        foo => { foo },
+    };
+
+    // should succeed
+    let foo = match (match 1 {
+            1 => { 1 },
+            _ => { 0 },
+        }) {
+        0 => { 42 },
+        _ => { 0 },
+    };
+
     42u64
 }
