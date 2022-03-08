@@ -1,16 +1,11 @@
-use crate::{
-    cli::BuildCommand,
-    lock::Lock,
-    pkg,
-    utils::helpers::{default_output_directory, lock_path, print_lock_diff, read_manifest},
-};
+use crate::cli::BuildCommand;
 use anyhow::{anyhow, bail, Result};
+use forc_pkg::{self as pkg, lock, Lock, Manifest};
+use forc_util::{default_output_directory, lock_path};
 use std::{
     fs::{self, File},
-    io::Write,
     path::PathBuf,
 };
-use sway_core::source_map::SourceMap;
 use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
@@ -23,16 +18,17 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         print_intermediate_asm,
         print_ir,
         offline_mode: offline,
-        silent_mode: silent,
+        silent_mode,
         output_directory,
         minify_json_abi,
     } = command;
 
-    let build_conf = pkg::BuildConf {
+    let config = pkg::BuildConfig {
         use_ir,
         print_ir,
         print_finalized_asm,
         print_intermediate_asm,
+        silent: silent_mode,
     };
 
     // find manifest directory, even if in subdirectory
@@ -52,7 +48,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             );
         }
     };
-    let manifest = read_manifest(&manifest_dir)?;
+    let manifest = Manifest::from_dir(&manifest_dir)?;
     let lock_path = lock_path(&manifest_dir);
 
     // Load the build plan from the lock file.
@@ -62,7 +58,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let old_lock = plan_result
         .as_ref()
         .ok()
-        .map(|plan| Lock::from_graph(&plan.graph))
+        .map(|plan| Lock::from_graph(&plan.graph()))
         .unwrap_or_default();
 
     // Validate the loaded build plan for the current manifest.
@@ -73,9 +69,9 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         println!("  Creating a new `Forc.lock` file");
         println!("    Cause: {}", e);
         let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
-        let lock = Lock::from_graph(&plan.graph);
+        let lock = Lock::from_graph(&plan.graph());
         let diff = lock.diff(&old_lock);
-        print_lock_diff(&manifest.project.name, &diff);
+        lock::print_diff(&manifest.project.name, &diff);
         let string = toml::ser::to_string_pretty(&lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
@@ -83,43 +79,16 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         Ok(plan)
     })?;
 
-    // Iterate over and compile all packages.
-    let mut namespace_map = Default::default();
-    let mut source_map = SourceMap::new();
-    let mut json_abi = vec![];
-    let mut bytecode = vec![];
-    for &node in &plan.compilation_order {
-        let dep_namespace =
-            pkg::dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
-        let pkg = &plan.graph[node];
-        let path = &plan.path_map[&pkg.id()];
-        let res = pkg::compile(
-            pkg,
-            path,
-            &build_conf,
-            dep_namespace,
-            &mut source_map,
-            silent,
-        )?;
-        let (compiled, maybe_namespace) = res;
-        if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace);
-        }
-        json_abi.extend(compiled.json_abi);
-        bytecode = compiled.bytecode;
-        source_map.insert_dependency(path.clone());
-    }
+    // Build it!
+    let (compiled, source_map) = pkg::build(&plan, &config)?;
 
     if let Some(outfile) = binary_outfile {
-        let mut file = File::create(outfile)?;
-        file.write_all(bytecode.as_slice())?;
+        fs::write(&outfile, &compiled.bytecode)?;
     }
 
     if let Some(outfile) = debug_outfile {
-        fs::write(
-            outfile,
-            &serde_json::to_vec(&source_map).expect("JSON serialization failed"),
-        )?;
+        let source_map_json = serde_json::to_vec(&source_map).expect("JSON serialization failed");
+        fs::write(outfile, &source_map_json)?;
     }
 
     // TODO: We may support custom build profiles in the future.
@@ -137,20 +106,20 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let bin_path = output_dir
         .join(&manifest.project.name)
         .with_extension("bin");
-    std::fs::write(&bin_path, bytecode.as_slice())?;
-    if !json_abi.is_empty() {
+    fs::write(&bin_path, &compiled.bytecode)?;
+    if !compiled.json_abi.is_empty() {
         let json_abi_stem = format!("{}-abi", manifest.project.name);
         let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
         let file = File::create(json_abi_path)?;
         let res = if minify_json_abi {
-            serde_json::to_writer(&file, &json_abi)
+            serde_json::to_writer(&file, &compiled.json_abi)
         } else {
-            serde_json::to_writer_pretty(&file, &json_abi)
+            serde_json::to_writer_pretty(&file, &compiled.json_abi)
         };
         res?;
     }
 
-    println!("  Bytecode size is {} bytes.", bytecode.len());
+    println!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
-    Ok(pkg::Compiled { bytecode, json_abi })
+    Ok(compiled)
 }

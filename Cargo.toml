@@ -4,6 +4,8 @@ members = [
     "docstrings",
     "examples/build-all-examples",
     "forc",
+    "forc-pkg",
+    "forc-util",
     "parser",
     "sway-core",
     "sway-fmt",

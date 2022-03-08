@@ -1,5 +1,6 @@
-use crate::{cli::CleanCommand, utils::helpers::default_output_directory};
+use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
+use forc_util::default_output_directory;
 use std::{path::PathBuf, process};
 use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 

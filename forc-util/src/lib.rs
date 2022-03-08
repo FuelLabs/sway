@@ -1,18 +1,17 @@
-use super::manifest::Manifest;
-use crate::utils::restricted_names;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::Arc;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
@@ -21,17 +20,10 @@ pub fn is_sway_file(file: &Path) -> bool {
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
-pub fn find_main_path(manifest_dir: &Path, manifest: &Manifest) -> PathBuf {
-    let mut code_dir = manifest_dir.to_path_buf();
-    code_dir.push(constants::SRC_DIR);
-    code_dir.push(&manifest.project.entry);
-    code_dir
-}
-
-pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<&'sc Path> {
+pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
     let mut file_path = manifest_dir.to_path_buf();
     file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
+    let file_name = match entry_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
         Err(err) => bail!(err),
     };
@@ -42,39 +34,17 @@ pub fn lock_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(constants::LOCK_FILE_NAME)
 }
 
-pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest> {
-    let manifest_path = {
-        let mut man = PathBuf::from(manifest_dir);
-        man.push(constants::MANIFEST_FILE_NAME);
-        man
-    };
-    let manifest_path_str = format!("{:?}", manifest_path);
-    let manifest = match std::fs::read_to_string(manifest_path) {
-        Ok(o) => o,
-        Err(e) => {
-            bail!("failed to read manifest at {:?}: {}", manifest_path_str, e)
-        }
-    };
-
-    let manifest = match toml::from_str(&manifest) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(anyhow!("Error parsing manifest: {}.", e)),
-    }?;
-
-    validate_manifest(manifest)
-}
-
 // Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
 // https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
 
-fn validate_name(name: &str, use_case: &str) -> Result<()> {
+pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     // if true returns formatted error
-    restricted_names::contains_invalid_char(name, use_case)?;
+    restricted::contains_invalid_char(name, use_case)?;
 
-    if restricted_names::is_keyword(name) {
+    if restricted::is_keyword(name) {
         bail!("the name `{name}` cannot be used as a package name, it is a Sway keyword");
     }
-    if restricted_names::is_conflicting_artifact_name(name) {
+    if restricted::is_conflicting_artifact_name(name) {
         bail!(
             "the name `{name}` cannot be used as a package name, \
             it conflicts with Forc's build directory names"
@@ -86,13 +56,13 @@ fn validate_name(name: &str, use_case: &str) -> Result<()> {
             it conflicts with Sway's built-in test library"
         );
     }
-    if restricted_names::is_conflicting_suffix(name) {
+    if restricted::is_conflicting_suffix(name) {
         bail!(
             "the name `{name}` is part of Sway's standard library\n\
             It is recommended to use a different name to avoid problems."
         );
     }
-    if restricted_names::is_windows_reserved(name) {
+    if restricted::is_windows_reserved(name) {
         if cfg!(windows) {
             bail!("cannot use name `{name}`, it is a reserved Windows filename");
         } else {
@@ -102,33 +72,10 @@ fn validate_name(name: &str, use_case: &str) -> Result<()> {
             );
         }
     }
-    if restricted_names::is_non_ascii_name(name) {
+    if restricted::is_non_ascii_name(name) {
         bail!("the name `{name}` contains non-ASCII characters which are unsupported");
     }
     Ok(())
-}
-
-fn validate_manifest(manifest: Manifest) -> Result<Manifest> {
-    validate_name(&manifest.project.name, "package name")?;
-    if let Some(ref org) = manifest.project.organization {
-        validate_name(org, "organization name")?;
-    }
-
-    Ok(manifest)
-}
-
-pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>> {
-    let main_path = {
-        let mut code_dir = PathBuf::from(manifest_dir);
-        code_dir.push(constants::SRC_DIR);
-        code_dir.push(&manifest_of_dep.project.entry);
-        code_dir
-    };
-
-    // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
-    let main_file = std::fs::read_to_string(&main_path).map_err(|e| e)?;
-    let main_file = Arc::from(main_file);
-    Ok(main_file)
 }
 
 pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
@@ -218,33 +165,6 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
     .unwrap();
 }
 
-pub(crate) fn print_lock_diff(proj_name: &str, diff: &crate::lock::Diff) {
-    print_removed_pkgs(proj_name, diff.removed.iter().cloned());
-    print_added_pkgs(proj_name, diff.added.iter().cloned());
-}
-
-pub(crate) fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
-where
-    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
-{
-    for pkg in removed {
-        if pkg.name != proj_name {
-            let _ = println_red(&format!("  Removing {}", pkg.unique_string()));
-        }
-    }
-}
-
-pub(crate) fn print_added_pkgs<'a, I>(proj_name: &str, removed: I)
-where
-    I: IntoIterator<Item = &'a crate::lock::PkgLock>,
-{
-    for pkg in removed {
-        if pkg.name != proj_name {
-            let _ = println_green(&format!("    Adding {}", pkg.unique_string()));
-        }
-    }
-}
-
 pub fn println_red(txt: &str) -> io::Result<()> {
     println_std_out(txt, TermColor::Red)
 }
@@ -269,7 +189,7 @@ pub fn println_green_err(txt: &str) -> io::Result<()> {
     println_std_err(txt, TermColor::Green)
 }
 
-fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+pub fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
     let stdout = StandardStream::stdout(ColorChoice::Always);
     print_with_color(txt, color, stdout)
 }
