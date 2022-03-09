@@ -10,7 +10,6 @@ use crate::{
 use sway_types::span::Span;
 
 use derivative::Derivative;
-
 use pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
@@ -77,7 +76,7 @@ impl PartialEq for TypeInfo {
             (Self::Numeric, Self::Numeric) => true,
             (Self::Contract, Self::Contract) => true,
             (Self::ErrorRecovery, Self::ErrorRecovery) => true,
-            (Self::UnknownGeneric { .. }, Self::UnknownGeneric { .. }) => true,
+            (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
             (Self::Str(l), Self::Str(r)) => l == r,
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (

@@ -121,6 +121,7 @@ impl TypedAstNode {
             WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
+
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, AstNode>,
     ) -> CompileResult<TypedAstNode> {
@@ -549,11 +550,19 @@ impl TypedAstNode {
                                     },
                                 )
                                 .collect::<Vec<_>>();
+                            let type_id = insert_type(TypeInfo::Struct {
+                                name: decl.name.as_str().to_string(),
+                                fields: fields
+                                    .iter()
+                                    .map(TypedStructField::as_owned_typed_struct_field)
+                                    .collect::<Vec<_>>(),
+                            });
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
                                 type_parameters: decl.type_parameters.clone(),
                                 fields,
                                 visibility: decl.visibility,
+                                type_id,
                             };
 
                             // insert struct into namespace

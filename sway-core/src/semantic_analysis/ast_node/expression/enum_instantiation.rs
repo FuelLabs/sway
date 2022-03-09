@@ -1,3 +1,5 @@
+use generational_arena::Index;
+
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
@@ -8,6 +10,7 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
+    module: Index,
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
@@ -26,7 +29,7 @@ pub(crate) fn instantiate_enum(
     let enum_decl = if enum_decl.type_parameters.is_empty() {
         enum_decl
     } else {
-        enum_decl.monomorphize()
+        enum_decl.monomorphize(&module)
     };
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants

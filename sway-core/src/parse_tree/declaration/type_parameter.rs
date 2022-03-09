@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TypeParameter {
+pub struct TypeParameter {
     pub(crate) type_id: TypeId,
     pub(crate) name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,

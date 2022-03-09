@@ -85,6 +85,10 @@ pub(crate) fn instantiate_function_application(
     // declaration. Use parameter type annotations as annotations for the
     // arguments
     //
+    println!(
+        "\nbefore: ~~~~~ {:?}\n",
+        look_up_type_id(return_type).friendly_type_str()
+    );
     let typed_call_arguments = arguments
         .into_iter()
         .zip(parameters.iter())
@@ -112,6 +116,10 @@ pub(crate) fn instantiate_function_application(
             (param.name.clone(), exp)
         })
         .collect();
+    println!(
+        "\nafter: ~~~~~ {:?}\n",
+        look_up_type_id(return_type).friendly_type_str()
+    );
 
     let expression = TypedExpressionVariant::FunctionApplication {
         arguments: typed_call_arguments,

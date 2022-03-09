@@ -20,11 +20,13 @@ impl Hash for Ident {
         self.as_str().hash(state);
     }
 }
+
 impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
         self.as_str() == other.as_str()
     }
 }
+
 impl Ord for Ident {
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())

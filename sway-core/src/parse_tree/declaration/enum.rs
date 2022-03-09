@@ -53,12 +53,20 @@ impl EnumDeclaration {
                 errors
             ));
         }
+        let type_id = insert_type(TypeInfo::Enum {
+            name: self.name.as_str().to_string(),
+            variant_types: variants_buf
+                .iter()
+                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                .collect(),
+        });
         TypedEnumDeclaration {
             name: self.name.clone(),
             type_parameters: self.type_parameters.clone(),
             variants: variants_buf,
             span: self.span.clone(),
             visibility: self.visibility,
+            type_id,
         }
     }
 

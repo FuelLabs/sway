@@ -1,5 +1,5 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
-use crate::{error::*, parse_tree::*, type_engine::*, Ident};
+use crate::{error::*, parse_tree::*, type_engine::*, Ident, NamespaceWrapper};
 
 use sway_types::{join_spans, span::Span, Property};
 
@@ -76,49 +76,36 @@ impl TypedDeclaration {
         }
     }
     pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
-        ok(
-            match self {
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    body, ..
-                }) => body.return_type,
-                TypedDeclaration::FunctionDeclaration { .. } => {
-                    return err(
-                        vec![],
-                        vec![CompileError::Unimplemented(
-                            "Function pointers have not yet been implemented.",
-                            self.span(),
-                        )],
-                    )
-                }
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                    name,
-                    fields,
-                    ..
-                }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.as_str().to_string(),
-                    fields: fields
-                        .iter()
-                        .map(TypedStructField::as_owned_typed_struct_field)
-                        .collect(),
-                }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
-                TypedDeclaration::GenericTypeForFunctionScope { name } => {
-                    insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
-                }
-                decl => {
-                    return err(
-                        vec![],
-                        vec![CompileError::NotAType {
-                            span: decl.span(),
-                            name: decl.pretty_print(),
-                            actually_is: decl.friendly_name(),
-                        }],
-                    )
-                }
-            },
-            vec![],
-            vec![],
-        )
+        let type_id = match self {
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
+                body.return_type
+            }
+            TypedDeclaration::FunctionDeclaration { .. } => {
+                return err(
+                    vec![],
+                    vec![CompileError::Unimplemented(
+                        "Function pointers have not yet been implemented.",
+                        self.span(),
+                    )],
+                )
+            }
+            TypedDeclaration::StructDeclaration(TypedStructDeclaration { type_id, .. }) => *type_id,
+            TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
+            TypedDeclaration::GenericTypeForFunctionScope { name } => {
+                insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
+            }
+            decl => {
+                return err(
+                    vec![],
+                    vec![CompileError::NotAType {
+                        span: decl.span(),
+                        name: decl.pretty_print(),
+                        actually_is: decl.friendly_name(),
+                    }],
+                )
+            }
+        };
+        ok(type_id, vec![], vec![])
     }
 
     pub(crate) fn span(&self) -> Span {
@@ -224,13 +211,28 @@ pub struct TypedStructDeclaration {
     pub(crate) fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
+    pub(crate) type_id: TypeId,
 }
 
 impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(&self) -> Self {
-        let mut new_decl = self.clone();
+    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
+        let old_type_id = self.type_id;
         let type_mapping = insert_type_parameters(&self.type_parameters);
+        let mut new_decl = self.clone();
         new_decl.copy_types(&type_mapping);
+        new_decl.type_id = insert_type(TypeInfo::Struct {
+            name: new_decl.name.as_str().to_string(),
+            fields: new_decl
+                .fields
+                .iter()
+                .map(TypedStructField::as_owned_typed_struct_field)
+                .collect::<Vec<_>>(),
+        });
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.type_id),
+            &type_mapping,
+        );
         new_decl
     }
 
@@ -308,19 +310,36 @@ pub struct TypedEnumDeclaration {
     pub(crate) variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
+    pub(crate) type_id: TypeId,
 }
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self) -> Self {
-        let mut new_decl = self.clone();
+    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
+        let old_type_id = self.type_id;
         let type_mapping = insert_type_parameters(&self.type_parameters);
+        let mut new_decl = self.clone();
         new_decl.copy_types(&type_mapping);
+        new_decl.type_id = insert_type(TypeInfo::Enum {
+            name: new_decl.name.as_str().to_string(),
+            variant_types: new_decl
+                .variants
+                .iter()
+                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                .collect(),
+        });
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.type_id),
+            &type_mapping,
+        );
         new_decl
     }
+
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.variants
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
     }
+
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {

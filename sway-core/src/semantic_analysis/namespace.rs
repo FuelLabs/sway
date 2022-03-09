@@ -1,6 +1,6 @@
 use crate::{
-    error::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration,
-    TypedFunctionDeclaration,
+    error::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo, TypeParameter,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use sway_types::span::Span;
@@ -19,7 +19,7 @@ pub struct Namespace {
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
     // order.
     symbols: BTreeMap<Ident, TypedDeclaration>,
-    implemented_traits: HashMap<(TraitName, TypeInfo), Vec<TypedFunctionDeclaration>>,
+    implemented_traits: TraitMap,
     // Any other modules within this scope, where a module is a namespace associated with an identifier.
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
@@ -73,7 +73,7 @@ impl Namespace {
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
-        let errors = vec![];
+        let mut errors = vec![];
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
@@ -87,16 +87,13 @@ impl Namespace {
             prefixes: new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
-        if self
-            .implemented_traits
-            .insert((trait_name.clone(), type_implementing_for), functions_buf)
-            .is_some()
-        {
-            warnings.push(CompileWarning {
-                warning_content: Warning::OverridingTraitImplementation,
-                span: trait_name.span(),
-            })
-        }
+        check!(
+            self.implemented_traits
+                .insert(trait_name, type_implementing_for, functions_buf),
+            (),
+            warnings,
+            errors
+        );
         ok((), warnings, errors)
     }
 
@@ -109,35 +106,35 @@ impl Namespace {
     }
 
     pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
-        let mut methods = vec![];
-        let r#type = crate::type_engine::look_up_type_id(r#type);
-        for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
-            if *type_info == r#type {
-                methods.append(&mut l_methods.clone());
-            }
-        }
-        methods
+        self.implemented_traits
+            .get_methods_for_type(look_up_type_id(r#type))
     }
 
     // Given a TypeInfo old_type with a set of methods available to it, make those same methods
     // available to TypeInfo new_type. This is useful in situations where old_type is being
     // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
     // methods for new_type as it does for old_type.
-    pub(crate) fn copy_methods_to_type(&mut self, old_type: TypeInfo, new_type: TypeInfo) {
+    pub(crate) fn copy_methods_to_type(
+        &mut self,
+        old_type: TypeInfo,
+        new_type: TypeInfo,
+        type_mapping: &[(TypeParameter, usize)],
+    ) {
+        println!("\n**** {:?}\n", new_type.friendly_type_str());
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.
-        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
-        for ((trait_name, type_info), l_methods) in &self.implemented_traits {
-            if *type_info == old_type {
-                methods.insert((*trait_name).clone(), l_methods.clone());
-            }
-        }
+        let methods = self
+            .implemented_traits
+            .get_methods_for_type_by_trait(old_type);
 
         // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
         // as the `TypeInfo` key.
-        for (trait_name, l_methods) in &methods {
+        for (trait_name, mut trait_methods) in methods.into_iter() {
+            trait_methods
+                .iter_mut()
+                .for_each(|method| method.copy_types(type_mapping));
             self.implemented_traits
-                .insert(((*trait_name).clone(), new_type.clone()), l_methods.clone());
+                .insert(trait_name, new_type.clone(), trait_methods);
         }
     }
 
@@ -162,5 +159,114 @@ impl Namespace {
                 }],
             ),
         }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TraitMap {
+    trait_map: HashMap<(TraitName, TypeInfo), HashMap<String, TypedFunctionDeclaration>>,
+}
+
+impl TraitMap {
+    pub(crate) fn insert(
+        &mut self,
+        trait_name: CallPath,
+        type_implementing_for: TypeInfo,
+        methods: Vec<TypedFunctionDeclaration>,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let errors = vec![];
+        println!("\n###### {:?}\n", type_implementing_for.friendly_type_str());
+        match self
+            .trait_map
+            .get_mut(&(trait_name.clone(), type_implementing_for.clone()))
+        {
+            Some(existing_methods) => {
+                for method in methods.into_iter() {
+                    let method_name = method.name.as_str().to_string();
+                    if existing_methods.insert(method_name, method).is_some() {
+                        warnings.push(CompileWarning {
+                            warning_content: Warning::OverridingTraitImplementation,
+                            span: trait_name.span(),
+                        });
+                    }
+                }
+            }
+            None => {
+                let mut methods_map = HashMap::new();
+                for method in methods.into_iter() {
+                    let method_name = method.name.as_str().to_string();
+                    methods_map.insert(method_name, method);
+                }
+                self.trait_map
+                    .insert((trait_name, type_implementing_for), methods_map);
+            }
+        };
+        ok((), warnings, errors)
+    }
+
+    pub(crate) fn extend(&mut self, other: TraitMap) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for ((trait_name, type_implementing_for), methods) in other.trait_map.into_iter() {
+            check!(
+                self.insert(
+                    trait_name,
+                    type_implementing_for,
+                    methods.values().cloned().collect()
+                ),
+                (),
+                warnings,
+                errors
+            );
+        }
+        ok((), warnings, errors)
+    }
+
+    pub(crate) fn get_call_path_and_type_info(
+        &self,
+        r#type: TypeInfo,
+    ) -> Vec<((CallPath, TypeInfo), Vec<TypedFunctionDeclaration>)> {
+        let mut ret = vec![];
+        for ((call_path, type_info), methods) in self.trait_map.iter() {
+            if type_info.clone() == r#type {
+                ret.push((
+                    (call_path.clone(), type_info.clone()),
+                    methods.values().cloned().collect(),
+                ));
+            }
+        }
+        ret
+    }
+
+    fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
+        let mut methods = vec![];
+        for ((_, type_info), l_methods) in self.trait_map.iter() {
+            println!("\n{:?}", type_info.friendly_type_str());
+            for method in l_methods.iter() {
+                println!("\t{:?}", method);
+            }
+            if *type_info == r#type {
+                methods.append(&mut l_methods.values().cloned().collect());
+            }
+        }
+        println!("\n^^^^\n");
+        methods
+    }
+
+    fn get_methods_for_type_by_trait(
+        &self,
+        r#type: TypeInfo,
+    ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
+        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
+        for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
+            if *type_info == r#type {
+                methods.insert(
+                    (*trait_name).clone(),
+                    trait_methods.values().cloned().collect(),
+                );
+            }
+        }
+        methods
     }
 }

@@ -345,6 +345,10 @@ impl TypedExpression {
         };
         // The annotation may result in a cast, which is handled in the type engine.
 
+        println!(
+            "\n$$$$$$$ {:?}\n",
+            look_up_type_id(typed_expression.return_type).friendly_type_str()
+        );
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
@@ -353,6 +357,10 @@ impl TypedExpression {
                 });
                 insert_type(TypeInfo::ErrorRecovery)
             });
+        println!(
+            "\n>>>>>> {:?}\n",
+            look_up_type_id(typed_expression.return_type).friendly_type_str()
+        );
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
@@ -381,13 +389,11 @@ impl TypedExpression {
 
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.return_type))
-        };
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.return_type)),
+            };
 
         self.expression.copy_types(type_mapping);
     }
@@ -826,54 +832,49 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_result = namespace
-            .find_module_relative(&call_path.prefixes)
-            .ok(&mut warnings, &mut errors);
         let mut typed_fields_buf = vec![];
-        let definition = match module_result {
-            Some(module) => match module.clone().get_symbol(&call_path.suffix).value {
-                Some(TypedDeclaration::StructDeclaration(st)) => st,
-                Some(_) => {
-                    errors.push(CompileError::DeclaredNonStructAsStruct {
-                        name: call_path.suffix.clone(),
-                        span,
-                    });
-                    return err(warnings, errors);
-                }
-                None => {
-                    errors.push(CompileError::StructNotFound {
-                        name: call_path.suffix.clone(),
-                        span,
-                    });
-                    return err(warnings, errors);
-                }
-            },
+        let module = check!(
+            namespace.find_module_relative(&call_path.prefixes),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let decl = match module.clone().get_symbol(&call_path.suffix).value {
+            Some(TypedDeclaration::StructDeclaration(decl)) => decl,
+            Some(_) => {
+                errors.push(CompileError::DeclaredNonStructAsStruct {
+                    name: call_path.suffix.clone(),
+                    span,
+                });
+                return err(warnings, errors);
+            }
             None => {
                 errors.push(CompileError::StructNotFound {
-                    name: call_path.suffix,
+                    name: call_path.suffix.clone(),
                     span,
                 });
                 return err(warnings, errors);
             }
         };
+
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let definition = if definition.type_parameters.is_empty() {
-            definition
+        let new_decl = if decl.type_parameters.is_empty() {
+            decl
         } else {
-            definition.monomorphize()
+            decl.monomorphize(&module)
         };
 
         // match up the names with their type annotations from the declaration
-        for def_field in definition.fields.iter() {
+        for def_field in new_decl.fields.iter() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
-                            struct_name: definition.name.clone(),
+                            struct_name: new_decl.name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -916,29 +917,21 @@ impl TypedExpression {
 
         // check that there are no extra fields
         for field in fields {
-            if !definition.fields.iter().any(|x| x.name == field.name) {
+            if !new_decl.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: definition.name.clone(),
+                    struct_name: new_decl.name.clone(),
                     span: field.span,
                 });
             }
         }
-        let struct_type_id = crate::type_engine::insert_type(TypeInfo::Struct {
-            name: definition.name.as_str().to_string(),
-            fields: definition
-                .fields
-                .iter()
-                .map(TypedStructField::as_owned_typed_struct_field)
-                .collect::<Vec<_>>(),
-        });
         let expression = TypedExpressionVariant::StructExpression {
-            struct_name: definition.name,
+            struct_name: new_decl.name,
             fields: typed_fields_buf,
         };
         let exp = TypedExpression {
             expression,
-            return_type: struct_type_id,
+            return_type: new_decl.type_id,
             is_constant: IsConstant::No,
             span,
         };
@@ -1176,14 +1169,15 @@ impl TypedExpression {
         let module_result = namespace
             .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors);
-        let enum_module_combined_result = {
+        let (enum_module_combined_result, enum_module_combined_result_module) = {
             // also, check if this is an enum _in_ another module.
             let (module_path, enum_name) =
                 call_path.prefixes.split_at(call_path.prefixes.len() - 1);
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            namespace.and_then(|ns| ns.find_enum(&enum_name))
+            let enum_module_combined_result = namespace.and_then(|ns| ns.find_enum(&enum_name));
+            (enum_module_combined_result, namespace)
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
@@ -1199,6 +1193,7 @@ impl TypedExpression {
                     TypedDeclaration::EnumDeclaration(enum_decl) => {
                         check!(
                             instantiate_enum(
+                                module,
                                 enum_decl,
                                 call_path.suffix,
                                 args,
@@ -1250,6 +1245,7 @@ impl TypedExpression {
             },
             (None, Some(enum_decl)) => check!(
                 instantiate_enum(
+                    enum_module_combined_result_module.unwrap(),
                     enum_decl,
                     call_path.suffix,
                     args,
