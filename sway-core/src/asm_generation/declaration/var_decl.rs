@@ -12,10 +12,6 @@ pub(crate) fn convert_variable_decl_to_asm(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    println!(
-        "{:?}",
-        crate::type_engine::look_up_type_id(var_decl.type_ascription).friendly_type_str()
-    );
     let var_register = register_sequencer.next();
     let initialization =
         convert_expression_to_asm(&var_decl.body, namespace, &var_register, register_sequencer);

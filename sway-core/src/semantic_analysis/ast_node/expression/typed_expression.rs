@@ -345,10 +345,6 @@ impl TypedExpression {
         };
         // The annotation may result in a cast, which is handled in the type engine.
 
-        println!(
-            "\n$$$$$$$ {:?}\n",
-            look_up_type_id(typed_expression.return_type).friendly_type_str()
-        );
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
@@ -357,10 +353,6 @@ impl TypedExpression {
                 });
                 insert_type(TypeInfo::ErrorRecovery)
             });
-        println!(
-            "\n>>>>>> {:?}\n",
-            look_up_type_id(typed_expression.return_type).friendly_type_str()
-        );
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric

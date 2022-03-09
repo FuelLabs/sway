@@ -6,14 +6,12 @@ struct DoubleIdentity<T, F> {
 }
 
 impl<T, F> DoubleIdentity<T, F> {
-  /*
   fn new(x: T, y: F) -> DoubleIdentity<T, F> {
     DoubleIdentity {
       first: x,
       second: y
     }
   }
-  */
 
   fn get_first(self) -> T {
     let x: T = self.first;
@@ -34,11 +32,9 @@ impl DoubleIdentity<u8, u8> {
 }
 */
 
-/*
 fn double_identity2<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
   ~DoubleIdentity<T, F>::new(x, y)
 }
-*/
 
 fn double_identity<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
   let inner: T = x;
@@ -48,7 +44,6 @@ fn double_identity<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
   }
 }
 
-/*
 fn crazy<T, F>(x: T, y: F) -> F {
   let foo = DoubleIdentity {
     first: x,
@@ -56,27 +51,20 @@ fn crazy<T, F>(x: T, y: F) -> F {
   };
   foo.get_second()
 }
-*/
 
 fn main() -> u32 {
   let a = double_identity(true, true);
   let b = double_identity(10u32, 43u64);
-  //let double_c = double_identity2(10u8, 1u8);
+  let c = double_identity2(10u8, 1u8);
   let d = DoubleIdentity {
     first: 1u8,
     second: 2u8
   };
   let e = d.get_second();
-  
-
-  // for testing annotations
   let f: DoubleIdentity<bool, bool> = double_identity(true, true);
   let g: DoubleIdentity<u32, u64> = double_identity(10u32, 43u64);
-
-  //let foo = double_c.add();
-
-  //let foo = ~DoubleIdentity<u64, bool>::new(3u64, false);
-  //let bar = crazy(7u8, 10u8);
+  let h = ~DoubleIdentity<u64, bool>::new(3u64, false);
+  let i = crazy(7u8, 10u8);
 
   b.get_first()
 }

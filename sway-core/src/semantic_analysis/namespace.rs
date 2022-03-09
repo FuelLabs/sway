@@ -120,7 +120,6 @@ impl Namespace {
         new_type: TypeInfo,
         type_mapping: &[(TypeParameter, usize)],
     ) {
-        println!("\n**** {:?}\n", new_type.friendly_type_str());
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.
         let methods = self
@@ -176,7 +175,6 @@ impl TraitMap {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let errors = vec![];
-        println!("\n###### {:?}\n", type_implementing_for.friendly_type_str());
         match self
             .trait_map
             .get_mut(&(trait_name.clone(), type_implementing_for.clone()))
@@ -242,15 +240,10 @@ impl TraitMap {
     fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         for ((_, type_info), l_methods) in self.trait_map.iter() {
-            println!("\n{:?}", type_info.friendly_type_str());
-            for method in l_methods.iter() {
-                println!("\t{:?}", method);
-            }
             if *type_info == r#type {
                 methods.append(&mut l_methods.values().cloned().collect());
             }
         }
-        println!("\n^^^^\n");
         methods
     }
 
