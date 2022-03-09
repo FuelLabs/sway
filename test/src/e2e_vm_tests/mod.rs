@@ -89,6 +89,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("inline_if_expr_const", ProgramState::Return(0)),
         ("method_on_empty_struct", ProgramState::Return(1)),
         ("generic_impl_self", ProgramState::Return(10)),
+        ("tuple_in_struct", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
