@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 mod cli;
-mod lock;
 mod ops;
-mod pkg;
 mod utils;
 
 #[cfg(feature = "test")]
@@ -14,6 +12,5 @@ pub mod test {
 #[cfg(feature = "util")]
 pub mod util {
     pub use crate::utils::client::start_fuel_core;
-    pub use crate::utils::helpers;
     pub use sway_utils::constants;
 }

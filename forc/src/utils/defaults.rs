@@ -25,7 +25,7 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
     let real_name = whoami::realname();
 
     format!(
-        r#"[package]
+        r#"[project]
 authors = ["{real_name}"]
 edition = "2021"
 license = "Apache-2.0"
@@ -75,4 +75,20 @@ pub(crate) fn default_gitignore() -> String {
 target
 "#
     .into()
+}
+
+#[test]
+fn parse_default_manifest() {
+    println!(
+        "{:#?}",
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj")).unwrap()
+    )
+}
+
+#[test]
+fn parse_default_tests_manifest() {
+    println!(
+        "{:#?}",
+        toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
+    )
 }

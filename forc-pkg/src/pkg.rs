@@ -1,15 +1,12 @@
 use crate::{
     lock::Lock,
-    utils::{
-        dependency::Dependency,
-        helpers::{
-            find_file_name, find_main_path, get_main_file, git_checkouts_directory,
-            print_on_failure, print_on_success, print_on_success_library, read_manifest,
-        },
-        manifest::Manifest,
-    },
+    manifest::{Dependency, Manifest},
 };
 use anyhow::{anyhow, bail, Result};
+use forc_util::{
+    find_file_name, git_checkouts_directory, print_on_failure, print_on_success,
+    print_on_success_library, println_yellow_err,
+};
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -19,7 +16,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BuildConfig, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
+    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
     NamespaceWrapper, TreeType, TypedParseTree,
 };
 use sway_types::JsonABI;
@@ -124,18 +121,19 @@ pub enum SourcePinned {
 
 /// Represents the full build plan for a project.
 #[derive(Clone)]
-pub(crate) struct BuildPlan {
-    pub(crate) graph: Graph,
-    pub(crate) path_map: PathMap,
-    pub(crate) compilation_order: Vec<NodeIx>,
+pub struct BuildPlan {
+    graph: Graph,
+    path_map: PathMap,
+    compilation_order: Vec<NodeIx>,
 }
 
-// Parameters to pass through to the `BuildConfig` during compilation.
-pub(crate) struct BuildConf {
-    pub(crate) use_ir: bool,
-    pub(crate) print_ir: bool,
-    pub(crate) print_finalized_asm: bool,
-    pub(crate) print_intermediate_asm: bool,
+/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
+pub struct BuildConfig {
+    pub use_ir: bool,
+    pub print_ir: bool,
+    pub print_finalized_asm: bool,
+    pub print_intermediate_asm: bool,
+    pub silent: bool,
 }
 
 /// Error returned upon failed parsing of `SourceGitPinned::from_str`.
@@ -150,7 +148,7 @@ pub enum SourceGitPinnedParseError {
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
     pub fn new(manifest_dir: &Path, offline: bool) -> Result<Self> {
-        let manifest = read_manifest(manifest_dir)?;
+        let manifest = Manifest::from_dir(manifest_dir)?;
         let (graph, path_map) = fetch_deps(manifest_dir.to_path_buf(), &manifest, offline)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
@@ -206,7 +204,7 @@ impl BuildPlan {
                 // NOTE: Temporarily warn about `version` until we have support for registries.
                 if let Dependency::Detailed(det) = dep {
                     if det.version.is_some() {
-                        crate::utils::helpers::println_yellow_err(&format!(
+                        println_yellow_err(&format!(
                             "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
                             consider using `branch` or `tag` instead",
                             name
@@ -227,6 +225,22 @@ impl BuildPlan {
         }
 
         Ok(())
+    }
+
+    /// View the build plan's compilation graph.
+    pub fn graph(&self) -> &Graph {
+        &self.graph
+    }
+
+    /// View the build plan's map of pinned package IDs to the path containing a local copy of
+    /// their source.
+    pub fn path_map(&self) -> &PathMap {
+        &self.path_map
+    }
+
+    /// The order in which nodes are compiled, determined via a toposort of the package graph.
+    pub fn compilation_order(&self) -> &[NodeIx] {
+        &self.compilation_order
     }
 }
 
@@ -362,7 +376,7 @@ pub fn graph_to_path_map(
                     .source();
                 let parent = &graph[parent_node];
                 let parent_path = &path_map[&parent.id()];
-                let parent_manifest = read_manifest(parent_path)?;
+                let parent_manifest = Manifest::from_dir(parent_path)?;
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
@@ -442,7 +456,7 @@ fn fetch_children(
 ) -> Result<()> {
     let parent = &graph[node];
     let parent_path = path_map[&parent.id()].clone();
-    let manifest = read_manifest(&parent_path)?;
+    let manifest = Manifest::from_dir(&parent_path)?;
     let deps = match &manifest.dependencies {
         None => return Ok(()),
         Some(deps) => deps,
@@ -677,15 +691,17 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     Ok(source)
 }
 
-pub(crate) fn build_config(
+/// Given a `forc_pkg::BuildConfig`, produce the necessary `sway_core::BuildConfig` required for
+/// compilation.
+pub fn sway_build_config(
     path: PathBuf,
     manifest: &Manifest,
-    build_conf: &BuildConf,
-) -> Result<BuildConfig> {
+    build_conf: &BuildConfig,
+) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
-    let main_path = find_main_path(&path, manifest);
-    let file_name = find_file_name(&path, &main_path)?;
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+    let entry_path = manifest.entry_path(&path);
+    let file_name = find_file_name(&path, &entry_path)?;
+    let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         path.to_path_buf(),
     )
@@ -699,7 +715,7 @@ pub(crate) fn build_config(
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
-pub(crate) fn dependency_namespace(
+pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, NamespaceRef>,
     graph: &Graph,
     compilation_order: &[NodeIx],
@@ -740,20 +756,20 @@ pub(crate) fn dependency_namespace(
 /// ### Script, Predicate
 ///
 /// Scripts and Predicates will be compiled to bytecode and will not emit any JSON ABI.
-pub(crate) fn compile(
+pub fn compile(
     pkg: &Pinned,
     pkg_path: &Path,
-    build_conf: &BuildConf,
+    build_config: &BuildConfig,
     namespace: NamespaceRef,
     source_map: &mut SourceMap,
-    silent_mode: bool,
 ) -> Result<(Compiled, Option<NamespaceRef>)> {
-    let manifest = read_manifest(pkg_path)?;
-    let source = get_main_file(&manifest, pkg_path)?;
-    let build_config = build_config(pkg_path.to_path_buf(), &manifest, build_conf)?;
+    let manifest = Manifest::from_dir(pkg_path)?;
+    let source = manifest.entry_string(pkg_path)?;
+    let sway_build_config = sway_build_config(pkg_path.to_path_buf(), &manifest, build_config)?;
+    let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = sway_core::compile_to_ast(source, namespace, &build_config);
+    let ast_res = sway_core::compile_to_ast(source, namespace, &sway_build_config);
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -779,7 +795,7 @@ pub(crate) fn compile(
                 // For all other program types, we'll compile the bytecode.
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
                     let tree_type = tree_type.clone();
-                    let asm_res = sway_core::ast_to_asm(ast_res, &build_config);
+                    let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
                     let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
@@ -800,6 +816,34 @@ pub(crate) fn compile(
             }
         }
     }
+}
+
+/// Build an entire forc package and return the compiled output.
+///
+/// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
+///
+/// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
+pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, SourceMap)> {
+    let mut namespace_map = Default::default();
+    let mut source_map = SourceMap::new();
+    let mut json_abi = vec![];
+    let mut bytecode = vec![];
+    for &node in &plan.compilation_order {
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let pkg = &plan.graph[node];
+        let path = &plan.path_map[&pkg.id()];
+        let res = compile(pkg, path, conf, dep_namespace, &mut source_map)?;
+        let (compiled, maybe_namespace) = res;
+        if let Some(namespace) = maybe_namespace {
+            namespace_map.insert(node, namespace);
+        }
+        json_abi.extend(compiled.json_abi);
+        bytecode = compiled.bytecode;
+        source_map.insert_dependency(path.clone());
+    }
+    let compiled = Compiled { bytecode, json_abi };
+    Ok((compiled, source_map))
 }
 
 // TODO: Update this to match behaviour described in the `compile` doc comment above.

@@ -150,8 +150,8 @@ pub(crate) fn convert_subfield_to_asm(
         path: None,
     };
     // step 3
-    // if this is a copy type (primitives that fit in a word), copy it into the register.
-    // Otherwise, load the pointer to the field into the register
+    // if this type fits in a word, copy it into the register. Otherwise, load the pointer to the
+    // field into the register
     let resolved_type_of_this_field = match resolve_type(*type_of_this_field, &span) {
         Ok(o) => o,
         Err(e) => {
@@ -159,7 +159,15 @@ pub(crate) fn convert_subfield_to_asm(
             return err(warnings, errors);
         }
     };
-    asm_buf.push(if resolved_type_of_this_field.is_copy_type() {
+
+    let size_of_type = resolved_type_of_this_field
+        .size_in_words(&field_to_access_span)
+        .unwrap_or_else(|e| {
+            errors.push(e);
+            0
+        });
+
+    asm_buf.push(if size_of_type <= 1 {
         let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
             Ok(o) => o,
             Err(e) => {

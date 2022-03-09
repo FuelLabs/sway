@@ -1006,22 +1006,19 @@ name = "forc"
 version = "0.6.0"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
  "anyhow",
  "clap 3.1.2",
  "clap_complete",
- "dirs 3.0.2",
+ "forc-pkg",
+ "forc-util",
  "fuel-asm",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm",
  "futures",
- "git2",
  "hex",
- "petgraph",
  "prettydiff",
  "reqwest",
- "semver 1.0.4",
  "serde",
  "serde_json",
  "sway-core",
@@ -1032,16 +1029,44 @@ dependencies = [
  "taplo",
  "tar",
  "term-table",
- "termcolor",
  "tokio",
  "toml",
  "toml_edit",
- "unicode-xid",
  "ureq",
  "url",
  "uwuify",
  "warp",
  "whoami",
+]
+
+[[package]]
+name = "forc-pkg"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "forc-util",
+ "git2",
+ "petgraph",
+ "semver 1.0.4",
+ "serde",
+ "sway-core",
+ "sway-types",
+ "sway-utils",
+ "toml",
+ "url",
+]
+
+[[package]]
+name = "forc-util"
+version = "0.6.0"
+dependencies = [
+ "annotate-snippets",
+ "anyhow",
+ "dirs 3.0.2",
+ "sway-core",
+ "sway-utils",
+ "termcolor",
+ "unicode-xid",
 ]
 
 [[package]]

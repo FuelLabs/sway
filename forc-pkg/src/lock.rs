@@ -1,5 +1,6 @@
 use crate::pkg;
 use anyhow::{anyhow, Result};
+use forc_util::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -11,7 +12,7 @@ use std::{
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct Lock {
+pub struct Lock {
     // Named `package` so that each entry serializes to lock file under `[[package]]` like cargo.
     pub(crate) package: BTreeSet<PkgLock>,
 }
@@ -19,13 +20,13 @@ pub(crate) struct Lock {
 /// Packages that have been removed and added between two `Lock` instances.
 ///
 /// The result of `new_lock.diff(&old_lock)`.
-pub(crate) struct Diff<'a> {
-    pub(crate) removed: BTreeSet<&'a PkgLock>,
-    pub(crate) added: BTreeSet<&'a PkgLock>,
+pub struct Diff<'a> {
+    pub removed: BTreeSet<&'a PkgLock>,
+    pub added: BTreeSet<&'a PkgLock>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub(crate) struct PkgLock {
+pub struct PkgLock {
     pub(crate) name: String,
     // TODO: Cargo *always* includes version, whereas we don't even parse it when reading a
     // project's `Manifest` yet. If we decide to enforce versions, we'll want to remove the
@@ -167,5 +168,32 @@ fn pkg_unique_string(name: &str, source: Option<&str>) -> String {
     match source {
         None => name.to_string(),
         Some(s) => format!("{} {}", name, s),
+    }
+}
+
+pub fn print_diff(proj_name: &str, diff: &Diff) {
+    print_removed_pkgs(proj_name, diff.removed.iter().cloned());
+    print_added_pkgs(proj_name, diff.added.iter().cloned());
+}
+
+pub fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_red(&format!("  Removing {}", pkg.unique_string()));
+        }
+    }
+}
+
+pub fn print_added_pkgs<'a, I>(proj_name: &str, removed: I)
+where
+    I: IntoIterator<Item = &'a PkgLock>,
+{
+    for pkg in removed {
+        if pkg.name != proj_name {
+            let _ = println_green(&format!("    Adding {}", pkg.unique_string()));
+        }
     }
 }
