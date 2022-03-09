@@ -471,15 +471,6 @@ impl TypeInfo {
             }
         }
     }
-    pub(crate) fn is_copy_type(&self) -> bool {
-        match self {
-            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
-            TypeInfo::Tuple(fields) => fields
-                .iter()
-                .all(|field_type| look_up_type_id(*field_type).is_copy_type()),
-            _ => false,
-        }
-    }
 
     pub fn is_uninhabited(&self) -> bool {
         match self {
