@@ -10,7 +10,7 @@ use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeParameter {
-    pub(crate) name: TypeInfo,
+    pub(crate) type_id: TypeId,
     pub(crate) name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
@@ -36,19 +36,21 @@ impl TypeParameter {
             Some(type_params_pair) => {
                 let mut buf = vec![];
                 for pair in type_params_pair.into_inner() {
+                    let name_ident = check!(
+                        ident::parse_from_pair(pair.clone(), config),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    let type_id = insert_type(check!(
+                        TypeInfo::parse_from_pair(pair.clone(), config),
+                        continue,
+                        warnings,
+                        errors
+                    ));
                     buf.push(TypeParameter {
-                        name_ident: check!(
-                            ident::parse_from_pair(pair.clone(), config),
-                            continue,
-                            warnings,
-                            errors
-                        ),
-                        name: check!(
-                            TypeInfo::parse_from_pair(pair.clone(), config),
-                            continue,
-                            warnings,
-                            errors
-                        ),
+                        name_ident,
+                        type_id,
                         trait_constraints: Vec::new(),
                     });
                 }
@@ -100,6 +102,13 @@ impl TypeParameter {
             }
         }
         ok(params, warnings, errors)
+    }
+
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.type_id)),
+        };
     }
 }
 

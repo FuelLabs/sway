@@ -63,13 +63,13 @@ pub(crate) enum TypedAstNodeContent {
     SideEffect,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypedAstNode {
     pub(crate) content: TypedAstNodeContent,
     pub(crate) span: Span,
 }
 
-impl std::fmt::Debug for TypedAstNode {
+impl std::fmt::Display for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
@@ -445,11 +445,18 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
 
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            if !type_arguments.is_empty() {
-                                errors.push(CompileError::Internal(
-                                    "Where clauses are not supported yet.",
-                                    type_arguments[0].clone().name_ident.span().clone(),
-                                ));
+                            for type_argument in type_arguments.iter() {
+                                if !type_argument.trait_constraints.is_empty() {
+                                    errors.push(CompileError::Internal(
+                                        "Where clauses are not supported yet.",
+                                        type_argument.trait_constraints[0]
+                                            .clone()
+                                            .name
+                                            .span()
+                                            .clone(),
+                                    ));
+                                    break;
+                                }
                             }
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
@@ -472,19 +479,21 @@ impl TypedAstNode {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
 
+                                let args = TypeCheckArguments {
+                                    checkee: fn_decl,
+                                    namespace,
+                                    crate_namespace,
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: "",
+                                    self_type: implementing_for_type_id,
+                                    build_config,
+                                    dead_code_graph,
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                };
+
                                 functions_buf.push(check!(
-                                    TypedFunctionDeclaration::type_check(TypeCheckArguments {
-                                        checkee: fn_decl,
-                                        namespace,
-                                        crate_namespace,
-                                        return_type_annotation: insert_type(TypeInfo::Unknown),
-                                        help_text: "",
-                                        self_type: implementing_for_type_id,
-                                        build_config,
-                                        dead_code_graph,
-                                        mode: Mode::NonAbi,
-                                        opts
-                                    }),
+                                    TypedFunctionDeclaration::type_check(args),
                                     continue,
                                     warnings,
                                     errors
@@ -1145,17 +1154,13 @@ fn type_check_trait_methods(
                     parameters[0].name.span().clone(),
                     |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
                 );
-                if type_parameters.iter().any(
-                    |TypeParameter {
-                         name: this_name, ..
-                     }| {
-                        if let TypeInfo::Custom { name: this_name } = this_name {
-                            this_name == name
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
+                    if let TypeInfo::Custom { name: this_name } = look_up_type_id(*type_id) {
+                        this_name == name.clone()
+                    } else {
+                        false
+                    }
+                }) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),
                         span: span.clone(),

@@ -11,12 +11,9 @@ pub struct TypedFunctionParameter {
 
 impl TypedFunctionParameter {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        }
+        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.r#type)),
+        };
     }
 }

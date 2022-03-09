@@ -149,16 +149,22 @@ impl TypedDeclaration {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     is_mutable,
                     name,
+                    type_ascription,
                     ..
-                }) => format!(
-                    "{} {}",
+                }) => {
+                    let mut builder = String::new();
                     match is_mutable {
-                        VariableMutability::Mutable => "mut",
-                        VariableMutability::Immutable => "",
-                        VariableMutability::ExportedConst => "pub const",
-                    },
-                    name.as_str()
-                ),
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::Immutable => {}
+                        VariableMutability::ExportedConst => builder.push_str("pub const"),
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
+                    );
+                    builder
+                }
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
@@ -243,11 +249,19 @@ pub struct TypedStructField {
 }
 
 // TODO(Static span) -- remove this type and use TypedStructField
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Hash)]
 pub struct OwnedTypedStructField {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
 }
+
+impl PartialEq for OwnedTypedStructField {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+    }
+}
+
+impl Eq for OwnedTypedStructField {}
 
 impl OwnedTypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
@@ -347,12 +361,22 @@ impl TypedEnumVariant {
 }
 
 // TODO(Static span) -- remove this type and use TypedEnumVariant
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Hash)]
 pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
 }
+
+impl PartialEq for OwnedTypedEnumVariant {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+            && self.tag == other.tag
+    }
+}
+
+impl Eq for OwnedTypedEnumVariant {}
 
 impl OwnedTypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {

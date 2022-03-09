@@ -15,7 +15,7 @@ use pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
-#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
+#[derivative(Debug, Clone, Hash)]
 pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
@@ -65,6 +65,67 @@ pub enum TypeInfo {
     // Static, constant size arrays.
     Array(TypeId, usize),
 }
+
+impl PartialEq for TypeInfo {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Unknown, Self::Unknown) => true,
+            (Self::Boolean, Self::Boolean) => true,
+            (Self::SelfType, Self::SelfType) => true,
+            (Self::Byte, Self::Byte) => true,
+            (Self::B256, Self::B256) => true,
+            (Self::Numeric, Self::Numeric) => true,
+            (Self::Contract, Self::Contract) => true,
+            (Self::ErrorRecovery, Self::ErrorRecovery) => true,
+            (Self::UnknownGeneric { .. }, Self::UnknownGeneric { .. }) => true,
+            (Self::Str(l), Self::Str(r)) => l == r,
+            (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
+            (
+                Self::Enum {
+                    name: l_name,
+                    variant_types: l_variant_types,
+                },
+                Self::Enum {
+                    name: r_name,
+                    variant_types: r_variant_types,
+                },
+            ) => l_name == r_name && l_variant_types == r_variant_types,
+            (
+                Self::Struct {
+                    name: l_name,
+                    fields: l_fields,
+                },
+                Self::Struct {
+                    name: r_name,
+                    fields: r_fields,
+                },
+            ) => l_name == r_name && l_fields == r_fields,
+            (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
+            (Self::Tuple(l), Self::Tuple(r)) => l
+                .iter()
+                .zip(r.iter())
+                .map(|(l, r)| look_up_type_id(*l) == look_up_type_id(*r))
+                .all(|x| x),
+            (
+                Self::ContractCaller {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                },
+                Self::ContractCaller {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                },
+            ) => l_abi_name == r_abi_name && l_address == r_address,
+            (Self::Custom { name: l_name }, Self::Custom { name: r_name }) => l_name == r_name,
+            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
+                look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Eq for TypeInfo {}
 
 impl Default for TypeInfo {
     fn default() -> Self {
@@ -408,9 +469,11 @@ impl TypeInfo {
         };
         ok(name, vec![], vec![])
     }
+
     pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {
         Ok(self.size_in_words(err_span)? * 8)
     }
+
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
@@ -471,6 +534,7 @@ impl TypeInfo {
             }
         }
     }
+
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
             TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
@@ -558,7 +622,8 @@ impl TypeInfo {
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name == *self {
+                    let param_type_info = look_up_type_id(param.type_id);
+                    if param_type_info == *self {
                         return Some(*ty_id);
                     }
                 }
@@ -566,7 +631,8 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { name, .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name == (TypeInfo::Custom { name: name.clone() }) {
+                    let param_type_info = look_up_type_id(param.type_id);
+                    if param_type_info == (TypeInfo::Custom { name: name.clone() }) {
                         return Some(*ty_id);
                     }
                 }

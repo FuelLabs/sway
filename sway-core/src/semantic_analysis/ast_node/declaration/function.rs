@@ -229,20 +229,25 @@ impl TypedFunctionDeclaration {
             errors,
         )
     }
+
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.body.copy_types(type_mapping);
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+
         self.parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
 
-        self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.return_type))
-        };
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.return_type)),
+            };
+
+        self.body.copy_types(type_mapping);
     }
+
     /// Given a typed function declaration with type parameters, make a copy of it and update the
     /// type ids which refer to generic types to be fresh copies, maintaining their referential
     /// relationship. This is used so when this function is resolved, the types don't clobber the
@@ -259,10 +264,12 @@ impl TypedFunctionDeclaration {
             "Only generic functions can be monomorphized"
         );
 
-        let type_mapping = insert_type_parameters(&self.type_parameters);
+        let mut new_decl = self.clone();
+
+        let type_mapping = insert_type_parameters(&new_decl.type_parameters);
         if !type_arguments.is_empty() {
             // check type arguments against parameters
-            if self.type_parameters.len() != type_arguments.len() {
+            if new_decl.type_parameters.len() != type_arguments.len() {
                 todo!("incorrect number of type args err");
             }
 
@@ -287,30 +294,11 @@ impl TypedFunctionDeclaration {
             }
         }
 
-        let mut new_decl = self.clone();
-
         // make all type ids fresh ones
-        new_decl
-            .body
-            .contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(&type_mapping));
-
-        new_decl
-            .parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(&type_mapping));
-
-        new_decl.return_type = if let Some(matching_id) =
-            look_up_type_id(new_decl.return_type).matches_type_parameter(&type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(new_decl.return_type))
-        };
-
+        new_decl.copy_types(&type_mapping);
         ok(new_decl, warnings, errors)
     }
+
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
@@ -322,6 +310,7 @@ impl TypedFunctionDeclaration {
             self.name.span().clone()
         }
     }
+
     pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
         TypedFunctionDeclaration {
             parameters: self
@@ -346,6 +335,7 @@ impl TypedFunctionDeclaration {
             ..self
         }
     }
+
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -360,6 +350,7 @@ impl TypedFunctionDeclaration {
         let hash = hasher.finalize();
         ok(hash.to_vec(), warnings, errors)
     }
+
     /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
@@ -533,6 +524,7 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
 }
+
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]
 pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParameter, TypeId)> {

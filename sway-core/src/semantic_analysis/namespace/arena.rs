@@ -271,9 +271,11 @@ impl NamespaceWrapper for NamespaceRef {
             }
         }
     }
+
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         read_module(|ns| ns.get_methods_for_type(r#type), *self)
     }
+
     fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo) {
         write_module(
             move |ns| ns.copy_methods_to_type(old_type.clone(), new_type),
@@ -579,6 +581,7 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
     fn insert_module(&self, module_name: String, module_contents: Namespace) {
         let ix = {
             let mut write_lock = MODULES.write().expect("poisoned lock");
@@ -590,10 +593,11 @@ impl NamespaceWrapper for NamespaceRef {
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
         write_module(|ns| ns.insert(name, item), *self)
     }
+
     fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        Ok(match ty {
+        let type_id = match ty {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
@@ -653,7 +657,8 @@ impl NamespaceWrapper for NamespaceRef {
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
-        })
+        };
+        Ok(type_id)
     }
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId {
         let ty = ty.clone();

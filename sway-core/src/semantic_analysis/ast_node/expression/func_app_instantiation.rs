@@ -8,8 +8,9 @@ use std::collections::HashMap;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
-    typed_function_decl: TypedFunctionDeclaration,
+    decl: TypedFunctionDeclaration,
     name: CallPath,
+    type_arguments: Vec<(TypeInfo, Span)>,
     arguments: Vec<Expression>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
@@ -20,6 +21,19 @@ pub(crate) fn instantiate_function_application(
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    // if this is a generic function, monomorphize its internal types
+    let typed_function_decl = if decl.type_parameters.is_empty() {
+        decl
+    } else {
+        check!(
+            decl.monomorphize(type_arguments, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+    };
+
     let TypedFunctionDeclaration {
         parameters,
         return_type,
@@ -66,6 +80,7 @@ pub(crate) fn instantiate_function_application(
         }
         Ordering::Equal => {}
     }
+
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the
     // arguments
@@ -74,28 +89,37 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(parameters.iter())
         .map(|(arg, param)| {
-            (
-                param.name.clone(),
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: arg.clone(),
-                    namespace,
-                    crate_namespace,
-                    return_type_annotation: param.r#type,
-                    help_text: "The argument that has been provided to this function's type does \
-                        not match the declared type of the parameter in the function \
-                        declaration.",
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    mode: Mode::NonAbi,
-                    opts,
-                })
-                .unwrap_or_else(&mut warnings, &mut errors, || {
-                    error_recovery_expr(arg.span())
-                }),
-            )
+            let args = TypeCheckArguments {
+                checkee: arg.clone(),
+                namespace,
+                crate_namespace,
+                return_type_annotation: param.r#type,
+                help_text: "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration.",
+                self_type,
+                build_config,
+                dead_code_graph,
+                mode: Mode::NonAbi,
+                opts,
+            };
+            let exp = check!(
+                TypedExpression::type_check(args),
+                error_recovery_expr(arg.span()),
+                warnings,
+                errors
+            );
+            (param.name.clone(), exp)
         })
         .collect();
+
+    let expression = TypedExpressionVariant::FunctionApplication {
+        arguments: typed_call_arguments,
+        contract_call_params: HashMap::new(),
+        name,
+        function_body: body,
+        selector: None, // regular functions cannot be in a contract call; only methods
+    };
 
     ok(
         TypedExpression {
@@ -106,13 +130,7 @@ pub(crate) fn instantiate_function_application(
             // advanced feature and are not supported right
             // now
             is_constant: IsConstant::No,
-            expression: TypedExpressionVariant::FunctionApplication {
-                arguments: typed_call_arguments,
-                contract_call_params: HashMap::new(),
-                name,
-                function_body: body,
-                selector: None, // regular functions cannot be in a contract call; only methods
-            },
+            expression,
             span,
         },
         warnings,

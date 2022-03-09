@@ -222,6 +222,7 @@ impl TypedExpressionVariant {
             },
         }
     }
+
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedExpressionVariant::*;

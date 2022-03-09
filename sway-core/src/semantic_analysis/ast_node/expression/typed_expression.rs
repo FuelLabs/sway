@@ -463,6 +463,8 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, (CallPath, Vec<Expression>, Vec<(TypeInfo, Span)>)>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
             namespace,
@@ -473,39 +475,27 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let mut warnings = vec![];
-        let mut errors = vec![];
         let function_declaration = check!(
             namespace.get_call_path(&name),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_function_decl =
-            if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
-                // if this is a generic function, monomorphize its internal types and insert the resulting
-                // declaration into the namespace. Then, use that instead.
-                if decl.type_parameters.is_empty() {
-                    decl
-                } else {
-                    check!(
-                        decl.monomorphize(type_arguments, self_type),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-            } else {
+        let typed_function_decl = match function_declaration {
+            TypedDeclaration::FunctionDeclaration(decl) => decl,
+            _ => {
                 errors.push(CompileError::NotAFunction {
                     name: name.span().as_str().to_string(),
                     span: name.span(),
                     what_it_is: function_declaration.friendly_name(),
                 });
                 return err(warnings, errors);
-            };
+            }
+        };
         instantiate_function_application(
             typed_function_decl,
             name,
+            type_arguments,
             arguments,
             namespace,
             crate_namespace,
@@ -942,11 +932,12 @@ impl TypedExpression {
                 .map(TypedStructField::as_owned_typed_struct_field)
                 .collect::<Vec<_>>(),
         });
+        let expression = TypedExpressionVariant::StructExpression {
+            struct_name: definition.name,
+            fields: typed_fields_buf,
+        };
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::StructExpression {
-                struct_name: definition.name,
-                fields: typed_fields_buf,
-            },
+            expression,
             return_type: struct_type_id,
             is_constant: IsConstant::No,
             span,
@@ -1227,6 +1218,7 @@ impl TypedExpression {
                         instantiate_function_application(
                             func_decl,
                             call_path,
+                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
                             args,
                             namespace,
                             crate_namespace,
