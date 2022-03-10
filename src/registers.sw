@@ -1,4 +1,4 @@
-//! Functions to expose the 16 reserved FuelVM registers for ease of use.
+//! Functions to expose 14 of the reserved FuelVM registers for ease of use.
 //! Ref: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics
 library registers;
 
