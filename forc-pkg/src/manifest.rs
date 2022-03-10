@@ -138,8 +138,3 @@ fn default_entry() -> String {
 fn default_url() -> String {
     constants::DEFAULT_NODE_URL.into()
 }
-
-#[test]
-fn test_unused_key() {
-    // TODO
-}
