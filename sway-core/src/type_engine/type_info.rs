@@ -472,6 +472,13 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn is_copy_type(&self) -> bool {
+        matches!(
+            self,
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte
+        )
+    }
+
     pub fn is_uninhabited(&self) -> bool {
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
