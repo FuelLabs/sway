@@ -1,4 +1,4 @@
-use crate::semantic_analysis::{OwnedTypedStructField, TypeCheckedStorageAccess, TypedExpression};
+use crate::semantic_analysis::{OwnedTypedStructField, TypeCheckedStorageAccess};
 use crate::{error::*, type_engine::TypeId, Ident};
 use sway_types::{state::StateIndex, Span};
 
@@ -6,14 +6,6 @@ use sway_types::{state::StateIndex, Span};
 pub struct TypedStorageDeclaration {
     pub(crate) fields: Vec<TypedStorageField>,
     span: Span,
-}
-
-#[derive(Clone, Debug)]
-pub struct TypedStorageField {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
-    // TODO send initializers in the TX
-    pub(crate) _initializer: TypedExpression,
 }
 
 impl TypedStorageDeclaration {
@@ -66,5 +58,23 @@ impl TypedStorageDeclaration {
                 },
             )
             .collect()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedStorageField {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    // TODO send initializers in the TX
+    //    pub(crate) initializer: TypedExpression,
+}
+
+impl TypedStorageField {
+    pub fn new(name: Ident, r#type: TypeId) -> Self {
+        TypedStorageField {
+            name,
+            r#type,
+            //            initializer,
+        }
     }
 }

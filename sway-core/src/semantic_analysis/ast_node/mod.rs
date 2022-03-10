@@ -14,6 +14,8 @@ use sway_types::span::{join_spans, Span};
 
 use std::sync::Arc;
 
+use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
+
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
@@ -602,12 +604,49 @@ impl TypedAstNode {
                             namespace.insert(name, decl.clone());
                             decl
                         }
-                        Declaration::StorageDeclaration(StorageDeclaration { span, .. }) => {
-                            errors.push(CompileError::Unimplemented(
-                                "Storage declarations are not supported yet. Coming soon!",
-                                span,
-                            ));
-                            return err(warnings, errors);
+                        Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
+                            let mut fields_buf = Vec::with_capacity(fields.len());
+                            for StorageField {
+                                name,
+                                r#type,
+                                initializer,
+                            } in fields
+                            {
+                                let r#type = namespace.resolve_type_without_self(&r#type);
+                                let recov_expr = error_recovery_expr(initializer.span());
+                                let initializer = check!(
+                                    TypedExpression::type_check(TypeCheckArguments {
+                                        checkee: initializer,
+                                        namespace,
+                                        crate_namespace,
+                                        return_type_annotation: r#type,
+                                        help_text: Default::default(),
+                                        self_type,
+                                        build_config,
+                                        dead_code_graph,
+                                        mode: Mode::NonAbi,
+                                        opts
+                                    },),
+                                    recov_expr,
+                                    warnings,
+                                    errors
+                                );
+                                dbg!(initializer);
+                                fields_buf.push(TypedStorageField::new(name, r#type));
+                            }
+
+                            let decl = TypedStorageDeclaration::new(fields_buf, span);
+                            // insert the storage declaration into the symbols
+                            // if there already was one, return an error that duplicate storage
+
+                            // declarations are not allowed
+                            check!(
+                                namespace.set_storage_declaration(decl.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            TypedDeclaration::StorageDeclaration(decl)
                         }
                     })
                 }

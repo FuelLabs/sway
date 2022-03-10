@@ -93,6 +93,7 @@ pub trait NamespaceWrapper {
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
     fn apply_storage_load(&self, field: Ident)
         -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
+    fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()>;
 }
 
 impl NamespaceWrapper for NamespaceRef {
@@ -101,6 +102,9 @@ impl NamespaceWrapper for NamespaceRef {
         field: Ident,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         read_module(move |ns| ns.apply_storage_load(field.clone()), *self)
+    }
+    fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+        write_module(|ns| ns.set_storage_declaration(decl), *self)
     }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
         write_module(|ns| ns.insert_module(module_name, ix), *self)

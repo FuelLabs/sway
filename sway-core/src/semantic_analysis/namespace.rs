@@ -45,6 +45,17 @@ impl Namespace {
         }
     }
 
+    pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+        if self.declared_storage.is_some() {
+            return err(
+                vec![],
+                vec![], // TODO
+            );
+        }
+        self.declared_storage = Some(decl);
+        ok((), vec![], vec![])
+    }
+
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols.values()
     }
