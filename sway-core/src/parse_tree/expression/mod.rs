@@ -1188,10 +1188,7 @@ pub(crate) fn parse_storage_access(
     let mut errors = vec![];
     let path = config.map(|c| c.path());
     let span = item.as_span();
-    let span = Span {
-        span: span.clone(),
-        path: path.clone(),
-    };
+    let span = Span { span, path };
     let mut parts = item.into_inner();
     let _storage_keyword = parts.next();
     let field_name = check!(

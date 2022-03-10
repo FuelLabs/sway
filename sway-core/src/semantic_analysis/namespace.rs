@@ -12,8 +12,6 @@ use std::collections::{BTreeMap, HashMap};
 pub mod arena;
 pub use arena::*;
 
-
-
 type ModuleName = String;
 type TraitName = CallPath;
 /// A namespace represents all items that exist either via declaration or importing.

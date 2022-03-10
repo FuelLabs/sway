@@ -1104,7 +1104,7 @@ impl TypedExpression {
         };
         ok(exp, warnings, errors)
     }
-    
+
     /// Look up the current global storage state that has been created by storage declarations.
     /// If there isn't any storage, then this is an error. If there is storage, find the corresponding
     /// field that has been specified and return that value.

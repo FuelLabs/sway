@@ -27,14 +27,14 @@ impl TypedStorageDeclaration {
         field: Ident,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         if let Some((ix, TypedStorageField { r#type, name, .. })) = self.find_field(&field) {
-            return ok(
+            ok(
                 (
                     TypeCheckedStorageAccess::new_load(ix, name.clone()),
                     *r#type,
                 ),
                 vec![],
                 vec![],
-            );
+            )
         } else {
             todo!("storage field not found err")
         }
