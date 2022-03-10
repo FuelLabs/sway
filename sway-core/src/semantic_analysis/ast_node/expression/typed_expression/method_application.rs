@@ -173,11 +173,12 @@ pub(crate) fn type_check_method_application(
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
-        match crate::type_engine::unify_with_self(
+        match unify_with_self(
             arg.return_type,
             param.r#type,
             self_type,
             &arg.span,
+            "This argument's type is not castable to the declared parameter type.",
         ) {
             Ok(mut ws) => {
                 warnings.append(&mut ws);

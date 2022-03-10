@@ -83,9 +83,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("tuple_indexing", ProgramState::Return(1)),
         ("tuple_access", ProgramState::Return(42)),
         ("funcs_with_generic_types", ProgramState::Return(1)), // true
+        ("enum_if_let", ProgramState::Return(143)),
+        ("enum_destructuring", ProgramState::Return(15)),
+        ("enum_if_let_large_type", ProgramState::Return(15)),
+        ("enum_type_inference", ProgramState::Return(5)),
         ("size_of", ProgramState::Return(1)),
         ("supertraits", ProgramState::Return(1)),
         ("new_allocator_test", ProgramState::Return(42)), // true
+        ("chained_if_let", ProgramState::Return(5)),      // true
         ("inline_if_expr_const", ProgramState::Return(0)),
         ("method_on_empty_struct", ProgramState::Return(1)),
         ("tuple_in_struct", ProgramState::Return(1)),
@@ -138,8 +143,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "item_used_without_import",
         "shadow_import",
         "missing_supertrait_impl",
+        "enum_if_let_invalid_variable",
+        "enum_bad_type_inference",
         "missing_func_from_supertrait_impl",
         "supertrait_does_not_exist",
+        "chained_if_let_missing_branch",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
