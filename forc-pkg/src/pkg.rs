@@ -361,6 +361,10 @@ pub fn graph_to_path_map(
     let proj_id = graph[proj_node].id();
     path_map.insert(proj_id, proj_manifest_dir.to_path_buf());
 
+    // Produce the unique `fetch_id` in case we need to fetch a missing git dep.
+    let fetch_ts = std::time::Instant::now();
+    let fetch_id = fetch_id(&path_map[&proj_id], fetch_ts);
+
     // Resolve all following dependencies, knowing their parents' paths will already be resolved.
     for dep_node in path_resolve_order {
         let dep = &graph[dep_node];
@@ -402,7 +406,7 @@ pub fn graph_to_path_map(
                 }
                 SourcePinned::Git(git) => {
                     println!("  Fetching {}", git.to_string());
-                    fetch_git(&dep.name, git)?;
+                    fetch_git(fetch_id, &dep.name, git)?;
                 }
                 SourcePinned::Registry(_reg) => {
                     bail!("registry dependencies are not yet supported");
@@ -432,7 +436,8 @@ pub(crate) fn fetch_deps(
     let path = proj_manifest_dir;
     let source = SourcePinned::Path;
     let pkg = Pinned { name, source };
-    path_map.insert(pkg.id(), path);
+    let pkg_id = pkg.id();
+    path_map.insert(pkg_id, path);
     let root = graph.add_node(pkg);
 
     // The set of visited packages, starting with the root.
@@ -441,13 +446,33 @@ pub(crate) fn fetch_deps(
 
     // Recursively fetch children and add them to the graph.
     // TODO: Convert this recursion to use loop & stack to ensure deps can't cause stack overflow.
-    fetch_children(offline_mode, root, &mut graph, &mut path_map, &mut visited)?;
+    let fetch_ts = std::time::Instant::now();
+    let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
+    fetch_children(
+        fetch_id,
+        offline_mode,
+        root,
+        &mut graph,
+        &mut path_map,
+        &mut visited,
+    )?;
 
     Ok((graph, path_map))
 }
 
+/// Produce a unique ID for a particular fetch pass.
+///
+/// This is used in the temporary git directory and allows for avoiding contention over the git repo directory.
+fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
+    let mut hasher = hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    timestamp.hash(&mut hasher);
+    hasher.finish()
+}
+
 /// Fetch children nodes of the given node and add unvisited nodes to the graph.
 fn fetch_children(
+    fetch_id: u64,
     offline_mode: bool,
     node: NodeIx,
     graph: &mut Graph,
@@ -468,11 +493,11 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(&pkg, path_map)?;
+        let pinned = pin_pkg(fetch_id, &pkg, path_map)?;
         let dep_node = if let hash_map::Entry::Vacant(entry) = visited.entry(pinned.clone()) {
             let node = graph.add_node(pinned);
             entry.insert(node);
-            fetch_children(offline_mode, node, graph, path_map, visited)?;
+            fetch_children(fetch_id, offline_mode, node, graph, path_map, visited)?;
             node
         } else {
             visited[&pinned]
@@ -500,20 +525,24 @@ fn hash_url(url: &Url) -> u64 {
 /// The resulting directory is:
 ///
 /// ```ignore
-/// $HOME/.forc/git/checkouts/tmp/name-<repo_url_hash>
+/// $HOME/.forc/git/checkouts/tmp/<fetch_id>-name-<repo_url_hash>
 /// ```
-fn tmp_git_repo_dir(name: &str, repo: &Url) -> PathBuf {
-    let repo_dir_name = git_repo_dir_name(name, repo);
+///
+/// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
+/// case that multiple processes or threads may be building different projects that may require
+/// fetching the same dependency.
+fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
+    let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
 
 /// Clones the package git repo into a temporary directory and applies the given function.
-fn with_tmp_git_repo<F, O>(name: &str, source: &Url, f: F) -> Result<O>
+fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &Url, f: F) -> Result<O>
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
     // Clear existing temporary directory if it exists.
-    let repo_dir = tmp_git_repo_dir(name, source);
+    let repo_dir = tmp_git_repo_dir(fetch_id, name, source);
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
@@ -544,8 +573,8 @@ where
 ///
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
-fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_tmp_git_repo(name, &source.repo, |repo| {
+fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
+    let commit_hash = with_tmp_git_repo(fetch_id, name, &source.repo, |repo| {
         // Find specified reference in repo.
         let reference = repo
             .resolve_reference_from_short_name(&source.reference)
@@ -578,7 +607,7 @@ fn pin_git(name: &str, source: SourceGit) -> Result<SourceGitPinned> {
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
 /// Also updates the `path_map` with a path to the local copy of the source.
-fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
+fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
         Source::Path(path) => {
@@ -589,7 +618,7 @@ fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
             pinned
         }
         Source::Git(ref source) => {
-            let pinned_git = pin_git(&name, source.clone())?;
+            let pinned_git = pin_git(fetch_id, &name, source.clone())?;
             let path = git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
@@ -602,7 +631,7 @@ fn pin_pkg(pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
                 // along these lines using git?
                 if !path.exists() {
                     println!("  Fetching {}", pinned_git.to_string());
-                    fetch_git(&pinned.name, &pinned_git)?;
+                    fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
                 entry.insert(path);
             }
@@ -636,11 +665,11 @@ fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
+fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
     // Checkout the pinned hash to the path.
-    with_tmp_git_repo(name, &pinned.source.repo, |repo| {
+    with_tmp_git_repo(fetch_id, name, &pinned.source.repo, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
