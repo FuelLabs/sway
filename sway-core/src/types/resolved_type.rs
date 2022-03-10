@@ -39,8 +39,6 @@ pub enum ResolvedType {
     ErrorRecovery,
 }
 
-impl ResolvedType {}
-
 impl Default for ResolvedType {
     fn default() -> Self {
         ResolvedType::Unit

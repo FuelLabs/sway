@@ -11,6 +11,7 @@ pub(crate) fn instantiate_enum(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
+    type_arguments: Vec<(TypeInfo, Span)>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
     self_type: TypeId,
@@ -18,15 +19,33 @@ pub(crate) fn instantiate_enum(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
+    let instantiation_span = enum_field_name.span();
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let mut type_args_buf = Vec::with_capacity(type_arguments.len());
+    for (arg, span) in type_arguments {
+        let ty = namespace
+            .resolve_type_with_self(arg, self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: span.clone() });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+        let ty = look_up_type_id(ty);
+        type_args_buf.push((ty, span));
+    }
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
     let enum_decl = if enum_decl.type_parameters.is_empty() {
         enum_decl
     } else {
-        enum_decl.monomorphize()
+        check!(
+            enum_decl.monomorphize(type_args_buf, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
     };
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
@@ -56,6 +75,7 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name,
+                    instantiation_span: instantiation_span.clone(),
                 },
                 is_constant: IsConstant::No,
                 span: enum_field_name.span().clone(),
@@ -93,6 +113,7 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name,
+                        instantiation_span: instantiation_span.clone(),
                     },
                     is_constant: IsConstant::No,
                     span: enum_field_name.span().clone(),

@@ -11,6 +11,7 @@ fn double_identity<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
     second: y
   }
 }
+
 fn main() -> bool {
   let double_a = double_identity(true, true);
   let double_b = double_identity(10u32, 43u64);
@@ -21,3 +22,4 @@ fn main() -> bool {
 
   double_a.first
 }
+
