@@ -279,6 +279,21 @@ impl TypedExpression {
                     opts,
                 )
             }
+            Expression::StorageAccess { field_name, .. } => Self::type_check_storage_load(
+                TypeCheckArguments {
+                    checkee: field_name,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                &expr_span,
+            ),
             Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
                 TypeCheckArguments {
                     checkee: *exp,
@@ -1088,6 +1103,36 @@ impl TypedExpression {
             span,
         };
         ok(exp, warnings, errors)
+    }
+    
+    /// Look up the current global storage state that has been created by storage declarations.
+    /// If there isn't any storage, then this is an error. If there is storage, find the corresponding
+    /// field that has been specified and return that value.
+    fn type_check_storage_load(
+        arguments: TypeCheckArguments<'_, Ident>,
+        span: &Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        // can probably modify the type checker when there's a storage declaration or something like that
+        // could be a good time to do that refactor. alternatively, the storage declaration can go in
+        // the namespace and we could pull it from there.
+        let (storage_access, return_type) = check!(
+            arguments.namespace.apply_storage_load(arguments.checkee),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(
+            TypedExpression {
+                expression: TypedExpressionVariant::StorageAccess(storage_access),
+                return_type,
+                is_constant: IsConstant::No,
+                span: span.clone(),
+            },
+            warnings,
+            errors,
+        )
     }
 
     fn type_check_tuple_index(

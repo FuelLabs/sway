@@ -2,6 +2,7 @@ use super::*;
 
 use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
 use std::collections::HashMap;
+use sway_types::state::StateIndex;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
@@ -92,9 +93,29 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    StorageAccess(TypeCheckedStorageAccess),
     SizeOf {
         variant: SizeOfVariant,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccess {
+    pub(crate) field_ix_and_name: Option<(StateIndex, Ident)>,
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn field_ix(&self) -> Option<&StateIndex> {
+        self.field_ix_and_name.as_ref().map(|(x, _)| x)
+    }
+    pub fn field_name(&self) -> Option<&Ident> {
+        self.field_ix_and_name.as_ref().map(|(_, x)| x)
+    }
+    pub fn new_load(field: StateIndex, name: Ident) -> Self {
+        Self {
+            field_ix_and_name: Some((field, name)),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -214,6 +235,10 @@ impl TypedExpressionVariant {
                     tag
                 )
             }
+            TypedExpressionVariant::StorageAccess(access) => match access.field_name() {
+                Some(name) => format!("storage field {} access", name.as_str()),
+                None => "storage struct access".into(),
+            },
             TypedExpressionVariant::SizeOf { variant } => match variant {
                 SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
                 SizeOfVariant::Type(type_name) => {
@@ -334,6 +359,8 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
+            // storage is never generic and cannot be monomorphized
+            StorageAccess { .. } => (),
             SizeOf { variant } => match variant {
                 SizeOfVariant::Type(_) => (),
                 SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),

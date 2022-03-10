@@ -3,12 +3,16 @@ use crate::{
     TypedFunctionDeclaration,
 };
 
+use crate::semantic_analysis::{ast_node::TypedStorageDeclaration, TypeCheckedStorageAccess};
+
 use sway_types::span::Span;
 
 use std::collections::{BTreeMap, HashMap};
 
 pub mod arena;
 pub use arena::*;
+
+
 
 type ModuleName = String;
 type TraitName = CallPath;
@@ -28,9 +32,21 @@ pub struct Namespace {
     use_synonyms: HashMap<Ident, Vec<Ident>>,
     // Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
+    // If there is a storage declaration (which are only valid in contracts), store it here.
+    declared_storage: Option<TypedStorageDeclaration>,
 }
 
 impl Namespace {
+    pub fn apply_storage_load(
+        &self,
+        field: Ident,
+    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        match self.declared_storage {
+            Some(ref storage) => storage.apply_storage_load(field),
+            None => todo!("Attempted access of storage where no declaration was available err"),
+        }
+    }
+
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols.values()
     }

@@ -420,6 +420,7 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
+            Expression::StorageAccess { .. } => self,
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::SizeOfType { .. } => self,
         }
@@ -619,6 +620,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
+        TypeInfo::Storage { .. } => "contract storage",
     }
     .to_string()
 }

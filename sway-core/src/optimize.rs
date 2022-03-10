@@ -204,6 +204,7 @@ fn compile_declarations(
             | TypedDeclaration::Reassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
+            | TypedDeclaration::StorageDeclaration(_)
             | TypedDeclaration::ErrorRecovery => (),
         }
     }
@@ -566,6 +567,7 @@ impl FnCompiler {
                             Err("gen ty for fn scope".into())
                         }
                         TypedDeclaration::ErrorRecovery { .. } => Err("error recovery".into()),
+                        TypedDeclaration::StorageDeclaration(_) => todo!("Figure this out"),
                     },
                     TypedAstNodeContent::Expression(te) => {
                         // An expression with an ignored return value... I assume.
@@ -682,6 +684,7 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
             }
+            TypedExpressionVariant::StorageAccess(_access) => todo!("storage API in IR"),
             TypedExpressionVariant::SizeOf { variant } => {
                 match variant {
                     SizeOfVariant::Type(type_id) => {
@@ -1698,6 +1701,7 @@ fn convert_resolved_type(
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
         TypeInfo::ErrorRecovery => return Err("error recovery type found in AST..?".into()),
+        TypeInfo::Storage { .. } => return Err("storage type found in AST..?".into()),
     })
 }
 

@@ -156,6 +156,10 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    StorageAccess {
+        field_name: Ident,
+        span: Span,
+    },
     SizeOfVal {
         exp: Box<Expression>,
         span: Span,
@@ -284,6 +288,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            StorageAccess { span, .. } => span,
             SizeOfVal { span, .. } => span,
             SizeOfType { span, .. } => span,
         })
@@ -1088,6 +1093,12 @@ impl Expression {
                 warnings,
                 errors
             ),
+            Rule::storage_access => check!(
+                parse_storage_access(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             Rule::size_of_expr => check!(
                 parse_size_of_expr(expr, config),
                 return err(warnings, errors),
@@ -1168,6 +1179,33 @@ fn convert_unary_to_fn_calls(
     ok(expr, warnings, errors)
 }
 
+pub(crate) fn parse_storage_access(
+    item: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<Expression> {
+    debug_assert!(item.as_rule() == Rule::storage_access);
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let span = item.as_span();
+    let span = Span {
+        span: span.clone(),
+        path: path.clone(),
+    };
+    let mut parts = item.into_inner();
+    let _storage_keyword = parts.next();
+    let field_name = check!(
+        ident::parse_from_pair(parts.next().expect("guaranteed by grammar"), config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(
+        Expression::StorageAccess { field_name, span },
+        warnings,
+        errors,
+    )
+}
 pub(crate) fn parse_array_index(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,

@@ -60,7 +60,7 @@ call_path_          =  {relative_call_path_|absolute_call_path_}
 relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
 absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
 
-expr_inner               = _{unary_op_expr|asm_expression|size_of_expr|match_expression|abi_cast|if_exp|code_block|tuple_index|struct_expression|delineated_path|func_app|literal_value|method_exp|struct_field_access|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+expr_inner               = _{unary_op_expr|asm_expression|size_of_expr|match_expression|abi_cast|if_exp|code_block|tuple_index|struct_expression|storage_access|delineated_path|func_app|literal_value|method_exp|struct_field_access|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -80,6 +80,7 @@ fully_qualified_method   =  {call_path? ~ "~" ~ type_name ~ path_separator ~ cal
 call_item                =  {ident | "(" ~ expr ~ ")" }
 delineated_path          =  {call_path_ ~ fn_args?}
 array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
+storage_access           =  {storage_keyword ~ "." ~ ident}
 
 // size_of
 size_of_expr      =  {size_of_type_expr|size_of_val_expr}
@@ -145,9 +146,10 @@ fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name
 var_lhs                   =  {var_name|var_tuple}
 var_name                  =  {mut_keyword? ~ ident}
 var_tuple                 =  {"(" ~ (var_lhs ~ ("," ~ var_lhs)* ~ ","?)? ~ ")" }
-reassignment              =  {variable_reassignment | struct_field_reassignment}
+reassignment              =  {variable_reassignment | storage_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
+storage_reassignment      =  {"storage" ~ "." ~ ident ~ assign ~ expr ~ ";"}
 const_decl                =  {visibility ~ const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
 
 visibility =  {"pub"?}

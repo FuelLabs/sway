@@ -20,7 +20,7 @@ pub mod declaration;
 use declaration::TypedTraitFn;
 pub(crate) use declaration::{
     OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
-    TypedVariableDeclaration, VariableMutability,
+    TypedStorageDeclaration, TypedVariableDeclaration, VariableMutability,
 };
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,

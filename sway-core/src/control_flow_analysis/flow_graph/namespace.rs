@@ -1,5 +1,6 @@
 use super::{EntryPoint, ExitPoint};
 use crate::parse_tree::CallPath;
+use crate::semantic_analysis::declaration::TypedStorageField;
 use crate::type_engine::TypeInfo;
 use crate::Ident;
 use petgraph::prelude::NodeIndex;
@@ -38,6 +39,7 @@ pub struct ControlFlowNamespace {
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
+    pub(crate) storage: HashMap<Ident, NodeIndex>,
 }
 
 impl ControlFlowNamespace {
@@ -110,6 +112,12 @@ impl ControlFlowNamespace {
                 }
                 self.trait_method_namespace.insert(trait_name, ns);
             }
+        }
+    }
+
+    pub(crate) fn insert_storage(&mut self, field_nodes: Vec<(TypedStorageField, NodeIndex)>) {
+        for (field, node) in field_nodes {
+            self.storage.insert(field.name, node);
         }
     }
 
