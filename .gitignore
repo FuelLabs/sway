@@ -10,3 +10,6 @@ Cargo.lock
 **/*.rs.bk
 
 out/
+
+# Include Forc.lock in gitignore if creating a library
+Forc.lock
