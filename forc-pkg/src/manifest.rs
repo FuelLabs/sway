@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -66,11 +66,14 @@ impl Manifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     pub fn from_file(path: &Path) -> anyhow::Result<Self> {
-        let manifest = std::fs::read_to_string(path)
+        let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        warn_unused_key(&manifest)?;
-        let manifest: Self =
-            toml::from_str(&manifest).map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+            let warning = format!("  WARNING! unused manifest key: {}", path);
+            println_yellow_err(&warning).unwrap();
+        })
+        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         manifest.validate()?;
         Ok(manifest)
     }
@@ -128,56 +131,15 @@ impl Manifest {
     }
 }
 
-// Checks for unused manifest keys and displays a warning for each key present.
-//
-// This strategy is a combination of [cargo/util/toml/mod.rs](https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs#L100),
-// [serde_ignored](https://docs.rs/serde_ignored/latest/serde_ignored/)'s default example and `forc-pkg::pkg::validate`.
-fn warn_unused_key(manifest: &str) -> anyhow::Result<()> {
-    let manifest_str = manifest;
-    let toml = &mut toml::de::Deserializer::new(manifest_str);
-    let mut unused_keys = BTreeSet::new();
-    let _manifest: Manifest = serde_ignored::deserialize(toml, |path| {
-        let mut key = String::new();
-        verify_keypath(&mut key, &path);
-        unused_keys.insert(key);
-    })?;
-    for key in unused_keys {
-        println_yellow_err(&format!("  WARNING! unused manifest key: {key}")).unwrap();
-    }
-    Ok(())
-}
-
-// Some hackery needed to verify which keys aren't being used and add them to `unused_keys` as strings.
-// Following the logic from `serde_ignored`'s documentation, `dst` is a deserialized string
-fn verify_keypath(dst: &mut String, path: &serde_ignored::Path<'_>) {
-    use serde_ignored::Path;
-
-    match *path {
-        Path::Root => {}
-        Path::Seq { parent, index } => {
-            verify_keypath(dst, parent);
-            if !dst.is_empty() {
-                dst.push('.');
-            }
-            dst.push_str(&index.to_string());
-        }
-        Path::Map { parent, ref key } => {
-            verify_keypath(dst, parent);
-            if !dst.is_empty() {
-                dst.push('.');
-            }
-            dst.push_str(key);
-        }
-        Path::Some { parent }
-        | Path::NewtypeVariant { parent }
-        | Path::NewtypeStruct { parent } => verify_keypath(dst, parent),
-    }
-}
-
 fn default_entry() -> String {
     Manifest::DEFAULT_ENTRY_FILE_NAME.to_string()
 }
 
 fn default_url() -> String {
     constants::DEFAULT_NODE_URL.into()
+}
+
+#[test]
+fn test_unused_key() {
+    // TODO
 }
