@@ -6,6 +6,7 @@ name = "call_basic_storage"
 
 [dependencies.std]
 git = "http://github.com/FuelLabs/sway-lib-std"
+branch = "master"
 
 [dependencies.basic_storage_abi]
 path = "../basic_storage_abi"

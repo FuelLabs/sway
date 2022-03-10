@@ -94,12 +94,9 @@ impl TypedDeclaration {
                     name,
                     fields,
                     ..
-                }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.as_str().to_string(),
-                    fields: fields
-                        .iter()
-                        .map(TypedStructField::as_owned_typed_struct_field)
-                        .collect(),
+                }) => insert_type(TypeInfo::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
@@ -242,34 +239,14 @@ pub struct TypedStructField {
     pub(crate) span: Span,
 }
 
-// TODO(Static span) -- remove this type and use TypedStructField
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct OwnedTypedStructField {
-    pub(crate) name: String,
-    pub(crate) r#type: TypeId,
-}
-
-impl OwnedTypedStructField {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        };
-    }
-
+impl TypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
-            name: self.name.clone(),
+            name: self.name.to_string(),
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
     }
-}
-
-impl TypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
@@ -278,12 +255,6 @@ impl TypedStructField {
         } else {
             insert_type(look_up_type_id_raw(self.r#type))
         };
-    }
-    pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
-        OwnedTypedStructField {
-            name: self.name.as_str().to_string(),
-            r#type: self.r#type,
-        }
     }
 }
 
@@ -296,11 +267,56 @@ pub struct TypedEnumDeclaration {
     pub(crate) visibility: Visibility,
 }
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self) -> Self {
+    pub(crate) fn variants(&self) -> &[TypedEnumVariant] {
+        &self.variants
+    }
+    pub(crate) fn monomorphize(
+        &self,
+        type_arguments: Vec<(TypeInfo, Span)>,
+        self_type: TypeId,
+    ) -> CompileResult<Self> {
         let mut new_decl = self.clone();
-        let type_mapping = insert_type_parameters(&self.type_parameters);
+        let type_mapping = insert_type_parameters(&new_decl.type_parameters);
         new_decl.copy_types(&type_mapping);
-        new_decl
+        let mut warnings = vec![];
+        let mut errors: Vec<CompileError> = vec![];
+        if !type_arguments.is_empty() {
+            // check type arguments against parameters
+            if new_decl.type_parameters.len() != type_arguments.len() {
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: new_decl.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
+                return err(warnings, errors);
+            }
+
+            // check the type arguments
+            for ((_, decl_param), (type_argument, type_argument_span)) in
+                type_mapping.iter().zip(type_arguments.iter())
+            {
+                match unify_with_self(
+                    *decl_param,
+                    insert_type(type_argument.clone()),
+                    self_type,
+                    type_argument_span,
+                    "Type argument is not assignable to generic type parameter.",
+                ) {
+                    Ok(mut ws) => {
+                        warnings.append(&mut ws);
+                    }
+                    Err(e) => {
+                        errors.push(e.into());
+                        continue;
+                    }
+                }
+            }
+        }
+        ok(new_decl, warnings, errors)
     }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.variants
@@ -309,17 +325,13 @@ impl TypedEnumDeclaration {
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
-        crate::type_engine::insert_type(TypeInfo::Enum {
-            name: self.name.as_str().to_string(),
-            variant_types: self
-                .variants
-                .iter()
-                .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                .collect(),
+        insert_type(TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
         })
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
@@ -337,27 +349,9 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
-    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
-        OwnedTypedEnumVariant {
-            name: self.name.as_str().to_string(),
-            r#type: self.r#type,
-            tag: self.tag,
-        }
-    }
-}
-
-// TODO(Static span) -- remove this type and use TypedEnumVariant
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct OwnedTypedEnumVariant {
-    pub(crate) name: String,
-    pub(crate) r#type: TypeId,
-    pub(crate) tag: usize,
-}
-
-impl OwnedTypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
-            name: self.name.clone(),
+            name: self.name.to_string(),
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }

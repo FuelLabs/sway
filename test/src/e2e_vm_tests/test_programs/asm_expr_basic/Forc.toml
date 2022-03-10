@@ -5,5 +5,4 @@ name = "asm_expr_basic"
 entry = "main.sw"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }

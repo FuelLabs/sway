@@ -7,9 +7,8 @@ use crate::{
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, Literal, UnaryOp},
     semantic_analysis::{
         ast_node::{
-            OwnedTypedEnumVariant, OwnedTypedStructField, TypedAsmRegisterDeclaration,
-            TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant, TypedStructExpressionField,
-            TypedStructField,
+            TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant,
+            TypedStructExpressionField, TypedStructField,
         },
         TypedExpression,
     },
@@ -21,8 +20,7 @@ use sway_types::{ident::Ident, span::Span};
 pub(crate) fn convert_subfield_expression_to_asm(
     span: &Span,
     parent: &TypedExpression,
-    field_to_access_name: &str,
-    field_to_access_span: Span,
+    field_to_access: Ident,
     resolved_type_of_parent: TypeId,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
@@ -62,8 +60,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
     asm_buf.append(&mut check!(
         convert_subfield_to_asm(
             prefix_reg,
-            &field_to_access_name,
-            field_to_access_span,
+            &field_to_access,
             return_register.clone(),
             &fields_for_layout,
             &descriptor,
@@ -78,7 +75,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
 
 pub(crate) fn get_subfields_for_layout(
     resolved_type_of_parent: TypeId,
-) -> Vec<(TypeId, Span, String)> {
+) -> Vec<(TypeId, Span, Ident)> {
     // TODO(static span): str should be ident below
     let span = sway_types::span::Span {
         span: pest::Span::new(
@@ -93,12 +90,19 @@ pub(crate) fn get_subfields_for_layout(
     match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields
             .iter()
-            .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.clone()))
+            .map(|TypedStructField { name, r#type, .. }| {
+                (*r#type, name.span().clone(), name.clone())
+            })
             .collect::<Vec<_>>(),
         TypeInfo::Tuple(elems) => elems
             .iter()
             .enumerate()
-            .map(|(pos, elem)| (*elem, span.clone(), format!("{}", pos)))
+            .map(|(pos, elem)| {
+                // sorry
+                let leaked_ix: &'static str = Box::leak(Box::new(pos.to_string()));
+                let access_ident = Ident::new_with_override(leaked_ix, span.clone());
+                (*elem, access_ident.span().clone(), access_ident)
+            })
             .collect::<Vec<_>>(),
         _ => {
             unreachable!("Accessing a field or element on non-viable type should be caught during type checking.")
@@ -108,19 +112,20 @@ pub(crate) fn get_subfields_for_layout(
 
 pub(crate) fn convert_subfield_to_asm(
     prefix_reg: VirtualRegister,
-    field_to_access_name: &str,
-    field_to_access_span: Span,
+    field_to_access: &Ident,
     return_register: VirtualRegister,
-    fields_for_layout: &[(TypeId, Span, String)],
-    descriptor: &ContiguousMemoryLayoutDescriptor<String>,
+    fields_for_layout: &[(TypeId, Span, Ident)],
+    descriptor: &ContiguousMemoryLayoutDescriptor<Ident>,
 ) -> CompileResult<Vec<Op>> {
     let mut asm_buf = vec![];
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let field_to_access_span = field_to_access.span().clone();
+    let field_to_access_name = field_to_access.to_string();
     // step 2
     let offset_in_words = check!(
-        descriptor.offset_to_field_name(field_to_access_name, field_to_access_span),
+        descriptor.offset_to_field_name(field_to_access.as_str(), field_to_access.span().clone()),
         0,
         warnings,
         errors
@@ -130,14 +135,14 @@ pub(crate) fn convert_subfield_to_asm(
     let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
         .find_map(|(ty, _span, name)| {
-            if name.as_str() == field_to_access_name {
+            if name.as_str() == field_to_access.as_str() {
                 Some((ty, name))
             } else {
                 None
             }
         })
         .expect(
-            "Accessing a subfield that is not no the struct would be caught during type checking",
+            "Accessing a subfield that is not on the struct would be caught during type checking",
         );
 
     let span = sway_types::span::Span {
@@ -154,6 +159,7 @@ pub(crate) fn convert_subfield_to_asm(
             return err(warnings, errors);
         }
     };
+
     asm_buf.push(if resolved_type_of_this_field.is_copy_type() {
         let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
             Ok(o) => o,

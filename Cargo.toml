@@ -4,11 +4,13 @@ members = [
     "docstrings",
     "examples/build-all-examples",
     "forc",
+    "forc-pkg",
+    "forc-util",
     "parser",
     "sway-core",
     "sway-fmt",
     "sway-ir",
-    "sway-server",
+    "sway-lsp",
     "sway-types",
     "sway-utils",
     "test",
@@ -21,5 +23,5 @@ exclude = [
     "examples/wallet_smart_contract",
 ]
 
-[profile.dev.package.sway-server]
+[profile.dev.package.sway-lsp]
 debug = 2

@@ -17,7 +17,7 @@ fn main() -> bool {
         gas: gas, coins: 0, asset_id: ETH_ID
     }
     ();
-    assert(returned_contract_id == deployed_contract_id);
+    assert(returned_contract_id.into() == deployed_contract_id);
 
     // @todo set up a test contract to mint some tokens for testing balances.
     // test Context::this_balance():
@@ -46,7 +46,7 @@ fn main() -> bool {
         gas: gas, coins: amount, asset_id: ETH_ID
     }
     ();
-    assert(returned_asset_id == ETH_ID);
+    assert(returned_asset_id.into() == ETH_ID);
 
     // test Context::msg_gas():
     // @todo expect the correct gas here... this should fail using `1000`
