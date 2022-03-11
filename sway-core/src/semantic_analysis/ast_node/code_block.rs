@@ -10,6 +10,9 @@ pub(crate) struct TypedCodeBlock {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
+    pub fn span(&self) -> &Span {
+        &self.whole_block_span
+    }
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
@@ -76,11 +79,12 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            match crate::type_engine::unify_with_self(
+            match unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
+                help_text,
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
@@ -98,9 +102,7 @@ impl TypedCodeBlock {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or_else(|| {
-                    crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
-                }),
+                return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new()))),
             ),
             warnings,
             errors,

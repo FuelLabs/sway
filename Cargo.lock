@@ -1003,7 +1003,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1041,7 +1041,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1059,7 +1059,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2164,7 +2164,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -3076,7 +3076,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "clap 3.1.2",
  "derivative",
@@ -3103,7 +3103,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3112,7 +3112,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -3123,7 +3123,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "dashmap",
  "lspower",
@@ -3138,7 +3138,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3150,7 +3150,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.6.0"
+version = "0.6.1"
 
 [[package]]
 name = "syn"

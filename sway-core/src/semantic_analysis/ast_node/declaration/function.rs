@@ -144,7 +144,7 @@ impl TypedFunctionDeclaration {
                     contents: vec![],
                     whole_block_span: body.whole_block_span,
                 },
-                crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
+                insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
@@ -177,37 +177,27 @@ impl TypedFunctionDeclaration {
             )
             .collect::<Vec<_>>();
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &Span)> = body
+        let return_statements: Vec<&TypedExpression> = body
             .contents
             .iter()
-            .filter_map(|x| {
-                if let crate::semantic_analysis::TypedAstNode {
-                    content:
-                        crate::semantic_analysis::TypedAstNodeContent::ReturnStatement(
-                            TypedReturnStatement { ref expr },
-                        ),
-                    span,
-                } = x
-                {
-                    Some((expr, span))
-                } else {
-                    None
-                }
-            })
+            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
+            .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
-        for (stmt, span) in return_statements {
-            match crate::type_engine::unify_with_self(
+        for stmt in return_statements {
+            let span = &stmt.span;
+            match unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
                 span,
+                "Return statement must return the declared function return type.",
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));
-                } //    "Function body's return type does not match up with its return type annotation.",
+                }
             }
         }
 
@@ -263,7 +253,15 @@ impl TypedFunctionDeclaration {
         if !type_arguments.is_empty() {
             // check type arguments against parameters
             if self.type_parameters.len() != type_arguments.len() {
-                todo!("incorrect number of type args err");
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: self.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
             }
 
             // check the type arguments
@@ -275,6 +273,7 @@ impl TypedFunctionDeclaration {
                     insert_type(type_argument.clone()),
                     self_type,
                     type_argument_span,
+                    "Type argument is not castable to generic type paramter",
                 ) {
                     Ok(mut ws) => {
                         warnings.append(&mut ws);

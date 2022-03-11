@@ -61,15 +61,16 @@ pub(crate) enum TypedExpressionVariant {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression>,
-        field_to_access: OwnedTypedStructField,
+        field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
-        field_to_access_span: Span,
     },
-    EnumArgAccess {
-        prefix: Box<TypedExpression>,
-        //variant_to_access: TypedEnumVariant,
-        arg_num_to_access: usize,
-        resolved_type_of_parent: TypeId,
+    IfLet {
+        enum_type: TypeId,
+        expr: Box<TypedExpression>,
+        variant: TypedEnumVariant,
+        variable_to_assign: Ident,
+        then: TypedCodeBlock,
+        r#else: Option<Box<TypedExpression>>,
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
@@ -84,6 +85,9 @@ pub(crate) enum TypedExpressionVariant {
         variant_name: Ident,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
+        /// If there is an error regarding this instantiation of the enum,
+        /// use this span as it points to the call site and not the declaration.
+        instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -176,15 +180,13 @@ impl TypedExpressionVariant {
                     field_to_access.name
                 )
             }
-            TypedExpressionVariant::EnumArgAccess {
-                resolved_type_of_parent,
-                arg_num_to_access,
-                ..
+            TypedExpressionVariant::IfLet {
+                enum_type, variant, ..
             } => {
                 format!(
-                    "\"{}.{}\" arg num access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    arg_num_to_access
+                    "if let {}::{}",
+                    enum_type.friendly_type_str(),
+                    variant.name.as_str()
                 )
             }
             TypedExpressionVariant::TupleElemAccess {
@@ -293,20 +295,19 @@ impl TypedExpressionVariant {
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
-            EnumArgAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
+            IfLet {
+                ref mut variant,
+                ref mut enum_type,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                *enum_type = if let Some(matching_id) =
+                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
                 {
                     insert_type(TypeInfo::Ref(matching_id))
                 } else {
-                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                    insert_type(look_up_type_id_raw(*enum_type))
                 };
-
-                prefix.copy_types(type_mapping);
+                variant.copy_types(type_mapping);
             }
             TupleElemAccess {
                 prefix,
