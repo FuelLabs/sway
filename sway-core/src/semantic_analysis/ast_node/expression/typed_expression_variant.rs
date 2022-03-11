@@ -102,6 +102,7 @@ pub(crate) enum TypedExpressionVariant {
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
     pub(crate) field_ix_and_name: Option<(StateIndex, Ident)>,
+    pub(crate) field_to_access_span: Span,
 }
 
 impl TypeCheckedStorageAccess {
@@ -111,9 +112,10 @@ impl TypeCheckedStorageAccess {
     pub fn field_name(&self) -> Option<&Ident> {
         self.field_ix_and_name.as_ref().map(|(_, x)| x)
     }
-    pub fn new_load(field: StateIndex, name: Ident) -> Self {
+    pub fn new_load(field: StateIndex, name: Ident, span: &Span) -> Self {
         Self {
             field_ix_and_name: Some((field, name)),
+            field_to_access_span: span.clone(),
         }
     }
 }

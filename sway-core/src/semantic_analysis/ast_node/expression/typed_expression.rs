@@ -1118,7 +1118,9 @@ impl TypedExpression {
         // could be a good time to do that refactor. alternatively, the storage declaration can go in
         // the namespace and we could pull it from there.
         let (storage_access, return_type) = check!(
-            arguments.namespace.apply_storage_load(arguments.checkee),
+            arguments
+                .namespace
+                .apply_storage_load(arguments.checkee, span),
             return err(warnings, errors),
             warnings,
             errors

@@ -1,3 +1,4 @@
+use fuel_tx::crypto::Hasher;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
@@ -8,7 +9,7 @@ use crate::{
     type_engine::*,
 };
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, state::StateIndex};
 
 use sway_ir::*;
 
@@ -597,8 +598,9 @@ impl FnCompiler {
     ) -> Result<Value, String> {
         let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
         match ast_expr.expression {
-            TypedExpressionVariant::Literal(l) =>
-                Ok(convert_literal_to_value(context, &l, span_md_idx)),
+            TypedExpressionVariant::Literal(l) => {
+                Ok(convert_literal_to_value(context, &l, span_md_idx))
+            },
             TypedExpressionVariant::FunctionApplication {
                 name,
                 arguments,
@@ -684,7 +686,15 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
             }
-            TypedExpressionVariant::StorageAccess(_access) => todo!("storage API in IR"),
+            TypedExpressionVariant::StorageAccess(val) => {
+                let span_md_idx = MetadataIndex::from_span(context, &val.field_to_access_span);
+                self.compile_storage_access(
+                    context,
+                    val.field_ix_and_name,
+                    ast_expr.return_type,
+                    span_md_idx
+                )
+            }
             TypedExpressionVariant::SizeOf { variant } => {
                 match variant {
                     SizeOfVariant::Type(type_id) => {
@@ -1297,6 +1307,83 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    fn compile_storage_access(
+        &mut self,
+        context: &mut Context,
+        field_ix_and_name: Option<(StateIndex, Ident)>,
+        return_type: TypeId,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        let field_name = field_ix_and_name.clone().unwrap().1;
+        let field_ix = field_ix_and_name.unwrap().0;
+        let return_type =
+            convert_resolved_typeid_no_span(context, &mut self.struct_names, &return_type)?;
+
+        // Name of the key in the IR
+        let key_name = format!("key_for_{}", field_name);
+        let alias_key_name = match self.symbol_map.get(key_name.as_str()) {
+            None => key_name.clone(),
+            Some(shadowed_key_name) => format!("{}_", shadowed_key_name),
+        };
+        self.symbol_map
+            .insert(alias_key_name.clone(), key_name.clone());
+
+        // Local pointer for the key
+        let key_ptr = self
+            .function
+            .new_local_ptr(context, alias_key_name, Type::B256, false, None)
+            .map_err(|ir_error| ir_error.to_string())?;
+
+        // Convert the key pointer to a value
+        let key_ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(key_ptr, span_md_idx);
+
+        // Calculate the storage location hash for the given field
+        let storage_slot_to_hash = format!("{}{:?}", "storage_", field_ix);
+        let const_key = convert_literal_to_value(
+            context,
+            &Literal::B256(*Hasher::hash(storage_slot_to_hash)),
+            span_md_idx,
+        );
+
+        // Store the resulting hash to the value of key pointer
+        self.current_block
+            .ins(context)
+            .store(key_ptr_val, const_key, span_md_idx);
+
+        // Var to load into
+        let value_name = format!("value_for_{}", field_name);
+        let alias_value_name = match self.symbol_map.get(value_name.as_str()) {
+            None => value_name.clone(),
+            Some(shadowed_value_name) => format!("{}_", shadowed_value_name),
+        };
+        self.symbol_map.insert(value_name, alias_value_name.clone());
+
+        let value_ptr = self
+            .function
+            .new_local_ptr(context, alias_value_name, return_type, false, None)
+            .map_err(|ir_error| ir_error.to_string())?;
+
+        let value_ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(value_ptr, span_md_idx);
+
+        self.current_block
+            .ins(context)
+            .state_load(value_ptr_val, key_ptr_val, span_md_idx);
+
+        Ok(if value_ptr.is_aggregate_ptr(context) {
+            value_ptr_val
+        } else {
+            self.current_block
+                .ins(context)
+                .load(value_ptr_val, span_md_idx)
+        })
+    }
+
     fn compile_struct_expr(
         &mut self,
         context: &mut Context,
@@ -1625,6 +1712,12 @@ fn convert_resolved_typeid_no_span(
         path: None,
     };
     convert_resolved_typeid(context, struct_names, ast_type, &span)
+}
+
+impl From<fuel_tx::Bytes32> for Literal {
+    fn from(o: fuel_tx::Bytes32) -> Self {
+        Literal::B256(*o)
+    }
 }
 
 fn convert_resolved_type(

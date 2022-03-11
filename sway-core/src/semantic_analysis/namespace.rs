@@ -38,9 +38,10 @@ impl Namespace {
     pub fn apply_storage_load(
         &self,
         field: Ident,
+        span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         match self.declared_storage {
-            Some(ref storage) => storage.apply_storage_load(field),
+            Some(ref storage) => storage.apply_storage_load(field, span),
             None => todo!("Attempted access of storage where no declaration was available err"),
         }
     }

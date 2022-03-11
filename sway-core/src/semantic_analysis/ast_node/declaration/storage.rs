@@ -17,11 +17,12 @@ impl TypedStorageDeclaration {
     pub fn apply_storage_load(
         &self,
         field: Ident,
+        span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         if let Some((ix, TypedStorageField { r#type, name, .. })) = self.find_field(&field) {
             ok(
                 (
-                    TypeCheckedStorageAccess::new_load(ix, name.clone()),
+                    TypeCheckedStorageAccess::new_load(ix, name.clone(), span),
                     *r#type,
                 ),
                 vec![],

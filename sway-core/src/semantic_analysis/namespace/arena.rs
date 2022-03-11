@@ -91,8 +91,11 @@ pub trait NamespaceWrapper {
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
-    fn apply_storage_load(&self, field: Ident)
-        -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
+    fn apply_storage_load(
+        &self,
+        field: Ident,
+        span: &Span,
+    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()>;
 }
 
@@ -100,8 +103,9 @@ impl NamespaceWrapper for NamespaceRef {
     fn apply_storage_load(
         &self,
         field: Ident,
+        span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
-        read_module(move |ns| ns.apply_storage_load(field.clone()), *self)
+        read_module(move |ns| ns.apply_storage_load(field.clone(), span), *self)
     }
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         write_module(|ns| ns.set_storage_declaration(decl), *self)
