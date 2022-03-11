@@ -69,15 +69,11 @@ impl Manifest {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
-        let mut unused_key = BTreeSet::new();
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            unused_key.insert(warning);
+            println_yellow_err(&warning).unwrap();
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        for warning in unused_key {
-            println_yellow_err(&warning).unwrap();
-        }
         manifest.validate()?;
         Ok(manifest)
     }
