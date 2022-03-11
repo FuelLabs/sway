@@ -476,8 +476,14 @@ fn instruction_to_doc<'a>(
                     md_namer.meta_as_string(context, span_md_idx, true),
                 )))
             }
-            Instruction::StateLoad { load_val, key } => Doc::text_line(format!(
-                "state_load ptr {}, key {}{}",
+            Instruction::StateLoadWord(key) => Doc::text_line(format!(
+                "{} = state_load_word ptr {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, key),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
+            Instruction::StateLoadQuadWord { load_val, key } => Doc::text_line(format!(
+                "state_load_quad_word ptr {}, key {}{}",
                 namer.name(context, load_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),

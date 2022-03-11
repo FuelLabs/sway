@@ -299,11 +299,12 @@ fn inline_instruction(
                     .ins(context)
                     .branch(*post_block, Some(map_value(val)), span_md_idx)
             }
-            Instruction::StateLoad { load_val, key } => {
-                new_block
-                    .ins(context)
-                    .state_load(map_value(load_val), map_value(key), span_md_idx)
-            }
+            Instruction::StateLoadWord(key) => new_block
+                .ins(context)
+                .state_load_word(map_value(key), span_md_idx),
+            Instruction::StateLoadQuadWord { load_val, key } => new_block
+                .ins(context)
+                .state_load_quad_word(map_value(load_val), map_value(key), span_md_idx),
             Instruction::StateStore { stored_val, key } => new_block.ins(context).state_store(
                 map_value(stored_val),
                 map_value(key),

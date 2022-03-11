@@ -113,8 +113,9 @@ impl Context {
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                 Instruction::PointerCast(ptr_val, ty) => self.verify_ptr_cast(ptr_val, ty)?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
-                Instruction::StateLoad { load_val, key } => {
-                    self.verify_state_load(load_val, key)?
+                Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
+                Instruction::StateLoadQuadWord { load_val, key } => {
+                    self.verify_state_load_quad_word(load_val, key)?
                 }
                 Instruction::StateStore { stored_val, key } => {
                     self.verify_state_store(stored_val, key)?
@@ -245,7 +246,12 @@ impl Context {
         }
     }
 
-    fn verify_state_load(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
+    fn verify_state_load_word(&self, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_state_load_quad_word(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
         // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
         Ok(())
     }

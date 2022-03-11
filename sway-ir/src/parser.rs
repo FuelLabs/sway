@@ -118,7 +118,8 @@ mod ir_builder {
                 / op_phi()
                 / op_ptr_cast()
                 / op_ret()
-                / op_state_load()
+                / op_state_load_word()
+                / op_state_load_quad_word()
                 / op_state_store()
                 / op_store()
 
@@ -199,9 +200,14 @@ mod ir_builder {
                     IrAstOperation::Ret(ty, vn)
                 }
 
-            rule op_state_load() -> IrAstOperation
-                = "state_load" _ ptr() dst:id() comma() "key" _ key:id() {
-                    IrAstOperation::StateLoad(dst, key)
+            rule op_state_load_word() -> IrAstOperation
+                = "state_load_word" _ "key" _ key:id() {
+                    IrAstOperation::StateLoadWord(key)
+                }
+
+            rule op_state_load_quad_word() -> IrAstOperation
+                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ key:id() {
+                    IrAstOperation::StateLoadQuadWord(dst, key)
                 }
 
             rule op_state_store() -> IrAstOperation
@@ -471,7 +477,8 @@ mod ir_builder {
         Phi(Vec<(String, String)>),
         PtrCast(String, IrAstTy),
         Ret(IrAstTy, String),
-        StateLoad(String, String),
+        StateLoadWord(String),
+        StateLoadQuadWord(String, String),
         StateStore(String, String),
         Store(String, String),
     }
@@ -856,11 +863,16 @@ mod ir_builder {
                         .ins(context)
                         .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
                 }
-                IrAstOperation::StateLoad(dst, key) => block.ins(context).state_load(
-                    *val_map.get(&dst).unwrap(),
-                    *val_map.get(&key).unwrap(),
-                    opt_ins_md_idx,
-                ),
+                IrAstOperation::StateLoadWord(key) => block
+                    .ins(context)
+                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
+                IrAstOperation::StateLoadQuadWord(dst, key) => {
+                    block.ins(context).state_load_quad_word(
+                        *val_map.get(&dst).unwrap(),
+                        *val_map.get(&key).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::StateStore(src, key) => block.ins(context).state_store(
                     *val_map.get(&src).unwrap(),
                     *val_map.get(&key).unwrap(),
