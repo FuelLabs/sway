@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
