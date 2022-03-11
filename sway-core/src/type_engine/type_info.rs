@@ -133,12 +133,32 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
+    pub(crate) fn parse_from_type_params(
+        type_params_pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Vec<Self>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut buf = vec![];
+        for pair in type_params_pair.into_inner() {
+            buf.push(check!(
+                TypeInfo::parse_from_pair(pair.clone(), config),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+        ok(buf, warnings, errors)
+    }
+
     pub(crate) fn parse_from_pair(
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        match input.as_rule() {
-            Rule::type_name | Rule::generic_type_param => (),
+        let pair = match input.as_rule() {
+            Rule::type_name => input.into_inner().next().unwrap(),
+            Rule::generic_type_param => input,
+            Rule::ident => input,
             _ => {
                 let span = Span {
                     span: input.as_span(),
@@ -150,8 +170,8 @@ impl TypeInfo {
                 )];
                 return err(vec![], errors);
             }
-        }
-        Self::parse_from_pair_inner(input.into_inner().next().unwrap(), config)
+        };
+        Self::parse_from_pair_inner(pair, config)
     }
 
     fn parse_from_pair_inner(

@@ -1,6 +1,12 @@
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{
+        ast_node::{
+            declaration::insert_type_parameters, OwnedTypedStructField, TypedEnumDeclaration,
+            TypedStructField, TypedVariableDeclaration, VariableMutability,
+        },
+        *,
+    },
     type_engine::*,
     CallPath, TypeParameter, Visibility,
 };
@@ -411,6 +417,7 @@ impl NamespaceWrapper for NamespaceRef {
             }
         }
     }
+
     fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef> {
         let mut errors = vec![];
         let warnings = vec![];
@@ -460,6 +467,7 @@ impl NamespaceWrapper for NamespaceRef {
 
         ok(ix, warnings, errors)
     }
+
     /// Pull a single item from a module and import it into this namespace.
     fn item_import(
         &self,
@@ -613,17 +621,17 @@ impl NamespaceWrapper for NamespaceRef {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
                             let new_decl = decl.monomorphize(self);
-                            crate::type_engine::insert_type(look_up_type_id(new_decl.type_id))
+                            new_decl.type_id
                         } else {
-                            crate::type_engine::insert_type(look_up_type_id(decl.type_id))
+                            decl.type_id
                         }
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
                             let new_decl = decl.monomorphize(self);
-                            crate::type_engine::insert_type(look_up_type_id(new_decl.type_id))
+                            new_decl.type_id
                         } else {
-                            crate::type_engine::insert_type(look_up_type_id(decl.type_id))
+                            decl.type_id
                         }
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
@@ -646,28 +654,40 @@ impl NamespaceWrapper for NamespaceRef {
         match ty {
             TypeInfo::Custom { name } => {
                 match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                        name,
-                        fields,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
-                    Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
-                        name,
-                        variants,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        decl.type_id
+                        /*
+                        if !type_arguments.is_empty() {
+                            let type_mapping = insert_type_parameters(type_arguments);
+                            let mut new_decl = decl.clone();
+                            new_decl.copy_types(&type_mapping);
+                            let new_type_info = TypeInfo::Struct {
+                                name: new_decl.name.as_str().to_string(),
+                                fields: new_decl
+                                    .fields
+                                    .iter()
+                                    .map(TypedStructField::as_owned_typed_struct_field)
+                                    .collect()
+                            };
+                            new_decl.type_id = insert_type(new_type_info);
+                            new_decl.type_id
+                        } else {
+                            decl.type_id
+                        }
+                        */
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        decl.type_id
+                        /*
+                        crate::type_engine::insert_type(TypeInfo::Enum {
                         name: name.as_str().to_string(),
                         variant_types: variants
                             .iter()
                             .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
-                    }),
+                            .collect()
+                        })
+                        */
+                    }
                     _ => crate::type_engine::insert_type(TypeInfo::Unknown),
                 }
             }

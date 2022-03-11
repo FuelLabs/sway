@@ -433,7 +433,7 @@ impl TypedAstNode {
                         ),
 
                         Declaration::ImplSelf(ImplSelf {
-                            type_arguments,
+                            generic_type_arguments,
                             functions,
                             type_implementing_for,
                             block_span,
@@ -445,24 +445,20 @@ impl TypedAstNode {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
 
-                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            for type_argument in type_arguments.iter() {
-                                if !type_argument.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
-                                        "Where clauses are not supported yet.",
-                                        type_argument.trait_constraints[0]
-                                            .clone()
-                                            .name
-                                            .span()
-                                            .clone(),
-                                    ));
-                                    break;
-                                }
+                            println!("\n");
+                            for type_argument in generic_type_arguments.iter() {
+                                println!(
+                                    "{:?}",
+                                    look_up_type_id(type_argument.type_id).friendly_type_str()
+                                );
                             }
+                            println!("\n");
+
+                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
-                                let mut type_arguments = type_arguments.clone();
+                                let mut generic_type_arguments = generic_type_arguments.clone();
                                 // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_arguments);
+                                fn_decl.type_parameters.append(&mut generic_type_arguments);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 
@@ -479,7 +475,6 @@ impl TypedAstNode {
                                 if fn_decl.return_type == TypeInfo::SelfType {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
-
                                 let args = TypeCheckArguments {
                                     checkee: fn_decl,
                                     namespace,
@@ -492,7 +487,6 @@ impl TypedAstNode {
                                     mode: Mode::NonAbi,
                                     opts,
                                 };
-
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(args),
                                     continue,
@@ -507,7 +501,7 @@ impl TypedAstNode {
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
-                                look_up_type_id(implementing_for_type_id),
+                                type_implementing_for.clone(),
                                 functions_buf.clone(),
                             );
                             TypedDeclaration::ImplTrait {
@@ -524,31 +518,29 @@ impl TypedAstNode {
                             let fields = decl
                                 .fields
                                 .into_iter()
-                                .map(
-                                    |StructField {
-                                         name,
-                                         r#type,
-                                         span,
-                                         type_span,
-                                     }| TypedStructField {
+                                .map(|field| {
+                                    let StructField {
                                         name,
-                                        r#type: if let Some(matching_id) =
-                                            r#type.matches_type_parameter(&type_mapping)
-                                        {
-                                            insert_type(TypeInfo::Ref(matching_id))
-                                        } else {
-                                            namespace
-                                                .resolve_type_with_self(r#type, self_type)
-                                                .unwrap_or_else(|_| {
-                                                    errors.push(CompileError::UnknownType {
-                                                        span: type_span.clone(),
-                                                    });
-                                                    insert_type(TypeInfo::ErrorRecovery)
-                                                })
-                                        },
+                                        r#type,
                                         span,
-                                    },
-                                )
+                                        type_span,
+                                    } = field;
+                                    let r#type = match r#type.matches_type_parameter(&type_mapping)
+                                    {
+                                        Some(matching_id) => {
+                                            insert_type(TypeInfo::Ref(matching_id))
+                                        }
+                                        None => namespace
+                                            .resolve_type_with_self(r#type, self_type)
+                                            .unwrap_or_else(|_| {
+                                                errors.push(CompileError::UnknownType {
+                                                    span: type_span.clone(),
+                                                });
+                                                insert_type(TypeInfo::ErrorRecovery)
+                                            }),
+                                    };
+                                    TypedStructField { name, r#type, span }
+                                })
                                 .collect::<Vec<_>>();
                             let type_id = insert_type(TypeInfo::Struct {
                                 name: decl.name.as_str().to_string(),

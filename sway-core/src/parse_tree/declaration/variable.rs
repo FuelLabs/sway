@@ -77,16 +77,17 @@ impl VariableDeclaration {
             span: x.into_inner().next().unwrap().as_span(),
             path: config.map(|x| x.path()),
         });
-        let type_ascription = if let Some(ascription) = type_ascription {
-            let type_name = ascription.into_inner().next().unwrap();
-            check!(
-                TypeInfo::parse_from_pair(type_name, config),
-                TypeInfo::Tuple(Vec::new()),
-                warnings,
-                errors
-            )
-        } else {
-            TypeInfo::Unknown
+        let type_ascription = match type_ascription {
+            Some(ascription) => {
+                let type_name = ascription.into_inner().next().unwrap();
+                check!(
+                    TypeInfo::parse_from_pair(type_name, config),
+                    TypeInfo::Tuple(Vec::new()),
+                    warnings,
+                    errors
+                )
+            }
+            _ => TypeInfo::Unknown,
         };
         let body = check!(
             Expression::parse_from_pair(maybe_body, config),

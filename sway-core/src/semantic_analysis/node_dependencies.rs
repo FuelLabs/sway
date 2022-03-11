@@ -283,12 +283,12 @@ impl Dependencies {
                 }),
             Declaration::ImplSelf(ImplSelf {
                 type_implementing_for,
-                type_arguments,
+                generic_type_arguments,
                 functions,
                 ..
             }) => self
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_traits(type_arguments)
+                .gather_from_traits(generic_type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -572,7 +572,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
-            let trait_name = Ident::new_with_override("self", decl.type_name_span.clone());
+            let trait_name =
+                Ident::new_with_override("self", decl.type_implementing_for_span.clone());
             impl_sym(trait_name, &decl.type_implementing_for)
         }
         Declaration::ImplTrait(decl) => {

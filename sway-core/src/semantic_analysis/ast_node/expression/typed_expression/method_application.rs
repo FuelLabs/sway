@@ -220,55 +220,58 @@ pub(crate) fn type_check_method_application(
                 .map(|(param, arg)| (param.name.clone(), arg))
                 .collect::<Vec<(_, _)>>();
 
-            TypedExpression {
-                expression: TypedExpressionVariant::FunctionApplication {
-                    name: CallPath {
-                        prefixes: vec![],
-                        suffix: method_name,
-                        is_absolute: false,
-                    },
-                    contract_call_params: contract_call_params_map,
-                    arguments: args_and_names,
-                    function_body: method.body.clone(),
-                    selector: if method.is_contract_call {
-                        let contract_address = match contract_caller
-                            .map(|x| crate::type_engine::look_up_type_id(x.return_type))
-                        {
-                            Some(TypeInfo::ContractCaller { address, .. }) => address,
-                            _ => {
-                                errors.push(CompileError::Internal(
-                                    "Attempted to find contract address of non-contract-call.",
-                                    span.clone(),
-                                ));
-                                String::new()
-                            }
-                        };
-                        // TODO(static span): this can be a normal address expression,
-                        // so we don't need to re-parse and re-compile
-                        let contract_address = check!(
-                            re_parse_expression(
-                                contract_address.into(),
-                                build_config,
-                                namespace,
-                                crate_namespace,
-                                self_type,
-                                dead_code_graph,
-                                opts,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let func_selector =
-                            check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                        Some(ContractCallMetadata {
-                            func_selector,
-                            contract_address: Box::new(contract_address),
-                        })
-                    } else {
-                        None
-                    },
+            let selector = if method.is_contract_call {
+                let contract_address = match contract_caller
+                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
+                {
+                    Some(TypeInfo::ContractCaller { address, .. }) => address,
+                    _ => {
+                        errors.push(CompileError::Internal(
+                            "Attempted to find contract address of non-contract-call.",
+                            span.clone(),
+                        ));
+                        String::new()
+                    }
+                };
+                // TODO(static span): this can be a normal address expression,
+                // so we don't need to re-parse and re-compile
+                let contract_address = check!(
+                    re_parse_expression(
+                        contract_address.into(),
+                        build_config,
+                        namespace,
+                        crate_namespace,
+                        self_type,
+                        dead_code_graph,
+                        opts,
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+                Some(ContractCallMetadata {
+                    func_selector,
+                    contract_address: Box::new(contract_address),
+                })
+            } else {
+                None
+            };
+
+            let expression = TypedExpressionVariant::FunctionApplication {
+                name: CallPath {
+                    prefixes: vec![],
+                    suffix: method_name,
+                    is_absolute: false,
                 },
+                contract_call_params: contract_call_params_map,
+                arguments: args_and_names,
+                function_body: method.body.clone(),
+                selector,
+            };
+
+            TypedExpression {
+                expression,
                 return_type: method.return_type,
                 is_constant: IsConstant::No,
                 span,
@@ -301,49 +304,53 @@ pub(crate) fn type_check_method_application(
                 .zip(args_buf.into_iter())
                 .map(|(param, arg)| (param.name.clone(), arg))
                 .collect::<Vec<(_, _)>>();
+
+            let selector = if method.is_contract_call {
+                let contract_address = match contract_caller
+                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
+                {
+                    Some(TypeInfo::ContractCaller { address, .. }) => address,
+                    _ => {
+                        errors.push(CompileError::Internal(
+                            "Attempted to find contract address of non-contract-call.",
+                            span.clone(),
+                        ));
+                        String::new()
+                    }
+                };
+                let contract_address = check!(
+                    re_parse_expression(
+                        contract_address.into(),
+                        build_config,
+                        namespace,
+                        crate_namespace,
+                        self_type,
+                        dead_code_graph,
+                        opts,
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+                Some(ContractCallMetadata {
+                    func_selector,
+                    contract_address: Box::new(contract_address),
+                })
+            } else {
+                None
+            };
+
+            let expression = TypedExpressionVariant::FunctionApplication {
+                name: call_path.clone(),
+                contract_call_params: contract_call_params_map,
+                arguments: args_and_names,
+                function_body: method.body.clone(),
+                selector,
+            };
+
             TypedExpression {
-                expression: TypedExpressionVariant::FunctionApplication {
-                    name: call_path.clone(),
-                    contract_call_params: contract_call_params_map,
-                    arguments: args_and_names,
-                    function_body: method.body.clone(),
-                    selector: if method.is_contract_call {
-                        let contract_address = match contract_caller
-                            .map(|x| crate::type_engine::look_up_type_id(x.return_type))
-                        {
-                            Some(TypeInfo::ContractCaller { address, .. }) => address,
-                            _ => {
-                                errors.push(CompileError::Internal(
-                                    "Attempted to find contract address of non-contract-call.",
-                                    span.clone(),
-                                ));
-                                String::new()
-                            }
-                        };
-                        let contract_address = check!(
-                            re_parse_expression(
-                                contract_address.into(),
-                                build_config,
-                                namespace,
-                                crate_namespace,
-                                self_type,
-                                dead_code_graph,
-                                opts,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let func_selector =
-                            check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                        Some(ContractCallMetadata {
-                            func_selector,
-                            contract_address: Box::new(contract_address),
-                        })
-                    } else {
-                        None
-                    },
-                },
+                expression,
                 return_type: method.return_type,
                 is_constant: IsConstant::No,
                 span,
