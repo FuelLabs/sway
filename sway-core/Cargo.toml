@@ -33,6 +33,7 @@ smallvec = "1.7"
 sway-ir = { version = "0.6.0", path = "../sway-ir" }
 sway-types = { version = "0.6.0", path = "../sway-types" }
 generational-arena = "0.2"
+bigint = "4.3.3"
 thiserror = "1.0"
 
 [[bin]]

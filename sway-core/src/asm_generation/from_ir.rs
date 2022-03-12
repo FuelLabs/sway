@@ -394,7 +394,11 @@ impl<'ir> AsmBuilder<'ir> {
                     ty,
                     indices,
                 } => self.compile_extract_value(instr_val, aggregate, ty, indices),
-                Instruction::GetPointer(ptr) => self.compile_get_pointer(instr_val, ptr),
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -821,9 +825,15 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_get_pointer(&mut self, instr_val: &Value, ptr: &Pointer) {
+    fn compile_get_pointer(
+        &mut self,
+        instr_val: &Value,
+        base_ptr: &Pointer,
+        ptr_ty: &Type,
+        offset: u64,
+    ) {
         // `get_ptr` is like a `load` except the value isn't dereferenced.
-        match self.ptr_map.get(ptr) {
+        match self.ptr_map.get(base_ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
             Some(storage) => match storage.clone() {
                 Storage::Data(_data_id) => {
@@ -834,7 +844,11 @@ impl<'ir> AsmBuilder<'ir> {
                     self.reg_map.insert(*instr_val, var_reg);
                 }
                 Storage::Stack(word_offs) => {
-                    let word_offs = word_offs * 8;
+                    let ptr_ty_size_in_bytes = self
+                        .type_analyzer
+                        .ir_type_size_in_bytes(self.context, ptr_ty);
+
+                    let word_offs = word_offs * 8 + ptr_ty_size_in_bytes * offset;
                     let instr_reg = self.reg_seqr.next();
                     if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                         self.number_to_reg(word_offs, &instr_reg, instr_val.get_span(self.context));
@@ -1059,15 +1073,16 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
+        let (ptr, ptr_ty, offset) = ptr.value.unwrap();
         let load_size_in_words = size_bytes_in_words!(self
             .type_analyzer
-            .ir_type_size_in_bytes(self.context, ptr.get_type(self.context)));
+            .ir_type_size_in_bytes(self.context, &ptr_ty));
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(&ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
             Some(storage) => match storage.clone() {
                 Storage::Data(data_id) => {
+                    // what do we do with ptr_ty and offset here?
                     self.bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LWDataId(instr_reg.clone(), data_id)),
                         comment: "load constant".into(),
@@ -1075,6 +1090,7 @@ impl<'ir> AsmBuilder<'ir> {
                     });
                 }
                 Storage::Register(var_reg) => {
+                    // what do we do with ptr_ty and offset here?
                     self.bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg)),
                         comment: String::new(),
@@ -1085,6 +1101,7 @@ impl<'ir> AsmBuilder<'ir> {
                     let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
                     // XXX Need to check for zero sized types?
                     if load_size_in_words == 1 {
+                        let word_offs = word_offs * 8 + load_size_in_words * 8 * offset;
                         // Value can fit in a register, so we load the value.
                         if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -1122,7 +1139,7 @@ impl<'ir> AsmBuilder<'ir> {
                     } else {
                         // Value too big for a register, so we return the memory offset.  This is
                         // what LW to the data section does, via LWDataId.
-                        let word_offs = word_offs * 8;
+                        let word_offs = word_offs * 8 + load_size_in_words * 8 * offset;
                         if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
@@ -1211,11 +1228,12 @@ impl<'ir> AsmBuilder<'ir> {
         // Make sure that both val and key are pointers to B256.
         assert!(matches!(key.get_type(self.context), Some(Type::B256)));
 
+        // Expect the get_ptr here to have type b256 and offset = 0???
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
             return key_ptr.map(|_| ());
         }
-        let key_ptr = key_ptr.value.unwrap();
+        let (key_ptr, _ptr_ty, _offset) = key_ptr.value.unwrap();
 
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(&key_ptr) {
@@ -1261,17 +1279,19 @@ impl<'ir> AsmBuilder<'ir> {
         assert!(matches!(val.get_type(self.context), Some(Type::B256)));
         assert!(matches!(key.get_type(self.context), Some(Type::B256)));
 
+        // Expect ptr_ty here to also be b256 and offset to be whatever...
         let val_ptr = self.resolve_ptr(val);
         if val_ptr.value.is_none() {
             return val_ptr.map(|_| ());
         }
-        let val_ptr = val_ptr.value.unwrap();
+        let (val_ptr, _ptr_ty, offset) = val_ptr.value.unwrap();
 
+        // Expect the get_ptr here to have type b256 and offset = 0???
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
             return key_ptr.map(|_| ());
         }
-        let key_ptr = key_ptr.value.unwrap();
+        let (key_ptr, _ptr_ty, _offset) = key_ptr.value.unwrap();
 
         match (self.ptr_map.get(&val_ptr), self.ptr_map.get(&key_ptr)) {
             (Some(val_storage), Some(key_storage)) => {
@@ -1284,7 +1304,9 @@ impl<'ir> AsmBuilder<'ir> {
                                 val_reg.clone(),
                                 base_reg.clone(),
                                 VirtualImmediate12 {
-                                    value: (val_offset * 8) as u16,
+                                    // offset * 32 refers to how many bytes
+                                    // in a b256, which should be the size of ptr_ty
+                                    value: (val_offset * 8 + offset * 32) as u16,
                                 },
                             )),
                             comment: "get quad state load value offset".into(),
@@ -1329,7 +1351,7 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
+        let (ptr, ptr_ty, offset) = ptr.value.unwrap();
         let stored_reg = self.value_to_register(stored_val);
         let is_aggregate_ptr = ptr.is_aggregate_ptr(self.context);
         match self.ptr_map.get(&ptr) {
@@ -1337,6 +1359,7 @@ impl<'ir> AsmBuilder<'ir> {
             Some(storage) => match storage {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
                 Storage::Register(reg) => {
+                    // what do we do with ptr_ty and offset here?
                     self.bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::MOVE(reg.clone(), stored_reg)),
                         comment: String::new(),
@@ -1347,11 +1370,12 @@ impl<'ir> AsmBuilder<'ir> {
                     let word_offs = *word_offs;
                     let store_size_in_words = size_bytes_in_words!(self
                         .type_analyzer
-                        .ir_type_size_in_bytes(self.context, ptr.get_type(self.context)));
+                        .ir_type_size_in_bytes(self.context, &ptr_ty));
                     match store_size_in_words {
                         // We can have empty sized types which we can ignore.
                         0 => (),
                         1 => {
+                            let word_offs = word_offs * 8 + store_size_in_words * 8 * offset;
                             let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
                             // A single word can be stored with SW.
@@ -1416,11 +1440,13 @@ impl<'ir> AsmBuilder<'ir> {
 
                             // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
                             let dest_offs_reg = self.reg_seqr.next();
-                            if word_offs * 8
+
+                            let word_offs = word_offs * 8 + store_size_in_words * 8 * offset;
+                            if word_offs 
                                 > crate::asm_generation::compiler_constants::TWELVE_BITS
                             {
                                 self.number_to_reg(
-                                    word_offs * 8,
+                                    word_offs,
                                     &dest_offs_reg,
                                     instr_val.get_span(self.context),
                                 );
@@ -1439,7 +1465,7 @@ impl<'ir> AsmBuilder<'ir> {
                                         dest_offs_reg.clone(),
                                         base_reg,
                                         VirtualImmediate12 {
-                                            value: (word_offs * 8) as u16,
+                                            value: word_offs as u16,
                                         },
                                     )),
                                     comment: "get store offset".into(),
@@ -1486,11 +1512,13 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<Pointer> {
+    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<(Pointer, Type, u64)> {
         match &self.context.values[ptr_val.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer(ptr)) => {
-                ok(*ptr, Vec::new(), Vec::new())
-            }
+            ValueDatum::Instruction(Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            }) => ok((*base_ptr, *ptr_ty, *offset), Vec::new(), Vec::new()),
             _otherwise => err(
                 Vec::new(),
                 vec![CompileError::Internal(

@@ -161,8 +161,8 @@ mod ir_builder {
                 }
 
             rule op_get_ptr() -> IrAstOperation
-                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id() {
-                    IrAstOperation::GetPtr(name)
+                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id() comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
+                    IrAstOperation::GetPtr(name, ty, offset)
                 }
 
             rule op_insert_element() -> IrAstOperation
@@ -469,7 +469,7 @@ mod ir_builder {
         Const(IrAstConst),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
-        GetPtr(String),
+        GetPtr(String, IrAstTy, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
         Load(String),
@@ -812,9 +812,15 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::GetPtr(src_name) => block
-                    .ins(context)
-                    .get_ptr(*ptr_map.get(&src_name).unwrap(), opt_ins_md_idx),
+                IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
+                    let ptr_ir_ty = ptr_ty.to_ir_type(context);
+                    block.ins(context).get_ptr(
+                        *ptr_map.get(&base_ptr).unwrap(),
+                        ptr_ir_ty,
+                        offset,
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::InsertElement(aval, ty, val, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).insert_element(

@@ -95,7 +95,11 @@ impl Context {
                     ty,
                     indices,
                 } => self.verify_extract_value(aggregate, ty, indices)?,
-                Instruction::GetPointer(ptr) => self.verify_get_ptr(ptr)?,
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.verify_get_ptr(base_ptr, ptr_ty, *offset)?,
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -180,7 +184,12 @@ impl Context {
         Ok(())
     }
 
-    fn verify_get_ptr(&self, _ptr: &Pointer) -> Result<(), IrError> {
+    fn verify_get_ptr(
+        &self,
+        _base_ptr: &Pointer,
+        _ptr_ty: &Type,
+        _offset: u64,
+    ) -> Result<(), IrError> {
         // XXX get_ptr() shouldn't exist in the final IR?
         Ok(())
     }

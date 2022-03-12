@@ -375,15 +375,21 @@ fn instruction_to_doc<'a>(
                     Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                 }),
             ),
-            Instruction::GetPointer(ptr) => {
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            } => {
                 let name = block
                     .get_function(context)
-                    .lookup_local_name(context, ptr)
+                    .lookup_local_name(context, base_ptr)
                     .unwrap();
                 Doc::text_line(format!(
-                    "{} = get_ptr {}{}",
+                    "{} = get_ptr {}, ptr {}, {}{}",
                     namer.name(context, ins_value),
-                    ptr.as_string(context, name),
+                    base_ptr.as_string(context, name),
+                    ptr_ty.as_string(context),
+                    offset,
                     md_namer.meta_as_string(context, span_md_idx, true),
                 ))
             }

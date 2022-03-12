@@ -257,9 +257,13 @@ fn inline_instruction(
                     .ins(context)
                     .extract_value(map_value(aggregate), ty, indices, span_md_idx)
             }
-            Instruction::GetPointer(ptr) => {
-                new_block.ins(context).get_ptr(map_ptr(ptr), span_md_idx)
-            }
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            } => new_block
+                .ins(context)
+                .get_ptr(map_ptr(base_ptr), ptr_ty, offset, span_md_idx),
             Instruction::InsertElement {
                 array,
                 ty,

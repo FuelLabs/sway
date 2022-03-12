@@ -48,7 +48,11 @@ pub enum Instruction {
         indices: Vec<u64>,
     },
     /// Return a pointer as a value.
-    GetPointer(Pointer),
+    GetPointer {
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+    },
     /// Writing a specific value to an array.
     InsertElement {
         array: Value,
@@ -108,7 +112,7 @@ impl Instruction {
             }
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer(ptr) => Some(context.pointers[ptr.0].ty),
+            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
             Instruction::PointerCast(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
@@ -132,7 +136,7 @@ impl Instruction {
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
-            Instruction::GetPointer(ptr) => match ptr.get_type(context) {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -175,7 +179,7 @@ impl Instruction {
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
-            Instruction::GetPointer(_) => (),
+            Instruction::GetPointer { .. } => (),
             Instruction::InsertElement {
                 array,
                 value,
@@ -405,9 +409,22 @@ impl<'a> InstructionInserter<'a> {
         extract_value_val
     }
 
-    pub fn get_ptr(self, ptr: Pointer, span_md_idx: Option<MetadataIndex>) -> Value {
-        let get_ptr_val =
-            Value::new_instruction(self.context, Instruction::GetPointer(ptr), span_md_idx);
+    pub fn get_ptr(
+        self,
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let get_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            },
+            span_md_idx,
+        );
         self.context.blocks[self.block.0]
             .instructions
             .push(get_ptr_val);
