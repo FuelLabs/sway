@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use forc_util::validate_name;
+use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -66,10 +66,14 @@ impl Manifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     pub fn from_file(path: &Path) -> anyhow::Result<Self> {
-        let manifest = std::fs::read_to_string(path)
+        let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let manifest: Self =
-            toml::from_str(&manifest).map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+            let warning = format!("  WARNING! unused manifest key: {}", path);
+            println_yellow_err(&warning).unwrap();
+        })
+        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         manifest.validate()?;
         Ok(manifest)
     }
