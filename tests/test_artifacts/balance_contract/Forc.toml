@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "balance_contract"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
 std = { path = "../../../" }
