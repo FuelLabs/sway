@@ -1442,9 +1442,7 @@ impl<'ir> AsmBuilder<'ir> {
                             let dest_offs_reg = self.reg_seqr.next();
 
                             let word_offs = word_offs * 8 + store_size_in_words * 8 * offset;
-                            if word_offs 
-                                > crate::asm_generation::compiler_constants::TWELVE_BITS
-                            {
+                            if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                                 self.number_to_reg(
                                     word_offs,
                                     &dest_offs_reg,

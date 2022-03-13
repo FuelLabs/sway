@@ -215,6 +215,7 @@ fn compile_declarations(
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
+            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::Reassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
@@ -566,6 +567,9 @@ impl FnCompiler {
                         }
                         TypedDeclaration::Reassignment(tr) => {
                             self.compile_reassignment(context, tr, span_md_idx)
+                        }
+                        TypedDeclaration::StorageReassignment(tr) => {
+                            self.compile_storage_reassignment(context, tr, span_md_idx)
                         }
                         TypedDeclaration::ImplTrait { span, .. } => {
                             // XXX What if I ignore the trait implementation???  Potentially since
@@ -1238,6 +1242,17 @@ impl FnCompiler {
         Ok(reassign_val)
     }
 
+    fn compile_storage_reassignment(
+        &mut self,
+        context: &mut Context,
+        storage_reassignment: TypeCheckedStorageReassignment,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        // TODO
+        // We're missing the index here - should carry it over in storage_reassignment
+        dbg!(storage_reassignment);
+        Ok(Constant::get_unit(context, span_md_idx))
+    }
     // ---------------------------------------------------------------------------------------------
 
     fn compile_array_expr(

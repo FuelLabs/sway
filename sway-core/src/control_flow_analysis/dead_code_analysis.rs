@@ -364,6 +364,18 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
+        StorageReassignment(storage_reassignment) => {
+            let rhs = storage_reassignment.rhs();
+            connect_expression(
+                &rhs.expression,
+                graph,
+                &[entry_node],
+                exit_node,
+                "variable reassignment",
+                tree_type,
+                rhs.span.clone(),
+            )
+        }
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
             graph,

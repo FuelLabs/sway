@@ -499,6 +499,15 @@ impl Expression {
                 let name = name.unwrap();
                 Expression::VariableExpression { name, span }
             }
+            Rule::var_name_ident => {
+                let name = check!(
+                    ident::parse_from_pair(expr, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Expression::VariableExpression { name, span }
+            }
             Rule::array_exp => match expr.into_inner().next() {
                 None => Expression::Array {
                     contents: Vec::new(),

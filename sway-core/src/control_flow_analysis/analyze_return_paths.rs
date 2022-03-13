@@ -210,6 +210,13 @@ fn connect_declaration(
             }
             vec![entry_node]
         }
+        StorageReassignment(_) => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            vec![entry_node]
+        }
         ImplTrait {
             trait_name,
             methods,

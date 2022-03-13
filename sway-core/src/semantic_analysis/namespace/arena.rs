@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{ast_node::*, declaration::TypedStorageField, *},
     type_engine::*,
     CallPath, Visibility,
 };
@@ -97,6 +97,8 @@ pub trait NamespaceWrapper {
         span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()>;
+    fn has_storage_declared(&self) -> bool;
+    fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>>;
 }
 
 impl NamespaceWrapper for NamespaceRef {
@@ -109,6 +111,27 @@ impl NamespaceWrapper for NamespaceRef {
     }
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         write_module(|ns| ns.set_storage_declaration(decl), *self)
+    }
+    fn has_storage_declared(&self) -> bool {
+        read_module(move |ns| ns.declared_storage.is_some(), *self)
+    }
+    fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>> {
+        if let Some(fields) = read_module(
+            |ns| ns.declared_storage.as_ref().map(|x| x.fields.clone()),
+            *self,
+        ) {
+            ok(fields, vec![], vec![])
+        } else {
+            let msg = "unknown source location";
+            let span = Span {
+                span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
+                path: None,
+            };
+            return err(
+                vec![],
+                vec![CompileError::Internal("no storage is declared.", span)],
+            );
+        }
     }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
         write_module(|ns| ns.insert_module(module_name, ix), *self)
