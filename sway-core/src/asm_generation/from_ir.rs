@@ -394,7 +394,11 @@ impl<'ir> AsmBuilder<'ir> {
                     ty,
                     indices,
                 } => self.compile_extract_value(instr_val, aggregate, ty, indices),
-                Instruction::GetPointer(ptr) => self.compile_get_pointer(instr_val, ptr),
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -415,10 +419,31 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::PointerCast(..) => todo!(),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
-                Instruction::StateLoad { .. } => todo!(),
-                Instruction::StateStore { .. } => todo!(),
+                Instruction::StateLoadQuadWord { load_val, key } => check!(
+                    self.compile_state_load_quad_word(instr_val, load_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateLoadWord(key) => check!(
+                    self.compile_state_load_word(instr_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateStoreQuadWord { stored_val, key } => check!(
+                    self.compile_state_store_quad_word(instr_val, stored_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateStoreWord { stored_val, key } => check!(
+                    self.compile_state_store_word(instr_val, stored_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
                 Instruction::Store {
                     dst_val,
                     stored_val,
@@ -810,9 +835,15 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_get_pointer(&mut self, instr_val: &Value, ptr: &Pointer) {
+    fn compile_get_pointer(
+        &mut self,
+        instr_val: &Value,
+        base_ptr: &Pointer,
+        ptr_ty: &Type,
+        offset: u64,
+    ) {
         // `get_ptr` is like a `load` except the value isn't dereferenced.
-        match self.ptr_map.get(ptr) {
+        match self.ptr_map.get(base_ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
             Some(storage) => match storage.clone() {
                 Storage::Data(_data_id) => {
@@ -820,20 +851,31 @@ impl<'ir> AsmBuilder<'ir> {
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
                 Storage::Register(var_reg) => {
+                    // Not expecting an offset here nor a pointer cast
+                    assert!(offset == 0);
+                    assert!(ptr_ty == base_ptr.get_type(self.context));
                     self.reg_map.insert(*instr_val, var_reg);
                 }
                 Storage::Stack(word_offs) => {
-                    let word_offs = word_offs * 8;
+                    let ptr_ty_size_in_bytes = self
+                        .type_analyzer
+                        .ir_type_size_in_bytes(self.context, ptr_ty);
+
+                    let offset_in_bytes = word_offs * 8 + ptr_ty_size_in_bytes * offset;
                     let instr_reg = self.reg_seqr.next();
-                    if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
-                        self.number_to_reg(word_offs, &instr_reg, instr_val.get_span(self.context));
+                    if offset_in_bytes > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        self.number_to_reg(
+                            offset_in_bytes,
+                            &instr_reg,
+                            instr_val.get_span(self.context),
+                        );
                     } else {
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADDI(
                                 instr_reg.clone(),
                                 self.stack_base_reg.as_ref().unwrap().clone(),
                                 VirtualImmediate12 {
-                                    value: (word_offs) as u16,
+                                    value: (offset_in_bytes) as u16,
                                 },
                             )),
                             comment: "get_ptr".into(),
@@ -1048,7 +1090,7 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
+        let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
         let load_size_in_words = size_bytes_in_words!(self
             .type_analyzer
             .ir_type_size_in_bytes(self.context, ptr.get_type(self.context)));
@@ -1196,6 +1238,255 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn offset_reg(
+        &mut self,
+        base_reg: &VirtualRegister,
+        offset_in_bytes: u64,
+        span: Option<Span>,
+    ) -> VirtualRegister {
+        let offset_reg = self.reg_seqr.next();
+        if offset_in_bytes > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            let offs_reg = self.reg_seqr.next();
+            self.number_to_reg(offset_in_bytes, &offs_reg, span.clone());
+            self.bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADD(
+                    offset_reg.clone(),
+                    base_reg.clone(),
+                    offs_reg,
+                )),
+                comment: "get offset".into(),
+                owning_span: span,
+            });
+        } else {
+            self.bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADDI(
+                    offset_reg.clone(),
+                    base_reg.clone(),
+                    VirtualImmediate12 {
+                        value: offset_in_bytes as u16,
+                    },
+                )),
+                comment: "get offset".into(),
+                owning_span: span,
+            });
+        }
+
+        offset_reg
+    }
+
+    fn compile_state_load_quad_word(
+        &mut self,
+        instr_val: &Value,
+        load_val: &Value,
+        key: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that both val and key are pointers to B256.
+        assert!(matches!(load_val.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty == Type::B256);
+
+        // Expect ptr_ty here to also be b256 and offset to be whatever...
+        let load_val_ptr = self.resolve_ptr(load_val);
+        if load_val_ptr.value.is_none() {
+            return load_val_ptr.map(|_| ());
+        }
+        let (load_val_ptr, ptr_ty, offset) = load_val_ptr.value.unwrap();
+
+        // Expect the ptr_ty for val to also be B256
+        assert!(ptr_ty == Type::B256);
+
+        match (self.ptr_map.get(&load_val_ptr), self.ptr_map.get(&key_ptr)) {
+            (Some(load_val_storage), Some(key_storage)) => {
+                match (load_val_storage.clone(), key_storage.clone()) {
+                    (Storage::Stack(load_val_offset), Storage::Stack(key_offset)) => {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                        let load_val_reg = self.offset_reg(
+                            &base_reg,
+                            load_val_offset * 8 + offset * 32,
+                            instr_val.get_span(self.context),
+                        );
+
+                        let key_reg = self.offset_reg(
+                            &base_reg,
+                            key_offset * 8,
+                            instr_val.get_span(self.context),
+                        );
+
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::SRWQ(load_val_reg, key_reg)),
+                            comment: "quad state load value".into(),
+                            owning_span: instr_val.get_span(self.context),
+                        });
+                    }
+                    _ => unreachable!("Unexpected storage locations for key and load_val"),
+                }
+            }
+            _ => unreachable!("Unexpected uninitialised pointers"),
+        }
+
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
+        // Make sure that the key is a pointers to B256.
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty == Type::B256);
+
+        let load_reg = self.reg_seqr.next();
+        match self.ptr_map.get(&key_ptr) {
+            Some(key_storage) => match key_storage.clone() {
+                Storage::Stack(key_offset) => {
+                    let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    let key_reg = self.offset_reg(
+                        &base_reg,
+                        key_offset * 8,
+                        instr_val.get_span(self.context),
+                    );
+
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), key_reg)),
+                        comment: "state load value".into(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
+                }
+                _ => unreachable!("Unexpected storage location for key"),
+            },
+            _ => unreachable!("Unexpected uninitialised pointers"),
+        }
+
+        self.reg_map.insert(*instr_val, load_reg);
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_state_store_quad_word(
+        &mut self,
+        instr_val: &Value,
+        store_val: &Value,
+        key: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that both val and key are pointers to B256.
+        assert!(matches!(store_val.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty == Type::B256);
+
+        let store_val_ptr = self.resolve_ptr(store_val);
+        if store_val_ptr.value.is_none() {
+            return store_val_ptr.map(|_| ());
+        }
+        let (store_val_ptr, ptr_ty, offset) = store_val_ptr.value.unwrap();
+        assert!(ptr_ty == Type::B256);
+
+        match (self.ptr_map.get(&store_val_ptr), self.ptr_map.get(&key_ptr)) {
+            (Some(store_val_storage), Some(key_storage)) => {
+                match (store_val_storage.clone(), key_storage.clone()) {
+                    (Storage::Stack(store_val_offset), Storage::Stack(key_offset)) => {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                        let store_val_reg = self.offset_reg(
+                            &base_reg,
+                            store_val_offset * 8 + offset * 32,
+                            instr_val.get_span(self.context),
+                        );
+
+                        let key_reg = self.offset_reg(
+                            &base_reg,
+                            key_offset * 8,
+                            instr_val.get_span(self.context),
+                        );
+
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::SWWQ(store_val_reg, key_reg)),
+                            comment: "quad state store value".into(),
+                            owning_span: instr_val.get_span(self.context),
+                        });
+                    }
+                    _ => unreachable!("Unexpected storage locations for key and store_val"),
+                }
+            }
+            _ => unreachable!("Unexpected uninitialised pointer"),
+        }
+
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_state_store_word(
+        &mut self,
+        instr_val: &Value,
+        store_val: &Value,
+        key: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that key is a pointer to B256.
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        // Make sure that store_val is a U64 value.
+        assert!(matches!(
+            store_val.get_type(self.context),
+            Some(Type::Uint(64))
+        ));
+        let store_reg = self.value_to_register(store_val);
+
+        // Expect the get_ptr here to have type b256 and offset = 0???
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty == Type::B256);
+
+        match self.ptr_map.get(&key_ptr) {
+            Some(key_storage) => match key_storage.clone() {
+                Storage::Stack(key_offset) => {
+                    let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+
+                    let key_reg = self.offset_reg(
+                        &base_reg,
+                        key_offset * 8,
+                        instr_val.get_span(self.context),
+                    );
+
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SWW(store_reg, key_reg)),
+                        comment: "state load value".into(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
+                }
+                _ => unreachable!("Unexpected storage locations for key and store_val"),
+            },
+            _ => unreachable!("Unexpected uninitialised pointer"),
+        }
+
+        ok((), Vec::new(), Vec::new())
+    }
+
     fn compile_store(
         &mut self,
         instr_val: &Value,
@@ -1206,7 +1497,7 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
+        let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
         let stored_reg = self.value_to_register(stored_val);
         let is_aggregate_ptr = ptr.is_aggregate_ptr(self.context);
         match self.ptr_map.get(&ptr) {
@@ -1363,11 +1654,13 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<Pointer> {
+    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<(Pointer, Type, u64)> {
         match &self.context.values[ptr_val.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer(ptr)) => {
-                ok(*ptr, Vec::new(), Vec::new())
-            }
+            ValueDatum::Instruction(Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            }) => ok((*base_ptr, *ptr_ty, *offset), Vec::new(), Vec::new()),
             _otherwise => err(
                 Vec::new(),
                 vec![CompileError::Internal(
