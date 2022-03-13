@@ -81,7 +81,7 @@ pub trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)>;
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)>;
     fn get_tuple_elems(
         &self,
         ty: TypeId,
@@ -181,8 +181,8 @@ impl NamespaceWrapper for NamespaceRef {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.as_str()) {
+            let TypedStructField { r#type, .. } =
+                match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -191,7 +191,7 @@ impl NamespaceWrapper for NamespaceRef {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name,
+                            struct_name: struct_name.to_string(),
                             available_fields: available_fields.join(", "),
                             span: ident.span().clone(),
                         });
@@ -199,7 +199,7 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                 };
 
-            match crate::type_engine::look_up_type_id(r#type) {
+            match look_up_type_id(r#type) {
                 TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
@@ -229,13 +229,15 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
+    /// Returns a tuple of all of the fields of a struct and the struct's name.
     fn get_struct_type_fields(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
-        let ty = crate::type_engine::look_up_type_id(ty);
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
+        let ty = look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
@@ -637,54 +639,41 @@ impl NamespaceWrapper for NamespaceRef {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         let old_struct = TypeInfo::Struct {
-                            name: decl.name.as_str().to_string(),
-                            fields: decl
-                                .fields
-                                .iter()
-                                .map(TypedStructField::as_owned_typed_struct_field)
-                                .collect::<Vec<_>>(),
+                            name: decl.name.clone(),
+                            fields: decl.fields.clone(),
                         };
                         let mut new_struct = old_struct.clone();
                         if !decl.type_parameters.is_empty() {
                             let new_decl = decl.monomorphize();
                             new_struct = TypeInfo::Struct {
-                                name: new_decl.name.as_str().to_string(),
-                                fields: new_decl
-                                    .fields
-                                    .iter()
-                                    .map(TypedStructField::as_owned_typed_struct_field)
-                                    .collect::<Vec<_>>(),
+                                name: new_decl.name.clone(),
+                                fields: new_decl.fields,
                             };
                             self.copy_methods_to_type(old_struct, new_struct.clone());
                         }
-                        crate::type_engine::insert_type(new_struct)
+                        insert_type(new_struct)
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let old_enum = TypeInfo::Enum {
-                            name: decl.name.as_str().to_string(),
-                            variant_types: decl
-                                .variants
-                                .iter()
-                                .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                                .collect(),
+                            name: decl.name.clone(),
+                            variant_types: decl.variants.clone(),
                         };
                         let mut new_enum = old_enum.clone();
                         if !decl.type_parameters.is_empty() {
-                            let new_decl = decl.monomorphize();
+                            // the following line is infallible because an error can only arise
+                            // from monomorphizing if there are type arguments specified. Here, we
+                            // are passing in vec![], which therefore means this is infallible.
+                            let new_decl = infallible(decl.monomorphize(vec![], self_type));
                             new_enum = TypeInfo::Enum {
-                                name: new_decl.name.as_str().to_string(),
-                                variant_types: new_decl
-                                    .variants
-                                    .iter()
-                                    .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                                    .collect(),
+                                name: new_decl.name.clone(),
+                                variant_types: new_decl.variants,
                             };
                             self.copy_methods_to_type(old_enum, new_enum.clone());
                         }
-                        crate::type_engine::insert_type(new_enum)
+                        insert_type(new_enum)
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
+                        insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => return Err(()),
                 }
@@ -705,25 +694,16 @@ impl NamespaceWrapper for NamespaceRef {
                         name,
                         fields,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
+                    })) => insert_type(TypeInfo::Struct { name, fields }),
                     Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                         name,
                         variants,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
+                    })) => insert_type(TypeInfo::Enum {
+                        name,
+                        variant_types: variants,
                     }),
-                    _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+                    _ => insert_type(TypeInfo::Unknown),
                 }
             }
             TypeInfo::Ref(id) => id,

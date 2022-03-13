@@ -1019,7 +1019,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1057,7 +1057,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1065,6 +1065,7 @@ dependencies = [
  "petgraph",
  "semver 1.0.4",
  "serde",
+ "serde_ignored",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -1074,7 +1075,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2206,7 +2207,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -2830,6 +2831,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_ignored"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c2c7d39d14f2f2ea82239de71594782f186fd03501ac81f0ce08e674819ff2f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_json"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3109,7 +3119,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "bigint",
  "clap 3.1.2",
@@ -3138,7 +3148,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3147,7 +3157,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -3158,7 +3168,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "dashmap",
  "lspower",
@@ -3173,7 +3183,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-asm 0.2.0",
  "fuel-crypto",
@@ -3185,7 +3195,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.6.0"
+version = "0.6.1"
 
 [[package]]
 name = "syn"

@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
     Ident, Rule, TypeParameter,
 };
 
@@ -24,12 +24,12 @@ pub enum TypeInfo {
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: String,
-        variant_types: Vec<OwnedTypedEnumVariant>,
+        name: Ident,
+        variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
-        name: String,
-        fields: Vec<OwnedTypedStructField>,
+        name: Ident,
+        fields: Vec<TypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -68,7 +68,7 @@ pub enum TypeInfo {
     /// Stored without initializers here, as owned typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
-        fields: Vec<OwnedTypedStructField>,
+        fields: Vec<TypedStructField>,
     },
 }
 
@@ -363,7 +363,7 @@ impl TypeInfo {
                 let field_names = {
                     let names = fields
                         .iter()
-                        .map(|OwnedTypedStructField { r#type, .. }| {
+                        .map(|TypedStructField { r#type, .. }| {
                             resolve_type(*r#type, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
@@ -469,7 +469,7 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::TypeMustBeKnown {
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
                 ty: self.friendly_type_str(),
                 span: err_span.clone(),
             }),
@@ -479,6 +479,13 @@ impl TypeInfo {
             }
             TypeInfo::Storage { .. } => Ok(0),
         }
+    }
+
+    pub(crate) fn is_copy_type(&self) -> bool {
+        matches!(
+            self,
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte
+        )
     }
 
     pub fn is_uninhabited(&self) -> bool {

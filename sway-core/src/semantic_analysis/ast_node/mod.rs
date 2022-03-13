@@ -20,14 +20,16 @@ pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
 use declaration::TypedTraitFn;
-pub(crate) use declaration::{
-    OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedStorageDeclaration,
-    TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
-};
+
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
     TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
     TypedStructField,
+};
+
+pub(crate) use declaration::{
+    TypedReassignment, TypedStorageDeclaration,
+    TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
 };
 
 pub mod impl_trait;
@@ -89,6 +91,31 @@ impl std::fmt::Debug for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        match &self.content {
+            TypedAstNodeContent::ReturnStatement(ref stmt) => vec![stmt],
+            TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
+                exp.gather_return_statements()
+            }
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref condition,
+                ref body,
+                ..
+            }) => {
+                let mut buf = condition.gather_return_statements();
+                for node in &body.contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
+            TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
+            TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
+        }
+    }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -480,7 +507,7 @@ impl TypedAstNode {
                                         namespace,
                                         crate_namespace,
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
-                                        help_text: "",
+                                        help_text: Default::default(),
                                         self_type: implementing_for_type_id,
                                         build_config,
                                         dead_code_graph,
@@ -631,8 +658,7 @@ impl TypedAstNode {
                                     warnings,
                                     errors
                                 );
-                                dbg!(initializer);
-                                fields_buf.push(TypedStorageField::new(name, r#type));
+                                fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
                             }
 
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
@@ -677,7 +703,15 @@ impl TypedAstNode {
                                 checkee: expr.clone(),
                                 namespace,
                                 crate_namespace,
-                                return_type_annotation,
+                                // we use "unknown" here because return statements do not
+                                // necessarily follow the type annotation of their immediate
+                                // surrounding context. Because a return statement is control flow
+                                // that breaks out to the nearest function, we need to type check
+                                // it against the surrounding function.
+                                // That is impossible here, as we don't have that information. It
+                                // is the responsibility of the function declaration to type check
+                                // all return statements contained within it.
+                                return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text:
                                     "Returned value must match up with the function return type \
                                  annotation.",
@@ -1402,7 +1436,7 @@ fn reassign_storage_subfield(
         span: field.span().clone(),
     };
 
-    /*fn update_available_struct_fields(id: TypeId) -> Vec<OwnedTypedStructField> {
+    /*fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {
         match look_up_type_id(id) {
             TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],

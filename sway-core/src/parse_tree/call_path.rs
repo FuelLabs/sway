@@ -41,6 +41,19 @@ impl fmt::Display for CallPath {
     }
 }
 impl CallPath {
+    /// shifts the last prefix into the suffix and removes the old suffix
+    /// noop if prefixes are empty
+    pub fn rshift(&self) -> CallPath {
+        if self.prefixes.is_empty() {
+            self.clone()
+        } else {
+            CallPath {
+                prefixes: self.prefixes[0..self.prefixes.len() - 1].to_vec(),
+                suffix: self.prefixes.last().unwrap().clone(),
+                is_absolute: self.is_absolute,
+            }
+        }
+    }
     pub(crate) fn to_owned_call_path(&self) -> OwnedCallPath {
         OwnedCallPath {
             prefixes: self

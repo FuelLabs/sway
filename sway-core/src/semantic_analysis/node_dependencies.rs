@@ -421,6 +421,9 @@ impl Dependencies {
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
+            Expression::IfLet {
+                expr, scrutinee, ..
+            } => self.gather_from_expr(expr).gather_from_scrutinee(scrutinee),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::SizeOfType { .. } => self,
         }

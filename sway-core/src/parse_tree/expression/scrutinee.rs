@@ -34,7 +34,7 @@ pub enum Scrutinee {
     },
     EnumScrutinee {
         call_path: CallPath,
-        args: Vec<Scrutinee>,
+        variable_to_assign: Ident,
         span: Span,
     },
     Tuple {
@@ -76,6 +76,21 @@ impl Scrutinee {
         ok(scrutinee, warnings, errors)
     }
 
+    /// If this is an enum scrutinee, returns the name of the inner value that should be
+    /// assigned to upon successful destructuring.
+    /// Should only be used when destructuring enums via `if let`
+    pub fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
+        match self {
+            Scrutinee::EnumScrutinee {
+                variable_to_assign, ..
+            } => ok(variable_to_assign, vec![], vec![]),
+            _ => err(
+                vec![],
+                vec![CompileError::IfLetNonEnum { span: self.span() }],
+            ),
+        }
+    }
+
     pub fn parse_from_pair_inner(
         scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -107,7 +122,7 @@ impl Scrutinee {
                 errors
             ),
             Rule::enum_scrutinee => check!(
-                Self::parse_from_pair_enum(scrutinee, config, span),
+                Self::parse_from_pair_enum(scrutinee, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -240,45 +255,40 @@ impl Scrutinee {
         ok(scrutinee, warnings, errors)
     }
 
-    fn parse_from_pair_enum(
-        scrutinee: Pair<Rule>,
-        config: Option<&BuildConfig>,
-        span: Span,
-    ) -> CompileResult<Self> {
+    fn parse_from_pair_enum(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut parts = scrutinee.into_inner();
-        let path_component = parts.next().unwrap();
-        let instantiator = parts.next();
-        let path = check!(
-            CallPath::parse_from_pair(path_component, config),
+        let span = pair.as_span();
+        let span = Span {
+            span,
+            path: config.map(|x| x.path()),
+        };
+        let mut iter = pair.into_inner();
+        let enum_scrutinee_component_pair = iter.next().expect("guaranteed by grammar");
+        let assignment_for_value_pair = iter.next().expect("guaranteed by grammar");
+        let variable_to_assign = check!(
+            ident::parse_from_pair(assignment_for_value_pair, config),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        let args = if let Some(inst) = instantiator {
-            let mut buf = vec![];
-            for exp in inst.into_inner() {
-                let exp = check!(
-                    Scrutinee::parse_from_pair(exp, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                buf.push(exp);
-            }
-            buf
-        } else {
-            vec![]
-        };
+        let call_path = check!(
+            CallPath::parse_from_pair(enum_scrutinee_component_pair, config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-        let scrutinee = Scrutinee::EnumScrutinee {
-            call_path: path,
-            args,
-            span,
-        };
-        ok(scrutinee, warnings, errors)
+        ok(
+            Scrutinee::EnumScrutinee {
+                call_path,
+                span,
+                variable_to_assign,
+            },
+            warnings,
+            errors,
+        )
     }
 
     fn parse_from_pair_tuple(

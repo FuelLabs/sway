@@ -1,4 +1,4 @@
-use crate::semantic_analysis::{OwnedTypedStructField, TypeCheckedStorageAccess};
+use crate::semantic_analysis::{TypedStructField, TypeCheckedStorageAccess};
 use crate::{error::*, type_engine::TypeId, Ident};
 use sway_types::{state::StateIndex, Span};
 
@@ -45,17 +45,18 @@ impl TypedStorageDeclaration {
         self.span.clone()
     }
 
-    pub(crate) fn fields_as_owned_typed_struct_fields(&self) -> Vec<OwnedTypedStructField> {
+    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TypedStructField> {
         self.fields
             .iter()
             .map(
                 |TypedStorageField {
                      ref name,
                      ref r#type,
-                     ..
-                 }| OwnedTypedStructField {
-                    name: name.as_str().to_string(),
+                     ref span,
+                 }| TypedStructField {
+                    name: name.clone(),
                     r#type: *r#type,
+                    span: span.clone()
                 },
             )
             .collect()
@@ -66,15 +67,17 @@ impl TypedStorageDeclaration {
 pub struct TypedStorageField {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
     // TODO send initializers in the TX
     //    pub(crate) initializer: TypedExpression,
 }
 
 impl TypedStorageField {
-    pub fn new(name: Ident, r#type: TypeId) -> Self {
+    pub fn new(name: Ident, r#type: TypeId, span: Span) -> Self {
         TypedStorageField {
             name,
             r#type,
+            span,
             //            initializer,
         }
     }
