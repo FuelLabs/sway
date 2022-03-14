@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -74,7 +74,7 @@ impl Manifest {
             println_yellow_err(&warning).unwrap();
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.validate(path)?;
+        manifest.validate()?;
         Ok(manifest)
     }
 
@@ -91,17 +91,7 @@ impl Manifest {
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns.
-    pub fn validate(&self, manifest_dir: &Path) -> anyhow::Result<()> {
-        if !(manifest_dir
-            .join(constants::SRC_DIR)
-            .join(&self.project.entry))
-        .exists()
-        {
-            bail!(
-                "failed to validate path from entry point {:?}.",
-                self.project.entry
-            );
-        }
+    pub fn validate(&self) -> anyhow::Result<()> {
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
@@ -122,7 +112,7 @@ impl Manifest {
         let entry_path = self.entry_path(manifest_dir);
         let entry_string = std::fs::read_to_string(&entry_path).map_err(|e| {
             anyhow!(
-                "failed to read manifest at entry point {:?}: {}",
+                "failed to validate path from entry point {:?}: {}",
                 self.project.entry,
                 e
             )
