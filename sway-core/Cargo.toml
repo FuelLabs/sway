@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.5.0"
+version = "0.6.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -12,7 +12,7 @@ description = "Sway core language."
 selector-debug = ["clap", "hex"]
 
 [dependencies]
-clap = { version = "3.1.2", features = ["derive"], optional = true }
+clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
@@ -29,8 +29,8 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ir = { version = "0.5.0", path = "../sway-ir" }
-sway-types = { version = "0.5.0", path = "../sway-types" }
+sway-ir = { version = "0.6.1", path = "../sway-ir" }
+sway-types = { version = "0.6.1", path = "../sway-types" }
 generational-arena = "0.2"
 thiserror = "1.0"
 

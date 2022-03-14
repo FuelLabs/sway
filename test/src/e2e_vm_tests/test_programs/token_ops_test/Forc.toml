@@ -5,6 +5,5 @@ license = "Apache-2.0"
 name = "token_ops_test"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", tag = "v0.0.2" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", tag = "v0.1.0" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }

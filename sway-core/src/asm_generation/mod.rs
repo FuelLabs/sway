@@ -3,7 +3,9 @@ use std::{
     fmt,
 };
 
-use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
+use crate::semantic_analysis::ast_node::{
+    TypedStructField, TypedVariableDeclaration, VariableMutability,
+};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -15,8 +17,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        ast_node::OwnedTypedStructField, read_module, TypedAstNode, TypedAstNodeContent,
-        TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -40,6 +42,7 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
+use sway_types::join_spans;
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -597,6 +600,11 @@ impl AsmNamespace {
                 )],
             ),
         }
+    }
+
+    /// In the
+    pub(crate) fn overwrite_data_section(&mut self, other: Self) {
+        self.data_section.value_pairs = other.data_section.value_pairs;
     }
 }
 
@@ -1296,17 +1304,24 @@ fn compile_contract_to_selectors(
             _ => {
                 // load the call frame argument into the function argument register
                 let bundled_arguments_register = register_sequencer.next();
+                let bundled_arguments_span = decl
+                    .parameters
+                    .iter()
+                    .fold(decl.parameters[0].name.span().clone(), |acc, x| {
+                        join_spans(acc, x.name.span().clone())
+                    });
 
                 // Create a new struct type that contains all the arguments. Then, for each argument,
                 // create a register for it and load it using some utilities from expression::subfield.
                 let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: "bundled_arguments".to_string(),
+                    name: Ident::new(bundled_arguments_span),
                     fields: decl
                         .parameters
                         .iter()
-                        .map(|p| OwnedTypedStructField {
-                            name: p.name.to_string(),
+                        .map(|p| TypedStructField {
+                            name: p.name.clone(),
                             r#type: p.r#type,
+                            span: p.name.span().clone(),
                         })
                         .collect::<Vec<_>>(),
                 });
@@ -1328,8 +1343,7 @@ fn compile_contract_to_selectors(
                     asm_buf.append(&mut check!(
                         convert_subfield_to_asm(
                             bundled_arguments_register.clone(),
-                            param.name.as_str(),
-                            param.type_span.clone(),
+                            &param.name,
                             arg_register.clone(),
                             &subfields_for_layout,
                             &descriptor,

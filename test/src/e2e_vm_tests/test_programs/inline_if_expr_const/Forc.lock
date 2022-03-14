@@ -5,12 +5,9 @@ dependencies = []
 
 [[package]]
 name = 'inline_if_expr_const'
-dependencies = [
-    'core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573',
-    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#c3f1b914c7099d5115c72c01fd0ea640cc3ad6dc',
-]
+dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6']
 
 [[package]]
 name = 'std'
-source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#c3f1b914c7099d5115c72c01fd0ea640cc3ad6dc'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6'
 dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']

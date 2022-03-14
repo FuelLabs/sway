@@ -5,7 +5,7 @@
 In order to deploy the contract, let's spin up a local Fuel node:
 
 ```console
-Fuel-core --db-type in-memory
+fuel-core --db-type in-memory
 ```
 
 ## Deploy `wallet_contract` To Your Local Fuel Node
