@@ -419,7 +419,6 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::PointerCast(..) => todo!(),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
                 Instruction::StateLoadWord(key) => check!(
                     self.compile_state_load_word(instr_val, key),
@@ -433,7 +432,8 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::StateStore { .. } => todo!(),
+                Instruction::StateStoreWord { .. } => todo!(),
+                Instruction::StateStoreQuadWord { .. } => todo!(),
                 Instruction::Store {
                     dst_val,
                     stored_val,

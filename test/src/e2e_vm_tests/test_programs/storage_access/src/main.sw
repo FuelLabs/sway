@@ -4,9 +4,20 @@ contract;
 
 use std::constants::ETH_ID;
 
+struct S {
+    x: u8,
+    y: u8,
+    b: b256
+}
+
 storage {
     x: u64 = 0,
     y: b256 = ETH_ID,
+    s: S = S {
+        x: 0,
+        y: 0,
+        b: ETH_ID 
+    }
 }
 
 abi TestAbi {
@@ -14,6 +25,7 @@ abi TestAbi {
 //    fn get_y() -> b256;
     fn set_x(x: u64);
     fn set_y(y: b256);
+    fn set_s(s: S);
 }
 
 impl TestAbi for Contract {
@@ -28,6 +40,9 @@ impl TestAbi for Contract {
     }
     impure fn set_y(y: b256) {
         storage.y = y;
+    }
+    impure fn set_s(s: S) {
+        storage.s = s;
     }
 }
 

@@ -31,6 +31,9 @@ mod ir_builder {
                 = _ s:script() eoi() {
                     s
                 }
+                / _ s:contract() eoi() {
+                    s
+                }
 
             rule script() -> IrAstModule
                 = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
@@ -41,8 +44,17 @@ mod ir_builder {
                     }
                 }
 
+            rule contract() -> IrAstModule
+                = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                    IrAstModule {
+                        kind: crate::module::Kind::Contract,
+                        fn_decls,
+                        metadata
+                    }
+                }
+
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() "(" _ args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
+                = "fn" _ name:id() _ selector:selector_id()? _ "(" _ args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
                       locals:fn_local()*
                       blocks:block_decl()*
                   "}" _ {
@@ -52,7 +64,22 @@ mod ir_builder {
                         ret_type,
                         locals,
                         blocks,
+                        selector
                     }
+                }
+
+            rule selector_id() -> [u8; 4]
+                = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
+                    let mut bytes: [u8; 4] = [0; 4];
+                    let mut cur_byte: u8 = 0;
+                    for (idx, ch) in s.chars().enumerate() {
+                        cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
+                        if idx % 2 == 1 {
+                            bytes[idx / 2] = cur_byte;
+                            cur_byte = 0;
+                        }
+                    }
+                    bytes
                 }
 
             rule fn_arg() -> (IrAstTy, String, Option<MdIdxRef>)
@@ -116,11 +143,11 @@ mod ir_builder {
                 / op_load()
                 / op_nop()
                 / op_phi()
-                / op_ptr_cast()
                 / op_ret()
                 / op_state_load_word()
                 / op_state_load_quad_word()
-                / op_state_store()
+                / op_state_store_word()
+                / op_state_store_quad_word()
                 / op_store()
 
             rule op_asm() -> IrAstOperation
@@ -190,29 +217,29 @@ mod ir_builder {
                     IrAstOperation::Phi(pairs)
                 }
 
-            rule op_ptr_cast() -> IrAstOperation
-                = "ptr_cast" _ ptr() vn:id() "to" _ ptr() ty:ast_ty() {
-                    IrAstOperation::PtrCast(vn, ty)
-            }
-
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
                     IrAstOperation::Ret(ty, vn)
                 }
 
             rule op_state_load_word() -> IrAstOperation
-                = "state_load_word" _ "key" _ key:id() {
+                = "state_load_word" _ ptr() _ key:id() {
                     IrAstOperation::StateLoadWord(key)
                 }
 
             rule op_state_load_quad_word() -> IrAstOperation
-                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ key:id() {
+                = "state_load_quad_word" _ ptr() dst:id() comma() ptr() _ key:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key)
                 }
 
-            rule op_state_store() -> IrAstOperation
-                = "state_store" _ ptr() src:id() comma() "key" _ key:id() {
-                    IrAstOperation::StateStore(src, key)
+            rule op_state_store_word() -> IrAstOperation
+                = "state_store_word" _ src:id() comma() ptr() _ key:id() {
+                    IrAstOperation::StateStoreWord(src, key)
+                }
+
+            rule op_state_store_quad_word() -> IrAstOperation
+                = "state_store_quad_word" _ ptr() src:id() comma() ptr() _ key:id() {
+                    IrAstOperation::StateStoreQuadWord(src, key)
                 }
 
             rule op_store() -> IrAstOperation
@@ -440,6 +467,7 @@ mod ir_builder {
         ret_type: IrAstTy,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
+        selector: Option<[u8; 4]>,
     }
 
     #[derive(Debug)]
@@ -475,11 +503,11 @@ mod ir_builder {
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
-        PtrCast(String, IrAstTy),
         Ret(IrAstTy, String),
         StateLoadWord(String),
         StateLoadQuadWord(String, String),
-        StateStore(String, String),
+        StateStoreWord(String, String),
+        StateStoreQuadWord(String, String),
         Store(String, String),
     }
 
@@ -660,7 +688,7 @@ mod ir_builder {
             fn_decl.name,
             args.clone(),
             ret_type,
-            None,
+            fn_decl.selector,
             false,
         );
 
@@ -855,14 +883,6 @@ mod ir_builder {
                     }
                     block.get_phi(context)
                 }
-                IrAstOperation::PtrCast(value_name, ty) => {
-                    let ty = ty.to_ir_type(context);
-                    block.ins(context).ptr_cast(
-                        *val_map.get(&value_name).unwrap(),
-                        ty,
-                        opt_ins_md_idx,
-                    )
-                }
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);
                     block
@@ -879,11 +899,18 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::StateStore(src, key) => block.ins(context).state_store(
+                IrAstOperation::StateStoreWord(src, key) => block.ins(context).state_store_word(
                     *val_map.get(&src).unwrap(),
                     *val_map.get(&key).unwrap(),
                     opt_ins_md_idx,
                 ),
+                IrAstOperation::StateStoreQuadWord(src, key) => {
+                    block.ins(context).state_store_quad_word(
+                        *val_map.get(&src).unwrap(),
+                        *val_map.get(&key).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::Store(stored_val_name, dst_val_name) => block.ins(context).store(
                     *val_map.get(&dst_val_name).unwrap(),
                     *val_map.get(&stored_val_name).unwrap(),

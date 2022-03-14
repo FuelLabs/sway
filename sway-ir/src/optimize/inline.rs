@@ -292,11 +292,6 @@ fn inline_instruction(
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::PointerCast(ptr_val, ty) => {
-                new_block
-                    .ins(context)
-                    .ptr_cast(map_value(ptr_val), ty, span_md_idx)
-            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {
                 new_block
@@ -309,11 +304,12 @@ fn inline_instruction(
             Instruction::StateLoadQuadWord { load_val, key } => new_block
                 .ins(context)
                 .state_load_quad_word(map_value(load_val), map_value(key), span_md_idx),
-            Instruction::StateStore { stored_val, key } => new_block.ins(context).state_store(
-                map_value(stored_val),
-                map_value(key),
-                span_md_idx,
-            ),
+            Instruction::StateStoreWord { stored_val, key } => new_block
+                .ins(context)
+                .state_store_word(map_value(stored_val), map_value(key), span_md_idx),
+            Instruction::StateStoreQuadWord { stored_val, key } => new_block
+                .ins(context)
+                .state_store_quad_word(map_value(stored_val), map_value(key), span_md_idx),
             Instruction::Store {
                 dst_val,
                 stored_val,

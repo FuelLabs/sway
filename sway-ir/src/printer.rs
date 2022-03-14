@@ -467,13 +467,6 @@ fn instruction_to_doc<'a>(
                     )
                 }
             }
-            Instruction::PointerCast(ptr_value, ty) => Doc::text_line(format!(
-                "{} = ptr_cast ptr {} to ptr {}{}",
-                namer.name(context, ins_value),
-                namer.name(context, ptr_value),
-                ty.as_string(context),
-                md_namer.meta_as_string(context, span_md_idx, true)
-            )),
             Instruction::Ret(v, t) => {
                 maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::text_line(format!(
                     "ret {} {}{}",
@@ -489,13 +482,19 @@ fn instruction_to_doc<'a>(
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
             Instruction::StateLoadQuadWord { load_val, key } => Doc::text_line(format!(
-                "state_load_quad_word ptr {}, key {}{}",
+                "state_load_quad_word ptr {}, ptr {}{}",
                 namer.name(context, load_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
-            Instruction::StateStore { stored_val, key } => Doc::text_line(format!(
-                "state_store ptr {}, key {}{}",
+            Instruction::StateStoreWord { stored_val, key } => Doc::text_line(format!(
+                "state_store_word {}, ptr {}{}",
+                namer.name(context, stored_val),
+                namer.name(context, key),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
+            Instruction::StateStoreQuadWord { stored_val, key } => Doc::text_line(format!(
+                "state_store_quad_word ptr {}, ptr {}{}",
                 namer.name(context, stored_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),

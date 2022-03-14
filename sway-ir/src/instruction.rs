@@ -73,9 +73,6 @@ pub enum Instruction {
     Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
-    /// A cast from one pointer type to another.  Value must be either a GetPointer instruction or
-    /// another PointerCast.
-    PointerCast(Value, Type),
     /// Return from a function.
     Ret(Value, Type),
     /// Read a single word from a storage slot.
@@ -83,8 +80,11 @@ pub enum Instruction {
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
     StateLoadQuadWord { load_val: Value, key: Value },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
-    /// Uint(64) or B256 ptr.
-    StateStore { stored_val: Value, key: Value },
+    /// Uint(64) value.
+    StateStoreWord { stored_val: Value, key: Value },
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(256) ptr.
+    StateStoreQuadWord { stored_val: Value, key: Value },
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
 }
@@ -113,7 +113,6 @@ impl Instruction {
 
             // These can be recursed to via Load, so we return the pointer type.
             Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
-            Instruction::PointerCast(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
@@ -125,7 +124,8 @@ impl Instruction {
             Instruction::InsertValue { .. } => None,
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStore { .. } => None,
+            Instruction::StateStoreWord { .. } => None,
+            Instruction::StateStoreQuadWord { .. } => None,
             Instruction::Store { .. } => None,
 
             // No-op is also no-type.
@@ -206,7 +206,6 @@ impl Instruction {
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
-            Instruction::PointerCast(..) => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::StateLoadWord(key) => {
                 replace(key);
@@ -215,7 +214,11 @@ impl Instruction {
                 replace(load_val);
                 replace(key);
             }
-            Instruction::StateStore { stored_val, key } => {
+            Instruction::StateStoreWord { stored_val, key } => {
+                replace(key);
+                replace(stored_val);
+            }
+            Instruction::StateStoreQuadWord { stored_val, key } => {
                 replace(key);
                 replace(stored_val);
             }
@@ -494,18 +497,6 @@ impl<'a> InstructionInserter<'a> {
         nop_val
     }
 
-    pub fn ptr_cast(self, ptr_val: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        let ptr_cast_val = Value::new_instruction(
-            self.context,
-            Instruction::PointerCast(ptr_val, ty),
-            span_md_idx,
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(ptr_cast_val);
-        ptr_cast_val
-    }
-
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
         let ret_val =
             Value::new_instruction(self.context, Instruction::Ret(value, ty), span_md_idx);
@@ -547,7 +538,7 @@ impl<'a> InstructionInserter<'a> {
         state_load_val
     }
 
-    pub fn state_store(
+    pub fn state_store_word(
         self,
         stored_val: Value,
         key: Value,
@@ -555,7 +546,24 @@ impl<'a> InstructionInserter<'a> {
     ) -> Value {
         let state_store_val = Value::new_instruction(
             self.context,
-            Instruction::StateStore { stored_val, key },
+            Instruction::StateStoreWord { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
+    pub fn state_store_quad_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStoreQuadWord { stored_val, key },
             span_md_idx,
         );
         self.context.blocks[self.block.0]

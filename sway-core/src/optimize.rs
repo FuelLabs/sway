@@ -1274,8 +1274,8 @@ impl FnCompiler {
             .ir_type_size_in_bytes(context, &rhs_ty);
         dbg!(size);
 
-        // Var to load into
-        /*let value_name = format!("value_for_{}", field_name);
+        // Var to store from 
+        let value_name = format!("value_for_{}", field_name);
         let alias_value_name = match self.symbol_map.get(value_name.as_str()) {
             None => value_name.clone(),
             Some(shadowed_value_name) => format!("{}_", shadowed_value_name),
@@ -1284,8 +1284,19 @@ impl FnCompiler {
 
         let value_ptr = self
             .function
-            .new_local_ptr(context, alias_value_name, return_type, true, None)
-            .map_err(|ir_error| ir_error.to_string())?;*/
+            .new_local_ptr(context, alias_value_name, rhs_ty, true, None)
+            .map_err(|ir_error| ir_error.to_string())?;
+        
+        let value_ptr_val = self.current_block.ins(context).get_ptr(
+            value_ptr,
+            rhs_ty,
+            0,
+            span_md_idx,
+        );       
+
+        self.current_block
+                .ins(context)
+                .store(value_ptr_val, reassign_val, span_md_idx);
 
         let mut quad_word_offset = 0;
         while size >= 32 {
@@ -1306,15 +1317,15 @@ impl FnCompiler {
                 .ins(context)
                 .store(key_ptr_val, const_key, span_md_idx);
 
-            /*let value_ptr_val = self.current_block.ins(context).get_ptr(
+            let value_ptr_val = self.current_block.ins(context).get_ptr(
                 value_ptr,
                 Type::B256,
                 quad_word_offset,
                 span_md_idx,
-            );*/
+            );
 
             self.current_block.ins(context).state_store_quad_word(
-                reassign_val, //value_ptr_val,
+                value_ptr_val,
                 key_ptr_val,
                 span_md_idx,
             );
@@ -1322,7 +1333,7 @@ impl FnCompiler {
             quad_word_offset += 1;
         }
 
-        /*let mut word_offset = quad_word_offset * 4;
+        let mut word_offset = quad_word_offset * 4;
         while size >= 8 {
             let const_key = convert_literal_to_value(
                 context,
@@ -1359,21 +1370,7 @@ impl FnCompiler {
             word_offset += 1;
         }
 
-        let value_ptr_ty = *value_ptr.get_type(context);
-        let value_ptr_val =
-            self.current_block
-                .ins(context)
-                .get_ptr(value_ptr, value_ptr_ty, 0, span_md_idx);
-
-        Ok(if value_ptr.is_aggregate_ptr(context) {
-            value_ptr_val
-        } else {
-            self.current_block
-                .ins(context)
-                .load(value_ptr_val, span_md_idx)
-        })*/
-
-        Ok(reassign_val)
+        Ok(Constant::get_unit(context, span_md_idx))
     }
     // ---------------------------------------------------------------------------------------------
 
