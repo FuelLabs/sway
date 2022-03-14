@@ -112,7 +112,7 @@ impl Manifest {
         let entry_path = self.entry_path(manifest_dir);
         let entry_string = std::fs::read_to_string(&entry_path).map_err(|e| {
             anyhow!(
-                "failed to validate path from entry point {:?}: {}",
+                "failed to validate path from entry field {:?} in Forc manifest file: {}",
                 self.project.entry,
                 e
             )
