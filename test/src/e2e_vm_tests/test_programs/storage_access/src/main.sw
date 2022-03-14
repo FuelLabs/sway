@@ -10,16 +10,24 @@ storage {
 }
 
 abi TestAbi {
-    fn get_x() -> u64;
-    fn get_y() -> b256;
+//    fn get_x() -> u64;
+//    fn get_y() -> b256;
+    fn set_x(x: u64);
+    fn set_y(y: b256);
 }
 
 impl TestAbi for Contract {
-    impure fn get_x() -> u64 {
-        storage.x
+//    impure fn get_x() -> u64 {
+//        storage.x
+//    }
+//    impure fn get_y() -> b256 {
+//        storage.y
+//    }
+    impure fn set_x(x: u64) {
+        storage.x = x;
     }
-    impure fn get_y() -> b256 {
-        storage.y
+    impure fn set_y(y: b256) {
+        storage.y = y;
     }
 }
 

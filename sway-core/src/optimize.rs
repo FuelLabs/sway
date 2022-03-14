@@ -563,7 +563,7 @@ impl FnCompiler {
                             self.compile_reassignment(context, tr, span_md_idx)
                         }
                         TypedDeclaration::StorageReassignment(tr) => {
-                            self.compile_storage_reassignment(context, tr, span_md_idx)
+                            self.compile_storage_reassignment(context, &tr, span_md_idx)
                         }
                         TypedDeclaration::ImplTrait { span, .. } => {
                             // XXX What if I ignore the trait implementation???  Potentially since
@@ -1235,13 +1235,145 @@ impl FnCompiler {
     fn compile_storage_reassignment(
         &mut self,
         context: &mut Context,
-        storage_reassignment: TypeCheckedStorageReassignment,
+        storage_reassignment: &TypeCheckedStorageReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
         // TODO
         // We're missing the index here - should carry it over in storage_reassignment
         dbg!(storage_reassignment);
-        Ok(Constant::get_unit(context, span_md_idx))
+
+        let reassign_val = self.compile_expression(context, storage_reassignment.rhs().clone())?;
+
+        let field_name = storage_reassignment.name();
+        let field_ix = storage_reassignment.ix();
+//        let return_type =
+//            convert_resolved_typeid_no_span(context, &mut self.struct_names, &return_type)?;
+
+        // Calculate the storage location hash for the given field
+        let storage_slot_to_hash = format!("{}{:?}", "storage_", field_ix);
+        let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+
+        let key_name = format!("key_for_{}", field_name);
+        let alias_key_name = match self.symbol_map.get(key_name.as_str()) {
+            None => key_name.clone(),
+            Some(shadowed_key_name) => format!("{}_", shadowed_key_name),
+        };
+        self.symbol_map.insert(alias_key_name.clone(), key_name);
+
+        // Local pointer for the key
+        let key_ptr = self
+            .function
+            .new_local_ptr(context, alias_key_name, Type::B256, true, None)
+            .map_err(|ir_error| ir_error.to_string())?;
+
+        // Get the data size
+        let rhs_ty =
+            convert_resolved_typeid_no_span(context, &mut self.struct_names, &storage_reassignment.r#type())?;
+        let mut size = self
+            .type_analyzer
+            .ir_type_size_in_bytes(context, &rhs_ty);
+        dbg!(size);
+
+        // Var to load into
+        /*let value_name = format!("value_for_{}", field_name);
+        let alias_value_name = match self.symbol_map.get(value_name.as_str()) {
+            None => value_name.clone(),
+            Some(shadowed_value_name) => format!("{}_", shadowed_value_name),
+        };
+        self.symbol_map.insert(value_name, alias_value_name.clone());
+
+        let value_ptr = self
+            .function
+            .new_local_ptr(context, alias_value_name, return_type, true, None)
+            .map_err(|ir_error| ir_error.to_string())?;*/
+
+        let mut quad_word_offset = 0;
+        while size >= 32 {
+            let const_key = convert_literal_to_value(
+                context,
+                &Literal::B256(*add_to_b256(hashed_storage_slot, quad_word_offset * 4)),
+                span_md_idx,
+            );
+            // Convert the key pointer to a value
+            let key_ptr_ty = *key_ptr.get_type(context);
+            let key_ptr_val =
+                self.current_block
+                    .ins(context)
+                    .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
+
+            // Store the resulting hash to the value of key pointer
+            self.current_block
+                .ins(context)
+                .store(key_ptr_val, const_key, span_md_idx);
+
+            /*let value_ptr_val = self.current_block.ins(context).get_ptr(
+                value_ptr,
+                Type::B256,
+                quad_word_offset,
+                span_md_idx,
+            );*/
+
+            self.current_block.ins(context).state_store_quad_word(
+                reassign_val, //value_ptr_val,
+                key_ptr_val,
+                span_md_idx,
+            );
+            size -= 32;
+            quad_word_offset += 1;
+        }
+
+        /*let mut word_offset = quad_word_offset * 4;
+        while size >= 8 {
+            let const_key = convert_literal_to_value(
+                context,
+                &Literal::B256(*add_to_b256(hashed_storage_slot, word_offset)),
+                span_md_idx,
+            );
+            // Convert the key pointer to a value
+            let key_ptr_ty = *key_ptr.get_type(context);
+            let key_ptr_val =
+                self.current_block
+                    .ins(context)
+                    .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
+
+            // Store the resulting hash to the value of key pointer
+            self.current_block
+                .ins(context)
+                .store(key_ptr_val, const_key, span_md_idx);
+
+            let value_ptr_val = self.current_block.ins(context).get_ptr(
+                value_ptr,
+                Type::Uint(64),
+                word_offset,
+                span_md_idx,
+            );
+
+            let word = self
+                .current_block
+                .ins(context)
+                .state_load_word(key_ptr_val, span_md_idx);
+            self.current_block
+                .ins(context)
+                .store(value_ptr_val, word, span_md_idx);
+            size -= 8;
+            word_offset += 1;
+        }
+
+        let value_ptr_ty = *value_ptr.get_type(context);
+        let value_ptr_val =
+            self.current_block
+                .ins(context)
+                .get_ptr(value_ptr, value_ptr_ty, 0, span_md_idx);
+
+        Ok(if value_ptr.is_aggregate_ptr(context) {
+            value_ptr_val
+        } else {
+            self.current_block
+                .ins(context)
+                .load(value_ptr_val, span_md_idx)
+        })*/
+
+        Ok(reassign_val)
     }
     // ---------------------------------------------------------------------------------------------
 

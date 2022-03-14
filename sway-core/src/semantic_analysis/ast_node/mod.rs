@@ -10,7 +10,7 @@ use crate::{
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::span::{join_spans, Span};
+use sway_types::{span::{join_spans, Span}, state::StateIndex};
 
 use std::sync::Arc;
 
@@ -1367,6 +1367,15 @@ impl TypeCheckedStorageReassignment {
     pub fn span(&self) -> Span {
         self.field.span.clone()
     }
+    pub fn ix(&self) -> StateIndex {
+        self.field.ix.clone()
+    }
+    pub fn name(&self) -> String {
+        self.field.name.clone()
+    }
+    pub fn r#type(&self) -> TypeId {
+        self.field.r#type
+    }
     /*pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, usize)]) {
         self.fields
             .iter_mut()
@@ -1379,6 +1388,7 @@ impl TypeCheckedStorageReassignment {
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageReassignDescriptor {
     name: String,
+    ix: StateIndex,
     r#type: TypeId,
     /// The span of the field in the LHS of this reassignment.
     span: Span,
@@ -1425,13 +1435,18 @@ fn reassign_storage_subfield(
         errors
     );
 
-    let initial_field_type = match storage_fields.iter().find(|x| x.name == field) {
-        Some(TypedStorageField { r#type, .. }) => r#type,
+    let (ix, initial_field_type) = match storage_fields.iter()
+                                        .enumerate()
+                                        .find(|(_, TypedStorageField { name, .. })| name == &field)
+                                        .map(|(ix, field)| (StateIndex::new(ix), field))
+    {
+        Some((ix, TypedStorageField { r#type, .. })) => (ix, r#type),
         None => todo!("storage field does not exist error"),
     };
 
     let type_checked_buf = TypeCheckedStorageReassignDescriptor {
         name: field.as_str().to_string(),
+        ix: ix.clone(),
         r#type: *initial_field_type,
         span: field.span().clone(),
     };
