@@ -90,7 +90,7 @@ impl Manifest {
     /// Validate the `Manifest`.
     ///
     /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns.
+    /// keywords and patterns, and if a given entry point exists.
     pub fn validate(&self, path: &Path) -> anyhow::Result<()> {
         let mut entry_path = path.to_path_buf();
         entry_path.pop();
