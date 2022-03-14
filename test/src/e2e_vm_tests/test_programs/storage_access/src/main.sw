@@ -1,25 +1,30 @@
-/*script;
-
-use std::constants::ETH_ID;
-use std::chain::assert;
-
-struct S {
-    x: u8,
-    b: b256
-}
-
-fn main() {
-    let x = 5;
-    let y = x;
-    let s1 =  S { x: 1, b: ETH_ID };
-    let s = s1;
-//    let mut s2 = S { x: 2, b: ETH_ID };
-//    s2.b = s1.b;
-//    s2.x
-//    assert(s2.x == 1);
-}*/
+// For this Sway contract:
 
 contract;
+
+use std::constants::ETH_ID;
+
+storage {
+    x: u64 = 0,
+    y: b256 = ETH_ID,
+}
+
+abi TestAbi {
+    fn get_x() -> u64;
+    fn get_y() -> b256;
+}
+
+impl TestAbi for Contract {
+    impure fn get_x() -> u64 {
+        storage.x
+    }
+    impure fn get_y() -> b256 {
+        storage.y
+    }
+}
+
+
+/*contract;
 
 use std::constants::ETH_ID;
 use std::storage::*;
@@ -46,4 +51,4 @@ impl TestAbi for Contract {
         let number1 = storage.number;
         number1 
     }
-}
+}*/
