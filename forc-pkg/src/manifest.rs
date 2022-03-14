@@ -74,7 +74,7 @@ impl Manifest {
             println_yellow_err(&warning).unwrap();
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.validate()?;
+        manifest.validate(path)?;
         Ok(manifest)
     }
 
@@ -91,9 +91,16 @@ impl Manifest {
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns.
-    pub fn validate(&self) -> anyhow::Result<()> {
-        if self.project.entry.is_empty() {
-            bail!("manifest entry cannot be left empty, please provide a valid entry point.");
+    pub fn validate(&self, manifest_dir: &Path) -> anyhow::Result<()> {
+        if !(manifest_dir
+            .join(constants::SRC_DIR)
+            .join(&self.project.entry))
+        .exists()
+        {
+            bail!(
+                "failed to validate path from entry point {:?}.",
+                self.project.entry
+            );
         }
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
