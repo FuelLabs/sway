@@ -1,1 +1,0 @@
-# Deploy a Sway contract
