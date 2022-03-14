@@ -693,7 +693,14 @@ fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Path
 /// produce the `Source` for that dependendency.
 fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     let source = match dep {
-        Dependency::Simple(ref _ver_str) => unimplemented!(),
+        Dependency::Simple(ref ver_str) => {
+            bail!(
+                "Unsupported dependency declaration in \"{}\": `{}` - \
+                currently only `git` and `path` dependencies are supported",
+                pkg_path.display(),
+                ver_str
+            )
+        }
         Dependency::Detailed(ref det) => {
             match (&det.path, &det.version, &det.git, &det.branch, &det.tag) {
                 (Some(relative_path), _, _, _, _) => {
