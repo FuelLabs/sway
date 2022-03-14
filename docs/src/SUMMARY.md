@@ -13,7 +13,7 @@
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
 - [SDK](./sdks/index.md)
   - [Rust SDK](./sdks/rust-sdk.md)
-  - [Typescript SDK](./sdks/typescript-sdk.md)
+  - [TypeScript SDK](./sdks/typescript-sdk.md)
 - [Basics](./basics/index.md)
   - [Overview](./basics/overview.md)
   - [Variables](./basics/variables.md)
@@ -23,7 +23,7 @@
   - [Reference Types](./basics/reference_types.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
-  <!-- - [Testing with Typescript](./testing/testing-with-typescript.md) -->
+  <!-- - [Testing with TypeScript](./testing/testing-with-typescript.md) -->
 - [Sway on the Chain](./sway-on-chain/index.md)
   - [Program Types](./sway-on-chain/program_types.md)
   - [Contracts](./sway-on-chain/smart_contracts.md)

@@ -32,7 +32,7 @@ To deploy a wallet on Fuel, we will need to write a library, a contract, and a s
 
 First, let's [install the Sway toolchain](./installation.md). Then with `forc` installed, let's create three different sibling projects:
 
-```console
+```sh
 forc init wallet_lib
 forc init wallet_contract
 forc init wallet_script
@@ -113,7 +113,7 @@ This implements the ABI methods with empty bodies. Actual implementation of the 
 
 Build `wallet_contract` by running
 
-```console
+```sh
 forc build
 ```
 
@@ -121,13 +121,13 @@ from inside the `wallet_contract` directory.
 
 ## Deploy the Contract
 
-It's now time to deploy the wallet contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [Typescript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
+It's now time to deploy the wallet contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
 
 ### Spin Up a Fuel node
 
 In a separate tab in your terminal, spin up a local Fuel node:
 
-```console
+```sh
 Fuel-core --db-type in-memory
 ```
 
@@ -135,7 +135,7 @@ Fuel-core --db-type in-memory
 
 To deploy `wallet_contract` on your local Fuel node, run
 
-```console
+```sh
 forc deploy
 ```
 
@@ -144,6 +144,7 @@ from the root of the `wallet_contract` directory.
 This should produce some output in `stdout` that looks like this:
 
 ```console
+$ forc deploy
   Compiled library "wallet_lib".
   Compiled script "wallet_contract".
   Bytecode size is 212 bytes.
@@ -156,7 +157,7 @@ Note the contract ID — you will need below.
 
 ## Write a Sway Script to Call a Sway Contract
 
-_Note that if you are using the Typescript SDK you do not need to write a script to call the Sway contract._
+_Note that if you are using the TypeScript SDK you do not need to write a script to call the Sway contract._
 
 Now that we have deployed our wallet contract, we need to actually _call_ our contract. We can do this by calling the contract from a script.
 
@@ -190,7 +191,7 @@ The main new concept is the _abi cast_: `abi(AbiName, ContractAddress)`. This re
 
 To check that `wallet_script` builds successfully, run
 
-```console
+```sh
 forc build
 ```
 
@@ -198,13 +199,13 @@ from the root of the `wallet_script` directory.
 
 ## Call the Contract
 
-It's now time to call the contract. We will show how to do this using `forc` from the command line, but you can also do this using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [Typescript SDK](https://github.com/FuelLabs/fuels-ts/#calling-contracts)
+It's now time to call the contract. We will show how to do this using `forc` from the command line, but you can also do this using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#calling-contracts)
 
 ### Run `wallet_script` Against Your Local Fuel Node
 
 To run the script now against the local Fuel node, run
 
-```console
+```sh
 forc run --contract <contract-id>
 ```
 
@@ -215,6 +216,7 @@ Note that we are passing in the `wallet_contract` contract ID as a command-line 
 If the script is successfully run, it will output something that looks like:
 
 ```console
+$ forc run --contract <contract-id>
   Compiled library "lib-std" with 7 warnings.
   Compiled library "wallet_lib".
   Compiled script "wallet_script".
@@ -226,4 +228,4 @@ It returns a `Call` receipt and a `ScriptResult` receipt.
 
 ## Testing Sway contracts
 
-The recommended way to test Sway contracts is via the [Rust SDK](../testing/testing-with-rust.md). You may also write tests in Typescript if you are using the Typescript SDK.
+The recommended way to test Sway contracts is via the [Rust SDK](../testing/testing-with-rust.md). You may also write tests in TypeScript if you are using the TypeScript SDK.

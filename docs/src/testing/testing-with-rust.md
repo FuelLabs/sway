@@ -41,4 +41,4 @@ test harness ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 ```
 
-Instead of writing tests in Rust, tests can also be written in Typescript using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
+Instead of writing tests in Rust, tests can also be written in TypeScript using our [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/).

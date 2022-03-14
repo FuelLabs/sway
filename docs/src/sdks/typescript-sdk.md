@@ -1,6 +1,6 @@
-# Typescript SDK
+# TypeScript SDK
 
-The Typescript SDK supports common tasks like:
+The TypeScript SDK supports common tasks like:
 
 - Deploying and calling contracts
 - Generating contract types with TypeChain

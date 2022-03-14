@@ -2,7 +2,7 @@
 
 To initialize a new project with Forc, use `forc init`:
 
-```console
+```sh
 forc init hello_world
 ```
 
@@ -65,7 +65,7 @@ Bytecode size is 28 bytes.
 
 Use `forc json-abi` to output the ABI of the contract. To write this to a `.json` file (which is necessary for running tests below), pipe it using something like:
 
-```console
+```sh
 forc json-abi > my-contract-abi.json
 ```
 

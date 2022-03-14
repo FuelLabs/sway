@@ -1,3 +1,3 @@
-# Testing with Typescript
+# Testing with TypeScript
 
-Tests can also be written in Typescript using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
+Tests can also be written in TypeScript using our [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/).
