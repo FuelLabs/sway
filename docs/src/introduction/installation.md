@@ -18,10 +18,10 @@ cargo install forc fuel-core
 
 ### Updating `forc`
 
-You can update `forc` with:
+You can update `forc` and `fuel-core` with:
 
 ```sh
-cargo install forc
+cargo install forc fuel-core
 ```
 
 ## Building from Source
