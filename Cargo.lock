@@ -1049,6 +1049,7 @@ dependencies = [
  "petgraph",
  "semver 1.0.4",
  "serde",
+ "serde_ignored",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -2784,6 +2785,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_ignored"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c2c7d39d14f2f2ea82239de71594782f186fd03501ac81f0ce08e674819ff2f"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
