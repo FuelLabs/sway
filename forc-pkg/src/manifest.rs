@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -92,6 +92,9 @@ impl Manifest {
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns.
     pub fn validate(&self) -> anyhow::Result<()> {
+        if self.project.entry.is_empty() {
+            bail!("manifest entry cannot be left empty, please provide a valid entry point.");
+        }
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
