@@ -125,7 +125,7 @@ It's now time to deploy the wallet contract and call it on a Fuel node. We will 
 
 ### Spin Up a Fuel node
 
-In order to deploy the contract, let's spin up a local Fuel node:
+In a separate tab in your terminal, spin up a local Fuel node:
 
 ```console
 Fuel-core --db-type in-memory
@@ -144,7 +144,6 @@ from the root of the `wallet_contract` directory.
 This should produce some output in `stdout` that looks like this:
 
 ```console
-  Compiled library "lib-std" with 7 warnings.
   Compiled library "wallet_lib".
   Compiled script "wallet_contract".
   Bytecode size is 212 bytes.
