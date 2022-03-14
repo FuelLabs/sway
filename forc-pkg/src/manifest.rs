@@ -110,7 +110,13 @@ impl Manifest {
     /// Produces the string of the entry point file.
     pub fn entry_string(&self, manifest_dir: &Path) -> anyhow::Result<Arc<str>> {
         let entry_path = self.entry_path(manifest_dir);
-        let entry_string = std::fs::read_to_string(&entry_path)?;
+        let entry_string = std::fs::read_to_string(&entry_path).map_err(|e| {
+            anyhow!(
+                "failed to read manifest at entry point {:?}: {}",
+                self.project.entry,
+                e
+            )
+        })?;
         Ok(Arc::from(entry_string))
     }
 
