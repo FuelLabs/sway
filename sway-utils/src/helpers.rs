@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Continually go up in the file tree until a manifest (Forc.toml) is found.
+/// Continually go up in the file tree until a manifest (Forc.toml or Cargo.toml) is found.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_manifest_dir(starter_path: &Path, manifest_file_name: &str) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
