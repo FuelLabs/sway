@@ -11,7 +11,7 @@ eq   $r0 $r1 $r0              ; function selector comparison
 jnei $zero $r0 i14            ; jump to selected function
 lw   $r0 data_5               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i25            ; jump to selected function
+jnei $zero $r0 i26            ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 move $r2 $sp                  ; save locals base register
 cfei i32                      ; allocate 32 bytes for all locals
@@ -20,8 +20,9 @@ addi $r0 $r2 i0               ; get_ptr
 lw   $r1 data_1               ; literal instantiation
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i32              ; store value
+lw   $r1 data_0               ; literal instantiation
 addi $r0 $r2 i0               ; get offset
-srw  $r0 $r0                  ; state load value
+sww  $r1 $r0                  ; single word state access
 ret  $zero                    ; returning unit as zero
 move $r1 $sp                  ; save locals base register
 cfei i64                      ; allocate 64 bytes for all locals
@@ -36,8 +37,9 @@ mcpi $r0 $r2 i32              ; store value
 addi $r0 $r1 i32              ; get_ptr
 addi $r2 $r1 i32              ; get offset
 addi $r0 $r1 i0               ; get offset
-swwq $r2 $r0                  ; quad state store value
+swwq $r2 $r0                  ; quad word state access
 ret  $zero                    ; returning unit as zero
+noop                          ; word-alignment of data section
 .data:
 data_0 .u64 0x00
 data_1 .b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5

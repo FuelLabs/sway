@@ -20,7 +20,7 @@ lw   $r1 data_0               ; literal instantiation
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i32              ; store value
 addi $r0 $r2 i0               ; get offset
-srw  $r0 $r0                  ; state load value
+srw  $r0 $r0                  ; single word state access
 ret  $r0
 move $r1 $sp                  ; save locals base register
 cfei i64                      ; allocate 64 bytes for all locals
@@ -31,7 +31,7 @@ mcpi $r0 $r2 i32              ; store value
 addi $r0 $r1 i32              ; get_ptr
 addi $r2 $r1 i32              ; get offset
 addi $r0 $r1 i0               ; get offset
-srwq $r2 $r0                  ; quad state load value
+srwq $r2 $r0                  ; quad word state access
 addi $r0 $r1 i32              ; get_ptr
 addi $r1 $r1 i32              ; load address
 lw   $r0 data_2               ; loading size for RETD
