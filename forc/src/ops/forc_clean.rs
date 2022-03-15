@@ -31,12 +31,6 @@ pub fn clean(command: CleanCommand) -> Result<()> {
 
     // Run `cargo clean`, forwarding stdout and stderr (`cargo clean` doesn't appear to output
     // anything as of writing this).
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
-    };
     if find_cargo_toml(&this_dir).is_some() {
         process::Command::new("cargo")
             .arg("clean")
