@@ -69,7 +69,7 @@ mod ir_builder {
                     }
                 }
 
-                    
+
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
@@ -972,7 +972,7 @@ mod ir_builder {
         }
         Ok(())
     }
-    
+
     fn string_to_hex<const N: usize>(s: &str) -> [u8; N] {
         let mut bytes: [u8; N] = [0; N];
         let mut cur_byte: u8 = 0;
