@@ -1,5 +1,4 @@
 use crate::capabilities;
-use sway_utils::constants::MANIFEST_FILE_NAME;
 use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
@@ -10,6 +9,7 @@ use lsp::{
 };
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
 use std::sync::Arc;
+use sway_utils::constants::MANIFEST_FILE_NAME;
 use sway_utils::helpers::{find_manifest_dir, get_sway_files};
 #[derive(Debug)]
 pub struct Backend {
