@@ -1,6 +1,11 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt,
+};
 
-use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
+use crate::semantic_analysis::ast_node::{
+    TypedStructField, TypedVariableDeclaration, VariableMutability,
+};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -18,6 +23,8 @@ use crate::{
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
 };
+pub(crate) use expression::subfield::{convert_subfield_to_asm, get_subfields_for_layout};
+
 use either::Either;
 
 pub(crate) mod checks;
@@ -26,6 +33,7 @@ mod declaration;
 mod expression;
 mod finalized_asm;
 pub(crate) mod from_ir;
+pub(crate) mod register_allocator;
 mod register_sequencer;
 mod while_loop;
 
@@ -34,6 +42,7 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
+use sway_types::join_spans;
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -100,35 +109,47 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    fn allocate_registers(self) -> InstructionSet {
-        // Eventually, we will use a cool graph-coloring algorithm.
-        // For now, just keep a pool of registers and return
-        // registers when they are not read anymore
+    /// Assigns an allocatable register to each virtual register used by some instruction in the
+    /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
+    /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
+    /// the algorithm are thoroughly explained in register_allocator.rs.
+    ///
+    fn allocate_registers(self, register_sequencer: &mut RegisterSequencer) -> InstructionSet {
+        // Step 1: Liveness Analysis.
+        let live_out = register_allocator::liveness_analysis(&self.ops);
 
-        // construct a mapping from every op to the registers it uses
-        let op_register_mapping = self
-            .ops
-            .into_iter()
-            .map(|op| {
-                (
-                    op.clone(),
-                    op.opcode.registers().into_iter().cloned().collect(),
-                )
-            })
-            .collect::<Vec<_>>();
+        // Step 2: Construct the interference graph.
+        let (mut interference_graph, mut reg_to_node_ix) =
+            register_allocator::create_interference_graph(&self.ops, &live_out);
 
-        // get registers from the pool.
-        let mut pool = RegisterPool::init();
+        // Step 3: Remove redundant MOVE instructions using the interference graph.
+        let reduced_ops = register_allocator::coalesce_registers(
+            &self.ops,
+            &mut interference_graph,
+            &mut reg_to_node_ix,
+            register_sequencer,
+        );
+
+        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
+        // each colorable node and its neighbors.
+        let mut stack = register_allocator::color_interference_graph(
+            &mut interference_graph,
+            compiler_constants::NUM_ALLOCATABLE_REGISTERS,
+        );
+
+        // Step 5: Use the stack to assign a register for each virtual register.
+        let pool = register_allocator::assign_registers(&mut stack);
+
+        // Steph 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
-        for (ix, (op, _)) in op_register_mapping.iter().enumerate() {
+        for op in &reduced_ops {
             buf.push(AllocatedOp {
-                opcode: op
-                    .opcode
-                    .allocate_registers(&mut pool, &op_register_mapping, ix),
+                opcode: op.opcode.allocate_registers(&pool),
                 comment: op.comment.clone(),
                 owning_span: op.owning_span.clone(),
             })
         }
+
         InstructionSet { ops: buf }
     }
 }
@@ -192,8 +213,10 @@ impl AbstractInstructionSet {
     /// and one to replace the labels in the organizational ops
     fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
+        let mut offset_map = vec![];
         let mut counter = 0;
         for op in &self.ops {
+            offset_map.push(counter);
             match op.opcode {
                 Either::Right(OrganizationalOp::Label(ref lab)) => {
                     label_namespace.insert(lab, counter);
@@ -225,41 +248,46 @@ impl AbstractInstructionSet {
         }
 
         let mut realized_ops = vec![];
-        for Op {
-            opcode,
-            owning_span,
-            comment,
-        } in self.ops.clone().into_iter()
+        for (
+            ix,
+            Op {
+                opcode,
+                owning_span,
+                comment,
+            },
+        ) in self.ops.clone().into_iter().enumerate()
         {
+            let offset = offset_map[ix];
             match opcode {
                 Either::Left(op) => realized_ops.push(RealizedOp {
                     opcode: op,
                     owning_span,
                     comment,
+                    offset,
                 }),
                 Either::Right(org_op) => match org_op {
                     OrganizationalOp::Jump(ref lab) => {
-                        let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate24::new_unchecked(
-                            *offset,
+                            *label_namespace.get(lab).unwrap(),
                             "Programs with more than 2^24 labels are unsupported right now",
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JI(imm),
                             owning_span,
                             comment,
+                            offset,
                         });
                     }
                     OrganizationalOp::JumpIfNotEq(r1, r2, ref lab) => {
-                        let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate12::new_unchecked(
-                            *offset,
+                            *label_namespace.get(lab).unwrap(),
                             "Programs with more than 2^12 labels are unsupported right now",
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JNEI(r1, r2, imm),
                             owning_span,
                             comment,
+                            offset,
                         });
                     }
                     OrganizationalOp::DataSectionOffsetPlaceholder => {
@@ -267,6 +295,7 @@ impl AbstractInstructionSet {
                             opcode: VirtualOp::DataSectionOffsetPlaceholder,
                             owning_span: None,
                             comment: String::new(),
+                            offset,
                         });
                     }
                     OrganizationalOp::Comment => continue,
@@ -281,8 +310,9 @@ impl AbstractInstructionSet {
 #[derive(Debug)]
 struct RegisterAllocationStatus {
     reg: AllocatedRegister,
-    in_use: Option<VirtualRegister>,
+    used_by: BTreeSet<VirtualRegister>,
 }
+
 #[derive(Debug)]
 pub(crate) struct RegisterPool {
     registers: Vec<RegisterAllocationStatus>,
@@ -290,68 +320,32 @@ pub(crate) struct RegisterPool {
 
 impl RegisterPool {
     fn init() -> Self {
-        let register_pool: Vec<RegisterAllocationStatus> = (0
+        let reg_pool: Vec<RegisterAllocationStatus> = (0
             // - 1 because we reserve the final register for the data_section begin
             ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
-                in_use: None,
+                used_by: BTreeSet::new(),
             })
             .collect();
         Self {
-            registers: register_pool,
+            registers: reg_pool,
         }
     }
 
-    /// Checks if any currently used registers are no longer in use, updates the pool,
-    /// and grabs an available register.
     pub(crate) fn get_register(
-        &mut self,
+        &self,
         virtual_register: &VirtualRegister,
-        op_register_mapping: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
     ) -> Option<AllocatedRegister> {
-        // check if this register has already been allocated for
-        if let a @ Some(_) = self.registers.iter().find_map(
-            |RegisterAllocationStatus { reg, in_use }| match in_use {
-                Some(x) if x == virtual_register => Some(reg),
-                _ => None,
-            },
-        ) {
-            return a.cloned();
-        }
+        let allocated_reg =
+            self.registers
+                .iter()
+                .find(|RegisterAllocationStatus { reg: _, used_by }| {
+                    used_by.contains(virtual_register)
+                });
 
-        // scan to see if any of the old ones are no longer in use
-        for RegisterAllocationStatus { in_use, .. } in
-            self.registers.iter_mut().filter(|r| r.in_use.is_some())
-        {
-            if virtual_register_is_never_accessed_again(
-                in_use.as_ref().unwrap(),
-                op_register_mapping,
-            ) {
-                *in_use = None;
-            }
-        }
-        // find the next unused register, return it, assign it
-        let next_available = self
-            .registers
-            .iter_mut()
-            .find(|RegisterAllocationStatus { in_use, .. }| in_use.is_none());
-
-        match next_available {
-            Some(RegisterAllocationStatus { in_use, reg }) => {
-                *in_use = Some(virtual_register.clone());
-                Some(reg.clone())
-            }
-            None => None,
-        }
+        allocated_reg.map(|RegisterAllocationStatus { reg, used_by: _ }| reg.clone())
     }
-}
-
-fn virtual_register_is_never_accessed_again(
-    reg: &VirtualRegister,
-    ops: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
-) -> bool {
-    !ops.iter().any(|(_, regs)| regs.contains(reg))
 }
 
 /// helper function to check if a label is used in a given buffer of ops
@@ -430,6 +424,7 @@ impl fmt::Display for DataSection {
                 Literal::U16(num) => format!(".u16 {:#04x}", num),
                 Literal::U32(num) => format!(".u32 {:#04x}", num),
                 Literal::U64(num) => format!(".u64 {:#04x}", num),
+                Literal::Numeric(num) => format!(".u64 {:#04x}", num),
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
                 Literal::String(st) => format!(".str \"{}\"", st.as_str()),
                 Literal::Byte(b) => format!(".byte {:#08b}", b),
@@ -605,6 +600,11 @@ impl AsmNamespace {
                 )],
             ),
         }
+    }
+
+    /// In the
+    pub(crate) fn overwrite_data_section(&mut self, other: Self) {
+        self.data_section.value_pairs = other.data_section.value_pairs;
     }
 }
 
@@ -839,7 +839,7 @@ pub(crate) fn compile_ast_to_asm(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&mut register_sequencer)
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -886,7 +886,10 @@ impl SwayAsmSet {
 }
 
 impl JumpOptimizedAsmSet {
-    fn allocate_registers(self) -> RegisterAllocatedAsmSet {
+    fn allocate_registers(
+        self,
+        register_sequencer: &mut RegisterSequencer,
+    ) -> RegisterAllocatedAsmSet {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -895,7 +898,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers();
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
                     program_section,
@@ -907,7 +910,7 @@ impl JumpOptimizedAsmSet {
             } => {
                 let program_section = program_section
                     .realize_labels(&data_section)
-                    .allocate_registers();
+                    .allocate_registers(register_sequencer);
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
                     program_section,
@@ -919,7 +922,7 @@ impl JumpOptimizedAsmSet {
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
                     .realize_labels(&data_section)
-                    .allocate_registers(),
+                    .allocate_registers(register_sequencer),
                 data_section,
             },
         }
@@ -1249,13 +1252,14 @@ fn build_contract_abi_switch(
         });
     }
 
-    // if none of the selectors matched, then ret
+    // if none of the selectors matched, then revert
     asm_buf.push(Op {
         // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
-        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+        // and https://github.com/FuelLabs/sway/issues/444#issuecomment-1012507337
+        opcode: Either::Left(VirtualOp::RVRT(VirtualRegister::Constant(
             ConstantRegister::Zero,
         ))),
-        comment: "return if no selectors matched".into(),
+        comment: "revert if no selectors matched".into(),
         owning_span: None,
     });
 
@@ -1285,46 +1289,77 @@ fn compile_contract_to_selectors(
     let mut selectors_labels_buf = vec![];
     let mut asm_buf = vec![];
     for decl in abi_entries {
-        // TODO wrapping things in a struct should be doable by the compiler eventually,
-        // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
-        // https://github.com/FuelLabs/sway/pull/115#discussion_r666466414
-        if decl.parameters.len() != 4 {
-            errors.push(CompileError::InvalidNumberOfAbiParams {
-                span: decl.parameters_span(),
-            });
-            continue;
-        }
-        // there are currently four parameters to every ABI function, and they are required to be
-        // in this order
-        let cgas_name = decl.parameters[0].name.clone();
-        let bal_name = decl.parameters[1].name.clone();
-        let coin_color_name = decl.parameters[2].name.clone();
-        let user_argument_name = decl.parameters[3].name.clone();
-        // the function selector is the first four bytes of the hashed declaration/params according
-        // to https://github.com/FuelLabs/sway/issues/96
         let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
-        // load the call frame argument into the function argument register
-        let user_argument_register = register_sequencer.next();
-        let cgas_register = register_sequencer.next();
-        let bal_register = register_sequencer.next();
-        let coin_color_register = register_sequencer.next();
-        asm_buf.push(load_user_argument(user_argument_register.clone()));
-        asm_buf.push(load_cgas(cgas_register.clone()));
-        asm_buf.push(load_bal(bal_register.clone()));
-        asm_buf.push(load_coin_color(coin_color_register.clone()));
+
+        let mut arguments = vec![];
+        match decl.parameters.len() {
+            0 => {}
+            1 => {
+                let arg_register = register_sequencer.next();
+                asm_buf.push(load_bundled_arguments(arg_register.clone()));
+                arguments.push((decl.parameters[0].name.clone(), arg_register));
+            }
+            _ => {
+                // load the call frame argument into the function argument register
+                let bundled_arguments_register = register_sequencer.next();
+                let bundled_arguments_span = decl
+                    .parameters
+                    .iter()
+                    .fold(decl.parameters[0].name.span().clone(), |acc, x| {
+                        join_spans(acc, x.name.span().clone())
+                    });
+
+                // Create a new struct type that contains all the arguments. Then, for each argument,
+                // create a register for it and load it using some utilities from expression::subfield.
+                let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
+                    name: Ident::new(bundled_arguments_span),
+                    fields: decl
+                        .parameters
+                        .iter()
+                        .map(|p| TypedStructField {
+                            name: p.name.clone(),
+                            r#type: p.r#type,
+                            span: p.name.span().clone(),
+                        })
+                        .collect::<Vec<_>>(),
+                });
+
+                let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);
+
+                let descriptor = check!(
+                    get_contiguous_memory_layout(&subfields_for_layout.clone()[..]),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                asm_buf.push(load_bundled_arguments(bundled_arguments_register.clone()));
+
+                for param in &decl.parameters {
+                    let arg_register = register_sequencer.next();
+
+                    asm_buf.append(&mut check!(
+                        convert_subfield_to_asm(
+                            bundled_arguments_register.clone(),
+                            &param.name,
+                            arg_register.clone(),
+                            &subfields_for_layout,
+                            &descriptor,
+                        ),
+                        vec![],
+                        warnings,
+                        errors
+                    ));
+
+                    arguments.push((param.name.clone(), arg_register));
+                }
+            }
+        }
 
         asm_buf.append(&mut check!(
-            convert_abi_fn_to_asm(
-                &decl,
-                (user_argument_name, user_argument_register),
-                (cgas_name, cgas_register),
-                (bal_name, bal_register),
-                (coin_color_name, coin_color_register),
-                namespace,
-                register_sequencer
-            ),
+            convert_abi_fn_to_asm(&decl, &arguments, namespace, register_sequencer),
             vec![],
             warnings,
             errors
@@ -1335,7 +1370,7 @@ fn compile_contract_to_selectors(
     ok((selectors_labels_buf, asm_buf), warnings, errors)
 }
 /// Given a register, load the user-provided argument into it
-fn load_user_argument(return_register: VirtualRegister) -> Op {
+fn load_bundled_arguments(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1348,38 +1383,14 @@ fn load_user_argument(return_register: VirtualRegister) -> Op {
     }
 }
 /// Given a register, load the current value of $cgas into it
-fn load_cgas(return_register: VirtualRegister) -> Op {
+fn load_gas(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
             VirtualRegister::Constant(ConstantRegister::ContextGas),
             VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
         )),
-        comment: "loading cgas into abi function".into(),
-        owning_span: None,
-    }
-}
-/// Given a register, load the current value of $bal into it
-fn load_bal(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::Balance),
-            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
-        )),
-        comment: "loading coin balance into abi function".into(),
-        owning_span: None,
-    }
-}
-/// Given a register, load a pointer to the current coin color into it
-fn load_coin_color(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::FramePointer),
-            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
-        )),
-        comment: "loading coin color into abi function".into(),
+        comment: "loading $cgas (gas) into abi function".into(),
         owning_span: None,
     }
 }

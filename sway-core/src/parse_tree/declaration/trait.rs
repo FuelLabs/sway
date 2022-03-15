@@ -3,7 +3,7 @@ use super::{FunctionDeclaration, FunctionParameter};
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{ident, TypeParameter, Visibility},
+    parse_tree::{ident, CallPath, TypeParameter, Visibility},
     parser::Rule,
     style::{is_snake_case, is_upper_camel_case},
     type_engine::TypeInfo,
@@ -19,6 +19,7 @@ pub struct TraitDeclaration {
     pub(crate) interface_surface: Vec<TraitFn>,
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
 }
 
@@ -58,9 +59,20 @@ impl TraitDeclaration {
         let mut where_clause_pair = None;
         let mut methods = Vec::new();
         let mut interface = Vec::new();
+        let mut supertraits = Vec::new();
 
-        for _ in 0..2 {
+        for _ in 0..3 {
             match trait_parts.peek().map(|x| x.as_rule()) {
+                Some(Rule::supertraits) => {
+                    for supertrait in trait_parts.next().unwrap().into_inner() {
+                        supertraits.push(check!(
+                            Supertrait::parse_from_pair(supertrait, config),
+                            continue,
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
                 Some(Rule::trait_bounds) => {
                     where_clause_pair = Some(trait_parts.next().unwrap());
                 }
@@ -94,20 +106,66 @@ impl TraitDeclaration {
                 }
             }
         }
-        let type_parameters =
-            crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
-                type_params_pair,
-                where_clause_pair,
-                config,
-            )
-            .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
+        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
+            type_params_pair,
+            where_clause_pair,
+            config,
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
         ok(
             TraitDeclaration {
                 type_parameters,
                 name,
                 interface_surface: interface,
                 methods,
+                supertraits,
                 visibility,
+            },
+            warnings,
+            errors,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct Supertrait {
+    pub(crate) name: CallPath,
+    pub(crate) type_parameters: Vec<TypeParameter>,
+}
+
+impl Supertrait {
+    pub(crate) fn parse_from_pair(
+        pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Self> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let mut supertrait_parts = pair.into_inner();
+        let name = supertrait_parts.next().unwrap();
+        let name = check!(
+            CallPath::parse_from_pair(name, config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut type_params_pair = None;
+
+        if let Some(type_params) = supertrait_parts.next() {
+            match type_params.as_rule() {
+                Rule::type_params => {
+                    type_params_pair = Some(type_params);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        let type_parameters =
+            TypeParameter::parse_from_type_params_and_where_clause(type_params_pair, None, config)
+                .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
+        ok(
+            Supertrait {
+                name,
+                type_parameters,
             },
             warnings,
             errors,

@@ -14,8 +14,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     let positive_project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
-        ("contract_abi_impl", ProgramState::Return(0)),
-        // TEMPORARILY DISABLED DUE TO OOM ("dependencies", ProgramState::Return(0)), // 0 == false
+        // contracts revert because this test runs them against the VM
+        // and no selectors will match
+        ("contract_abi_impl", ProgramState::Revert(0)),
+        ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
         ("tuple_types", ProgramState::Return(123)),
         ("out_of_order_decl", ProgramState::Return(1)),
@@ -42,7 +44,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         ("op_precedence", ProgramState::Return(0)),
         ("asm_without_return", ProgramState::Return(0)),
-        ("op_precedence", ProgramState::Return(0)), // false
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
         ("struct_field_access", ProgramState::Return(43)),
@@ -51,7 +52,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
-        // TEMPORARILY DISABLED DUE TO OOM ("const_decl_in_library", ProgramState::Return(1)), // true
+        ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
@@ -59,34 +60,52 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_functions", ProgramState::Return(1)),        // true
         ("generic_enum", ProgramState::Return(1)),             // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
-        ("b512_test", ProgramState::Return(1)),                // true
         ("ec_recover_test", ProgramState::Return(1)),          // true
         ("address_test", ProgramState::Return(1)),             // true
         ("generic_struct", ProgramState::Return(1)),           // true
         ("zero_field_types", ProgramState::Return(10)),        // true
         ("assert_test", ProgramState::Return(1)),              // true
         ("match_expressions", ProgramState::Return(42)),
-        ("assert_test", ProgramState::Return(1)),  // true
         ("array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
-        ("block_height", ProgramState::Return(1)),   // true
         ("b512_test", ProgramState::Return(1)),      // true
         ("block_height", ProgramState::Return(1)),   // true
-        ("valid_impurity", ProgramState::Return(0)), // false
+        ("valid_impurity", ProgramState::Revert(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
         ("multi_item_import", ProgramState::Return(0)), // false
+        ("use_full_path_names", ProgramState::Return(1)),
+        ("tuple_indexing", ProgramState::Return(1)),
+        ("tuple_access", ProgramState::Return(42)),
+        ("funcs_with_generic_types", ProgramState::Return(1)), // true
+        ("enum_if_let", ProgramState::Return(143)),
+        ("enum_destructuring", ProgramState::Return(15)),
+        ("enum_if_let_large_type", ProgramState::Return(15)),
+        ("enum_type_inference", ProgramState::Return(5)),
+        ("size_of", ProgramState::Return(1)),
+        ("supertraits", ProgramState::Return(1)),
+        ("new_allocator_test", ProgramState::Return(42)), // true
+        ("chained_if_let", ProgramState::Return(5)),      // true
+        ("inline_if_expr_const", ProgramState::Return(0)),
+        ("method_on_empty_struct", ProgramState::Return(1)),
+        ("tuple_in_struct", ProgramState::Return(1)),
+        ("nested_structs", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-            assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
+            // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
+            // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
+            assert!(matches!(
+                crate::e2e_vm_tests::harness::test_json_abi(name),
+                Ok(())
+            ));
             acc + 1
         } else {
             acc
@@ -104,7 +123,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         // when that is re-implemented we should reenable this test
         //"infinite_dependencies",
         "top_level_vars",
-        "dependencies_parsing_error",
+        "dependency_parsing_error",
         "disallowed_gm",
         "bad_generic_annotation",
         "bad_generic_var_annotation",
@@ -119,6 +138,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "predicate_calls_impure",
         "script_calls_impure",
         "contract_pure_calls_impure",
+        "literal_too_large_for_type",
+        "star_import_alias",
+        "item_used_without_import",
+        "shadow_import",
+        "missing_supertrait_impl",
+        "enum_if_let_invalid_variable",
+        "enum_bad_type_inference",
+        "missing_func_from_supertrait_impl",
+        "supertrait_does_not_exist",
+        "chained_if_let_missing_branch",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -138,6 +167,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("context_testing_contract", "caller_context_test"),
         ("contract_abi_impl", "contract_call"),
         ("balance_test_contract", "bal_opcode"),
+        ("test_fuel_coin_contract", "token_ops_test"),
     ];
 
     let total_number_of_tests = positive_project_names.len()
@@ -153,11 +183,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // Deploy and then test.
     number_of_tests_run += projects.len();
+    let mut contract_ids = Vec::<fuel_tx::ContractId>::with_capacity(contracts.len());
     for name in contracts {
-        harness::deploy_contract(name)
+        let contract_id = harness::deploy_contract(name);
+        contract_ids.push(contract_id);
     }
     for name in projects {
-        harness::runs_on_node(name);
+        harness::runs_on_node(name, &contract_ids);
     }
 
     if number_of_tests_run == 0 {

@@ -1,17 +1,9 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
 license = "Apache-2.0"
 name = "caller_auth_test"
-entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
 auth_testing_abi = { path = "../auth_testing_abi" }
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0xea689c2ca58ee9b8728f02bad4a074875ea365efcbbf21d685ea6f1c6c932609"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
-balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
-state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"

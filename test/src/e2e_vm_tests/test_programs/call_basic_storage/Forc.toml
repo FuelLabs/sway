@@ -1,18 +1,12 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
 license = "Apache-2.0"
 name = "call_basic_storage"
-entry = "main.sw"
 
 [dependencies.std]
 git = "http://github.com/FuelLabs/sway-lib-std"
+branch = "master"
 
 [dependencies.basic_storage_abi]
 path = "../basic_storage_abi"
-
-[[tx-input]]
-type = "Contract"
-contract-id = "0xd6beb2f293d4e61e95df91742d798d9bc38c76f7fa4a6d62a2d3d3431cbdf36e"
-utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd00"
-balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
-state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"

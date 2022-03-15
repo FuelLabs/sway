@@ -1,19 +1,15 @@
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::Transaction;
-use futures::TryFutureExt;
-use std::io::{self, Write};
-use std::path::PathBuf;
-use sway_core::{parse, TreeType};
-use tokio::process::Child;
-
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
-use crate::utils::client::start_fuel_core;
-
-use crate::utils::helpers;
-use helpers::{get_main_file, read_manifest};
+use forc_pkg::Manifest;
+use fuel_gql_client::client::FuelClient;
+use fuel_tx::Transaction;
+use futures::TryFutureExt;
+use std::path::PathBuf;
+use std::str::FromStr;
+use sway_core::{parse, TreeType};
 use sway_utils::{constants::*, find_manifest_dir};
+use tokio::process::Child;
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
     let path_dir = if let Some(path) = &command.path {
@@ -24,12 +20,12 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
     match find_manifest_dir(&path_dir) {
         Some(manifest_dir) => {
-            let manifest = read_manifest(&manifest_dir)?;
+            let manifest = Manifest::from_dir(&manifest_dir)?;
             let project_name = &manifest.project.name;
-            let main_file = get_main_file(&manifest, &manifest_dir)?;
+            let entry_string = manifest.entry_string(&manifest_dir)?;
 
-            // parse the main file and check is it a script
-            let parsed_result = parse(main_file, None);
+            // Parse the entry point string and check is it a script.
+            let parsed_result = parse(entry_string, None);
             match parsed_result.value {
                 Some(parse_tree) => match parse_tree.tree_type {
                     TreeType::Script => {
@@ -44,17 +40,19 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             print_intermediate_asm: command.print_intermediate_asm,
                             print_ir: command.print_ir,
                             binary_outfile: command.binary_outfile,
+                            debug_outfile: command.debug_outfile,
                             offline_mode: false,
                             silent_mode: command.silent_mode,
+                            output_directory: command.output_directory,
+                            minify_json_abi: command.minify_json_abi,
                         };
 
-                        let compiled_script = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
+                        let compiled = forc_build::build(build_command)?;
+                        let contracts = command.contract.unwrap_or_default();
+                        let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
-                            compiled_script,
+                            compiled.bytecode,
                             script_data,
                             inputs,
                             outputs,
@@ -115,23 +113,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print).await?;
             Ok(None)
         }
-        Err(_) => {
-            print!(
-                "We noticed you don't have fuel-core running, would you like to start a node [y/n]?"
-            );
-            io::stdout().flush().unwrap();
-            let mut reply = String::new();
-            io::stdin().read_line(&mut reply)?;
-            let reply = reply.trim().to_lowercase();
-
-            if reply == "y" || reply == "yes" {
-                let child = start_fuel_core(node_url, &client).await?;
-                send_tx(&client, tx, pretty_print).await?;
-                Ok(Some(child))
-            } else {
-                Ok(None)
-            }
-        }
+        Err(_) => Err(CliError::fuel_core_not_running(node_url)),
     }
 }
 
@@ -165,13 +147,15 @@ fn create_tx_with_script_and_data(
     outputs: Vec<fuel_tx::Output>,
 ) -> Transaction {
     let gas_price = 0;
-    let gas_limit = 10000000;
+    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
+    let byte_price = 0;
     let maturity = 0;
     let witnesses = vec![];
 
     Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -184,4 +168,38 @@ fn create_tx_with_script_and_data(
 // cut '0x' from the start
 fn format_hex_data(data: &str) -> &str {
     data.strip_prefix("0x").unwrap_or(data)
+}
+
+fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx::Input {
+    fuel_tx::Input::Contract {
+        utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+        contract_id: fuel_tx::ContractId::from_str(contract).unwrap(),
+    }
+}
+
+fn construct_output_from_contract((idx, _contract): (usize, &String)) -> fuel_tx::Output {
+    fuel_tx::Output::Contract {
+        input_index: idx as u8, // probably safe unless a user inputs > u8::MAX inputs
+        balance_root: fuel_tx::Bytes32::zeroed(),
+        state_root: fuel_tx::Bytes32::zeroed(),
+    }
+}
+
+/// Given some contracts, constructs the most basic input and output set that satisfies validation.
+fn get_tx_inputs_and_outputs(
+    contracts: Vec<String>,
+) -> (Vec<fuel_tx::Input>, Vec<fuel_tx::Output>) {
+    let inputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_input_from_contract)
+        .collect::<Vec<_>>();
+    let outputs = contracts
+        .iter()
+        .enumerate()
+        .map(construct_output_from_contract)
+        .collect::<Vec<_>>();
+    (inputs, outputs)
 }

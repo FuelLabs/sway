@@ -1,314 +1,125 @@
-use crate::utils::dependency::{Dependency, DependencyDetails};
-use crate::utils::helpers::{find_file_name, find_main_path};
-use crate::{
-    cli::BuildCommand,
-    utils::dependency,
-    utils::helpers::{
-        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
-    },
+use crate::cli::BuildCommand;
+use anyhow::{anyhow, bail, Result};
+use forc_pkg::{self as pkg, lock, Lock, Manifest};
+use forc_util::{default_output_directory, lock_path};
+use std::{
+    fs::{self, File},
+    path::PathBuf,
 };
-use std::fs::File;
-use std::io::Write;
-use std::sync::Arc;
-use sway_core::{FinalizedAsm, TreeType};
-use sway_utils::{constants, find_manifest_dir};
+use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
-use sway_core::{
-    create_module, BuildConfig, BytecodeCompilationResult, CompilationResult, NamespaceRef,
-    NamespaceWrapper,
-};
-
-use anyhow::Result;
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-
-pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(ref path) = command.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
-    };
-
+pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
+        path,
         binary_outfile,
         use_ir,
+        debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
-        offline_mode,
+        offline_mode: offline,
         silent_mode,
-        ..
+        output_directory,
+        minify_json_abi,
     } = command;
+
+    let config = pkg::BuildConfig {
+        use_ir,
+        print_ir,
+        print_finalized_asm,
+        print_intermediate_asm,
+        silent: silent_mode,
+    };
+
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
-            return Err(format!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
-            ))
+            bail!(
+                "could not find `{}` in `{}` or any parent directory",
+                MANIFEST_FILE_NAME,
+                this_dir.display(),
+            );
         }
     };
+    let manifest = Manifest::from_dir(&manifest_dir)?;
+    let lock_path = lock_path(&manifest_dir);
 
-    let mut manifest = read_manifest(&manifest_dir)?;
+    // Load the build plan from the lock file.
+    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path);
 
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(constants::SRC_DIR);
-        code_dir.push(&manifest.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
+    // Retrieve the old lock file state so we can produce a diff.
+    let old_lock = plan_result
+        .as_ref()
+        .ok()
+        .map(|plan| Lock::from_graph(plan.graph()))
+        .unwrap_or_default();
 
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.to_path_buf(),
-        manifest_dir.clone(),
-    )
-    .use_ir(use_ir || print_ir) // --print-ir implies --use-ir.
-    .print_finalized_asm(print_finalized_asm)
-    .print_intermediate_asm(print_intermediate_asm)
-    .print_ir(print_ir);
+    // Validate the loaded build plan for the current manifest.
+    let plan_result = plan_result.and_then(|plan| plan.validate(&manifest).map(|_| plan));
 
-    let mut dependency_graph = HashMap::new();
-    let namespace = create_module();
+    // If necessary, construct a new build plan.
+    let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+        println!("  Creating a new `Forc.lock` file");
+        println!("    Cause: {}", e);
+        let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
+        let lock = Lock::from_graph(plan.graph());
+        let diff = lock.diff(&old_lock);
+        lock::print_diff(&manifest.project.name, &diff);
+        let string = toml::ser::to_string_pretty(&lock)
+            .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+        println!("   Created new lock file at {}", lock_path.display());
+        Ok(plan)
+    })?;
 
-    if let Some(ref mut deps) = manifest.dependencies {
-        for (dependency_name, dependency_details) in deps.iter_mut() {
-            compile_dependency_lib(
-                &this_dir,
-                dependency_name,
-                dependency_details,
-                namespace,
-                &mut dependency_graph,
-                silent_mode,
-                offline_mode,
-            )?;
-        }
-    }
+    // Build it!
+    let (compiled, source_map) = pkg::build(&plan, &config)?;
 
-    // now, compile this program with all of its dependencies
-    let main_file = get_main_file(&manifest, &manifest_dir)?;
-
-    let main = compile(
-        main_file,
-        &manifest.project.name,
-        namespace,
-        build_config,
-        &mut dependency_graph,
-        silent_mode,
-    )?;
     if let Some(outfile) = binary_outfile {
-        let mut file = File::create(outfile).map_err(|e| e.to_string())?;
-        file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+        fs::write(&outfile, &compiled.bytecode)?;
     }
 
-    println!("  Bytecode size is {} bytes.", main.len());
+    if let Some(outfile) = debug_outfile {
+        let source_map_json = serde_json::to_vec(&source_map).expect("JSON serialization failed");
+        fs::write(outfile, &source_map_json)?;
+    }
 
-    Ok(main)
-}
+    // TODO: We may support custom build profiles in the future.
+    let profile = "debug";
 
-/// Takes a dependency and returns a namespace of exported things from that dependency
-/// trait implementations are included as well
-fn compile_dependency_lib<'manifest>(
-    project_file_path: &Path,
-    dependency_name: &'manifest str,
-    dependency_lib: &mut Dependency,
-    namespace: NamespaceRef,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-    silent_mode: bool,
-    offline_mode: bool,
-) -> Result<(), String> {
-    let mut details = match dependency_lib {
-        Dependency::Simple(..) => {
-            return Err(
-                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
-            )
-        }
-        Dependency::Detailed(ref mut details) => details,
-    };
-    // Download a non-local dependency if the `git` property is set in this dependency.
-    if let Some(ref git) = details.git {
-        // the qualified name of the dependency includes its source and some metadata to prevent
-        // conflating dependencies from different sources
-        let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
-        let downloaded_dep_path = match dependency::download_github_dep(
-            &fully_qualified_dep_name,
-            git,
-            &details.branch,
-            &details.version,
-            offline_mode.into(),
-        ) {
-            Ok(path) => path,
-            Err(e) => {
-                return Err(format!(
-                    "Couldn't download dependency ({:?}): {:?}",
-                    dependency_name, e
-                ))
-            }
+    // Create the output directory for build artifacts.
+    let output_dir = output_directory
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(&manifest_dir).join(profile));
+    if !output_dir.exists() {
+        fs::create_dir_all(&output_dir)?;
+    }
+
+    // Place build artifacts into the output directory.
+    let bin_path = output_dir
+        .join(&manifest.project.name)
+        .with_extension("bin");
+    fs::write(&bin_path, &compiled.bytecode)?;
+    if !compiled.json_abi.is_empty() {
+        let json_abi_stem = format!("{}-abi", manifest.project.name);
+        let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
+        let file = File::create(json_abi_path)?;
+        let res = if minify_json_abi {
+            serde_json::to_writer(&file, &compiled.json_abi)
+        } else {
+            serde_json::to_writer_pretty(&file, &compiled.json_abi)
         };
-
-        // Mutate this dependency's path to hold the newly downloaded dependency's path.
-        details.path = Some(downloaded_dep_path);
-    }
-    let dep_path = match dependency_lib {
-        Dependency::Simple(..) => {
-            return Err(
-                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
-            )
-        }
-        Dependency::Detailed(DependencyDetails { path, .. }) => path,
-    };
-
-    let dep_path =
-        match dep_path {
-            Some(p) => p,
-            None => return Err(
-                "Only simple path imports are supported right now. Please supply a path relative \
-                 to the manifest file."
-                    .into(),
-            ),
-        };
-
-    // dependency paths are relative to the path of the project being compiled
-    let mut project_path = PathBuf::from(project_file_path);
-    project_path.push(dep_path);
-
-    // compile the dependencies of this dependency
-    // this should detect circular dependencies
-    let manifest_dir = match find_manifest_dir(&project_path) {
-        Some(o) => o,
-        None => {
-            return Err(format!(
-                "Manifest not found for dependency {:?}.",
-                project_path
-            ))
-        }
-    };
-    let mut manifest_of_dep = read_manifest(&manifest_dir)?;
-    let main_path = find_main_path(&manifest_dir, &manifest_of_dep);
-    let file_name = find_file_name(&manifest_dir, &main_path)?;
-
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.to_path_buf(),
-        manifest_dir.clone(),
-    );
-
-    let dep_namespace = create_module();
-    if let Some(ref mut deps) = manifest_of_dep.dependencies {
-        for (dependency_name, ref mut dependency_lib) in deps {
-            // to do this properly, iterate over list of dependencies make sure there are no
-            // circular dependencies
-            compile_dependency_lib(
-                &manifest_dir,
-                dependency_name,
-                dependency_lib,
-                dep_namespace,
-                dependency_graph,
-                silent_mode,
-                offline_mode,
-            )?;
-        }
+        res?;
     }
 
-    let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
+    println!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
-    let compiled = compile_library(
-        main_file,
-        &manifest_of_dep.project.name,
-        dep_namespace,
-        build_config,
-        dependency_graph,
-        silent_mode,
-    )?;
-
-    namespace.insert_module_ref(dependency_name.to_string(), compiled);
-
-    // nothing is returned from this method since it mutates the hashmaps it was given
-    Ok(())
-}
-
-fn compile_library(
-    source: Arc<str>,
-    proj_name: &str,
-    namespace: NamespaceRef,
-    build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-    silent_mode: bool,
-) -> Result<NamespaceRef, String> {
-    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
-    match res {
-        CompilationResult::Library {
-            namespace,
-            warnings,
-            ..
-        } => {
-            print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(namespace)
-        }
-        CompilationResult::Failure { errors, warnings } => {
-            print_on_failure(silent_mode, warnings, errors);
-            Err(format!("Failed to compile {}", proj_name))
-        }
-        _ => {
-            return Err(format!(
-                "Project \"{}\" was included as a dependency but it is not a library.",
-                proj_name
-            ))
-        }
-    }
-}
-
-fn compile(
-    source: Arc<str>,
-    proj_name: &str,
-    namespace: NamespaceRef,
-    build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-    silent_mode: bool,
-) -> Result<Vec<u8>, String> {
-    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
-    match res {
-        BytecodeCompilationResult::Success { bytes, warnings } => {
-            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
-            Ok(bytes)
-        }
-        BytecodeCompilationResult::Library { warnings } => {
-            print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(vec![])
-        }
-        BytecodeCompilationResult::Failure { errors, warnings } => {
-            print_on_failure(silent_mode, warnings, errors);
-            Err(format!("Failed to compile {}", proj_name))
-        }
-    }
-}
-
-fn compile_to_asm(
-    source: Arc<str>,
-    proj_name: &str,
-    namespace: NamespaceRef,
-    build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-    silent_mode: bool,
-) -> Result<FinalizedAsm, String> {
-    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
-    match res {
-        CompilationResult::Success { asm, warnings } => {
-            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
-            Ok(asm)
-        }
-        CompilationResult::Library { warnings, .. } => {
-            print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(FinalizedAsm::Library)
-        }
-        CompilationResult::Failure { errors, warnings } => {
-            print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
-        }
-    }
+    Ok(compiled)
 }

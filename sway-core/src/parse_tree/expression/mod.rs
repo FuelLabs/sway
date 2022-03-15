@@ -1,9 +1,9 @@
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{ident, CallPath, Literal},
+    parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
-    type_engine::TypeInfo,
+    type_engine::{IntegerBits, TypeInfo},
     AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
 };
 
@@ -57,6 +57,12 @@ pub enum Expression {
         fields: Vec<Expression>,
         span: Span,
     },
+    TupleIndex {
+        prefix: Box<Expression>,
+        index: usize,
+        index_span: Span,
+        span: Span,
+    },
     Array {
         contents: Vec<Expression>,
         span: Span,
@@ -67,7 +73,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: Ident,
+        struct_name: CallPath,
         fields: Vec<StructExpressionField>,
         span: Span,
     },
@@ -88,6 +94,7 @@ pub enum Expression {
     },
     MethodApplication {
         method_name: MethodName,
+        contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         span: Span,
     },
@@ -126,7 +133,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<TypeInfo>,
+        type_arguments: Vec<(TypeInfo, Span)>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -149,6 +156,22 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    IfLet {
+        scrutinee: Scrutinee,
+        expr: Box<Expression>,
+        then: CodeBlock,
+        r#else: Option<Box<Expression>>,
+        span: Span,
+    },
+    SizeOfVal {
+        exp: Box<Expression>,
+        span: Span,
+    },
+    SizeOfType {
+        type_name: TypeInfo,
+        type_span: Span,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -166,7 +189,8 @@ pub struct DelayedStructFieldResolution {
     pub field: Ident,
 }
 
-/// During type checking, this gets replaced with enum arg access.
+/// During type checking, this gets replaced with an if let, maybe, although that's not yet been
+/// implemented.
 #[derive(Debug, Clone)]
 pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
@@ -218,10 +242,11 @@ impl Expression {
                         span: span.clone(),
                     }
                     .to_var_name(),
+                    is_absolute: true,
                 },
                 type_name: None,
-                is_absolute: true,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -236,10 +261,11 @@ impl Expression {
                         Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: op.to_var_name(),
+                    is_absolute: true,
                 },
                 type_name: None,
-                is_absolute: true,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -253,6 +279,7 @@ impl Expression {
             LazyOperator { span, .. } => span,
             VariableExpression { span, .. } => span,
             Tuple { span, .. } => span,
+            TupleIndex { span, .. } => span,
             Array { span, .. } => span,
             MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
@@ -265,6 +292,9 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            IfLet { span, .. } => span,
+            SizeOfVal { span, .. } => span,
+            SizeOfType { span, .. } => span,
         })
         .clone()
     }
@@ -394,17 +424,13 @@ impl Expression {
                 };
                 let mut func_app_parts = expr.into_inner();
                 let first_part = func_app_parts.next().unwrap();
-                assert!(first_part.as_rule() == Rule::ident);
-                let suffix = check!(
-                    ident::parse_from_pair(first_part, config),
+                assert!(first_part.as_rule() == Rule::call_path);
+                let name = check!(
+                    CallPath::parse_from_pair(first_part, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let name = CallPath {
-                    prefixes: vec![],
-                    suffix,
-                };
                 let (arguments, type_args) = {
                     let maybe_type_args = func_app_parts.next().unwrap();
                     match maybe_type_args.as_rule() {
@@ -531,7 +557,7 @@ impl Expression {
                 let mut expr_iter = expr.into_inner();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = check!(
-                    ident::parse_from_pair(struct_name, config),
+                    CallPath::parse_from_pair(struct_name, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -587,8 +613,8 @@ impl Expression {
                     path,
                 };
                 let expr = check!(
-                    crate::CodeBlock::parse_from_pair(expr, config),
-                    crate::CodeBlock {
+                    CodeBlock::parse_from_pair(expr, config),
+                    CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
                     },
@@ -676,6 +702,44 @@ impl Expression {
                             .expect("Guaranteed by grammar.")
                             .into_inner()
                             .collect::<Vec<_>>();
+                        let contract_call_params =
+                            match pair.peek().expect("Guaranteed by grammar").as_rule() {
+                                Rule::contract_call_params => pair.next(),
+                                _ => None,
+                            };
+
+                        let mut fields_buf = Vec::new();
+                        if let Some(params) = contract_call_params {
+                            let fields = params
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .collect::<Vec<_>>();
+                            for i in (0..fields.len()).step_by(2) {
+                                let name = check!(
+                                    ident::parse_from_pair(fields[i].clone(), config),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                );
+                                let span = Span {
+                                    span: fields[i].as_span(),
+                                    path: path.clone(),
+                                };
+                                let value = check!(
+                                    Expression::parse_from_pair(fields[i + 1].clone(), config),
+                                    Expression::Tuple {
+                                        fields: vec![],
+                                        span: span.clone()
+                                    },
+                                    warnings,
+                                    errors
+                                );
+                                fields_buf.push(StructExpressionField { name, value, span });
+                            }
+                        }
+
                         let function_arguments =
                             pair.next().expect("Guaranteed by grammar").into_inner();
                         // remove the last field from the subfield exp, since it is the method name
@@ -739,21 +803,22 @@ impl Expression {
                         arguments_buf.push_front(expr);
                         Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
+                            contract_call_params: fields_buf,
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
                     }
                     Rule::fully_qualified_method => {
-                        let mut path_parts_buf = vec![];
+                        let mut call_path = None;
                         let mut type_name = None;
                         let mut method_name = None;
                         let mut arguments = None;
                         for pair in pair.into_inner() {
                             match pair.as_rule() {
                                 Rule::path_separator => (),
-                                Rule::path_ident => {
-                                    path_parts_buf.push(check!(
-                                        ident::parse_from_pair(pair, config),
+                                Rule::call_path => {
+                                    call_path = Some(check!(
+                                        CallPath::parse_from_pair(pair, config),
                                         continue,
                                         warnings,
                                         errors
@@ -781,22 +846,48 @@ impl Expression {
                             errors
                         );
 
-                        // parse the method name into a call path
-                        let method_name = MethodName::FromType {
-                            call_path: CallPath {
-                                prefixes: path_parts_buf,
-                                suffix: check!(
-                                    ident::parse_from_pair(
-                                        method_name.expect("guaranteed by grammar"),
-                                        config
-                                    ),
-                                    return err(warnings, errors),
-                                    warnings,
-                                    errors
-                                ),
-                            },
-                            type_name: Some(type_name),
-                            is_absolute: false,
+                        let method_name = match call_path {
+                            Some(call_path) => {
+                                let mut call_path_buf = call_path.prefixes;
+                                call_path_buf.push(call_path.suffix);
+
+                                // parse the method name into a call path
+                                MethodName::FromType {
+                                    call_path: CallPath {
+                                        prefixes: call_path_buf,
+                                        suffix: check!(
+                                            ident::parse_from_pair(
+                                                method_name.expect("guaranteed by grammar"),
+                                                config
+                                            ),
+                                            return err(warnings, errors),
+                                            warnings,
+                                            errors
+                                        ),
+                                        is_absolute: call_path.is_absolute, //is_absolute: false,
+                                    },
+                                    type_name: Some(type_name),
+                                }
+                            }
+                            None => {
+                                // parse the method name into a call path
+                                MethodName::FromType {
+                                    call_path: CallPath {
+                                        prefixes: vec![],
+                                        suffix: check!(
+                                            ident::parse_from_pair(
+                                                method_name.expect("guaranteed by grammar"),
+                                                config
+                                            ),
+                                            return err(warnings, errors),
+                                            warnings,
+                                            errors
+                                        ),
+                                        is_absolute: false, //is_absolute: false,
+                                    },
+                                    type_name: Some(type_name),
+                                }
+                            }
                         };
 
                         let mut arguments_buf = vec![];
@@ -821,6 +912,7 @@ impl Expression {
 
                         Expression::MethodApplication {
                             method_name,
+                            contract_call_params: vec![],
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }
@@ -833,11 +925,23 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
+                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
-                let instantiator = parts.next();
+                let (maybe_type_args, maybe_instantiator) = {
+                    let part = parts.next();
+                    match part.as_ref().map(|x| x.as_rule()) {
+                        Some(Rule::fn_args) => (None, part),
+                        Some(Rule::type_args) => {
+                            let next_part = parts.next();
+                            (part, next_part)
+                        }
+                        None => (None, None),
+                        Some(_) => unreachable!("guaranteed by grammar"),
+                    }
+                };
                 let path = check!(
                     CallPath::parse_from_pair(path_component, config),
                     return err(warnings, errors),
@@ -845,7 +949,7 @@ impl Expression {
                     errors
                 );
 
-                let args = if let Some(inst) = instantiator {
+                let args = if let Some(inst) = maybe_instantiator {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
                         let exp = check!(
@@ -861,15 +965,38 @@ impl Expression {
                     vec![]
                 };
 
+                let maybe_type_args = maybe_type_args
+                    .map(|x| {
+                        x.into_inner()
+                            .nth(1)
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
                 // if there is an expression in parenthesis, that is the instantiator.
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: file_path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg, config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 Expression::DelineatedPath {
                     call_path: path,
+                    type_arguments: type_args_buf,
                     args,
                     span,
-                    // Eventually, when we support generic enums, we want to be able to parse type
-                    // arguments on the enum name and throw them in here. TODO
-                    type_arguments: vec![],
                 }
             }
             Rule::tuple_expr => {
@@ -889,6 +1016,48 @@ impl Expression {
                 }
                 Expression::Tuple {
                     fields: fields_buf,
+                    span,
+                }
+            }
+            Rule::tuple_index => {
+                let span = Span {
+                    span: expr.as_span(),
+                    path: path.clone(),
+                };
+                let mut inner = expr.into_inner();
+                let call_item = inner.next().expect("guarenteed by grammar");
+                assert_eq!(call_item.as_rule(), Rule::call_item);
+                let prefix = check!(
+                    parse_call_item(call_item, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let the_integer = inner.next().expect("guarenteed by grammar");
+                let the_integer_span = Span {
+                    span: the_integer.as_span(),
+                    path: path.clone(),
+                };
+                let index: Result<usize, CompileError> =
+                    the_integer.as_str().trim().parse().map_err(|e| {
+                        handle_parse_int_error(
+                            e,
+                            TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                            the_integer.as_span(),
+                            path.clone(),
+                        )
+                    });
+                let index = match index {
+                    Ok(index) => index,
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
+                };
+                Expression::TupleIndex {
+                    prefix: Box::new(prefix),
+                    index,
+                    index_span: the_integer_span,
                     span,
                 }
             }
@@ -959,6 +1128,18 @@ impl Expression {
             }
             Rule::array_index => check!(
                 parse_array_index(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::if_let_exp => check!(
+                parse_if_let(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::size_of_expr => check!(
+                parse_size_of_expr(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1080,6 +1261,59 @@ pub(crate) fn parse_array_index(
             },
         };
     }
+    ok(exp, warnings, errors)
+}
+
+pub(crate) fn parse_size_of_expr(
+    item: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let span = Span {
+        span: item.as_span(),
+        path: config.map(|c| c.path()),
+    };
+    let mut iter = item.into_inner();
+    let size_of = iter.next().expect("gaurenteed by grammar");
+    let exp = match size_of.as_rule() {
+        Rule::size_of_val_expr => {
+            let mut inner_iter = size_of.into_inner();
+            let _keyword = inner_iter.next();
+            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let expr = check!(
+                Expression::parse_from_pair(elem, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            Expression::SizeOfVal {
+                exp: Box::new(expr),
+                span,
+            }
+        }
+        Rule::size_of_type_expr => {
+            let mut inner_iter = size_of.into_inner();
+            let _keyword = inner_iter.next();
+            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let type_span = Span {
+                span: elem.as_span(),
+                path: config.map(|c| c.path()),
+            };
+            let type_name = check!(
+                TypeInfo::parse_from_pair(elem, config),
+                TypeInfo::ErrorRecovery,
+                warnings,
+                errors
+            );
+            Expression::SizeOfType {
+                type_name,
+                type_span,
+                span,
+            }
+        }
+        _ => unreachable!(),
+    };
     ok(exp, warnings, errors)
 }
 
@@ -1727,4 +1961,100 @@ pub fn desugar_match_expression(
         None => err(vec![], vec![]),
         Some(if_statement) => ok(if_statement, warnings, errors),
     }
+}
+
+fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+
+    let span = Span {
+        span: expr.as_span(),
+        path: path.clone(),
+    };
+
+    let mut if_exp_pairs = expr.into_inner();
+
+    let _let_keyword = if_exp_pairs.next();
+    let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
+
+    let scrutinee = check!(
+        Scrutinee::parse_from_pair(scrutinee_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let expr = check!(
+        Expression::parse_from_pair(expr_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let then_branch_span = Span {
+        span: then_branch_pair.as_span(),
+        path: path.clone(),
+    };
+
+    let then = check!(
+        CodeBlock::parse_from_pair(then_branch_pair, config),
+        crate::CodeBlock {
+            contents: Vec::new(),
+            whole_block_span: then_branch_span,
+        },
+        warnings,
+        errors
+    );
+
+    let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
+        let else_span = Span {
+            path,
+            span: else_branch.as_span(),
+        };
+        match else_branch.as_rule() {
+            Rule::code_block => {
+                let block = check!(
+                    CodeBlock::parse_from_pair(else_branch.clone(), config),
+                    CodeBlock {
+                        contents: Vec::new(),
+                        whole_block_span: else_span.clone(),
+                    },
+                    warnings,
+                    errors
+                );
+                let exp = Expression::CodeBlock {
+                    contents: block,
+                    span: else_span,
+                };
+                Some(Box::new(exp))
+            }
+            Rule::if_let_exp => {
+                let r#else = check!(
+                    parse_if_let(else_branch.clone(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Some(Box::new(r#else))
+            }
+            _ => unreachable!("guaranteed by grammar"),
+        }
+    } else {
+        None
+    };
+    ok(
+        Expression::IfLet {
+            scrutinee,
+            expr: Box::new(expr),
+            then,
+            r#else: maybe_else_branch,
+            span,
+        },
+        warnings,
+        errors,
+    )
 }

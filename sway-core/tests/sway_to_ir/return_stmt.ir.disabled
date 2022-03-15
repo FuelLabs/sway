@@ -1,4 +1,4 @@
-script script {
+script {
     fn go(test: bool) -> u64 {
         entry:
         cbr test, block0, block2

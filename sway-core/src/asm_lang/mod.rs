@@ -43,6 +43,7 @@ pub(crate) struct RealizedOp {
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
+    pub(crate) offset: u64,
 }
 
 impl Op {
@@ -1065,8 +1066,8 @@ fn four_regs(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
-                "rl" => ReturnLength,
-                "rv" => ReturnValue,
+                "retl" => ReturnLength,
+                "ret" => ReturnValue,
                 "ds" => DataSectionStart,
                 _ => return None,
             })

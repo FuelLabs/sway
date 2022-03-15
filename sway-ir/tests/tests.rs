@@ -15,8 +15,9 @@ fn ir_to_ir_tests() {
                 // Run the tests!
                 //
                 // We currently choose a single pass based on the test file name, but eventually we
-                // should use a comment within the test file to invoke `lit`.
+                // should use a comment within the test file to invoke `FileCheck`.
 
+                println!("--- TESTING: {}", path.display());
                 let path_str = path.file_name().unwrap().to_string_lossy();
                 if path_str.starts_with("inline") {
                     test_inline(path);
@@ -49,7 +50,14 @@ fn test_inline(mut path: PathBuf) {
     let expected_bytes = std::fs::read(&path).unwrap();
     let expected = String::from_utf8_lossy(&expected_bytes);
 
-    let mut ir = sway_ir::parser::parse(&input).unwrap();
+    let mut ir = match sway_ir::parser::parse(&input) {
+        Ok(ir) => ir,
+        Err(parse_err) => {
+            println!("{parse_err}");
+            panic!()
+        }
+    };
+
     let main_fn = ir
         .functions
         .iter()
@@ -76,7 +84,13 @@ fn test_constants(mut path: PathBuf) {
     let expected_bytes = std::fs::read(&path).unwrap();
     let expected = String::from_utf8_lossy(&expected_bytes);
 
-    let mut ir = sway_ir::parser::parse(&input).unwrap();
+    let mut ir = match sway_ir::parser::parse(&input) {
+        Ok(ir) => ir,
+        Err(parse_err) => {
+            println!("{parse_err}");
+            panic!()
+        }
+    };
 
     let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
     for fn_idx in fn_idcs {

@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
     Ident, Rule, TypeParameter,
 };
 
@@ -24,12 +24,12 @@ pub enum TypeInfo {
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: String,
-        variant_types: Vec<OwnedTypedEnumVariant>,
+        name: Ident,
+        variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
-        name: String,
-        fields: Vec<OwnedTypedStructField>,
+        name: Ident,
+        fields: Vec<TypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -157,13 +157,13 @@ impl TypeInfo {
                     }
                     Some(array_elem_count_pair) => {
                         match array_elem_count_pair.as_rule() {
-                            Rule::u64_integer => {
+                            Rule::basic_integer => {
                                 // Parse the count directly to a usize.
                                 check!(
                                     array_elem_count_pair
                                         .as_str()
                                         .trim()
-                                        .replace("_", "")
+                                        .replace('_', "")
                                         .parse::<usize>()
                                         // Could probably just .unwrap() here since it will succeed.
                                         .map_or_else(
@@ -355,7 +355,7 @@ impl TypeInfo {
                 let field_names = {
                     let names = fields
                         .iter()
-                        .map(|OwnedTypedStructField { r#type, .. }| {
+                        .map(|TypedStructField { r#type, .. }| {
                             resolve_type(*r#type, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
@@ -408,6 +408,9 @@ impl TypeInfo {
         };
         ok(name, vec![], vec![])
     }
+    pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {
+        Ok(self.size_in_words(err_span)? * 8)
+    }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
@@ -458,7 +461,7 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::TypeMustBeKnown {
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
                 ty: self.friendly_type_str(),
                 span: err_span.clone(),
             }),
@@ -468,14 +471,12 @@ impl TypeInfo {
             }
         }
     }
+
     pub(crate) fn is_copy_type(&self) -> bool {
-        match self {
-            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
-            TypeInfo::Tuple(fields) => fields
-                .iter()
-                .all(|field_type| look_up_type_id(*field_type).is_copy_type()),
-            _ => false,
-        }
+        matches!(
+            self,
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte
+        )
     }
 
     pub fn is_uninhabited(&self) -> bool {

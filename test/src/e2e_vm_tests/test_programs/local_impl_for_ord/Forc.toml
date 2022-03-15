@@ -1,9 +1,8 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "local_impl_for_ord"
 entry = "main.sw"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }

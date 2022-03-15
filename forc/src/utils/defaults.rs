@@ -5,16 +5,15 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
 
     format!(
         r#"[project]
-name = "{}"
-author = "{}"
+authors = ["{real_name}"]
 entry = "main.sw"
 license = "Apache-2.0"
+name = "{project_name}"
 
 [dependencies]
 core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
-"#,
-        project_name, real_name
+"#
     )
 }
 
@@ -26,28 +25,27 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
     let real_name = whoami::realname();
 
     format!(
-        r#"[package]
-name = "{}"
-version = "0.1.0"
-authors = ["{}"]
+        r#"[project]
+authors = ["{real_name}"]
 edition = "2021"
 license = "Apache-2.0"
+name = "{project_name}"
+version = "0.1.0"
 
 [dependencies]
-fuels-abigen-macro = "0.1"
-fuels-core = "0.1"
-fuels-rs = "0.1"
-fuel-gql-client = {{ version = "0.1", default-features = false }}
-fuel-tx = "0.2"
+fuel-gql-client = {{ version = "0.2", default-features = false }}
+fuel-tx = "0.3"
+fuels-abigen-macro = "0.3"
+fuels-contract = "0.3"
+fuels-core = "0.3"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
+harness = true
 name = "integration_tests"
 path = "tests/harness.rs"
-harness = true
-"#,
-        project_name, real_name,
+"#
     )
 }
 
@@ -55,7 +53,7 @@ pub(crate) fn default_program() -> String {
     r#"script;
 
 fn main() {
-    
+
 }
 "#
     .into()
@@ -70,4 +68,27 @@ async fn harness() {
 }
 "#
     .into()
+}
+
+pub(crate) fn default_gitignore() -> String {
+    r#"out
+target
+"#
+    .into()
+}
+
+#[test]
+fn parse_default_manifest() {
+    println!(
+        "{:#?}",
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj")).unwrap()
+    )
+}
+
+#[test]
+fn parse_default_tests_manifest() {
+    println!(
+        "{:#?}",
+        toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
+    )
 }

@@ -1,16 +1,19 @@
 script;
-use basic_storage_abi::{StoreU64, StoreU64Request};
+use basic_storage_abi::StoreU64;
 
 fn main() -> u64 {
-  let addr = abi(StoreU64, 0x410eab113ce1c194952b92295f3d156bce478633feb2e0117360ff28b034a751);
-  let req = StoreU64Request {
-    key: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
-    value: 4242
-  };
+    let addr = abi(StoreU64, 0xc664e47a0de686a029134e5122383d99d0d29e54179e14c92dd433413a07620a);
+    let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let value = 4242;
 
-  addr.store_u64(10000, 0, 0x0000000000000000000000000000000000000000000000000000000000000000, req);
+    addr.store_u64 {
+        gas: 10000
+    }
+    (key, value);
 
-  let res = addr.get_u64(10000, 0, 0x0000000000000000000000000000000000000000000000000000000000000000, req.key);
-  res
+    let res = addr.get_u64 {
+        gas: 10000
+    }
+    (key);
+    res
 }
-

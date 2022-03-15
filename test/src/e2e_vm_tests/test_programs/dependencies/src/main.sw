@@ -11,7 +11,7 @@ fn main() -> bool {
     let foo = Foo {
         foo: "foo",
     };
-    let db = DoubleBar {
+    let db = ::foo::bar::double_bar::DoubleBar {
         a: 5u32,
     };
     let bar = Bar {

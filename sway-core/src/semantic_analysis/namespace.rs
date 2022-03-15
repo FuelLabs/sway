@@ -85,6 +85,7 @@ impl Namespace {
         let trait_name = CallPath {
             suffix: trait_name.suffix,
             prefixes: new_prefixes,
+            is_absolute: trait_name.is_absolute,
         };
         if self
             .implemented_traits
@@ -116,6 +117,28 @@ impl Namespace {
             }
         }
         methods
+    }
+
+    // Given a TypeInfo old_type with a set of methods available to it, make those same methods
+    // available to TypeInfo new_type. This is useful in situations where old_type is being
+    // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
+    // methods for new_type as it does for old_type.
+    pub(crate) fn copy_methods_to_type(&mut self, old_type: TypeInfo, new_type: TypeInfo) {
+        // This map grabs all (trait name, vec of methods) from self.implemented_traits
+        // corresponding to `old_type`.
+        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
+        for ((trait_name, type_info), l_methods) in &self.implemented_traits {
+            if *type_info == old_type {
+                methods.insert((*trait_name).clone(), l_methods.clone());
+            }
+        }
+
+        // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
+        // as the `TypeInfo` key.
+        for (trait_name, l_methods) in &methods {
+            self.implemented_traits
+                .insert(((*trait_name).clone(), new_type.clone()), l_methods.clone());
+        }
     }
 
     pub(crate) fn get_tuple_elems(

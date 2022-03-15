@@ -1,16 +1,23 @@
-script script {
-    fn get_global_gas() -> u64 {
-        entry:
-        v0 = asm() -> ggas {
-        }
-        ret u64 v0
-    }
-
+script {
     fn main() -> u64 {
         entry:
-        v0 = asm(r1) -> r1 {
-            bhei   r1
+        v0 = call anon_0(), !1
+        v1 = asm(r1) -> r1, !2 {
+            bhei   r1, !3
+        }
+        ret u64 v1
+    }
+
+    fn anon_0() -> u64 {
+        entry:
+        v0 = asm() -> ggas, !4 {
         }
         ret u64 v0
     }
 }
+
+!0 = filepath "/path/to/asm_block.sw"
+!1 = span !0 9 167
+!2 = span !0 214 262
+!3 = span !0 232 240
+!4 = span !0 139 165

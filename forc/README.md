@@ -4,31 +4,15 @@ Forc stands for Fuel Orchestrator. Forc provides a variety of tools and commands
 
 ## Init (`forc init`)
 
-```plaintext
-$ forc init --help
-forc-init 0.1.0
-Create a new Forc project
-
-USAGE:
-    forc init <project-name>
-
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-ARGS:
-    <project-name>
-```
-
 Creates a new project from scratch, setting up all necessary files for a complete Fuel project.
 
-```plaintext
+```console
 $ forc init my-fuel-project
 $ cd my-fuel-project
 $ tree
 .
-├── Forc.toml
 ├── Cargo.toml
+├── Forc.toml
 ├── src
 │   └── main.sw
 └── tests
@@ -43,43 +27,31 @@ A `tests/` directory is also created. The `Cargo.toml` in the root directory con
 
 ## Build (`forc build`)
 
-```plaintext
-$ forc build --help
-forc-build 0.1.0
-Compile the current or target project
+Compile the sway files of the current project.
 
-USAGE:
-    forc build [FLAGS] [OPTIONS]
-
-FLAGS:
-    -h, --help                      Prints help information
-        --offline                   Offline mode, prevents Forc from using the network when managing dependencies.
-                                    Meaning it will only try to use previously downloaded dependencies
-        --print-finalized-asm       Whether to compile to bytecode (false) or to print out the generated ASM (true)
-        --print-intermediate-asm    Whether to compile to bytecode (false) or to print out the generated ASM (true)
-    -s, --silent                    Silent mode. Don't output any warnings or errors to the command line
-    -V, --version                   Prints version information
-
-OPTIONS:
-    -o <binary-outfile>        If set, outputs a binary file representing the script bytes
-    -p, --path <path>          Path to the project, if not specified, current working directory will be used
-```
-
-Compiles Sway files.
-
-```plaintext
+```console
 $ forc build
-  Compiled script "my-fuel-project".
-  Bytecode size is 28 bytes.
+Compiled script "my-fuel-project".
+Bytecode size is 28 bytes.
 ```
+
+The output produced will depend on the project's program type. Building script, predicate and contract projects will produce their bytecode in binary format `<project-name>.bin`. Building contracts and libraries will also produce the public ABI in JSON format `<project-name>-abi.json`.
+
+By default, these artifacts are placed in the `out/` directory.
+
+If a `Forc.lock` file did not yet exist, it will be created in order to pin each of the dependencies listed in `Forc.toml` to a specific commit or version.
+
+## Update (`forc update`)
+
+Updates each of the dependencies so that they point to the latest suitable commit or version given their dependency declaration. The result is written to the `Forc.lock` file.
 
 ## Test (`forc test`)
 
-You can write tests in Rust using our [Rust SDK](https://github.com/FuelLabs/fuels-rs/). These tests can be run using either the Rust compiler / Cargo, or you can opt to use `forc test`, which will look for Rust tests under the `tests/` directory (which is created automatically with `forc init`).
+You can write tests in Rust using our [Rust SDK](https://github.com/FuelLabs/fuels-rs). These tests can be run using `forc test`, which will look for Rust tests under the `tests/` directory (which is created automatically with `forc init`).
 
 For example, let's write tests against this contract, written in Sway:
 
-```Rust
+```rust
 contract;
 
 use std::storage::store_u64;
@@ -107,10 +79,10 @@ impl TestContract for Contract {
 
 Our `tests/harness.rs` file could look like:
 
-```Rust
+```rust
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
-use fuels_rs::contract::Contract;
+use fuels_contract::contract::Contract;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -124,12 +96,13 @@ async fn harness() {
     // Build the contract
     let salt: [u8; 32] = rng.gen();
     let salt = Salt::from(salt);
+
     let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
+    println!("Contract deployed @ {:x}", contract_id);
 
-    // Launch a local network and deploy the contract
-    let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
-
-    let contract_instance = MyContract::new(compiled, client);
+    let contract_instance = MyContract::new(contract_id.to_string(), client);
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
@@ -154,7 +127,7 @@ async fn harness() {
 
 Then, in the root of our project, running `forc test` will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:
 
-```plaintext
+```console
 $ forc test
 
 running 1 test
@@ -163,63 +136,15 @@ test harness ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 ```
 
-Alternatively, you could run `cargo test`.
-
-Alternatively, you could opt to write these tests in Typescript, using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
+Alternatively, you could opt to write these tests in Typescript, using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts).
 
 ## Run (`forc run`)
 
-```plaintext
-$ forc run --help
-forc-run 0.1.0
-Run script project. Crafts a script transaction then sends it to a running node
-
-USAGE:
-    forc run [FLAGS] [OPTIONS] [node-url]
-
-FLAGS:
-        --dry-run                   Only craft transaction and print it out
-    -h, --help                      Prints help information
-    -k, --kill-node                 Kill Fuel Node Client after running the code. This is only available if the node is
-                                    started from `forc run`
-    -r, --pretty-print              Pretty-print the outputs from the node
-        --print-finalized-asm       Whether to compile to bytecode (false) or to print out the generated ASM (true)
-        --print-intermediate-asm    Whether to compile to bytecode (false) or to print out the generated ASM (true)
-    -s, --silent                    Silent mode. Don't output any warnings or errors to the command line
-    -V, --version                   Prints version information
-
-OPTIONS:
-    -o <binary-outfile>        If set, outputs a binary file representing the script bytes
-    -d, --data <data>          Hex string of data to input to script
-    -p, --path <path>          Path to the project, if not specified, current working directory will be used
-
-ARGS:
-    <node-url>    URL of the Fuel Client Node [env: FUEL_NODE_URL=]  [default: 127.0.0.1:4000]
-```
+Run script project. Crafts a script transaction then sends it to a running node.
 
 ## Deploy (`forc deploy`)
 
-```plaintext
-$ forc deploy --help
-forc-deploy 0.1.0
-Deploy contract project. Crafts a contract deployment transaction then sends it to a running node
-
-USAGE:
-    forc deploy [FLAGS] [OPTIONS]
-
-FLAGS:
-    -h, --help                      Prints help information
-        --offline                   Offline mode, prevents Forc from using the network when managing dependencies.
-                                    Meaning it will only try to use previously downloaded dependencies
-        --print-finalized-asm       Whether to compile to bytecode (false) or to print out the generated ASM (true)
-        --print-intermediate-asm    Whether to compile to bytecode (false) or to print out the generated ASM (true)
-    -s, --silent                    Silent mode. Don't output any warnings or errors to the command line
-    -V, --version                   Prints version information
-
-OPTIONS:
-    -o <binary-outfile>        If set, outputs a binary file representing the script bytes
-    -p, --path <path>          Path to the project, if not specified, current working directory will be used
-```
+Deploy contract project. Crafts a contract deployment transaction then sends it to a running node.
 
 Alternatively, you could deploy your contract programmatically using our SDK:
 
@@ -230,75 +155,29 @@ let salt = Salt::from(salt);
 let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 
 // Launch a local network and deploy the contract
-let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
-```
-
-## Update (`forc update`)
-
-```plaintext
-$ forc update --help
-forc-update 0.1.0
-Update dependencies in the Forc dependencies directory
-
-USAGE:
-    forc update [FLAGS] [OPTIONS]
-
-FLAGS:
-    -c, --check      Checks if the dependencies have newer versions. Won't actually perform the update, will output
-                     which ones are up-to-date and outdated
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-OPTIONS:
-    -p, --path <path>             Path to the project, if not specified, current working directory will be used
-    -d <target-dependency>        Dependency to be updated. If not set, all dependencies will be updated
+let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+let client = Provider::launch(Config::local_node()).await.unwrap();
+let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
 ```
 
 ## Format (`forc fmt`)
 
-```plaintext
-$ forc fmt --help
-forc-fmt 0.1.0
-Format all Sway files of the current project
-
-USAGE:
-    forc fmt [FLAGS]
-
-FLAGS:
-    -c, --check      Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1 and prints a diff
-                     if formatting is required
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-```
+Format all Sway files of the current project.
 
 ## Parse bytecode (`forc parse-bytecode`)
 
-```plaintext
-$ forc parse-bytecode --help
-forc-parse-bytecode 0.1.0
-Parse bytecode file into a debug format
-
-USAGE:
-    forc parse-bytecode <file-path>
-
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-ARGS:
-    <file-path>
-```
+Parse bytecode file into a debug format.
 
 Example with the initial project created using `forc init`:
 
-```plaintext
+```console
 $ forc build -o obj
-  Compiled script "my-fuel-project".
-  Bytecode size is 28 bytes.
+Compiled script "my-fuel-project".
+Bytecode size is 28 bytes.
 ```
 
-```plaintext
-my-second-project forc parse-bytecode obj
+```console
+my-second-project$ forc parse-bytecode obj
 
  half-word  byte  op               raw                notes
          0  0     JI(4)            [144, 0, 0, 4]     conditionally jumps to byte 16

@@ -1,8 +1,10 @@
+use crate::ops::forc_build;
+use anyhow::Result;
+use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 use std::thread;
-use structopt::{self, StructOpt};
 
 /// Run Rust-based tests on current project.
 /// As of now, `forc test` is a simple wrapper on
@@ -11,13 +13,16 @@ use structopt::{self, StructOpt};
 /// You can opt to either run these Rust tests by
 /// using `forc test` or going inside the package
 /// and using `cargo test`.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct Command {
     /// If specified, only run tests containing this string in their names
     pub test_name: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
+pub(crate) fn exec(command: Command) -> Result<()> {
+    // Ensure the project builds before running tests.
+    forc_build::build(Default::default())?;
+
     // Cargo args setup
     let mut args: Vec<String> = vec!["test".into()];
     if let Some(name) = command.test_name {

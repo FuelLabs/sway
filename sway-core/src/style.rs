@@ -18,7 +18,7 @@ fn camel_case_split_words(ident: &str) -> impl Iterator<Item = &str> {
         if ident.is_empty() {
             return None;
         }
-        let index = find_camel_case_word_boundary(ident).unwrap_or_else(|| ident.len());
+        let index = find_camel_case_word_boundary(ident).unwrap_or(ident.len());
         let word = &ident[..index];
         ident = &ident[index..];
         Some(word)
@@ -27,7 +27,7 @@ fn camel_case_split_words(ident: &str) -> impl Iterator<Item = &str> {
 
 /// Split an identifier of unknown style into words.
 fn split_words(ident: &str) -> impl Iterator<Item = &str> {
-    ident.split('_').map(camel_case_split_words).flatten()
+    ident.split('_').flat_map(camel_case_split_words)
 }
 
 /// Detect whether an identifier is written in snake_case.
@@ -72,14 +72,14 @@ pub fn to_snake_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
-        ret.extend(word.chars().map(char::to_lowercase).flatten());
+        ret.extend(word.chars().flat_map(char::to_lowercase));
         for word in words {
             ret.push('_');
-            ret.extend(word.chars().map(char::to_lowercase).flatten());
+            ret.extend(word.chars().flat_map(char::to_lowercase));
         }
     }
     ret
@@ -91,14 +91,14 @@ pub fn to_screaming_snake_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
-        ret.extend(word.chars().map(char::to_uppercase).flatten());
+        ret.extend(word.chars().flat_map(char::to_uppercase));
         for word in words {
             ret.push('_');
-            ret.extend(word.chars().map(char::to_uppercase).flatten());
+            ret.extend(word.chars().flat_map(char::to_uppercase));
         }
     }
     ret
@@ -110,13 +110,13 @@ pub fn to_upper_camel_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
     ret.push_str(leading_underscores);
     for word in split_words(trimmed) {
         let mut chars = word.chars();
         if let Some(c) = chars.next() {
             ret.extend(c.to_uppercase());
-            ret.extend(chars.map(char::to_lowercase).flatten());
+            ret.extend(chars.flat_map(char::to_lowercase));
         }
     }
     ret

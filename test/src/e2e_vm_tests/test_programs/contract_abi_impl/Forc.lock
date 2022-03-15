@@ -1,0 +1,3 @@
+[[package]]
+name = 'contract_abi_impl'
+dependencies = []

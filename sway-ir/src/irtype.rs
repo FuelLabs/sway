@@ -88,16 +88,12 @@ pub enum AggregateContent {
 
 impl Aggregate {
     /// Return a new struct specific aggregate.
-    pub fn new_struct(context: &mut Context, name: Option<String>, field_types: Vec<Type>) -> Self {
-        let aggregate = Aggregate(
+    pub fn new_struct(context: &mut Context, field_types: Vec<Type>) -> Self {
+        Aggregate(
             context
                 .aggregates
                 .insert(AggregateContent::FieldTypes(field_types)),
-        );
-        if let Some(name) = name {
-            context.aggregate_names.insert(name, aggregate);
-        };
-        aggregate
+        )
     }
 
     /// Returna new array specific aggregate.
@@ -112,7 +108,7 @@ impl Aggregate {
     /// Get the type of (nested) aggregate fields, if found.
     pub fn get_field_type(&self, context: &Context, indices: &[u64]) -> Option<Type> {
         indices.iter().fold(Some(Type::Struct(*self)), |ty, idx| {
-            ty.map(|ty| match ty {
+            ty.and_then(|ty| match ty {
                 Type::Struct(agg) => context.aggregates[agg.0]
                     .field_types()
                     .get(*idx as usize)
@@ -121,7 +117,6 @@ impl Aggregate {
                 // Trying to index a non-aggregate.
                 _otherwise => None,
             })
-            .flatten()
         })
     }
 

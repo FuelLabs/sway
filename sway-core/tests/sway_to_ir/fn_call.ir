@@ -1,15 +1,28 @@
-script script {
-    fn a(x: u64) -> u64 {
+script {
+    fn main() -> u64 {
+        entry:
+        v0 = const u64 0, !1
+        v1 = call anon_0(v0), !2
+        v2 = const u64 1, !3
+        v3 = call anon_1(v2), !4
+        ret u64 v3
+    }
+
+    fn anon_0(x !5: u64) -> u64 {
         entry:
         ret u64 x
     }
 
-    fn main() -> u64 {
+    fn anon_1(x !6: u64) -> u64 {
         entry:
-        v0 = const u64 0
-        v1 = call a(v0)
-        v2 = const u64 1
-        v3 = call a(v2)
-        ret u64 v3
+        ret u64 x
     }
 }
+
+!0 = filepath "/path/to/fn_call.sw"
+!1 = span !0 65 66
+!2 = span !0 9 38
+!3 = span !0 75 76
+!4 = span !0 9 38
+!5 = span !0 14 15
+!6 = span !0 14 15

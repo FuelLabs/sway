@@ -12,23 +12,19 @@ use crate::{
 
 use sway_types::span::{join_spans, Span};
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
 use declaration::TypedTraitFn;
-pub(crate) use declaration::{
-    OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
-    TypedVariableDeclaration, VariableMutability,
-};
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
     TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
     TypedStructField,
+};
+pub(crate) use declaration::{
+    TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
 };
 
 pub mod impl_trait;
@@ -90,6 +86,31 @@ impl std::fmt::Debug for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        match &self.content {
+            TypedAstNodeContent::ReturnStatement(ref stmt) => vec![stmt],
+            TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
+                exp.gather_return_statements()
+            }
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref condition,
+                ref body,
+                ..
+            }) => {
+                let mut buf = condition.gather_return_statements();
+                for node in &body.contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
+            TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
+            TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
+        }
+    }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -136,7 +157,6 @@ impl TypedAstNode {
             self_type,
             build_config,
             dead_code_graph,
-            dependency_graph,
             opts,
             ..
         } = arguments;
@@ -165,7 +185,6 @@ impl TypedAstNode {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts,
             })
@@ -181,6 +200,9 @@ impl TypedAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
+                        ImportType::SelfImport => {
+                            namespace.self_import(from_module, a.call_path, a.alias)
+                        }
                         ImportType::Item(s) => {
                             namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
@@ -193,13 +215,7 @@ impl TypedAstNode {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(
-                            a,
-                            namespace,
-                            build_config,
-                            dead_code_graph,
-                            dependency_graph
-                        ),
+                        import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -223,7 +239,6 @@ impl TypedAstNode {
                                     });
                                     insert_type(TypeInfo::ErrorRecovery)
                                 });
-
                             let result = {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,
@@ -235,7 +250,6 @@ impl TypedAstNode {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph,
                                     mode: Mode::NonAbi,
                                     opts,
                                 })
@@ -251,6 +265,7 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     body,
                                     is_mutable: is_mutable.into(),
+                                    const_decl_origin: false,
                                     type_ascription,
                                 });
                             namespace.insert(name, typed_var_decl.clone());
@@ -283,6 +298,7 @@ impl TypedAstNode {
                                     } else {
                                         VariableMutability::Immutable
                                     },
+                                    const_decl_origin: true,
                                     type_ascription: insert_type(type_ascription),
                                 });
                             namespace.insert(name, typed_const_decl.clone());
@@ -313,7 +329,6 @@ impl TypedAstNode {
                                     build_config,
                                     dead_code_graph,
                                     mode: Mode::NonAbi,
-                                    dependency_graph,
                                     opts
                                 }),
                                 error_recovery_function_declaration(fn_decl),
@@ -331,6 +346,7 @@ impl TypedAstNode {
                             interface_surface,
                             methods,
                             type_parameters,
+                            supertraits,
                             visibility,
                         }) => {
                             // type check the interface surface
@@ -340,6 +356,27 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
+
+                            // Error checking. Make sure that each supertrait exists and that none
+                            // of the supertraits are actually an ABI declaration
+                            for supertrait in &supertraits {
+                                match namespace
+                                    .get_call_path(&supertrait.name)
+                                    .ok(&mut warnings, &mut errors)
+                                {
+                                    Some(TypedDeclaration::TraitDeclaration(_)) => (),
+                                    Some(TypedDeclaration::AbiDeclaration(_)) => {
+                                        errors.push(CompileError::AbiAsSupertrait {
+                                            span: name.span().clone(),
+                                        })
+                                    }
+                                    _ => errors.push(CompileError::TraitNotFound {
+                                        name: supertrait.name.span().as_str().to_string(),
+                                        span: name.span().clone(),
+                                    }),
+                                }
+                            }
+
                             let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
@@ -347,6 +384,7 @@ impl TypedAstNode {
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
+                                    is_absolute: false,
                                 },
                                 TypeInfo::SelfType,
                                 interface_surface
@@ -363,7 +401,6 @@ impl TypedAstNode {
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -375,6 +412,7 @@ impl TypedAstNode {
                                     interface_surface,
                                     methods,
                                     type_parameters,
+                                    supertraits,
                                     visibility,
                                 });
                             namespace.insert(name, trait_decl.clone());
@@ -390,7 +428,6 @@ impl TypedAstNode {
                                         self_type,
                                         build_config,
                                         dead_code_graph,
-                                        dependency_graph,
                                         // this is unused by `reassignment`
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
                                         help_text: Default::default(),
@@ -411,7 +448,6 @@ impl TypedAstNode {
                                 crate_namespace,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 opts,
                             ),
                             return err(warnings, errors),
@@ -426,9 +462,12 @@ impl TypedAstNode {
                             block_span,
                             ..
                         }) => {
+                            // Resolve the Self type as it's most likely still 'Custom' and use the
+                            // resolved type for self instead.
                             let implementing_for_type_id =
                                 namespace.resolve_type_without_self(&type_implementing_for);
-                            // check, if this is a custom type, if it is in scope or a generic.
+                            let type_implementing_for = look_up_type_id(implementing_for_type_id);
+
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
                                 errors.push(CompileError::Internal(
@@ -463,12 +502,11 @@ impl TypedAstNode {
                                         namespace,
                                         crate_namespace,
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
-                                        help_text: "",
+                                        help_text: Default::default(),
                                         self_type: implementing_for_type_id,
                                         build_config,
                                         dead_code_graph,
                                         mode: Mode::NonAbi,
-                                        dependency_graph,
                                         opts
                                     }),
                                     continue,
@@ -479,6 +517,7 @@ impl TypedAstNode {
                             let trait_name = CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_with_override("r#Self", block_span.clone()),
+                                is_absolute: false,
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
@@ -572,7 +611,6 @@ impl TypedAstNode {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -608,7 +646,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -625,14 +662,21 @@ impl TypedAstNode {
                                 checkee: expr.clone(),
                                 namespace,
                                 crate_namespace,
-                                return_type_annotation,
+                                // we use "unknown" here because return statements do not
+                                // necessarily follow the type annotation of their immediate
+                                // surrounding context. Because a return statement is control flow
+                                // that breaks out to the nearest function, we need to type check
+                                // it against the surrounding function.
+                                // That is impossible here, as we don't have that information. It
+                                // is the responsibility of the function declaration to type check
+                                // all return statements contained within it.
+                                return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text:
                                     "Returned value must match up with the function return type \
                                  annotation.",
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph,
                                 mode: Mode::NonAbi,
                                 opts
                             }),
@@ -653,7 +697,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -675,7 +718,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -696,7 +738,6 @@ impl TypedAstNode {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -746,7 +787,6 @@ fn import_new_file(
     namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -790,18 +830,13 @@ fn import_new_file(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
+    let dep_namespace = create_new_scope(namespace);
     let crate::InnerDependencyCompileResult {
         name,
         namespace: module,
         ..
     } = check!(
-        crate::compile_inner_dependency(
-            file_as_string,
-            namespace,
-            dep_config,
-            dead_code_graph,
-            dependency_graph
-        ),
+        crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph),
         return err(warnings, errors),
         warnings,
         errors
@@ -827,7 +862,6 @@ fn reassignment(
         self_type,
         build_config,
         dead_code_graph,
-        dependency_graph,
         opts,
         ..
     } = arguments;
@@ -882,7 +916,6 @@ fn reassignment(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts
                 }),
@@ -921,7 +954,6 @@ fn reassignment(
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
                         mode: Mode::NonAbi,
                         opts
                     }),
@@ -985,7 +1017,6 @@ fn reassignment(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
@@ -1077,7 +1108,6 @@ fn type_check_trait_methods(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1122,6 +1152,7 @@ fn type_check_trait_methods(
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
+                        const_decl_origin: false,
                         type_ascription: r#type,
                     }),
                 );
@@ -1214,7 +1245,6 @@ fn type_check_trait_methods(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
                 mode: Mode::NonAbi,
                 opts: TCOpts { purity }
             }),

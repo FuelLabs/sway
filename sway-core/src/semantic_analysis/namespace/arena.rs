@@ -35,6 +35,12 @@ pub trait NamespaceWrapper {
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()>;
+    fn self_import(
+        &self,
+        from_module: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()>;
     fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef>;
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
     /// method in the namespace. Requires `args_buf` because of some special casing for the
@@ -56,6 +62,7 @@ pub trait NamespaceWrapper {
     fn star_import(&self, from_module: Option<NamespaceRef>, path: Vec<Ident>)
         -> CompileResult<()>;
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration>;
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo);
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
     /// `foo::bar::function`
@@ -74,7 +81,7 @@ pub trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)>;
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)>;
     fn get_tuple_elems(
         &self,
         ty: TypeId,
@@ -135,8 +142,8 @@ impl NamespaceWrapper for NamespaceRef {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.as_str()) {
+            let TypedStructField { r#type, .. } =
+                match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -145,7 +152,7 @@ impl NamespaceWrapper for NamespaceRef {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name,
+                            struct_name: struct_name.to_string(),
                             available_fields: available_fields.join(", "),
                             span: ident.span().clone(),
                         });
@@ -153,7 +160,7 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                 };
 
-            match crate::type_engine::look_up_type_id(r#type) {
+            match look_up_type_id(r#type) {
                 TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
@@ -183,13 +190,15 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
+    /// Returns a tuple of all of the fields of a struct and the struct's name.
     fn get_struct_type_fields(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
-        let ty = crate::type_engine::look_up_type_id(ty);
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
+        let ty = look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
@@ -267,6 +276,13 @@ impl NamespaceWrapper for NamespaceRef {
     fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         read_module(|ns| ns.get_methods_for_type(r#type), *self)
     }
+    fn copy_methods_to_type(&self, old_type: TypeInfo, new_type: TypeInfo) {
+        write_module(
+            move |ns| ns.copy_methods_to_type(old_type.clone(), new_type),
+            *self,
+        )
+    }
+
     fn star_import(
         &self,
         from_module: Option<NamespaceRef>,
@@ -304,10 +320,16 @@ impl NamespaceWrapper for NamespaceRef {
             namespace,
         );
         write_module(
-            move |m| {
+            |m| {
                 m.implemented_traits
                     .extend(&mut implemented_traits.into_iter());
                 for symbol in symbols {
+                    if m.use_synonyms.contains_key(&symbol) {
+                        errors.push(CompileError::StarImportShadowsOtherSymbol {
+                            name: symbol.as_str().to_string(),
+                            span: symbol.span().clone(),
+                        });
+                    }
                     m.use_synonyms.insert(symbol, path.clone());
                 }
             },
@@ -487,11 +509,23 @@ impl NamespaceWrapper for NamespaceRef {
                         // no matter what, import it this way though.
                         match alias.clone() {
                             Some(alias) => {
+                                if m.use_synonyms.contains_key(&alias) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: alias.as_str().to_string(),
+                                        span: alias.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(alias.clone(), path.clone());
                                 m.use_aliases
                                     .insert(alias.as_str().to_string(), item.clone());
                             }
                             None => {
+                                if m.use_synonyms.contains_key(item) {
+                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                        name: item.as_str().to_string(),
+                                        span: item.span().clone(),
+                                    });
+                                }
                                 m.use_synonyms.insert(item.clone(), path.clone());
                             }
                         };
@@ -519,6 +553,21 @@ impl NamespaceWrapper for NamespaceRef {
 
         ok((), warnings, errors)
     }
+
+    /// Pull a single item from a module and import it into this namespace.
+    /// The item we want to import is basically the last item in path because
+    /// this is a self import.
+    fn self_import(
+        &self,
+        from_namespace: Option<NamespaceRef>,
+        path: Vec<Ident>,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        let mut new_path = path;
+        let last_item = new_path.pop().expect("guaranteed by grammar");
+        self.item_import(from_namespace, new_path, &last_item, alias)
+    }
+
     fn insert_trait_implementation(
         &self,
         trait_name: CallPath,
@@ -549,30 +598,43 @@ impl NamespaceWrapper for NamespaceRef {
         Ok(match ty {
             TypeInfo::Custom { ref name } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                        name,
-                        fields,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
-                    Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
-                        name,
-                        variants,
-                        ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
-                    }),
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let old_struct = TypeInfo::Struct {
+                            name: decl.name.clone(),
+                            fields: decl.fields.clone(),
+                        };
+                        let mut new_struct = old_struct.clone();
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = decl.monomorphize();
+                            new_struct = TypeInfo::Struct {
+                                name: new_decl.name.clone(),
+                                fields: new_decl.fields,
+                            };
+                            self.copy_methods_to_type(old_struct, new_struct.clone());
+                        }
+                        insert_type(new_struct)
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let old_enum = TypeInfo::Enum {
+                            name: decl.name.clone(),
+                            variant_types: decl.variants.clone(),
+                        };
+                        let mut new_enum = old_enum.clone();
+                        if !decl.type_parameters.is_empty() {
+                            // the following line is infallible because an error can only arise
+                            // from monomorphizing if there are type arguments specified. Here, we
+                            // are passing in vec![], which therefore means this is infallible.
+                            let new_decl = infallible(decl.monomorphize(vec![], self_type));
+                            new_enum = TypeInfo::Enum {
+                                name: new_decl.name.clone(),
+                                variant_types: new_decl.variants,
+                            };
+                            self.copy_methods_to_type(old_enum, new_enum.clone());
+                        }
+                        insert_type(new_enum)
+                    }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
+                        insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => return Err(()),
                 }
@@ -593,25 +655,16 @@ impl NamespaceWrapper for NamespaceRef {
                         name,
                         fields,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Struct {
-                        name: name.as_str().to_string(),
-                        fields: fields
-                            .iter()
-                            .map(TypedStructField::as_owned_typed_struct_field)
-                            .collect::<Vec<_>>(),
-                    }),
+                    })) => insert_type(TypeInfo::Struct { name, fields }),
                     Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                         name,
                         variants,
                         ..
-                    })) => crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect(),
+                    })) => insert_type(TypeInfo::Enum {
+                        name,
+                        variant_types: variants,
                     }),
-                    _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+                    _ => insert_type(TypeInfo::Unknown),
                 }
             }
             TypeInfo::Ref(id) => id,

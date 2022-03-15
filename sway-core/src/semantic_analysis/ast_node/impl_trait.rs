@@ -6,15 +6,11 @@ use crate::{
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
     semantic_analysis::*,
-    type_engine::{
-        insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
-    },
+    type_engine::*,
     CallPath, Ident,
 };
 
 use sway_types::span::Span;
-
-use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
@@ -22,7 +18,6 @@ pub(crate) fn implementation_of_trait(
     crate_namespace: NamespaceRef,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<TypedDeclaration> {
     let mut errors = vec![];
@@ -74,7 +69,6 @@ pub(crate) fn implementation_of_trait(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::NonAbi,
-                    dependency_graph,
                     opts,
                 ),
                 return err(warnings, errors),
@@ -135,7 +129,6 @@ pub(crate) fn implementation_of_trait(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
-                    dependency_graph,
                     opts,
                 ),
                 return err(warnings, errors),
@@ -190,7 +183,7 @@ fn type_check_trait_implementation(
     methods: &[FunctionDeclaration],
     trait_name: &Ident,
     type_arguments: &[TypeParameter],
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     _self_type: TypeId,
     build_config: &BuildConfig,
@@ -199,7 +192,6 @@ fn type_check_trait_implementation(
     type_implementing_for: TypeId,
     type_implementing_for_span: &Span,
     mode: Mode,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
@@ -229,7 +221,6 @@ fn type_check_trait_implementation(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph,
                 opts,
             }),
             continue,
@@ -290,11 +281,12 @@ fn type_check_trait_implementation(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match crate::type_engine::unify_with_self(
+                            match unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
+                                "",
                             ) {
                                 Ok(mut ws) => {
                                     warnings.append(&mut ws);
@@ -317,11 +309,12 @@ fn type_check_trait_implementation(
                         errors.append(&mut maybe_err);
                     }
 
-                    match crate::type_engine::unify_with_self(
+                    match unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
+                        "",
                     ) {
                         Ok(mut ws) => {
                             warnings.append(&mut ws);
@@ -358,6 +351,7 @@ fn type_check_trait_implementation(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.clone(),
+            is_absolute: false,
         },
         match resolve_type(type_implementing_for, type_implementing_for_span) {
             Ok(o) => o,
@@ -380,12 +374,11 @@ fn type_check_trait_implementation(
                 namespace: local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: "",
+                help_text: Default::default(),
                 self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph,
                 opts,
             }),
             continue,

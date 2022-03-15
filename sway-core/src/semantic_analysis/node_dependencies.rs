@@ -82,17 +82,14 @@ fn find_recursive_call_chain(
                 ))
             };
         }
-        decl_dependencies
-            .get(fn_sym)
-            .map(|deps_set| {
-                chain.push(fn_sym_ident.clone());
-                let result = deps_set.deps.iter().find_map(|dep_sym| {
-                    find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
-                });
-                chain.pop();
-                result
-            })
-            .flatten()
+        decl_dependencies.get(fn_sym).and_then(|deps_set| {
+            chain.push(fn_sym_ident.clone());
+            let result = deps_set.deps.iter().find_map(|dep_sym| {
+                find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
+            });
+            chain.pop();
+            result
+        })
     } else {
         None
     }
@@ -254,8 +251,13 @@ impl Dependencies {
                 interface_surface,
                 methods,
                 type_parameters,
+                supertraits,
                 ..
             }) => self
+                .gather_from_iter(supertraits.iter(), |deps, sup| {
+                    deps.gather_from_call_path(&sup.name, false, false)
+                        .gather_from_traits(&sup.type_parameters)
+                })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
                         deps.gather_from_typeinfo(&param.r#type)
@@ -371,8 +373,9 @@ impl Dependencies {
                 fields,
                 ..
             } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.as_str().to_string()));
+                self.deps.insert(DependentSymbol::Symbol(
+                    struct_name.suffix.as_str().to_string(),
+                ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
@@ -415,7 +418,13 @@ impl Dependencies {
             Expression::Tuple { fields, .. } => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
+            Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
+            Expression::IfLet {
+                expr, scrutinee, ..
+            } => self.gather_from_expr(expr).gather_from_scrutinee(scrutinee),
+            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
+            Expression::SizeOfType { .. } => self,
         }
     }
 

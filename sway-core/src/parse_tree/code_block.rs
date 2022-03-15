@@ -4,6 +4,7 @@ use crate::{
     error::*,
     parse_tree::{Expression, ReturnStatement},
     parser::Rule,
+    span::Span,
     AstNode, AstNodeContent, Declaration,
 };
 
@@ -18,6 +19,9 @@ pub struct CodeBlock {
 }
 
 impl CodeBlock {
+    pub fn span(&self) -> &Span {
+        &self.whole_block_span
+    }
     pub(crate) fn parse_from_pair(
         block: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -32,19 +36,22 @@ impl CodeBlock {
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
-            contents.push(match pair.as_rule() {
-                Rule::declaration => AstNode {
-                    content: AstNodeContent::Declaration(check!(
-                        Declaration::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    )),
+            let mut ast_nodes = match pair.as_rule() {
+                Rule::declaration => check!(
+                    Declaration::parse_from_pair(pair.clone(), config),
+                    continue,
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(|content| AstNode {
+                    content: AstNodeContent::Declaration(content),
                     span: span::Span {
                         span: pair.as_span(),
                         path: path.clone(),
                     },
-                },
+                })
+                .collect::<Vec<_>>(),
                 Rule::expr_statement => {
                     let evaluated_node = check!(
                         Expression::parse_from_pair(
@@ -55,13 +62,13 @@ impl CodeBlock {
                         warnings,
                         errors
                     );
-                    AstNode {
+                    vec![AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    }]
                 }
                 Rule::return_statement => {
                     let evaluated_node = check!(
@@ -70,13 +77,13 @@ impl CodeBlock {
                         warnings,
                         errors
                     );
-                    AstNode {
+                    vec![AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    }]
                 }
                 Rule::expr => {
                     let res = check!(
@@ -85,10 +92,10 @@ impl CodeBlock {
                         warnings,
                         errors
                     );
-                    AstNode {
+                    vec![AstNode {
                         content: AstNodeContent::ImplicitReturnExpression(res.clone()),
                         span: res.span(),
-                    }
+                    }]
                 }
                 Rule::while_loop => {
                     let res = check!(
@@ -97,13 +104,13 @@ impl CodeBlock {
                         warnings,
                         errors
                     );
-                    AstNode {
+                    vec![AstNode {
                         content: AstNodeContent::WhileLoop(res),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    }]
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
@@ -116,7 +123,8 @@ impl CodeBlock {
                     ));
                     continue;
                 }
-            })
+            };
+            contents.append(&mut ast_nodes);
         }
 
         ok(

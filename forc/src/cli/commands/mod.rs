@@ -1,5 +1,9 @@
+pub mod addr2line;
 pub mod build;
+pub mod clean;
+pub mod completions;
 pub mod deploy;
+pub mod explorer;
 pub mod format;
 pub mod init;
 pub mod json_abi;

@@ -3,10 +3,13 @@ use crate::{
     asm_lang::*,
     parse_tree::{CallPath, Literal},
     semantic_analysis::{
-        ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
+        ast_node::{
+            SizeOfVariant, TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant,
+            TypedExpressionVariant,
+        },
         TypedExpression,
     },
-    type_engine::look_up_type_id,
+    type_engine::*,
 };
 use sway_types::span::Span;
 
@@ -16,7 +19,7 @@ mod enums;
 mod if_exp;
 mod lazy_op;
 mod structs;
-mod subfield;
+pub(crate) mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
@@ -49,26 +52,16 @@ pub(crate) fn convert_expression_to_asm(
         ),
         TypedExpressionVariant::FunctionApplication {
             name,
+            contract_call_params,
             arguments,
             function_body,
             selector,
         } => {
             if let Some(metadata) = selector {
-                assert_eq!(
-                    arguments.len(),
-                    4,
-                    "this is verified in the semantic analysis stage"
-                );
                 convert_contract_call_to_asm(
                     metadata,
-                    // gas to forward
-                    &arguments[0].1,
-                    // coins to forward
-                    &arguments[1].1,
-                    // color of coins
-                    &arguments[2].1,
-                    // user parameter
-                    &arguments[3].1,
+                    contract_call_params,
+                    arguments,
                     register_sequencer,
                     return_register,
                     namespace,
@@ -156,24 +149,6 @@ pub(crate) fn convert_expression_to_asm(
             // For each opcode in the asm expression, attempt to parse it into an opcode and
             // replace references to the above registers with the newly allocated ones.
             for op in body {
-                /*
-                errors.append(
-                    &mut op
-                        .op_args
-                        .iter()
-                        .filter_map(|Ident { primary_name, span }| {
-                            if mapping_of_real_registers_to_declared_names
-                                .get(primary_name)
-                                .is_none() &&
-                            {
-                                Some(todo!("error! {:?}", primary_name))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>(),
-                );
-                */
                 let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
                     match realize_register(x.as_str(), &mapping_of_real_registers_to_declared_names)
                     {
@@ -268,12 +243,10 @@ pub(crate) fn convert_expression_to_asm(
             resolved_type_of_parent,
             prefix,
             field_to_access,
-            field_to_access_span,
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &field_to_access.name,
-            field_to_access_span.clone(),
+            field_to_access.name.clone(),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
@@ -284,48 +257,36 @@ pub(crate) fn convert_expression_to_asm(
         TypedExpressionVariant::TupleElemAccess {
             resolved_type_of_parent,
             prefix,
-            elem_to_access_num,
             elem_to_access_span,
-        } => convert_subfield_expression_to_asm(
-            &exp.span,
-            prefix,
-            &format!("{}", elem_to_access_num),
-            elem_to_access_span.clone(),
-            *resolved_type_of_parent,
-            namespace,
-            register_sequencer,
-            return_register,
-        ),
-        /*
-        TypedExpressionVariant::EnumArgAccess {
-            prefix,
-            variant_to_access,
-            arg_num_to_access,
-            resolved_type_of_parent,
-        } => convert_enum_arg_expression_to_asm(
-            &exp.span,
-            prefix,
-            variant_to_access,
-            arg_num_to_access.to_owned(),
-            *resolved_type_of_parent,
-            namespace,
-            register_sequencer,
-            return_register,
-        ),
-        */
+            elem_to_access_num,
+        } => {
+            // sorry
+            let leaked_ix: &'static str = Box::leak(Box::new(elem_to_access_num.to_string()));
+            let access_ident = Ident::new_with_override(leaked_ix, elem_to_access_span.clone());
+            convert_subfield_expression_to_asm(
+                &exp.span,
+                prefix,
+                access_ident,
+                *resolved_type_of_parent,
+                namespace,
+                register_sequencer,
+                return_register,
+            )
+        }
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
-            variant_name,
             tag,
             contents,
+            instantiation_span,
+            ..
         } => convert_enum_instantiation_to_asm(
             enum_decl,
-            variant_name,
             *tag,
             contents,
             return_register,
             namespace,
             register_sequencer,
+            instantiation_span,
         ),
         TypedExpressionVariant::IfExp {
             condition,
@@ -361,8 +322,32 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        a => {
-            println!("unimplemented: {:?}", a);
+        TypedExpressionVariant::IfLet {
+            enum_type,
+            variant,
+            then,
+            r#else,
+            variable_to_assign,
+            expr,
+        } => convert_if_let_to_asm(
+            expr,
+            *enum_type,
+            variant,
+            then,
+            r#else,
+            variable_to_assign,
+            return_register,
+            namespace,
+            register_sequencer,
+        ),
+        TypedExpressionVariant::SizeOf { variant } => convert_size_of_expression_to_asm(
+            variant,
+            namespace,
+            return_register,
+            register_sequencer,
+            exp.span.clone(),
+        ),
+        _ => {
             errors.push(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
@@ -437,6 +422,58 @@ fn convert_literal_to_asm(
     }]
 }
 
+fn convert_size_of_expression_to_asm(
+    variant: &SizeOfVariant,
+    namespace: &mut AsmNamespace,
+    return_register: &VirtualRegister,
+    register_sequencer: &mut RegisterSequencer,
+    span: Span,
+) -> CompileResult<Vec<Op>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut asm_buf = vec![];
+    let type_id = match variant {
+        SizeOfVariant::Val(exp) => {
+            asm_buf.push(Op::new_comment("size_of_val".to_string()));
+            let mut ops = check!(
+                convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
+                vec![],
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut ops);
+            exp.return_type
+        }
+        SizeOfVariant::Type(ty) => {
+            asm_buf.push(Op::new_comment("size_of".to_string()));
+            *ty
+        }
+    };
+    let ty = match resolve_type(type_id, &span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let size_in_bytes: u64 = match ty.size_in_bytes(&span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    let mut ops = convert_literal_to_asm(
+        &Literal::U64(size_in_bytes),
+        namespace,
+        return_register,
+        register_sequencer,
+        span,
+    );
+    asm_buf.append(&mut ops);
+    ok(asm_buf, warnings, errors)
+}
+
 /// For now, all functions are handled by inlining at the time of application.
 fn convert_fn_app_to_asm(
     name: &CallPath,
@@ -491,15 +528,16 @@ fn convert_fn_app_to_asm(
     ok(asm_buf, warnings, errors)
 }
 
-/// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
-/// takes four registers where the registers are expected to be pre-loaded with the desired values
-/// when this function is jumped to.
+/// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this takes
+/// a list of registers corresponding to the arguments and three additional registers corresponding
+/// to the contract call parameters (gas, coins, asset_id).  
+///
+/// All registers are expected to be
+/// pre-loaded with the desired values when this function is jumped to.
+///
 pub(crate) fn convert_abi_fn_to_asm(
     decl: &TypedFunctionDeclaration,
-    user_argument: (Ident, VirtualRegister),
-    cgas: (Ident, VirtualRegister),
-    bal: (Ident, VirtualRegister),
-    coin_color: (Ident, VirtualRegister),
+    arguments: &[(Ident, VirtualRegister)],
     parent_namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
@@ -512,10 +550,9 @@ pub(crate) fn convert_abi_fn_to_asm(
     let return_register = register_sequencer.next();
 
     // insert the arguments into the asm namespace with their registers mapped
-    namespace.insert_variable(user_argument.0, user_argument.1);
-    namespace.insert_variable(cgas.0, cgas.1);
-    namespace.insert_variable(bal.0, bal.1);
-    namespace.insert_variable(coin_color.0, coin_color.1);
+    for arg in arguments {
+        namespace.insert_variable(arg.clone().0, arg.clone().1);
+    }
     // evaluate the function body
     let mut body = check!(
         convert_code_block_to_asm(
@@ -543,4 +580,131 @@ pub(crate) fn convert_abi_fn_to_asm(
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done
     ok(asm_buf, warnings, errors)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn convert_if_let_to_asm(
+    expr: &TypedExpression,
+    _enum_type: TypeId,
+    variant: &TypedEnumVariant,
+    then: &TypedCodeBlock,
+    r#else: &Option<Box<TypedExpression>>,
+    variable_to_assign: &Ident,
+    return_register: &VirtualRegister,
+    namespace: &mut AsmNamespace,
+    register_sequencer: &mut RegisterSequencer,
+) -> CompileResult<Vec<Op>> {
+    // 1. evaluate the expression
+    // 2. load the expected tag into a register ($rA)
+    // 3. compare the tag to the first word of the expression's returned value
+    // 4. grab a register for `variable_to_assign`, insert it into the asm namespace
+    // 5. if the tags are equal, load the returned value from byte 1..end into `variable_to_assign`
+    // 5.5 if they are not equal, jump to the label in 7
+    // 6. evaluate the then branch with that variable in scope
+    // 7. insert a jump label for the else branch
+    // 8. evaluate the else branch, if any
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut buf = vec![];
+    // 1.
+    let expr_return_register = register_sequencer.next();
+    let mut expr_buf = check!(
+        convert_expression_to_asm(&*expr, namespace, &expr_return_register, register_sequencer),
+        vec![],
+        warnings,
+        errors
+    );
+    buf.append(&mut expr_buf);
+    // load the tag from the evaluated value
+    // as this is an enum we know the value in the register is a pointer
+    // we can therefore read a word from the register and move it into another register
+    let received_tag_register = register_sequencer.next();
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::LW(
+            received_tag_register.clone(),
+            expr_return_register.clone(),
+            VirtualImmediate12::new_unchecked(0, "infallible"),
+        )),
+        comment: "load received enum tag".into(),
+        owning_span: Some(expr.span.clone()),
+    });
+    // 2.
+    let expected_tag_register = register_sequencer.next();
+    let expected_tag_label = namespace.insert_data_value(&Literal::U64(variant.tag as u64));
+    buf.push(Op {
+        opcode: either::Either::Left(VirtualOp::LWDataId(
+            expected_tag_register.clone(),
+            expected_tag_label,
+        )),
+        comment: "load enum tag for if let".into(),
+        owning_span: Some(expr.span.clone()),
+    });
+    let label_for_else_branch = register_sequencer.get_label();
+    // 3 - 5
+    buf.push(Op {
+        opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
+            expected_tag_register,
+            received_tag_register,
+            label_for_else_branch.clone(),
+        )),
+        comment: "jump to if let's else branch".into(),
+        owning_span: Some(expr.span.clone()),
+    });
+    // 6.
+    // put the destructured variable into the namespace for the then branch, but not otherwise
+    let mut then_branch_asm_namespace = namespace.clone();
+    let variable_to_assign_register = register_sequencer.next();
+    then_branch_asm_namespace.insert_variable(
+        variable_to_assign.clone(),
+        variable_to_assign_register.clone(),
+    );
+    // load the word that is at the expr return register + 1 word
+    // + 1 word is to account for the enum tag
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::LW(
+            variable_to_assign_register,
+            expr_return_register,
+            VirtualImmediate12::new_unchecked(1, "infallible"),
+        )),
+        owning_span: Some(then.span().clone()),
+        comment: "Load destructured value into register".into(),
+    });
+
+    // 6
+    buf.append(&mut check!(
+        convert_code_block_to_asm(
+            then,
+            &mut then_branch_asm_namespace,
+            register_sequencer,
+            Some(return_register)
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    ));
+
+    // add the data section from the then branch back to the main one
+
+    namespace.overwrite_data_section(then_branch_asm_namespace);
+
+    let label_for_after_else_branch = register_sequencer.get_label();
+    if let Some(r#else) = r#else {
+        buf.push(Op::jump_to_label_comment(
+            label_for_after_else_branch.clone(),
+            "jump to after the else branch",
+        ));
+
+        buf.push(Op::unowned_jump_label(label_for_else_branch));
+
+        buf.append(&mut check!(
+            convert_expression_to_asm(r#else, namespace, return_register, register_sequencer),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+
+        buf.push(Op::unowned_jump_label(label_for_after_else_branch));
+    }
+
+    ok(buf, warnings, errors)
 }

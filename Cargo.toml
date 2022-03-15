@@ -2,17 +2,26 @@
 resolver = "2"
 members = [
     "docstrings",
+    "examples/build-all-examples",
     "forc",
+    "forc-pkg",
+    "forc-util",
     "parser",
     "sway-core",
     "sway-fmt",
     "sway-ir",
-    "sway-server",
+    "sway-lsp",
     "sway-types",
     "sway-utils",
     "test",
-    "test-sig-gen-util"
+    "test-sig-gen-util",
+]
+exclude = [
+    "examples/fizzbuzz",
+    "examples/hello_world",
+    "examples/subcurrency",
+    "examples/wallet_smart_contract",
 ]
 
-[profile.dev.package.sway-server]
+[profile.dev.package.sway-lsp]
 debug = 2

@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM rust:1.56 as builder
+FROM rust:1.58.1 as builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

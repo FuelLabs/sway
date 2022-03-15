@@ -56,6 +56,15 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
     }
 }
 
+pub(crate) fn infallible<T>(res: CompileResult<T>) -> T {
+    match res.value {
+        Some(x) if res.errors.is_empty() && res.warnings.is_empty() => x,
+        _ => {
+            panic!("Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues")
+        }
+    }
+}
+
 /// Denotes a recovered or non-error state
 pub(crate) fn ok<T>(
     value: T,
@@ -94,6 +103,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+
     pub fn ok(
         mut self,
         warnings: &mut Vec<CompileWarning>,
@@ -148,6 +165,7 @@ pub struct CompileWarning {
     pub warning_content: Warning,
 }
 
+#[derive(Clone, Copy)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
@@ -381,6 +399,8 @@ pub enum CompileError {
         span: Span,
         err: pest::error::Error<Rule>,
     },
+    #[error("Error parsing input: {err:?}")]
+    ParseError { span: Span, err: String },
     #[error(
         "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
          predicate at the top level."
@@ -657,8 +677,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -713,8 +733,8 @@ pub enum CompileError {
     MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
-    #[error("Trait \"{name}\" does not exist in this scope.")]
-    TraitNotFound { name: Ident, span: Span },
+    #[error("Cannot find trait \"{name}\" in this scope.")]
+    TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -737,8 +757,6 @@ pub enum CompileError {
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },
-    #[error("An ABI function must accept exactly four arguments.")]
-    InvalidNumberOfAbiParams { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
         span: Span,
@@ -754,8 +772,6 @@ pub enum CompileError {
         provided_args: usize,
         span: Span,
     },
-    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
-    AbiFunctionRequiresSpecificSignature { span: Span },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
     ArgumentParameterTypeMismatch {
         span: Span,
@@ -788,8 +804,16 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
+    TupleOutOfBounds {
+        index: usize,
+        count: usize,
+        span: Span,
+    },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
+    StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -806,6 +830,42 @@ pub enum CompileError {
     IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
     IntegerContainsInvalidDigit { span: Span, ty: String },
+    #[error("Unexpected alias after an asterisk in an import statement.")]
+    AsteriskWithAlias { span: Span },
+    #[error("A trait cannot be a subtrait of an ABI.")]
+    AbiAsSupertrait { span: Span },
+    #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
+    NameDefinedMultipleTimesForTrait {
+        fn_name: String,
+        trait_name: String,
+        span: Span,
+    },
+    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
+    SupertraitImplMissing {
+        supertrait_name: String,
+        type_name: String,
+        span: Span,
+    },
+    #[error(
+        "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
+    )]
+    SupertraitImplRequired {
+        supertrait_name: String,
+        trait_name: String,
+        span: Span,
+    },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
+    #[error(
+        "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
+    )]
+    ContractCallParamRepeated { param_name: String, span: Span },
+    #[error(
+        "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
+    )]
+    UnrecognizedContractParam { param_name: String, span: Span },
+    #[error("Attempting to specify a contract method parameter for a non-contract function call")]
+    CallParamForNonContractCallMethod { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -902,6 +962,7 @@ impl CompileError {
             Unimplemented(_, span) => span,
             TypeError(err) => err.internal_span(),
             ParseFailure { span, .. } => span,
+            ParseError { span, .. } => span,
             InvalidTopLevelItem(_, span) => span,
             Internal(_, span) => span,
             InternalOwned(_, span) => span,
@@ -956,7 +1017,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
@@ -980,11 +1041,9 @@ impl CompileError {
             TooManyArgumentsForFunction { span, .. } => span,
             TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
-            InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
             ImplAbiForNonContract { span, .. } => span,
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
-            AbiFunctionRequiresSpecificSignature { span, .. } => span,
             ArgumentParameterTypeMismatch { span, .. } => span,
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
@@ -995,7 +1054,9 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PatternMatchingAlgorithmFailure(_, span) => span,
@@ -1004,6 +1065,15 @@ impl CompileError {
             IntegerTooLarge { span, .. } => span,
             IntegerTooSmall { span, .. } => span,
             IntegerContainsInvalidDigit { span, .. } => span,
+            AsteriskWithAlias { span, .. } => span,
+            AbiAsSupertrait { span, .. } => span,
+            NameDefinedMultipleTimesForTrait { span, .. } => span,
+            SupertraitImplMissing { span, .. } => span,
+            SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
+            ContractCallParamRepeated { span, .. } => span,
+            UnrecognizedContractParam { span, .. } => span,
+            CallParamForNonContractCallMethod { span, .. } => span,
         }
     }
 
