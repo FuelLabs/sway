@@ -35,8 +35,8 @@ pub fn clean(command: CleanCommand) -> Result<()> {
         .arg("clean")
         .stderr(process::Stdio::inherit())
         .stdout(process::Stdio::inherit());
-        // .output() // uncommenting these will output an error should a Cargo.toml file be missing
-        // .map_err(|e| e)?;
+    // .output() // uncommenting these will output an error should a Cargo.toml file be missing
+    // .map_err(|e| e)?;
 
     Ok(())
 }
