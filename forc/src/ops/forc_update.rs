@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, Manifest};
 use forc_util::lock_path;
 use std::{fs, path::PathBuf};
-use sway_utils::find_manifest_dir;
+use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
 /// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated
@@ -31,7 +31,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let manifest_dir = match find_manifest_dir(&this_dir) {
+    let manifest_dir = match find_manifest_dir(&this_dir, MANIFEST_FILE_NAME) {
         Some(dir) => dir,
         None => {
             return Err(anyhow!(

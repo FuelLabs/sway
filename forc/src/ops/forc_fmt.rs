@@ -23,7 +23,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
 fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     let curr_dir = std::env::current_dir()?;
 
-    match find_manifest_dir(&curr_dir) {
+    match find_manifest_dir(&curr_dir, constants::MANIFEST_FILE_NAME) {
         Some(path) => {
             let mut manifest_file = path.clone();
             manifest_file.push(constants::MANIFEST_FILE_NAME);

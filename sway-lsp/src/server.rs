@@ -1,4 +1,5 @@
 use crate::capabilities;
+use sway_utils::constants::MANIFEST_FILE_NAME;
 use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
@@ -29,7 +30,7 @@ impl Backend {
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
-        if let Some(path) = find_manifest_dir(&curr_dir) {
+        if let Some(path) = find_manifest_dir(&curr_dir, MANIFEST_FILE_NAME) {
             let files = get_sway_files(path);
 
             for file_path in files {

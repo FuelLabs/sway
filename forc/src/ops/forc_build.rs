@@ -38,7 +38,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         std::env::current_dir()?
     };
 
-    let manifest_dir = match find_manifest_dir(&this_dir) {
+    let manifest_dir = match find_manifest_dir(&this_dir, MANIFEST_FILE_NAME) {
         Some(dir) => dir,
         None => {
             bail!(
