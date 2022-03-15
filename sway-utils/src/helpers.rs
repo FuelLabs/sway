@@ -21,6 +21,22 @@ pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     }
     None
 }
+#[allow(clippy::branches_sharing_code)]
+pub fn find_cargo_toml(starter_path: &Path) -> Option<PathBuf> {
+    let mut path = std::fs::canonicalize(starter_path).ok()?;
+    let empty_path = PathBuf::from("/");
+    while path != empty_path {
+        path.push("Cargo.toml");
+        if path.exists() {
+            path.pop();
+            return Some(path);
+        } else {
+            path.pop();
+            path.pop();
+        }
+    }
+    None
+}
 pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = vec![];
     let mut dir_entries = vec![path];

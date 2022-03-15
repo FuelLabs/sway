@@ -2,7 +2,7 @@ use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
 use forc_util::default_output_directory;
 use std::{path::PathBuf, process};
-use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
+use sway_utils::{find_cargo_toml, find_manifest_dir, MANIFEST_FILE_NAME};
 
 pub fn clean(command: CleanCommand) -> Result<()> {
     let CleanCommand { path } = command;
@@ -31,12 +31,22 @@ pub fn clean(command: CleanCommand) -> Result<()> {
 
     // Run `cargo clean`, forwarding stdout and stderr (`cargo clean` doesn't appear to output
     // anything as of writing this).
-    process::Command::new("cargo")
-        .arg("clean")
-        .stderr(process::Stdio::inherit())
-        .stdout(process::Stdio::inherit());
-    // .output() // uncommenting these will output an error should a Cargo.toml file be missing
-    // .map_err(|e| e)?;
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
+    };
+    if find_cargo_toml(&this_dir).is_some() {
+        process::Command::new("cargo")
+            .arg("clean")
+            .stderr(process::Stdio::inherit())
+            .stdout(process::Stdio::inherit())
+            .output()
+            .map_err(|e| e)?;
+    } else {
+        colour::yellow_ln!("WARNING: use of forc clean without a Cargo.toml file in ANY parent directory will result in a bypass of the cargo clean command.");
+    }
 
     Ok(())
 }
