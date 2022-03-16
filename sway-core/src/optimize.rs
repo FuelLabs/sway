@@ -1003,7 +1003,11 @@ impl FnCompiler {
             .get(name)
             .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             Ok(if ptr.is_aggregate_ptr(context) {
                 ptr_val
             } else {
@@ -1061,7 +1065,11 @@ impl FnCompiler {
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
             .map_err(|ir_error| ir_error.to_string())?;
 
-        let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+        let ptr_ty = *ptr.get_type(context);
+        let ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(ptr, ptr_ty, 0, span_md_idx);
         self.current_block
             .ins(context)
             .store(ptr_val, init_val, span_md_idx);
@@ -1122,7 +1130,11 @@ impl FnCompiler {
 
         if ast_reassignment.lhs.len() == 1 {
             // A non-aggregate; use a `store`.
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block
                 .ins(context)
                 .store(ptr_val, reassign_val, span_md_idx);
@@ -1172,7 +1184,11 @@ impl FnCompiler {
                 }
             };
 
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block.ins(context).insert_value(
                 ptr_val,
                 ty,

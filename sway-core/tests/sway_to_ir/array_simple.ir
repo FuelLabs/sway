@@ -13,9 +13,9 @@ script {
         v7 = const bool false, !4
         v8 = const u64 2, !1
         v9 = insert_element v6, [bool; 3], v7, v8, !1
-        v10 = get_ptr ptr [bool; 3] a, !5
+        v10 = get_ptr ptr [bool; 3] a, ptr [bool; 3], 0, !5
         store v9, ptr v10, !5
-        v11 = get_ptr ptr [bool; 3] a, !6
+        v11 = get_ptr ptr [bool; 3] a, ptr [bool; 3], 0, !6
         v12 = const u64 1, !7
         v13 = extract_element v11, [bool; 3], v12, !8
         ret bool v13
