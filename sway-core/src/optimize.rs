@@ -1744,7 +1744,7 @@ mod tests {
                 Some("ir") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
@@ -1797,7 +1797,7 @@ mod tests {
                 Some("sw") | Some("disabled") => (),
                 _ => panic!(
                     "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or_else(|| path.as_os_str())
+                    path.file_name().unwrap_or(path.as_os_str())
                 ),
             }
         }
