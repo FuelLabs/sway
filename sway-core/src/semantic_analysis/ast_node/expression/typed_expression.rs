@@ -33,7 +33,44 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
     pub(crate) fn deterministically_aborts(&self) -> bool {
-        todo!()
+        use TypedExpression::*;
+        match self.expression {
+            Literal(_) | VariableExpression { .. } | FunctionParameter | TupleElemAccess { .. } => {
+                false
+            }
+            ArrayIndex { prefix, index } => {
+                prefix.deterministically_aborts() || index.deterministically_aborts()
+            }
+            AsmExpression {
+                registers, body, ..
+            } => {
+                registers
+                    .iter()
+                    .any(|x| x.initializer.deterministically_aborts())
+                    || body.deterministically_aborts()
+            }
+            IfExp {
+                condition,
+                then,
+                r#else,
+                ..
+            } => {
+                condition.deterministically_aborts()
+                    || (then.deterministically_aborts()
+                        && r#else
+                            .map(|x| x.deterministically_aborts())
+                            .unwrap_or(false))
+            }
+            IfLet {
+                expr, then, r#else, ..
+            } => {
+                expr.deterministically_aborts()
+                    || (then.deterministically_aborts()
+                        && r#else
+                            .map(|x| x.deterministically_aborts())
+                            .unwrap_or(false))
+            }
+        }
     }
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
