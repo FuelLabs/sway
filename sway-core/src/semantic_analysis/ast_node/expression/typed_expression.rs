@@ -32,6 +32,9 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
+    pub(crate) fn deterministically_aborts(&self) -> bool {
+        todo!()
+    }
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -926,16 +929,13 @@ impl TypedExpression {
             warnings,
             errors
         ));
+        // if the branch aborts, then its return type doesn't matter.
         let then = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
                 namespace,
                 crate_namespace,
-                return_type_annotation: if r#else.is_some() {
-                    type_annotation
-                } else {
-                    insert_type(TypeInfo::Tuple(vec![]))
-                },
+                return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
                 build_config,
@@ -947,8 +947,30 @@ impl TypedExpression {
             warnings,
             errors
         ));
+        if then.deterministically_aborts() {
+            // if this does not deterministically_abort, check the block return type
+            let ty_to_check = if r#else.is_some() {
+                type_annotation
+            } else {
+                insert_type(TypeInfo::Tuple(vec![]))
+            };
+            match unify_with_self(
+                then.return_type,
+                ty_to_check,
+                self_type,
+                &then.span,
+                "`then` branch must return expected type.",
+            ) {
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
+            };
+        }
         let r#else = r#else.map(|expr| {
-            Box::new(check!(
+            let r#else = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: *expr.clone(),
                     namespace,
@@ -964,7 +986,25 @@ impl TypedExpression {
                 error_recovery_expr(expr.span()),
                 warnings,
                 errors
-            ))
+            );
+            if r#else.deterministically_aborts() {
+                // if this does not deterministically_abort, check the block return type
+                match unify_with_self(
+                    r#else.return_type,
+                    then.return_type,
+                    self_type,
+                    &r#else.span,
+                    "`else` branch must return expected type.",
+                ) {
+                    Ok(mut ws) => {
+                        warnings.append(&mut ws);
+                    }
+                    Err(e) => {
+                        errors.push(CompileError::TypeError(e));
+                    }
+                };
+            }
+            Box::new(r#else)
         });
 
         let r#else_ret_ty = r#else

@@ -86,6 +86,19 @@ impl std::fmt::Debug for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// if this ast node _deterministically_ panics/aborts, then this is true.
+    /// This is used to assist in type checking branches that abort control flow and therefore
+    /// don't need to return a type.
+    pub(crate) fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(w_loop) => w_loop.deterministically_aborts(),
+            SideEffect => false,
+        }
+    }
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
