@@ -18,6 +18,9 @@ pub struct CodeBlock {
 }
 
 impl CodeBlock {
+    pub fn span(&self) -> &Span {
+        &self.whole_block_span
+    }
     pub(crate) fn parse_from_pair(
         block: Pair<Rule>,
         config: Option<&BuildConfig>,

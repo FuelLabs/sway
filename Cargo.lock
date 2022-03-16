@@ -1003,25 +1003,22 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
  "anyhow",
  "clap 3.1.3",
  "clap_complete",
- "dirs 3.0.2",
+ "forc-pkg",
+ "forc-util",
  "fuel-asm",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm",
  "futures",
- "git2",
  "hex",
- "petgraph",
  "prettydiff",
  "reqwest",
- "semver 1.0.4",
  "serde",
  "serde_json",
  "sway-core",
@@ -1032,16 +1029,45 @@ dependencies = [
  "taplo",
  "tar",
  "term-table",
- "termcolor",
  "tokio",
  "toml",
  "toml_edit",
- "unicode-xid",
  "ureq",
  "url",
  "uwuify",
  "warp",
  "whoami",
+]
+
+[[package]]
+name = "forc-pkg"
+version = "0.6.1"
+dependencies = [
+ "anyhow",
+ "forc-util",
+ "git2",
+ "petgraph",
+ "semver 1.0.4",
+ "serde",
+ "serde_ignored",
+ "sway-core",
+ "sway-types",
+ "sway-utils",
+ "toml",
+ "url",
+]
+
+[[package]]
+name = "forc-util"
+version = "0.6.1"
+dependencies = [
+ "annotate-snippets",
+ "anyhow",
+ "dirs 3.0.2",
+ "sway-core",
+ "sway-utils",
+ "termcolor",
+ "unicode-xid",
 ]
 
 [[package]]
@@ -2138,7 +2164,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -2762,6 +2788,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_ignored"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c2c7d39d14f2f2ea82239de71594782f186fd03501ac81f0ce08e674819ff2f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_json"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3041,7 +3076,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "clap 3.1.3",
  "derivative",
@@ -3069,7 +3104,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3078,7 +3113,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -3089,7 +3124,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "dashmap",
  "lspower",
@@ -3104,7 +3139,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3116,7 +3151,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.6.0"
+version = "0.6.1"
 
 [[package]]
 name = "syn"

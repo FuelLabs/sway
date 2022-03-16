@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 use crate::{
     asm_generation::from_ir::TypeAnalyzer,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
-    semantic_analysis::{ast_node::TypedCodeBlock, ast_node::*, *},
+    semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
 
@@ -256,7 +256,7 @@ fn create_struct_aggregate(
     context: &mut Context,
     struct_names: &mut StructSymbolMap,
     name: String,
-    fields: Vec<OwnedTypedStructField>,
+    fields: Vec<TypedStructField>,
 ) -> Result<Aggregate, String> {
     let (field_types, syms): (Vec<_>, Vec<_>) = fields
         .into_iter()
@@ -277,7 +277,9 @@ fn create_struct_aggregate(
         name,
         aggregate,
         Some(HashMap::from_iter(
-            syms.into_iter().enumerate().map(|(n, sym)| (sym, n as u64)),
+            syms.into_iter()
+                .enumerate()
+                .map(|(n, sym)| (sym.to_string(), n as u64)),
         )),
     )?;
 
@@ -302,22 +304,14 @@ fn compile_enum_decl(
         return Err("Unable to compile generic enums.".into());
     }
 
-    create_enum_aggregate(
-        context,
-        struct_names,
-        name.as_str().to_owned(),
-        variants
-            .into_iter()
-            .map(|tev| tev.as_owned_typed_enum_variant())
-            .collect(),
-    )
+    create_enum_aggregate(context, struct_names, name.as_str().to_owned(), variants)
 }
 
 fn create_enum_aggregate(
     context: &mut Context,
     struct_names: &mut StructSymbolMap,
     name: String,
-    variants: Vec<OwnedTypedEnumVariant>,
+    variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, String> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
@@ -595,8 +589,9 @@ impl FnCompiler {
     ) -> Result<Value, String> {
         let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
         match ast_expr.expression {
-            TypedExpressionVariant::Literal(l) =>
-                Ok(convert_literal_to_value(context, &l, span_md_idx)),
+            TypedExpressionVariant::Literal(l) => {
+                Ok(convert_literal_to_value(context, &l, span_md_idx))
+            }
             TypedExpressionVariant::FunctionApplication {
                 name,
                 arguments,
@@ -645,10 +640,9 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
-                field_to_access_span,
                 ..
             } => {
-                let span_md_idx = MetadataIndex::from_span(context, &field_to_access_span);
+                let span_md_idx = MetadataIndex::from_span(context, &field_to_access.span);
                 self.compile_struct_field_expr(
                     context,
                     *prefix,
@@ -663,21 +657,16 @@ impl FnCompiler {
                 contents,
                 ..
             } => self.compile_enum_expr(context, enum_decl, tag, contents),
-            TypedExpressionVariant::EnumArgAccess {
-                //Prefix: Box<TypedExpression>,
-                //Arg_num_to_access: usize,
-                //Resolved_type_of_parent: TypeId,
-                ..
-            } => Err("enum arg access".into()),
-            TypedExpressionVariant::Tuple {
-               fields
-            } => self.compile_tuple_expr(context, fields, span_md_idx),
+            TypedExpressionVariant::IfLet { .. } => Err("if let expression ".into()),
+            TypedExpressionVariant::Tuple { fields } => {
+                self.compile_tuple_expr(context, fields, span_md_idx)
+            }
             TypedExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr( context, *prefix, tuple_type, idx, span),
+            } => self.compile_tuple_elem_expr(context, *prefix, tuple_type, idx, span),
             TypedExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
@@ -686,13 +675,15 @@ impl FnCompiler {
                 match variant {
                     SizeOfVariant::Type(type_id) => {
                         let ir_type = convert_resolved_typeid_no_span(
-                            context, &mut self.struct_names, &type_id
+                            context,
+                            &mut self.struct_names,
+                            &type_id,
                         )?;
                         Ok(Constant::get_uint(
                             context,
                             64,
                             self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
-                            None
+                            None,
                         ))
                     }
                     SizeOfVariant::Val(exp) => {
@@ -700,7 +691,7 @@ impl FnCompiler {
                             context,
                             &mut self.struct_names,
                             &exp.return_type,
-                            &exp.span
+                            &exp.span,
                         )?;
 
                         // Compile the expression in case of side-effects but ignore its value.
@@ -710,11 +701,11 @@ impl FnCompiler {
                             context,
                             64,
                             self.type_analyzer.ir_type_size_in_bytes(context, &ir_type),
-                            None
+                            None,
                         ))
                     }
                 }
-            },
+            }
         }
     }
 
@@ -1012,7 +1003,11 @@ impl FnCompiler {
             .get(name)
             .and_then(|local_name| self.function.get_local_ptr(context, local_name))
         {
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             Ok(if ptr.is_aggregate_ptr(context) {
                 ptr_val
             } else {
@@ -1070,7 +1065,11 @@ impl FnCompiler {
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
             .map_err(|ir_error| ir_error.to_string())?;
 
-        let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+        let ptr_ty = *ptr.get_type(context);
+        let ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(ptr, ptr_ty, 0, span_md_idx);
         self.current_block
             .ins(context)
             .store(ptr_val, init_val, span_md_idx);
@@ -1131,7 +1130,11 @@ impl FnCompiler {
 
         if ast_reassignment.lhs.len() == 1 {
             // A non-aggregate; use a `store`.
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block
                 .ins(context)
                 .store(ptr_val, reassign_val, span_md_idx);
@@ -1181,7 +1184,11 @@ impl FnCompiler {
                 }
             };
 
-            let ptr_val = self.current_block.ins(context).get_ptr(ptr, span_md_idx);
+            let ptr_ty = *ptr.get_type(context);
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block.ins(context).insert_value(
                 ptr_val,
                 ty,
@@ -1345,7 +1352,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_struct_expr: TypedExpression,
-        ast_field: OwnedTypedStructField,
+        ast_field: TypedStructField,
         _ast_parent_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
@@ -1368,7 +1375,7 @@ impl FnCompiler {
 
         let field_idx = self
             .struct_names
-            .get_aggregate_index(&aggregate, &ast_field.name)
+            .get_aggregate_index(&aggregate, ast_field.name.as_str())
             .ok_or_else(|| format!("Unknown field name {} in struct ???", ast_field.name))?;
 
         Ok(self.current_block.ins(context).extract_value(
@@ -1645,26 +1652,28 @@ fn convert_resolved_type(
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
-        TypeInfo::Struct { name, fields } => match struct_names.get_aggregate_by_name(name) {
-            Some(existing_aggregate) => Type::Struct(existing_aggregate),
-            None => {
-                // Let's create a new aggregate from the TypeInfo.
-                create_struct_aggregate(context, struct_names, name.clone(), fields.clone())
-                    .map(&Type::Struct)?
+        TypeInfo::Struct { name, fields } => {
+            match struct_names.get_aggregate_by_name(name.as_str()) {
+                Some(existing_aggregate) => Type::Struct(existing_aggregate),
+                None => {
+                    // Let's create a new aggregate from the TypeInfo.
+                    create_struct_aggregate(context, struct_names, name.to_string(), fields.clone())
+                        .map(&Type::Struct)?
+                }
             }
-        },
+        }
         TypeInfo::Enum {
             name,
             variant_types,
         } => {
-            match struct_names.get_aggregate_by_name(name) {
+            match struct_names.get_aggregate_by_name(name.as_str()) {
                 Some(existing_aggregate) => Type::Struct(existing_aggregate),
                 None => {
                     // Let's create a new aggregate from the TypeInfo.
                     create_enum_aggregate(
                         context,
                         struct_names,
-                        name.clone(),
+                        name.to_string(),
                         variant_types.clone(),
                     )
                     .map(&Type::Struct)?

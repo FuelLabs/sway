@@ -10,9 +10,9 @@ script {
         v4 = const bool false, !3
         v5 = insert_value v3, { bool, { u64, { () | () | u64 } } }, v4, 0, !2
         v6 = insert_value v5, { bool, { u64, { () | () | u64 } } }, v2, 1, !2
-        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, !4
+        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, ptr { bool, { u64, { () | () | u64 } } }, 0, !4
         store v6, ptr v7, !4
-        v8 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, !5
+        v8 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, ptr { bool, { u64, { () | () | u64 } } }, 0, !5
         v9 = extract_value v8, { bool, { u64, { () | () | u64 } } }, 0, !6
         ret bool v9
     }
@@ -24,4 +24,4 @@ script {
 !3 = span !0 66 71
 !4 = span !0 33 104
 !5 = span !0 109 115
-!6 = span !0 116 117
+!6 = span !0 141 142

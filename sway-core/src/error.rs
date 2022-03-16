@@ -57,6 +57,15 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
     }
 }
 
+pub(crate) fn infallible<T>(res: CompileResult<T>) -> T {
+    match res.value {
+        Some(x) if res.errors.is_empty() && res.warnings.is_empty() => x,
+        _ => {
+            panic!("Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues")
+        }
+    }
+}
+
 /// Denotes a recovered or non-error state
 pub(crate) fn ok<T>(
     value: T,
@@ -688,8 +697,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -870,6 +879,8 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
     #[error(
         "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
     )]
@@ -1031,7 +1042,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
@@ -1084,6 +1095,7 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
             CallParamForNonContractCallMethod { span, .. } => span,

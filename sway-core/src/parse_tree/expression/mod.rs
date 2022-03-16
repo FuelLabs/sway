@@ -133,7 +133,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<TypeInfo>,
+        type_arguments: Vec<(TypeInfo, Span)>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -154,6 +154,13 @@ pub enum Expression {
     /// type)
     DelayedMatchTypeResolution {
         variant: DelayedResolutionVariant,
+        span: Span,
+    },
+    IfLet {
+        scrutinee: Scrutinee,
+        expr: Box<Expression>,
+        then: CodeBlock,
+        r#else: Option<Box<Expression>>,
         span: Span,
     },
     SizeOfVal {
@@ -182,7 +189,8 @@ pub struct DelayedStructFieldResolution {
     pub field: Ident,
 }
 
-/// During type checking, this gets replaced with enum arg access.
+/// During type checking, this gets replaced with an if let, maybe, although that's not yet been
+/// implemented.
 #[derive(Debug, Clone)]
 pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
@@ -291,6 +299,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             SizeOfType { span, .. } => span,
         })
@@ -627,8 +636,8 @@ impl Expression {
                     path,
                 };
                 let expr = check!(
-                    crate::CodeBlock::parse_from_pair(expr, config),
-                    crate::CodeBlock {
+                    CodeBlock::parse_from_pair(expr, config),
+                    CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
                     },
@@ -968,11 +977,23 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
+                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
-                let instantiator = parts.next();
+                let (maybe_type_args, maybe_instantiator) = {
+                    let part = parts.next();
+                    match part.as_ref().map(|x| x.as_rule()) {
+                        Some(Rule::fn_args) => (None, part),
+                        Some(Rule::type_args) => {
+                            let next_part = parts.next();
+                            (part, next_part)
+                        }
+                        None => (None, None),
+                        Some(_) => unreachable!("guaranteed by grammar"),
+                    }
+                };
                 let path = check!(
                     CallPath::parse_from_pair(path_component, config),
                     return err(warnings, errors),
@@ -980,7 +1001,7 @@ impl Expression {
                     errors
                 );
 
-                let arg_results = if let Some(inst) = instantiator {
+                let arg_results = if let Some(inst) = maybe_instantiator {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
                         let exp_result = check!(
@@ -996,7 +1017,32 @@ impl Expression {
                     vec![]
                 };
 
+                let maybe_type_args = maybe_type_args
+                    .map(|x| {
+                        x.into_inner()
+                            .nth(1)
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
                 // if there is an expression in parenthesis, that is the instantiator.
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: file_path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg, config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 let var_decls = arg_results
                     .iter()
@@ -1005,11 +1051,9 @@ impl Expression {
                 let args = arg_results.into_iter().map(|x| x.value).collect::<Vec<_>>();
                 let exp = Expression::DelineatedPath {
                     call_path: path,
+                    type_arguments: type_args_buf,
                     args,
                     span,
-                    // Eventually, when we support generic enums, we want to be able to parse type
-                    // arguments on the enum name and throw them in here. TODO
-                    type_arguments: vec![],
                 };
                 ParserLifter {
                     var_decls,
@@ -1166,6 +1210,12 @@ impl Expression {
             }
             Rule::array_index => check!(
                 parse_array_index(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::if_let_exp => check!(
+                parse_if_let(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -2059,4 +2109,111 @@ pub(crate) fn desugar_match_expression(
             errors,
         ),
     }
+}
+
+fn parse_if_let(
+    expr: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<ParserLifter<Expression>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+
+    let span = Span {
+        span: expr.as_span(),
+        path: path.clone(),
+    };
+
+    let mut if_exp_pairs = expr.into_inner();
+
+    let _let_keyword = if_exp_pairs.next();
+    let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
+
+    let scrutinee = check!(
+        Scrutinee::parse_from_pair(scrutinee_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let ParserLifter {
+        mut var_decls,
+        value: expr,
+    } = check!(
+        Expression::parse_from_pair(expr_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let then_branch_span = Span {
+        span: then_branch_pair.as_span(),
+        path: path.clone(),
+    };
+
+    let then = check!(
+        CodeBlock::parse_from_pair(then_branch_pair, config),
+        crate::CodeBlock {
+            contents: Vec::new(),
+            whole_block_span: then_branch_span,
+        },
+        warnings,
+        errors
+    );
+
+    let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
+        let else_span = Span {
+            path,
+            span: else_branch.as_span(),
+        };
+        match else_branch.as_rule() {
+            Rule::code_block => {
+                let block = check!(
+                    CodeBlock::parse_from_pair(else_branch.clone(), config),
+                    CodeBlock {
+                        contents: Vec::new(),
+                        whole_block_span: else_span.clone(),
+                    },
+                    warnings,
+                    errors
+                );
+                let exp = Expression::CodeBlock {
+                    contents: block,
+                    span: else_span,
+                };
+                Some(Box::new(exp))
+            }
+            Rule::if_let_exp => {
+                let ParserLifter {
+                    var_decls: mut var_decls2,
+                    value: r#else,
+                } = check!(
+                    parse_if_let(else_branch.clone(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                var_decls.append(&mut var_decls2);
+                Some(Box::new(r#else))
+            }
+            _ => unreachable!("guaranteed by grammar"),
+        }
+    } else {
+        None
+    };
+    let exp = Expression::IfLet {
+        scrutinee,
+        expr: Box::new(expr),
+        then,
+        r#else: maybe_else_branch,
+        span,
+    };
+    let result = ParserLifter {
+        var_decls,
+        value: exp,
+    };
+    ok(result, warnings, errors)
 }

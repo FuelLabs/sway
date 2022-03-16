@@ -7,15 +7,15 @@ script {
         v0 = const { bool } { bool undef }, !1
         v1 = const bool true, !2
         v2 = insert_value v0, { bool }, v1, 0, !1
-        v3 = get_ptr ptr { bool } foo, !3
+        v3 = get_ptr ptr { bool } foo, ptr { bool }, 0, !3
         store v2, ptr v3, !3
         v4 = const { bool } { bool undef }, !4
         v5 = const bool false, !5
         v6 = insert_value v4, { bool }, v5, 0, !4
-        v7 = get_ptr ptr { bool } bar, !6
+        v7 = get_ptr ptr { bool } bar, ptr { bool }, 0, !6
         store v6, ptr v7, !6
-        v8 = get_ptr ptr { bool } foo, !7
-        v9 = get_ptr ptr { bool } bar, !8
+        v8 = get_ptr ptr { bool } foo, ptr { bool }, 0, !7
+        v9 = get_ptr ptr { bool } bar, ptr { bool }, 0, !8
         v10 = call anon_0(v8, v9), !9
         ret bool v10
     }
@@ -64,6 +64,6 @@ script {
 !13 = span !0 105 132
 !14 = span !0 120 132
 !15 = span !0 203 207
-!16 = span !0 232 233
+!16 = span !0 159 160
 !17 = span !0 203 207
-!18 = span !0 232 233
+!18 = span !0 159 160
