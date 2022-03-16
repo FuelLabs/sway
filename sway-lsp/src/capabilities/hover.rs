@@ -6,8 +6,8 @@ use crate::{
     },
     utils::common::extract_visibility,
 };
-use lspower::lsp::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 use std::sync::Arc;
+use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
 pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;

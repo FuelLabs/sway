@@ -3,13 +3,11 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
-use lsp::{
-    CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, MessageType, OneOf,
-};
-use lspower::{jsonrpc, lsp, Client, LanguageServer};
 use std::sync::Arc;
 use sway_utils::helpers::{find_manifest_dir, get_sway_files};
+use tower_lsp::lsp_types::*;
+use tower_lsp::{jsonrpc, Client, LanguageServer};
+
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
@@ -47,7 +45,7 @@ impl Backend {
     }
 }
 
-#[lspower::async_trait]
+#[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         if let Some(options) = params.initialization_options {
@@ -61,40 +59,40 @@ impl LanguageServer for Backend {
         // iterate over the project dir, parse all sway files
         let _ = self.parse_and_store_sway_files();
 
-        Ok(lsp::InitializeResult {
+        Ok(InitializeResult {
             server_info: None,
-            capabilities: lsp::ServerCapabilities {
-                text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
-                    lsp::TextDocumentSyncKind::INCREMENTAL,
+            capabilities: ServerCapabilities {
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(
+                    TextDocumentSyncKind::INCREMENTAL,
                 )),
-                definition_provider: Some(lsp::OneOf::Left(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
-                document_symbol_provider: Some(lsp::OneOf::Left(true)),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
-                completion_provider: Some(lsp::CompletionOptions {
+                completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
                     trigger_characters: None,
                     ..Default::default()
                 }),
-                rename_provider: Some(lsp::OneOf::Right(lsp::RenameOptions {
+                rename_provider: Some(OneOf::Right(RenameOptions {
                     prepare_provider: Some(true),
-                    work_done_progress_options: lsp::WorkDoneProgressOptions {
+                    work_done_progress_options: WorkDoneProgressOptions {
                         work_done_progress: Some(true),
                     },
                 })),
-                execute_command_provider: Some(lsp::ExecuteCommandOptions {
+                execute_command_provider: Some(ExecuteCommandOptions {
                     commands: vec![],
                     ..Default::default()
                 }),
                 document_highlight_provider: Some(OneOf::Left(true)),
                 document_formatting_provider: Some(OneOf::Left(true)),
-                ..lsp::ServerCapabilities::default()
+                ..ServerCapabilities::default()
             },
         })
     }
 
     // LSP-Server Lifecycle
-    async fn initialized(&self, _: lsp::InitializedParams) {
+    async fn initialized(&self, _: InitializedParams) {
         self.log_info_message("Server initialized").await;
     }
 
@@ -104,7 +102,7 @@ impl LanguageServer for Backend {
     }
 
     // Document Handlers
-    async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
 
         if !diagnostics.is_empty() {
@@ -114,11 +112,11 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn did_change(&self, params: lsp::DidChangeTextDocumentParams) {
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let _ = capabilities::text_sync::handle_change_file(self.session.clone(), params);
     }
 
-    async fn did_save(&self, params: lsp::DidSaveTextDocumentParams) {
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let url = params.text_document.uri.clone();
         self.client.publish_diagnostics(url, vec![], None).await;
 
@@ -131,7 +129,7 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn did_change_watched_files(&self, params: lsp::DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let events = params.changes;
         capabilities::file_sync::handle_watched_files(self.session.clone(), events);
     }
@@ -157,8 +155,8 @@ impl LanguageServer for Backend {
 
     async fn document_symbol(
         &self,
-        params: lsp::DocumentSymbolParams,
-    ) -> jsonrpc::Result<Option<lsp::DocumentSymbolResponse>> {
+        params: DocumentSymbolParams,
+    ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
         Ok(capabilities::document_symbol::document_symbol(
             self.session.clone(),
             params.text_document.uri,
@@ -167,8 +165,8 @@ impl LanguageServer for Backend {
 
     async fn semantic_tokens_full(
         &self,
-        params: lsp::SemanticTokensParams,
-    ) -> jsonrpc::Result<Option<lsp::SemanticTokensResult>> {
+        params: SemanticTokensParams,
+    ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
         Ok(capabilities::semantic_tokens::get_semantic_tokens_full(
             self.session.clone(),
             params,
@@ -177,8 +175,8 @@ impl LanguageServer for Backend {
 
     async fn document_highlight(
         &self,
-        params: lsp::DocumentHighlightParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::DocumentHighlight>>> {
+        params: DocumentHighlightParams,
+    ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
         Ok(capabilities::highlight::get_highlights(
             self.session.clone(),
             params,
@@ -187,8 +185,8 @@ impl LanguageServer for Backend {
 
     async fn goto_definition(
         &self,
-        params: lsp::GotoDefinitionParams,
-    ) -> jsonrpc::Result<Option<lsp::GotoDefinitionResponse>> {
+        params: GotoDefinitionParams,
+    ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
         Ok(capabilities::go_to::go_to_definition(
             self.session.clone(),
             params,
@@ -197,25 +195,22 @@ impl LanguageServer for Backend {
 
     async fn formatting(
         &self,
-        params: lsp::DocumentFormattingParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
+        params: DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
         Ok(capabilities::formatting::format_document(
             self.session.clone(),
             params,
         ))
     }
 
-    async fn rename(
-        &self,
-        params: lsp::RenameParams,
-    ) -> jsonrpc::Result<Option<lsp::WorkspaceEdit>> {
+    async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
         Ok(capabilities::rename::rename(self.session.clone(), params))
     }
 
     async fn prepare_rename(
         &self,
-        params: lsp::TextDocumentPositionParams,
-    ) -> jsonrpc::Result<Option<lsp::PrepareRenameResponse>> {
+        params: TextDocumentPositionParams,
+    ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
         Ok(capabilities::rename::prepare_rename(
             self.session.clone(),
             params,
