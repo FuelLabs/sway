@@ -41,6 +41,8 @@ impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,
     ) -> CompileResult<TypedFunctionDeclaration> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let TypeCheckArguments {
             checkee: fn_decl,
             namespace,
@@ -52,8 +54,6 @@ impl TypedFunctionDeclaration {
             mut opts,
             ..
         } = arguments;
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
         let FunctionDeclaration {
             name,
             body,
@@ -69,19 +69,15 @@ impl TypedFunctionDeclaration {
         opts.purity = purity;
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
-        let return_type =
-            if let Some(matching_id) = return_type.matches_type_parameter(&type_mapping) {
-                insert_type(TypeInfo::Ref(matching_id))
-            } else {
-                namespace
-                    .resolve_type_with_self(return_type, self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: return_type_span.clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    })
-            };
+        let return_type = match return_type.matches_type_parameter(&type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => check!(
+                namespace.resolve_type_with_self(return_type, self_type, return_type_span.clone()),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            ),
+        };
 
         // insert parameters and generic type declarations into namespace
         let namespace = create_new_scope(namespace);
@@ -97,14 +93,12 @@ impl TypedFunctionDeclaration {
             let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace
-                    .resolve_type_with_self(r#type, self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: type_span.clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    })
+                check!(
+                    namespace.resolve_type_with_self(r#type, self_type, type_span.clone()),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                )
             };
             namespace.insert(
                 name.clone(),
@@ -144,7 +138,7 @@ impl TypedFunctionDeclaration {
                     contents: vec![],
                     whole_block_span: body.whole_block_span,
                 },
-                crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
+                insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
@@ -163,51 +157,39 @@ impl TypedFunctionDeclaration {
                     {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
-                        namespace
-                            .resolve_type_with_self(r#type, self_type)
-                            .unwrap_or_else(|_| {
-                                errors.push(CompileError::UnknownType {
-                                    span: type_span.clone(),
-                                });
-                                insert_type(TypeInfo::ErrorRecovery)
-                            })
+                        check!(
+                            namespace.resolve_type_with_self(r#type, self_type, type_span.clone()),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors,
+                        )
                     },
                     type_span,
                 },
             )
             .collect::<Vec<_>>();
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &Span)> = body
+        let return_statements: Vec<&TypedExpression> = body
             .contents
             .iter()
-            .filter_map(|x| {
-                if let crate::semantic_analysis::TypedAstNode {
-                    content:
-                        crate::semantic_analysis::TypedAstNodeContent::ReturnStatement(
-                            TypedReturnStatement { ref expr },
-                        ),
-                    span,
-                } = x
-                {
-                    Some((expr, span))
-                } else {
-                    None
-                }
-            })
+            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
+            .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
-        for (stmt, span) in return_statements {
-            match crate::type_engine::unify_with_self(
+        for stmt in return_statements {
+            let span = &stmt.span;
+            match unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
                 span,
+                "Return statement must return the declared function return type.",
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));
-                } //    "Function body's return type does not match up with its return type annotation.",
+                }
             }
         }
 
@@ -270,7 +252,15 @@ impl TypedFunctionDeclaration {
         if !type_arguments.is_empty() {
             // check type arguments against parameters
             if new_decl.type_parameters.len() != type_arguments.len() {
-                todo!("incorrect number of type args err");
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: new_decl.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
             }
 
             // check the type arguments
@@ -282,6 +272,7 @@ impl TypedFunctionDeclaration {
                     insert_type(type_argument.clone()),
                     self_type,
                     type_argument_span,
+                    "Type argument is not castable to generic type paramter",
                 ) {
                     Ok(mut ws) => {
                         warnings.append(&mut ws);

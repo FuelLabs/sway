@@ -53,6 +53,7 @@ pub enum ControlFlowGraphNode {
     EnumVariant {
         span: Span,
         variant_name: String,
+        is_public: bool,
     },
     MethodDeclaration {
         span: Span,
@@ -88,15 +89,6 @@ impl std::fmt::Debug for ControlFlowGraphNode {
 impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
     fn from(other: &TypedAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
-    }
-}
-
-impl std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
-    fn from(other: &TypedEnumVariant) -> Self {
-        ControlFlowGraphNode::EnumVariant {
-            variant_name: other.name.as_str().to_string(),
-            span: other.span.clone(),
-        }
     }
 }
 
@@ -143,5 +135,18 @@ impl ControlFlowGraph {
     pub(crate) fn visualize(&self) {
         use petgraph::dot::Dot;
         println!("{:?}", Dot::with_config(&self.graph, &[]));
+    }
+}
+
+impl ControlFlowGraphNode {
+    pub(crate) fn from_enum_variant(
+        other: &TypedEnumVariant,
+        is_public: bool,
+    ) -> ControlFlowGraphNode {
+        ControlFlowGraphNode::EnumVariant {
+            variant_name: other.name.as_str().to_string(),
+            span: other.span.clone(),
+            is_public,
+        }
     }
 }

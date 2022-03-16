@@ -36,7 +36,7 @@ macro_rules! check_std_result {
 }
 
 macro_rules! assert_or_warn {
-    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {
+    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {
             use crate::error::CompileWarning;
             $warnings.push(CompileWarning {
@@ -44,7 +44,28 @@ macro_rules! assert_or_warn {
                 span: $span,
             });
         }
-    };
+    }};
+}
+
+macro_rules! infallible {
+    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident, $span: expr $(,)?) => {{
+        let mut res = $fn_expr;
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        #[allow(clippy::manual_unwrap_or)]
+        match res.value {
+            Some(value) if res.errors.is_empty() && res.warnings.is_empty() => value,
+            _ => {
+                use crate::error::CompileError;
+                let error = CompileError::Internal(
+                    "Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues",
+                    $span
+                );
+                $errors.push(error);
+                $error_recovery
+            },
+        }
+    }};
 }
 
 /// Denotes a non-recoverable state
@@ -668,8 +689,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -845,6 +866,8 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
     #[error(
         "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
     )]
@@ -1006,7 +1029,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
@@ -1059,6 +1082,7 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
             CallParamForNonContractCallMethod { span, .. } => span,

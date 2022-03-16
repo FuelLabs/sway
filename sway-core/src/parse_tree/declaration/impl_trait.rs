@@ -28,6 +28,7 @@ pub struct ImplSelf {
     pub(crate) generic_type_arguments: Vec<TypeParameter>,
     #[allow(dead_code)]
     generic_type_arguments_span: Option<Span>,
+    #[allow(dead_code)]
     pub(crate) specific_type_arguments: Vec<TypeInfo>,
     #[allow(dead_code)]
     specific_type_arguments_span: Option<Span>,

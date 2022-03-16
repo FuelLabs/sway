@@ -14,6 +14,7 @@ pub(crate) fn instantiate_enum(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
+    type_arguments: Vec<(TypeInfo, Span)>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
     self_type: TypeId,
@@ -21,15 +22,33 @@ pub(crate) fn instantiate_enum(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
+    let instantiation_span = enum_field_name.span();
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let mut type_args_buf = Vec::with_capacity(type_arguments.len());
+    for (arg, span) in type_arguments.iter() {
+        let ty = check!(
+            namespace.resolve_type_with_self(arg.clone(), self_type, span.clone()),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+        let ty = look_up_type_id(ty);
+        type_args_buf.push((ty, span.clone()));
+    }
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
     let enum_decl = if enum_decl.type_parameters.is_empty() {
         enum_decl
     } else {
-        enum_decl.monomorphize(&module)
+        check!(
+            enum_decl.monomorphize(&module, type_args_buf, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
     };
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
@@ -53,12 +72,13 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_field_type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: enum_decl.as_type(),
+                return_type: enum_decl.type_id,
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
                     enum_decl,
                     variant_name,
+                    instantiation_span: instantiation_span.clone(),
                 },
                 is_constant: IsConstant::No,
                 span: enum_field_name.span().clone(),
@@ -66,7 +86,7 @@ pub(crate) fn instantiate_enum(
             warnings,
             errors,
         ),
-        ([single_expr], _type) => {
+        ([single_expr], _) => {
             let typed_expr = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
@@ -90,12 +110,13 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.as_type(),
+                    return_type: enum_decl.type_id,
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name,
+                        instantiation_span: instantiation_span.clone(),
                     },
                     is_constant: IsConstant::No,
                     span: enum_field_name.span().clone(),

@@ -40,10 +40,10 @@ impl EnumDeclaration {
         namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
-        let mut variants_buf = vec![];
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let mut variants_buf = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         for variant in &self.variants {
             variants_buf.push(check!(
@@ -54,11 +54,8 @@ impl EnumDeclaration {
             ));
         }
         let type_id = insert_type(TypeInfo::Enum {
-            name: self.name.as_str().to_string(),
-            variant_types: variants_buf
-                .iter()
-                .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                .collect(),
+            name: self.name.clone(),
+            variant_types: variants_buf.clone(),
         });
         TypedEnumDeclaration {
             name: self.name.clone(),
@@ -165,17 +162,18 @@ impl EnumVariant {
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<TypedEnumVariant> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type =
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace
-                    .resolve_type_with_self(self.r#type.clone(), self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType { span });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    })
+                check!(
+                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, span),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                )
             };
         ok(
             TypedEnumVariant {

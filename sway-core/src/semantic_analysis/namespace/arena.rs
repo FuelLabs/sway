@@ -2,8 +2,7 @@ use crate::{
     error::*,
     semantic_analysis::{
         ast_node::{
-            declaration::insert_type_parameters, OwnedTypedStructField, TypedEnumDeclaration,
-            TypedStructField, TypedVariableDeclaration, VariableMutability,
+            TypedEnumDeclaration, TypedStructField, TypedVariableDeclaration, VariableMutability,
         },
         *,
     },
@@ -23,7 +22,12 @@ pub trait NamespaceWrapper {
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     #[allow(clippy::result_unit_err)]
-    fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()>;
+    fn resolve_type_with_self(
+        &self,
+        ty: TypeInfo,
+        self_type: TypeId,
+        span: Span,
+    ) -> CompileResult<TypeId>;
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId;
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()>;
     fn insert_module(&self, module_name: String, module_contents: Namespace);
@@ -72,7 +76,7 @@ pub trait NamespaceWrapper {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &Vec<(TypeParameter, usize)>,
+        type_mapping: &[(TypeParameter, usize)],
     );
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
@@ -92,7 +96,7 @@ pub trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)>;
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)>;
     fn get_tuple_elems(
         &self,
         ty: TypeId,
@@ -153,8 +157,8 @@ impl NamespaceWrapper for NamespaceRef {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.as_str()) {
+            let TypedStructField { r#type, .. } =
+                match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -163,7 +167,7 @@ impl NamespaceWrapper for NamespaceRef {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name,
+                            struct_name: struct_name.to_string(),
                             available_fields: available_fields.join(", "),
                             span: ident.span().clone(),
                         });
@@ -171,7 +175,7 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                 };
 
-            match crate::type_engine::look_up_type_id(r#type) {
+            match look_up_type_id(r#type) {
                 TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
@@ -201,13 +205,15 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
+    /// Returns a tuple of all of the fields of a struct and the struct's name.
     fn get_struct_type_fields(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
-        let ty = crate::type_engine::look_up_type_id(ty);
+    ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
+        let ty = look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
@@ -291,7 +297,7 @@ impl NamespaceWrapper for NamespaceRef {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &Vec<(TypeParameter, usize)>,
+        type_mapping: &[(TypeParameter, usize)],
     ) {
         write_module(
             move |ns| ns.copy_methods_to_type(old_type.clone(), new_type, type_mapping),
@@ -381,14 +387,16 @@ impl NamespaceWrapper for NamespaceRef {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = namespace
-            .resolve_type_with_self(look_up_type_id(r#type), self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType {
-                    span: method_name.span().clone(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
-            });
+        let r#type = check!(
+            namespace.resolve_type_with_self(
+                look_up_type_id(r#type),
+                self_type,
+                method_name.span().clone()
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
         let local_methods = self.get_methods_for_type(r#type);
         let mut ns_methods = read_module(
             |namespace| namespace.get_methods_for_type(r#type),
@@ -612,7 +620,12 @@ impl NamespaceWrapper for NamespaceRef {
         write_module(|ns| ns.insert(name, item), *self)
     }
 
-    fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> Result<TypeId, ()> {
+    fn resolve_type_with_self(
+        &self,
+        ty: TypeInfo,
+        self_type: TypeId,
+        span: Span,
+    ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match ty {
@@ -628,23 +641,38 @@ impl NamespaceWrapper for NamespaceRef {
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
-                            let new_decl = decl.monomorphize(self);
+                            /*
+                            // the following line is infallible because an error can only arise
+                            // from monomorphizing if there are type arguments specified. Here, we
+                            // are passing in vec![], which therefore means this is infallible.
+                            let new_decl = infallible(decl.monomorphize(vec![], self_type));
+                            */
+                            let new_decl = infallible!(
+                                decl.monomorphize(self, vec!(), self_type),
+                                return err(warnings, errors),
+                                warnings,
+                                errors,
+                                span
+                            );
                             new_decl.type_id
                         } else {
                             decl.type_id
                         }
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        crate::type_engine::insert_type(TypeInfo::UnknownGeneric { name })
+                        insert_type(TypeInfo::UnknownGeneric { name })
                     }
-                    _ => return Err(()),
+                    _ => {
+                        errors.push(CompileError::UnknownType { span });
+                        return err(warnings, errors);
+                    }
                 }
             }
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
         };
-        Ok(type_id)
+        ok(type_id, warnings, errors)
     }
 
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId {

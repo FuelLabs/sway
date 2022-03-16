@@ -37,15 +37,17 @@ impl Engine {
         received: TypeId,
         expected: TypeId,
         span: &Span,
+        help_text: impl Into<String>,
     ) -> Result<Vec<CompileWarning>, TypeError> {
         use TypeInfo::*;
+        let help_text = help_text.into();
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
             (received_info, expected_info) if received_info == expected_info => Ok(vec![]),
 
             // Follow any references
-            (Ref(received), _) => self.unify(received, expected, span),
-            (_, Ref(expected)) => self.unify(received, expected, span),
+            (Ref(received), _) => self.unify(received, expected, span, help_text),
+            (_, Ref(expected)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -55,20 +57,20 @@ impl Engine {
                 .replace(received, &Unknown, TypeInfo::Ref(expected))
             {
                 None => Ok(vec![]),
-                Some(_) => self.unify(received, expected, span),
+                Some(_) => self.unify(received, expected, span, help_text),
             },
             (_, Unknown) => match self
                 .slab
                 .replace(expected, &Unknown, TypeInfo::Ref(received))
             {
                 None => Ok(vec![]),
-                Some(_) => self.unify(received, expected, span),
+                Some(_) => self.unify(received, expected, span, help_text),
             },
 
             (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
                 let mut warnings = vec![];
                 for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
-                    warnings.extend(self.unify(*field_a, *field_b, span)?);
+                    warnings.extend(self.unify(*field_a, *field_b, span, help_text.clone())?);
                 }
                 Ok(warnings)
             }
@@ -123,7 +125,7 @@ impl Engine {
                 let b_fields = b_fields.iter().map(|x| x.r#type);
 
                 let mut zipped = a_fields.zip(b_fields);
-                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+                zipped.all(|(a, b)| self.unify(a, b, span, help_text.clone()).is_ok())
             } =>
             {
                 Ok(vec![])
@@ -142,7 +144,7 @@ impl Engine {
                 let b_variants = b_variants.iter().map(|x| x.r#type);
 
                 let mut zipped = a_variants.zip(b_variants);
-                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+                zipped.all(|(a, b)| self.unify(a, b, span, help_text.clone()).is_ok())
             } =>
             {
                 Ok(vec![])
@@ -151,24 +153,24 @@ impl Engine {
             (Numeric, expected_info @ UnsignedInteger(_)) => {
                 match self.slab.replace(received, &Numeric, expected_info) {
                     None => Ok(vec![]),
-                    Some(_) => self.unify(received, expected, span),
+                    Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
             (received_info @ UnsignedInteger(_), Numeric) => {
                 match self.slab.replace(expected, &Numeric, received_info) {
                     None => Ok(vec![]),
-                    Some(_) => self.unify(received, expected, span),
+                    Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
 
             (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => self
-                .unify(a_elem, b_elem, span)
+                .unify(a_elem, b_elem, span, help_text.clone())
                 // If there was an error then we want to report the array types as mismatching, not
                 // the elem types.
                 .map_err(|_| TypeError::MismatchedType {
                     expected,
                     received,
-                    help_text: Default::default(),
+                    help_text,
                     span: span.clone(),
                 }),
 
@@ -187,7 +189,7 @@ impl Engine {
                 _ => Err(TypeError::MismatchedType {
                     expected,
                     received,
-                    help_text: Default::default(),
+                    help_text,
                     span: span.clone(),
                 }),
             },
@@ -200,6 +202,7 @@ impl Engine {
         expected: TypeId,
         self_type: TypeId,
         span: &Span,
+        help_text: impl Into<String>,
     ) -> Result<Vec<CompileWarning>, TypeError> {
         let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
             self_type
@@ -212,7 +215,7 @@ impl Engine {
             expected
         };
 
-        self.unify(received, expected, span)
+        self.unify(received, expected, span, help_text)
     }
 
     pub fn resolve_type(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
@@ -242,8 +245,9 @@ pub fn unify_with_self(
     b: TypeId,
     self_type: TypeId,
     span: &Span,
+    help_text: impl Into<String>,
 ) -> Result<Vec<CompileWarning>, TypeError> {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span)
+    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
 }
 
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
