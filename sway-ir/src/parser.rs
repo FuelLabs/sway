@@ -54,7 +54,8 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() _ selector:selector_id()? _ "(" _ args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
+                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
+                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
                       locals:fn_local()*
                       blocks:block_decl()*
                   "}" _ {
@@ -70,16 +71,7 @@ mod ir_builder {
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
-                    let mut bytes: [u8; 4] = [0; 4];
-                    let mut cur_byte: u8 = 0;
-                    for (idx, ch) in s.chars().enumerate() {
-                        cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
-                        if idx % 2 == 1 {
-                            bytes[idx / 2] = cur_byte;
-                            cur_byte = 0;
-                        }
-                    }
-                    bytes
+                    string_to_hex::<4>(s)
                 }
 
             rule fn_arg() -> (IrAstTy, String, Option<MdIdxRef>)
@@ -144,10 +136,10 @@ mod ir_builder {
                 / op_nop()
                 / op_phi()
                 / op_ret()
-                / op_state_load_word()
                 / op_state_load_quad_word()
-                / op_state_store_word()
+                / op_state_load_word()
                 / op_state_store_quad_word()
+                / op_state_store_word()
                 / op_store()
 
             rule op_asm() -> IrAstOperation
@@ -188,7 +180,8 @@ mod ir_builder {
                 }
 
             rule op_get_ptr() -> IrAstOperation
-                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id() comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
+                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id()
+                    comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
                     IrAstOperation::GetPtr(name, ty, offset)
                 }
 
@@ -222,24 +215,24 @@ mod ir_builder {
                     IrAstOperation::Ret(ty, vn)
                 }
 
-            rule op_state_load_word() -> IrAstOperation
-                = "state_load_word" _ ptr() _ key:id() {
-                    IrAstOperation::StateLoadWord(key)
-                }
-
             rule op_state_load_quad_word() -> IrAstOperation
-                = "state_load_quad_word" _ ptr() dst:id() comma() ptr() _ key:id() {
+                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key)
                 }
 
-            rule op_state_store_word() -> IrAstOperation
-                = "state_store_word" _ src:id() comma() ptr() _ key:id() {
-                    IrAstOperation::StateStoreWord(src, key)
+            rule op_state_load_word() -> IrAstOperation
+                = "state_load_word" _ "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateLoadWord(key)
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
-                = "state_store_quad_word" _ ptr() src:id() comma() ptr() _ key:id() {
+                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() {
                     IrAstOperation::StateStoreQuadWord(src, key)
+                }
+
+            rule op_state_store_word() -> IrAstOperation
+                = "state_store_word" _ src:id() comma() "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateStoreWord(src, key)
                 }
 
             rule op_store() -> IrAstOperation
@@ -301,16 +294,7 @@ mod ir_builder {
                 / "true" _ { IrAstConstValue::Bool(true) }
                 / "false" _ { IrAstConstValue::Bool(false) }
                 / "0x" s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<64>) _ {
-                    let mut bytes: [u8; 32] = [0; 32];
-                    let mut cur_byte: u8 = 0;
-                    for (idx, ch) in s.chars().enumerate() {
-                        cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
-                        if idx % 2 == 1 {
-                            bytes[idx / 2] = cur_byte;
-                            cur_byte = 0;
-                        }
-                    }
-                    IrAstConstValue::B256(bytes)
+                    IrAstConstValue::B256(string_to_hex::<32>(s))
                 }
                 / n:decimal() { IrAstConstValue::Number(n) }
                 / string_const()
@@ -504,10 +488,10 @@ mod ir_builder {
         Nop,
         Phi(Vec<(String, String)>),
         Ret(IrAstTy, String),
-        StateLoadWord(String),
         StateLoadQuadWord(String, String),
-        StateStoreWord(String, String),
+        StateLoadWord(String),
         StateStoreQuadWord(String, String),
+        StateStoreWord(String, String),
         Store(String, String),
     }
 
@@ -889,12 +873,19 @@ mod ir_builder {
                         .ins(context)
                         .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
                 }
-                IrAstOperation::StateLoadWord(key) => block
-                    .ins(context)
-                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
                 IrAstOperation::StateLoadQuadWord(dst, key) => {
                     block.ins(context).state_load_quad_word(
                         *val_map.get(&dst).unwrap(),
+                        *val_map.get(&key).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
+                IrAstOperation::StateLoadWord(key) => block
+                    .ins(context)
+                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
+                IrAstOperation::StateStoreQuadWord(src, key) => {
+                    block.ins(context).state_store_quad_word(
+                        *val_map.get(&src).unwrap(),
                         *val_map.get(&key).unwrap(),
                         opt_ins_md_idx,
                     )
@@ -904,13 +895,6 @@ mod ir_builder {
                     *val_map.get(&key).unwrap(),
                     opt_ins_md_idx,
                 ),
-                IrAstOperation::StateStoreQuadWord(src, key) => {
-                    block.ins(context).state_store_quad_word(
-                        *val_map.get(&src).unwrap(),
-                        *val_map.get(&key).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
                 IrAstOperation::Store(stored_val_name, dst_val_name) => block.ins(context).store(
                     *val_map.get(&dst_val_name).unwrap(),
                     *val_map.get(&stored_val_name).unwrap(),
@@ -985,6 +969,19 @@ mod ir_builder {
             block.replace_instruction(context, nop, call_val)?;
         }
         Ok(())
+    }
+
+    fn string_to_hex<const N: usize>(s: &str) -> [u8; N] {
+        let mut bytes: [u8; N] = [0; N];
+        let mut cur_byte: u8 = 0;
+        for (idx, ch) in s.chars().enumerate() {
+            cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
+            if idx % 2 == 1 {
+                bytes[idx / 2] = cur_byte;
+                cur_byte = 0;
+            }
+        }
+        bytes
     }
 }
 

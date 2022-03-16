@@ -475,26 +475,26 @@ fn instruction_to_doc<'a>(
                     md_namer.meta_as_string(context, span_md_idx, true),
                 )))
             }
-            Instruction::StateLoadWord(key) => Doc::text_line(format!(
-                "{} = state_load_word ptr {}{}",
-                namer.name(context, ins_value),
-                namer.name(context, key),
-                md_namer.meta_as_string(context, span_md_idx, true),
-            )),
             Instruction::StateLoadQuadWord { load_val, key } => Doc::text_line(format!(
-                "state_load_quad_word ptr {}, ptr {}{}",
+                "state_load_quad_word ptr {}, key ptr {}{}",
                 namer.name(context, load_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
-            Instruction::StateStoreWord { stored_val, key } => Doc::text_line(format!(
-                "state_store_word {}, ptr {}{}",
-                namer.name(context, stored_val),
+            Instruction::StateLoadWord(key) => Doc::text_line(format!(
+                "{} = state_load_word key ptr {}{}",
+                namer.name(context, ins_value),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
             Instruction::StateStoreQuadWord { stored_val, key } => Doc::text_line(format!(
-                "state_store_quad_word ptr {}, ptr {}{}",
+                "state_store_quad_word ptr {}, key ptr {}{}",
+                namer.name(context, stored_val),
+                namer.name(context, key),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
+            Instruction::StateStoreWord { stored_val, key } => Doc::text_line(format!(
+                "state_store_word {}, key ptr {}{}",
                 namer.name(context, stored_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),

@@ -75,16 +75,16 @@ pub enum Instruction {
     Phi(Vec<(Block, Value)>),
     /// Return from a function.
     Ret(Value, Type),
-    /// Read a single word from a storage slot.
-    StateLoadWord(Value),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
     StateLoadQuadWord { load_val: Value, key: Value },
-    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
-    /// Uint(64) value.
-    StateStoreWord { stored_val: Value, key: Value },
+    /// Read a single word from a storage slot.
+    StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(256) ptr.
     StateStoreQuadWord { stored_val: Value, key: Value },
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(64) value.
+    StateStoreWord { stored_val: Value, key: Value },
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
 }
@@ -122,10 +122,10 @@ impl Instruction {
             // These write values but don't return one.  If we're explicit we could return Unit.
             Instruction::InsertElement { .. } => None,
             Instruction::InsertValue { .. } => None,
-            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStoreWord { .. } => None,
+            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::StateStoreQuadWord { .. } => None,
+            Instruction::StateStoreWord { .. } => None,
             Instruction::Store { .. } => None,
 
             // No-op is also no-type.
@@ -207,18 +207,18 @@ impl Instruction {
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::Ret(ret_val, _) => replace(ret_val),
-            Instruction::StateLoadWord(key) => {
-                replace(key);
-            }
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
                 replace(key);
             }
-            Instruction::StateStoreWord { stored_val, key } => {
+            Instruction::StateLoadWord(key) => {
+                replace(key);
+            }
+            Instruction::StateStoreQuadWord { stored_val, key } => {
                 replace(key);
                 replace(stored_val);
             }
-            Instruction::StateStoreQuadWord { stored_val, key } => {
+            Instruction::StateStoreWord { stored_val, key } => {
                 replace(key);
                 replace(stored_val);
             }
@@ -512,15 +512,6 @@ impl<'a> InstructionInserter<'a> {
     //        load_val
     //    }
 
-    pub fn state_load_word(self, key: Value, span_md_idx: Option<MetadataIndex>) -> Value {
-        let state_load_val =
-            Value::new_instruction(self.context, Instruction::StateLoadWord(key), span_md_idx);
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(state_load_val);
-        state_load_val
-    }
-
     pub fn state_load_quad_word(
         self,
         load_val: Value,
@@ -538,21 +529,13 @@ impl<'a> InstructionInserter<'a> {
         state_load_val
     }
 
-    pub fn state_store_word(
-        self,
-        stored_val: Value,
-        key: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let state_store_val = Value::new_instruction(
-            self.context,
-            Instruction::StateStoreWord { stored_val, key },
-            span_md_idx,
-        );
+    pub fn state_load_word(self, key: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+        let state_load_val =
+            Value::new_instruction(self.context, Instruction::StateLoadWord(key), span_md_idx);
         self.context.blocks[self.block.0]
             .instructions
-            .push(state_store_val);
-        state_store_val
+            .push(state_load_val);
+        state_load_val
     }
 
     pub fn state_store_quad_word(
@@ -564,6 +547,23 @@ impl<'a> InstructionInserter<'a> {
         let state_store_val = Value::new_instruction(
             self.context,
             Instruction::StateStoreQuadWord { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
+    pub fn state_store_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStoreWord { stored_val, key },
             span_md_idx,
         );
         self.context.blocks[self.block.0]

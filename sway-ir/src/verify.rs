@@ -251,18 +251,13 @@ impl Context {
         }
     }
 
-    fn verify_state_load_word(&self, _key: &Value) -> Result<(), IrError> {
-        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
-        Ok(())
-    }
-
     fn verify_state_load_quad_word(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
         // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
         Ok(())
     }
 
-    fn verify_state_store_word(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
-        // XXX key must be a pointer to B256, stored val ty must be a Uint(64).
+    fn verify_state_load_word(&self, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
         Ok(())
     }
 
@@ -272,6 +267,11 @@ impl Context {
         _key: &Value,
     ) -> Result<(), IrError> {
         // XXX key must be a pointer to B256, stored val ty must be pointer to a B256.
+        Ok(())
+    }
+
+    fn verify_state_store_word(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be a Uint(64).
         Ok(())
     }
 
