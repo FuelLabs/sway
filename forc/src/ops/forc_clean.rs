@@ -39,7 +39,6 @@ pub fn clean(command: CleanCommand) -> Result<()> {
             .output()
             .map_err(|e| e)?;
     } else {
-        println_yellow_err("WARNING: use of forc clean without a Cargo.toml file in ANY parent directory will result in a bypass of the cargo clean command.").unwrap();
     }
 
     Ok(())
