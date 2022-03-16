@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Continually go up in the file tree until a manifest (Forc.toml or Cargo.toml) is found.
+/// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
@@ -21,9 +21,11 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     }
     None
 }
+/// Continually go up in the file tree until a Forc manifest file is found.
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
+/// Continually go up in the file tree until a Cargo manifest file is found.
 pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, "Cargo.toml")
 }
