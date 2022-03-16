@@ -95,7 +95,11 @@ impl Context {
                     ty,
                     indices,
                 } => self.verify_extract_value(aggregate, ty, indices)?,
-                Instruction::GetPointer(ptr) => self.verify_get_ptr(ptr)?,
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.verify_get_ptr(base_ptr, ptr_ty, *offset)?,
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -111,13 +115,16 @@ impl Context {
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
                 Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
-                Instruction::PointerCast(ptr_val, ty) => self.verify_ptr_cast(ptr_val, ty)?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
-                Instruction::StateLoad { load_val, key } => {
-                    self.verify_state_load(load_val, key)?
+                Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
+                Instruction::StateLoadQuadWord { load_val, key } => {
+                    self.verify_state_load_quad_word(load_val, key)?
                 }
-                Instruction::StateStore { stored_val, key } => {
-                    self.verify_state_store(stored_val, key)?
+                Instruction::StateStoreWord { stored_val, key } => {
+                    self.verify_state_store_word(stored_val, key)?
+                }
+                Instruction::StateStoreQuadWord { stored_val, key } => {
+                    self.verify_state_store_quad_word(stored_val, key)?
                 }
                 Instruction::Store {
                     dst_val,
@@ -179,7 +186,12 @@ impl Context {
         Ok(())
     }
 
-    fn verify_get_ptr(&self, _ptr: &Pointer) -> Result<(), IrError> {
+    fn verify_get_ptr(
+        &self,
+        _base_ptr: &Pointer,
+        _ptr_ty: &Type,
+        _offset: u64,
+    ) -> Result<(), IrError> {
         // XXX get_ptr() shouldn't exist in the final IR?
         Ok(())
     }
@@ -222,12 +234,6 @@ impl Context {
         }
     }
 
-    fn verify_ptr_cast(&self, _ptr_val: &Value, _ty: &Type) -> Result<(), IrError> {
-        // XXX Make sure the pointer itself doesn't change, just the type, and is definitely either
-        // a get_ptr or ptr_cast.
-        Ok(())
-    }
-
     fn verify_ret(
         &self,
         function: &FunctionContent,
@@ -245,13 +251,27 @@ impl Context {
         }
     }
 
-    fn verify_state_load(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
+    fn verify_state_load_quad_word(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
         // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
         Ok(())
     }
 
-    fn verify_state_store(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
-        // XXX key must be a pointer to B256, stored val ty must be pointer to either Uint(64) or B256.
+    fn verify_state_load_word(&self, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_state_store_quad_word(
+        &self,
+        _stored_val: &Value,
+        _key: &Value,
+    ) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be pointer to a B256.
+        Ok(())
+    }
+
+    fn verify_state_store_word(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be a Uint(64).
         Ok(())
     }
 
