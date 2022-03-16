@@ -33,7 +33,7 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
     pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedExpression::*;
+        use TypedExpressionVariant::*;
         match self.expression {
             Literal(_) | VariableExpression { .. } | FunctionParameter | TupleElemAccess { .. } => {
                 false
@@ -44,10 +44,13 @@ impl TypedExpression {
             AsmExpression {
                 registers, body, ..
             } => {
-                registers
-                    .iter()
-                    .any(|x| x.initializer.deterministically_aborts())
-                    || body.deterministically_aborts()
+                let body_deterministically_aborts =
+                    todo!("check if any rvrts are hit before any jumps");
+                registers.iter().any(|x| {
+                    x.initializer
+                        .map(|x| x.deterministically_aborts())
+                        .unwrap_or(false)
+                }) || body_deterministically_aborts
             }
             IfExp {
                 condition,
