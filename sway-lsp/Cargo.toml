@@ -10,7 +10,7 @@ description = "LSP server for Sway."
 
 [dependencies]
 dashmap = "4.0.2"
-lspower = "1.0.0"
+tower-lsp = "0.16.0"
 ropey = "1.2"
 serde_json = "1.0.60"
 sway-core = { version = "0.6.1", path = "../sway-core" }

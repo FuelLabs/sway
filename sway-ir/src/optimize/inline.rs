@@ -257,9 +257,13 @@ fn inline_instruction(
                     .ins(context)
                     .extract_value(map_value(aggregate), ty, indices, span_md_idx)
             }
-            Instruction::GetPointer(ptr) => {
-                new_block.ins(context).get_ptr(map_ptr(ptr), span_md_idx)
-            }
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            } => new_block
+                .ins(context)
+                .get_ptr(map_ptr(base_ptr), ptr_ty, offset, span_md_idx),
             Instruction::InsertElement {
                 array,
                 ty,
@@ -288,27 +292,24 @@ fn inline_instruction(
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::PointerCast(ptr_val, ty) => {
-                new_block
-                    .ins(context)
-                    .ptr_cast(map_value(ptr_val), ty, span_md_idx)
-            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {
                 new_block
                     .ins(context)
                     .branch(*post_block, Some(map_value(val)), span_md_idx)
             }
-            Instruction::StateLoad { load_val, key } => {
-                new_block
-                    .ins(context)
-                    .state_load(map_value(load_val), map_value(key), span_md_idx)
-            }
-            Instruction::StateStore { stored_val, key } => new_block.ins(context).state_store(
-                map_value(stored_val),
-                map_value(key),
-                span_md_idx,
-            ),
+            Instruction::StateLoadQuadWord { load_val, key } => new_block
+                .ins(context)
+                .state_load_quad_word(map_value(load_val), map_value(key), span_md_idx),
+            Instruction::StateLoadWord(key) => new_block
+                .ins(context)
+                .state_load_word(map_value(key), span_md_idx),
+            Instruction::StateStoreQuadWord { stored_val, key } => new_block
+                .ins(context)
+                .state_store_quad_word(map_value(stored_val), map_value(key), span_md_idx),
+            Instruction::StateStoreWord { stored_val, key } => new_block
+                .ins(context)
+                .state_store_word(map_value(stored_val), map_value(key), span_md_idx),
             Instruction::Store {
                 dst_val,
                 stored_val,
