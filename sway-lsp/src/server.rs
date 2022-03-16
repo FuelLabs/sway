@@ -9,7 +9,6 @@ use lsp::{
 };
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
 use std::sync::Arc;
-use sway_utils::constants::MANIFEST_FILE_NAME;
 use sway_utils::helpers::{find_manifest_dir, get_sway_files};
 #[derive(Debug)]
 pub struct Backend {
@@ -30,7 +29,7 @@ impl Backend {
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
-        if let Some(path) = find_manifest_dir(&curr_dir, MANIFEST_FILE_NAME) {
+        if let Some(path) = find_manifest_dir(&curr_dir) {
             let files = get_sway_files(path);
 
             for file_path in files {

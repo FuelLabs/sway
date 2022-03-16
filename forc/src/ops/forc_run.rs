@@ -18,7 +18,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
         std::env::current_dir().map_err(|e| format!("{:?}", e))?
     };
 
-    match find_manifest_dir(&path_dir, MANIFEST_FILE_NAME) {
+    match find_manifest_dir(&path_dir) {
         Some(manifest_dir) => {
             let manifest = Manifest::from_dir(&manifest_dir)?;
             let project_name = &manifest.project.name;

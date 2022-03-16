@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 
 /// Continually go up in the file tree until a manifest (Forc.toml or Cargo.toml) is found.
 #[allow(clippy::branches_sharing_code)]
-pub fn find_manifest_dir(starter_path: &Path, manifest_file_name: &str) -> Option<PathBuf> {
+pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(manifest_file_name);
+        path.push(file_name);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -20,6 +20,12 @@ pub fn find_manifest_dir(starter_path: &Path, manifest_file_name: &str) -> Optio
         }
     }
     None
+}
+pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, "Cargo.toml")
 }
 pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = vec![];
