@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -74,7 +74,7 @@ impl Manifest {
             println_yellow_err(&warning).unwrap();
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.validate()?;
+        manifest.validate(path)?;
         Ok(manifest)
     }
 
@@ -90,8 +90,19 @@ impl Manifest {
     /// Validate the `Manifest`.
     ///
     /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns.
-    pub fn validate(&self) -> anyhow::Result<()> {
+    /// keywords and patterns, and if a given entry point exists.
+    pub fn validate(&self, path: &Path) -> anyhow::Result<()> {
+        let mut entry_path = path.to_path_buf();
+        entry_path.pop();
+        let entry_path = entry_path
+            .join(constants::SRC_DIR)
+            .join(&self.project.entry);
+        if !entry_path.exists() {
+            bail!(
+                "failed to validate path from entry field {:?} in Forc manifest file.",
+                self.project.entry
+            )
+        }
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
