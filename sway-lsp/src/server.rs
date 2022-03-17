@@ -45,6 +45,36 @@ impl Backend {
     }
 }
 
+fn capabilities() -> ServerCapabilities {
+    ServerCapabilities {
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::INCREMENTAL,
+        )),
+        definition_provider: Some(OneOf::Left(true)),
+        semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
+        document_symbol_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: Some(false),
+            trigger_characters: None,
+            ..Default::default()
+        }),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
+        ..ServerCapabilities::default()
+    }
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
@@ -61,33 +91,7 @@ impl LanguageServer for Backend {
 
         Ok(InitializeResult {
             server_info: None,
-            capabilities: ServerCapabilities {
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::INCREMENTAL,
-                )),
-                definition_provider: Some(OneOf::Left(true)),
-                semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
-                document_symbol_provider: Some(OneOf::Left(true)),
-                hover_provider: Some(HoverProviderCapability::Simple(true)),
-                completion_provider: Some(CompletionOptions {
-                    resolve_provider: Some(false),
-                    trigger_characters: None,
-                    ..Default::default()
-                }),
-                rename_provider: Some(OneOf::Right(RenameOptions {
-                    prepare_provider: Some(true),
-                    work_done_progress_options: WorkDoneProgressOptions {
-                        work_done_progress: Some(true),
-                    },
-                })),
-                execute_command_provider: Some(ExecuteCommandOptions {
-                    commands: vec![],
-                    ..Default::default()
-                }),
-                document_highlight_provider: Some(OneOf::Left(true)),
-                document_formatting_provider: Some(OneOf::Left(true)),
-                ..ServerCapabilities::default()
-            },
+            capabilities: capabilities(),
         })
     }
 
@@ -215,5 +219,107 @@ impl LanguageServer for Backend {
             self.session.clone(),
             params,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Not;
+
+    use serde_json::json;
+    use tower::{Service, ServiceExt};
+
+    use super::*;
+    use futures::stream::StreamExt;
+    use tower_lsp::jsonrpc::{self, Request, Response};
+    use tower_lsp::LspService;
+
+    fn initialize_request(id: i64) -> Request {
+        Request::build("initialize")
+            .params(json!({ "capabilities": capabilities() }))
+            .id(id)
+            .finish()
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn initializes_only_once() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        let request = initialize_request(1);
+
+        let response = service.ready().await.unwrap().call(request.clone()).await;
+        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let response = service.ready().await.unwrap().call(request).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn refuses_requests_after_shutdown() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        let initialize = initialize_request(1);
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let shutdown = Request::build("shutdown").id(1).finish();
+        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let ok = Response::from_ok(1.into(), json!(null));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let response = service.ready().await.unwrap().call(shutdown).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn did_open() {
+        let (mut service, mut messages) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let initialize = initialize_request(1);
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_eq!(response, Ok(Some(ok)));
+
+        // send "initialized" notification
+        let initialized = Request::build("initialized").finish();
+        let response = service.ready().await.unwrap().call(initialized).await;
+        assert_eq!(response, Ok(None));
+
+        // ignore the "window/logMessage" notification: "Initializing the Server"
+        println!("message = {:?}", messages.next().await.unwrap());
+
+        // send "textDocument/didOpen" notification for `uri`
+        let uri = Url::parse("inmemory:///test").unwrap();
+        let language_id = "sway";
+        let text = String::from("fn main{}");
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": language_id,
+                "version": 1,
+                "text": text,
+            },
+        });
+        let did_open = Request::build("textDocument/didOpen")
+            .params(params)
+            .finish();
+        let response = service.ready().await.unwrap().call(did_open).await;
+        assert_eq!(response, Ok(None));
+
+        // send "shutdown" request
+        let shutdown = Request::build("shutdown").id(1).finish();
+        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let ok = Response::from_ok(1.into(), json!(null));
+        assert_eq!(response, Ok(Some(ok)));
+
+        // send "exit" request
+        let shutdown = Request::build("exit").finish();
+        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        assert_eq!(response, Ok(None));
     }
 }
