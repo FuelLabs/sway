@@ -8,6 +8,7 @@
   - [The Sway Toolchain](./introduction/sway-toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
 - [Examples](./examples/index.md)
+  - [Counter](./examples/counter.md)
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
