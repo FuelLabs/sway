@@ -10,7 +10,7 @@ fn main() -> bool {
     }
     assert(counter1 == 10);
 
-   // test early exit from loop with manual "break" (by invalidating the condition)
+    // test early exit from loop with manual "break" (by invalidating the condition)
     let mut counter2 = 0u64;
     let mut n = 0u64;
     while counter2 < 10 {
