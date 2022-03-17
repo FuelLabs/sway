@@ -1459,7 +1459,13 @@ fn reassign_storage_subfield(
         .find(|(_, TypedStorageField { name, .. })| name == &first_field)
     {
         Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
-        None => todo!("storage field does not exist error"),
+        None => {
+            errors.push(CompileError::StorageFieldDoesNotExist {
+                name: first_field.as_str().to_string(),
+                span: first_field.span().clone(),
+            });
+            return err(warnings, errors);
+        }
     };
 
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
@@ -1496,11 +1502,19 @@ fn reassign_storage_subfield(
                 });
                 available_struct_fields = update_available_struct_fields(struct_field.r#type);
             }
-            None => todo!(
-                "field not found on type err, {} was not found in {:?}",
-                field.clone(),
-                available_struct_fields
-            ),
+            None => {
+                let available_fields = available_struct_fields
+                    .iter()
+                    .map(|x| x.name.as_str())
+                    .collect::<Vec<_>>();
+                errors.push(CompileError::FieldNotFound {
+                    field_name: field.clone(),
+                    available_fields: available_fields.join(", "),
+                    struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),
+                    span: field.span().clone(),
+                });
+                return err(warnings, errors);
+            }
         }
     }
     let rhs = check!(

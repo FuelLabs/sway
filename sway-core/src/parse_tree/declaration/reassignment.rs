@@ -107,10 +107,10 @@ impl Reassignment {
                 // because we are reusing code from struct field reassignments
                 // this leads to some nested `Rule`s, so the actual storage
                 // reassignment requires some `expect()`s to extract.
-                let mut parts_of_reassignment = variable_or_struct_reassignment
-                    .into_inner()
-                    .collect::<Vec<_>>();
-                let rhs = parts_of_reassignment.pop();
+                let mut parts = variable_or_struct_reassignment.into_inner();
+                let _storage_keyword = parts.next();
+                let mut parts = parts.collect::<Vec<_>>();
+                let rhs = parts.pop();
                 assert_eq!(rhs.as_ref().map(|x| x.as_rule()), Some(Rule::expr));
                 let rhs = rhs.expect("guaranteed by grammar");
                 let rhs = check!(
@@ -120,7 +120,7 @@ impl Reassignment {
                     errors
                 );
                 let mut lhs = Vec::new();
-                for item in parts_of_reassignment {
+                for item in parts {
                     lhs.push(check!(
                         ident::parse_from_pair(item, config),
                         continue,

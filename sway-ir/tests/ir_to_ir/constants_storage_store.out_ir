@@ -10,9 +10,10 @@ contract {
         v2 = get_ptr mut ptr b256 key_for_x, ptr b256, 0
         v3 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v3, ptr v2
-        state_store_word v1, key ptr v2
-        v4 = const unit ()
-        ret () v4
+        v4 = const u64 0
+        state_store_word v4, key ptr v2
+        v5 = const unit ()
+        ret () v5
     }
 
     fn set_y<858a3d18>() -> () {
