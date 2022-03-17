@@ -20,4 +20,3 @@ impl Incrementor for Contract {
         new_val
     }
 }
-
