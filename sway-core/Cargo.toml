@@ -18,6 +18,7 @@ dirs = "3.0"
 either = "1.6"
 fuel-asm = "0.2"
 fuel-vm = "0.5"
+fuel-tx = "0.5.0"
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
 nanoid = "0.4"
@@ -31,7 +32,9 @@ sha2 = "0.9"
 smallvec = "1.7"
 sway-ir = { version = "0.6.1", path = "../sway-ir" }
 sway-types = { version = "0.6.1", path = "../sway-types" }
+sway-utils = { version = "0.6.1", path = "../sway-utils" }
 generational-arena = "0.2"
+bigint = "4.3.3"
 thiserror = "1.0"
 
 [[bin]]
