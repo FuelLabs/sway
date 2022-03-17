@@ -157,7 +157,7 @@ pub enum Expression {
         span: Span,
     },
     StorageAccess {
-        field_name: Ident,
+        field_names: Vec<Ident>,
         span: Span,
     },
     IfLet {
@@ -1250,14 +1250,24 @@ pub(crate) fn parse_storage_access(
     let span = Span { span, path };
     let mut parts = item.into_inner();
     let _storage_keyword = parts.next();
-    let field_name = check!(
-        ident::parse_from_pair(parts.next().expect("guaranteed by grammar"), config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    //    let field_name = check!(
+    //        ident::parse_from_pair(parts.next().expect("guaranteed by grammar"), config),
+    //        return err(warnings, errors),
+    //        warnings,
+    //        errors
+    //    );
+    let mut field_names = Vec::new();
+    for item in parts {
+        field_names.push(check!(
+            ident::parse_from_pair(item, config),
+            continue,
+            warnings,
+            errors
+        ))
+    }
+
     ok(
-        Expression::StorageAccess { field_name, span },
+        Expression::StorageAccess { field_names, span },
         warnings,
         errors,
     )

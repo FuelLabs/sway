@@ -6,7 +6,10 @@ use crate::{
     parser::Rule,
 };
 
-use sway_types::{span::Span, Ident};
+use sway_types::{
+    span::{join_spans, Span},
+    Ident,
+};
 
 use pest::iterators::Pair;
 
@@ -15,8 +18,8 @@ use pest::iterators::Pair;
 /// by [ReassignmentTarget::StorageField].
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
-    VariableExpression(Expression),
-    StorageField(Ident),
+    VariableExpression(Box<Expression>),
+    StorageField(Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]
@@ -30,18 +33,18 @@ pub struct Reassignment {
 
 impl Reassignment {
     pub fn lhs_span(&self) -> Span {
-        match self.lhs {
-            ReassignmentTarget::VariableExpression(Expression::SubfieldExpression {
-                ref span,
-                ..
-            }) => span.clone(),
-            ReassignmentTarget::VariableExpression(Expression::VariableExpression {
-                ref name,
-                ..
-            }) => name.span().clone(),
-            ReassignmentTarget::StorageField(ref ident) => ident.span().clone(),
-            _ => {
-                unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
+        match &self.lhs {
+            ReassignmentTarget::VariableExpression(var) => match **var {
+                Expression::SubfieldExpression { ref span, .. } => span.clone(),
+                Expression::VariableExpression { ref name, .. } => name.span().clone(),
+                _ => {
+                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
+                }
+            },
+            ReassignmentTarget::StorageField(ref idents) => {
+                idents.iter().fold(idents[0].span().clone(), |acc, ident| {
+                    join_spans(acc, ident.span().clone())
+                })
             }
         }
     }
@@ -73,7 +76,7 @@ impl Reassignment {
 
                 ok(
                     Reassignment {
-                        lhs: ReassignmentTarget::VariableExpression(lhs),
+                        lhs: ReassignmentTarget::VariableExpression(Box::new(lhs)),
                         rhs,
                         span,
                     },
@@ -91,7 +94,7 @@ impl Reassignment {
 
                 ok(
                     Reassignment {
-                        lhs: ReassignmentTarget::VariableExpression(lhs),
+                        lhs: ReassignmentTarget::VariableExpression(Box::new(lhs)),
                         rhs,
                         span,
                     },
@@ -111,25 +114,20 @@ impl Reassignment {
                 assert_eq!(rhs.as_ref().map(|x| x.as_rule()), Some(Rule::expr));
                 let rhs = rhs.expect("guaranteed by grammar");
                 let rhs = check!(
-                    Expression::parse_from_pair(
-                        rhs
-                            // sad clone, probably unnecessary
-                            .clone(),
-                        config
-                    ),
+                    Expression::parse_from_pair(rhs, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let storage_field = parts_of_reassignment.pop().expect("guaranteed by grammar");
-
-                let lhs = check!(
-                    ident::parse_from_pair(storage_field, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
+                let mut lhs = Vec::new();
+                for item in parts_of_reassignment {
+                    lhs.push(check!(
+                        ident::parse_from_pair(item, config),
+                        continue,
+                        warnings,
+                        errors
+                    ))
+                }
                 ok(
                     Reassignment {
                         lhs: ReassignmentTarget::StorageField(lhs),

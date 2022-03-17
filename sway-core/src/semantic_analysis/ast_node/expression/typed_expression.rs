@@ -335,10 +335,10 @@ impl TypedExpression {
                     dead_code_graph,
                     opts,
                 )
-            },
-            Expression::StorageAccess { field_name, .. } => Self::type_check_storage_load(
+            }
+            Expression::StorageAccess { field_names, .. } => Self::type_check_storage_load(
                 TypeCheckArguments {
-                    checkee: field_name,
+                    checkee: field_names,
                     namespace,
                     crate_namespace,
                     self_type,
@@ -1356,7 +1356,7 @@ impl TypedExpression {
     /// If there isn't any storage, then this is an error. If there is storage, find the corresponding
     /// field that has been specified and return that value.
     fn type_check_storage_load(
-        arguments: TypeCheckArguments<'_, Ident>,
+        arguments: TypeCheckArguments<'_, Vec<Ident>>,
         span: &Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1364,10 +1364,24 @@ impl TypedExpression {
         // can probably modify the type checker when there's a storage declaration or something like that
         // could be a good time to do that refactor. alternatively, the storage declaration can go in
         // the namespace and we could pull it from there.
+
+        if !arguments.namespace.has_storage_declared() {
+            errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
+            return err(warnings, errors);
+        }
+
+        let storage_fields = check!(
+            arguments.namespace.get_storage_field_descriptors(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // Do all namespace checking here!
         let (storage_access, return_type) = check!(
             arguments
                 .namespace
-                .apply_storage_load(arguments.checkee, span),
+                .apply_storage_load(arguments.checkee, &storage_fields),
             return err(warnings, errors),
             warnings,
             errors

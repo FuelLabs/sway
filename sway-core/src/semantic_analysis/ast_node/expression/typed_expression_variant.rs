@@ -105,23 +105,29 @@ pub(crate) enum TypedExpressionVariant {
 
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
-    pub(crate) field_ix_and_name: Option<(StateIndex, Ident)>,
-    pub(crate) field_to_access_span: Span,
+    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub(crate) ix: StateIndex,
 }
 
 impl TypeCheckedStorageAccess {
-    pub fn field_ix(&self) -> Option<&StateIndex> {
-        self.field_ix_and_name.as_ref().map(|(x, _)| x)
+    pub fn field_name(&self) -> Ident {
+        self.fields[0].name.clone()
     }
-    pub fn field_name(&self) -> Option<&Ident> {
-        self.field_ix_and_name.as_ref().map(|(_, x)| x)
+    pub fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                join_spans(acc, field.span.clone())
+            })
     }
-    pub fn new_load(field: StateIndex, name: Ident, span: &Span) -> Self {
-        Self {
-            field_ix_and_name: Some((field, name)),
-            field_to_access_span: span.clone(),
-        }
-    }
+}
+
+/// Describes a single subfield access in the sequence when accessing a subfield within storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccessDescriptor {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -239,10 +245,9 @@ impl TypedExpressionVariant {
                     tag
                 )
             }
-            TypedExpressionVariant::StorageAccess(access) => match access.field_name() {
-                Some(name) => format!("storage field {} access", name.as_str()),
-                None => "storage struct access".into(),
-            },
+            TypedExpressionVariant::StorageAccess(access) => {
+                format!("storage field {} access", access.field_name())
+            }
             TypedExpressionVariant::SizeOf { variant } => match variant {
                 SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
                 SizeOfVariant::Type(type_name) => {

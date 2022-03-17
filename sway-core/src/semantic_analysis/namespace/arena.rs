@@ -93,8 +93,8 @@ pub trait NamespaceWrapper {
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
     fn apply_storage_load(
         &self,
-        field: Ident,
-        span: &Span,
+        field: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()>;
     fn has_storage_declared(&self) -> bool;
@@ -104,10 +104,13 @@ pub trait NamespaceWrapper {
 impl NamespaceWrapper for NamespaceRef {
     fn apply_storage_load(
         &self,
-        field: Ident,
-        span: &Span,
+        fields: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
-        read_module(move |ns| ns.apply_storage_load(field.clone(), span), *self)
+        read_module(
+            move |ns| ns.apply_storage_load(fields.clone(), storage_fields),
+            *self,
+        )
     }
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         write_module(|ns| ns.set_storage_declaration(decl), *self)
@@ -127,10 +130,10 @@ impl NamespaceWrapper for NamespaceRef {
                 span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
                 path: None,
             };
-            return err(
+            err(
                 vec![],
                 vec![CompileError::Internal("no storage is declared.", span)],
-            );
+            )
         }
     }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {

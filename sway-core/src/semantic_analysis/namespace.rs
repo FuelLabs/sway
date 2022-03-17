@@ -3,7 +3,9 @@ use crate::{
     TypedFunctionDeclaration,
 };
 
-use crate::semantic_analysis::{ast_node::TypedStorageDeclaration, TypeCheckedStorageAccess};
+use crate::semantic_analysis::{
+    ast_node::TypedStorageDeclaration, declaration::TypedStorageField, TypeCheckedStorageAccess,
+};
 
 use sway_types::span::Span;
 
@@ -37,11 +39,11 @@ pub struct Namespace {
 impl Namespace {
     pub fn apply_storage_load(
         &self,
-        field: Ident,
-        span: &Span,
+        fields: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         match self.declared_storage {
-            Some(ref storage) => storage.apply_storage_load(field, span),
+            Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
             None => todo!("Attempted access of storage where no declaration was available err"),
         }
     }

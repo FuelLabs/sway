@@ -22,4 +22,7 @@ impl StateIndex {
     pub fn new(raw: usize) -> Self {
         StateIndex(raw)
     }
+    pub fn to_usize(&self) -> usize {
+        self.0
+    }
 }

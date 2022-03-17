@@ -1,5 +1,11 @@
-use crate::semantic_analysis::{TypedStructField, TypeCheckedStorageAccess};
-use crate::{error::*, type_engine::TypeId, Ident};
+use crate::semantic_analysis::{
+    TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedStructField,
+};
+use crate::{
+    error::*,
+    type_engine::{TypeId, TypeInfo},
+    Ident,
+};
 use sway_types::{state::StateIndex, Span};
 
 #[derive(Clone, Debug)]
@@ -16,29 +22,93 @@ impl TypedStorageDeclaration {
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
         &self,
-        field: Ident,
-        span: &Span,
+        fields: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
-        if let Some((ix, TypedStorageField { r#type, name, .. })) = self.find_field(&field) {
-            ok(
-                (
-                    TypeCheckedStorageAccess::new_load(ix, name.clone(), span),
-                    *r#type,
-                ),
-                vec![],
-                vec![],
-            )
-        } else {
-            todo!("storage field not found err")
-        }
-    }
+        let mut errors = vec![];
+        let warnings = vec![];
 
-    fn find_field(&self, field: &Ident) -> Option<(StateIndex, &TypedStorageField)> {
-        self.fields
+        let mut type_checked_buf = vec![];
+        let mut fields: Vec<_> = fields.into_iter().rev().collect();
+
+        let first_field = fields.pop().expect("guaranteed by grammar");
+        let (ix, initial_field_type) = match storage_fields
             .iter()
             .enumerate()
-            .find(|(_ix, TypedStorageField { name, .. })| name == field)
-            .map(|(ix, field)| (StateIndex::new(ix), field))
+            .find(|(_, TypedStorageField { name, .. })| name == &first_field)
+        {
+            Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
+            None => {
+                errors.push(CompileError::StorageFieldDoesNotExist {
+                    name: first_field.as_str().to_string(),
+                    span: first_field.span().clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
+
+        type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+            name: first_field.clone(),
+            r#type: *initial_field_type,
+            span: first_field.span().clone(),
+        });
+
+        fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {
+            match crate::type_engine::look_up_type_id(id) {
+                TypeInfo::Struct { fields, .. } => fields,
+                _ => vec![],
+            }
+        }
+
+        // if the previously iterated type was a struct, put its fields here so we know that,
+        // in the case of a subfield, we can type check the that the subfield exists and its type.
+        let mut available_struct_fields = update_available_struct_fields(*initial_field_type);
+
+        // get the initial field's type
+        // make sure the next field exists in that type
+        for field in fields.into_iter().rev() {
+            match available_struct_fields
+                .iter()
+                .find(|x| x.name.as_str() == field.as_str())
+            {
+                Some(struct_field) => {
+                    type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+                        name: field.clone(),
+                        r#type: struct_field.r#type,
+                        span: field.span().clone(),
+                    });
+                    available_struct_fields = update_available_struct_fields(struct_field.r#type);
+                }
+                None => {
+                    let available_fields = available_struct_fields
+                        .iter()
+                        .map(|x| x.name.as_str())
+                        .collect::<Vec<_>>();
+                    errors.push(CompileError::FieldNotFound {
+                        field_name: field.clone(),
+                        available_fields: available_fields.join(", "),
+                        struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),
+                        span: field.span().clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            }
+        }
+
+        let return_type = type_checked_buf[type_checked_buf.len() - 1].r#type;
+        dbg!(crate::type_engine::look_up_type_id(return_type).friendly_type_str());
+
+        ok(
+            (
+                TypeCheckedStorageAccess {
+                    fields: type_checked_buf,
+                    ix,
+                },
+                return_type,
+            ),
+            warnings,
+            errors,
+        )
     }
 
     pub fn span(&self) -> Span {
@@ -56,7 +126,7 @@ impl TypedStorageDeclaration {
                  }| TypedStructField {
                     name: name.clone(),
                     r#type: *r#type,
-                    span: span.clone()
+                    span: span.clone(),
                 },
             )
             .collect()

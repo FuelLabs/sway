@@ -996,19 +996,16 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
-        StorageAccess(field) => match field.field_name() {
-            Some(field_name) => {
-                let storage_node = graph.namespace.storage.get(field_name).cloned();
-                let this_ix =
-                    graph.add_node(format!("storage field access: {}", field_name.as_str()).into());
-                for leaf in leaves {
-                    storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
-                    graph.add_edge(*leaf, this_ix, "".into());
-                }
-                Ok(vec![this_ix])
+        StorageAccess(fields) => {
+            let storage_node = graph.namespace.storage.get(&fields.field_name()).cloned();
+            let this_ix =
+                graph.add_node(format!("storage field access: {}", fields.field_name()).into());
+            for leaf in leaves {
+                storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
+                graph.add_edge(*leaf, this_ix, "".into());
             }
-            None => Ok(leaves.to_vec()),
-        },
+            Ok(vec![this_ix])
+        }
         SizeOf { variant } => match variant {
             SizeOfVariant::Type(_) => Ok(vec![]),
             SizeOfVariant::Val(exp) => {

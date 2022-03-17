@@ -869,6 +869,10 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
+    #[error("Storage field {name} does not exist")]
+    StorageFieldDoesNotExist { name: String, span: Span },
+    #[error("No storage has been declared")]
+    NoDeclaredStorage { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1077,6 +1081,8 @@ impl CompileError {
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
             CallParamForNonContractCallMethod { span, .. } => span,
+            StorageFieldDoesNotExist { span, .. } => span,
+            NoDeclaredStorage { span, .. } => span,
         }
     }
 

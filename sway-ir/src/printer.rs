@@ -493,12 +493,15 @@ fn instruction_to_doc<'a>(
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
-            Instruction::StateStoreWord { stored_val, key } => Doc::text_line(format!(
+            Instruction::StateStoreWord { stored_val, key } => maybe_constant_to_doc(
+                context, md_namer, namer, stored_val,
+            )
+            .append(Doc::text_line(format!(
                 "state_store_word {}, key ptr {}{}",
                 namer.name(context, stored_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
-            )),
+            ))),
             Instruction::Store {
                 dst_val,
                 stored_val,
