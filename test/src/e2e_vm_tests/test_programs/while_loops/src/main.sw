@@ -25,5 +25,18 @@ fn main() -> bool {
 
     assert(counter_2 == 10 && counter_3 == 3);
 
+    // test nested loops
+    let mut counter_4 = 0;
+    let mut counter_5 = 0;
+
+    while counter_4 < 7 {
+        while counter_5 < 11 {
+            counter_5 = counter_5 + 1;
+        }
+        counter_4 = counter_4 + 1;
+    }
+    assert(counter_5 == 11);
+    assert(counter_4 == 7);
+
     true
 }
