@@ -32,7 +32,6 @@ impl StructDeclaration {
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let decl = decl.into_inner();
@@ -62,15 +61,40 @@ impl StructDeclaration {
                 a => unreachable!("{:?}", a),
             }
         }
-        let name = name.expect("guaranteed to exist by grammar");
-
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
-
+        let name = check!(
+            ident::parse_from_pair(name.expect("guaranteed to exist by grammar"), config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        assert_or_warn!(
+            is_upper_camel_case(name.as_str()),
+            warnings,
+            name.span().clone(),
+            Warning::NonClassCaseStructName {
+                struct_name: name.clone()
+            }
+        );
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
+        for type_parameter in type_parameters.iter() {
+            assert_or_warn!(
+                is_upper_camel_case(type_parameter.name_ident.as_str()),
+                warnings,
+                type_parameter.name_ident.span().clone(),
+                Warning::NonClassCaseTypeParameter {
+                    name: type_parameter.name_ident.clone()
+                }
+            );
+        }
         let fields = if let Some(fields) = fields_pair {
             check!(
                 StructField::parse_from_pairs(fields, config),
@@ -81,26 +105,6 @@ impl StructDeclaration {
         } else {
             Vec::new()
         };
-
-        let span = Span {
-            span: name.as_span(),
-            path,
-        };
-
-        let name = check!(
-            ident::parse_from_pair(name, config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        assert_or_warn!(
-            is_upper_camel_case(name.as_str()),
-            warnings,
-            span,
-            Warning::NonClassCaseStructName {
-                struct_name: name.clone()
-            }
-        );
         ok(
             StructDeclaration {
                 name,

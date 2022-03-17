@@ -41,26 +41,25 @@ impl TraitDeclaration {
             } else {
                 (Visibility::Private, trait_keyword_or_visibility)
             };
-        let name_pair = trait_parts.next().unwrap();
+
         let name = check!(
-            ident::parse_from_pair(name_pair.clone(), config),
+            ident::parse_from_pair(trait_parts.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let span = name.span().clone();
         assert_or_warn!(
-            is_upper_camel_case(name_pair.as_str().trim()),
+            is_upper_camel_case(name.as_str()),
             warnings,
-            span,
+            name.span().clone(),
             Warning::NonClassCaseTraitName { name: name.clone() }
         );
+
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut methods = Vec::new();
         let mut interface = Vec::new();
         let mut supertraits = Vec::new();
-
         for _ in 0..3 {
             match trait_parts.peek().map(|x| x.as_rule()) {
                 Some(Rule::supertraits) => {
@@ -81,6 +80,27 @@ impl TraitDeclaration {
                 }
                 _ => (),
             }
+        }
+
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
+        for type_parameter in type_parameters.iter() {
+            assert_or_warn!(
+                is_upper_camel_case(type_parameter.name_ident.as_str()),
+                warnings,
+                type_parameter.name_ident.span().clone(),
+                Warning::NonClassCaseTypeParameter {
+                    name: type_parameter.name_ident.clone()
+                }
+            );
         }
 
         if let Some(methods_and_interface) = trait_parts.next() {
@@ -106,12 +126,7 @@ impl TraitDeclaration {
                 }
             }
         }
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
+
         ok(
             TraitDeclaration {
                 type_parameters,

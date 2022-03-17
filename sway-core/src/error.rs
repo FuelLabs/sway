@@ -219,6 +219,9 @@ pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
     },
+    NonClassCaseTypeParameter {
+        name: Ident,
+    },
     NonClassCaseTraitName {
         name: Ident,
     },
@@ -279,6 +282,14 @@ impl fmt::Display for Warning {
                  \"{}\".",
                 struct_name,
                 to_upper_camel_case(struct_name.as_str())
+            )
+            }
+            NonClassCaseTypeParameter { name } => {
+                write!(f,
+                "Type parameter \"{}\" is not idiomatic. TypeParameters should have a ClassCase name, like \
+                 \"{}\".",
+                name,
+                to_upper_camel_case(name.as_str())
             )
             }
             NonClassCaseTraitName { name } => {

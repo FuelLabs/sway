@@ -239,11 +239,17 @@ impl TypedStructDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, Hash)]
 pub struct TypedStructField {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
+}
+
+impl PartialEq for TypedStructField {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+    }
 }
 
 impl TypedStructField {
@@ -274,6 +280,7 @@ pub struct TypedEnumDeclaration {
     pub(crate) visibility: Visibility,
     pub(crate) type_id: TypeId,
 }
+
 impl TypedEnumDeclaration {
     pub(crate) fn monomorphize(
         &self,
@@ -341,12 +348,20 @@ impl TypedEnumDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
     }
 }
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
+}
+
+impl PartialEq for TypedEnumVariant {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+            && self.tag == other.tag
+    }
 }
 
 impl TypedEnumVariant {

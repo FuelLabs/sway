@@ -106,17 +106,8 @@ impl EnumDeclaration {
             }
         }
 
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params,
-            where_clause,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
-
-        // unwrap non-optional fields
-        let enum_name = enum_name.unwrap();
         let name = check!(
-            ident::parse_from_pair(enum_name.clone(), config),
+            ident::parse_from_pair(enum_name.unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -124,14 +115,32 @@ impl EnumDeclaration {
         assert_or_warn!(
             is_upper_camel_case(name.as_str()),
             warnings,
-            Span {
-                span: enum_name.as_span(),
-                path,
-            },
+            name.span().clone(),
             Warning::NonClassCaseEnumName {
                 enum_name: name.clone()
             }
         );
+
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params,
+                where_clause,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
+        for type_parameter in type_parameters.iter() {
+            assert_or_warn!(
+                is_upper_camel_case(type_parameter.name_ident.as_str()),
+                warnings,
+                type_parameter.name_ident.span().clone(),
+                Warning::NonClassCaseTypeParameter {
+                    name: type_parameter.name_ident.clone()
+                }
+            );
+        }
 
         let variants = check!(
             EnumVariant::parse_from_pairs(variants, config),
@@ -186,6 +195,7 @@ impl EnumVariant {
             errors,
         )
     }
+
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,
