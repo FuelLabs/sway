@@ -1,6 +1,6 @@
 # Counter
 
-The following is a simple example of a contract which implements a counter, which can be incremented and store the new value. The current value of the incrementor can also be looked up.
+The following is a simple example of a contract which implements a counter. Both the `initialize()` and `increment()` functions return the currently set value.
 
 ```sway
 {{#include ../../../examples/counter/src/main.sw}}
