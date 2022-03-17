@@ -1,11 +1,11 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use forc_util::{println_green, println_red};
+use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::{fmt, fs, io, path::Path, sync::Arc};
 use sway_fmt::{get_formatted_data, FormattingOptions};
-use sway_utils::{constants, find_manifest_dir, get_sway_files};
+use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {

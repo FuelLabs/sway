@@ -3,12 +3,13 @@ use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 use anyhow::Result;
 use forc_pkg::Manifest;
+use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
 use std::path::PathBuf;
 use sway_core::{parse, TreeType};
-use sway_utils::{constants::*, find_manifest_dir};
+use sway_utils::constants::*;
 
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
     let curr_dir = if let Some(ref path) = command.path {
