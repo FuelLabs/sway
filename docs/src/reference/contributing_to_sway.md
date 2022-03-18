@@ -28,8 +28,7 @@ fuel-core
 Then, open a second terminal and run:
 
 ```
-cd sway/test
-cargo run
+cargo run --bin test
 ```
 
 After the test suite runs, you should see:
