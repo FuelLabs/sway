@@ -70,8 +70,13 @@ impl TypedExpression {
             AsmExpression {
                 registers, body, ..
             } => {
-                let body_deterministically_aborts =
-                    todo!("check if any rvrts are hit before any jumps");
+                // when asm expression parsing is handled earlier, this will be cleaner. For now,
+                // we rely on string comparison...
+                // jumps are not allowed in asm blocks, so we know this block deterministically
+                // aborts if these opcodes are present
+                let body_deterministically_aborts = body
+                    .iter()
+                    .any(|x| ["rvrt", "ret"].contains(&x.op_name.as_str().to_lowercase().as_str()));
                 registers.iter().any(|x| {
                     x.initializer
                         .as_ref()
