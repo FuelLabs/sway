@@ -1105,6 +1105,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-crypto"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5b455f5b4e59a5e772ba73744caf52a0835f564c0f82b4702c3bb23b2fe453"
+dependencies = [
+ "borrown",
+ "fuel-types",
+ "secp256k1",
+ "sha2",
+]
+
+[[package]]
 name = "fuel-gql-client"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1200,7 +1212,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ac5e893eae18d812a14cd1dfb996834705bcaa24eae1f3924c1677ee29d9014"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-types",
  "itertools",
  "rand 0.8.4",
@@ -1225,7 +1237,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ec55ff935848e476dbcfca3931723252b5c33ad90d126f49a886600a8a731a3"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-merkle",
  "fuel-storage",
  "fuel-tx",
@@ -3083,6 +3095,7 @@ dependencies = [
  "dirs 3.0.2",
  "either",
  "fuel-asm",
+ "fuel-crypto 0.4.0",
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-vm",
@@ -3098,6 +3111,7 @@ dependencies = [
  "smallvec",
  "sway-ir",
  "sway-types",
+ "sway-utils",
  "thiserror",
 ]
 
@@ -3141,7 +3155,7 @@ name = "sway-types"
 version = "0.6.1"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-tx",
@@ -3256,7 +3270,7 @@ name = "test-sig-gen-util"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-tx",
  "fuel-vm",
  "hex",

@@ -2,6 +2,7 @@ use super::*;
 
 use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
 use std::collections::HashMap;
+use sway_types::state::StateIndex;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
@@ -96,9 +97,39 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    #[allow(dead_code)]
+    StorageAccess(TypeCheckedStorageAccess),
     SizeOf {
         variant: SizeOfVariant,
     },
+}
+
+/// Describes the full storage access including all the subfields
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccess {
+    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub(crate) ix: StateIndex,
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
+    }
+    pub fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                join_spans(acc, field.span.clone())
+            })
+    }
+}
+
+/// Describes a single subfield access in the sequence when accessing a subfield within storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccessDescriptor {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -215,6 +246,9 @@ impl TypedExpressionVariant {
                     variant_name.as_str(),
                     tag
                 )
+            }
+            TypedExpressionVariant::StorageAccess(access) => {
+                format!("storage field {} access", access.storage_field_name())
             }
             TypedExpressionVariant::SizeOf { variant } => match variant {
                 SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
@@ -335,6 +369,8 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
+            // storage is never generic and cannot be monomorphized
+            StorageAccess { .. } => (),
             SizeOf { variant } => match variant {
                 SizeOfVariant::Type(_) => (),
                 SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),
