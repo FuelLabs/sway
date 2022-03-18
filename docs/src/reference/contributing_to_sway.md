@@ -6,7 +6,7 @@ If you run into any difficulties getting started, you can always ask questions o
 
 ## Building and setting up a development workspace
 
-See the Sway book's [Introduction](../introduction/index.md) for instructions on installing and setting up the Sway toolchain..
+See the [introduction](../introduction/index.md) section for instructions on installing and setting up the Sway toolchain..
 
 ## Getting the repository
 
@@ -21,13 +21,13 @@ The following steps will run the sway test suite and ensure that everything is s
 
 First, open a new terminal and start `fuel-core` with:
 
-```
+```sh
 fuel-core
 ```
 
 Then, open a second terminal and run:
 
-```
+```sh
 cargo run --bin test
 ```
 
