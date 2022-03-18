@@ -8,6 +8,7 @@
   - [The Sway Toolchain](./introduction/sway-toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
 - [Examples](./examples/index.md)
+  - [Counter](./examples/counter.md)
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
@@ -21,6 +22,8 @@
   - [Custom Types](./basics/custom_types.md)
   - [Functions](./basics/functions.md)
   - [Reference Types](./basics/reference_types.md)
+- [Control Flow](./control-flow/index.md)
+  - [Loops](./control-flow/loops.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
   <!-- - [Testing with TypeScript](./testing/testing-with-typescript.md) -->

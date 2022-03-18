@@ -96,6 +96,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("tuple_in_struct", ProgramState::Return(1)),
         ("nested_structs", ProgramState::Return(1)),
         ("abort_control_flow", ProgramState::Revert(42)),
+        ("while_loops", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {

@@ -1,6 +1,8 @@
 use crate::core::{session::Session, token::Token, token_type::TokenType};
-use lspower::lsp::{CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse};
 use std::sync::Arc;
+use tower_lsp::lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
+};
 
 pub fn get_completion(
     session: Arc<Session>,

@@ -60,6 +60,7 @@ impl TypedExpression {
             } => v.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
+            | StorageAccess { .. }
             | SizeOf { .. }
             | VariableExpression { .. }
             | FunctionParameter
@@ -162,6 +163,7 @@ impl TypedExpression {
             | TypedExpressionVariant::SizeOf { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
     }
