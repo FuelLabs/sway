@@ -1003,7 +1003,6 @@ impl TypedExpression {
             warnings,
             errors
         ));
-        // if the branch aborts, then its return type doesn't matter.
         let then = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
@@ -1021,13 +1020,16 @@ impl TypedExpression {
             warnings,
             errors
         ));
-        if then.deterministically_aborts() {
+        // if the branch aborts, then its return type doesn't matter.
+        if !then.deterministically_aborts() {
+            println!("then doesn't deterministically abort");
             // if this does not deterministically_abort, check the block return type
             let ty_to_check = if r#else.is_some() {
                 type_annotation
             } else {
                 insert_type(TypeInfo::Tuple(vec![]))
             };
+            println!("ty to check is {}", ty_to_check.friendly_type_str());
             match unify_with_self(
                 then.return_type,
                 ty_to_check,
@@ -1061,7 +1063,7 @@ impl TypedExpression {
                 warnings,
                 errors
             );
-            if r#else.deterministically_aborts() {
+            if !r#else.deterministically_aborts() {
                 // if this does not deterministically_abort, check the block return type
                 match unify_with_self(
                     r#else.return_type,
