@@ -34,7 +34,6 @@ sway-ir = { version = "0.6.1", path = "../sway-ir" }
 sway-types = { version = "0.6.1", path = "../sway-types" }
 sway-utils = { version = "0.6.1", path = "../sway-utils" }
 generational-arena = "0.2"
-bigint = "4.3.3"
 thiserror = "1.0"
 
 [[bin]]

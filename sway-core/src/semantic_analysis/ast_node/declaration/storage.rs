@@ -96,7 +96,6 @@ impl TypedStorageDeclaration {
         }
 
         let return_type = type_checked_buf[type_checked_buf.len() - 1].r#type;
-        dbg!(crate::type_engine::look_up_type_id(return_type).friendly_type_str());
 
         ok(
             (

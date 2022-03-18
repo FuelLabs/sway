@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "storage_access"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
