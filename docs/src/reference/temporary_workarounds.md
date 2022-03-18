@@ -12,10 +12,6 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 
 Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
 
-## Explicit Parameters
-
-For now, the first tree parameters of [an ABI method](../sway-on-chain/smart_contracts.md#the-abi-declaration) must be the amount of gas forwarded with the call, the amount of coins, and the asset ID of the coin (i.e. token type). A single fourth parameter is available (which could be a struct) for actual arguments. This restriction will be removed in the near future, such that only the actual arguments need to be declared.
-
 ## Storage Variables and Mappings
 
 Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.
@@ -26,13 +22,8 @@ contract;
 use std::hash::*;
 use std::storage::*;
 
-struct ParamsStore {
-    x: 64,
-    y: b256,
-}
-
 abi Store {
-    fn store(gas: u64, coins: u64, asset_id: b256, args: ParamsStore);
+    fn store(x: u64, y: b256);
 }
 
 // Storage slot domain separator for a primitive
@@ -41,14 +32,14 @@ const STORAGE_SLOT_PRIMITIVE: b256 = 0x00000000000000000000000000000000000000000
 const STORAGE_SLOT_MAPPING: b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
 impl Store for Contract {
-    fn store(gas: u64, coins: u64, asset_id: b256, args: ParamsStore) {
+    fn store(x: u64, y: b256) {
         // Compute storage slot for primitive and store `x`
         let storage_slot_primitive = hash_value(STORAGE_SLOT_PRIMITIVE, HashMethod::Sha256);
-        store(storage_slot_primitive, args.x);
+        store(storage_slot_primitive, x);
 
         // Compute mapping slot for `y` and store `x`
-        let storage_slot_mapping = hash_pair(STORAGE_SLOT_MAPPING, args.y, HashMethod::Sha256);
-        store(storage_slot_mapping, args.x);
+        let storage_slot_mapping = hash_pair(STORAGE_SLOT_MAPPING, y, HashMethod::Sha256);
+        store(storage_slot_mapping, x);
     }
 }
 ```

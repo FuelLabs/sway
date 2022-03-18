@@ -10,13 +10,8 @@ As with any Sway program, the program starts with a declaration of what [program
 library wallet_abi;
 
 abi Wallet {
-    fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
-    fn send_funds(gas: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
-}
-
-pub struct SendFundsRequest {
-    amount_to_send: u64,
-    recipient_address: b256,
+    fn receive_funds();
+    fn send_funds(amount_to_send: u64, recipient_address: b256);
 }
 ```
 
@@ -26,8 +21,8 @@ There are two declarations going on here. One is a struct representing the data 
 
 ```sway
 abi Wallet {
-    fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
-    fn send_funds(gas: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
+    fn receive_funds();
+    fn send_funds(amount_to_send: u64, recipient_address: b256);
 }
 ```
 
@@ -40,27 +35,20 @@ In the first line, `abi Wallet {`, we declare the name of this _Application Bina
 In the second line,
 
 ```sway
-    fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
+    fn receive_funds();
 ```
 
-we are declaring an ABI interface surface method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method takes four parameters: `gas`, `coins_to_forward`, `asset_id`, and `unused`, and doesn't return anything.
-
-1. `gas` represents the gas being forwarded to the contract when it is called.
-2. `coins_to_forward` represents how many coins are being forwarded with this call.
-3. `asset_id` represents the ID of the _asset type_ of the coin being forwarded.
-4. `unused` is the configurable user parameter, which this method does not need and is therefore unused.
-
-**For now, all ABI methods must take these four parameters _in this order_. This will change shortly, and ABI methods will be able to accept any number of user-based parameters and not need to specify arguments for gas and coin forwarding.** You will see a compile error if you do not specify these parameters correctly in your ABI.
+we are declaring an ABI interface surface method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method does not take any parameters.
 
 ---
 
 In the third line,
 
 ```sway
-    fn send_funds(gas: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
+    fn send_funds(amount_to_send: u64, recipient_address: b256);
 ```
 
-we are declaring another ABI method, this time called `send_funds`. It takes the same parameters as the last ABI method, but with one difference: the fourth argument, the configurable one, is used. By specifying a struct here, you can pass in many values in this one parameter. In this case, `SendFundsRequest` simply has two values: the amount to send, and the address to send the funds to.
+we are declaring another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
 
 ## Implementing an ABI for a Smart Contract
 
@@ -70,19 +58,19 @@ Implementing an ABI for a contract is accomplished with _impl ABI_ syntax:
 
 ```sway
 impl Wallet for Contract {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
+    fn receive_funds() {
         if asset_id == ETH_ID {
             let balance = storage.balance.write();
             deref balance = balance + coins_to_forward;
         };
     }
 
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest) {
+    fn send_funds(amount_to_send: u64, recipient_address: b256) {
         assert(sender() == OWNER_ADDRESS);
-        assert(storage.balance.read() > req.amount_to_send);
+        assert(storage.balance.read() > amount_to_send);
         let balance = storage.balance.write();
-        deref balance = balance - req.amount_to_send;
-        transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
+        deref balance = balance - amount_to_send;
+        transfer_coins(asset_id, recipient_address, amount_to_send);
     }
 }
 ```
@@ -105,12 +93,16 @@ use std::consts::ETH_ID;
 fn main() {
     let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
     let caller = abi(Wallet, contract_address);
-    let req = SendFundsRequest {
-        amount_to_send: 200,
-        recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b,
-    };
-    caller.send_funds(10000, 0, ETH_ID, req);
+    let amount_to_send = 200;
+    let recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+    caller.send_funds{gas: 10000, coins: 0, asset_id: ETH_ID}(amount_to_send, recipient_address);
 }
 ```
 
-The main new concept is the _abi cast_: `abi(AbiName, contract_address)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We then construct the request format, `SendFundsRequest`, and directly call the contract ABI method as if it was just a regular method.
+The main new concept is the _abi cast_: `abi(AbiName, contract_address)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:
+
+1. `gas`: represents the gas being forwarded to the contract when it is called.
+2. `coins`: represents how many coins are being forwarded with this call.
+3. `asset_id`: represents the ID of the _asset type_ of the coin being forwarded.
+
+Each special parameter is optional and assumes a default value when skipped.

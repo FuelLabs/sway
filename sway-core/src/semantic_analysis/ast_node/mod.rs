@@ -10,7 +10,10 @@ use crate::{
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::span::{join_spans, Span};
+use sway_types::{
+    span::{join_spans, Span},
+    state::StateIndex,
+};
 
 use std::sync::Arc;
 
@@ -1297,4 +1300,37 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         return_type: crate::type_engine::insert_type(return_type),
         type_parameters: Default::default(),
     }
+}
+
+/// Describes each field being drilled down into in storage and its type.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageReassignment {
+    pub(crate) fields: Vec<TypeCheckedStorageReassignDescriptor>,
+    pub(crate) ix: StateIndex,
+    pub(crate) rhs: TypedExpression,
+}
+
+impl TypeCheckedStorageReassignment {
+    pub fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                join_spans(acc, field.span.clone())
+            })
+    }
+    pub fn names(&self) -> Vec<Ident> {
+        self.fields
+            .iter()
+            .map(|f| f.name.clone())
+            .collect::<Vec<_>>()
+    }
+}
+
+/// Describes a single subfield access in the sequence when reassigning to a subfield within
+/// storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageReassignDescriptor {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
 }

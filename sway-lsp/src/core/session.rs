@@ -4,12 +4,12 @@ use crate::{
     sway_config::SwayConfig,
 };
 use dashmap::DashMap;
-use lspower::lsp::{
+use serde_json::Value;
+use std::sync::{Arc, LockResult, RwLock};
+use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Position, Range, SemanticToken,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
-use serde_json::Value;
-use std::sync::{Arc, LockResult, RwLock};
 
 pub type Documents = DashMap<String, TextDocument>;
 
