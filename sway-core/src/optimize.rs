@@ -1,4 +1,4 @@
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
 
