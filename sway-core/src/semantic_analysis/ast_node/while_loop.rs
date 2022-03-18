@@ -10,7 +10,4 @@ impl TypedWhileLoop {
     pub(crate) fn pretty_print(&self) -> String {
         format!("while loop on {}", self.condition.pretty_print())
     }
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        todo!()
-    }
 }

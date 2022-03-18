@@ -95,7 +95,9 @@ impl TypedAstNode {
             ReturnStatement(_) => true,
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(w_loop) => w_loop.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
             SideEffect => false,
         }
     }
@@ -120,6 +122,13 @@ impl TypedAstNode {
                 }
                 buf
             }
+            // assignments and  reassignments can happen during control flow and can abort
+            TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
+                TypedVariableDeclaration { body, .. },
+            )) => body.gather_return_statements(),
+            TypedAstNodeContent::Declaration(TypedDeclaration::Reassignment(
+                TypedReassignment { rhs, .. },
+            )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }

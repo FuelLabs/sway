@@ -484,19 +484,22 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
-        // if the return type cannot be cast into the annotation type then it is a type error
-        match unify_with_self(
-            typed_expression.return_type,
-            type_annotation,
-            self_type,
-            &expr_span,
-            help_text,
-        ) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(e) => {
-                errors.push(CompileError::TypeError(e));
+        // if one of the expressions deterministically aborts, we don't want to type check it.
+        if !typed_expression.deterministically_aborts() {
+            // if the return type cannot be cast into the annotation type then it is a type error
+            match unify_with_self(
+                typed_expression.return_type,
+                type_annotation,
+                self_type,
+                &expr_span,
+                help_text,
+            ) {
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
             }
         };
         // The annotation may result in a cast, which is handled in the type engine.
@@ -892,7 +895,7 @@ impl TypedExpression {
                 checkee: then,
                 namespace: then_branch_scope,
                 crate_namespace,
-                return_type_annotation: type_annotation,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "Because the return value of this expression is used, all branches of `if let` expression must return this type",
                 self_type,
                 build_config,
@@ -911,15 +914,39 @@ impl TypedExpression {
             errors
         );
 
+        // if the branch aborts, then its return type doesn't matter.
+        if !then.deterministically_aborts() {
+            // if this does not deterministically_abort, check the block return type
+            let ty_to_check = if r#else.is_some() {
+                type_annotation
+            } else {
+                insert_type(TypeInfo::Tuple(vec![]))
+            };
+            match unify_with_self(
+                then_branch_code_block_return_type,
+                ty_to_check,
+                self_type,
+                &then.span(),
+                "`then` branch must return expected type.",
+            ) {
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
+            };
+        }
+
         let r#else = match r#else {
             Some(expr) => {
                 let expr_span = expr.span();
-                let type_checked = check!(
+                let r#else= check!(
                     TypedExpression::type_check(TypeCheckArguments {
                         checkee: *expr,
                         namespace,
                         crate_namespace,
-                        return_type_annotation: then_branch_code_block_return_type,
+                        return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text:
                             "The two branches of an if let expression must return the same type.",
                         self_type,
@@ -932,7 +959,24 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
-                Some(Box::new(type_checked))
+
+            if !r#else.deterministically_aborts() {
+                // if this does not deterministically_abort, check the block return type
+                match unify_with_self(
+                    r#else.return_type,then_branch_code_block_return_type,
+                    self_type,
+                    &r#else.span,
+                    "`else` branch must return expected type.",
+                ) {
+                    Ok(mut ws) => {
+                        warnings.append(&mut ws);
+                    }
+                    Err(e) => {
+                        errors.push(CompileError::TypeError(e));
+                    }
+                };
+            }
+                Some(Box::new(r#else))
             }
             None => match unify_with_self(
                 then_branch_code_block_return_type,
@@ -1021,15 +1065,14 @@ impl TypedExpression {
             errors
         ));
         // if the branch aborts, then its return type doesn't matter.
-        if !then.deterministically_aborts() {
-            println!("then doesn't deterministically abort");
+        let then_deterministically_aborts = then.deterministically_aborts();
+        if !then_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
             let ty_to_check = if r#else.is_some() {
                 type_annotation
             } else {
                 insert_type(TypeInfo::Tuple(vec![]))
             };
-            println!("ty to check is {}", ty_to_check.friendly_type_str());
             match unify_with_self(
                 then.return_type,
                 ty_to_check,
@@ -1045,13 +1088,14 @@ impl TypedExpression {
                 }
             };
         }
+        let mut else_deterministically_aborts = false;
         let r#else = r#else.map(|expr| {
             let r#else = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: *expr.clone(),
                     namespace,
                     crate_namespace,
-                    return_type_annotation: then.return_type,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
                     build_config,
@@ -1063,7 +1107,8 @@ impl TypedExpression {
                 warnings,
                 errors
             );
-            if !r#else.deterministically_aborts() {
+            else_deterministically_aborts = r#else.deterministically_aborts();
+            if !else_deterministically_aborts {
                 // if this does not deterministically_abort, check the block return type
                 match unify_with_self(
                     r#else.return_type,
@@ -1088,24 +1133,26 @@ impl TypedExpression {
             .map(|x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
-        match unify_with_self(
-            then.return_type,
-            r#else_ret_ty,
-            self_type,
-            &span,
-            "The two branches of an if expression must return the same type.",
-        ) {
-            Ok(mut warn) => {
-                warnings.append(&mut warn);
-                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
-                        span: span.clone(),
-                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
-                    });
+        if !else_deterministically_aborts && !then_deterministically_aborts {
+            match unify_with_self(
+                then.return_type,
+                r#else_ret_ty,
+                self_type,
+                &span,
+                "The two branches of an if expression must return the same type.",
+            ) {
+                Ok(mut warn) => {
+                    warnings.append(&mut warn);
+                    if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+                        errors.push(CompileError::NoElseBranch {
+                            span: span.clone(),
+                            r#type: look_up_type_id(type_annotation).friendly_type_str(),
+                        });
+                    }
                 }
-            }
-            Err(e) => {
-                errors.push(e.into());
+                Err(e) => {
+                    errors.push(e.into());
+                }
             }
         }
 

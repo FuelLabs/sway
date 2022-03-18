@@ -128,12 +128,6 @@ impl From<AsmRegister> for String {
 }
 
 impl AsmOp {
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        match self.op_name.as_str() {
-            "rvrt" | "ret" => true,
-            _ => false,
-        }
-    }
     fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();

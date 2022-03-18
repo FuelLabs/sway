@@ -95,6 +95,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("method_on_empty_struct", ProgramState::Return(1)),
         ("tuple_in_struct", ProgramState::Return(1)),
         ("nested_structs", ProgramState::Return(1)),
+        ("abort_control_flow", ProgramState::Revert(42)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -148,6 +149,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "missing_func_from_supertrait_impl",
         "supertrait_does_not_exist",
         "chained_if_let_missing_branch",
+        "abort_control_flow_should_fail",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
