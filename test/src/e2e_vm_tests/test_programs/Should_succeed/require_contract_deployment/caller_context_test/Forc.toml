@@ -6,4 +6,4 @@ name = "caller_context_test"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
-context_testing_abi = { path = "../context_testing_abi" }
+context_testing_abi = { path = "../../test_abis/context_testing_abi" }

@@ -6,4 +6,4 @@ name = "bal_opcode"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
-balance_test_abi = { path = "../balance_test_abi"}
+balance_test_abi = { path = "../../test_abis/balance_test_abi"}

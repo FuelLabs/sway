@@ -6,4 +6,4 @@ name = "token_ops_test"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
-test_fuel_coin_abi = { path = "../test_fuel_coin_abi" }
+test_fuel_coin_abi = { path = "../../test_abis/test_fuel_coin_abi" }

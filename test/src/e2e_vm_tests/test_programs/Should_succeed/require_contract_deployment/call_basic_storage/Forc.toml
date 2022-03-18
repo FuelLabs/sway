@@ -9,4 +9,4 @@ git = "http://github.com/FuelLabs/sway-lib-std"
 branch = "master"
 
 [dependencies.basic_storage_abi]
-path = "../basic_storage_abi"
+path = "../../test_abis/basic_storage_abi"

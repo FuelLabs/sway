@@ -6,4 +6,4 @@ name = "auth_testing_contract"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
-auth_testing_abi = { path = "../auth_testing_abi" }
+auth_testing_abi = { path = "../../test_abis/auth_testing_abi" }
