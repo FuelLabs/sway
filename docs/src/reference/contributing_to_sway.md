@@ -47,7 +47,7 @@ There are many ways in which you may contribute to the Sway project, some of whi
 - Reporting bugs
 - Adding documentation to the Sway book
 - Adding new features or bugfixes for which there is already an open issue
-- making Feature requests
+- Making feature requests
 
 Check out our [Help Wanted](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22), [Sway Book](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22The+Sway+Book%22) or [Good First Issue](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) issues to find a suitable task.
 
