@@ -34,10 +34,36 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 impl TypedExpression {
     pub(crate) fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
-        match self.expression {
-            Literal(_) | VariableExpression { .. } | FunctionParameter | TupleElemAccess { .. } => {
-                false
+        match &self.expression {
+            FunctionApplication {
+                function_body,
+                arguments,
+                ..
+            } => {
+                function_body.deterministically_aborts()
+                    || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
+            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
+            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts()),
+            CodeBlock(contents) => contents.deterministically_aborts(),
+            LazyOperator { lhs, .. } => lhs.deterministically_aborts(),
+            StructExpression { fields, .. } => {
+                fields.iter().any(|x| x.value.deterministically_aborts())
+            }
+            EnumInstantiation { contents, .. } => contents
+                .as_ref()
+                .map(|x| x.deterministically_aborts())
+                .unwrap_or(false),
+            AbiCast { address, .. } => address.deterministically_aborts(),
+            SizeOf {
+                variant: SizeOfVariant::Val(v),
+            } => v.deterministically_aborts(),
+            StructFieldAccess { .. }
+            | Literal(_)
+            | SizeOf { .. }
+            | VariableExpression { .. }
+            | FunctionParameter
+            | TupleElemAccess { .. } => false,
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
@@ -48,6 +74,7 @@ impl TypedExpression {
                     todo!("check if any rvrts are hit before any jumps");
                 registers.iter().any(|x| {
                     x.initializer
+                        .as_ref()
                         .map(|x| x.deterministically_aborts())
                         .unwrap_or(false)
                 }) || body_deterministically_aborts
@@ -61,6 +88,7 @@ impl TypedExpression {
                 condition.deterministically_aborts()
                     || (then.deterministically_aborts()
                         && r#else
+                            .as_ref()
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
@@ -70,6 +98,7 @@ impl TypedExpression {
                 expr.deterministically_aborts()
                     || (then.deterministically_aborts()
                         && r#else
+                            .as_ref()
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
