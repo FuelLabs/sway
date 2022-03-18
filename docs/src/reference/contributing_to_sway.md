@@ -1,6 +1,6 @@
 # Contributing To Sway
 
-Thanks for your interest in contributing to Sway! This document outlines the process for installing and setting up the Sway toolchain, as well as some conventions on contributing to Sway.
+Thanks for your interest in contributing to Sway! This document outlines the process for installing and setting up the Sway toolchain for development, as well as some conventions on contributing to Sway.
 
 If you run into any difficulties getting started, you can always ask questions on our [Discord](https://discord.gg/xfpK4Pe).
 
@@ -10,7 +10,7 @@ See the Sway book's [Introduction](../introduction/index.md) for instructions on
 
 ## Getting the repository
 
-```
+```sh
 git clone https://github.com/FuelLabs/sway
 cd sway
 ```
@@ -19,7 +19,7 @@ cd sway
 
 The following steps will run the sway test suite and ensure that everything is set up correctly.
 
-First, open a new terminal and start fuel-core with:
+First, open a new terminal and start `fuel-core` with:
 
 ```
 fuel-core
@@ -28,16 +28,15 @@ fuel-core
 Then, open a second terminal and run:
 
 ```
-cd sway/test
-cargo run
+cargo run --bin test
 ```
 
 After the test suite runs, you should see:
 
-> ---
->
-> Tests passed.\
-> _n_ tests run (0 skipped)
+```console
+Tests passed.
+_n_ tests run (0 skipped)
+```
 
 Congratulations! You've now got everything setup and are ready to start making contributions.
 
@@ -48,11 +47,11 @@ There are many ways in which you may contribute to the Sway project, some of whi
 - Reporting bugs
 - Adding documentation to the Sway book
 - Adding new features or bugfixes for which there is already an open issue
-- making Feature requests
+- Making feature requests
 
 Check out our [Help Wanted](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22), [Sway Book](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22The+Sway+Book%22) or [Good First Issue](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) issues to find a suitable task.
 
-If you are planning something big, for example, related to multiple components or changes current behaviors, make sure to open an issue to discuss with us before going on.
+If you are planning something big, for example, related to multiple components or changes current behaviors, make sure to open an issue to discuss with us before starting on the implementation.
 
 ## Contribution flow
 
@@ -78,7 +77,7 @@ Thanks for your contributions!
 
 ### Linking issues
 
-Pull Requests should be linked to at least one issue in the same repo.
+Pull requests should be linked to at least one issue in the same repo.
 
 If the pull request resolves the relevant issues, and you want GitHub to close these issues automatically after it merged into the default branch, you can use the syntax (`KEYWORD #ISSUE-NUMBER`) like this:
 
