@@ -12,22 +12,58 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // programs that should successfully compile and terminate
     // with some known state
     let positive_project_names = vec![
-        ("should_pass/language/asm_expr_basic", ProgramState::Return(6)),
-        ("should_pass/language/basic_func_decl", ProgramState::Return(1)), // 1 == true
+        (
+            "should_pass/language/asm_expr_basic",
+            ProgramState::Return(6),
+        ),
+        (
+            "should_pass/language/basic_func_decl",
+            ProgramState::Return(1),
+        ), // 1 == true
         // contracts revert because this test runs them against the VM
         // and no selectors will match
-        ("should_pass/test_contracts/contract_abi_impl", ProgramState::Revert(0)),
+        (
+            "should_pass/test_contracts/contract_abi_impl",
+            ProgramState::Revert(0),
+        ),
         ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
-        ("should_pass/language/if_elseif_enum", ProgramState::Return(10)),
-        ("should_pass/language/tuple_types", ProgramState::Return(123)),
-        ("should_pass/language/out_of_order_decl", ProgramState::Return(1)),
-        ("should_pass/language/struct_field_reassignment", ProgramState::Return(0)),
-        ("should_pass/language/enum_in_fn_decl", ProgramState::Return(255)),
+        (
+            "should_pass/language/if_elseif_enum",
+            ProgramState::Return(10),
+        ),
+        (
+            "should_pass/language/tuple_types",
+            ProgramState::Return(123),
+        ),
+        (
+            "should_pass/language/out_of_order_decl",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/struct_field_reassignment",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/enum_in_fn_decl",
+            ProgramState::Return(255),
+        ),
         ("should_pass/language/empty_impl", ProgramState::Return(0)),
-        ("should_pass/language/main_returns_unit", ProgramState::Return(0)),
-        ("should_pass/language/unary_not_basic", ProgramState::Return(1)), // 1 == true
-        ("should_pass/language/unary_not_basic_2", ProgramState::Return(1)), // 1 == true
-        ("should_pass/language/fix_opcode_bug", ProgramState::Return(30)),
+        (
+            "should_pass/language/main_returns_unit",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/unary_not_basic",
+            ProgramState::Return(1),
+        ), // 1 == true
+        (
+            "should_pass/language/unary_not_basic_2",
+            ProgramState::Return(1),
+        ), // 1 == true
+        (
+            "should_pass/language/fix_opcode_bug",
+            ProgramState::Return(30),
+        ),
         (
             "should_pass/language/retd_b256",
             ProgramState::ReturnData(Bytes32::from([
@@ -42,59 +78,176 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 155, 39, 97, 32, 94, 129, 141, 144, 190, 142, 33, 32, 33, 75,
             ])),
         ),
-        ("should_pass/language/op_precedence", ProgramState::Return(0)),
-        ("should_pass/language/asm_without_return", ProgramState::Return(0)),
-        ("should_pass/language/b256_bad_jumps", ProgramState::Return(1)),
+        (
+            "should_pass/language/op_precedence",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/asm_without_return",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/b256_bad_jumps",
+            ProgramState::Return(1),
+        ),
         ("should_pass/language/b256_ops", ProgramState::Return(100)),
-        ("should_pass/language/struct_field_access", ProgramState::Return(43)),
+        (
+            "should_pass/language/struct_field_access",
+            ProgramState::Return(43),
+        ),
         ("should_pass/language/bool_and_or", ProgramState::Return(42)),
         ("should_pass/language/neq_4_test", ProgramState::Return(0)),
         ("should_pass/language/eq_4_test", ProgramState::Return(1)),
-        ("should_pass/language/local_impl_for_ord", ProgramState::Return(1)), // true
+        (
+            "should_pass/language/local_impl_for_ord",
+            ProgramState::Return(1),
+        ), // true
         ("should_pass/language/const_decl", ProgramState::Return(100)),
-        ("should_pass/language/const_decl_in_library", ProgramState::Return(1)), // true
-        ("should_pass/language/aliased_imports", ProgramState::Return(42)),
-        ("should_pass/language/empty_method_initializer", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/b512_struct_alignment", ProgramState::Return(1)),    // true
-        ("should_pass/language/generic_structs", ProgramState::Return(1)),          // true
-        ("should_pass/language/generic_functions", ProgramState::Return(1)),        // true
-        ("should_pass/language/generic_enum", ProgramState::Return(1)),             // true
-        ("should_pass/language/import_method_from_other_file", ProgramState::Return(10)), // true
-        ("should_pass/stdlib/ec_recover_test", ProgramState::Return(1)),          // true
-        ("should_pass/stdlib/address_test", ProgramState::Return(1)),             // true
-        ("should_pass/language/generic_struct", ProgramState::Return(1)),           // true
-        ("should_pass/language/zero_field_types", ProgramState::Return(10)),        // true
-        ("should_pass/stdlib/assert_test", ProgramState::Return(1)),              // true
-        ("should_pass/language/match_expressions", ProgramState::Return(42)),
+        (
+            "should_pass/language/const_decl_in_library",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/aliased_imports",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/empty_method_initializer",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/stdlib/b512_struct_alignment",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/generic_structs",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/generic_functions",
+            ProgramState::Return(1),
+        ), // true
+        ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
+        (
+            "should_pass/language/import_method_from_other_file",
+            ProgramState::Return(10),
+        ), // true
+        (
+            "should_pass/stdlib/ec_recover_test",
+            ProgramState::Return(1),
+        ), // true
+        ("should_pass/stdlib/address_test", ProgramState::Return(1)),   // true
+        (
+            "should_pass/language/generic_struct",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/zero_field_types",
+            ProgramState::Return(10),
+        ), // true
+        ("should_pass/stdlib/assert_test", ProgramState::Return(1)),    // true
+        (
+            "should_pass/language/match_expressions",
+            ProgramState::Return(42),
+        ),
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
-        ("should_pass/language/array_generics", ProgramState::Return(1)), // true
-        ("should_pass/language/match_expressions_structs", ProgramState::Return(4)),
-        ("should_pass/stdlib/b512_test", ProgramState::Return(1)),      // true
-        ("should_pass/stdlib/block_height", ProgramState::Return(1)),   // true
-        ("should_pass/language/valid_impurity", ProgramState::Revert(0)), // false
-        ("should_pass/language/trait_override_bug", ProgramState::Return(7)),
-        ("should_pass/language/if_implicit_unit", ProgramState::Return(0)),
-        ("should_pass/language/modulo_uint_test", ProgramState::Return(1)), // true
-        ("should_pass/language/trait_import_with_star", ProgramState::Return(0)),
-        ("should_pass/language/tuple_desugaring", ProgramState::Return(9)),
-        ("should_pass/language/multi_item_import", ProgramState::Return(0)), // false
-        ("should_pass/language/use_full_path_names", ProgramState::Return(1)),
-        ("should_pass/language/tuple_indexing", ProgramState::Return(1)),
-        ("should_pass/language/tuple_access", ProgramState::Return(42)),
-        ("should_pass/language/funcs_with_generic_types", ProgramState::Return(1)), // true
-        ("should_pass/language/enum_if_let", ProgramState::Return(143)),
-        ("should_pass/language/enum_destructuring", ProgramState::Return(15)),
-        ("should_pass/language/enum_if_let_large_type", ProgramState::Return(15)),
-        ("should_pass/language/enum_type_inference", ProgramState::Return(5)),
+        (
+            "should_pass/language/array_generics",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/match_expressions_structs",
+            ProgramState::Return(4),
+        ),
+        ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
+        (
+            "should_pass/language/valid_impurity",
+            ProgramState::Revert(0),
+        ), // false
+        (
+            "should_pass/language/trait_override_bug",
+            ProgramState::Return(7),
+        ),
+        (
+            "should_pass/language/if_implicit_unit",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/modulo_uint_test",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/trait_import_with_star",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/tuple_desugaring",
+            ProgramState::Return(9),
+        ),
+        (
+            "should_pass/language/multi_item_import",
+            ProgramState::Return(0),
+        ), // false
+        (
+            "should_pass/language/use_full_path_names",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/tuple_indexing",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/tuple_access",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/funcs_with_generic_types",
+            ProgramState::Return(1),
+        ), // true
+        (
+            "should_pass/language/enum_if_let",
+            ProgramState::Return(143),
+        ),
+        (
+            "should_pass/language/enum_destructuring",
+            ProgramState::Return(15),
+        ),
+        (
+            "should_pass/language/enum_if_let_large_type",
+            ProgramState::Return(15),
+        ),
+        (
+            "should_pass/language/enum_type_inference",
+            ProgramState::Return(5),
+        ),
         ("should_pass/language/size_of", ProgramState::Return(1)),
         ("should_pass/language/supertraits", ProgramState::Return(1)),
-        ("should_pass/language/new_allocator_test", ProgramState::Return(42)), // true
-        ("should_pass/language/chained_if_let", ProgramState::Return(5)),      // true
-        ("should_pass/language/inline_if_expr_const", ProgramState::Return(0)),
-        ("should_pass/language/method_on_empty_struct", ProgramState::Return(1)),
-        ("should_pass/language/tuple_in_struct", ProgramState::Return(1)),
-        ("should_pass/language/nested_structs", ProgramState::Return(1)),
+        (
+            "should_pass/language/new_allocator_test",
+            ProgramState::Return(42),
+        ), // true
+        (
+            "should_pass/language/chained_if_let",
+            ProgramState::Return(5),
+        ), // true
+        (
+            "should_pass/language/inline_if_expr_const",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/method_on_empty_struct",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/tuple_in_struct",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/nested_structs",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -158,17 +311,37 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         }
     });
 
-
     // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
     // TODO validate that call output is correct
     let contract_and_project_names = &[
-        ("should_pass/test_contracts/basic_storage", "should_pass/require_contract_deployment/call_basic_storage"),
-        ("should_pass/test_contracts/increment_contract", "should_pass/require_contract_deployment/call_increment_contract"),
-        ("should_pass/test_contracts/auth_testing_contract", "should_pass/require_contract_deployment/caller_auth_test"),
-        ("should_pass/test_contracts/context_testing_contract", "should_pass/require_contract_deployment/caller_context_test"),
-        ("should_pass/test_contracts/contract_abi_impl", "should_pass/require_contract_deployment/contract_call"),
-        ("should_pass/test_contracts/balance_test_contract", "should_pass/require_contract_deployment/bal_opcode"),
-        ("should_pass/test_contracts/test_fuel_coin_contract", "should_pass/require_contract_deployment/token_ops_test"),
+        (
+            "should_pass/test_contracts/basic_storage",
+            "should_pass/require_contract_deployment/call_basic_storage",
+        ),
+        (
+            "should_pass/test_contracts/increment_contract",
+            "should_pass/require_contract_deployment/call_increment_contract",
+        ),
+        (
+            "should_pass/test_contracts/auth_testing_contract",
+            "should_pass/require_contract_deployment/caller_auth_test",
+        ),
+        (
+            "should_pass/test_contracts/context_testing_contract",
+            "should_pass/require_contract_deployment/caller_context_test",
+        ),
+        (
+            "should_pass/test_contracts/contract_abi_impl",
+            "should_pass/require_contract_deployment/contract_call",
+        ),
+        (
+            "should_pass/test_contracts/balance_test_contract",
+            "should_pass/require_contract_deployment/bal_opcode",
+        ),
+        (
+            "should_pass/test_contracts/test_fuel_coin_contract",
+            "should_pass/require_contract_deployment/token_ops_test",
+        ),
     ];
 
     let total_number_of_tests = positive_project_names.len()
