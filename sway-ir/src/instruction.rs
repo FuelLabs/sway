@@ -85,6 +85,7 @@ pub enum Instruction {
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
     StateStoreWord { stored_val: Value, key: Value },
+
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
 }
@@ -503,14 +504,6 @@ impl<'a> InstructionInserter<'a> {
         self.context.blocks[self.block.0].instructions.push(ret_val);
         ret_val
     }
-    //    pub fn load(self, src_val: Value, span_md_idx: Option<MetadataIndex>) -> Value {
-    //        let load_val =
-    //            Value::new_instruction(self.context, Instruction::Load(src_val), span_md_idx);
-    //        self.context.blocks[self.block.0]
-    //            .instructions
-    //            .push(load_val);
-    //        load_val
-    //    }
 
     pub fn state_load_quad_word(
         self,
