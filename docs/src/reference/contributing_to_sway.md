@@ -77,7 +77,7 @@ Thanks for your contributions!
 
 ### Linking issues
 
-Pull Requests should be linked to at least one issue in the same repo.
+Pull requests should be linked to at least one issue in the same repo.
 
 If the pull request resolves the relevant issues, and you want GitHub to close these issues automatically after it merged into the default branch, you can use the syntax (`KEYWORD #ISSUE-NUMBER`) like this:
 
