@@ -928,7 +928,7 @@ impl TypedExpression {
                 then_branch_code_block_return_type,
                 ty_to_check,
                 self_type,
-                &then.span(),
+                then.span(),
                 "`then` branch must return expected type.",
             ) {
                 Ok(mut ws) => {
