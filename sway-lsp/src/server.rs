@@ -78,12 +78,13 @@ fn capabilities() -> ServerCapabilities {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        eprintln!("initialize");
         if let Some(options) = params.initialization_options {
             self.session.update_config(options);
         }
 
         self.client
-            .log_message(MessageType::INFO, "Initializing the Server")
+            .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
         // iterate over the project dir, parse all sway files
@@ -97,16 +98,21 @@ impl LanguageServer for Backend {
 
     // LSP-Server Lifecycle
     async fn initialized(&self, _: InitializedParams) {
-        self.log_info_message("Server initialized").await;
+        eprintln!("initialized");
+        self.log_info_message("Sway Language Server Initialized")
+            .await;
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
-        self.log_info_message("Shutting the server").await;
+        eprintln!("shutdown");
+        self.log_info_message("Shutting Down the Sway Language Server")
+            .await;
         Ok(())
     }
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        eprintln!("did_open = {:#?}", &params);
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
 
         if !diagnostics.is_empty() {
@@ -117,10 +123,12 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        eprintln!("did_change = {:#?}", &params);
         let _ = capabilities::text_sync::handle_change_file(self.session.clone(), params);
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        eprintln!("did_save = {:#?}", &params);
         let url = params.text_document.uri.clone();
         self.client.publish_diagnostics(url, vec![], None).await;
 
@@ -134,11 +142,13 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        eprintln!("did_change_watched_files = {:#?}", &params);
         let events = params.changes;
         capabilities::file_sync::handle_watched_files(self.session.clone(), events);
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
+        eprintln!("hover = {:#?}", &params);
         Ok(capabilities::hover::get_hover_data(
             self.session.clone(),
             params,
@@ -149,6 +159,7 @@ impl LanguageServer for Backend {
         &self,
         params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
+        eprintln!("completion = {:#?}", &params);
         // TODO
         // here we would also need to provide a list of builtin methods not just the ones from the document
         Ok(capabilities::completion::get_completion(
@@ -161,6 +172,7 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
+        eprintln!("document_symbol = {:#?}", &params);
         Ok(capabilities::document_symbol::document_symbol(
             self.session.clone(),
             params.text_document.uri,
@@ -171,6 +183,7 @@ impl LanguageServer for Backend {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        eprintln!("semantic_tokens_full = {:#?}", &params);
         Ok(capabilities::semantic_tokens::get_semantic_tokens_full(
             self.session.clone(),
             params,
@@ -181,6 +194,7 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
+        eprintln!("document_highlight = {:#?}", &params);
         Ok(capabilities::highlight::get_highlights(
             self.session.clone(),
             params,
@@ -191,6 +205,7 @@ impl LanguageServer for Backend {
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
+        eprintln!("goto_definition = {:#?}", &params);
         Ok(capabilities::go_to::go_to_definition(
             self.session.clone(),
             params,
@@ -201,6 +216,7 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        eprintln!("formatting = {:#?}", &params);
         Ok(capabilities::formatting::format_document(
             self.session.clone(),
             params,
@@ -208,6 +224,7 @@ impl LanguageServer for Backend {
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
+        eprintln!("rename = {:#?}", &params);
         Ok(capabilities::rename::rename(self.session.clone(), params))
     }
 
@@ -215,6 +232,7 @@ impl LanguageServer for Backend {
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
+        eprintln!("prepare_rename = {:#?}", &params);
         Ok(capabilities::rename::prepare_rename(
             self.session.clone(),
             params,
@@ -224,8 +242,6 @@ impl LanguageServer for Backend {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Not;
-
     use serde_json::json;
     use tower::{Service, ServiceExt};
 
@@ -234,69 +250,44 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn initialize_request(id: i64) -> Request {
-        Request::build("initialize")
+    async fn initialize_request(service: &mut LspService<Backend>) -> Request {
+        let initialize = Request::build("initialize")
             .params(json!({ "capabilities": capabilities() }))
-            .id(id)
-            .finish()
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(Backend::new);
-
-        let request = initialize_request(1);
-
-        let response = service.ready().await.unwrap().call(request.clone()).await;
+            .id(1)
+            .finish();
+        let response = service
+            .ready()
+            .await
+            .unwrap()
+            .call(initialize.clone())
+            .await;
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
         assert_eq!(response, Ok(Some(ok)));
-
-        let response = service.ready().await.unwrap().call(request).await;
-        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-        assert_eq!(response, Ok(Some(err)));
+        initialize
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(Backend::new);
+    async fn initialized_notification(service: &mut LspService<Backend>) {
+        let initialized = Request::build("initialized").finish();
+        let response = service.ready().await.unwrap().call(initialized).await;
+        assert_eq!(response, Ok(None));
+    }
 
-        let initialize = initialize_request(1);
-        let response = service.ready().await.unwrap().call(initialize).await;
-        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        assert_eq!(response, Ok(Some(ok)));
-
+    async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
         let response = service.ready().await.unwrap().call(shutdown.clone()).await;
         let ok = Response::from_ok(1.into(), json!(null));
         assert_eq!(response, Ok(Some(ok)));
-
-        let response = service.ready().await.unwrap().call(shutdown).await;
-        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-        assert_eq!(response, Ok(Some(err)));
+        shutdown
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    async fn did_open() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
-
-        // send "initialize" request
-        let initialize = initialize_request(1);
-        let response = service.ready().await.unwrap().call(initialize).await;
-        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        assert_eq!(response, Ok(Some(ok)));
-
-        // send "initialized" notification
-        let initialized = Request::build("initialized").finish();
-        let response = service.ready().await.unwrap().call(initialized).await;
+    async fn exit_notification(service: &mut LspService<Backend>) {
+        let exit = Request::build("exit").finish();
+        let response = service.ready().await.unwrap().call(exit.clone()).await;
         assert_eq!(response, Ok(None));
+    }
 
-        // ignore the "window/logMessage" notification: "Initializing the Server"
-        println!("message = {:?}", messages.next().await.unwrap());
-
-        // send "textDocument/didOpen" notification for `uri`
-        let uri = Url::parse("inmemory:///test").unwrap();
+    async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &String) {
         let language_id = "sway";
-        let text = String::from("fn main{}");
         let params = json!({
             "textDocument": {
                 "uri": uri,
@@ -310,16 +301,201 @@ mod tests {
             .finish();
         let response = service.ready().await.unwrap().call(did_open).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn did_close_notification(service: &mut LspService<Backend>) {
+        let exit = Request::build("textDocument/didClose").finish();
+        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        assert_eq!(response, Ok(None));
+    }
+
+    #[tokio::test]
+    async fn initialize() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn initialized() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn initializes_only_once() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let initialize = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // send "initialize" request (again); should error
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test]
+    async fn shutdown() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
 
         // send "shutdown" request
-        let shutdown = Request::build("shutdown").id(1).finish();
-        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
-        let ok = Response::from_ok(1.into(), json!(null));
-        assert_eq!(response, Ok(Some(ok)));
+        let shutdown = shutdown_request(&mut service).await;
+
+        // send "shutdown" request (again); should error
+        let response = service.ready().await.unwrap().call(shutdown).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
 
         // send "exit" request
-        let shutdown = Request::build("exit").finish();
-        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        exit_notification(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn refuses_requests_after_shutdown() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        let shutdown = shutdown_request(&mut service).await;
+
+        let response = service.ready().await.unwrap().call(shutdown).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test]
+    async fn did_open() {
+        let (mut service, mut messages) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        messages.next().await.unwrap();
+
+        // send "textDocument/didOpen" notification for `uri`
+        let uri = Url::parse("inmemory:///test").unwrap();
+        let text = String::from("fn main {}");
+        did_open_notification(&mut service, &uri, &text).await;
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn did_close() {
+        let (mut service, _) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // send "textDocument/didOpen" notification for `uri`
+        let uri = Url::parse("inmemory:///test").unwrap();
+        let text = String::from("fn main {}");
+        did_open_notification(&mut service, &uri, &text).await;
+
+        // send "textDocument/didClose" notification for `uri`
+        did_close_notification(&mut service).await;
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn did_change() {
+        let (mut service, mut messages) = LspService::new(Backend::new);
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        messages.next().await.unwrap();
+
+        let uri = Url::parse("inmemory:///test").unwrap();
+        let old_text = r#"script;
+
+        fn main() {
+        
+        }
+        "#
+        .into();
+
+        let _new_text: String = r#"script;
+
+        fn main() {
+            let x = 0.0;
+        }
+        "#
+        .into();
+
+        // send "textDocument/didOpen" notification for `uri`
+        did_open_notification(&mut service, &uri, &old_text).await;
+
+        // send "textDocument/didChange" notification for `uri`
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 1
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 3,
+                            "character": 4
+                        },
+                        "end": {
+                            "line": 3,
+                            "character": 4
+                        }
+                    },
+                    "rangeLength": 0,
+                    "text": "let x = 0.0;",
+                }
+            ]
+        });
+        let did_change = Request::build("textDocument/didChange")
+            .params(params)
+            .finish();
+        let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
     }
 }
