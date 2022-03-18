@@ -19,7 +19,7 @@ cd sway
 
 The following steps will run the sway test suite and ensure that everything is set up correctly.
 
-First, open a new terminal and start fuel-core with:
+First, open a new terminal and start `fuel-core` with:
 
 ```
 fuel-core
