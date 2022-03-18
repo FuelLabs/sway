@@ -1,10 +1,10 @@
 use crate::code_builder_helpers::*;
-use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN, TAB_SIZE};
+use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, TAB_SIZE};
 use std::iter::{Enumerate, Peekable};
 use std::slice::Iter;
 use std::str::Chars;
+use std::thread::current;
 use sway_core::{extract_keyword, Rule};
-
 
 /// Performs the formatting of the `comments` section in your code.
 /// Takes in a function that provides the logic to handle the rest of the code.
@@ -84,29 +84,28 @@ pub fn format_data_types(text: &str) -> String {
 // write test for format_data_types & custom_format_with_comments
 fn test_align_struct_with_gnarly_comments() {
     let unformatted_struct = r"
-    struct /* i am about to declare a struct */ DummyStruct { // hi
+    struct /* i am about to declare a struct */ DummyStruct {
         // properly handling comments?
 sumn /* hi i am  a comment */ : value /* another comment */,
     sumnelse: u32, // so many comments
 nocomments: u64,
     /* hi */    } // oops a comment
     ";
-    let formatted = r"
-    struct /* i am about to declare a struct */ DummyStruct {
-        // properly handling comments?
-        sumn /* hi i am  a comment */ : value /* another comment */,
-        sumnelse                      : u32, // so many comments
-        nocomments                    : u64,
-        /* hi */    
-    } // oops a comment
-    ";
-    let post_formatting = format_align_data_types(unformatted_struct);
+    let formatted = r"struct /* i am about to declare a struct */ DummyStruct {
+    // properly handling comments?
+    sumn /* hi i am  a comment */ : value, /* another comment */
+    sumnelse                      : u32, // so many comments
+    nocomments                    : u64,
+    /* hi */
+} // oops a comment
+";
+    let post_formatting = _format_align_data_types(unformatted_struct);
     println!("{}", post_formatting);
     assert_eq!(post_formatting, formatted);
 }
 
 /// Formats Sway data types and aligns fields for Enums and Structs
-pub fn format_align_data_types(text: &str) -> String {
+pub fn _format_align_data_types(text: &str) -> String {
     let longest_var = find_longest_variant(text);
     let mut current_column = 0;
     let mut iter = text.chars().enumerate().peekable();
@@ -117,7 +116,7 @@ pub fn format_align_data_types(text: &str) -> String {
     });
     clean_all_whitespace_enumerated(&mut iter);
 
-    while let Some((_, current_char))  = iter.next() {
+    while let Some((_, current_char)) = iter.next() {
         match dbg!(current_char) {
             '}' => {
                 clean_all_whitespace_enumerated(&mut iter);
@@ -125,6 +124,7 @@ pub fn format_align_data_types(text: &str) -> String {
                     result.push('\n');
                 }
                 result.push(current_char);
+                result.push(' ');
                 current_column = 0;
             }
             ':' => {
@@ -137,6 +137,26 @@ pub fn format_align_data_types(text: &str) -> String {
                 result.push(current_char);
                 result.push(' ');
                 result.push_str(&field_type);
+                if iter.next() != Some((current_column, ' '))
+                    || iter.next() != Some((current_column, '\n'))
+                {
+                    match iter.next().unwrap() {
+                        (_, '/') => {
+                            clean_all_whitespace_enumerated(&mut iter);
+                            result.push_str(" /");
+                        }
+                        (_, '*') => {
+                            clean_all_whitespace_enumerated(&mut iter);
+                            result.push_str(" /* ");
+                        }
+                        (_, ' ') => {
+                            clean_all_whitespace_enumerated(&mut iter);
+                            current_column = 0;
+                            result.push_str(&newline_and_tab);
+                        }
+                        _ => (),
+                    }
+                }
             }
             ',' => (),
             '{' => {
@@ -324,7 +344,7 @@ fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> Str
                     // type names cannot have spaces
                     ' ' => {
                         iter.next();
-                    },
+                    }
                     '/' => {
                         let leftover = &line[next_index..next_index + 2];
                         if leftover == "//" || leftover == "/*" {
