@@ -94,6 +94,7 @@ pub enum Expression {
     },
     MethodApplication {
         method_name: MethodName,
+        contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         span: Span,
     },
@@ -132,7 +133,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<TypeInfo>,
+        type_arguments: Vec<(TypeInfo, Span)>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -153,6 +154,13 @@ pub enum Expression {
     /// type)
     DelayedMatchTypeResolution {
         variant: DelayedResolutionVariant,
+        span: Span,
+    },
+    IfLet {
+        scrutinee: Scrutinee,
+        expr: Box<Expression>,
+        then: CodeBlock,
+        r#else: Option<Box<Expression>>,
         span: Span,
     },
     SizeOfVal {
@@ -181,7 +189,8 @@ pub struct DelayedStructFieldResolution {
     pub field: Ident,
 }
 
-/// During type checking, this gets replaced with enum arg access.
+/// During type checking, this gets replaced with an if let, maybe, although that's not yet been
+/// implemented.
 #[derive(Debug, Clone)]
 pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
@@ -237,6 +246,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -255,6 +265,7 @@ impl Expression {
                 },
                 type_name: None,
             },
+            contract_call_params: vec![],
             arguments,
             span,
         }
@@ -281,6 +292,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             SizeOfType { span, .. } => span,
         })
@@ -601,8 +613,8 @@ impl Expression {
                     path,
                 };
                 let expr = check!(
-                    crate::CodeBlock::parse_from_pair(expr, config),
-                    crate::CodeBlock {
+                    CodeBlock::parse_from_pair(expr, config),
+                    CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
                     },
@@ -690,6 +702,44 @@ impl Expression {
                             .expect("Guaranteed by grammar.")
                             .into_inner()
                             .collect::<Vec<_>>();
+                        let contract_call_params =
+                            match pair.peek().expect("Guaranteed by grammar").as_rule() {
+                                Rule::contract_call_params => pair.next(),
+                                _ => None,
+                            };
+
+                        let mut fields_buf = Vec::new();
+                        if let Some(params) = contract_call_params {
+                            let fields = params
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .collect::<Vec<_>>();
+                            for i in (0..fields.len()).step_by(2) {
+                                let name = check!(
+                                    ident::parse_from_pair(fields[i].clone(), config),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                );
+                                let span = Span {
+                                    span: fields[i].as_span(),
+                                    path: path.clone(),
+                                };
+                                let value = check!(
+                                    Expression::parse_from_pair(fields[i + 1].clone(), config),
+                                    Expression::Tuple {
+                                        fields: vec![],
+                                        span: span.clone()
+                                    },
+                                    warnings,
+                                    errors
+                                );
+                                fields_buf.push(StructExpressionField { name, value, span });
+                            }
+                        }
+
                         let function_arguments =
                             pair.next().expect("Guaranteed by grammar").into_inner();
                         // remove the last field from the subfield exp, since it is the method name
@@ -753,6 +803,7 @@ impl Expression {
                         arguments_buf.push_front(expr);
                         Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
+                            contract_call_params: fields_buf,
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
@@ -861,6 +912,7 @@ impl Expression {
 
                         Expression::MethodApplication {
                             method_name,
+                            contract_call_params: vec![],
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }
@@ -873,11 +925,23 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
+                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
-                let instantiator = parts.next();
+                let (maybe_type_args, maybe_instantiator) = {
+                    let part = parts.next();
+                    match part.as_ref().map(|x| x.as_rule()) {
+                        Some(Rule::fn_args) => (None, part),
+                        Some(Rule::type_args) => {
+                            let next_part = parts.next();
+                            (part, next_part)
+                        }
+                        None => (None, None),
+                        Some(_) => unreachable!("guaranteed by grammar"),
+                    }
+                };
                 let path = check!(
                     CallPath::parse_from_pair(path_component, config),
                     return err(warnings, errors),
@@ -885,7 +949,7 @@ impl Expression {
                     errors
                 );
 
-                let args = if let Some(inst) = instantiator {
+                let args = if let Some(inst) = maybe_instantiator {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
                         let exp = check!(
@@ -901,15 +965,38 @@ impl Expression {
                     vec![]
                 };
 
+                let maybe_type_args = maybe_type_args
+                    .map(|x| {
+                        x.into_inner()
+                            .nth(1)
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
                 // if there is an expression in parenthesis, that is the instantiator.
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: file_path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg, config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 Expression::DelineatedPath {
                     call_path: path,
+                    type_arguments: type_args_buf,
                     args,
                     span,
-                    // Eventually, when we support generic enums, we want to be able to parse type
-                    // arguments on the enum name and throw them in here. TODO
-                    type_arguments: vec![],
                 }
             }
             Rule::tuple_expr => {
@@ -1041,6 +1128,12 @@ impl Expression {
             }
             Rule::array_index => check!(
                 parse_array_index(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::if_let_exp => check!(
+                parse_if_let(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1868,4 +1961,100 @@ pub fn desugar_match_expression(
         None => err(vec![], vec![]),
         Some(if_statement) => ok(if_statement, warnings, errors),
     }
+}
+
+fn parse_if_let(expr: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+
+    let span = Span {
+        span: expr.as_span(),
+        path: path.clone(),
+    };
+
+    let mut if_exp_pairs = expr.into_inner();
+
+    let _let_keyword = if_exp_pairs.next();
+    let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
+    let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
+
+    let scrutinee = check!(
+        Scrutinee::parse_from_pair(scrutinee_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let expr = check!(
+        Expression::parse_from_pair(expr_pair, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let then_branch_span = Span {
+        span: then_branch_pair.as_span(),
+        path: path.clone(),
+    };
+
+    let then = check!(
+        CodeBlock::parse_from_pair(then_branch_pair, config),
+        crate::CodeBlock {
+            contents: Vec::new(),
+            whole_block_span: then_branch_span,
+        },
+        warnings,
+        errors
+    );
+
+    let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
+        let else_span = Span {
+            path,
+            span: else_branch.as_span(),
+        };
+        match else_branch.as_rule() {
+            Rule::code_block => {
+                let block = check!(
+                    CodeBlock::parse_from_pair(else_branch.clone(), config),
+                    CodeBlock {
+                        contents: Vec::new(),
+                        whole_block_span: else_span.clone(),
+                    },
+                    warnings,
+                    errors
+                );
+                let exp = Expression::CodeBlock {
+                    contents: block,
+                    span: else_span,
+                };
+                Some(Box::new(exp))
+            }
+            Rule::if_let_exp => {
+                let r#else = check!(
+                    parse_if_let(else_branch.clone(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Some(Box::new(r#else))
+            }
+            _ => unreachable!("guaranteed by grammar"),
+        }
+    } else {
+        None
+    };
+    ok(
+        Expression::IfLet {
+            scrutinee,
+            expr: Box::new(expr),
+            then,
+            r#else: maybe_else_branch,
+            span,
+        },
+        warnings,
+        errors,
+    )
 }

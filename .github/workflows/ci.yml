@@ -65,10 +65,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/clippy-check@v1.0.7
-        name: Check Clippy Linter
+      - uses: actions-rs/toolchain@v1
         with:
-          token: ${{ github.token }}
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Check Clippy Linter
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
           args: --all-features --all-targets -- -D warnings
 
   cargo-fmt-check:
@@ -90,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.3.1
+        image: ghcr.io/fuellabs/fuel-core:v0.4.1
         ports:
           - 4000:4000
     steps:
@@ -158,10 +162,12 @@ jobs:
       run: |
         cargo install toml-cli
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-server/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
     - name: Publish crate

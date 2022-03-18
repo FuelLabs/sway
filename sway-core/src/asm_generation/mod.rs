@@ -3,7 +3,9 @@ use std::{
     fmt,
 };
 
-use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
+use crate::semantic_analysis::ast_node::{
+    TypedStructField, TypedVariableDeclaration, VariableMutability,
+};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -21,6 +23,8 @@ use crate::{
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
 };
+pub(crate) use expression::subfield::{convert_subfield_to_asm, get_subfields_for_layout};
+
 use either::Either;
 
 pub(crate) mod checks;
@@ -38,6 +42,7 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
+use sway_types::join_spans;
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -595,6 +600,11 @@ impl AsmNamespace {
                 )],
             ),
         }
+    }
+
+    /// In the
+    pub(crate) fn overwrite_data_section(&mut self, other: Self) {
+        self.data_section.value_pairs = other.data_section.value_pairs;
     }
 }
 
@@ -1279,46 +1289,77 @@ fn compile_contract_to_selectors(
     let mut selectors_labels_buf = vec![];
     let mut asm_buf = vec![];
     for decl in abi_entries {
-        // TODO wrapping things in a struct should be doable by the compiler eventually,
-        // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
-        // https://github.com/FuelLabs/sway/pull/115#discussion_r666466414
-        if decl.parameters.len() != 4 {
-            errors.push(CompileError::InvalidNumberOfAbiParams {
-                span: decl.parameters_span(),
-            });
-            continue;
-        }
-        // there are currently four parameters to every ABI function, and they are required to be
-        // in this order
-        let cgas_name = decl.parameters[0].name.clone();
-        let bal_name = decl.parameters[1].name.clone();
-        let coin_color_name = decl.parameters[2].name.clone();
-        let user_argument_name = decl.parameters[3].name.clone();
-        // the function selector is the first four bytes of the hashed declaration/params according
-        // to https://github.com/FuelLabs/sway/issues/96
         let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
-        // load the call frame argument into the function argument register
-        let user_argument_register = register_sequencer.next();
-        let cgas_register = register_sequencer.next();
-        let bal_register = register_sequencer.next();
-        let coin_color_register = register_sequencer.next();
-        asm_buf.push(load_user_argument(user_argument_register.clone()));
-        asm_buf.push(load_cgas(cgas_register.clone()));
-        asm_buf.push(load_bal(bal_register.clone()));
-        asm_buf.push(load_coin_color(coin_color_register.clone()));
+
+        let mut arguments = vec![];
+        match decl.parameters.len() {
+            0 => {}
+            1 => {
+                let arg_register = register_sequencer.next();
+                asm_buf.push(load_bundled_arguments(arg_register.clone()));
+                arguments.push((decl.parameters[0].name.clone(), arg_register));
+            }
+            _ => {
+                // load the call frame argument into the function argument register
+                let bundled_arguments_register = register_sequencer.next();
+                let bundled_arguments_span = decl
+                    .parameters
+                    .iter()
+                    .fold(decl.parameters[0].name.span().clone(), |acc, x| {
+                        join_spans(acc, x.name.span().clone())
+                    });
+
+                // Create a new struct type that contains all the arguments. Then, for each argument,
+                // create a register for it and load it using some utilities from expression::subfield.
+                let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
+                    name: Ident::new(bundled_arguments_span),
+                    fields: decl
+                        .parameters
+                        .iter()
+                        .map(|p| TypedStructField {
+                            name: p.name.clone(),
+                            r#type: p.r#type,
+                            span: p.name.span().clone(),
+                        })
+                        .collect::<Vec<_>>(),
+                });
+
+                let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);
+
+                let descriptor = check!(
+                    get_contiguous_memory_layout(&subfields_for_layout.clone()[..]),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                asm_buf.push(load_bundled_arguments(bundled_arguments_register.clone()));
+
+                for param in &decl.parameters {
+                    let arg_register = register_sequencer.next();
+
+                    asm_buf.append(&mut check!(
+                        convert_subfield_to_asm(
+                            bundled_arguments_register.clone(),
+                            &param.name,
+                            arg_register.clone(),
+                            &subfields_for_layout,
+                            &descriptor,
+                        ),
+                        vec![],
+                        warnings,
+                        errors
+                    ));
+
+                    arguments.push((param.name.clone(), arg_register));
+                }
+            }
+        }
 
         asm_buf.append(&mut check!(
-            convert_abi_fn_to_asm(
-                &decl,
-                (user_argument_name, user_argument_register),
-                (cgas_name, cgas_register),
-                (bal_name, bal_register),
-                (coin_color_name, coin_color_register),
-                namespace,
-                register_sequencer
-            ),
+            convert_abi_fn_to_asm(&decl, &arguments, namespace, register_sequencer),
             vec![],
             warnings,
             errors
@@ -1329,7 +1370,7 @@ fn compile_contract_to_selectors(
     ok((selectors_labels_buf, asm_buf), warnings, errors)
 }
 /// Given a register, load the user-provided argument into it
-fn load_user_argument(return_register: VirtualRegister) -> Op {
+fn load_bundled_arguments(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1342,38 +1383,14 @@ fn load_user_argument(return_register: VirtualRegister) -> Op {
     }
 }
 /// Given a register, load the current value of $cgas into it
-fn load_cgas(return_register: VirtualRegister) -> Op {
+fn load_gas(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
             VirtualRegister::Constant(ConstantRegister::ContextGas),
             VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
         )),
-        comment: "loading cgas into abi function".into(),
-        owning_span: None,
-    }
-}
-/// Given a register, load the current value of $bal into it
-fn load_bal(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::Balance),
-            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
-        )),
-        comment: "loading coin balance into abi function".into(),
-        owning_span: None,
-    }
-}
-/// Given a register, load a pointer to the current coin color into it
-fn load_coin_color(return_register: VirtualRegister) -> Op {
-    Op {
-        opcode: Either::Left(VirtualOp::LW(
-            return_register,
-            VirtualRegister::Constant(ConstantRegister::FramePointer),
-            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
-        )),
-        comment: "loading coin color into abi function".into(),
+        comment: "loading $cgas (gas) into abi function".into(),
         owning_span: None,
     }
 }

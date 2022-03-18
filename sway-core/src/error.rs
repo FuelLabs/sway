@@ -56,6 +56,15 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
     }
 }
 
+pub(crate) fn infallible<T>(res: CompileResult<T>) -> T {
+    match res.value {
+        Some(x) if res.errors.is_empty() && res.warnings.is_empty() => x,
+        _ => {
+            panic!("Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues")
+        }
+    }
+}
+
 /// Denotes a recovered or non-error state
 pub(crate) fn ok<T>(
     value: T,
@@ -668,8 +677,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -748,8 +757,6 @@ pub enum CompileError {
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },
-    #[error("An ABI function must accept exactly four arguments.")]
-    InvalidNumberOfAbiParams { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
         span: Span,
@@ -765,8 +772,6 @@ pub enum CompileError {
         provided_args: usize,
         span: Span,
     },
-    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
-    AbiFunctionRequiresSpecificSignature { span: Span },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
     ArgumentParameterTypeMismatch {
         span: Span,
@@ -849,6 +854,18 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
+    #[error(
+        "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
+    )]
+    ContractCallParamRepeated { param_name: String, span: Span },
+    #[error(
+        "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
+    )]
+    UnrecognizedContractParam { param_name: String, span: Span },
+    #[error("Attempting to specify a contract method parameter for a non-contract function call")]
+    CallParamForNonContractCallMethod { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1000,7 +1017,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
@@ -1024,11 +1041,9 @@ impl CompileError {
             TooManyArgumentsForFunction { span, .. } => span,
             TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
-            InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
             ImplAbiForNonContract { span, .. } => span,
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
-            AbiFunctionRequiresSpecificSignature { span, .. } => span,
             ArgumentParameterTypeMismatch { span, .. } => span,
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
@@ -1055,6 +1070,10 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
+            ContractCallParamRepeated { span, .. } => span,
+            UnrecognizedContractParam { span, .. } => span,
+            CallParamForNonContractCallMethod { span, .. } => span,
         }
     }
 

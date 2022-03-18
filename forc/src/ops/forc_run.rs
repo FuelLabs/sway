@@ -1,19 +1,15 @@
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::Transaction;
-use futures::TryFutureExt;
-
-use std::path::PathBuf;
-use std::str::FromStr;
-use sway_core::{parse, TreeType};
-use tokio::process::Child;
-
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
-
-use crate::utils::helpers;
-use helpers::{get_main_file, read_manifest};
+use forc_pkg::Manifest;
+use fuel_gql_client::client::FuelClient;
+use fuel_tx::Transaction;
+use futures::TryFutureExt;
+use std::path::PathBuf;
+use std::str::FromStr;
+use sway_core::{parse, TreeType};
 use sway_utils::{constants::*, find_manifest_dir};
+use tokio::process::Child;
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
     let path_dir = if let Some(path) = &command.path {
@@ -24,12 +20,12 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
     match find_manifest_dir(&path_dir) {
         Some(manifest_dir) => {
-            let manifest = read_manifest(&manifest_dir)?;
+            let manifest = Manifest::from_dir(&manifest_dir)?;
             let project_name = &manifest.project.name;
-            let main_file = get_main_file(&manifest, &manifest_dir)?;
+            let entry_string = manifest.entry_string(&manifest_dir)?;
 
-            // parse the main file and check is it a script
-            let parsed_result = parse(main_file, None);
+            // Parse the entry point string and check is it a script.
+            let parsed_result = parse(entry_string, None);
             match parsed_result.value {
                 Some(parse_tree) => match parse_tree.tree_type {
                     TreeType::Script => {
@@ -51,12 +47,12 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             minify_json_abi: command.minify_json_abi,
                         };
 
-                        let (compiled_script, _json_abi) = forc_build::build(build_command)?;
+                        let compiled = forc_build::build(build_command)?;
                         let contracts = command.contract.unwrap_or_default();
                         let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
                         let tx = create_tx_with_script_and_data(
-                            compiled_script,
+                            compiled.bytecode,
                             script_data,
                             inputs,
                             outputs,

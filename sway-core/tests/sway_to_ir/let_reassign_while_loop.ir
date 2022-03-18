@@ -3,37 +3,42 @@ script {
         local mut ptr bool a
 
         entry:
-        v0 = const bool true, !1
-        store v0, mut ptr bool a, !2
+        v0 = get_ptr mut ptr bool a, ptr bool, 0, !1
+        v1 = const bool true, !2
+        store v1, ptr v0, !1
         br while
 
         while:
-        v1 = load mut ptr bool a, !3
-        cbr v1, while_body, end_while
+        v2 = get_ptr mut ptr bool a, ptr bool, 0, !3
+        v3 = load ptr v2, !3
+        cbr v3, while_body, end_while
 
         while_body:
-        v2 = load mut ptr bool a, !4
-        cbr v2, block0, block1, !5
+        v4 = get_ptr mut ptr bool a, ptr bool, 0, !4
+        v5 = load ptr v4, !4
+        cbr v5, block0, block1, !5
 
         block0:
-        v3 = phi(while_body: v2)
-        v4 = const bool false, !6
+        v6 = phi(while_body: v5)
+        v7 = const bool false, !6
         br block1, !5
 
         block1:
-        v5 = phi(while_body: v2, block0: v4)
-        store v5, mut ptr bool a, !7
+        v8 = phi(while_body: v5, block0: v7)
+        v9 = get_ptr mut ptr bool a, ptr bool, 0, !7
+        store v8, ptr v9, !7
         br while
 
         end_while:
-        v6 = load mut ptr bool a, !8
-        ret bool v6
+        v10 = get_ptr mut ptr bool a, ptr bool, 0, !8
+        v11 = load ptr v10, !8
+        ret bool v11
     }
 }
 
 !0 = filepath "/path/to/let_reassign_while_loop.sw"
-!1 = span !0 45 49
-!2 = span !0 33 50
+!1 = span !0 33 50
+!2 = span !0 45 49
 !3 = span !0 61 62
 !4 = span !0 77 78
 !5 = span !0 77 87

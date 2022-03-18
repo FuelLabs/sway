@@ -65,7 +65,7 @@ impl TypedFunctionDeclaration {
             visibility,
             purity,
             ..
-        } = fn_decl.clone();
+        } = fn_decl;
         opts.purity = purity;
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
@@ -144,7 +144,7 @@ impl TypedFunctionDeclaration {
                     contents: vec![],
                     whole_block_span: body.whole_block_span,
                 },
-                crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
+                insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
@@ -177,78 +177,27 @@ impl TypedFunctionDeclaration {
             )
             .collect::<Vec<_>>();
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &Span)> = body
+        let return_statements: Vec<&TypedExpression> = body
             .contents
             .iter()
-            .filter_map(|x| {
-                if let crate::semantic_analysis::TypedAstNode {
-                    content:
-                        crate::semantic_analysis::TypedAstNodeContent::ReturnStatement(
-                            TypedReturnStatement { ref expr },
-                        ),
-                    span,
-                } = x
-                {
-                    Some((expr, span))
-                } else {
-                    None
-                }
-            })
+            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
+            .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
-        for (stmt, span) in return_statements {
-            match crate::type_engine::unify_with_self(
+        for stmt in return_statements {
+            let span = &stmt.span;
+            match unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
                 span,
+                "Return statement must return the declared function return type.",
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));
-                } //    "Function body's return type does not match up with its return type annotation.",
-            }
-        }
-
-        // if this is an abi function, it is required that it begins with
-        // the three parameters related to contract calls
-        //  gas_to_forward: u64,
-        //  coins_to_forward: u64,
-        //  color_of_coins: b256,
-        //
-        //  eventually this will be a `ContractRequest`
-        //
-        //  not spending _too_ much time on particularly specific error messages here since
-        //  it is a temporary workaround
-        if mode == Mode::ImplAbiFn {
-            if parameters.len() == 4 {
-                if look_up_type_id(parameters[0].r#type)
-                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[0].type_span.clone(),
-                    });
                 }
-                if look_up_type_id(parameters[1].r#type)
-                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[1].type_span.clone(),
-                    });
-                }
-                if look_up_type_id(parameters[2].r#type) != TypeInfo::B256 {
-                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                        span: parameters[2].type_span.clone(),
-                    });
-                }
-            } else {
-                errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                    span: parameters
-                        .get(0)
-                        .map(|x| x.type_span.clone())
-                        .unwrap_or_else(|| fn_decl.name.span().clone()),
-                });
             }
         }
 
@@ -304,7 +253,15 @@ impl TypedFunctionDeclaration {
         if !type_arguments.is_empty() {
             // check type arguments against parameters
             if self.type_parameters.len() != type_arguments.len() {
-                todo!("incorrect number of type args err");
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: self.type_parameters.len(),
+                    span: type_arguments
+                        .iter()
+                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
+                            join_spans(acc, sp.clone())
+                        }),
+                });
             }
 
             // check the type arguments
@@ -316,6 +273,7 @@ impl TypedFunctionDeclaration {
                     insert_type(type_argument.clone()),
                     self_type,
                     type_argument_span,
+                    "Type argument is not castable to generic type paramter",
                 ) {
                     Ok(mut ws) => {
                         warnings.append(&mut ws);

@@ -95,7 +95,11 @@ impl Context {
                     ty,
                     indices,
                 } => self.verify_extract_value(aggregate, ty, indices)?,
-                Instruction::GetPointer(ptr) => self.verify_get_ptr(ptr)?,
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.verify_get_ptr(base_ptr, ptr_ty, *offset)?,
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -112,7 +116,20 @@ impl Context {
                 Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
-                Instruction::Store { ptr, stored_val } => self.verify_store(ptr, stored_val)?,
+                Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
+                Instruction::StateLoadQuadWord { load_val, key } => {
+                    self.verify_state_load_quad_word(load_val, key)?
+                }
+                Instruction::StateStoreWord { stored_val, key } => {
+                    self.verify_state_store_word(stored_val, key)?
+                }
+                Instruction::StateStoreQuadWord { stored_val, key } => {
+                    self.verify_state_store_quad_word(stored_val, key)?
+                }
+                Instruction::Store {
+                    dst_val,
+                    stored_val,
+                } => self.verify_store(dst_val, stored_val)?,
             }
         } else {
             unreachable!("Verify instruction is not an instruction.");
@@ -169,7 +186,12 @@ impl Context {
         Ok(())
     }
 
-    fn verify_get_ptr(&self, _ptr: &Pointer) -> Result<(), IrError> {
+    fn verify_get_ptr(
+        &self,
+        _base_ptr: &Pointer,
+        _ptr_ty: &Type,
+        _offset: u64,
+    ) -> Result<(), IrError> {
         // XXX get_ptr() shouldn't exist in the final IR?
         Ok(())
     }
@@ -195,7 +217,8 @@ impl Context {
         Ok(())
     }
 
-    fn verify_load(&self, _ptr: &Pointer) -> Result<(), IrError> {
+    fn verify_load(&self, _src_val: &Value) -> Result<(), IrError> {
+        // XXX src_val must be a pointer.
         // XXX We should check the pointer type matches this load type.
         Ok(())
     }
@@ -228,8 +251,34 @@ impl Context {
         }
     }
 
-    fn verify_store(&self, _ptr: &Pointer, _stored_val: &Value) -> Result<(), IrError> {
+    fn verify_state_load_quad_word(&self, _load_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_state_load_word(&self, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, load_val ty must by pointer to either Uint(64) or B256.
+        Ok(())
+    }
+
+    fn verify_state_store_quad_word(
+        &self,
+        _stored_val: &Value,
+        _key: &Value,
+    ) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be pointer to a B256.
+        Ok(())
+    }
+
+    fn verify_state_store_word(&self, _stored_val: &Value, _key: &Value) -> Result<(), IrError> {
+        // XXX key must be a pointer to B256, stored val ty must be a Uint(64).
+        Ok(())
+    }
+
+    fn verify_store(&self, _dst_val: &Value, _stored_val: &Value) -> Result<(), IrError> {
         // XXX When we have some type info available from instructions...
+        // XXX dst must be a pointer.
+        // XXX Pointer destinations must be mutable.
         //if ptr_val.get_type(self) != stored_val.get_type(self) {
         //    Err("Stored value type must match pointer type.".into())
         //} else {

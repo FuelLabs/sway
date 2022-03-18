@@ -3,10 +3,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "struct_field_reassignment"
 entry = "main.sw"
-
-
-[dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
-
-

@@ -1,6 +1,8 @@
 use super::*;
 
 use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
+use std::collections::HashMap;
+use sway_types::state::StateIndex;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
@@ -13,6 +15,7 @@ pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         name: CallPath,
+        contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
@@ -59,15 +62,16 @@ pub(crate) enum TypedExpressionVariant {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression>,
-        field_to_access: OwnedTypedStructField,
+        field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
-        field_to_access_span: Span,
     },
-    EnumArgAccess {
-        prefix: Box<TypedExpression>,
-        //variant_to_access: TypedEnumVariant,
-        arg_num_to_access: usize,
-        resolved_type_of_parent: TypeId,
+    IfLet {
+        enum_type: TypeId,
+        expr: Box<TypedExpression>,
+        variant: TypedEnumVariant,
+        variable_to_assign: Ident,
+        then: TypedCodeBlock,
+        r#else: Option<Box<TypedExpression>>,
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
@@ -82,6 +86,9 @@ pub(crate) enum TypedExpressionVariant {
         variant_name: Ident,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
+        /// If there is an error regarding this instantiation of the enum,
+        /// use this span as it points to the call site and not the declaration.
+        instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -90,9 +97,39 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    #[allow(dead_code)]
+    StorageAccess(TypeCheckedStorageAccess),
     SizeOf {
         variant: SizeOfVariant,
     },
+}
+
+/// Describes the full storage access including all the subfields
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccess {
+    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub(crate) ix: StateIndex,
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
+    }
+    pub fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                join_spans(acc, field.span.clone())
+            })
+    }
+}
+
+/// Describes a single subfield access in the sequence when accessing a subfield within storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccessDescriptor {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -174,15 +211,13 @@ impl TypedExpressionVariant {
                     field_to_access.name
                 )
             }
-            TypedExpressionVariant::EnumArgAccess {
-                resolved_type_of_parent,
-                arg_num_to_access,
-                ..
+            TypedExpressionVariant::IfLet {
+                enum_type, variant, ..
             } => {
                 format!(
-                    "\"{}.{}\" arg num access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    arg_num_to_access
+                    "if let {}::{}",
+                    enum_type.friendly_type_str(),
+                    variant.name.as_str()
                 )
             }
             TypedExpressionVariant::TupleElemAccess {
@@ -211,6 +246,9 @@ impl TypedExpressionVariant {
                     variant_name.as_str(),
                     tag
                 )
+            }
+            TypedExpressionVariant::StorageAccess(access) => {
+                format!("storage field {} access", access.storage_field_name())
             }
             TypedExpressionVariant::SizeOf { variant } => match variant {
                 SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
@@ -291,20 +329,19 @@ impl TypedExpressionVariant {
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
-            EnumArgAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
+            IfLet {
+                ref mut variant,
+                ref mut enum_type,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                *enum_type = if let Some(matching_id) =
+                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
                 {
                     insert_type(TypeInfo::Ref(matching_id))
                 } else {
-                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                    insert_type(look_up_type_id_raw(*enum_type))
                 };
-
-                prefix.copy_types(type_mapping);
+                variant.copy_types(type_mapping);
             }
             TupleElemAccess {
                 prefix,
@@ -332,6 +369,8 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
+            // storage is never generic and cannot be monomorphized
+            StorageAccess { .. } => (),
             SizeOf { variant } => match variant {
                 SizeOfVariant::Type(_) => (),
                 SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),

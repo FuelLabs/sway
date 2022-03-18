@@ -18,7 +18,7 @@ use crate::{
     irtype::{Aggregate, Type},
     metadata::MetadataIndex,
     pointer::Pointer,
-    value::Value,
+    value::{Value, ValueDatum},
 };
 
 #[derive(Debug, Clone)]
@@ -48,7 +48,11 @@ pub enum Instruction {
         indices: Vec<u64>,
     },
     /// Return a pointer as a value.
-    GetPointer(Pointer),
+    GetPointer {
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+    },
     /// Writing a specific value to an array.
     InsertElement {
         array: Value,
@@ -64,15 +68,26 @@ pub enum Instruction {
         indices: Vec<u64>,
     },
     /// Read a value from a memory pointer.
-    Load(Pointer),
+    Load(Value),
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
     /// Return from a function.
     Ret(Value, Type),
+    /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
+    StateLoadQuadWord { load_val: Value, key: Value },
+    /// Read a single word from a storage slot.
+    StateLoadWord(Value),
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(256) ptr.
+    StateStoreQuadWord { stored_val: Value, key: Value },
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(64) value.
+    StateStoreWord { stored_val: Value, key: Value },
+
     /// Write a value to a memory pointer.
-    Store { ptr: Pointer, stored_val: Value },
+    Store { dst_val: Value, stored_val: Value },
 }
 
 impl Instruction {
@@ -86,22 +101,32 @@ impl Instruction {
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
-            Instruction::Load(ptr) => Some(context.pointers[ptr.0].ty),
+            Instruction::Load(ptr_val) => {
+                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
+                    ins.get_type(context)
+                } else {
+                    None
+                }
+            }
             Instruction::Phi(_alts) => {
                 unimplemented!("phi get type -- I think we should put the type in the enum.")
             }
+
+            // These can be recursed to via Load, so we return the pointer type.
+            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // GetPointer returns a pointer type which we don't expose.
-            Instruction::GetPointer(_) => None,
-
             // These write values but don't return one.  If we're explicit we could return Unit.
             Instruction::InsertElement { .. } => None,
             Instruction::InsertValue { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => None,
+            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
+            Instruction::StateStoreQuadWord { .. } => None,
+            Instruction::StateStoreWord { .. } => None,
             Instruction::Store { .. } => None,
 
             // No-op is also no-type.
@@ -112,7 +137,7 @@ impl Instruction {
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
-            Instruction::GetPointer(ptr) | Instruction::Load(ptr) => match ptr.get_type(context) {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -155,7 +180,7 @@ impl Instruction {
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
-            Instruction::GetPointer(_) => (),
+            Instruction::GetPointer { .. } => (),
             Instruction::InsertElement {
                 array,
                 value,
@@ -183,6 +208,21 @@ impl Instruction {
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::Ret(ret_val, _) => replace(ret_val),
+            Instruction::StateLoadQuadWord { load_val, key } => {
+                replace(load_val);
+                replace(key);
+            }
+            Instruction::StateLoadWord(key) => {
+                replace(key);
+            }
+            Instruction::StateStoreQuadWord { stored_val, key } => {
+                replace(key);
+                replace(stored_val);
+            }
+            Instruction::StateStoreWord { stored_val, key } => {
+                replace(key);
+                replace(stored_val);
+            }
             Instruction::Store { stored_val, .. } => {
                 replace(stored_val);
             }
@@ -238,7 +278,9 @@ impl<'a> InstructionInserter<'a> {
     }
 
     //
-    // XXX maybe these should return result, in case they get bad args?
+    // XXX Maybe these should return result, in case they get bad args?
+    //
+    // XXX Also, these are all the same and could probably be created with a local macro.
     //
 
     /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
@@ -371,9 +413,22 @@ impl<'a> InstructionInserter<'a> {
         extract_value_val
     }
 
-    pub fn get_ptr(self, ptr: Pointer, span_md_idx: Option<MetadataIndex>) -> Value {
-        let get_ptr_val =
-            Value::new_instruction(self.context, Instruction::GetPointer(ptr), span_md_idx);
+    pub fn get_ptr(
+        self,
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let get_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            },
+            span_md_idx,
+        );
         self.context.blocks[self.block.0]
             .instructions
             .push(get_ptr_val);
@@ -428,8 +483,9 @@ impl<'a> InstructionInserter<'a> {
         insert_val
     }
 
-    pub fn load(self, ptr: Pointer, span_md_idx: Option<MetadataIndex>) -> Value {
-        let load_val = Value::new_instruction(self.context, Instruction::Load(ptr), span_md_idx);
+    pub fn load(self, src_val: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+        let load_val =
+            Value::new_instruction(self.context, Instruction::Load(src_val), span_md_idx);
         self.context.blocks[self.block.0]
             .instructions
             .push(load_val);
@@ -449,15 +505,78 @@ impl<'a> InstructionInserter<'a> {
         ret_val
     }
 
+    pub fn state_load_quad_word(
+        self,
+        load_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_load_val = Value::new_instruction(
+            self.context,
+            Instruction::StateLoadQuadWord { load_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_load_val);
+        state_load_val
+    }
+
+    pub fn state_load_word(self, key: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+        let state_load_val =
+            Value::new_instruction(self.context, Instruction::StateLoadWord(key), span_md_idx);
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_load_val);
+        state_load_val
+    }
+
+    pub fn state_store_quad_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStoreQuadWord { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
+    pub fn state_store_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStoreWord { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
     pub fn store(
         self,
-        ptr: Pointer,
+        dst_val: Value,
         stored_val: Value,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let store_val = Value::new_instruction(
             self.context,
-            Instruction::Store { ptr, stored_val },
+            Instruction::Store {
+                dst_val,
+                stored_val,
+            },
             span_md_idx,
         );
         self.context.blocks[self.block.0]

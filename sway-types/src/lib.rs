@@ -1,5 +1,6 @@
 use fuel_asm::Word;
-use fuel_tx::{crypto, Bytes32, ContractId};
+use fuel_crypto::Hasher;
+use fuel_tx::{Bytes32, ContractId};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
@@ -9,6 +10,8 @@ pub use ident::*;
 
 pub mod span;
 pub use span::*;
+
+pub mod state;
 
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
@@ -298,7 +301,7 @@ impl Context {
     pub fn id_from_repr<'a>(bytes: impl Iterator<Item = &'a u8>) -> Id {
         let bytes: Vec<u8> = bytes.copied().collect();
 
-        *crypto::Hasher::hash(bytes.as_slice())
+        *Hasher::hash(bytes.as_slice())
     }
 
     pub const fn id(&self) -> &Id {

@@ -1,15 +1,13 @@
+use crate::cli::ExplorerCommand;
+use forc_util::{println_green, user_forc_directory};
+use reqwest;
+use serde::Deserialize;
 use std::fs::{create_dir_all, remove_dir_all, remove_file, rename, File};
 use std::io::Cursor;
 use std::path::PathBuf;
-
-use crate::utils::helpers::user_forc_directory;
-use ansi_term::Colour;
-use reqwest;
-use serde::Deserialize;
 use tar::Archive;
 use warp::Filter;
 
-use crate::cli::ExplorerCommand;
 type DownloadResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Deserialize, Debug)]
@@ -80,7 +78,7 @@ async fn exec_start(command: ExplorerCommand) -> Result<(), reqwest::Error> {
     let releases = get_github_releases().await?;
     let version = get_latest_release_name(releases.as_slice());
     let message = format!("Fuel Network Explorer {}", version);
-    println!("{}", Colour::Green.paint(message));
+    let _ = println_green(&message);
     let is_downloaded = check_version_path(version);
 
     if !is_downloaded {

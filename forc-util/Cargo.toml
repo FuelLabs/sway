@@ -1,0 +1,18 @@
+[package]
+name = "forc-util"
+version = "0.6.1"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Utility items shared between forc crates."
+
+[dependencies]
+annotate-snippets = { version = "0.9", features = ["color"] }
+anyhow = "1"
+dirs = "3.0.2"
+sway-core = { version = "0.6.1", path = "../sway-core" }
+sway-utils = { version = "0.6.1", path = "../sway-utils" }
+termcolor = "1.1"
+unicode-xid = "0.2.2"
