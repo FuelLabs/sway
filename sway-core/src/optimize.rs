@@ -1,4 +1,4 @@
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
 
@@ -1741,7 +1741,11 @@ impl FnCompiler {
             }
             Type::Bool | Type::Uint(_) | Type::B256 => {
                 // Calculate the storage location hash for the given field
-                let mut storage_slot_to_hash = format!("{}{}", "storage_", ix.to_usize());
+                let mut storage_slot_to_hash = format!(
+                    "{}{}",
+                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+                    ix.to_usize()
+                );
                 for ix in &indices {
                     storage_slot_to_hash = format!("{}_{}", storage_slot_to_hash, ix);
                 }

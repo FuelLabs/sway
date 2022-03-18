@@ -1,7 +1,9 @@
 use crate::core::session::Session;
-use lspower::lsp::{DocumentFormattingParams, Position, Range, TextDocumentIdentifier, TextEdit};
 use std::sync::Arc;
 use sway_fmt::{get_formatted_data, FormattingOptions};
+use tower_lsp::lsp_types::{
+    DocumentFormattingParams, Position, Range, TextDocumentIdentifier, TextEdit,
+};
 
 pub fn format_document(
     session: Arc<Session>,

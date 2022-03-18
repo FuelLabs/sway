@@ -1370,9 +1370,6 @@ pub struct TypeCheckedStorageReassignment {
 }
 
 impl TypeCheckedStorageReassignment {
-    pub fn rhs(&self) -> &TypedExpression {
-        &self.rhs
-    }
     pub fn span(&self) -> Span {
         self.fields
             .iter()
@@ -1380,23 +1377,12 @@ impl TypeCheckedStorageReassignment {
                 join_spans(acc, field.span.clone())
             })
     }
-    //    pub fn ix(&self) -> StateIndex {
-    //        self.field.ix.clone()
-    //    }
     pub fn names(&self) -> Vec<Ident> {
         self.fields
             .iter()
             .map(|f| f.name.clone())
             .collect::<Vec<_>>()
     }
-    //    pub fn r#type(&self) -> TypeId {
-    //        self.field.r#type
-    //    }
-    /*pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, usize)]) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }*/
 }
 
 /// Describes a single subfield access in the sequence when reassigning to a subfield within
@@ -1406,18 +1392,6 @@ pub struct TypeCheckedStorageReassignDescriptor {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
-}
-
-impl TypeCheckedStorageReassignDescriptor {
-    /*pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, usize)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        };
-    }*/
 }
 
 fn reassign_storage_subfield(

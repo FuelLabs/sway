@@ -3,9 +3,9 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use lspower::lsp::{Position, Range};
 use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
 use sway_types::{ident::Ident, span::Span};
+use tower_lsp::lsp_types::{Position, Range};
 
 #[derive(Debug, Clone)]
 pub struct Token {

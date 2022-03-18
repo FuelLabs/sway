@@ -97,12 +97,14 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
+    #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
     SizeOf {
         variant: SizeOfVariant,
     },
 }
 
+/// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
     pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
@@ -110,7 +112,7 @@ pub struct TypeCheckedStorageAccess {
 }
 
 impl TypeCheckedStorageAccess {
-    pub fn field_name(&self) -> Ident {
+    pub fn storage_field_name(&self) -> Ident {
         self.fields[0].name.clone()
     }
     pub fn span(&self) -> Span {
@@ -246,7 +248,7 @@ impl TypedExpressionVariant {
                 )
             }
             TypedExpressionVariant::StorageAccess(access) => {
-                format!("storage field {} access", access.field_name())
+                format!("storage field {} access", access.storage_field_name())
             }
             TypedExpressionVariant::SizeOf { variant } => match variant {
                 SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),

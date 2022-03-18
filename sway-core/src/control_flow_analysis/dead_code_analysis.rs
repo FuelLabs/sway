@@ -10,7 +10,7 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop,
         },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -373,18 +373,15 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StorageReassignment(storage_reassignment) => {
-            let rhs = storage_reassignment.rhs();
-            connect_expression(
-                &rhs.expression,
-                graph,
-                &[entry_node],
-                exit_node,
-                "variable reassignment",
-                tree_type,
-                rhs.span.clone(),
-            )
-        }
+        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
+            &rhs.expression,
+            graph,
+            &[entry_node],
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            rhs.span.clone(),
+        ),
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
             graph,
@@ -997,9 +994,13 @@ fn connect_expression(
             Ok(prefix_idx)
         }
         StorageAccess(fields) => {
-            let storage_node = graph.namespace.storage.get(&fields.field_name()).cloned();
-            let this_ix =
-                graph.add_node(format!("storage field access: {}", fields.field_name()).into());
+            let storage_node = graph
+                .namespace
+                .storage
+                .get(&fields.storage_field_name())
+                .cloned();
+            let this_ix = graph
+                .add_node(format!("storage field access: {}", fields.storage_field_name()).into());
             for leaf in leaves {
                 storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
                 graph.add_edge(*leaf, this_ix, "".into());
