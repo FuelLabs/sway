@@ -33,10 +33,10 @@ cargo run --bin test
 
 After the test suite runs, you should see:
 
-> ---
->
-> Tests passed.\
-> _n_ tests run (0 skipped)
+```console
+Tests passed.
+_n_ tests run (0 skipped)
+```
 
 Congratulations! You've now got everything setup and are ready to start making contributions.
 
