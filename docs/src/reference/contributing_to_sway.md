@@ -41,13 +41,13 @@ After the test suite runs, you should see:
 
 Congratulations! You've now got everything setup and are ready to start making contributions.
 
-### Finding something to work on
+## Finding something to work on
 
 There are many ways in which you may contribute to the Sway project, some of which involve coding knowledge and some which do not. A few examples include:
 
 - Reporting bugs
 - Adding documentation to the Sway book
-- Adding new features or buigfixes for which there is already an open issue
+- Adding new features or bugfixes for which there is already an open issue
 - making Feature requests
 
 Check out our [Help Wanted](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22), [Sway Book](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22The+Sway+Book%22) or [Good First Issue](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) issues to find a suitable task.
