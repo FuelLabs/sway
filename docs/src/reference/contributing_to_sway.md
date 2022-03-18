@@ -10,7 +10,7 @@ See the Sway book's [Introduction](../introduction/index.md) for instructions on
 
 ## Getting the repository
 
-```
+```sh
 git clone https://github.com/FuelLabs/sway
 cd sway
 ```
