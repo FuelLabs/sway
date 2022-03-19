@@ -32,6 +32,25 @@ impl Compare for u64 {
 
 The above snippet declares all of the methods in the trait `Compare` for the type `u64`. Now, we have access to both the `equals` and `not_equals` methods for `u64`, as long as the trait `Compare` is in scope.
 
+## Supertraits
+
+When using multiple traits scenarios oftne come up where one trait may require funcitonality added in another trait. This is where supertraits come in as they allow you to require a trait when implementing a
+trait (ie. a trait with a trait). A good example of this is the `Ord` trait of the core library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept seperate as some times can implement `Eq`,
+but not other parts of the `Ord` trait. 
+
+```sway
+
+trait Eq {
+	fn equals(self, b: Self) -> bool;
+}
+
+trait Ord: Eq {
+	fn gte(self, b: Self) -> bool;
+}
+```
+
+The syntax of supertraits is in the trait declaration using a `:` in the trait name, followed by the traits which the super trait requires.
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
