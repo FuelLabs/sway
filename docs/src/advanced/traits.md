@@ -51,7 +51,7 @@ trait Ord: Eq {
 impl Ord for u64 {
     fn gte(self, b: Self) -> bool {
         // As `Eq` is a supertrait of `Ord`, `Ord` can access the equals method
-	  self.equals(b) || self.gt(b)
+        self.equals(b) || self.gt(b)
     }
 }
 ```
