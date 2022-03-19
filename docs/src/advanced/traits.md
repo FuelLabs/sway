@@ -41,7 +41,7 @@ without implementing other parts of the `Ord` trait.
 ```sway
 
 trait Eq {
-	fn equals(self, b: Self) -> bool;
+    fn equals(self, b: Self) -> bool;
 }
 
 trait Ord: Eq {
