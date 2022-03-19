@@ -85,6 +85,7 @@ impl TypedExpression {
             | TypedExpressionVariant::SizeOf { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
     }
