@@ -45,7 +45,7 @@ trait Eq {
 }
 
 trait Ord: Eq {
-	fn gte(self, b: Self) -> bool;
+    fn gte(self, b: Self) -> bool;
 }
 
 imply Ord for u64 {
