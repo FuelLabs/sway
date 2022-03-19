@@ -20,6 +20,7 @@ use sway_core::{
     NamespaceWrapper, TreeType, TypedParseTree,
 };
 use sway_types::JsonABI;
+use sway_utils::constants;
 use url::Url;
 
 type GraphIx = u32;
@@ -513,7 +514,18 @@ pub fn graph_to_path_map(
         let dep = &graph[dep_node];
         let dep_path = match &dep.source {
             SourcePinned::Git(git) => {
-                git_commit_path(&dep.name, &git.source.repo, &git.commit_hash)
+                let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
+                if !repo_path.exists() {
+                    println!("  Fetching {}", git.to_string());
+                    fetch_git(fetch_id, &dep.name, git)?;
+                }
+                find_pkg_dir_within(&repo_path, &dep.name).ok_or_else(|| {
+                    anyhow!(
+                        "failed to find package `{}` in {}",
+                        dep.name,
+                        git.to_string()
+                    )
+                })?
             }
             SourcePinned::Path => {
                 let parent_node = graph
@@ -536,26 +548,16 @@ pub fn graph_to_path_map(
                     .path
                     .as_ref()
                     .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
-                parent_path.join(rel_dep_path)
+                let path = parent_path.join(rel_dep_path);
+                if !path.exists() {
+                    bail!("pinned `path` dependency \"{}\" source missing", dep.name);
+                }
+                path
             }
             SourcePinned::Registry(_reg) => {
                 bail!("registry dependencies are not yet supported");
             }
         };
-        if !dep_path.exists() {
-            match &dep.source {
-                SourcePinned::Path => {
-                    bail!("pinned `path` dependency \"{}\" source missing", dep.name);
-                }
-                SourcePinned::Git(git) => {
-                    println!("  Fetching {}", git.to_string());
-                    fetch_git(fetch_id, &dep.name, git)?;
-                }
-                SourcePinned::Registry(_reg) => {
-                    bail!("registry dependencies are not yet supported");
-                }
-            }
-        }
         path_map.insert(dep.id(), dep_path);
     }
 
@@ -795,9 +797,10 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
             path_map.insert(id, path.clone());
             pinned
         }
-        Source::Git(ref source) => {
-            let pinned_git = pin_git(fetch_id, &name, source.clone())?;
-            let path = git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+        Source::Git(ref git_source) => {
+            let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+            let repo_path =
+                git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
             let id = pinned.id();
@@ -807,10 +810,17 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
                 // cases as users should never be touching these directories, however we should add some code
                 // to validate this. E.g. can we recreate the git hash by hashing the directory or something
                 // along these lines using git?
-                if !path.exists() {
+                if !repo_path.exists() {
                     println!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
+                let path = find_pkg_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
+                    anyhow!(
+                        "failed to find package `{}` in {}",
+                        pinned.name,
+                        pinned_git.to_string()
+                    )
+                })?;
                 entry.insert(path);
             }
             pinned
@@ -1069,6 +1079,30 @@ pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, 
     }
     let compiled = Compiled { bytecode, json_abi };
     Ok((compiled, source_map))
+}
+
+/// Attempt to find a `Forc.toml` with the given project name within the given directory.
+///
+/// Returns the path to the package on success, or `None` in the case it could not be found.
+pub fn find_pkg_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .find_map(|entry| {
+            let path = entry.path();
+            let manifest = Manifest::from_file(path).ok()?;
+            if manifest.project.name == pkg_name {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        })
+}
+
+/// The same as `find_pkg_within`, but returns the package's project directory.
+pub fn find_pkg_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    find_pkg_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
 // TODO: Update this to match behaviour described in the `compile` doc comment above.
