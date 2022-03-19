@@ -10,6 +10,9 @@ See the [introduction](../introduction/index.md) section for instructions on ins
 
 ## Getting the repository
 
+1. Visit the [Sway](https://github.com/FuelLabs/sway) repo and fork the project.
+2. Then clone your forked copy to your local machine and get to work.
+
 ```sh
 git clone https://github.com/FuelLabs/sway
 cd sway
@@ -25,7 +28,7 @@ First, open a new terminal and start `fuel-core` with:
 fuel-core
 ```
 
-Then, open a second terminal and run:
+Then open a second terminal, cd into the `sway` repo and run:
 
 ```sh
 cargo run --bin test
