@@ -52,7 +52,7 @@ imply Ord for u64 {
 	fn gte(self, b: Self) -> bool {
 	  // As the Ord is a supertrait of Eq, it can access the equals method
 	  self.equals(b) || self.gt(b)
-	}
+    }
 }
 ```
 
