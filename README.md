@@ -45,7 +45,7 @@ Confirm the Sway toolchain built successfully:
 cargo run --bin forc -- --help
 ```
 
-## contributing to Sway
+## Contributing to Sway
 
 We welcome contributions to Sway!
 
