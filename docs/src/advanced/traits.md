@@ -56,7 +56,7 @@ impl Ord for u64 {
 }
 ```
 
-The syntax of supertraits is in the trait declaration using a `:` in the trait name, followed by the traits which the super trait requires.
+To require a supertrait, add a `:` after the trait name and then list the traits you would like to require and separate them with a `+`.
 
 ## Use Cases
 
