@@ -34,7 +34,7 @@ The above snippet declares all of the methods in the trait `Compare` for the typ
 
 ## Supertraits
 
-When using multiple traits scenarios oftne come up where one trait may require funcitonality added in another trait. This is where supertraits come in as they allow you to require a trait when implementing a
+When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another
 trait (ie. a trait with a trait). A good example of this is the `Ord` trait of the core library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept seperate as some times can implement `Eq`,
 but not other parts of the `Ord` trait. 
 
