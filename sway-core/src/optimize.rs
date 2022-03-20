@@ -2255,6 +2255,14 @@ mod tests {
         let mut parsed =
             SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
 
+        let program_type = match parsed.peek().unwrap().into_inner().peek().unwrap().as_rule() {
+            Rule::script => TreeType::Script,
+            Rule::contract => TreeType::Contract,
+            Rule::predicate => TreeType::Predicate,
+            Rule::library => todo!(),
+            _ => unreachable!("unexpected program type")
+        };
+
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
 
@@ -2284,7 +2292,7 @@ mod tests {
             parse_tree.tree,
             crate::create_module(),
             crate::create_module(),
-            &TreeType::Script,
+            &program_type,
             &build_config,
             &mut dead_code_graph,
         )

@@ -1,0 +1,61 @@
+script {
+    fn main() -> u64 {
+        local ptr u64 a
+        local ptr b256 b
+        local ptr { u64, b256 } s
+
+        entry:
+        v0 = const u64 1111, !1
+        v1 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !2
+        v2 = const u64 0, !3
+        v3 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !4
+        v4 = const u64 10000, !5
+        v5 = contract_call get_u64<9890aef4>{addr: v1, coins: v2, asset_id: v3, gas:v4}(v0), !6
+        v6 = get_ptr ptr u64 a, ptr u64, 0, !7
+        store v5, ptr v6, !7
+        v7 = const b256 0x3333333333333333333333333333333333333333333333333333333333333333, !8
+        v8 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !9
+        v9 = const u64 0, !10
+        v10 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !11
+        v11 = const u64 20000, !12
+        v12 = contract_call get_b256<42123b96>{addr: v8, coins: v9, asset_id: v10, gas:v11}(v7), !13
+        v13 = get_ptr ptr b256 b, ptr b256, 0, !14
+        store v12, ptr v13, !14
+        v14 = const u64 5555, !15
+        v15 = const b256 0x5555555555555555555555555555555555555555555555555555555555555555, !16
+        v16 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !17
+        v17 = const u64 0, !18
+        v18 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !19
+        v19 = const u64 20000, !20
+        v20 = contract_call get_s<fc62d029>{addr: v16, coins: v17, asset_id: v18, gas:v19}(v14, v15), !21
+        v21 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0, !22
+        store v20, ptr v21, !22
+        v22 = const u64 0, !23
+        ret u64 v22
+    }
+}
+
+!0 = filepath "/path/to/simple_contract_call.sw"
+!1 = span !0 453 457
+!2 = span !0 0 66
+!3 = span !0 333 334
+!4 = span !0 354 420
+!5 = span !0 435 440
+!6 = span !0 301 458
+!7 = span !0 293 459
+!8 = span !0 626 692
+!9 = span !0 0 66
+!10 = span !0 506 507
+!11 = span !0 527 593
+!12 = span !0 608 613
+!13 = span !0 473 693
+!14 = span !0 465 694
+!15 = span !0 860 864
+!16 = span !0 866 932
+!17 = span !0 0 66
+!18 = span !0 741 742
+!19 = span !0 761 827
+!20 = span !0 842 847
+!21 = span !0 711 933
+!22 = span !0 703 934
+!23 = span !0 942 943
