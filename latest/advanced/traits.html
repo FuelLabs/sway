@@ -189,6 +189,27 @@
 }
 </code></pre>
 <p>The above snippet declares all of the methods in the trait <code>Compare</code> for the type <code>u64</code>. Now, we have access to both the <code>equals</code> and <code>not_equals</code> methods for <code>u64</code>, as long as the trait <code>Compare</code> is in scope.</p>
+<h2 id="supertraits"><a class="header" href="#supertraits">Supertraits</a></h2>
+<p>When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another
+trait (ie. a trait with a trait). A good example of this is the <code>Ord</code> trait of the <code>core</code> library of Sway. The <code>Ord</code> trait requires the <code>Eq</code> trait, so <code>Eq</code> is kept as a separate trait as one may decide to implement <code>Eq</code>
+without implementing other parts of the <code>Ord</code> trait. </p>
+<pre><code class="language-sway">
+trait Eq {
+    fn equals(self, b: Self) -&gt; bool;
+}
+
+trait Ord: Eq {
+    fn gte(self, b: Self) -&gt; bool;
+}
+
+impl Ord for u64 {
+    fn gte(self, b: Self) -&gt; bool {
+        // As `Eq` is a supertrait of `Ord`, `Ord` can access the equals method
+        self.equals(b) || self.gt(b)
+    }
+}
+</code></pre>
+<p>To require a supertrait, add a <code>:</code> after the trait name and then list the traits you would like to require and separate them with a <code>+</code>.</p>
 <h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
 <h3 id="custom-types-structs-enums"><a class="header" href="#custom-types-structs-enums">Custom Types (structs, enums)</a></h3>
 <p>Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.</p>
