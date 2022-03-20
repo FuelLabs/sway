@@ -249,6 +249,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ),
         ("should_pass/language/while_loops", ProgramState::Return(1)),
+        (
+            "should_pass/language/retd_small_array",
+            ProgramState::ReturnData(Bytes32::from([
+                0xcd, 0x26, 0x62, 0x15, 0x4e, 0x6d, 0x76, 0xb2, 0xb2, 0xb9, 0x2e, 0x70, 0xc0, 0xca,
+                0xc3, 0xcc, 0xf5, 0x34, 0xf9, 0xb7, 0x4e, 0xb5, 0xb8, 0x98, 0x19, 0xec, 0x50, 0x90,
+                0x83, 0xd0, 0x0a, 0x50,
+            ])),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
