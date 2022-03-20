@@ -828,27 +828,39 @@ impl FnCompiler {
 
         // Compile all other metadata parameters
         let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
-        let coins = self.compile_expression(
-            context,
-            contract_call_parameters
-                .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
-                .unwrap()
-                .clone(),
-        )?;
-        let asset_id = self.compile_expression(
-            context,
-            contract_call_parameters
-                .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
-                .unwrap()
-                .clone(),
-        )?;
-        let gas = self.compile_expression(
-            context,
-            contract_call_parameters
-                .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
-                .unwrap()
-                .clone(),
-        )?;
+        let coins = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
+        {
+            Some(coins_expr) => self.compile_expression(context, coins_expr.clone())?,
+            None => convert_literal_to_value(
+                context,
+                &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
+                span_md_idx,
+            ),
+        };
+
+        let asset_id = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
+        {
+            Some(asset_id_expr) => self.compile_expression(context, asset_id_expr.clone())?,
+            None => convert_literal_to_value(
+                context,
+                &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
+                span_md_idx,
+            ),
+        };
+
+        let gas = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
+        {
+            Some(gas_expr) => self.compile_expression(context, gas_expr.clone())?,
+            None => convert_literal_to_value(
+                context,
+                // Zero here means $cgas
+                &Literal::U64(constants::CONTRACT_CALL_GAS_PARAMETER_DEFAULT_VALUE),
+                span_md_idx,
+            ),
+        };
 
         // Insert the contract_call instruction
         Ok(self.current_block.ins(context).contract_call(
@@ -1124,6 +1136,16 @@ impl FnCompiler {
             is_mutable,
             ..
         } = ast_var_decl;
+
+        // Nothing to do for an abi cast declarations. The address specified in them is already
+        // provided in each contract call node in the AST.
+        if matches!(
+            &resolve_type(body.return_type, &body.span)
+                .map_err(|ty_err| format!("{:?}", ty_err))?,
+            TypeInfo::ContractCaller { .. }
+        ) {
+            return Ok(Constant::get_unit(context, span_md_idx));
+        }
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
@@ -2097,13 +2119,10 @@ fn convert_resolved_type(
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),
         TypeInfo::SelfType { .. } => return Err("can't do self types yet".into()),
-        TypeInfo::Contract => Type::Contract,
-        TypeInfo::ContractCaller { abi_name, address } => Type::ContractCaller(AbiInstance::new(
-            context,
-            abi_name.prefixes.clone(),
-            abi_name.suffix.clone(),
-            address.clone(),
-        )),
+        TypeInfo::Contract => return Err("Contract type cannot be resolved in IR".into()),
+        TypeInfo::ContractCaller { .. } => {
+            return Err("ContractCaller type cannot be reoslved in IR".into())
+        }
         TypeInfo::Unknown => return Err("unknown type found in AST..?".into()),
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),

@@ -225,41 +225,83 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
-    fn handle_fn_args(&mut self, function: Function) {
-        // Do this only for contract methods. Contract methods have selectors
+    // Handle loading the arguments of a contract call
+    fn compile_fn_args(&mut self, function: Function) {
+        // Do this only for contract methods. Contract methods have selectors.
         if !function.has_selector(self.context) {
             return;
         }
 
+        // Nothing to do if there are no arguments
+        if function.args_iter(self.context).next().is_none() {
+            return;
+        }
+
+        // Base pointer for the arumgnets using the $fp register
         let args_base_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LW(
                 args_base_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
+                // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
                 VirtualImmediate12 { value: 74 },
             )),
             comment: "Base register for method parameter".into(),
             owning_span: None,
         });
 
-        let mut extract_offset = 0;
+        // Successively load each argument. The asm generated depends on the arg type size and
+        // whether the offset fits in a 12-bit immediate.
+        let mut arg_word_offset = 0;
         for (name, val) in function.args_iter(self.context) {
             let current_arg_reg = self.value_to_register(val);
-            let arg_type_size = self
+            let arg_type_size_bytes = self
                 .type_analyzer
                 .ir_type_size_in_bytes(self.context, &val.get_type(self.context).unwrap());
-            // Still need to handle the case where the immediate doesn't fit in 12 bits
-            // Also, we have to not do this for every function - just do this for contracts
-            if arg_type_size <= 8 {
+            if arg_type_size_bytes <= 8 {
+                if arg_word_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    let offs_reg = self.reg_seqr.next();
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            args_base_reg.clone(),
+                            args_base_reg.clone(),
+                            offs_reg.clone(),
+                        )),
+                        comment: format!("Get offset for arg {}", name),
+                        owning_span: None,
+                    });
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            current_arg_reg.clone(),
+                            offs_reg,
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: format!("Get arg {}", name),
+                        owning_span: None,
+                    });
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            current_arg_reg.clone(),
+                            args_base_reg.clone(),
+                            VirtualImmediate12 {
+                                value: arg_word_offset as u16,
+                            },
+                        )),
+                        comment: format!("Get arg {}", name),
+                        owning_span: None,
+                    });
+                }
+            } else if arg_word_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                let offs_reg = self.reg_seqr.next();
+                self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
                 self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LW(
+                    opcode: either::Either::Left(VirtualOp::ADD(
                         current_arg_reg.clone(),
                         args_base_reg.clone(),
-                        VirtualImmediate12 {
-                            value: extract_offset as u16,
-                        },
+                        offs_reg,
                     )),
-                    comment: format!("Get arg {}", name),
+                    comment: format!("Get offset or arg {}", name),
                     owning_span: None,
                 });
             } else {
@@ -268,7 +310,7 @@ impl<'ir> AsmBuilder<'ir> {
                         current_arg_reg.clone(),
                         args_base_reg.clone(),
                         VirtualImmediate12 {
-                            value: (extract_offset * 8) as u16,
+                            value: (arg_word_offset * 8) as u16,
                         },
                     )),
                     comment: format!("Get address for arg {}", name),
@@ -276,7 +318,7 @@ impl<'ir> AsmBuilder<'ir> {
                 });
             }
 
-            extract_offset += arg_type_size / 8; // divide by 8 here?
+            arg_word_offset += arg_type_size_bytes / 8;
         }
     }
 
@@ -337,14 +379,6 @@ impl<'ir> AsmBuilder<'ir> {
                             .type_analyzer
                             .aggregate_max_field_size(self.context, &aggregate));
                     }
-                    Type::ContractCaller(_) => {
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        // Reserve space for the contract address only.
-                        stack_base += 4;
-                    }
-                    Type::Contract => {
-                        unimplemented!("contract on the stack?")
-                    }
                 };
             }
         }
@@ -398,7 +432,7 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
         // Compile instructions.
         self.add_locals(function);
-        self.handle_fn_args(function);
+        self.compile_fn_args(function);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         for block in function.block_iter(self.context) {
@@ -459,7 +493,7 @@ impl<'ir> AsmBuilder<'ir> {
                     coins,
                     asset_id,
                     gas,
-                    &args,
+                    args,
                 ),
                 Instruction::ExtractElement {
                     array,
@@ -730,10 +764,11 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_contract_call(
         &mut self,
         instr_val: &Value,
-        _name: String,
+        name: String,
         selector: &[u8; 4],
         addr: &Value,
         coins: &Value,
@@ -746,79 +781,124 @@ impl<'ir> AsmBuilder<'ir> {
         let asset_id_register = self.value_to_register(asset_id);
         let gas_register = self.value_to_register(gas);
 
-        // extend the stack by total size needed by args
-        let mut total_size_in_bytes = 0;
-        for arg in args.iter() {
-            total_size_in_bytes += self
-                .type_analyzer
-                .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap());
-        }
+        // Extend the stack by total size needed by args
+        let args_total_size_in_bytes = args.iter().fold(0, |total, arg| {
+            total
+                + self
+                    .type_analyzer
+                    .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap())
+        });
 
-        let bundled_arguments_register = self.reg_seqr.next();
+        // Get pointer to the stack
+        let args_base_reg = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move_comment(
-            bundled_arguments_register.clone(),
+            args_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            "save register for temporary stack value",
+            "stack pointer for args bundle",
         ));
 
-        self.bytecode.push(Op::unowned_stack_allocate_memory(
-            VirtualImmediate24::new_unchecked(
-                total_size_in_bytes, // in bytes
-                "constant infallible 48",
-            ),
-        ));
+        // Allocate enough memory on the stack for all the arguments
+        self.bytecode
+            .push(Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                value: args_total_size_in_bytes as u32,
+            }));
 
-        // Fill bundled_arguments_register
-        let mut insert_offs = 0;
+        // Successively store each argument to `args_base_reg`. The asm generated depends on the
+        // arg type size and whether the offset and the size fit in a 12-bit immediate.
+        let mut arg_word_offset = 0;
         for arg in args.iter() {
             let current_arg_reg = self.value_to_register(arg);
-            let arg_type_size = self
+            let arg_type_size_bytes = self
                 .type_analyzer
                 .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap());
-            if arg_type_size <= 8 {
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        bundled_arguments_register.clone(),
-                        current_arg_reg.clone(),
-                        VirtualImmediate12 {
-                            value: insert_offs as u16,
-                        },
-                    )),
-                    comment: format!("Get arg"),
-                    owning_span: None,
-                });
+            if arg_type_size_bytes <= 8 {
+                if arg_word_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    let offs_reg = self.reg_seqr.next();
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            args_base_reg.clone(),
+                            args_base_reg.clone(),
+                            offs_reg.clone(),
+                        )),
+                        comment: format!("Get offset for arg for {}", name),
+                        owning_span: None,
+                    });
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            offs_reg,
+                            current_arg_reg.clone(),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: format!("Get arg for {}", name),
+                        owning_span: None,
+                    })
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            args_base_reg.clone(),
+                            current_arg_reg.clone(),
+                            VirtualImmediate12 {
+                                value: arg_word_offset as u16,
+                            },
+                        )),
+                        comment: format!("Get arg {}", name),
+                        owning_span: None,
+                    });
+                }
             } else {
                 let offs_reg = self.reg_seqr.next();
-                self.bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
-                        offs_reg.clone(),
-                        bundled_arguments_register.clone(),
-                        VirtualImmediate12 {
-                            value: (insert_offs * 8) as u16,
-                        },
-                    )),
-                    comment: format!("get struct field(s) offset"),
-                    owning_span: instr_val.get_span(self.context),
-                });
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MCPI(
-                        offs_reg,
-                        current_arg_reg,
-                        VirtualImmediate12 {
-                            value: arg_type_size as u16,
-                        },
-                    )),
-                    comment: "store struct field value".into(),
-                    owning_span: instr_val.get_span(self.context),
-                });
+                if arg_word_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    self.number_to_reg(
+                        arg_word_offset * 8,
+                        &offs_reg,
+                        instr_val.get_span(self.context),
+                    );
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADDI(
+                            offs_reg.clone(),
+                            args_base_reg.clone(),
+                            VirtualImmediate12 {
+                                value: (arg_word_offset * 8) as u16,
+                            },
+                        )),
+                        comment: "get arg offset".to_string(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
+                }
+                if arg_type_size_bytes > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    let size_reg = self.reg_seqr.next();
+                    self.number_to_reg(
+                        arg_type_size_bytes,
+                        &size_reg,
+                        instr_val.get_span(self.context),
+                    );
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCP(offs_reg, current_arg_reg, size_reg)),
+                        comment: "store arg offset value".into(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCPI(
+                            offs_reg,
+                            current_arg_reg,
+                            VirtualImmediate12 {
+                                value: arg_type_size_bytes as u16,
+                            },
+                        )),
+                        comment: "store arg field value".into(),
+                        owning_span: instr_val.get_span(self.context),
+                    });
+                }
             }
-            insert_offs += arg_type_size / 8; // words
+            arg_word_offset += arg_type_size_bytes / 8;
         }
 
+        // Handle the selector
         let data_label = self
             .data_section
             .insert_data_value(&Literal::U32(u32::from_be_bytes(*selector)));
-
         let selector_register = self.reg_seqr.next();
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LWDataId(selector_register.clone(), data_label)),
@@ -826,6 +906,7 @@ impl<'ir> AsmBuilder<'ir> {
             owning_span: instr_val.get_span(self.context),
         });
 
+        // ra_pointer is the first register of the `CALL` instruction
         let ra_pointer = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move_comment(
             ra_pointer.clone(),
@@ -834,12 +915,10 @@ impl<'ir> AsmBuilder<'ir> {
         ));
 
         // extend the stack by 32 + 8 + 8 = 48 bytes
-        self.bytecode.push(Op::unowned_stack_allocate_memory(
-            VirtualImmediate24::new_unchecked(
-                48, // in bytes
-                "constant infallible 48",
-            ),
-        ));
+        self.bytecode
+            .push(Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                value: 48, // in bytes
+            }));
 
         // now $ra (ra_pointer) is pointing to the beginning of free stack memory, where we can write
         // the contract address and parameters
@@ -850,7 +929,7 @@ impl<'ir> AsmBuilder<'ir> {
             opcode: Either::Left(VirtualOp::MCPI(
                 ra_pointer.clone(),
                 contract_address,
-                VirtualImmediate12::new_unchecked(32, "infallible constant 32"),
+                VirtualImmediate12 { value: 32 },
             )),
             comment: "copy contract address for call".into(),
             owning_span: instr_val.get_span(self.context),
@@ -862,7 +941,7 @@ impl<'ir> AsmBuilder<'ir> {
                 ra_pointer.clone(),
                 selector_register,
                 // offset by 4 words, since a b256 is 4 words
-                VirtualImmediate12::new_unchecked(4, "infallible constant 4"),
+                VirtualImmediate12 { value: 4 },
             )),
             comment: "write fn selector to rA + 32 for call".into(),
             owning_span: instr_val.get_span(self.context),
@@ -872,8 +951,8 @@ impl<'ir> AsmBuilder<'ir> {
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::SW(
                 ra_pointer.clone(),
-                bundled_arguments_register,
-                VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+                args_base_reg,
+                VirtualImmediate12 { value: 5 },
             )),
             comment: "move user param for call".into(),
             owning_span: instr_val.get_span(self.context),
@@ -896,7 +975,7 @@ impl<'ir> AsmBuilder<'ir> {
         // TODO validate RETL matches the expected type
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move(
-            instr_reg.clone().into(),
+            instr_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::ReturnValue),
         ));
         self.reg_map.insert(*instr_val, instr_reg);
@@ -2239,14 +2318,6 @@ impl TypeAnalyzer {
             Type::Union(aggregate) => {
                 self.analyze_aggregate(context, aggregate);
                 self.aggregate_max_field_size(context, aggregate)
-            }
-            Type::ContractCaller(_) => {
-                // We only store the address.
-                32
-            }
-            Type::Contract => {
-                // A Contract is a pseudo-type of no size.
-                0
             }
         }
     }

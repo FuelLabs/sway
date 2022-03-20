@@ -126,6 +126,7 @@ mod ir_builder {
                 / op_branch()
                 / op_call()
                 / op_cbr()
+                / op_contract_call()
                 / op_const()
                 / op_extract_element()
                 / op_extract_value()

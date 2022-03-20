@@ -392,15 +392,16 @@ impl<'a> InstructionInserter<'a> {
         cbr_val
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn contract_call(
         self,
-        name: String,
+        name: String, // Name of the contract method
         selector: [u8; 4],
-        addr: Value,
-        coins: Value,
-        asset_id: Value,
-        gas: Value,
-        args: &[Value],
+        addr: Value,     // b256 address of the deployed contract
+        coins: Value,    // amount of coins to forward
+        asset_id: Value, // b256 asset ID of the coint being forwarded
+        gas: Value,      // amount of gas to forward
+        args: &[Value],  // user arguments
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let contract_call_val = Value::new_instruction(

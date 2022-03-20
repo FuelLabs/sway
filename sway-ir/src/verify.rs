@@ -175,9 +175,10 @@ impl Context {
         //}
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn verify_contract_call(
         &self,
-        _name: &String,
+        _name: &str,
         _selector: &[u8; 4],
         _addr: &Value,
         _coins: &Value,
