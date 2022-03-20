@@ -41,6 +41,8 @@ fn get_hashmap_key<T>(Key : T) -> b256
 }
 ```
 
+*`where` clauses are still work-in-progress, so some above statements may not be fully implemented*
+
 Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types which satisfy certain traits.
 For example, let's try to implement the successor function, `successor()`, for all numeric types.
 
