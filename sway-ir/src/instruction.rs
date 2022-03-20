@@ -38,12 +38,12 @@ pub enum Instruction {
     /// A contract call with a list of arguments
     ContractCall {
         name: String,
-        addr: Value,
         selector: [u8; 4],
-        args: Vec<Value>,
+        addr: Value,
         coins: Value,
         asset_id: Value,
         gas: Value,
+        args: Vec<Value>,
     },
     /// Reading a specific element from an array.
     ExtractElement {
@@ -395,24 +395,24 @@ impl<'a> InstructionInserter<'a> {
     pub fn contract_call(
         self,
         name: String,
-        addr: Value,
         selector: [u8; 4],
-        args: &[Value],
+        addr: Value,
         coins: Value,
         asset_id: Value,
         gas: Value,
+        args: &[Value],
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let contract_call_val = Value::new_instruction(
             self.context,
             Instruction::ContractCall {
                 name,
-                addr,
                 selector,
-                args: args.to_vec(),
+                addr,
                 coins,
                 asset_id,
                 gas,
+                args: args.to_vec(),
             },
             span_md_idx,
         );

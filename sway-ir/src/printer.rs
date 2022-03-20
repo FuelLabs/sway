@@ -340,12 +340,12 @@ fn instruction_to_doc<'a>(
             }
             Instruction::ContractCall {
                 name,
-                addr,
                 selector,
-                args,
+                addr,
                 coins,
                 asset_id,
                 gas,
+                args,
             } => args
                 .iter()
                 .fold(Doc::Empty, |doc, arg_val| {

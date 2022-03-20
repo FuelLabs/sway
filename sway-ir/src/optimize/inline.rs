@@ -240,23 +240,23 @@ fn inline_instruction(
             ),
             Instruction::ContractCall {
                 name,
-                addr,
                 selector,
-                args,
+                addr,
                 coins,
                 asset_id,
                 gas,
+                args,
             } => new_block.ins(context).contract_call(
                 name,
-                map_value(addr),
                 selector,
+                map_value(addr),
+                map_value(coins),
+                map_value(asset_id),
+                map_value(gas),
                 args.iter()
                     .map(|old_val: &Value| map_value(*old_val))
                     .collect::<Vec<Value>>()
                     .as_slice(),
-                map_value(coins),
-                map_value(asset_id),
-                map_value(gas),
                 span_md_idx,
             ),
             Instruction::ExtractElement {

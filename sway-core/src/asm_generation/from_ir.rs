@@ -226,6 +226,11 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn handle_fn_args(&mut self, function: Function) {
+        // Do this only for contract methods. Contract methods have selectors
+        if !function.has_selector(self.context) {
+            return;
+        }
+
         let args_base_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LW(
@@ -271,7 +276,7 @@ impl<'ir> AsmBuilder<'ir> {
                 });
             }
 
-            extract_offset += arg_type_size/8; // divide by 8 here?
+            extract_offset += arg_type_size / 8; // divide by 8 here?
         }
     }
 
@@ -440,13 +445,22 @@ impl<'ir> AsmBuilder<'ir> {
                 } => self.compile_conditional_branch(cond_value, block, true_block, false_block),
                 Instruction::ContractCall {
                     name,
-                    addr,
                     selector,
-                    args,
+                    addr,
                     coins,
                     asset_id,
                     gas,
-                } => self.compile_contract_call(instr_val, name.to_string(), addr, selector, &args, coins, asset_id, gas),
+                    args,
+                } => self.compile_contract_call(
+                    instr_val,
+                    name.to_string(),
+                    selector,
+                    addr,
+                    coins,
+                    asset_id,
+                    gas,
+                    &args,
+                ),
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -718,28 +732,28 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_contract_call(
         &mut self,
-        instr_val: &Value, 
-        _name: String, 
-        addr: &Value, 
-        selector: &[u8; 4], 
-        args: &[Value], 
-        coins: &Value, 
-        asset_id: &Value, 
-        gas: &Value
+        instr_val: &Value,
+        _name: String,
+        selector: &[u8; 4],
+        addr: &Value,
+        coins: &Value,
+        asset_id: &Value,
+        gas: &Value,
+        args: &[Value],
     ) {
         let contract_address = self.value_to_register(addr);
-        let coins_register = self.value_to_register(coins);                
-        let asset_id_register = self.value_to_register(asset_id);                
-        let gas_register = self.value_to_register(gas);                
+        let coins_register = self.value_to_register(coins);
+        let asset_id_register = self.value_to_register(asset_id);
+        let gas_register = self.value_to_register(gas);
 
-        // extend the stack by total size needed by args 
+        // extend the stack by total size needed by args
         let mut total_size_in_bytes = 0;
         for arg in args.iter() {
             total_size_in_bytes += self
                 .type_analyzer
                 .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap());
         }
-        
+
         let bundled_arguments_register = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move_comment(
             bundled_arguments_register.clone(),
@@ -753,7 +767,7 @@ impl<'ir> AsmBuilder<'ir> {
                 "constant infallible 48",
             ),
         ));
-        
+
         // Fill bundled_arguments_register
         let mut insert_offs = 0;
         for arg in args.iter() {
@@ -798,11 +812,12 @@ impl<'ir> AsmBuilder<'ir> {
                     owning_span: instr_val.get_span(self.context),
                 });
             }
-            insert_offs += arg_type_size/8; // words
+            insert_offs += arg_type_size / 8; // words
         }
 
-        let data_label =
-        self.data_section.insert_data_value(&Literal::U32(u32::from_be_bytes(*selector)));
+        let data_label = self
+            .data_section
+            .insert_data_value(&Literal::U32(u32::from_be_bytes(*selector)));
 
         let selector_register = self.reg_seqr.next();
         self.bytecode.push(Op {
@@ -894,10 +909,10 @@ impl<'ir> AsmBuilder<'ir> {
         ty: &Aggregate,
         index_val: &Value,
     ) {
-        // base register should pointer to some stack allocated memory.
+        // Base register should pointer to some stack allocated memory.
         let base_reg = self.value_to_register(array);
 
-        // index value is the array element index, not byte nor word offset.
+        // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
@@ -1457,7 +1472,7 @@ impl<'ir> AsmBuilder<'ir> {
                 self.bytecode.push(Op {
                     owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
-                    comment: "Returning val".into(),
+                    comment: "".into(),
                 });
             } else {
                 // If the type is larger than one word, then we use RETD to return data.  First put

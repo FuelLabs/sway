@@ -1,0 +1,42 @@
+script {
+    fn main() -> u64 {
+        local ptr TODO CONTRACT CALLER addr
+        local ptr b256 key
+        local ptr u64 res
+        local ptr u64 value
+
+        entry:
+        v0 = get_ptr ptr TODO CONTRACT CALLER addr, ptr TODO CONTRACT CALLER, 0, !1
+        v1 = const unit (), !2
+        store v1, ptr v0, !1
+        v2 = get_ptr ptr b256 key, ptr b256, 0, !3
+        v3 = const b256 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, !4
+        store v3, ptr v2, !3
+        v4 = get_ptr ptr u64 value, ptr u64, 0, !5
+        v5 = const u64 4242, !6
+        store v5, ptr v4, !5
+        v6 = get_ptr ptr b256 key, ptr b256, 0, !7
+        v7 = load ptr v6, !7
+        v8 = get_ptr ptr u64 value, ptr u64, 0, !8
+        v9 = load ptr v8, !8
+        v10 = const b256 0xc664e47a0de686a029134e5122383d99d0d29e54179e14c92dd433413a07620a, !9
+        v11 = const u64 0, !10
+        v12 = const b256 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, !11
+        v13 = const u64 10000, !12
+        v14 = contract_call store_u64<e141f139>{addr: v10, coins: v11, asset_id: v12, gas:v13}(v7, v9), !13
+        v15 = get_ptr ptr b256 key, ptr b256, 0, !14
+        v16 = load ptr v15, !14
+        v17 = const b256 0xc664e47a0de686a029134e5122383d99d0d29e54179e14c92dd433413a07620a, !15
+        v18 = const u64 0, !16
+        v19 = const b256 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, !17
+        v20 = const u64 10000, !18
+        v21 = contract_call get_u64<597016a5>{addr: v17, coins: v18, asset_id: v19, gas:v20}(v16), !19
+        v22 = get_ptr ptr u64 res, ptr u64, 0, !20
+        store v21, ptr v22, !20
+        v23 = get_ptr ptr u64 res, ptr u64, 0, !21
+        v24 = load ptr v23, !21
+        ret u64 v24
+    }
+}
+
+

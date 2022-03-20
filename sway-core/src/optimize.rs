@@ -820,13 +820,13 @@ impl FnCompiler {
         ast_args: Vec<(Ident, TypedExpression)>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
-        // Now actually call the new function.
+        // Compile each argument
         let args = ast_args
             .into_iter()
             .map(|(_, expr)| self.compile_expression(context, expr))
             .collect::<Result<Vec<Value>, String>>()?;
 
-        // Values for other things
+        // Compile all other metadata parameters
         let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
         let coins = self.compile_expression(
             context,
@@ -835,7 +835,6 @@ impl FnCompiler {
                 .unwrap()
                 .clone(),
         )?;
-
         let asset_id = self.compile_expression(
             context,
             contract_call_parameters
@@ -843,7 +842,6 @@ impl FnCompiler {
                 .unwrap()
                 .clone(),
         )?;
-
         let gas = self.compile_expression(
             context,
             contract_call_parameters
@@ -852,14 +850,15 @@ impl FnCompiler {
                 .clone(),
         )?;
 
+        // Insert the contract_call instruction
         Ok(self.current_block.ins(context).contract_call(
             ast_name.to_string(),
-            addr,
             metadata.func_selector,
-            &args,
+            addr,
             coins,
             asset_id,
             gas,
+            &args,
             span_md_idx,
         ))
     }
