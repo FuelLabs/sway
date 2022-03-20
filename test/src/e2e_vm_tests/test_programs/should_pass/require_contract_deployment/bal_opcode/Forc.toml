@@ -2,8 +2,8 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "caller_context_test"
+name = "bal_opcode"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
-context_testing_abi = { path = "../context_testing_abi" }
+balance_test_abi = { path = "../../test_abis/balance_test_abi"}
