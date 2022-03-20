@@ -9,21 +9,16 @@ pub(super) fn convert_array_instantiation_to_asm(
 ) -> CompileResult<Vec<Op>> {
     let warnings = Vec::new();
     let mut errors = Vec::new();
-    let mut bytecode = Vec::new();
 
     // Even for empty arrays we need to set the return register to something.
-    bytecode.push(Op::unowned_register_move(
+    let mut bytecode = vec![Op::unowned_register_move(
         return_register.clone(),
         VirtualRegister::Constant(ConstantRegister::StackPointer),
-    ));
+    )];
 
     // If the array is empty then this is a NOOP.  The array will point to zero elements at SP.
     if contents.is_empty() {
-        return ok(
-            bytecode,
-            warnings,
-            errors,
-        );
+        return ok(bytecode, warnings, errors);
     }
 
     // Get the array element size.
