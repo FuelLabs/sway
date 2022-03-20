@@ -6,7 +6,7 @@ If you run into any difficulties getting started, you can always ask questions o
 
 ## Building and setting up a development workspace
 
-See the [introduction](../introduction/index.md) section for instructions on installing and setting up the Sway toolchain..
+See the [introduction](../introduction/index.md) section for instructions on installing and setting up the Sway toolchain.
 
 ## Getting the repository
 
