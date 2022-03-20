@@ -46,7 +46,7 @@ mcpi $r0 $r1 i32              ; store value
 lw   $r6 data_0               ; literal instantiation
 lw   $r5 data_1               ; literal instantiation
 lw   $r4 data_2               ; literal instantiation
-lw   $r3 data_6               ; literal instantiation
+lw   $r3 $cgas i0             ; loading $cgas (gas) into abi function
 move $r2 $sp                  ; stack pointer for args bundle
 cfei i40
 lw   $r0 data_9               ; literal instantiation

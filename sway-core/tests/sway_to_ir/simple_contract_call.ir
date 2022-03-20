@@ -26,11 +26,11 @@ script {
         v16 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !17
         v17 = const u64 0, !18
         v18 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !19
-        v19 = const u64 20000, !20
-        v20 = contract_call get_s<fc62d029>{addr: v16, coins: v17, asset_id: v18, gas:v19}(v14, v15), !21
-        v21 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0, !22
-        store v20, ptr v21, !22
-        v22 = const u64 0, !23
+        v19 = const u64 0, !20
+        v20 = contract_call get_s<fc62d029>{addr: v16, coins: v17, asset_id: v18, gas:v19}(v14, v15), !20
+        v21 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0, !21
+        store v20, ptr v21, !21
+        v22 = const u64 0, !22
         ret u64 v22
     }
 }
@@ -50,12 +50,11 @@ script {
 !12 = span !0 608 613
 !13 = span !0 473 693
 !14 = span !0 465 694
-!15 = span !0 860 864
-!16 = span !0 866 932
+!15 = span !0 840 844
+!16 = span !0 846 912
 !17 = span !0 0 66
 !18 = span !0 741 742
 !19 = span !0 761 827
-!20 = span !0 842 847
-!21 = span !0 711 933
-!22 = span !0 703 934
-!23 = span !0 942 943
+!20 = span !0 711 913
+!21 = span !0 703 914
+!22 = span !0 922 923

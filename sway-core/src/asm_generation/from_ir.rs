@@ -779,7 +779,26 @@ impl<'ir> AsmBuilder<'ir> {
         let contract_address = self.value_to_register(addr);
         let coins_register = self.value_to_register(coins);
         let asset_id_register = self.value_to_register(asset_id);
-        let gas_register = self.value_to_register(gas);
+        let gas_register = if let ValueDatum::Constant(constant) = &self.context.values[gas.0].value {
+            let lit = ir_constant_to_ast_literal(constant);
+            if matches!(lit, Literal::U64(0)) {
+                let cgas_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        cgas_reg.clone(),
+                        VirtualRegister::Constant(ConstantRegister::ContextGas),
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: "loading $cgas (gas) into abi function".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                cgas_reg.clone()
+            } else {
+                self.value_to_register(gas)
+            }
+        } else {
+            self.value_to_register(gas)
+        };
 
         // Extend the stack by total size needed by args
         let args_total_size_in_bytes = args.iter().fold(0, |total, arg| {
