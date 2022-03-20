@@ -2255,12 +2255,19 @@ mod tests {
         let mut parsed =
             SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
 
-        let program_type = match parsed.peek().unwrap().into_inner().peek().unwrap().as_rule() {
+        let program_type = match parsed
+            .peek()
+            .unwrap()
+            .into_inner()
+            .peek()
+            .unwrap()
+            .as_rule()
+        {
             Rule::script => TreeType::Script,
             Rule::contract => TreeType::Contract,
             Rule::predicate => TreeType::Predicate,
             Rule::library => todo!(),
-            _ => unreachable!("unexpected program type")
+            _ => unreachable!("unexpected program type"),
         };
 
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
