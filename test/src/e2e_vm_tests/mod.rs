@@ -248,10 +248,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/nested_structs",
             ProgramState::Return(1),
         ),
-        (
-            "should_pass/language/while_loops",
-            ProgramState::Return(1),
-        ),
+        ("should_pass/language/while_loops", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
