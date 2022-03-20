@@ -225,6 +225,56 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn handle_fn_args(&mut self, function: Function) {
+        let args_base_reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::LW(
+                args_base_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::FramePointer),
+                VirtualImmediate12 { value: 74 },
+            )),
+            comment: "Base register for method parameter".into(),
+            owning_span: None,
+        });
+
+        let mut extract_offset = 0;
+        for (name, val) in function.args_iter(self.context) {
+            let current_arg_reg = self.value_to_register(val);
+            let arg_type_size = self
+                .type_analyzer
+                .ir_type_size_in_bytes(self.context, &val.get_type(self.context).unwrap());
+            // Still need to handle the case where the immediate doesn't fit in 12 bits
+            // Also, we have to not do this for every function - just do this for contracts
+            if arg_type_size <= 8 {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        current_arg_reg.clone(),
+                        args_base_reg.clone(),
+                        VirtualImmediate12 {
+                            value: extract_offset as u16,
+                        },
+                    )),
+                    comment: format!("Get arg {}", name),
+                    owning_span: None,
+                });
+            } else {
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::ADDI(
+                        current_arg_reg.clone(),
+                        args_base_reg.clone(),
+                        VirtualImmediate12 {
+                            value: (extract_offset * 8) as u16,
+                        },
+                    )),
+                    comment: format!("Get address for arg {}", name),
+                    owning_span: None,
+                });
+            }
+
+            extract_offset += arg_type_size/8; // divide by 8 here?
+        }
+    }
+
     fn add_locals(&mut self, function: Function) {
         // If they're immutable and have a constant initialiser then they go in the data section.
         // Otherwise they go in runtime allocated space, either a register or on the stack.
@@ -284,7 +334,6 @@ impl<'ir> AsmBuilder<'ir> {
                     }
                     Type::ContractCaller(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
                         // Reserve space for the contract address only.
                         stack_base += 4;
                     }
@@ -344,7 +393,7 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
         // Compile instructions.
         self.add_locals(function);
-
+        self.handle_fn_args(function);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         for block in function.block_iter(self.context) {
@@ -389,6 +438,15 @@ impl<'ir> AsmBuilder<'ir> {
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(cond_value, block, true_block, false_block),
+                Instruction::ContractCall {
+                    name,
+                    addr,
+                    selector,
+                    args,
+                    coins,
+                    asset_id,
+                    gas,
+                } => self.compile_contract_call(instr_val, name.to_string(), addr, selector, &args, coins, asset_id, gas),
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -658,6 +716,177 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn compile_contract_call(
+        &mut self,
+        instr_val: &Value, 
+        _name: String, 
+        addr: &Value, 
+        selector: &[u8; 4], 
+        args: &[Value], 
+        coins: &Value, 
+        asset_id: &Value, 
+        gas: &Value
+    ) {
+        let contract_address = self.value_to_register(addr);
+        let coins_register = self.value_to_register(coins);                
+        let asset_id_register = self.value_to_register(asset_id);                
+        let gas_register = self.value_to_register(gas);                
+
+        // extend the stack by total size needed by args 
+        let mut total_size_in_bytes = 0;
+        for arg in args.iter() {
+            total_size_in_bytes += self
+                .type_analyzer
+                .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap());
+        }
+        
+        let bundled_arguments_register = self.reg_seqr.next();
+        self.bytecode.push(Op::unowned_register_move_comment(
+            bundled_arguments_register.clone(),
+            VirtualRegister::Constant(ConstantRegister::StackPointer),
+            "save register for temporary stack value",
+        ));
+
+        self.bytecode.push(Op::unowned_stack_allocate_memory(
+            VirtualImmediate24::new_unchecked(
+                total_size_in_bytes, // in bytes
+                "constant infallible 48",
+            ),
+        ));
+        
+        // Fill bundled_arguments_register
+        let mut insert_offs = 0;
+        for arg in args.iter() {
+            let current_arg_reg = self.value_to_register(arg);
+            let arg_type_size = self
+                .type_analyzer
+                .ir_type_size_in_bytes(self.context, &arg.get_type(self.context).unwrap());
+            if arg_type_size <= 8 {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        bundled_arguments_register.clone(),
+                        current_arg_reg.clone(),
+                        VirtualImmediate12 {
+                            value: insert_offs as u16,
+                        },
+                    )),
+                    comment: format!("Get arg"),
+                    owning_span: None,
+                });
+            } else {
+                let offs_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::ADDI(
+                        offs_reg.clone(),
+                        bundled_arguments_register.clone(),
+                        VirtualImmediate12 {
+                            value: (insert_offs * 8) as u16,
+                        },
+                    )),
+                    comment: format!("get struct field(s) offset"),
+                    owning_span: instr_val.get_span(self.context),
+                });
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        offs_reg,
+                        current_arg_reg,
+                        VirtualImmediate12 {
+                            value: arg_type_size as u16,
+                        },
+                    )),
+                    comment: "store struct field value".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+            insert_offs += arg_type_size/8; // words
+        }
+
+        let data_label =
+        self.data_section.insert_data_value(&Literal::U32(u32::from_be_bytes(*selector)));
+
+        let selector_register = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::LWDataId(selector_register.clone(), data_label)),
+            comment: "load fn selector for call".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        let ra_pointer = self.reg_seqr.next();
+        self.bytecode.push(Op::unowned_register_move_comment(
+            ra_pointer.clone(),
+            VirtualRegister::Constant(ConstantRegister::StackPointer),
+            "save register for temporary stack value",
+        ));
+
+        // extend the stack by 32 + 8 + 8 = 48 bytes
+        self.bytecode.push(Op::unowned_stack_allocate_memory(
+            VirtualImmediate24::new_unchecked(
+                48, // in bytes
+                "constant infallible 48",
+            ),
+        ));
+
+        // now $ra (ra_pointer) is pointing to the beginning of free stack memory, where we can write
+        // the contract address and parameters
+        //
+        // first, copy the address over
+        // write the contract addr to bytes 0-32
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MCPI(
+                ra_pointer.clone(),
+                contract_address,
+                VirtualImmediate12::new_unchecked(32, "infallible constant 32"),
+            )),
+            comment: "copy contract address for call".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        // write the selector to bytes 32-40
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SW(
+                ra_pointer.clone(),
+                selector_register,
+                // offset by 4 words, since a b256 is 4 words
+                VirtualImmediate12::new_unchecked(4, "infallible constant 4"),
+            )),
+            comment: "write fn selector to rA + 32 for call".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        // write the user argument to bytes 40-48
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SW(
+                ra_pointer.clone(),
+                bundled_arguments_register,
+                VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+            )),
+            comment: "move user param for call".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        // now, $rA (ra_pointer) points to the beginning of a section of contiguous memory that
+        // contains the contract address, function selector, and user parameter.
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::CALL(
+                ra_pointer,
+                coins_register,
+                asset_id_register,
+                gas_register,
+            )),
+            comment: "call external contract".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        // now, move the return value of the contract call to the return register.
+        // TODO validate RETL matches the expected type
+        let instr_reg = self.reg_seqr.next();
+        self.bytecode.push(Op::unowned_register_move(
+            instr_reg.clone().into(),
+            VirtualRegister::Constant(ConstantRegister::ReturnValue),
+        ));
+        self.reg_map.insert(*instr_val, instr_reg);
+    }
+
     fn compile_extract_element(
         &mut self,
         instr_val: &Value,
@@ -665,10 +894,10 @@ impl<'ir> AsmBuilder<'ir> {
         ty: &Aggregate,
         index_val: &Value,
     ) {
-        // Base register should pointer to some stack allocated memory.
+        // base register should pointer to some stack allocated memory.
         let base_reg = self.value_to_register(array);
 
-        // Index value is the array element index, not byte nor word offset.
+        // index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
@@ -1228,7 +1457,7 @@ impl<'ir> AsmBuilder<'ir> {
                 self.bytecode.push(Op {
                     owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
-                    comment: "".into(),
+                    comment: "Returning val".into(),
                 });
             } else {
                 // If the type is larger than one word, then we use RETD to return data.  First put

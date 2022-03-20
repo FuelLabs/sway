@@ -65,7 +65,7 @@ impl Context {
             Err(IrError::MissingTerminator(block.label.clone()))
         } else if num_terms != 1 {
             Err(IrError::MisplacedTerminator(block.label.clone()))
-        } else {
+        }  else {
             Ok(())
         }
     }
@@ -85,6 +85,15 @@ impl Context {
                     true_block,
                     false_block,
                 } => self.verify_cbr(cond_value, true_block, false_block)?,
+                Instruction::ContractCall {
+                    name, 
+                    addr,
+                    selector,
+                    args,
+                    coins,
+                    asset_id,
+                    gas,
+                } => self.verify_contract_call(name, addr, selector, args, coins, asset_id, gas)?,
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -164,6 +173,24 @@ impl Context {
         //} else {
         Ok(())
         //}
+    }
+
+    fn verify_contract_call(
+        &self,
+        _name: &String,
+        _addr: &Value,
+        _selector: &[u8; 4],
+        _args: &[Value],
+        _coins: &Value,
+        _asset_id: &Value,
+        _gas: &Value,
+    ) -> Result<(), IrError> {
+        // XXX We should confirm the function arg types are all correct and the return type matches
+        // the call value type... but all they type info isn't stored at this stage, and it
+        // should've all been checked in the typed AST.
+        // We should also check that addr comes from a b256 local pointer and that coins and gas
+        // are u64 values, while asset_id is a b256
+        Ok(())
     }
 
     fn verify_extract_element(

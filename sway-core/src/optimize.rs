@@ -1,3 +1,4 @@
+use crate::constants;
 use fuel_crypto::Hasher;
 use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
@@ -609,16 +610,30 @@ impl FnCompiler {
             }
             TypedExpressionVariant::FunctionApplication {
                 name,
+                contract_call_params,
                 arguments,
                 function_body,
-                ..
-            } => self.compile_fn_call(
-                context,
-                name.suffix.as_str(),
-                arguments,
-                Some(function_body),
-                span_md_idx,
-            ),
+                selector,
+            } => {
+                if let Some(metadata) = selector {
+                    self.compile_contract_call(
+                        &metadata,
+                        &contract_call_params,
+                        context,
+                        name.suffix.as_str(),
+                        arguments,
+                        span_md_idx,
+                    )
+                } else {
+                    self.compile_fn_call(
+                        context,
+                        name.suffix.as_str(),
+                        arguments,
+                        Some(function_body),
+                        span_md_idx,
+                    )
+                }
+            }
             TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, op, *lhs, *rhs, span_md_idx)
             }
@@ -792,6 +807,61 @@ impl FnCompiler {
 
         self.current_block = final_block;
         Ok(final_block.get_phi(context))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_contract_call(
+        &mut self,
+        metadata: &ContractCallMetadata,
+        contract_call_parameters: &HashMap<String, TypedExpression>,
+        context: &mut Context,
+        ast_name: &str,
+        ast_args: Vec<(Ident, TypedExpression)>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        // Now actually call the new function.
+        let args = ast_args
+            .into_iter()
+            .map(|(_, expr)| self.compile_expression(context, expr))
+            .collect::<Result<Vec<Value>, String>>()?;
+
+        // Values for other things
+        let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
+        let coins = self.compile_expression(
+            context,
+            contract_call_parameters
+                .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
+                .unwrap()
+                .clone(),
+        )?;
+
+        let asset_id = self.compile_expression(
+            context,
+            contract_call_parameters
+                .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
+                .unwrap()
+                .clone(),
+        )?;
+
+        let gas = self.compile_expression(
+            context,
+            contract_call_parameters
+                .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
+                .unwrap()
+                .clone(),
+        )?;
+
+        Ok(self.current_block.ins(context).contract_call(
+            ast_name.to_string(),
+            addr,
+            metadata.func_selector,
+            &args,
+            coins,
+            asset_id,
+            gas,
+            span_md_idx,
+        ))
     }
 
     // ---------------------------------------------------------------------------------------------
