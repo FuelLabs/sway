@@ -37,7 +37,7 @@ want to specify that the generic argument implements a `Hash` trait.
 fn get_hashmap_key<T>(Key : T) -> b256
     where T: Hash
 {
-    // Code within here can then call functions associated with the Hash trait on Key
+    // Code within here can then call methods associated with the Hash trait on Key
 }
 ```
 
