@@ -348,7 +348,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/storage_access_contract",
             "should_pass/require_contract_deployment/storage_access_caller",
         ),*/
-
     ];
 
     let total_number_of_tests = positive_project_names.len()
