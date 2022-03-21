@@ -69,8 +69,6 @@ mod ir_builder {
                     }
                 }
 
-
-
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
                     string_to_hex::<4>(s)
@@ -128,6 +126,7 @@ mod ir_builder {
                 / op_branch()
                 / op_call()
                 / op_cbr()
+                / op_contract_call()
                 / op_const()
                 / op_extract_element()
                 / op_extract_value()
@@ -165,6 +164,14 @@ mod ir_builder {
                 = "cbr" _ cond:id() comma() tblock:id() comma() fblock:id() {
                     IrAstOperation::Cbr(cond, tblock, fblock)
                 }
+
+            rule op_contract_call() -> IrAstOperation
+                = "contract_call" _ callee:id() _ selector:selector_id() _
+                "{" _ "addr" _ ":" _ addr:id() comma() "coins" _ ":" _ coins:id() comma()
+                      "asset_id" _ ":" _ asset_id:id() comma() "gas" _ ":" _ gas:id() "}" _
+                "(" _ args:(id() ** comma()) ")" _ {
+                    IrAstOperation::ContractCall(callee, selector, addr, coins, asset_id, gas, args)
+            }
 
             rule op_const() -> IrAstOperation
                 = "const" _ ast_ty() cv:constant() {
@@ -480,6 +487,7 @@ mod ir_builder {
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
+        ContractCall(String, [u8; 4], String, String, String, String, Vec<String>),
         Const(IrAstConst),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
@@ -807,6 +815,28 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
+                IrAstOperation::ContractCall(
+                    callee,
+                    selector,
+                    addr,
+                    coins,
+                    asset_id,
+                    gas,
+                    args,
+                ) => block.ins(context).contract_call(
+                    callee,
+                    selector,
+                    *val_map.get(&addr).unwrap(),
+                    *val_map.get(&coins).unwrap(),
+                    *val_map.get(&asset_id).unwrap(),
+                    *val_map.get(&gas).unwrap(),
+                    &args
+                        .iter()
+                        .map(|arg_name| val_map.get(arg_name).unwrap())
+                        .cloned()
+                        .collect::<Vec<Value>>(),
+                    opt_ins_md_idx,
+                ),
                 IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
                 IrAstOperation::ExtractElement(aval, ty, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);

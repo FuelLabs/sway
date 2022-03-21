@@ -85,6 +85,15 @@ impl Context {
                     true_block,
                     false_block,
                 } => self.verify_cbr(cond_value, true_block, false_block)?,
+                Instruction::ContractCall {
+                    name,
+                    selector,
+                    addr,
+                    coins,
+                    asset_id,
+                    gas,
+                    args,
+                } => self.verify_contract_call(name, selector, addr, coins, asset_id, gas, args)?,
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -164,6 +173,23 @@ impl Context {
         //} else {
         Ok(())
         //}
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn verify_contract_call(
+        &self,
+        _name: &str,
+        _selector: &[u8; 4],
+        _addr: &Value,
+        _coins: &Value,
+        _asset_id: &Value,
+        _gas: &Value,
+        _args: &[Value],
+    ) -> Result<(), IrError> {
+        // XXX We should confirm the function arg types and the return type are all correct.
+        // We should also check that addr comes from a b256 local pointer and that coins and gas
+        // are u64 values, while asset_id is a b256.
+        Ok(())
     }
 
     fn verify_extract_element(
