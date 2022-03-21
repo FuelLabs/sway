@@ -782,7 +782,7 @@ impl<'ir> AsmBuilder<'ir> {
         let gas_register = if let ValueDatum::Constant(constant) = &self.context.values[gas.0].value
         {
             let lit = ir_constant_to_ast_literal(constant);
-            if matches!(lit, Literal::U64(0)) {
+            if matches!(lit, Literal::U64(std::u64::MAX)) {
                 let cgas_reg = self.reg_seqr.next();
                 self.bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LW(
