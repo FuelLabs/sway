@@ -22,6 +22,8 @@
   - [Custom Types](./basics/custom_types.md)
   - [Functions](./basics/functions.md)
   - [Reference Types](./basics/reference_types.md)
+- [Control Flow](./control-flow/index.md)
+  - [Loops](./control-flow/loops.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
   <!-- - [Testing with TypeScript](./testing/testing-with-typescript.md) -->
@@ -49,3 +51,4 @@
   - [Temporary Workarounds](./reference/temporary_workarounds.md)
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
+  - [Contributing To Sway](./reference/contributing_to_sway.md)
