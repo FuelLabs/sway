@@ -123,8 +123,9 @@ Enums do have some memory overhead. To know which variant is being represented, 
 
 ## Methods and Associated Functions
 
-_Methods_ are functions that are associated with a specific type and either refer to that type or mutate it. _Associated functions_ are very similar, but they do not use any of the data in the type. Associated functions could be standalone functions, but they
-are included in a specific type for organizational or semantic reasons.
+Methods are similar to functions in that we declare them with the `fn` keyword and they have parameters and return a value. However, unlike functions, _Methods_ are defined within the context of a struct (or enum), and either refers to that type or mutates it. The first parameter of a method is always `self`, which represents the instance of the struct the method is being called on.
+
+_Associated functions_ are very similar to _methods_, in that they are also defined in the context of a struct or enum, but they do not actually use any of the data in the struct and as a result do not take _self_ as a parameter. Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.
 
 To declare methods and associated functions for a struct or enum, use an _impl block_. Here, `impl` stands for implementation.
 

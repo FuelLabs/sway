@@ -5,3 +5,4 @@ The following is a simple example of a contract which implements a counter. Both
 ```sway
 {{#include ../../../examples/counter/src/main.sw}}
 ```
+
