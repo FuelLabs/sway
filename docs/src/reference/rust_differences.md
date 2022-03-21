@@ -12,7 +12,7 @@ In Rust, enums generally take one of three forms: _unit_ variants, which have no
 enum Foo {
     UnitVariant,
     TupleVariant(u32, u64, bool),
-    StructVariant { 
+    StructVariant {
         field_one: bool,
         field_two: bool
     }
@@ -26,7 +26,7 @@ In Sway, enums are simplified. Enums variants must all specify exactly one type.
 enum Foo {
     UnitVariant    : (),
     TupleVariant   : (u32, u64, bool),
-    StructVariant  : MyStruct 
+    StructVariant  : MyStruct
 }
 
 struct MyStruct {
@@ -45,15 +45,13 @@ fn main() {
     let number = 6;
 
     if number % 4 == 0 {
-        println!("number is divisible by 4");
+        // do something
     } else if number % 3 == 0 {
-        println!("number is divisible by 3");
-    } else if number % 2 == 0 {
-        println!("number is divisible by 2");
+        // do something else
     } else {
-        println!("number is not divisible by 4, 3, or 2");
+        // do something else
     };  // <------------ note this semicolon
-    
+
 ```
 
 This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.
