@@ -26,7 +26,7 @@ script {
         v16 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
         v17 = const u64 0
         v18 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-        v19 = const u64 0
+        v19 = const u64 18446744073709551615
         v20 = contract_call get_s<fc62d029>{addr: v16, coins: v17, asset_id: v18, gas:v19}(v14, v15)
         v21 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0
         store v20, ptr v21
