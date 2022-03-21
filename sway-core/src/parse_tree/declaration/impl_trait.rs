@@ -163,26 +163,28 @@ impl ImplSelf {
             span: type_name.as_span(),
             path: path.clone(),
         };
-        let mut type_name_iter = type_name.into_inner().peekable();
         let type_implementing_for = check!(
-            TypeInfo::parse_from_pair(type_name_iter.next().unwrap(), config),
+            TypeInfo::parse_from_pair(type_name, config),
             return err(warnings, errors),
             warnings,
             errors
         );
 
         // get the actual type arguments
-        let specific_type_arguments = type_name_iter.next();
+        //let specific_type_arguments: Option<Pair<_>> = None; //type_name_iter.next();
 
         // get the type argument spans
         let generic_type_arguments_span = generic_type_arguments.clone().map(|ref x| Span {
             span: x.as_span(),
             path: path.clone(),
         });
-        let specific_type_arguments_span = specific_type_arguments.clone().map(|ref x| Span {
+        let specific_type_arguments_span = None;
+        /*
+        specific_type_arguments.clone().map(|ref x| Span {
             span: x.as_span(),
             path: path.clone(),
         });
+        */
 
         // see if there are any trait bounds
         let trait_bounds = match iter.peek() {
@@ -201,16 +203,19 @@ impl ImplSelf {
             warnings,
             errors
         );
-        let specific_type_arguments = specific_type_arguments
-            .map(|x| {
-                check!(
-                    TypeInfo::parse_from_type_params(x, config),
-                    vec!(),
-                    warnings,
-                    errors
-                )
-            })
-            .unwrap_or_default();
+        let specific_type_arguments = vec![];
+        /*
+        specific_type_arguments
+        .map(|x| {
+            check!(
+                TypeInfo::parse_from_type_params(x, config),
+                vec!(),
+                warnings,
+                errors
+            )
+        })
+        .unwrap_or_default();
+        */
 
         // collect the methods in the impl
         let mut fn_decls_buf = vec![];

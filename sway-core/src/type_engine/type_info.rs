@@ -133,53 +133,13 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
-    pub(crate) fn parse_from_type_params(
-        type_params_pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut buf = vec![];
-        for pair in type_params_pair.into_inner() {
-            buf.push(check!(
-                TypeInfo::parse_from_pair(pair.clone(), config),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        ok(buf, warnings, errors)
-    }
-
     pub(crate) fn parse_from_pair(
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let pair = match input.as_rule() {
-            Rule::type_name => input.into_inner().next().unwrap(),
-            Rule::generic_type_param => input,
-            Rule::ident => input,
-            _ => {
-                let span = Span {
-                    span: input.as_span(),
-                    path: config.map(|config| config.dir_of_code.clone()),
-                };
-                let errors = vec![CompileError::Internal(
-                    "Unexpected token while parsing type.",
-                    span,
-                )];
-                return err(vec![], errors);
-            }
-        };
-        Self::parse_from_pair_inner(pair, config)
-    }
-
-    fn parse_from_pair_inner(
-        input: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let input = input.into_inner().next().unwrap();
         let span = Span {
             span: input.as_span(),
             path: config.map(|config| config.dir_of_code.clone()),
@@ -193,21 +153,7 @@ impl TypeInfo {
                     errors
                 )
             }
-            Rule::ident | Rule::generic_type_param => match input.as_str().trim() {
-                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                "bool" => TypeInfo::Boolean,
-                "unit" => TypeInfo::Tuple(Vec::new()),
-                "byte" => TypeInfo::Byte,
-                "b256" => TypeInfo::B256,
-                "Self" | "self" => TypeInfo::SelfType,
-                "Contract" => TypeInfo::Contract,
-                _other => TypeInfo::Custom {
-                    name: Ident::new(span),
-                },
-            },
+            Rule::ident => Self::pair_as_str_to_type_info(input, config),
             Rule::array_type => {
                 let mut array_inner_iter = input.into_inner();
                 let elem_type_info = match array_inner_iter.next() {
@@ -300,6 +246,51 @@ impl TypeInfo {
             }
         };
         ok(type_info, warnings, errors)
+    }
+
+    pub(crate) fn parse_from_type_param_pair(
+        input: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Self> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        let type_info = match input.as_rule() {
+            Rule::type_param => Self::pair_as_str_to_type_info(input, config),
+            _ => {
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                errors.push(CompileError::Internal(
+                    "Unexpected token while parsing type.",
+                    span,
+                ));
+                return err(warnings, errors);
+            }
+        };
+        ok(type_info, warnings, errors)
+    }
+
+    pub fn pair_as_str_to_type_info(input: Pair<Rule>, config: Option<&BuildConfig>) -> Self {
+        let span = Span {
+            span: input.as_span(),
+            path: config.map(|config| config.dir_of_code.clone()),
+        };
+        match input.as_str().trim() {
+            "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+            "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+            "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+            "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            "bool" => TypeInfo::Boolean,
+            "unit" => TypeInfo::Tuple(Vec::new()),
+            "byte" => TypeInfo::Byte,
+            "b256" => TypeInfo::B256,
+            "Self" | "self" => TypeInfo::SelfType,
+            "Contract" => TypeInfo::Contract,
+            _other => TypeInfo::Custom {
+                name: Ident::new(span),
+            },
+        }
     }
 
     pub(crate) fn friendly_type_str(&self) -> String {

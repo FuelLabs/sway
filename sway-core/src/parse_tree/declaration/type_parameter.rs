@@ -42,7 +42,7 @@ impl TypeParameter {
                 return err(warnings, errors);
             }
             (Some(type_params_pair), None) => check!(
-                TypeParameter::parse_from_type_params(type_params_pair, config),
+                Self::parse_from_type_params(type_params_pair, config),
                 vec!(),
                 warnings,
                 errors
@@ -104,7 +104,7 @@ impl TypeParameter {
                 errors
             );
             let type_id = insert_type(check!(
-                TypeInfo::parse_from_pair(pair.clone(), config),
+                TypeInfo::parse_from_type_param_pair(pair.clone(), config),
                 continue,
                 warnings,
                 errors

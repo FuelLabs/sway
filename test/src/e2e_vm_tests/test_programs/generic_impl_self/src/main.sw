@@ -31,11 +31,13 @@ impl<T, F> DoubleIdentity<T, F> {
   }
 }
 
+/*
 impl DoubleIdentity<u8, u8> {
   fn add(self) -> u8 {
     self.first + self.second
   }
 }
+*/
 
 fn double_identity2<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
   ~DoubleIdentity<T, F>::new(x, y)
@@ -74,7 +76,7 @@ fn main() -> u32 {
   let h = ~DoubleIdentity<u64, bool>::new(3u64, false);
   let i = crazy(7u8, 10u8);
   let j = 10u8 + 11u8;
-  let k = d.add();
+  //let k = d.add();
 
   b.get_first()
 }

@@ -298,6 +298,7 @@ impl Expression {
         })
         .clone()
     }
+
     pub(crate) fn parse_from_pair(
         expr: Pair<Rule>,
         config: Option<&BuildConfig>,
