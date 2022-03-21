@@ -229,6 +229,7 @@ impl NamespaceWrapper for NamespaceRef {
             ),
         }
     }
+
     fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
         match self.get_symbol(enum_name) {
             CompileResult {
@@ -238,6 +239,7 @@ impl NamespaceWrapper for NamespaceRef {
             _ => None,
         }
     }
+
     fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         let (path, true_symbol) = read_module(
             |m| {
@@ -253,6 +255,7 @@ impl NamespaceWrapper for NamespaceRef {
         );
         self.get_name_from_path(&path, &true_symbol)
     }
+
     fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
         read_module(
             |m| {
@@ -268,6 +271,7 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];

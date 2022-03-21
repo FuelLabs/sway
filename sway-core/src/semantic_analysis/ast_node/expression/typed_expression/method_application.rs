@@ -183,7 +183,8 @@ pub(crate) fn type_check_method_application(
             Ok(mut ws) => {
                 warnings.append(&mut ws);
             }
-            Err(_e) => {
+            Err(e) => {
+                println!("\n{:#?}\n", e);
                 errors.push(CompileError::ArgumentParameterTypeMismatch {
                     span: arg.span.clone(),
                     provided: arg.return_type.friendly_type_str(),

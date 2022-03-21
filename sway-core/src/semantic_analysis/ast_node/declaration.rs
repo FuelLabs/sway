@@ -3,6 +3,8 @@ use crate::{error::*, parse_tree::*, type_engine::*, Ident, NamespaceWrapper};
 
 use sway_types::{join_spans, span::Span, Property};
 
+use std::hash::{Hash, Hasher};
+
 mod function;
 mod variable;
 pub use function::*;
@@ -239,11 +241,18 @@ impl TypedStructDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
+}
+
+impl Hash for TypedStructField {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        look_up_type_id(self.r#type).hash(state);
+    }
 }
 
 impl PartialEq for TypedStructField {
@@ -261,13 +270,16 @@ impl TypedStructField {
         }
     }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
+        let before = self.r#type;
+        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.r#type)),
         };
+        println!(
+            "\n{:?}\n\t->\t{:?}\n",
+            before.friendly_type_str(),
+            self.r#type.friendly_type_str()
+        );
     }
 }
 
@@ -348,12 +360,20 @@ impl TypedEnumDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
     }
 }
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
+}
+
+impl Hash for TypedEnumVariant {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        look_up_type_id(self.r#type).hash(state);
+        self.tag.hash(state);
+    }
 }
 
 impl PartialEq for TypedEnumVariant {
@@ -374,6 +394,7 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
+
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.to_string(),
@@ -405,6 +426,7 @@ pub struct TypedTraitDeclaration {
     pub(crate) supertraits: Vec<Supertrait>,
     pub(crate) visibility: Visibility,
 }
+
 impl TypedTraitDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         let additional_type_map = insert_type_parameters(&self.type_parameters);
@@ -415,6 +437,7 @@ impl TypedTraitDeclaration {
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct TypedTraitFn {
     pub(crate) name: Ident,

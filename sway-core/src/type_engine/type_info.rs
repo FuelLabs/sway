@@ -11,10 +11,12 @@ use sway_types::span::Span;
 
 use derivative::Derivative;
 use pest::iterators::Pair;
+use std::hash::{Hash, Hasher};
+
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
-#[derivative(Debug, Clone, Hash)]
+#[derivative(Debug, Clone)]
 pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
@@ -63,6 +65,93 @@ pub enum TypeInfo {
     ErrorRecovery,
     // Static, constant size arrays.
     Array(TypeId, usize),
+}
+
+impl Hash for TypeInfo {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            TypeInfo::Str(len) => {
+                state.write_u8(1);
+                len.hash(state);
+            }
+            TypeInfo::UnsignedInteger(bits) => {
+                state.write_u8(2);
+                bits.hash(state);
+            }
+            TypeInfo::Numeric => {
+                state.write_u8(3);
+            }
+            TypeInfo::Boolean => {
+                state.write_u8(4);
+            }
+            TypeInfo::Tuple(fields) => {
+                state.write_u8(5);
+                fields.len().hash(state);
+                for field in fields.iter() {
+                    look_up_type_id(*field).hash(state);
+                }
+            }
+            TypeInfo::Byte => {
+                state.write_u8(6);
+            }
+            TypeInfo::B256 => {
+                state.write_u8(7);
+            }
+            TypeInfo::Enum {
+                name,
+                variant_types,
+            } => {
+                state.write_u8(8);
+                name.hash(state);
+                variant_types.len().hash(state);
+                for variant_type in variant_types.iter() {
+                    variant_type.hash(state);
+                }
+            }
+            TypeInfo::Struct { name, fields } => {
+                state.write_u8(9);
+                name.hash(state);
+                fields.len().hash(state);
+                for field in fields.iter() {
+                    field.hash(state);
+                }
+            }
+            TypeInfo::ContractCaller { abi_name, address } => {
+                state.write_u8(10);
+                abi_name.hash(state);
+                address.hash(state);
+            }
+            TypeInfo::Contract => {
+                state.write_u8(11);
+            }
+            TypeInfo::ErrorRecovery => {
+                state.write_u8(12);
+            }
+            TypeInfo::Unknown => {
+                state.write_u8(13);
+            }
+            TypeInfo::Custom { name } => {
+                state.write_u8(14);
+                name.hash(state);
+            }
+            TypeInfo::SelfType => {
+                state.write_u8(15);
+            }
+            TypeInfo::UnknownGeneric { name } => {
+                state.write_u8(16);
+                name.hash(state);
+            }
+            TypeInfo::Ref(id) => {
+                state.write_u8(17);
+                look_up_type_id(*id).hash(state);
+            }
+            TypeInfo::Array(elem_ty, count) => {
+                state.write_u8(18);
+                look_up_type_id(*elem_ty).hash(state);
+                count.hash(state);
+            }
+        }
+    }
 }
 
 impl PartialEq for TypeInfo {
