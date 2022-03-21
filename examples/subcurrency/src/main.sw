@@ -17,8 +17,8 @@ use std::storage::*;
 
 /// Emitted when a token is sent.
 struct Sent {
-    from: b256,
-    to: b256,
+    from: Address,
+    to: Address,
     amount: u64,
 }
 
@@ -30,11 +30,11 @@ struct Sent {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(receiver: b256, amount: u64);
+    fn mint(receiver: Address, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(sender: b256, receiver: b256, amount: u64);
+    fn send(sender: Address, receiver: Address, amount: u64);
 }
 
 ////////////////////////////////////////
@@ -42,7 +42,7 @@ abi Token {
 ////////////////////////////////////////
 
 /// Address of contract creator.
-const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+const MINTER: Address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
 
 ////////////////////////////////////////
 // Contract storage
@@ -59,7 +59,7 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(receiver: b256, amount: u64) {
+    fn mint(receiver: Address, amount: u64) {
         // Note: authentication is not yet implemented, for now just trust params
         // See https://github.com/FuelLabs/sway/issues/195
         if receiver == MINTER {
@@ -74,7 +74,7 @@ impl Token for Contract {
         }
     }
 
-    fn send(sender: b256, receiver: b256, amount: u64) {
+    fn send(sender: Address, receiver: Address, amount: u64) {
         let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender, HashMethod::Sha256);
 
         let mut sender_amount = get::<u64>(sender_storage_slot);
