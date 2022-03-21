@@ -639,28 +639,9 @@ impl TypedAstNode {
                             for StorageField {
                                 name,
                                 r#type,
-                                initializer,
                             } in fields
                             {
                                 let r#type = namespace.resolve_type_without_self(&r#type);
-                                let recov_expr = error_recovery_expr(initializer.span());
-                                let _initializer = check!(
-                                    TypedExpression::type_check(TypeCheckArguments {
-                                        checkee: initializer,
-                                        namespace,
-                                        crate_namespace,
-                                        return_type_annotation: r#type,
-                                        help_text: Default::default(),
-                                        self_type,
-                                        build_config,
-                                        dead_code_graph,
-                                        mode: Mode::NonAbi,
-                                        opts
-                                    },),
-                                    recov_expr,
-                                    warnings,
-                                    errors
-                                );
                                 fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
                             }
 

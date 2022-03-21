@@ -4,18 +4,9 @@ use storage_access_abi::{S, T, StorageAccess};
 use std::constants::NATIVE_ASSET_ID;
 
 storage {
-    x: u64 = 0,
-    y: b256 = NATIVE_ASSET_ID,
-    s: S = S {
-        x: 0,
-        y: 0,
-        z: NATIVE_ASSET_ID,
-        t: T {
-            x: 0,
-            y: 0,
-            z: NATIVE_ASSET_ID,
-        }
-    }
+    x: u64,
+    y: b256,
+    s: S
 }
 
 impl StorageAccess for Contract {

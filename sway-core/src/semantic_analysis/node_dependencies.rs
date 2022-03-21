@@ -312,11 +312,9 @@ impl Dependencies {
                     |deps,
                      StorageField {
                          r#type,
-                         initializer,
                          ..
                      }| {
                         deps.gather_from_typeinfo(r#type)
-                            .gather_from_expr(initializer)
                     },
                 ),
         }

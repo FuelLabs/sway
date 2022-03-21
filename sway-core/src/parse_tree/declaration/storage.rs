@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    parse_tree::{ident, Expression},
+    parse_tree::ident,
     parser::Rule,
     type_engine::*,
     BuildConfig,
@@ -26,7 +26,6 @@ pub struct StorageDeclaration {
 pub struct StorageField {
     pub name: Ident,
     pub r#type: TypeInfo,
-    pub initializer: Expression,
 }
 
 impl StorageField {
@@ -39,7 +38,6 @@ impl StorageField {
         let mut iter = pair.into_inner();
         let name = iter.next().expect("guaranteed by grammar");
         let r#type = iter.next().expect("guaranteed by grammar");
-        let initializer = iter.next().expect("guaranteed by grammar");
 
         let name = check!(
             ident::parse_from_pair(name, conf),
@@ -53,17 +51,10 @@ impl StorageField {
             warnings,
             errors
         );
-        let initializer = check!(
-            Expression::parse_from_pair(initializer, conf),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
         ok(
             StorageField {
                 name,
                 r#type,
-                initializer,
             },
             warnings,
             errors,

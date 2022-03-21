@@ -132,7 +132,7 @@ impl NamespaceWrapper for NamespaceRef {
             };
             err(
                 vec![],
-                vec![CompileError::Internal("no storage is declared.", span)],
+                vec![CompileError::NoDeclaredStorage { span }],
             )
         }
     }
