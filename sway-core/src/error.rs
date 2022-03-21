@@ -873,6 +873,8 @@ pub enum CompileError {
     StorageFieldDoesNotExist { name: String, span: Span },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
+    #[error("Multiple storage declarations were found")]
+    MultipleStorageDeclarations { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1083,6 +1085,7 @@ impl CompileError {
             CallParamForNonContractCallMethod { span, .. } => span,
             StorageFieldDoesNotExist { span, .. } => span,
             NoDeclaredStorage { span, .. } => span,
+            MultipleStorageDeclarations { span, .. } => span,
         }
     }
 

@@ -44,7 +44,10 @@ impl Namespace {
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         match self.declared_storage {
             Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
-            None => todo!("Attempted access of storage where no declaration was available err"),
+            None => err(
+                vec![],
+                vec![CompileError::NoDeclaredStorage { span: fields[0].span().clone() }], 
+            )
         }
     }
 
@@ -52,7 +55,7 @@ impl Namespace {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
-                vec![], // TODO
+                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }], 
             );
         }
         self.declared_storage = Some(decl);

@@ -1361,10 +1361,6 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // can probably modify the type checker when there's a storage declaration or something like that
-        // could be a good time to do that refactor. alternatively, the storage declaration can go in
-        // the namespace and we could pull it from there.
-
         if !arguments.namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
