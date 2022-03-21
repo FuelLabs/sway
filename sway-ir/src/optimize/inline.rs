@@ -238,27 +238,6 @@ fn inline_instruction(
                 None,
                 span_md_idx,
             ),
-            Instruction::ContractCall {
-                name,
-                selector,
-                addr,
-                coins,
-                asset_id,
-                gas,
-                args,
-            } => new_block.ins(context).contract_call(
-                name,
-                selector,
-                map_value(addr),
-                map_value(coins),
-                map_value(asset_id),
-                map_value(gas),
-                args.iter()
-                    .map(|old_val: &Value| map_value(*old_val))
-                    .collect::<Vec<Value>>()
-                    .as_slice(),
-                span_md_idx,
-            ),
             Instruction::ExtractElement {
                 array,
                 ty,

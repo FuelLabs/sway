@@ -875,6 +875,8 @@ pub enum CompileError {
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
+    #[error("Expected identifier, found keyword \"{name}\" ")]
+    InvalidVariableName { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1086,6 +1088,7 @@ impl CompileError {
             StorageFieldDoesNotExist { span, .. } => span,
             NoDeclaredStorage { span, .. } => span,
             MultipleStorageDeclarations { span, .. } => span,
+            InvalidVariableName { span, .. } => span,
         }
     }
 

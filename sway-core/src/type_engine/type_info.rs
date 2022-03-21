@@ -65,7 +65,7 @@ pub enum TypeInfo {
     // Static, constant size arrays.
     Array(TypeId, usize),
     /// Represents the entire storage declaration struct
-    /// Stored without initializers here, as owned typed struct fields,
+    /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
         fields: Vec<TypedStructField>,

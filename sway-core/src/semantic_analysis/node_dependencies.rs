@@ -307,16 +307,9 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(
-                    fields.iter(),
-                    |deps,
-                     StorageField {
-                         r#type,
-                         ..
-                     }| {
-                        deps.gather_from_typeinfo(r#type)
-                    },
-                ),
+                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
+                    deps.gather_from_typeinfo(r#type)
+                }),
         }
     }
 

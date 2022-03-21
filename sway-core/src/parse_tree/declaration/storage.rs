@@ -1,10 +1,4 @@
-use crate::{
-    error::*,
-    parse_tree::ident,
-    parser::Rule,
-    type_engine::*,
-    BuildConfig,
-};
+use crate::{error::*, parse_tree::ident, parser::Rule, type_engine::*, BuildConfig};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -51,14 +45,7 @@ impl StorageField {
             warnings,
             errors
         );
-        ok(
-            StorageField {
-                name,
-                r#type,
-            },
-            warnings,
-            errors,
-        )
+        ok(StorageField { name, r#type }, warnings, errors)
     }
 }
 

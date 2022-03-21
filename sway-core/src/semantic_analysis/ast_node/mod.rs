@@ -31,8 +31,8 @@ pub use declaration::{
 };
 
 pub(crate) use declaration::{
-    TypedReassignment, TypedStorageDeclaration, TypedTraitDeclaration, TypedVariableDeclaration,
-    VariableMutability,
+    check_if_name_is_invalid, TypedReassignment, TypedStorageDeclaration, TypedTraitDeclaration,
+    TypedVariableDeclaration, VariableMutability,
 };
 
 pub mod impl_trait;
@@ -239,6 +239,7 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
+                            check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription = namespace
                                 .resolve_type_with_self(type_ascription, self_type)
                                 .unwrap_or_else(|_| {
@@ -636,11 +637,7 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField {
-                                name,
-                                r#type,
-                            } in fields
-                            {
+                            for StorageField { name, r#type } in fields {
                                 let r#type = namespace.resolve_type_without_self(&r#type);
                                 fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
                             }

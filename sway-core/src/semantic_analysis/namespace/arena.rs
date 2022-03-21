@@ -130,10 +130,7 @@ impl NamespaceWrapper for NamespaceRef {
                 span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
                 path: None,
             };
-            err(
-                vec![],
-                vec![CompileError::NoDeclaredStorage { span }],
-            )
+            err(vec![], vec![CompileError::NoDeclaredStorage { span }])
         }
     }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {

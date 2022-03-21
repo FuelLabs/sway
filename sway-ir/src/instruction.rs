@@ -35,16 +35,6 @@ pub enum Instruction {
         true_block: Block,
         false_block: Block,
     },
-    /// A contract call with a list of arguments
-    ContractCall {
-        name: String,
-        selector: [u8; 4],
-        addr: Value,
-        coins: Value,
-        asset_id: Value,
-        gas: Value,
-        args: Vec<Value>,
-    },
     /// Reading a specific element from an array.
     ExtractElement {
         array: Value,
@@ -109,7 +99,6 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
-            Instruction::ContractCall { .. } => None, // TODO fixed this
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::Load(ptr_val) => {
@@ -191,18 +180,6 @@ impl Instruction {
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
-            Instruction::ContractCall {
-                args,
-                coins,
-                asset_id,
-                gas,
-                ..
-            } => {
-                args.iter_mut().for_each(replace);
-                replace(coins);
-                replace(asset_id);
-                replace(gas);
-            }
             Instruction::GetPointer { .. } => (),
             Instruction::InsertElement {
                 array,
@@ -390,37 +367,6 @@ impl<'a> InstructionInserter<'a> {
         });
         self.context.blocks[self.block.0].instructions.push(cbr_val);
         cbr_val
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn contract_call(
-        self,
-        name: String, // Name of the contract method
-        selector: [u8; 4],
-        addr: Value,     // b256 address of the deployed contract
-        coins: Value,    // amount of coins to forward
-        asset_id: Value, // b256 asset ID of the coint being forwarded
-        gas: Value,      // amount of gas to forward
-        args: &[Value],  // user arguments
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let contract_call_val = Value::new_instruction(
-            self.context,
-            Instruction::ContractCall {
-                name,
-                selector,
-                addr,
-                coins,
-                asset_id,
-                gas,
-                args: args.to_vec(),
-            },
-            span_md_idx,
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(contract_call_val);
-        contract_call_val
     }
 
     pub fn extract_element(

@@ -22,7 +22,7 @@ addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i32              ; store value
 lw   $r1 data_0               ; literal instantiation
 addi $r0 $r2 i0               ; get offset
-sww  $r0 $r1                  ; single word state access
+sww  $r1 $r0                  ; single word state access
 ret  $zero                    ; returning unit as zero
 move $r1 $sp                  ; save locals base register
 cfei i64                      ; allocate 64 bytes for all locals
@@ -37,7 +37,7 @@ mcpi $r0 $r2 i32              ; store value
 addi $r0 $r1 i32              ; get_ptr
 addi $r2 $r1 i32              ; get offset
 addi $r0 $r1 i0               ; get offset
-swwq $r0 $r2                  ; quad word state access
+swwq $r2 $r0                  ; quad word state access
 ret  $zero                    ; returning unit as zero
 noop                          ; word-alignment of data section
 .data:

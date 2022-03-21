@@ -1,5 +1,5 @@
 use crate::semantic_analysis::{
-    TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedStructField
+    TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedStructField,
 };
 use crate::{
     error::*,
@@ -141,10 +141,6 @@ pub struct TypedStorageField {
 
 impl TypedStorageField {
     pub fn new(name: Ident, r#type: TypeId, span: Span) -> Self {
-        TypedStorageField {
-            name,
-            r#type,
-            span,
-        }
+        TypedStorageField { name, r#type, span }
     }
 }

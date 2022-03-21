@@ -9,8 +9,14 @@
 use generational_arena::Arena;
 
 use crate::{
-    asm::AsmBlockContent, block::BlockContent, function::FunctionContent, irtype::AggregateContent,
-    metadata::Metadatum, module::ModuleContent, module::ModuleIterator, pointer::PointerContent,
+    asm::AsmBlockContent,
+    block::BlockContent,
+    function::FunctionContent,
+    irtype::{AbiInstanceContent, AggregateContent},
+    metadata::Metadatum,
+    module::ModuleContent,
+    module::ModuleIterator,
+    pointer::PointerContent,
     value::ValueContent,
 };
 
@@ -26,6 +32,7 @@ pub struct Context {
     pub values: Arena<ValueContent>,
     pub pointers: Arena<PointerContent>,
     pub aggregates: Arena<AggregateContent>,
+    pub abi_instances: Arena<AbiInstanceContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
 
     pub metadata: Arena<Metadatum>,

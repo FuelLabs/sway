@@ -338,54 +338,6 @@ fn instruction_to_doc<'a>(
                         md_namer.meta_as_string(context, span_md_idx, true),
                     )))
             }
-            Instruction::ContractCall {
-                name,
-                selector,
-                addr,
-                coins,
-                asset_id,
-                gas,
-                args,
-            } => args
-                .iter()
-                .fold(Doc::Empty, |doc, arg_val| {
-                    doc.append(maybe_constant_to_doc(context, md_namer, namer, arg_val))
-                })
-                .append(maybe_constant_to_doc(context, md_namer, namer, addr))
-                .append(maybe_constant_to_doc(context, md_namer, namer, coins))
-                .append(maybe_constant_to_doc(context, md_namer, namer, asset_id))
-                .append(maybe_constant_to_doc(context, md_namer, namer, gas))
-                .append(Doc::line(
-                    Doc::text(format!(
-                        "{} = contract_call {}",
-                        namer.name(context, ins_value),
-                        name,
-                    ))
-                    .append(Doc::text(format!(
-                        "<{:02x}{:02x}{:02x}{:02x}>",
-                        selector[0], selector[1], selector[2], selector[3]
-                    )))
-                    .append(
-                        Doc::text(format!(
-                            "{{addr: {}, coins: {}, asset_id: {}, gas:{}}}",
-                            namer.name(context, addr),
-                            namer.name(context, coins),
-                            namer.name(context, asset_id),
-                            namer.name(context, gas)
-                        ))
-                        .append(Doc::in_parens_comma_sep(
-                            args.iter()
-                                .map(|arg_val| Doc::text(namer.name(context, arg_val)))
-                                .collect(),
-                        ))
-                        .append(match span_md_idx {
-                            None => Doc::Empty,
-                            Some(_) => {
-                                Doc::text(md_namer.meta_as_string(context, span_md_idx, true))
-                            }
-                        }),
-                    ),
-                )),
             Instruction::ExtractElement {
                 array,
                 ty,
@@ -541,15 +493,12 @@ fn instruction_to_doc<'a>(
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
             )),
-            Instruction::StateStoreWord { stored_val, key } => maybe_constant_to_doc(
-                context, md_namer, namer, stored_val,
-            )
-            .append(Doc::text_line(format!(
+            Instruction::StateStoreWord { stored_val, key } => Doc::text_line(format!(
                 "state_store_word {}, key ptr {}{}",
                 namer.name(context, stored_val),
                 namer.name(context, key),
                 md_namer.meta_as_string(context, span_md_idx, true),
-            ))),
+            )),
             Instruction::Store {
                 dst_val,
                 stored_val,

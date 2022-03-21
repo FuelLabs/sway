@@ -46,8 +46,10 @@ impl Namespace {
             Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
             None => err(
                 vec![],
-                vec![CompileError::NoDeclaredStorage { span: fields[0].span().clone() }], 
-            )
+                vec![CompileError::NoDeclaredStorage {
+                    span: fields[0].span().clone(),
+                }],
+            ),
         }
     }
 
@@ -55,7 +57,7 @@ impl Namespace {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
-                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }], 
+                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }],
             );
         }
         self.declared_storage = Some(decl);
