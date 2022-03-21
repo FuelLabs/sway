@@ -1,14 +1,6 @@
 [[package]]
-name = 'abort_control_flow_should_fail'
-dependencies = [
-    'core git+http://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44',
-    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#6a8f5bf588df5d0679fb834f05c900f2e54de426',
-]
-
-[[package]]
-name = 'core'
-source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44'
-dependencies = []
+name = 'abort_control_flow'
+dependencies = ['std git+http://github.com/FuelLabs/sway-lib-std?reference=master#55a820c8f30c87b4094bee5b8060765aa71bd900']
 
 [[package]]
 name = 'core'
@@ -17,5 +9,5 @@ dependencies = []
 
 [[package]]
 name = 'std'
-source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#6a8f5bf588df5d0679fb834f05c900f2e54de426'
+source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#55a820c8f30c87b4094bee5b8060765aa71bd900'
 dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44']
