@@ -36,9 +36,9 @@ pub struct MyStruct {
 }
 ```
 
-Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usual Sway projects which usually contain a `tests` folder and a `Cargo.toml` file as well. An example of a Library's `Forc.toml`: 
+Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usual Sway projects which usually contain a `tests` folder and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
 
-```toml=
+```toml
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
@@ -46,7 +46,7 @@ license = "Apache-2.0"
 name = "lib-std"
 
 [dependencies]
-"core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
+"core" = { git = "https://github.com/FuelLabs/sway-lib-core" }
 ```
 
 which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:

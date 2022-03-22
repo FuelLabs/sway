@@ -15,6 +15,7 @@ git2 = "0.14"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_ignored = "0.1"
 sway-core = { version = "0.7.0", path = "../sway-core" }
 sway-types = { version = "0.7.0", path = "../sway-types" }
 sway-utils = { version = "0.7.0", path = "../sway-utils" }

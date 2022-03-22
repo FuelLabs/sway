@@ -1,6 +1,6 @@
 use crate::core::{session::Session, token::Token, token_type::TokenType};
-use lspower::lsp::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
 use std::sync::Arc;
+use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
     session
