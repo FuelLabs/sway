@@ -5,4 +5,4 @@ name = "b256_bad_jumps"
 entry = "main.sw"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
