@@ -770,27 +770,7 @@ impl<'ir> AsmBuilder<'ir> {
         let ra_pointer = self.value_to_register(params);
         let coins_register = self.value_to_register(coins);
         let asset_id_register = self.value_to_register(asset_id);
-        let gas_register = if let ValueDatum::Constant(constant) = &self.context.values[gas.0].value
-        {
-            let lit = ir_constant_to_ast_literal(constant);
-            if matches!(lit, Literal::U64(std::u64::MAX)) {
-                let cgas_reg = self.reg_seqr.next();
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LW(
-                        cgas_reg.clone(),
-                        VirtualRegister::Constant(ConstantRegister::ContextGas),
-                        VirtualImmediate12 { value: 0 },
-                    )),
-                    comment: "loading $cgas (gas) into abi function".into(),
-                    owning_span: instr_val.get_span(self.context),
-                });
-                cgas_reg
-            } else {
-                self.value_to_register(gas)
-            }
-        } else {
-            self.value_to_register(gas)
-        };
+        let gas_register = self.value_to_register(gas);
 
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::CALL(
@@ -803,8 +783,8 @@ impl<'ir> AsmBuilder<'ir> {
             owning_span: instr_val.get_span(self.context),
         });
 
-        // now, move the return value of the contract call to the return register.
-        // TODO validate RETL matches the expected type
+        // now, move the return value of the contract call to the return register.  
+        // TODO validate RETL matches the expected type (this is a comment from the old codegen)
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move(
             instr_reg.clone(),
