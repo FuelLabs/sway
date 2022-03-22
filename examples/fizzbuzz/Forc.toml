@@ -6,4 +6,3 @@ name = "fizzbuzz"
 
 [dependencies]
 std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
-core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }

@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "abort_control_flow"
 
 [dependencies]
-std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }

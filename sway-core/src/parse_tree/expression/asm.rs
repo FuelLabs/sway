@@ -1,4 +1,7 @@
-use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, TypeInfo};
+use crate::{
+    build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, TypeInfo,
+    VariableDeclaration,
+};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -20,7 +23,7 @@ impl AsmExpression {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
             span: pair.as_span(),
@@ -31,7 +34,7 @@ impl AsmExpression {
         let mut iter = pair.into_inner();
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
-        let asm_registers = check!(
+        let asm_register_result = check!(
             AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
@@ -81,14 +84,18 @@ impl AsmExpression {
         } else {
             TypeInfo::Tuple(Vec::new())
         });
+        let exp = AsmExpression {
+            registers: asm_register_result.value,
+            body: asm_op_buf,
+            returns: implicit_op_return,
+            return_type,
+            whole_block_span,
+        };
 
         ok(
-            AsmExpression {
-                registers: asm_registers,
-                body: asm_op_buf,
-                returns: implicit_op_return,
-                return_type,
-                whole_block_span,
+            ParserLifter {
+                var_decls: asm_register_result.var_decls,
+                value: exp,
             },
             warnings,
             errors,
@@ -183,11 +190,15 @@ pub(crate) struct AsmRegisterDeclaration {
 }
 
 impl AsmRegisterDeclaration {
-    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Vec<Self>> {
+    fn parse_from_pair(
+        pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<ParserLifter<Vec<Self>>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut reg_buf: Vec<AsmRegisterDeclaration> = Vec::new();
+        let mut var_decl_buf: Vec<VariableDeclaration> = vec![];
         for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
@@ -199,7 +210,7 @@ impl AsmRegisterDeclaration {
             );
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
-            let initializer = if let Some(pair) = iter.next() {
+            let initializer_result = if let Some(pair) = iter.next() {
                 Some(check!(
                     Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
@@ -209,13 +220,27 @@ impl AsmRegisterDeclaration {
             } else {
                 None
             };
+            let (initializer, mut var_decls) = match initializer_result {
+                Some(initializer_result) => {
+                    (Some(initializer_result.value), initializer_result.var_decls)
+                }
+                None => (None, vec![]),
+            };
             reg_buf.push(AsmRegisterDeclaration {
                 name: reg_name,
                 initializer,
-            })
+            });
+            var_decl_buf.append(&mut var_decls);
         }
 
-        ok(reg_buf, warnings, errors)
+        ok(
+            ParserLifter {
+                var_decls: var_decl_buf,
+                value: reg_buf,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
