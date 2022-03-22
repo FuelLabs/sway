@@ -20,7 +20,7 @@ fuel-asm = "0.2"
 fuel-crypto = "0.4.0"
 fuel-vm = "0.5"
 hex = { version = "0.4", optional = true }
-itertools = "0.10.3"
+itertools = "0.10"
 lazy_static = "1.4"
 nanoid = "0.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
