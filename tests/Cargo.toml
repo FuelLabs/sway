@@ -11,10 +11,10 @@ fuel-gql-client = { version = "0.4", default-features = false }
 fuel-tx = "0.6"
 fuel-types = "0.3"
 fuel-vm = "0.5"
-fuels-abigen-macro = "0.6"
-fuels-signers = { version = "0.6", features=["test-helpers"] }
-fuels-contract = "0.6"
-fuels-core = "0.6"
+fuels-abigen-macro = "0.7"
+fuels-signers = { version = "0.7", features=["test-helpers"] }
+fuels-contract = "0.7"
+fuels-core = "0.7"
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 

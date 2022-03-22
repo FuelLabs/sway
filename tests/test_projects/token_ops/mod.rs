@@ -1,8 +1,9 @@
-use fuel_core::service::Config;
+use fuel_core::service::{Config, FuelService};
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
-use fuels_contract::contract::Contract;
-use fuels_signers::provider::Provider;
+use fuels_contract::{parameters::TxParameters, contract::Contract};
+use fuels_signers::util::test_helpers;
+
 
 abigen!(
     TestFuelCoinContract,
@@ -15,9 +16,12 @@ async fn mint() {
     let compiled =
         Contract::load_sway_contract("test_projects/token_ops/out/debug/token_ops.bin", salt)
             .unwrap();
-    let client = Provider::launch(Config::local_node()).await.unwrap();
-    let id = Contract::deploy(&compiled, &client).await.unwrap();
-    let instance = TestFuelCoinContract::new(id.to_string(), client);
+
+    let server = FuelService::new_node(Config::local_node()).await.unwrap();
+    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default()).await.unwrap();
+    
+    let instance = TestFuelCoinContract::new(id.to_string(), provider, wallet);
 
     let target = testfuelcoincontract_mod::ContractId { value: id.into() };
     let asset_id = testfuelcoincontract_mod::ContractId { value: id.into() };
@@ -41,9 +45,12 @@ async fn burn() {
     let compiled =
         Contract::load_sway_contract("test_projects/token_ops/out/debug/token_ops.bin", salt)
             .unwrap();
-    let client = Provider::launch(Config::local_node()).await.unwrap();
-    let id = Contract::deploy(&compiled, &client).await.unwrap();
-    let instance = TestFuelCoinContract::new(id.to_string(), client);
+            
+    let server = FuelService::new_node(Config::local_node()).await.unwrap();
+    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default()).await.unwrap();
+    
+    let instance = TestFuelCoinContract::new(id.to_string(), provider, wallet);
 
     let target = testfuelcoincontract_mod::ContractId { value: id.into() };
     let asset_id = testfuelcoincontract_mod::ContractId { value: id.into() };
