@@ -121,9 +121,7 @@ impl Context {
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
                 Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
-                Instruction::ReadRegister {
-                    reg_name,
-                } => self.verify_read_register(reg_name)?,
+                Instruction::ReadRegister { reg_name } => self.verify_read_register(reg_name)?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
                 Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                 Instruction::StateLoadQuadWord { load_val, key } => {
@@ -258,7 +256,7 @@ impl Context {
     }
 
     fn verify_read_register(&self, _reg: &str) -> Result<(), IrError> {
-        // We may want to verify that the register passed actually exists    
+        // We may want to verify that the register passed actually exists
         Ok(())
     }
 

@@ -518,9 +518,7 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::ReadRegister {
-                    reg_name,
-                } => check!(
+                Instruction::ReadRegister { reg_name } => check!(
                     self.compile_read_register(instr_val, reg_name),
                     return err(warnings, errors),
                     warnings,
@@ -1363,41 +1361,38 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn compile_read_register(&mut self,
-        instr_val: &Value,
-        reg_name: &str,
-    ) -> CompileResult<()> {
-        let instr_reg = self.reg_seqr.next(); 
+    fn compile_read_register(&mut self, instr_val: &Value, reg_name: &str) -> CompileResult<()> {
+        let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LW(
                 instr_reg.clone(),
-                VirtualRegister::Constant(
-                    match reg_name {
-                        "zero" => ConstantRegister::Zero,
-                        "one" => ConstantRegister::One,
-                        "of" => ConstantRegister::Overflow,
-                        "pc" => ConstantRegister::ProgramCounter,
-                        "ssp" => ConstantRegister::StackStartPointer,
-                        "sp" => ConstantRegister::StackPointer,
-                        "fp" => ConstantRegister::FramePointer,
-                        "hp" => ConstantRegister::HeapPointer,
-                        "err" => ConstantRegister::Error,
-                        "ggas" => ConstantRegister::GlobalGas,
-                        "cgas" => ConstantRegister::ContextGas,
-                        "bal" => ConstantRegister::Balance,
-                        "is" => ConstantRegister::InstructionStart,
-                        "ret" => ConstantRegister::ReturnValue,
-                        "retl" => ConstantRegister::ReturnLength,
-                        "flag" => ConstantRegister::Flags,
-                        _ => unreachable!("Unrecognized special register. This should have been \
-                                          caught in the verifier")
-                    }
-                ),
+                VirtualRegister::Constant(match reg_name {
+                    "zero" => ConstantRegister::Zero,
+                    "one" => ConstantRegister::One,
+                    "of" => ConstantRegister::Overflow,
+                    "pc" => ConstantRegister::ProgramCounter,
+                    "ssp" => ConstantRegister::StackStartPointer,
+                    "sp" => ConstantRegister::StackPointer,
+                    "fp" => ConstantRegister::FramePointer,
+                    "hp" => ConstantRegister::HeapPointer,
+                    "err" => ConstantRegister::Error,
+                    "ggas" => ConstantRegister::GlobalGas,
+                    "cgas" => ConstantRegister::ContextGas,
+                    "bal" => ConstantRegister::Balance,
+                    "is" => ConstantRegister::InstructionStart,
+                    "ret" => ConstantRegister::ReturnValue,
+                    "retl" => ConstantRegister::ReturnLength,
+                    "flag" => ConstantRegister::Flags,
+                    _ => unreachable!(
+                        "Unrecognized special register. This should have been \
+                                          caught in the verifier"
+                    ),
+                }),
                 VirtualImmediate12 { value: 0 },
             )),
             comment: format!("loading ${} into abi function", reg_name),
             owning_span: instr_val.get_span(self.context),
-        }); 
+        });
 
         self.reg_map.insert(*instr_val, instr_reg);
 

@@ -304,12 +304,8 @@ fn inline_instruction(
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::ReadRegister {
-                reg_name
-            } => {
-                new_block
-                    .ins(context)
-                    .read_register(reg_name, span_md_idx)
+            Instruction::ReadRegister { reg_name } => {
+                new_block.ins(context).read_register(reg_name, span_md_idx)
             }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {

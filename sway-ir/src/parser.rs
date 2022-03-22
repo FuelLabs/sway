@@ -893,9 +893,7 @@ mod ir_builder {
                     block.get_phi(context)
                 }
                 IrAstOperation::ReadRegister(reg_name) => {
-                    block
-                        .ins(context)
-                        .read_register(reg_name, opt_ins_md_idx)
+                    block.ins(context).read_register(reg_name, opt_ins_md_idx)
                 }
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);

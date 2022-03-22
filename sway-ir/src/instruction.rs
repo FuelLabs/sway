@@ -81,7 +81,7 @@ pub enum Instruction {
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
     /// Reads a special register in the VM.
-    ReadRegister{ reg_name: String },
+    ReadRegister { reg_name: String },
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
@@ -546,22 +546,16 @@ impl<'a> InstructionInserter<'a> {
         nop_val
     }
 
-    pub fn read_register(
-        self,
-        reg_name: String,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn read_register(self, reg_name: String, span_md_idx: Option<MetadataIndex>) -> Value {
         let read_register_val = Value::new_instruction(
             self.context,
-            Instruction::ReadRegister {
-                reg_name
-            },
+            Instruction::ReadRegister { reg_name },
             span_md_idx,
         );
         self.context.blocks[self.block.0]
             .instructions
             .push(read_register_val);
-        read_register_val 
+        read_register_val
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {

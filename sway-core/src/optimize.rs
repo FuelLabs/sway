@@ -914,7 +914,7 @@ impl FnCompiler {
         let sel_val = convert_literal_to_value(
             context,
             &Literal::U64(
-                sel[3] as u64 + 256 * (sel[2] as u64 + 256 * (sel[1] as u64 + 256 * sel[0] as u64))
+                sel[3] as u64 + 256 * (sel[2] as u64 + 256 * (sel[1] as u64 + 256 * sel[0] as u64)),
             ),
             span_md_idx,
         );
@@ -962,7 +962,10 @@ impl FnCompiler {
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
             Some(gas_expr) => self.compile_expression(context, gas_expr.clone())?,
-            None => self.current_block.ins(context).read_register("cgas".to_string(), span_md_idx),
+            None => self
+                .current_block
+                .ins(context)
+                .read_register("cgas".to_string(), span_md_idx),
         };
 
         // Insert the contract_call instruction

@@ -489,15 +489,12 @@ fn instruction_to_doc<'a>(
                     )
                 }
             }
-            Instruction::ReadRegister {
-                reg_name
-            } => Doc::text_line(format!(
-                    "{} = read_register {}{}",
-                    namer.name(context, ins_value),
-                    reg_name,
-                    md_namer.meta_as_string(context, span_md_idx, true),
-                ),
-            ),
+            Instruction::ReadRegister { reg_name } => Doc::text_line(format!(
+                "{} = read_register {}{}",
+                namer.name(context, ins_value),
+                reg_name,
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
             Instruction::Ret(v, t) => {
                 maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::text_line(format!(
                     "ret {} {}{}",
