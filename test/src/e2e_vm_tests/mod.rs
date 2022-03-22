@@ -153,6 +153,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         (
+            "should_pass/language/abort_control_flow",
+            ProgramState::Revert(42),
+        ),
+        (
             "should_pass/language/array_generics",
             ProgramState::Return(1),
         ), // true
@@ -318,6 +322,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/missing_func_from_supertrait_impl",
         "should_fail/supertrait_does_not_exist",
         "should_fail/chained_if_let_missing_branch",
+        "should_fail/abort_control_flow",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
