@@ -274,9 +274,7 @@ fn main() {
         let dir = env::temp_dir().join(file_name);
         let mut file = File::create(&dir).unwrap();
         file.write_all(sway_file.as_bytes()).unwrap();
-
-        let path = format!("file:///{}", dir.as_os_str().to_str().unwrap());
-        Url::parse(&path).unwrap()
+        Url::from_file_path(dir.as_os_str().to_str().unwrap()).unwrap()
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
