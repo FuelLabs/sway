@@ -1,6 +1,6 @@
 contract;
 
-use std::registers::*;
+use std::context::registers::*;
 
 abi Registers {
     fn get_overflow() -> u64;
