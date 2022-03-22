@@ -23,7 +23,7 @@ fn main() {
 
 ## Logging
 
-To log integers to stdout, you can use the `log_u64`, `log_u32`, `log_u16`, or `log_u8` functions from the `lib-std` library.
+To log integers, you can use the `log_u64`, `log_u32`, `log_u16`, or `log_u8` functions from the `lib-std` library.
 
 ```sway
 use std::chain::log_u64;
