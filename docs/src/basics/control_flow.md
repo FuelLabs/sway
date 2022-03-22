@@ -1,6 +1,6 @@
 # Control Flow
 
-## _If_ expressions
+## `if` expressions
 
 Sway supports _if_, _else_, and _else if_ expressions that allow you to branch your code depending on conditions.
 
