@@ -164,7 +164,7 @@ impl Namespace {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     // This cannot be a HashMap because of how TypeInfo's are handled.
-    //
+    // 
     // In Rust, in general, a custom type should uphold the invariant
     // that PartialEq and Hash produce consistent results. i.e. for
     // two objects, their hash value is equal if and only if they are
@@ -174,12 +174,17 @@ pub(crate) struct TraitMap {
     //
     // ```ignore
     // 1: u64
-    // 2: Ref(1)
+    // 2: u64
     // 3: Ref(1)
+    // 4: Ref(2)
     // ```
     //
-    // 2 and 3 are equal under PartialEq and their hashes are the same
+    // 1, 2, 3, 4 are equal under PartialEq and their hashes are the same
     // value.
+    //
+    // However, we need this structure to be able to maintain the
+    // difference between 3 and 4, as in practice, 1 and 2 might not yet
+    // be resolved.
     trait_map: Vec<(
         (TraitName, TypeInfo),
         HashMap<String, TypedFunctionDeclaration>,
