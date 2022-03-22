@@ -1,5 +1,7 @@
 contract;
 
+use std::contract_id::ContractId;
+
 enum FizzBuzzResult {
     Fizz: (),
     Buzz: (),
