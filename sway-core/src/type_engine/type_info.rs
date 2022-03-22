@@ -240,6 +240,7 @@ impl TypeInfo {
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
+        assert!(input.as_rule() == Rule::type_name);
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut iter = input.into_inner();
@@ -262,19 +263,16 @@ impl TypeInfo {
                 match iter.next() {
                     Some(types) => {
                         let mut type_args = vec![];
-                        for type_param in types.into_inner().into_iter() {
+                        for type_name in types.into_inner() {
                             type_args.push(crate::type_engine::insert_type(check!(
-                                Self::parse_from_type_param_pair(type_param, config),
+                                Self::parse_from_pair(type_name, config),
                                 TypeInfo::ErrorRecovery,
                                 warnings,
                                 errors
                             )));
                         }
                         match type_info {
-                            TypeInfo::Custom { name, .. } => TypeInfo::Custom {
-                                name: name.clone(),
-                                type_args,
-                            },
+                            TypeInfo::Custom { name, .. } => TypeInfo::Custom { name, type_args },
                             _ => unimplemented!(),
                         }
                     }

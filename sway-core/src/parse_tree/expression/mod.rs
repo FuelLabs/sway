@@ -410,7 +410,6 @@ impl Expression {
             path: path.clone(),
         };
         #[allow(unused_assignments)]
-        let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr, config)
                 .map(|(value, span)| Expression::Literal { value, span })
@@ -435,12 +434,14 @@ impl Expression {
                 let (arguments, type_args) = {
                     let maybe_type_args = func_app_parts.next().unwrap();
                     match maybe_type_args.as_rule() {
-                        Rule::type_args => (func_app_parts.next().unwrap(), Some(maybe_type_args)),
+                        Rule::type_args_with_path => {
+                            (func_app_parts.next().unwrap(), Some(maybe_type_args))
+                        }
                         Rule::fn_args => (maybe_type_args, None),
                         _ => unreachable!(),
                     }
                 };
-                maybe_type_args = type_args
+                let maybe_type_args = type_args
                     .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
                     .unwrap_or_else(Vec::new);
                 let mut arguments_buf = Vec::new();
@@ -935,7 +936,7 @@ impl Expression {
                     let part = parts.next();
                     match part.as_ref().map(|x| x.as_rule()) {
                         Some(Rule::fn_args) => (None, part),
-                        Some(Rule::type_args) => {
+                        Some(Rule::type_args_with_path) => {
                             let next_part = parts.next();
                             (part, next_part)
                         }

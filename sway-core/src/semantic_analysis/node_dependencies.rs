@@ -251,13 +251,11 @@ impl Dependencies {
             Declaration::TraitDeclaration(TraitDeclaration {
                 interface_surface,
                 methods,
-                type_parameters,
                 supertraits,
                 ..
             }) => self
                 .gather_from_iter(supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
-                        .gather_from_traits(&sup.type_parameters)
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
@@ -267,8 +265,7 @@ impl Dependencies {
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
-                })
-                .gather_from_traits(type_parameters),
+                }),
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,

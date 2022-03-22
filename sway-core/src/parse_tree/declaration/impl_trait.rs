@@ -78,7 +78,7 @@ impl ImplTrait {
             errors
         );
 
-        let where_clause_pair = match iter.peek() {
+        let _where_clause_pair = match iter.peek() {
             Some(r) => match r.as_rule() {
                 Rule::trait_bounds => iter.next(),
                 _ => None,
@@ -86,6 +86,7 @@ impl ImplTrait {
             None => None,
         };
 
+        /*
         let type_arguments_span = match type_arguments_pair {
             Some(ref x) => Span {
                 span: x.as_span(),
@@ -103,6 +104,7 @@ impl ImplTrait {
             warnings,
             errors
         );
+        */
 
         let mut fn_decls_buf = vec![];
 
@@ -118,8 +120,8 @@ impl ImplTrait {
         ok(
             ImplTrait {
                 trait_name,
-                type_arguments,
-                type_arguments_span,
+                type_arguments: vec![],
+                type_arguments_span: todo!(),
                 type_implementing_for,
                 type_implementing_for_span,
                 functions: fn_decls_buf,

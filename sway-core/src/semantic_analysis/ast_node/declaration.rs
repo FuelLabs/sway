@@ -417,18 +417,15 @@ pub struct TypedTraitDeclaration {
     pub(crate) name: Ident,
     pub(crate) interface_surface: Vec<TypedTraitFn>,
     pub(crate) methods: Vec<FunctionDeclaration>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub(crate) visibility: Visibility,
 }
 
 impl TypedTraitDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        let additional_type_map = insert_type_parameters(&self.type_parameters);
-        let type_mapping = [type_mapping, &additional_type_map].concat();
         self.interface_surface
             .iter_mut()
-            .for_each(|x| x.copy_types(&type_mapping[..]));
+            .for_each(|x| x.copy_types(type_mapping));
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }

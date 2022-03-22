@@ -65,8 +65,7 @@ parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {call_path ~ type_args? ~ fn_args}
-type_args                =  {path_separator ~ type_params}
+func_app                 =  {call_path ~ type_args_with_path? ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 var_exp                  =  {var_name_ident}
 var_name_ident           =  {ident}
@@ -78,7 +77,7 @@ subfield_path            =  {(sub_subfield_path ~ ".")+ ~ call_item}
 sub_subfield_path        =  {array_index|call_item}
 fully_qualified_method   =  {call_path? ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
-delineated_path          =  {call_path_ ~ type_args? ~ fn_args?}
+delineated_path          =  {call_path_ ~ type_args_with_path? ~ fn_args?}
 path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
 array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
@@ -171,20 +170,22 @@ enum_fields       =  {(enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_nam
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
-impl_self =  {impl_keyword ~ type_params? ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_self =  {impl_keyword ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
-fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
-type_params        =  {"<" ~ type_param ~ (", " ~ type_param)* ~ ">"}
-fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
-fn_decl_param_name =  {ident}
-fn_decl_name       =  {ident}
-type_name          =  {str_type|ident ~ type_params?|tuple_type|array_type}
-str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
-trait_bounds       =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
-type_param =  {ident}
+fn_decl_params      =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
+fn_decl_param       =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
+fn_decl_param_name  =  {ident}
+fn_decl_name        =  {ident}
+type_params         =  {"<" ~ type_param ~ (", " ~ type_param)* ~ ">"}
+type_param          =  {ident}
+type_args_with_path =  {path_separator ~ type_args}
+type_args           =  {"<" ~ type_name ~ (", " ~ type_name)* ~ ">"}
+type_name           =  {str_type|ident ~ type_args?|tuple_type|array_type}
+str_type            =  { "str" ~ "[" ~ basic_integer ~ "]" }
+trait_bounds        =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
 // Array size can be any constant u64 expression, but we don't properly support constant expressions.  See `array_elems rule above.
-array_type         =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
+array_type          =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
@@ -192,11 +193,11 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement   =  {expr ~ ";"}
 
 // traits
-trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ supertraits? ~ trait_bounds? ~ trait_methods}
+trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ supertraits? ~ trait_methods}
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 supertraits   =  {":" ~ supertrait ~ ("+" ~ supertrait)*}
-supertrait    =  {call_path ~ type_params?}
-impl_trait    =  {impl_keyword ~ call_path ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+supertrait    =  {call_path}
+impl_trait    =  {impl_keyword ~ call_path ~ "for" ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
 use_statement           =  {relative_use_statement | absolute_use_statement}

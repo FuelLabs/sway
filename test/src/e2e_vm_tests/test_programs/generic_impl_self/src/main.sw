@@ -6,7 +6,7 @@ struct DoubleIdentity<T, F> {
   third: u64
 }
 
-impl<T, F> DoubleIdentity<T, F> {
+impl DoubleIdentity<T, F> {
   fn new(x: T, y: F) -> DoubleIdentity<T, F> {
     DoubleIdentity {
       first: x,

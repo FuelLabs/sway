@@ -350,7 +350,6 @@ impl TypedAstNode {
                             name,
                             interface_surface,
                             methods,
-                            type_parameters,
                             supertraits,
                             visibility,
                         }) => {
@@ -416,7 +415,6 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     interface_surface,
                                     methods,
-                                    type_parameters,
                                     supertraits,
                                     visibility,
                                 });
@@ -467,6 +465,15 @@ impl TypedAstNode {
                             block_span,
                             ..
                         }) => {
+                            for generic_type_argument in generic_type_arguments.iter() {
+                                if !generic_type_argument.trait_constraints.is_empty() {
+                                    errors.push(CompileError::Internal(
+                                        "Where clauses are not supported yet.",
+                                        generic_type_argument.name_ident.span().clone(),
+                                    ));
+                                    break;
+                                }
+                            }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id =
