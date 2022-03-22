@@ -783,7 +783,7 @@ impl<'ir> AsmBuilder<'ir> {
             owning_span: instr_val.get_span(self.context),
         });
 
-        // now, move the return value of the contract call to the return register.  
+        // now, move the return value of the contract call to the return register.
         // TODO validate RETL matches the expected type (this is a comment from the old codegen)
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op::unowned_register_move(
