@@ -201,7 +201,7 @@ license = &quot;Apache-2.0&quot;
 name = &quot;lib-std&quot;
 
 [dependencies]
-&quot;core&quot; = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot; }
+&quot;core&quot; = { git = &quot;https://github.com/FuelLabs/sway-lib-core&quot; }
 </code></pre>
 <p>which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries. For example, the <code>lib.sw</code> of the standard library looks like:</p>
 <pre><code class="language-sway">library std;
