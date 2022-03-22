@@ -48,7 +48,7 @@ You need the `while` keyword, some condition (`value < 10` in this case) which w
 
 ### Break & Continue
 
-There are no `break` or `continue` keywords yet, but they're coming.
+There are no `break` or `continue` keywords yet, but [they're coming](https://github.com/FuelLabs/sway/issues/587).
 
 For now, the way to break out of a `while` loop early is to manually invalidate the condition. In this case, that just means setting `counter` to be >= 10.
 

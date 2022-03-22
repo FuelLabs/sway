@@ -4,6 +4,7 @@ contract;
 use std::chain::*;
 use std::hash::*;
 use std::storage::*;
+use std::address::Address;
 
 ////////////////////////////////////////
 // Event declarations
@@ -42,7 +43,7 @@ abi Token {
 ////////////////////////////////////////
 
 /// Address of contract creator.
-const MINTER: Address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+const MINTER: Address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
 
 ////////////////////////////////////////
 // Contract storage
