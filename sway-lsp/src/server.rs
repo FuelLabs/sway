@@ -235,6 +235,7 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
+    // Simple sway script used for testing LSP capabilites
     const SWAY_PROGRAM: &str = r#"script;
 
 use std::*;
@@ -268,11 +269,11 @@ fn main() {
 }
 "#;
 
-    fn load_test_sway_file() -> Url {
+    fn load_test_sway_file(sway_file: &str) -> Url {
         let file_name = "tmp_sway_test_file.sw";
         let dir = env::temp_dir().join(file_name);
         let mut file = File::create(&dir).unwrap();
-        file.write_all(SWAY_PROGRAM.as_bytes()).unwrap();
+        file.write_all(sway_file.as_bytes()).unwrap();
 
         let path = format!("file:///{}", dir.as_os_str().to_str().unwrap());
         Url::parse(&path).unwrap()
@@ -314,44 +315,6 @@ fn main() {
         assert_eq!(response, Ok(None));
     }
 
-    async fn _semantic_tokens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-            },
-        });
-        let semantic_tokens = Request::build("textDocument/semanticTokens/full")
-            .params(params)
-            .id(1)
-            .finish();
-        let _response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(semantic_tokens.clone())
-            .await;
-        semantic_tokens
-    }
-
-    async fn _document_symbol_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-            },
-        });
-        let document_symbol = Request::build("textDocument/documentSymbol")
-            .params(params)
-            .id(1)
-            .finish();
-        let _response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(document_symbol.clone())
-            .await;
-        document_symbol
-    }
-
     async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &String) {
         let language_id = "sway";
         let params = json!({
@@ -373,23 +336,6 @@ fn main() {
         let exit = Request::build("textDocument/didClose").finish();
         let response = service.ready().await.unwrap().call(exit.clone()).await;
         assert_eq!(response, Ok(None));
-    }
-
-    async fn highlight_request(uri: &Url, line: u32, character: u32) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri
-            },
-            "position": {
-                "line": line,
-                "character": character
-            }
-        });
-        let highlight = Request::build("textDocument/documentHighlight")
-            .params(params)
-            .id(1)
-            .finish();
-        highlight
     }
 
     #[tokio::test]
@@ -456,6 +402,7 @@ fn main() {
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
+        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
 
         let response = service.ready().await.unwrap().call(shutdown).await;
@@ -476,10 +423,10 @@ fn main() {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
+        let uri = load_test_sway_file(SWAY_PROGRAM);
+
         // send "textDocument/didOpen" notification for `uri`
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = String::from("fn main {}");
-        did_open_notification(&mut service, &uri, &text).await;
+        did_open_notification(&mut service, &uri, &SWAY_PROGRAM.to_string()).await;
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
@@ -498,10 +445,10 @@ fn main() {
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
+        let uri = load_test_sway_file(SWAY_PROGRAM);
+
         // send "textDocument/didOpen" notification for `uri`
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = String::from("fn main {}");
-        did_open_notification(&mut service, &uri, &text).await;
+        did_open_notification(&mut service, &uri, &SWAY_PROGRAM.to_string()).await;
 
         // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;
@@ -527,7 +474,7 @@ fn main() {
         messages.next().await.unwrap();
 
         let uri = Url::parse("inmemory:///test").unwrap();
-        let old_text = r#"script;
+        let text = r#"script;
 
         fn main() {
         
@@ -535,6 +482,9 @@ fn main() {
         "#
         .into();
 
+        // This just an example of the changes made
+        // In reality, the only text that needs to be sent to the language server
+        // is "let x = 0.0;"
         let _new_text: String = r#"script;
 
         fn main() {
@@ -544,7 +494,7 @@ fn main() {
         .into();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &old_text).await;
+        did_open_notification(&mut service, &uri, &text).await;
 
         // send "textDocument/didChange" notification for `uri`
         let params = json!({
@@ -574,51 +524,6 @@ fn main() {
             .finish();
         let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    #[tokio::test]
-    async fn highlight() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let uri = load_test_sway_file();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &SWAY_PROGRAM.to_string()).await;
-
-        // send "textDocument/documentHighlight" request
-        let highlight = highlight_request(&uri, 25, 8).await;
-        let response = service.ready().await.unwrap().call(highlight.clone()).await;
-
-        let result = json!([{
-            "range": {
-                "start": {
-                    "line": 25,
-                    "character": 8
-                },
-                "end": {
-                    "line": 25,
-                    "character": 16
-                }
-            }
-        }]);
-
-        let ok = Response::from_ok(1.into(), result);
-        assert_eq!(response, Ok(Some(ok)));
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
