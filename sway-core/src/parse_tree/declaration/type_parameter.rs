@@ -54,33 +54,30 @@ impl TypeParameter {
                     warnings,
                     errors
                 );
-                let mut pair = where_clause_pair.into_inner().peekable();
-                while pair.peek().is_some() {
-                    let type_param = ident::parse_from_pair(pair.next().unwrap(), config)
-                        .value
-                        .unwrap();
-                    let trait_constraint = ident::parse_from_pair(pair.next().unwrap(), config)
-                        .value
-                        .unwrap();
-                    // assign trait constraints to above parsed type params
-                    // find associated type name
+                let where_clauses = check!(
+                    WhereClause::parse_from_trait_bounds(where_clause_pair, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                for where_clause in where_clauses.into_iter() {
                     let param_to_edit =
                         match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                            name_ident.as_str() == type_param.as_str()
+                            name_ident.as_str() == where_clause.type_param.as_str()
                         }) {
                             Some(o) => o,
                             None => {
                                 errors.push(CompileError::ConstrainedNonExistentType {
-                                    type_name: type_param,
-                                    trait_name: trait_constraint.clone(),
-                                    span: trait_constraint.span().clone(),
+                                    type_name: where_clause.type_param,
+                                    trait_name: where_clause.trait_constraint.clone(),
+                                    span: where_clause.trait_constraint.span().clone(),
                                 });
                                 continue;
                             }
                         };
 
                     param_to_edit.trait_constraints.push(TraitConstraint {
-                        name: trait_constraint,
+                        name: where_clause.trait_constraint,
                     });
                 }
                 params
@@ -89,7 +86,7 @@ impl TypeParameter {
         ok(params, warnings, errors)
     }
 
-    pub(crate) fn parse_from_type_params(
+    fn parse_from_type_params(
         type_params_pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
@@ -129,4 +126,40 @@ impl TypeParameter {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
     pub(crate) name: Ident,
+}
+
+pub(crate) struct WhereClause {
+    pub(crate) type_param: Ident,
+    pub(crate) trait_constraint: Ident,
+}
+
+impl WhereClause {
+    pub(crate) fn parse_from_trait_bounds(
+        pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Vec<WhereClause>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut iter = pair.into_inner().peekable();
+        let mut clauses = vec![];
+        while iter.peek().is_some() {
+            let type_param = check!(
+                ident::parse_from_pair(iter.next().unwrap(), config),
+                continue,
+                warnings,
+                errors
+            );
+            let trait_constraint = check!(
+                ident::parse_from_pair(iter.next().unwrap(), config),
+                continue,
+                warnings,
+                errors
+            );
+            clauses.push(WhereClause {
+                type_param,
+                trait_constraint,
+            });
+        }
+        ok(clauses, warnings, errors)
+    }
 }

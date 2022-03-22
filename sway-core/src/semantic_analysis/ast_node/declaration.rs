@@ -211,7 +211,7 @@ pub struct TypedAbiDeclaration {
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
     pub(crate) fields: Vec<TypedStructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) generic_type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
     pub(crate) type_id: TypeId,
 }
@@ -219,7 +219,7 @@ pub struct TypedStructDeclaration {
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
         let old_type_id = self.type_id;
-        let type_mapping = insert_type_parameters(&self.type_parameters);
+        let type_mapping = insert_type_parameters(&self.generic_type_parameters);
         let mut new_decl = self.clone();
         new_decl.copy_types(&type_mapping);
         new_decl.type_id = insert_type(TypeInfo::Struct {

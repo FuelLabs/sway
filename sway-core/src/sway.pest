@@ -170,7 +170,7 @@ enum_fields       =  {(enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_nam
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
-impl_self =  {impl_keyword ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_self =  {impl_keyword ~ type_params? ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
 fn_decl_params      =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
@@ -197,7 +197,7 @@ trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ supertraits? ~ t
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 supertraits   =  {":" ~ supertrait ~ ("+" ~ supertrait)*}
 supertrait    =  {call_path}
-impl_trait    =  {impl_keyword ~ call_path ~ "for" ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_trait    =  {impl_keyword ~ type_params? ~ call_path ~ "for" ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
 use_statement           =  {relative_use_statement | absolute_use_statement}

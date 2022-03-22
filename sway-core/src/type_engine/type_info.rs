@@ -237,13 +237,13 @@ impl Default for TypeInfo {
 
 impl TypeInfo {
     pub(crate) fn parse_from_pair(
-        input: Pair<Rule>,
+        type_name_pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        assert!(input.as_rule() == Rule::type_name);
+        assert!(type_name_pair.as_rule() == Rule::type_name);
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut iter = input.into_inner();
+        let mut iter = type_name_pair.into_inner();
         let input = iter.next().unwrap();
         let span = Span {
             span: input.as_span(),
@@ -251,28 +251,33 @@ impl TypeInfo {
         };
         let type_info = match input.as_rule() {
             Rule::str_type => {
-                check!(
+                let type_info = check!(
                     parse_str_type(input.as_str(), span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+                type_info
             }
             Rule::ident => {
-                let type_info = Self::pair_as_str_to_type_info(input, config);
+                let type_info = TypeInfo::pair_as_str_to_type_info(input, config);
                 match iter.next() {
                     Some(types) => {
-                        let mut type_args = vec![];
+                        let mut type_arguments = vec![];
                         for type_name in types.into_inner() {
-                            type_args.push(crate::type_engine::insert_type(check!(
+                            let type_arg = check!(
                                 Self::parse_from_pair(type_name, config),
                                 TypeInfo::ErrorRecovery,
                                 warnings,
                                 errors
-                            )));
+                            );
+                            type_arguments.push(insert_type(type_arg));
                         }
                         match type_info {
-                            TypeInfo::Custom { name, .. } => TypeInfo::Custom { name, type_args },
+                            TypeInfo::Custom { name, .. } => TypeInfo::Custom {
+                                name,
+                                type_args: type_arguments,
+                            },
                             _ => unimplemented!(),
                         }
                     }
@@ -292,7 +297,7 @@ impl TypeInfo {
                     Some(array_elem_type_pair) => {
                         check!(
                             Self::parse_from_pair(array_elem_type_pair, config),
-                            return err(warnings, errors),
+                            TypeInfo::ErrorRecovery,
                             warnings,
                             errors
                         )
@@ -353,12 +358,11 @@ impl TypeInfo {
                 for field in input.into_inner() {
                     let field_type = check!(
                         TypeInfo::parse_from_pair(field, config),
-                        TypeInfo::Tuple(Vec::new()),
+                        TypeInfo::ErrorRecovery,
                         warnings,
                         errors
                     );
-                    let field_type_id = crate::type_engine::insert_type(field_type);
-                    field_type_ids.push(field_type_id);
+                    field_type_ids.push(insert_type(field_type));
                 }
                 TypeInfo::Tuple(field_type_ids)
             }

@@ -459,17 +459,17 @@ impl TypedAstNode {
                         ),
 
                         Declaration::ImplSelf(ImplSelf {
-                            generic_type_arguments,
                             functions,
                             type_implementing_for,
                             block_span,
+                            type_arguments,
                             ..
                         }) => {
-                            for generic_type_argument in generic_type_arguments.iter() {
-                                if !generic_type_argument.trait_constraints.is_empty() {
+                            for type_argument in type_arguments.iter() {
+                                if !type_argument.trait_constraints.is_empty() {
                                     errors.push(CompileError::Internal(
                                         "Where clauses are not supported yet.",
-                                        generic_type_argument.name_ident.span().clone(),
+                                        type_argument.name_ident.span().clone(),
                                     ));
                                     break;
                                 }
@@ -481,9 +481,9 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
-                                let mut generic_type_arguments = generic_type_arguments.clone();
+                                let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut generic_type_arguments);
+                                fn_decl.type_parameters.append(&mut type_arguments);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 
@@ -573,7 +573,7 @@ impl TypedAstNode {
                             });
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
-                                type_parameters: decl.type_parameters.clone(),
+                                generic_type_parameters: decl.type_parameters.clone(),
                                 fields,
                                 visibility: decl.visibility,
                                 type_id,

@@ -218,7 +218,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        let mut fn_decl = fn_decl.replace_self_types(self_type_id);
+        let fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
         let ix_of_thing_to_remove = match function_checklist
             .iter()

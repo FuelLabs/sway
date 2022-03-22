@@ -281,12 +281,10 @@ impl Dependencies {
                 }),
             Declaration::ImplSelf(ImplSelf {
                 type_implementing_for,
-                generic_type_arguments,
                 functions,
                 ..
             }) => self
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_traits(generic_type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),

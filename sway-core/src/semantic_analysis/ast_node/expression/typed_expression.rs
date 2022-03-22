@@ -1105,7 +1105,7 @@ impl TypedExpression {
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let new_decl = if decl.type_parameters.is_empty() {
+        let new_decl = if decl.generic_type_parameters.is_empty() {
             decl
         } else {
             decl.monomorphize(&module)

@@ -6,7 +6,7 @@ struct DoubleIdentity<T, F> {
   third: u64
 }
 
-impl DoubleIdentity<T, F> {
+impl<T, F> DoubleIdentity<T, F> {
   fn new(x: T, y: F) -> DoubleIdentity<T, F> {
     DoubleIdentity {
       first: x,
@@ -77,6 +77,12 @@ fn main() -> u32 {
   let i = crazy(7u8, 10u8);
   let j = 10u8 + 11u8;
   //let k = d.add();
+
+  let z: DoubleIdentity<bool, bool> = DoubleIdentity {
+    first: 4u64,
+    second: false,
+    third: 5u64
+  };
 
   b.get_first()
 }

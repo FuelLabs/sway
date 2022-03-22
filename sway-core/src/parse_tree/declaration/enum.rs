@@ -71,13 +71,13 @@ impl EnumDeclaration {
         decl_inner: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let path = config.map(|c| c.path());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
-            path: path.clone(),
+            path,
         };
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
         let inner = decl_inner.into_inner();
         let mut visibility = Visibility::Private;
         let mut enum_name = None;

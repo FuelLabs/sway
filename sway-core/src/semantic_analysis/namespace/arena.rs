@@ -634,10 +634,13 @@ impl NamespaceWrapper for NamespaceRef {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match ty {
-            TypeInfo::Custom { ref name, .. } => {
+            TypeInfo::Custom {
+                ref name,
+                type_args,
+            } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        if !decl.type_parameters.is_empty() {
+                        if !decl.generic_type_parameters.is_empty() {
                             let new_decl = decl.monomorphize(self);
                             new_decl.type_id
                         } else {
