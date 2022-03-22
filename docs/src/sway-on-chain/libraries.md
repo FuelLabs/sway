@@ -46,7 +46,7 @@ license = "Apache-2.0"
 name = "lib-std"
 
 [dependencies]
-"core" = { git = "http://github.com/FuelLabs/sway-lib-core" }
+"core" = { git = "https://github.com/FuelLabs/sway-lib-core" }
 ```
 
 which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:

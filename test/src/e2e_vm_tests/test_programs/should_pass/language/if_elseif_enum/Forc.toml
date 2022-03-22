@@ -6,4 +6,4 @@ name = "if_elseif_enum"
 
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
