@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "tuple_desugaring"
+entry = "main.sw"
+
+[dependencies]
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
+

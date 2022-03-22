@@ -1,0 +1,8 @@
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "match_expressions_enums"
+entry = "main.sw"
+
+[dependencies]
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }

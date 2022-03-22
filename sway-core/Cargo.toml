@@ -17,6 +17,7 @@ derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
 fuel-asm = "0.2"
+fuel-crypto = "0.4.0"
 fuel-vm = "0.5"
 hex = { version = "0.4", optional = true }
 itertools = "0.10.3"
@@ -32,6 +33,7 @@ sha2 = "0.9"
 smallvec = "1.7"
 sway-ir = { version = "0.6.1", path = "../sway-ir" }
 sway-types = { version = "0.6.1", path = "../sway-types" }
+sway-utils = { version = "0.6.1", path = "../sway-utils" }
 generational-arena = "0.2"
 thiserror = "1.0"
 

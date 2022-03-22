@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lspower::lsp::{
+use tower_lsp::lsp_types::{
     Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
 };
 

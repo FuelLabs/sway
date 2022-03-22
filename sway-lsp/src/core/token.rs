@@ -3,9 +3,9 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use lspower::lsp::{Position, Range};
 use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
 use sway_types::{ident::Ident, span::Span};
+use tower_lsp::lsp_types::{Position, Range};
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -184,7 +184,7 @@ fn get_range_from_span(span: &Span) -> Range {
     let start_character = start.1 as u32 - 1;
 
     let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 2;
+    let end_character = end.1 as u32 - 1;
 
     Range {
         start: Position::new(start_line, start_character),

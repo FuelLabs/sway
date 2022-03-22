@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use fuel_crypto::Hasher;
+use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
 
 use crate::{
@@ -8,7 +9,7 @@ use crate::{
     type_engine::*,
 };
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, state::StateIndex};
 
 use sway_ir::*;
 
@@ -202,6 +203,7 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
             | TypedDeclaration::Reassignment(_)
+            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::ErrorRecovery => (),
@@ -215,7 +217,7 @@ fn compile_declarations(
 #[derive(Clone, Default)]
 struct StructSymbolMap {
     aggregate_names: HashMap<String, Aggregate>,
-    aggregate_symbols: HashMap<Aggregate, HashMap<String, u64>>,
+    aggregate_symbols: HashMap<Aggregate, BTreeMap<String, u64>>,
 }
 
 impl StructSymbolMap {
@@ -223,7 +225,7 @@ impl StructSymbolMap {
         &mut self,
         name: String,
         aggregate: Aggregate,
-        symbols: Option<HashMap<String, u64>>,
+        symbols: Option<BTreeMap<String, u64>>,
     ) -> Result<(), String> {
         match self.aggregate_names.insert(name, aggregate) {
             None => Ok(()),
@@ -276,7 +278,7 @@ fn create_struct_aggregate(
     struct_names.add_aggregate_symbols(
         name,
         aggregate,
-        Some(HashMap::from_iter(
+        Some(BTreeMap::from_iter(
             syms.into_iter()
                 .enumerate()
                 .map(|(n, sym)| (sym.to_string(), n as u64)),
@@ -490,6 +492,11 @@ struct FnCompiler {
     type_analyzer: TypeAnalyzer,
 }
 
+pub enum StateAccessType {
+    Read,
+    Write,
+}
+
 impl FnCompiler {
     fn new(
         context: &mut Context,
@@ -546,6 +553,14 @@ impl FnCompiler {
                         TypedDeclaration::Reassignment(tr) => {
                             self.compile_reassignment(context, tr, span_md_idx)
                         }
+                        TypedDeclaration::StorageReassignment(tr) => self
+                            .compile_storage_reassignment(
+                                context,
+                                &tr.fields,
+                                &tr.ix,
+                                &tr.rhs,
+                                span_md_idx,
+                            ),
                         TypedDeclaration::ImplTrait { span, .. } => {
                             // XXX What if I ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
@@ -670,6 +685,10 @@ impl FnCompiler {
             TypedExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
+            }
+            TypedExpressionVariant::StorageAccess(access) => {
+                let span_md_idx = MetadataIndex::from_span(context, &access.span());
+                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
             TypedExpressionVariant::SizeOf { variant } => {
                 match variant {
@@ -1139,44 +1158,15 @@ impl FnCompiler {
                 .ins(context)
                 .store(ptr_val, reassign_val, span_md_idx);
         } else {
-            // An aggregate.  Iterate over the field names from the left hand side and collect
-            // field indices.
-            let field_idcs = ast_reassignment.lhs[1..]
-                .iter()
-                .fold(
-                    Ok((Vec::new(), *ptr.get_type(context))),
-                    |acc, field_name| {
-                        // Make sure we have an aggregate to index into.
-                        acc.and_then(|(mut fld_idcs, ty)| match ty {
-                            Type::Struct(aggregate) => {
-                                // Get the field index and also its type for the next iteration.
-                                match self
-                                    .struct_names
-                                    .get_aggregate_index(&aggregate, field_name.name.as_str())
-                                {
-                                    None => Err(format!(
-                                        "Unknown field name {} for struct ???",
-                                        field_name.name.as_str()
-                                    )),
-                                    Some(field_idx) => {
-                                        let field_type = context.aggregates[aggregate.0]
-                                            .field_types()
-                                            [field_idx as usize];
-
-                                        // Save the field index.
-                                        fld_idcs.push(field_idx);
-                                        Ok((fld_idcs, field_type))
-                                    }
-                                }
-                            }
-                            _otherwise => {
-                                Err("Reassignment with multiple accessors to non-aggregate.".into())
-                            }
-                        })
-                    },
-                )?
-                .0;
-
+            // An aggregate.
+            let field_idcs = self.get_indices_for_struct_access(
+                context,
+                *ptr.get_type(context),
+                &ast_reassignment.lhs[1..]
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<Ident>>(),
+            )?;
             let ty = match ptr.get_type(context) {
                 Type::Struct(aggregate) => *aggregate,
                 _otherwise => {
@@ -1201,6 +1191,57 @@ impl FnCompiler {
         // This shouldn't really return a value, it doesn't make sense to return the `store` or
         // `insert_value` instruction, but we need to return something at this stage.
         Ok(reassign_val)
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_storage_reassignment(
+        &mut self,
+        context: &mut Context,
+        fields: &[TypeCheckedStorageReassignDescriptor],
+        ix: &StateIndex,
+        rhs: &TypedExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        // Compile the RHS into a value
+        let rhs = self.compile_expression(context, rhs.clone())?;
+
+        // Get the type of the storage field that is being accessed
+        let storage_field_type = convert_resolved_typeid_no_span(
+            context,
+            &mut self.struct_names,
+            &fields.first().expect("guaranteed by grammar").r#type,
+        )?;
+
+        // Get the type of the access which can be a subfield
+        let access_type = convert_resolved_typeid_no_span(
+            context,
+            &mut self.struct_names,
+            &fields.last().expect("guaranteed by grammar").r#type,
+        )?;
+
+        // Get the list of indices used to access the storage field. This will be empty
+        // if the storage field type is not a struct.
+        let field_idcs = self.get_indices_for_struct_access(
+            context,
+            storage_field_type,
+            &fields[1..]
+                .iter()
+                .map(|x| x.name.clone())
+                .collect::<Vec<Ident>>(),
+        )?;
+
+        // Do the actual work. This is a recursive function because we want to drill down
+        // to store each primitive type in the storage field in its own storage slot.
+        self.compile_storage_read_or_write(
+            context,
+            &StateAccessType::Write,
+            ix,
+            field_idcs,
+            &access_type,
+            &Some(rhs),
+            span_md_idx,
+        )
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1514,6 +1555,53 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    fn compile_storage_access(
+        &mut self,
+        context: &mut Context,
+        fields: &[TypeCheckedStorageAccessDescriptor],
+        ix: &StateIndex,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        // Get the type of the storage field that is being accessed
+        let storage_field_type = convert_resolved_typeid_no_span(
+            context,
+            &mut self.struct_names,
+            &fields.first().expect("guaranteed by grammar").r#type,
+        )?;
+
+        // Get the type of the access which can be a subfield
+        let access_type = convert_resolved_typeid_no_span(
+            context,
+            &mut self.struct_names,
+            &fields.last().expect("guaranteed by grammar").r#type,
+        )?;
+
+        // Get the list of indices used to access the storage field. This will be empty
+        // if the storage field type is not a struct.
+        let field_idcs = self.get_indices_for_struct_access(
+            context,
+            storage_field_type,
+            &fields[1..]
+                .iter()
+                .map(|x| x.name.clone())
+                .collect::<Vec<Ident>>(),
+        )?;
+
+        // Do the actual work. This is a recursive function because we want to drill down
+        // to load each primitive type in the storage field in its own storage slot.
+        self.compile_storage_read_or_write(
+            context,
+            &StateAccessType::Read,
+            ix,
+            field_idcs,
+            &access_type,
+            &None,
+            span_md_idx,
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
     fn compile_asm_expr(
         &mut self,
         context: &mut Context,
@@ -1568,6 +1656,250 @@ impl FnCompiler {
             returns,
             whole_block_span_md_idx,
         ))
+    }
+
+    // -------------------------------------------------------------------------------------------------
+    // Utils
+
+    #[allow(clippy::too_many_arguments)]
+    fn compile_storage_read_or_write(
+        &mut self,
+        context: &mut Context,
+        access_type: &StateAccessType,
+        ix: &StateIndex,
+        indices: Vec<u64>,
+        r#type: &Type,
+        rhs: &Option<Value>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        Ok(match r#type {
+            Type::Struct(aggregate) => {
+                let mut struct_val =
+                    Constant::get_undef(context, Type::Struct(*aggregate), span_md_idx);
+
+                for (_, aggregate_index) in self
+                    .struct_names
+                    .aggregate_symbols
+                    .get(aggregate)
+                    .ok_or("aggregate symbol not found")?
+                    .clone()
+                {
+                    // Recurse.
+                    // The base case is for primitive types that fit in a single storage slot.
+                    let field_type =
+                        context.aggregates[aggregate.0].field_types()[aggregate_index as usize];
+                    let mut new_indices = indices.clone();
+                    new_indices.push(aggregate_index);
+
+                    match access_type {
+                        StateAccessType::Read => {
+                            let val_to_insert = self.compile_storage_read_or_write(
+                                context,
+                                access_type,
+                                ix,
+                                new_indices,
+                                &field_type,
+                                rhs,
+                                span_md_idx,
+                            )?;
+
+                            //  Insert the loaded value to the aggregate at the given index
+                            struct_val = self.current_block.ins(context).insert_value(
+                                struct_val,
+                                *aggregate,
+                                val_to_insert,
+                                vec![aggregate_index],
+                                span_md_idx,
+                            );
+                        }
+                        StateAccessType::Write => {
+                            // Extract the value from the aggregate at the given index
+                            let rhs = self.current_block.ins(context).extract_value(
+                                rhs.expect("expecting a rhs for write"),
+                                *aggregate,
+                                vec![aggregate_index],
+                                span_md_idx,
+                            );
+
+                            self.compile_storage_read_or_write(
+                                context,
+                                access_type,
+                                ix,
+                                new_indices,
+                                &field_type,
+                                &Some(rhs),
+                                span_md_idx,
+                            )?;
+                        }
+                    }
+                }
+                struct_val
+            }
+            Type::Bool | Type::Uint(_) | Type::B256 => {
+                // Calculate the storage location hash for the given field
+                let mut storage_slot_to_hash = format!(
+                    "{}{}",
+                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+                    ix.to_usize()
+                );
+                for ix in &indices {
+                    storage_slot_to_hash = format!("{}_{}", storage_slot_to_hash, ix);
+                }
+                let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+
+                // New name for the key
+                let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
+                for ix in &indices {
+                    key_name = format!("{}_{}", key_name, ix);
+                }
+                let alias_key_name = match self.symbol_map.get(key_name.as_str()) {
+                    None => key_name.clone(),
+                    Some(shadowed_key_name) => format!("{}_", shadowed_key_name),
+                };
+                self.symbol_map.insert(alias_key_name.clone(), key_name);
+
+                // Local pointer for the key
+                let key_ptr = self
+                    .function
+                    .new_local_ptr(context, alias_key_name, Type::B256, true, None)
+                    .map_err(|ir_error| ir_error.to_string())?;
+
+                // Const value for the key from the hash
+                let const_key = convert_literal_to_value(
+                    context,
+                    &Literal::B256(hashed_storage_slot.into()),
+                    span_md_idx,
+                );
+
+                // Convert the key pointer to a value using get_ptr
+                let key_ptr_ty = *key_ptr.get_type(context);
+                let key_ptr_val =
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
+
+                // Store the const hash value to the key pointer value
+                self.current_block
+                    .ins(context)
+                    .store(key_ptr_val, const_key, span_md_idx);
+
+                match r#type {
+                    Type::Uint(_) | Type::Bool => {
+                        // These types fit in a word. use state_store_word/state_load_word
+                        match access_type {
+                            StateAccessType::Read => self
+                                .current_block
+                                .ins(context)
+                                .state_load_word(key_ptr_val, span_md_idx),
+                            StateAccessType::Write => {
+                                self.current_block.ins(context).state_store_word(
+                                    rhs.expect("expecting a rhs for write"),
+                                    key_ptr_val,
+                                    span_md_idx,
+                                );
+                                rhs.expect("expecting a rhs for write")
+                            }
+                        }
+                    }
+                    Type::B256 => {
+                        // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
+                        // First, create a name for the value to load from or store to
+                        let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
+                        for ix in &indices {
+                            value_name = format!("{}_{}", value_name, ix);
+                        }
+                        let alias_value_name = match self.symbol_map.get(value_name.as_str()) {
+                            None => value_name.clone(),
+                            Some(shadowed_value_name) => format!("{}_", shadowed_value_name),
+                        };
+                        self.symbol_map.insert(value_name, alias_value_name.clone());
+
+                        // Local pointer to hold the B256
+                        let value_ptr = self
+                            .function
+                            .new_local_ptr(context, alias_value_name, *r#type, true, None)
+                            .map_err(|ir_error| ir_error.to_string())?;
+
+                        // Convert the local pointer created to a value using get_ptr
+                        let value_ptr_val = self.current_block.ins(context).get_ptr(
+                            value_ptr,
+                            *r#type,
+                            0,
+                            span_md_idx,
+                        );
+
+                        match access_type {
+                            StateAccessType::Read => {
+                                self.current_block.ins(context).state_load_quad_word(
+                                    value_ptr_val,
+                                    key_ptr_val,
+                                    span_md_idx,
+                                );
+                                value_ptr_val
+                            }
+                            StateAccessType::Write => {
+                                // Store the value to the local pointer created for rhs
+                                self.current_block.ins(context).store(
+                                    value_ptr_val,
+                                    rhs.expect("expecting a rhs for write"),
+                                    span_md_idx,
+                                );
+
+                                // Finally, just call state_load_quad_word/state_store_quad_word
+                                self.current_block.ins(context).state_store_quad_word(
+                                    value_ptr_val,
+                                    key_ptr_val,
+                                    span_md_idx,
+                                );
+                                rhs.expect("expecting a rhs for write")
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => unimplemented!("Other types are not yet supported in storage"),
+        })
+    }
+
+    fn get_indices_for_struct_access(
+        &self,
+        context: &Context,
+        ty: Type,
+        names: &[Ident],
+    ) -> Result<Vec<u64>, String> {
+        // Iterate over the field names from the left hand side and collect field indices.
+        Ok(names
+            .iter()
+            .fold(Ok((Vec::new(), ty)), |acc, field_name| {
+                // Make sure we have an aggregate to index into.
+                acc.and_then(|(mut fld_idcs, ty)| match ty {
+                    Type::Struct(aggregate) => {
+                        // Get the field index and also its type for the next iteration.
+                        match self
+                            .struct_names
+                            .get_aggregate_index(&aggregate, field_name.as_str())
+                        {
+                            None => Err(format!(
+                                "Unknown field name {} for struct ???",
+                                field_name.as_str()
+                            )),
+                            Some(field_idx) => {
+                                let field_type = context.aggregates[aggregate.0].field_types()
+                                    [field_idx as usize];
+
+                                // Save the field index.
+                                fld_idcs.push(field_idx);
+                                Ok((fld_idcs, field_type))
+                            }
+                        }
+                    }
+                    _otherwise => {
+                        Err("Reassignment with multiple accessors to non-aggregate.".into())
+                    }
+                })
+            })?
+            .0)
     }
 }
 

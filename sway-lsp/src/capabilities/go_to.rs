@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::core::{session::Session, token::Token};
-use lspower::lsp::{GotoDefinitionParams, GotoDefinitionResponse, Location, Url};
+use tower_lsp::lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Location, Url};
 
 pub fn go_to_definition(
     session: Arc<Session>,

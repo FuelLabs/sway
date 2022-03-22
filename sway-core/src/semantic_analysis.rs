@@ -4,7 +4,7 @@ mod namespace;
 mod node_dependencies;
 mod syntax_tree;
 pub(crate) mod type_check_arguments;
-pub(crate) use ast_node::{TypedAstNode, TypedAstNodeContent, TypedExpression};
+pub(crate) use ast_node::*;
 pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};
 pub use namespace::Namespace;
 pub use namespace::*;
