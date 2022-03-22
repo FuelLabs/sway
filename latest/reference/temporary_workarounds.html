@@ -171,8 +171,7 @@
 <h2 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h2>
 <p>The standard library is currently not distributed with <code>forc</code> if <a href="./installation.html#installing-from-cargo">installed via <code>cargo</code></a>. It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's <code>Forc.toml</code> file:</p>
 <pre><code class="language-toml">[dependencies]
-core = { git = &quot;https://github.com/FuelLabs/sway-lib-core&quot;, version = &quot;v0.0.1&quot; }
-std = { git = &quot;https://github.com/FuelLabs/sway-lib-std&quot;, version = &quot;v0.0.1&quot; }
+std = { git = &quot;https://github.com/FuelLabs/sway-lib-std&quot;, branch = &quot;master&quot; }
 </code></pre>
 <p>Note that the default <code>Forc.toml</code> generated with <code>forc init</code> already includes these lines, so no further action is necessary.</p>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
