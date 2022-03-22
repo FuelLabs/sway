@@ -11,6 +11,8 @@ pub use ident::*;
 pub mod span;
 pub use span::*;
 
+pub mod state;
+
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
 

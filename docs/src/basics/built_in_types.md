@@ -62,8 +62,6 @@ _Compound types_ are types that group multiple values into one type. In Sway, we
 
 ## Tuple Types
 
-_note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
-
 A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
 
 ```sway

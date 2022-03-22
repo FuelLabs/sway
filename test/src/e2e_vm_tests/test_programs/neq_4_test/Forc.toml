@@ -1,8 +1,0 @@
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-license = "Apache-2.0"
-name = "neq_4_test"
-entry = "main.sw"
-
-[dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }

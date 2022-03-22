@@ -1116,6 +1116,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-crypto"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5b455f5b4e59a5e772ba73744caf52a0835f564c0f82b4702c3bb23b2fe453"
+dependencies = [
+ "borrown",
+ "fuel-types",
+ "secp256k1",
+ "sha2",
+]
+
+[[package]]
 name = "fuel-gql-client"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1211,7 +1223,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ac5e893eae18d812a14cd1dfb996834705bcaa24eae1f3924c1677ee29d9014"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-types",
  "itertools",
  "rand 0.8.4",
@@ -1236,7 +1248,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ec55ff935848e476dbcfca3931723252b5c33ad90d126f49a886600a8a731a3"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-merkle",
  "fuel-storage",
  "fuel-tx",
@@ -1809,9 +1821,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.120"
+version = "0.2.121"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5c14e80759d0939d013e6ca49930e59fc53dd8e5009132f76240c179380c09"
+checksum = "efaa7b300f3b5fe8eb6bf21ce3895e1751d9665086af2d64b42f19701015ff4f"
 
 [[package]]
 name = "libgit2-sys"
@@ -1974,9 +1986,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ba42135c6a5917b9db9cd7b293e5409e1c6b041e6f9825e92e55a894c63b6f8"
+checksum = "52da4364ffb0e4fe33a9841a98a3f3014fb964045ce4f7a45a398243c8d6b0c9"
 dependencies = [
  "libc",
  "log",
@@ -3081,6 +3093,7 @@ dependencies = [
  "dirs 3.0.2",
  "either",
  "fuel-asm",
+ "fuel-crypto 0.4.0",
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-vm",
@@ -3096,6 +3109,7 @@ dependencies = [
  "smallvec",
  "sway-ir",
  "sway-types",
+ "sway-utils",
  "thiserror",
 ]
 
@@ -3123,8 +3137,10 @@ dependencies = [
 name = "sway-lsp"
 version = "0.6.1"
 dependencies = [
+ "async-trait",
  "dashmap 4.0.2",
  "forc-util",
+ "futures",
  "ropey",
  "serde_json",
  "sway-core",
@@ -3132,6 +3148,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "tokio",
+ "tower",
  "tower-lsp",
 ]
 
@@ -3140,7 +3157,7 @@ name = "sway-types"
 version = "0.6.1"
 dependencies = [
  "fuel-asm",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-tx",
@@ -3255,7 +3272,7 @@ name = "test-sig-gen-util"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "fuel-crypto",
+ "fuel-crypto 0.3.0",
  "fuel-tx",
  "fuel-vm",
  "hex",

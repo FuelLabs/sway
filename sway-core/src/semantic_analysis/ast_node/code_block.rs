@@ -10,6 +10,9 @@ pub(crate) struct TypedCodeBlock {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
+    pub(crate) fn deterministically_aborts(&self) -> bool {
+        self.contents.iter().any(|x| x.deterministically_aborts())
+    }
     pub fn span(&self) -> &Span {
         &self.whole_block_span
     }

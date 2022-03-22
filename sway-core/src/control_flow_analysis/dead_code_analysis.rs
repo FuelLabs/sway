@@ -10,7 +10,7 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop,
         },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -367,6 +367,15 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
+        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
+            &rhs.expression,
+            graph,
+            &[entry_node],
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            rhs.span.clone(),
+        ),
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
             graph,
@@ -973,6 +982,18 @@ fn connect_expression(
                 prefix.span.clone(),
             )?;
             Ok(prefix_idx)
+        }
+        StorageAccess(_fields) => {
+            // Enable the code below once the storage declaration is added to the namespace
+            /*let storage_node = graph.namespace.storage.get(&fields.field_name()).cloned();
+            let this_ix =
+                graph.add_node(format!("storage field access: {}", fields.field_name()).into());
+            for leaf in leaves {
+                storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
+                graph.add_edge(*leaf, this_ix, "".into());
+            }
+            Ok(vec![this_ix])*/
+            Ok(vec![])
         }
         SizeOf { variant } => match variant {
             SizeOfVariant::Type(_) => Ok(vec![]),

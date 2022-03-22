@@ -1,0 +1,8 @@
+[project]
+authors = ["Emily Herbert <emily.herbert@fuel.sh>"]
+license = "MIT"
+name = "match_expressions"
+entry = "main.sw"
+
+[dependencies]
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }

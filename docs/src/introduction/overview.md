@@ -85,8 +85,7 @@ license = "Apache-2.0"
 name = "wallet_contract"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
-std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
 ```
 
 Include the `wallet_lib` repo by adding the following line to the bottom of the file:
