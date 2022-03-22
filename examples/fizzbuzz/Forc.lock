@@ -1,16 +1,13 @@
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44'
 dependencies = []
 
 [[package]]
 name = 'fizzbuzz'
-dependencies = [
-    'core git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573',
-    'std git+https://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6',
-]
+dependencies = ['std git+https://github.com/FuelLabs/sway-lib-std?reference=master#aa36aea9362575c769781e7ab640d1d75dce13c8']
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
+source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#aa36aea9362575c769781e7ab640d1d75dce13c8'
+dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44']
