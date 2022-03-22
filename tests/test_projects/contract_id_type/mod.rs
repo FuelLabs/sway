@@ -7,7 +7,7 @@ use std::fs::read;
 
 #[tokio::test]
 async fn contract_id_eq_implementation() {
-    let bin = std::fs::read("test_projects/contract_id_type/out/debug/contract_id_type.bin");
+    let bin = read("test_projects/contract_id_type/out/debug/contract_id_type.bin");
     let client = Provider::launch(Config::local_node()).await.unwrap();
 
     let tx = Transaction::Script {
