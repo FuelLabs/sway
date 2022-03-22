@@ -30,8 +30,8 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ir = { version = ""0.7.0", path = "../sway-ir" }
-sway-types = { version = ""0.7.0", path = "../sway-types" }
+sway-ir = { version = "0.7.0", path = "../sway-ir" }
+sway-types = { version = "0.7.0", path = "../sway-types" }
 sway-utils = { version = "0.7.0", path = "../sway-utils" }
 generational-arena = "0.2"
 thiserror = "1.0"
