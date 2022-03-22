@@ -119,7 +119,7 @@ impl TypedFunctionDeclaration {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = check!(
+        let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
                 namespace,
@@ -143,6 +143,7 @@ impl TypedFunctionDeclaration {
             warnings,
             errors
         );
+        body.copy_types(&type_mapping);
 
         let parameters = parameters
             .into_iter()

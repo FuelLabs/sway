@@ -269,17 +269,12 @@ impl TypedStructField {
             components: self.r#type.generate_json_abi(),
         }
     }
+
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        let before = self.r#type;
         self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => insert_type(look_up_type_id_raw(self.r#type)),
         };
-        println!(
-            "\n{:?}\n\t->\t{:?}\n",
-            before.friendly_type_str(),
-            self.r#type.friendly_type_str()
-        );
     }
 }
 

@@ -163,7 +163,27 @@ impl Namespace {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
-    trait_map: HashMap<(TraitName, TypeInfo), HashMap<String, TypedFunctionDeclaration>>,
+    // This cannot be a HashMap because of how TypeInfo's are handled.
+    //
+    // In Rust, in general, a custom type should uphold the invariant
+    // that PartialEq and Hash produce consistent results. i.e. for
+    // two objects, their hash value is equal if and only if they are
+    // equal under the PartialEq trait.
+    //
+    // For TypeInfo, this means that if you have:
+    //
+    // ```ignore
+    // 1: u64
+    // 2: Ref(1)
+    // 3: Ref(1)
+    // ```
+    //
+    // 2 and 3 are equal under PartialEq and their hashes are the same
+    // value.
+    trait_map: Vec<(
+        (TraitName, TypeInfo),
+        HashMap<String, TypedFunctionDeclaration>,
+    )>,
 }
 
 impl TraitMap {
@@ -173,33 +193,15 @@ impl TraitMap {
         type_implementing_for: TypeInfo,
         methods: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let errors = vec![];
-        match self
-            .trait_map
-            .get_mut(&(trait_name.clone(), type_implementing_for.clone()))
-        {
-            Some(existing_methods) => {
-                for method in methods.into_iter() {
-                    let method_name = method.name.as_str().to_string();
-                    if existing_methods.insert(method_name, method).is_some() {
-                        warnings.push(CompileWarning {
-                            warning_content: Warning::OverridingTraitImplementation,
-                            span: trait_name.span(),
-                        });
-                    }
-                }
-            }
-            None => {
-                let mut methods_map = HashMap::new();
-                for method in methods.into_iter() {
-                    let method_name = method.name.as_str().to_string();
-                    methods_map.insert(method_name, method);
-                }
-                self.trait_map
-                    .insert((trait_name, type_implementing_for), methods_map);
-            }
-        };
+        let mut methods_map = HashMap::new();
+        for method in methods.into_iter() {
+            let method_name = method.name.as_str().to_string();
+            methods_map.insert(method_name, method);
+        }
+        self.trait_map
+            .push(((trait_name, type_implementing_for), methods_map));
         ok((), warnings, errors)
     }
 

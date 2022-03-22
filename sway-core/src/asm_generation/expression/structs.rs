@@ -123,7 +123,6 @@ pub(crate) fn get_contiguous_memory_layout<N: Clone>(
     let mut errors = vec![];
     for (field, span, name) in fields_with_names {
         let ty = look_up_type_id(*field);
-        //println!("{:?}", ty.friendly_type_str());
         let stack_size = match ty.size_in_words(span) {
             Ok(o) => o,
             Err(e) => {
@@ -326,7 +325,6 @@ pub(crate) fn convert_struct_expression_to_asm(
         struct_name.as_str()
     ))];
 
-    //println!("\n{:?}: {:#?}\n", struct_name.as_str().to_string(), fields);
     convert_fields_to_asm(
         &fields,
         struct_beginning_pointer,
