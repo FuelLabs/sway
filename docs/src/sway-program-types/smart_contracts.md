@@ -54,7 +54,7 @@ we are declaring another ABI method, this time called `send_funds`. It takes two
 
 Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.
 
-Implementing an ABI for a contract is accomplished with _impl <ABI name> for Contract_ syntax. The _for Contract_ syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use _impl Foo_ syntax.
+Implementing an ABI for a contract is accomplished with `impl <ABI name> for Contract` syntax. The `for Contract` syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use `impl Foo` syntax.
 
 ```sway
 impl Wallet for Contract {
