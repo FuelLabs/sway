@@ -3137,7 +3137,9 @@ dependencies = [
 name = "sway-lsp"
 version = "0.6.1"
 dependencies = [
+ "async-trait",
  "dashmap 4.0.2",
+ "futures",
  "ropey",
  "serde_json",
  "sway-core",
@@ -3145,6 +3147,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "tokio",
+ "tower",
  "tower-lsp",
 ]
 
