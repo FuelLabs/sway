@@ -30,9 +30,9 @@ pub struct Namespace {
     // order.
     modules: BTreeMap<ModuleName, NamespaceRef>,
     use_synonyms: HashMap<Ident, Vec<Ident>>,
-    // Represents an alternative name for a symbol.
+    /// Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
-    // If there is a storage declaration (which are only valid in contracts), store it here.
+    /// If there is a storage declaration (which are only valid in contracts), store it here.
     declared_storage: Option<TypedStorageDeclaration>,
 }
 
