@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::look_up_type_id;
 use crate::{
     error::*, parse_tree::Scrutinee, parse_tree::*, type_engine::IntegerBits, AstNode,
     AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
@@ -498,10 +499,15 @@ impl Dependencies {
     }
 
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
-        if let TypeInfo::Custom { name } = type_info {
-            self.deps.insert(DependentSymbol::Symbol(name.to_string()));
+        match type_info {
+            TypeInfo::Custom { name, type_args } => {
+                self.deps.insert(DependentSymbol::Symbol(name.to_string()));
+                self.gather_from_iter(type_args.iter(), |deps, type_arg| {
+                    deps.gather_from_typeinfo(&look_up_type_id(*type_arg))
+                })
+            }
+            _ => self,
         }
-        self
     }
 
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
@@ -607,7 +613,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name } => name.as_str(),
+        TypeInfo::Custom { name, .. } => name.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",

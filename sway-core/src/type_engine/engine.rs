@@ -121,11 +121,10 @@ impl Engine {
                     fields: b_fields, ..
                 },
             ) if {
-                let a_fields = a_fields.iter().map(|x| x.r#type);
-                let b_fields = b_fields.iter().map(|x| x.r#type);
-
-                let mut zipped = a_fields.zip(b_fields);
-                zipped.all(|(a, b)| self.unify(a, b, span, help_text.clone()).is_ok())
+                a_fields.iter().zip(b_fields.iter()).all(|(a, b)| {
+                    self.unify(a.r#type, b.r#type, span, help_text.clone())
+                        .is_ok()
+                })
             } =>
             {
                 Ok(vec![])

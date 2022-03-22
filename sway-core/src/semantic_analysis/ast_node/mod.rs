@@ -1158,7 +1158,7 @@ fn type_check_trait_methods(
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Custom { ref name } = param.r#type {
+            if let TypeInfo::Custom { ref name, .. } = param.r#type {
                 generic_params_buf_for_error_message.push(name.to_string());
             }
         }
@@ -1174,7 +1174,10 @@ fn type_check_trait_methods(
                     |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
-                    if let TypeInfo::Custom { name: this_name } = look_up_type_id(*type_id) {
+                    if let TypeInfo::Custom {
+                        name: this_name, ..
+                    } = look_up_type_id(*type_id)
+                    {
                         this_name == name.clone()
                     } else {
                         false

@@ -164,7 +164,7 @@ impl Namespace {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     // This cannot be a HashMap because of how TypeInfo's are handled.
-    // 
+    //
     // In Rust, in general, a custom type should uphold the invariant
     // that PartialEq and Hash produce consistent results. i.e. for
     // two objects, their hash value is equal if and only if they are

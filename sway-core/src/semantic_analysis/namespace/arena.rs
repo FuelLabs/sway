@@ -146,7 +146,7 @@ impl NamespaceWrapper for NamespaceRef {
             self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
         warnings.append(&mut type_fields.warnings);
         errors.append(&mut type_fields.errors);
-        let (mut fields, struct_name) = match type_fields.value {
+        let (mut fields, struct_name): (Vec<TypedStructField>, Ident) = match type_fields.value {
             // if it is missing, the error message comes from within the above method
             // so we don't need to re-add it here
             None => return err(warnings, errors),
@@ -193,6 +193,7 @@ impl NamespaceWrapper for NamespaceRef {
         }
         ok((symbol, parent_rover), warnings, errors)
     }
+
     fn get_tuple_elems(
         &self,
         ty: TypeId,
@@ -633,7 +634,7 @@ impl NamespaceWrapper for NamespaceRef {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match ty {
-            TypeInfo::Custom { ref name } => {
+            TypeInfo::Custom { ref name, .. } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
@@ -684,7 +685,7 @@ impl NamespaceWrapper for NamespaceRef {
         let mut warnings = vec![];
         let mut errors = vec![];
         match ty {
-            TypeInfo::Custom { name } => {
+            TypeInfo::Custom { name, .. } => {
                 match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         decl.type_id
