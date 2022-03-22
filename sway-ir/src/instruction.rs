@@ -37,13 +37,10 @@ pub enum Instruction {
     },
     /// A contract call with a list of arguments
     ContractCall {
-        name: String,
-        selector: [u8; 4],
-        addr: Value,
+        params: Value,
         coins: Value,
         asset_id: Value,
         gas: Value,
-        args: Vec<Value>,
     },
     /// Reading a specific element from an array.
     ExtractElement {
@@ -83,6 +80,8 @@ pub enum Instruction {
     Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
+    /// Reads a special register in the VM.
+    ReadRegister{ reg_name: String },
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
@@ -95,7 +94,6 @@ pub enum Instruction {
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
     StateStoreWord { stored_val: Value, key: Value },
-
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
 }
@@ -109,7 +107,7 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
-            Instruction::ContractCall { .. } => None, // TODO fixed this
+            Instruction::ContractCall { .. } => None, // TODO fix this
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::Load(ptr_val) => {
@@ -129,6 +127,7 @@ impl Instruction {
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
+            Instruction::ReadRegister { .. } => None,
             Instruction::Ret(..) => None,
 
             // These write values but don't return one.  If we're explicit we could return Unit.
@@ -192,13 +191,13 @@ impl Instruction {
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
             Instruction::ContractCall {
-                args,
+                params,
                 coins,
                 asset_id,
                 gas,
                 ..
             } => {
-                args.iter_mut().for_each(replace);
+                replace(params);
                 replace(coins);
                 replace(asset_id);
                 replace(gas);
@@ -230,6 +229,7 @@ impl Instruction {
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
+            Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
@@ -395,25 +395,19 @@ impl<'a> InstructionInserter<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn contract_call(
         self,
-        name: String, // Name of the contract method
-        selector: [u8; 4],
-        addr: Value,     // b256 address of the deployed contract
+        params: Value,
         coins: Value,    // amount of coins to forward
         asset_id: Value, // b256 asset ID of the coint being forwarded
         gas: Value,      // amount of gas to forward
-        args: &[Value],  // user arguments
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let contract_call_val = Value::new_instruction(
             self.context,
             Instruction::ContractCall {
-                name,
-                selector,
-                addr,
+                params,
                 coins,
                 asset_id,
                 gas,
-                args: args.to_vec(),
             },
             span_md_idx,
         );
@@ -550,6 +544,24 @@ impl<'a> InstructionInserter<'a> {
         let nop_val = Value::new_instruction(self.context, Instruction::Nop, None);
         self.context.blocks[self.block.0].instructions.push(nop_val);
         nop_val
+    }
+
+    pub fn read_register(
+        self,
+        reg_name: String,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let read_register_val = Value::new_instruction(
+            self.context,
+            Instruction::ReadRegister {
+                reg_name
+            },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(read_register_val);
+        read_register_val 
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {

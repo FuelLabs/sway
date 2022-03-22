@@ -8,7 +8,6 @@ pub const LANGUAGE_NAME: &str = "Sway";
 pub const VM_WORD_SIZE: u64 = 8;
 
 pub const CONTRACT_CALL_GAS_PARAMETER_NAME: &str = "gas";
-pub const CONTRACT_CALL_GAS_PARAMETER_DEFAULT_VALUE: u64 = std::u64::MAX; // represents $cgas
 
 pub const CONTRACT_CALL_COINS_PARAMETER_NAME: &str = "coins";
 pub const CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE: u64 = 0;
