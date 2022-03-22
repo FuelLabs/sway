@@ -1,0 +1,9 @@
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "match_expressions_non_exhaustive"
+entry = "main.sw"
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std", branch = "master" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }

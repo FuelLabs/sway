@@ -184,7 +184,7 @@ fn get_range_from_span(span: &Span) -> Range {
     let start_character = start.1 as u32 - 1;
 
     let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 2;
+    let end_character = end.1 as u32 - 1;
 
     Range {
         start: Position::new(start_line, start_character),

@@ -3099,6 +3099,7 @@ dependencies = [
  "fuel-vm",
  "generational-arena",
  "hex",
+ "itertools",
  "lazy_static",
  "nanoid",
  "petgraph",
@@ -3137,7 +3138,9 @@ dependencies = [
 name = "sway-lsp"
 version = "0.7.0"
 dependencies = [
+ "async-trait",
  "dashmap 4.0.2",
+ "futures",
  "ropey",
  "serde_json",
  "sway-core",
@@ -3145,6 +3148,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "tokio",
+ "tower",
  "tower-lsp",
 ]
 

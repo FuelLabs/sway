@@ -590,19 +590,22 @@ fn parse_root_from_pairs(
         for pair in input {
             match pair.as_rule() {
                 Rule::non_var_decl => {
-                    let decl = check!(
+                    let span = span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    };
+                    let decls = check!(
                         Declaration::parse_non_var_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
                     );
-                    parse_tree.push(AstNode {
-                        content: AstNodeContent::Declaration(decl),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    });
+                    for decl in decls.into_iter() {
+                        parse_tree.push(AstNode {
+                            content: AstNodeContent::Declaration(decl),
+                            span: span.clone(),
+                        });
+                    }
                 }
                 Rule::use_statement => {
                     let stmt = check!(
