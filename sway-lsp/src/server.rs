@@ -315,7 +315,7 @@ fn main() {
         assert_eq!(response, Ok(None));
     }
 
-    async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &String) {
+    async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &str) {
         let language_id = "sway";
         let params = json!({
             "textDocument": {
@@ -426,7 +426,7 @@ fn main() {
         let uri = load_test_sway_file(SWAY_PROGRAM);
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &SWAY_PROGRAM.to_string()).await;
+        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
@@ -448,7 +448,7 @@ fn main() {
         let uri = load_test_sway_file(SWAY_PROGRAM);
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &SWAY_PROGRAM.to_string()).await;
+        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
 
         // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;
@@ -479,22 +479,20 @@ fn main() {
         fn main() {
         
         }
-        "#
-        .into();
+        "#;
 
         // This just an example of the changes made
         // In reality, the only text that needs to be sent to the language server
         // is "let x = 0.0;"
-        let _new_text: String = r#"script;
+        let _new_text = r#"script;
 
         fn main() {
             let x = 0.0;
         }
-        "#
-        .into();
+        "#;
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &text).await;
+        did_open_notification(&mut service, &uri, text).await;
 
         // send "textDocument/didChange" notification for `uri`
         let params = json!({
