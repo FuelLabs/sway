@@ -256,6 +256,25 @@ impl TypedExpression {
                 },
                 span,
             ),
+            Expression::MatchExp {
+                if_exp,
+                span,
+                cases_covered,
+            } => Self::type_check_match_expression(
+                TypeCheckArguments {
+                    checkee: (*if_exp, cases_covered),
+                    return_type_annotation: type_annotation,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    mode: Mode::NonAbi,
+                    help_text: Default::default(),
+                    opts,
+                },
+                span,
+            ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
                 span,
@@ -470,6 +489,7 @@ impl TypedExpression {
                 },
                 span,
             ),
+            /*
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented type checking for expression",
@@ -479,6 +499,7 @@ impl TypedExpression {
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
             }
+            */
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -575,7 +596,7 @@ impl TypedExpression {
         ok(exp, vec![], vec![])
     }
 
-    fn type_check_variable_expression(
+    pub(crate) fn type_check_variable_expression(
         name: Ident,
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
@@ -1169,6 +1190,66 @@ impl TypedExpression {
             span,
         };
         ok(exp, warnings, errors)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn type_check_match_expression(
+        arguments: TypeCheckArguments<'_, (Expression, Vec<MatchCondition>)>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let TypeCheckArguments {
+            checkee: (if_exp, cases_covered),
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            self_type,
+            build_config,
+            dead_code_graph,
+            opts,
+            ..
+        } = arguments;
+        let args = TypeCheckArguments {
+            checkee: if_exp.clone(),
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            help_text: Default::default(),
+            self_type,
+            build_config,
+            dead_code_graph,
+            mode: Mode::NonAbi,
+            opts,
+        };
+        let typed_if_exp = check!(
+            TypedExpression::type_check(args),
+            error_recovery_expr(if_exp.span()),
+            warnings,
+            errors
+        );
+        let (witness_report, arms_reachability) = check!(
+            check_match_expression_usefulness(cases_covered, span.clone()),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for (arm, reachable) in arms_reachability.into_iter() {
+            if !reachable {
+                warnings.push(CompileWarning {
+                    span: arm.span(),
+                    warning_content: Warning::MatchExpressionUnreachableArm,
+                });
+            }
+        }
+        if witness_report.has_witnesses() {
+            errors.push(CompileError::MatchExpressionNonExhaustive {
+                missing_patterns: format!("{}", witness_report),
+                span,
+            });
+            return err(warnings, errors);
+        }
+        ok(typed_if_exp, warnings, errors)
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -3099,6 +3099,7 @@ dependencies = [
  "fuel-vm",
  "generational-arena",
  "hex",
+ "itertools",
  "lazy_static",
  "nanoid",
  "petgraph",
