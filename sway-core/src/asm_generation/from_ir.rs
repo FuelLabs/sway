@@ -251,9 +251,8 @@ impl<'ir> AsmBuilder<'ir> {
         let mut arg_word_offset = 0;
         for (name, val) in function.args_iter(self.context) {
             let current_arg_reg = self.value_to_register(val);
-            let arg_type_size_bytes = self
-                .type_analyzer
-                .ir_type_size_in_bytes(self.context, &val.get_type(self.context).unwrap());
+            let arg_type_size_bytes =
+                ir_type_size_in_bytes(self.context, &val.get_type(self.context).unwrap());
             if arg_type_size_bytes <= 8 {
                 if arg_word_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
                     let offs_reg = self.reg_seqr.next();
@@ -498,12 +497,7 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::ReadRegister { reg_name } => check!(
-                    self.compile_read_register(instr_val, reg_name),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
                 Instruction::StateLoadQuadWord { load_val, key } => check!(
                     self.compile_state_access_quad_word(
@@ -1337,42 +1331,34 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn compile_read_register(&mut self, instr_val: &Value, reg_name: &str) -> CompileResult<()> {
+    fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LW(
                 instr_reg.clone(),
-                VirtualRegister::Constant(match reg_name {
-                    "zero" => ConstantRegister::Zero,
-                    "one" => ConstantRegister::One,
-                    "of" => ConstantRegister::Overflow,
-                    "pc" => ConstantRegister::ProgramCounter,
-                    "ssp" => ConstantRegister::StackStartPointer,
-                    "sp" => ConstantRegister::StackPointer,
-                    "fp" => ConstantRegister::FramePointer,
-                    "hp" => ConstantRegister::HeapPointer,
-                    "err" => ConstantRegister::Error,
-                    "ggas" => ConstantRegister::GlobalGas,
-                    "cgas" => ConstantRegister::ContextGas,
-                    "bal" => ConstantRegister::Balance,
-                    "is" => ConstantRegister::InstructionStart,
-                    "ret" => ConstantRegister::ReturnValue,
-                    "retl" => ConstantRegister::ReturnLength,
-                    "flag" => ConstantRegister::Flags,
-                    _ => unreachable!(
-                        "Unrecognized special register. This should have been \
-                                          caught in the verifier"
-                    ),
+                VirtualRegister::Constant(match reg {
+                    sway_ir::Register::Of => ConstantRegister::Overflow,
+                    sway_ir::Register::Pc => ConstantRegister::ProgramCounter,
+                    sway_ir::Register::Ssp => ConstantRegister::StackStartPointer,
+                    sway_ir::Register::Sp => ConstantRegister::StackPointer,
+                    sway_ir::Register::Fp => ConstantRegister::FramePointer,
+                    sway_ir::Register::Hp => ConstantRegister::HeapPointer,
+                    sway_ir::Register::Error => ConstantRegister::Error,
+                    sway_ir::Register::Ggas => ConstantRegister::GlobalGas,
+                    sway_ir::Register::Cgas => ConstantRegister::ContextGas,
+                    sway_ir::Register::Bal => ConstantRegister::Balance,
+                    sway_ir::Register::Is => ConstantRegister::InstructionStart,
+                    sway_ir::Register::Ret => ConstantRegister::ReturnValue,
+                    sway_ir::Register::Retl => ConstantRegister::ReturnLength,
+                    sway_ir::Register::Flag => ConstantRegister::Flags,
                 }),
                 VirtualImmediate12 { value: 0 },
             )),
-            comment: format!("loading ${} into abi function", reg_name),
+            comment: "loading register into abi function".to_owned(),
             owning_span: instr_val.get_span(self.context),
         });
 
         self.reg_map.insert(*instr_val, instr_reg);
-
-        ok((), Vec::new(), Vec::new())
     }
 
     fn compile_ret(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
@@ -2172,14 +2158,6 @@ pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
             } else {
                 unreachable!("Wrong content for union.")
             }
-        }
-        Type::ContractCaller(_) => {
-            // We only store the address.
-            32
-        }
-        Type::Contract => {
-            // A Contract is a pseudo-type of no size.
-            0
         }
     }
 }

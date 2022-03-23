@@ -751,25 +751,11 @@ impl FnCompiler {
             .map(|val| val.get_type(context).unwrap())
             .collect::<Vec<_>>();
         let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
-        let user_args_struct_name = format!("{}{}", "args_struct_for_", ast_name);
-        self.struct_names.add_aggregate_symbols(
-            user_args_struct_name.clone(),
-            user_args_struct_aggregate,
-            None,
-        )?;
 
         // New local pointer for the struct to hold all user arguments
-        let alias_user_args_struct_local_name =
-            match self.symbol_map.get(user_args_struct_name.as_str()) {
-                None => user_args_struct_name.clone(),
-                Some(shadowed_user_args_struct_local_name) => {
-                    format!("{}_", shadowed_user_args_struct_local_name)
-                }
-            };
-        self.symbol_map.insert(
-            alias_user_args_struct_local_name.clone(),
-            user_args_struct_name,
-        );
+        let alias_user_args_struct_local_name = self
+            .lexical_map
+            .insert(format!("{}{}", "args_struct_for_", ast_name));
         let user_args_struct_ptr = self
             .function
             .new_local_ptr(
@@ -781,17 +767,14 @@ impl FnCompiler {
             )
             .map_err(|ir_error| ir_error.to_string())?;
 
-        // Convert the user_arg pointer to a value using get_ptr after casting to U64. This
-        // represents a pointer to the struct instead of the struct itself
-        let user_args_struct_ptr_val = self.current_block.ins(context).get_ptr(
-            user_args_struct_ptr,
-            Type::Uint(64),
-            0,
-            span_md_idx,
-        );
-
-        let user_args_struct_ptr_val = compiled_args.into_iter().enumerate().fold(
-            user_args_struct_ptr_val,
+        // Initialise each of the fields in the user args struct.
+        compiled_args.into_iter().enumerate().fold(
+            self.current_block.ins(context).get_ptr(
+                user_args_struct_ptr,
+                Type::Struct(user_args_struct_aggregate),
+                0,
+                span_md_idx,
+            ),
             |user_args_struct_ptr_val, (insert_idx, insert_val)| {
                 self.current_block.ins(context).insert_value(
                     user_args_struct_ptr_val,
@@ -809,11 +792,6 @@ impl FnCompiler {
             context,
             [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
         );
-        self.struct_names.add_aggregate_symbols(
-            format!("{}{}", "ra_struct_for_", ast_name),
-            ra_struct_aggregate,
-            None,
-        )?;
 
         let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
         let mut ra_struct_val =
@@ -845,11 +823,19 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        // Insert the pointer to the user args struct
+        // Insert the pointer to the user args struct.
+        //
+        // NOTE: Here we're inserting the original stack pointer, cast to u64.
+        let user_args_struct_addr_val = self.current_block.ins(context).get_ptr(
+            user_args_struct_ptr,
+            Type::Uint(64),
+            0,
+            span_md_idx,
+        );
         ra_struct_val = self.current_block.ins(context).insert_value(
             ra_struct_val,
             ra_struct_aggregate,
-            user_args_struct_ptr_val,
+            user_args_struct_addr_val,
             vec![2],
             span_md_idx,
         );
@@ -884,7 +870,7 @@ impl FnCompiler {
             None => self
                 .current_block
                 .ins(context)
-                .read_register("cgas".to_string(), span_md_idx),
+                .read_register(sway_ir::Register::Cgas, span_md_idx),
         };
 
         // Insert the contract_call instruction

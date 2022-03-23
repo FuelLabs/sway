@@ -27,6 +27,7 @@ pub enum IrError {
     VerifyCmpTypeMismatch(String, String),
     VerifyCmpUnknownTypes,
     VerifyConditionExprNotABool,
+    VerifyContractCallBadTypes(String),
     VerifyGetNonExistentPointer,
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
@@ -147,6 +148,12 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: Expression used for conditional is not a boolean."
+                )
+            }
+            IrError::VerifyContractCallBadTypes(arg_name) => {
+                write!(
+                    f,
+                    "Verification failed: Argument {arg_name} passed to contract call has the incorrect type."
                 )
             }
             IrError::VerifyGetNonExistentPointer => {

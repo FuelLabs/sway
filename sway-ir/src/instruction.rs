@@ -83,7 +83,7 @@ pub enum Instruction {
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
     /// Reads a special register in the VM.
-    ReadRegister { reg_name: String },
+    ReadRegister(Register),
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
@@ -107,6 +107,39 @@ pub enum Predicate {
     // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
 }
 
+/// Special registers in the Fuel Virtual Machine.
+#[derive(Debug, Clone, Copy)]
+pub enum Register {
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    Of,
+    /// The program counter. Memory address of the current instruction.
+    Pc,
+    /// Memory address of bottom of current writable stack area.
+    Ssp,
+    /// Memory address on top of current writable stack area (points to free memory).
+    Sp,
+    /// Memory address of beginning of current call frame.
+    Fp,
+    /// Memory address below the current bottom of the heap (points to free memory).
+    Hp,
+    /// Error codes for particular operations.
+    Error,
+    /// Remaining gas globally.
+    Ggas,
+    /// Remaining gas in the context.
+    Cgas,
+    /// Received balance for this context.
+    Bal,
+    /// Pointer to the start of the currently-executing code.
+    Is,
+    /// Return value or pointer.
+    Ret,
+    /// Return value length in bytes.
+    Retl,
+    /// Flags register.
+    Flag,
+}
+
 impl Instruction {
     /// Some [`Instruction`]s can return a value, but for some a return value doesn't make sense.
     ///
@@ -116,8 +149,8 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
-            Instruction::ContractCall { .. } => None, // TODO fix this
             Instruction::Cmp(..) => Some(Type::Bool),
+            Instruction::ContractCall { .. } => None, // TODO fix this
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::InsertElement { array, .. } => array.get_type(context),
@@ -129,6 +162,7 @@ impl Instruction {
                     None
                 }
             }
+            Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {
                 // Assuming each alt has the same type, we can take the first one. Note: `verify()`
@@ -142,7 +176,6 @@ impl Instruction {
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
-            Instruction::ReadRegister { .. } => None,
             Instruction::Ret(..) => None,
 
             // These write values but don't return one.  If we're explicit we could return Unit.
@@ -580,12 +613,9 @@ impl<'a> InstructionInserter<'a> {
         nop_val
     }
 
-    pub fn read_register(self, reg_name: String, span_md_idx: Option<MetadataIndex>) -> Value {
-        let read_register_val = Value::new_instruction(
-            self.context,
-            Instruction::ReadRegister { reg_name },
-            span_md_idx,
-        );
+    pub fn read_register(self, reg: Register, span_md_idx: Option<MetadataIndex>) -> Value {
+        let read_register_val =
+            Value::new_instruction(self.context, Instruction::ReadRegister(reg), span_md_idx);
         self.context.blocks[self.block.0]
             .instructions
             .push(read_register_val);

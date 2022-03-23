@@ -76,10 +76,6 @@ impl Type {
                 .field_types()
                 .iter()
                 .any(|field_ty| r.eq(context, field_ty)),
-
-            (Type::Contract, Type::Contract) => true,
-            (Type::ContractCaller(_), Type::ContractCaller(_)) => true,
-
             _ => false,
         }
     }

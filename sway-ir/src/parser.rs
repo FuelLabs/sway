@@ -231,10 +231,9 @@ mod ir_builder {
                 }
 
             rule op_read_register() -> IrAstOperation
-                = "read_register" _ reg_name:id() {
-                    IrAstOperation::ReadRegister(reg_name)
+                = "read_register" _ r:reg_name() {
+                    IrAstOperation::ReadRegister(r)
                 }
-
 
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
@@ -269,6 +268,11 @@ mod ir_builder {
             rule cmp_pred() -> String
                 = p:$("eq") _ {
                     p.to_string()
+                }
+
+            rule reg_name() -> String
+                = r:$("of" / "pc" / "ssp" / "sp" / "fp" / "hp" / "err" / "ggas" / "cgas" / "bal" / "is" / "ret" / "retl" / "flag") _ {
+                    r.to_string()
                 }
 
             rule asm_arg() -> (Ident, Option<IrAstAsmArgInit>)
@@ -464,7 +468,7 @@ mod ir_builder {
         context::Context,
         error::IrError,
         function::Function,
-        instruction::{Instruction, Predicate},
+        instruction::{Instruction, Predicate, Register},
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
@@ -925,9 +929,26 @@ mod ir_builder {
                     }
                     block.get_phi(context)
                 }
-                IrAstOperation::ReadRegister(reg_name) => {
-                    block.ins(context).read_register(reg_name, opt_ins_md_idx)
-                }
+                IrAstOperation::ReadRegister(reg_name) => block.ins(context).read_register(
+                    match reg_name.as_str() {
+                        "of" => Register::Of,
+                        "pc" => Register::Pc,
+                        "ssp" => Register::Ssp,
+                        "sp" => Register::Sp,
+                        "fp" => Register::Fp,
+                        "hp" => Register::Hp,
+                        "err" => Register::Error,
+                        "ggas" => Register::Ggas,
+                        "cgas" => Register::Cgas,
+                        "bal" => Register::Bal,
+                        "is" => Register::Is,
+                        "ret" => Register::Ret,
+                        "retl" => Register::Retl,
+                        "flag" => Register::Flag,
+                        _ => unreachable!("Guaranteed by grammar."),
+                    },
+                    opt_ins_md_idx,
+                ),
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);
                     block

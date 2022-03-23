@@ -105,6 +105,12 @@ impl<'a> InstructionVerifier<'a> {
                         true_block,
                         false_block,
                     } => self.verify_cbr(cond_value, true_block, false_block)?,
+                    Instruction::ContractCall {
+                        params,
+                        coins,
+                        asset_id,
+                        gas,
+                    } => self.verify_contract_call(params, coins, asset_id, gas)?,
                     Instruction::ExtractElement {
                         array,
                         ty,
@@ -135,6 +141,7 @@ impl<'a> InstructionVerifier<'a> {
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
                     Instruction::Nop => (),
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
+                    Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(self.cur_function, val, ty)?,
                     Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                     Instruction::StateLoadQuadWord {
@@ -267,18 +274,52 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn verify_contract_call(
         &self,
-        _params: &Value,
-        _coins: &Value,
-        _asset_id: &Value,
-        _gas: &Value,
+        params: &Value,
+        coins: &Value,
+        asset_id: &Value,
+        gas: &Value,
     ) -> Result<(), IrError> {
-        // XXX We should confirm the function arg types and the return type are all correct.
-        // We should also check that addr comes from a b256 local pointer and that coins and gas
-        // are u64 values, while asset_id is a b256.
-        Ok(())
+        // - The params must be a struct with the B256 address, u64 selector and u64 address to
+        //   user args.
+        // - The coins and gas must be u64s.
+        // - The asset_id must be a B256
+        if let Some(Type::Struct(agg)) = params.get_type(self.context) {
+            let fields = self.context.aggregates[agg.0].field_types();
+            if fields.len() != 3
+                || !fields[0].eq(self.context, &Type::B256)
+                || !fields[1].eq(self.context, &Type::Uint(64))
+                || !fields[2].eq(self.context, &Type::Uint(64))
+            {
+                Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+        }
+        .and_then(|_| {
+            if let Some(Type::Uint(64)) = coins.get_type(self.context) {
+                Ok(())
+            } else {
+                Err(IrError::VerifyContractCallBadTypes("coins".to_owned()))
+            }
+        })
+        .and_then(|_| {
+            if let Some(Type::B256) = asset_id.get_type(self.context) {
+                Ok(())
+            } else {
+                Err(IrError::VerifyContractCallBadTypes("asset_id".to_owned()))
+            }
+        })
+        .and_then(|_| {
+            if let Some(Type::Uint(64)) = gas.get_type(self.context) {
+                Ok(())
+            } else {
+                Err(IrError::VerifyContractCallBadTypes("gas".to_owned()))
+            }
+        })
     }
 
     fn verify_extract_element(
@@ -427,11 +468,6 @@ impl<'a> InstructionVerifier<'a> {
         } else {
             Ok(())
         }
-    }
-
-    fn verify_read_register(&self, _reg: &str) -> Result<(), IrError> {
-        // We may want to verify that the register passed actually exists
-        Ok(())
     }
 
     fn verify_ret(
