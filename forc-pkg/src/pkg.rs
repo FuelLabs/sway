@@ -249,6 +249,21 @@ impl BuildPlan {
             bail!("Manifest dependencies do not match");
         }
 
+        // Ensure the pkg names of all nodes match their manifest.
+        for node in self.graph.node_indices() {
+            let pkg = &self.graph[node];
+            let id = pkg.id();
+            let path = &self.path_map[&id];
+            let manifest = Manifest::from_dir(path)?;
+            if pkg.name != manifest.project.name {
+                bail!(
+                    "package name {:?} does not match the associated manifest project name {:?}",
+                    pkg.name,
+                    manifest.project.name,
+                );
+            }
+        }
+
         Ok(())
     }
 
@@ -473,10 +488,12 @@ pub(crate) fn fetch_deps(
     // TODO: Convert this recursion to use loop & stack to ensure deps can't cause stack overflow.
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
+    let manifest = Manifest::from_dir(&path_map[&pkg_id])?;
     fetch_children(
         fetch_id,
         offline_mode,
         root,
+        &manifest,
         &mut graph,
         &mut path_map,
         &mut visited,
@@ -500,18 +517,14 @@ fn fetch_children(
     fetch_id: u64,
     offline_mode: bool,
     node: NodeIx,
+    manifest: &Manifest,
     graph: &mut Graph,
     path_map: &mut PathMap,
     visited: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
     let parent = &graph[node];
     let parent_path = path_map[&parent.id()].clone();
-    let manifest = Manifest::from_dir(&parent_path)?;
-    let deps = match &manifest.dependencies {
-        None => return Ok(()),
-        Some(deps) => deps,
-    };
-    for (dep_name, dep) in deps {
+    for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
         if offline_mode && !matches!(source, Source::Path(_)) {
@@ -519,10 +532,29 @@ fn fetch_children(
         }
         let pkg = Pkg { name, source };
         let pinned = pin_pkg(fetch_id, &pkg, path_map)?;
+        let pkg_id = pinned.id();
+        let manifest = Manifest::from_dir(&path_map[&pkg_id])?;
+        if pinned.name != manifest.project.name {
+            bail!(
+                "dependency name {:?} must match the manifest project name {:?} \
+                unless `package = {:?}` is specified in the dependency declaration",
+                pinned.name,
+                manifest.project.name,
+                manifest.project.name,
+            );
+        }
         let dep_node = if let hash_map::Entry::Vacant(entry) = visited.entry(pinned.clone()) {
             let node = graph.add_node(pinned);
             entry.insert(node);
-            fetch_children(fetch_id, offline_mode, node, graph, path_map, visited)?;
+            fetch_children(
+                fetch_id,
+                offline_mode,
+                node,
+                &manifest,
+                graph,
+                path_map,
+                visited,
+            )?;
             node
         } else {
             visited[&pinned]
