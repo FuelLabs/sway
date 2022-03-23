@@ -17,6 +17,7 @@ pub struct StructDeclaration {
     pub(crate) fields: Vec<StructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +35,10 @@ impl StructDeclaration {
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let span = Span {
+            span: decl.as_span(),
+            path: config.map(|x| x.path()),
+        };
         let decl = decl.into_inner();
         let mut visibility = Visibility::Private;
         let mut name = None;
@@ -111,6 +116,7 @@ impl StructDeclaration {
                 fields,
                 type_parameters,
                 visibility,
+                span,
             },
             warnings,
             errors,

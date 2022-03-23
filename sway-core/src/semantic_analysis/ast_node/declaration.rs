@@ -1,5 +1,5 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
-use crate::{error::*, parse_tree::*, type_engine::*, Ident, NamespaceWrapper};
+use crate::{error::*, parse_tree::*, type_engine::*, Ident, NamespaceRef, NamespaceWrapper};
 
 use sway_types::{join_spans, span::Span, Property};
 
@@ -211,20 +211,57 @@ pub struct TypedAbiDeclaration {
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
     pub(crate) fields: Vec<TypedStructField>,
-    pub(crate) generic_type_parameters: Vec<TypeParameter>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
     pub(crate) type_id: TypeId,
+    pub(crate) span: Span,
 }
 
 impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
+    pub(crate) fn monomorphize(&self, namespace: &NamespaceRef) -> Self {
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        let type_args = self
+            .type_parameters
+            .iter()
+            .map(|x| x.type_id)
+            .collect::<Vec<_>>();
+        Self::monomorphize_inner(self, namespace, type_mapping, &type_args)
+    }
+
+    pub(crate) fn monomorphize_with_type_ids(
+        &self,
+        namespace: &NamespaceRef,
+        type_ids: &[TypeId],
+    ) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_mapping = check!(
+            insert_type_parameters_with_given_types(
+                &self.type_parameters,
+                type_ids,
+                self.span.clone()
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let new_decl = Self::monomorphize_inner(self, namespace, type_mapping, type_ids);
+        ok(new_decl, warnings, errors)
+    }
+
+    fn monomorphize_inner(
+        &self,
+        namespace: &NamespaceRef,
+        type_mapping: Vec<(TypeParameter, usize)>,
+        type_args: &[TypeId],
+    ) -> Self {
         let old_type_id = self.type_id;
-        let type_mapping = insert_type_parameters(&self.generic_type_parameters);
         let mut new_decl = self.clone();
         new_decl.copy_types(&type_mapping);
         new_decl.type_id = insert_type(TypeInfo::Struct {
             name: new_decl.name.clone(),
             fields: new_decl.fields.clone(),
+            type_args: type_args.to_vec(),
         });
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),

@@ -1636,7 +1636,7 @@ fn convert_resolved_type(
         TypeInfo::Byte => Type::Uint(8), // XXX?
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
-        TypeInfo::Struct { name, fields } => {
+        TypeInfo::Struct { name, fields, .. } => {
             match struct_names.get_aggregate_by_name(name.as_str()) {
                 Some(existing_aggregate) => Type::Struct(existing_aggregate),
                 None => {

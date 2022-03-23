@@ -216,7 +216,7 @@ impl NamespaceWrapper for NamespaceRef {
     ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
         let ty = look_up_type_id(ty);
         match ty {
-            TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
+            TypeInfo::Struct { name, fields, .. } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere
             TypeInfo::ErrorRecovery => err(vec![], vec![]),
@@ -640,8 +640,13 @@ impl NamespaceWrapper for NamespaceRef {
             } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        if !decl.generic_type_parameters.is_empty() {
-                            let new_decl = decl.monomorphize(self);
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = check!(
+                                decl.monomorphize_with_type_ids(self, &type_args),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             new_decl.type_id
                         } else {
                             decl.type_id

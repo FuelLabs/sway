@@ -197,6 +197,7 @@ impl TypedExpression {
                 fields,
                 namespace,
                 crate_namespace,
+                type_annotation,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -1070,6 +1071,7 @@ impl TypedExpression {
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
+        type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1105,10 +1107,25 @@ impl TypedExpression {
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let new_decl = if decl.generic_type_parameters.is_empty() {
-            decl
-        } else {
-            decl.monomorphize(&module)
+        let new_decl = match (
+            decl.type_parameters.is_empty(),
+            look_up_type_id(type_annotation),
+        ) {
+            (false, TypeInfo::Struct { type_args, .. }) => check!(
+                decl.monomorphize_with_type_ids(&module, &type_args),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            (false, _) => decl.monomorphize(&module),
+            (true, TypeInfo::Struct { .. }) => {
+                errors.push(CompileError::Internal(
+                    "expected to find type parameters",
+                    decl.span,
+                ));
+                return err(warnings, errors);
+            }
+            (true, _) => decl,
         };
 
         // match up the names with their type annotations from the declaration

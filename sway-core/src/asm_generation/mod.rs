@@ -1324,6 +1324,7 @@ fn compile_contract_to_selectors(
                             span: p.name.span().clone(),
                         })
                         .collect::<Vec<_>>(),
+                    type_args: vec![],
                 });
 
                 let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);

@@ -567,16 +567,23 @@ impl TypedAstNode {
                                     TypedStructField { name, r#type, span }
                                 })
                                 .collect::<Vec<_>>();
+                            let type_args = decl
+                                .type_parameters
+                                .iter()
+                                .map(|x| x.type_id)
+                                .collect::<Vec<_>>();
                             let type_id = insert_type(TypeInfo::Struct {
                                 name: decl.name.clone(),
                                 fields: fields.clone(),
+                                type_args,
                             });
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
-                                generic_type_parameters: decl.type_parameters.clone(),
+                                type_parameters: decl.type_parameters.clone(),
                                 fields,
                                 visibility: decl.visibility,
                                 type_id,
+                                span: decl.span,
                             };
 
                             // insert struct into namespace

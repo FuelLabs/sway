@@ -30,6 +30,7 @@ pub enum TypeInfo {
     },
     Struct {
         name: Ident,
+        type_args: Vec<TypeId>,
         fields: Vec<TypedStructField>,
     },
     Boolean,
@@ -109,9 +110,17 @@ impl Hash for TypeInfo {
                     variant_type.hash(state);
                 }
             }
-            TypeInfo::Struct { name, fields } => {
+            TypeInfo::Struct {
+                name,
+                type_args,
+                fields,
+            } => {
                 state.write_u8(9);
                 name.hash(state);
+                type_args.len().hash(state);
+                for type_arg in type_args.iter() {
+                    look_up_type_id(*type_arg).hash(state);
+                }
                 fields.len().hash(state);
                 for field in fields.iter() {
                     field.hash(state);
@@ -136,7 +145,7 @@ impl Hash for TypeInfo {
                 name.hash(state);
                 type_args.len().hash(state);
                 for type_arg in type_args.iter() {
-                    type_arg.hash(state);
+                    look_up_type_id(*type_arg).hash(state);
                 }
             }
             TypeInfo::SelfType => {
@@ -186,13 +195,23 @@ impl PartialEq for TypeInfo {
             (
                 Self::Struct {
                     name: l_name,
+                    type_args: l_type_args,
                     fields: l_fields,
                 },
                 Self::Struct {
                     name: r_name,
+                    type_args: r_type_args,
                     fields: r_fields,
                 },
-            ) => l_name == r_name && l_fields == r_fields,
+            ) => {
+                l_name == r_name
+                    && l_fields == r_fields
+                    && l_type_args
+                        .iter()
+                        .zip(r_type_args.iter())
+                        .map(|(l, r)| look_up_type_id(*l) == look_up_type_id(*r))
+                        .all(|x| x)
+            }
             (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -459,7 +478,7 @@ impl TypeInfo {
                 format!("enum {}", name),
                 variant_types.iter().map(|x| x.r#type),
             ),
-            Struct { name, fields } => print_inner_types(
+            Struct { name, fields, .. } => print_inner_types(
                 format!("struct {}", name),
                 fields.iter().map(|field| field.r#type),
             ),
@@ -776,7 +795,11 @@ impl TypeInfo {
                 }
                 None
             }
-            TypeInfo::Struct { fields, name } => {
+            TypeInfo::Struct {
+                fields,
+                name,
+                type_args,
+            } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
                     if let Some(matching_id) =
@@ -785,9 +808,18 @@ impl TypeInfo {
                         new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
+                let mut new_type_args = type_args.clone();
+                for new_type_arg in new_type_args.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(*new_type_arg).matches_type_parameter(mapping)
+                    {
+                        *new_type_arg = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
                 Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
+                    type_args: new_type_args,
                 }))
             }
             TypeInfo::Enum {
