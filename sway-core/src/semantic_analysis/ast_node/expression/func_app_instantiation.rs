@@ -10,7 +10,7 @@ use std::collections::HashMap;
 pub(crate) fn instantiate_function_application(
     decl: TypedFunctionDeclaration,
     name: CallPath,
-    type_arguments: Vec<(TypeInfo, Span)>,
+    type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,

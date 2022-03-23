@@ -237,7 +237,7 @@ impl TypedFunctionDeclaration {
     /// generic type info.
     pub(crate) fn monomorphize(
         &self,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
         self_type: TypeId,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings: Vec<CompileWarning> = vec![];
@@ -258,21 +258,19 @@ impl TypedFunctionDeclaration {
                     expected: new_decl.type_parameters.len(),
                     span: type_arguments
                         .iter()
-                        .fold(type_arguments[0].1.clone(), |acc, (_, sp)| {
-                            join_spans(acc, sp.clone())
+                        .fold(type_arguments[0].span.clone(), |acc, type_argument| {
+                            join_spans(acc, type_argument.span.clone())
                         }),
                 });
             }
 
             // check the type arguments
-            for ((_, decl_param), (type_argument, type_argument_span)) in
-                type_mapping.iter().zip(type_arguments.iter())
-            {
+            for ((_, decl_param), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
                 match unify_with_self(
                     *decl_param,
-                    insert_type(type_argument.clone()),
+                    type_argument.type_id,
                     self_type,
-                    type_argument_span,
+                    &type_argument.span,
                     "Type argument is not castable to generic type paramter",
                 ) {
                     Ok(mut ws) => {
@@ -536,21 +534,21 @@ pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParam
 /// Insert all type parameters as unknown types, given [TypeArguments]
 /// Return a mapping of type parameter to [TypeId]
 pub(crate) fn insert_type_parameters_with_type_arguments(
-    params: &[TypeParameter],
+    type_parameters: &[TypeParameter],
     type_arguments: &[TypeArgument],
     span: Span,
 ) -> CompileResult<Vec<(TypeParameter, TypeId)>> {
     let warnings = vec![];
     let mut errors = vec![];
-    if params.len() != type_arguments.len() {
+    if type_parameters.len() != type_arguments.len() {
         errors.push(CompileError::IncorrectNumberOfTypeArguments {
             given: type_arguments.len(),
-            expected: params.len(),
+            expected: type_parameters.len(),
             span,
         });
         return err(warnings, errors);
     }
-    let output = params
+    let output = type_parameters
         .iter()
         .zip(type_arguments.iter())
         .map(|(param, type_argument)| (param.clone(), type_argument.type_id))

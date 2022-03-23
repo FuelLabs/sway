@@ -540,7 +540,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_function_application(
-        arguments: TypeCheckArguments<'_, (CallPath, Vec<Expression>, Vec<(TypeInfo, Span)>)>,
+        arguments: TypeCheckArguments<'_, (CallPath, Vec<Expression>, Vec<TypeArgument>)>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1118,7 +1118,7 @@ impl TypedExpression {
                 errors
             ),
             (false, _) => decl.monomorphize(&module),
-            (true, TypeInfo::Struct { .. }) => {
+            (true, TypeInfo::Struct { type_arguments, .. }) if !type_arguments.is_empty() => {
                 errors.push(CompileError::Internal(
                     "expected to find type parameters",
                     decl.span,

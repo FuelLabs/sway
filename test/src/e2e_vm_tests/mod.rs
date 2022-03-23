@@ -23,7 +23,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),
-        ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
@@ -149,6 +148,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "missing_func_from_supertrait_impl",
         "supertrait_does_not_exist",
         "chained_if_let_missing_branch",
+        "empty_impl",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

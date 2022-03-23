@@ -4,7 +4,7 @@ use crate::{
     parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
     type_engine::{IntegerBits, TypeInfo},
-    AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
+    AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };
 
 use sway_types::{ident::Ident, join_spans, Span};
@@ -40,7 +40,7 @@ pub enum Expression {
     FunctionApplication {
         name: CallPath,
         arguments: Vec<Expression>,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     LazyOperator {
@@ -441,9 +441,6 @@ impl Expression {
                         _ => unreachable!(),
                     }
                 };
-                let maybe_type_args = type_args
-                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
-                    .unwrap_or_else(Vec::new);
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
                     let arg = check!(
@@ -460,20 +457,17 @@ impl Expression {
                     );
                     arguments_buf.push(arg);
                 }
-                let mut type_args_buf = vec![];
-                for arg in maybe_type_args {
-                    let sp = Span {
-                        span: arg.as_span(),
-                        path: path.clone(),
-                    };
-                    type_args_buf.push((
-                        check!(
-                            TypeInfo::parse_from_pair(arg.into_inner().next().unwrap(), config),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        sp,
+
+                let maybe_type_args = type_args
+                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
+                    .unwrap_or_else(Vec::new);
+                let mut type_arguments = vec![];
+                for type_arg in maybe_type_args.into_iter() {
+                    type_arguments.push(check!(
+                        TypeArgument::parse_from_pair(type_arg, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     ));
                 }
 
@@ -481,7 +475,7 @@ impl Expression {
                     name,
                     arguments: arguments_buf,
                     span,
-                    type_arguments: type_args_buf,
+                    type_arguments,
                 }
             }
             Rule::var_exp => {
