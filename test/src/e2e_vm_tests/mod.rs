@@ -13,6 +13,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // with some known state
     let positive_project_names = vec![
         (
+            "should_pass/forc/dependency_package_field",
+            ProgramState::Return(0),
+        ),
+        (
             "should_pass/language/asm_expr_basic",
             ProgramState::Return(6),
         ),
