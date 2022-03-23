@@ -1,8 +1,8 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "enum_if_let_invalid_variable"
 
 [dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }
+core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }

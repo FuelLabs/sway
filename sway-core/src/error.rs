@@ -4,6 +4,7 @@ use crate::{
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
+    VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};
 
@@ -75,6 +76,25 @@ pub(crate) fn ok<T>(
         value: Some(value),
         warnings,
         errors,
+    }
+}
+
+/// Acts as the result of parsing `Declaration`s, `Expression`s, etc.
+/// Some `Expression`s need to be able to create `VariableDeclaration`s,
+/// so this struct is used to "bubble up" those declarations to a viable
+/// place in the AST.
+#[derive(Debug, Clone)]
+pub struct ParserLifter<T> {
+    pub var_decls: Vec<VariableDeclaration>,
+    pub value: T,
+}
+
+impl<T> ParserLifter<T> {
+    pub(crate) fn empty(value: T) -> Self {
+        ParserLifter {
+            var_decls: vec![],
+            value,
+        }
     }
 }
 
@@ -255,6 +275,7 @@ pub enum Warning {
         reg_name: Ident,
     },
     DeadStorageDeclaration,
+    MatchExpressionUnreachableArm,
 }
 
 impl fmt::Display for Warning {
@@ -362,6 +383,7 @@ impl fmt::Display for Warning {
             ),
             DeadStorageDeclaration => write!(f, "This storage declaration is never accessed and can be removed."
             ),
+            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
     }
 }
@@ -393,8 +415,6 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
-    #[error("pattern matching algorithm failure on: {0}")]
-    PatternMatchingAlgorithmFailure(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: expected {err:?}")]
@@ -823,6 +843,11 @@ pub enum CompileError {
          "
     )]
     MatchWrongType { expected: TypeId, span: Span },
+    #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
+    MatchExpressionNonExhaustive {
+        missing_patterns: String,
+        span: Span,
+    },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
@@ -1069,8 +1094,8 @@ impl CompileError {
             ShadowsOtherSymbol { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
+            MatchExpressionNonExhaustive { span, .. } => span,
             NotAnEnum { span, .. } => span,
-            PatternMatchingAlgorithmFailure(_, span) => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
             IntegerTooLarge { span, .. } => span,

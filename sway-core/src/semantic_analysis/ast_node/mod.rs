@@ -94,6 +94,21 @@ impl std::fmt::Debug for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// if this ast node _deterministically_ panics/aborts, then this is true.
+    /// This is used to assist in type checking branches that abort control flow and therefore
+    /// don't need to return a type.
+    pub(crate) fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
+        }
+    }
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -115,6 +130,13 @@ impl TypedAstNode {
                 }
                 buf
             }
+            // assignments and  reassignments can happen during control flow and can abort
+            TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
+                TypedVariableDeclaration { body, .. },
+            )) => body.gather_return_statements(),
+            TypedAstNodeContent::Declaration(TypedDeclaration::Reassignment(
+                TypedReassignment { rhs, .. },
+            )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }

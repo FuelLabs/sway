@@ -85,6 +85,12 @@ impl Context {
                     true_block,
                     false_block,
                 } => self.verify_cbr(cond_value, true_block, false_block)?,
+                Instruction::ContractCall {
+                    params,
+                    coins,
+                    asset_id,
+                    gas,
+                } => self.verify_contract_call(params, coins, asset_id, gas)?,
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -115,6 +121,7 @@ impl Context {
                 Instruction::Load(ptr) => self.verify_load(ptr)?,
                 Instruction::Nop => (),
                 Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
+                Instruction::ReadRegister { reg_name } => self.verify_read_register(reg_name)?,
                 Instruction::Ret(val, ty) => self.verify_ret(function, val, ty)?,
                 Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                 Instruction::StateLoadQuadWord { load_val, key } => {
@@ -164,6 +171,20 @@ impl Context {
         //} else {
         Ok(())
         //}
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn verify_contract_call(
+        &self,
+        _params: &Value,
+        _coins: &Value,
+        _asset_id: &Value,
+        _gas: &Value,
+    ) -> Result<(), IrError> {
+        // XXX We should confirm the function arg types and the return type are all correct.
+        // We should also check that addr comes from a b256 local pointer and that coins and gas
+        // are u64 values, while asset_id is a b256.
+        Ok(())
     }
 
     fn verify_extract_element(
@@ -232,6 +253,11 @@ impl Context {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_read_register(&self, _reg: &str) -> Result<(), IrError> {
+        // We may want to verify that the register passed actually exists
+        Ok(())
     }
 
     fn verify_ret(

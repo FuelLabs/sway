@@ -338,6 +338,28 @@ fn instruction_to_doc<'a>(
                         md_namer.meta_as_string(context, span_md_idx, true),
                     )))
             }
+            Instruction::ContractCall {
+                params,
+                coins,
+                asset_id,
+                gas,
+            } => maybe_constant_to_doc(context, md_namer, namer, coins)
+                .append(maybe_constant_to_doc(context, md_namer, namer, asset_id))
+                .append(maybe_constant_to_doc(context, md_namer, namer, gas))
+                .append(Doc::line(
+                    Doc::text(format!(
+                        "{} = contract_call {}, {}, {}, {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, params),
+                        namer.name(context, coins),
+                        namer.name(context, asset_id),
+                        namer.name(context, gas)
+                    ))
+                    .append(match span_md_idx {
+                        None => Doc::Empty,
+                        Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
+                    }),
+                )),
             Instruction::ExtractElement {
                 array,
                 ty,
@@ -467,6 +489,12 @@ fn instruction_to_doc<'a>(
                     )
                 }
             }
+            Instruction::ReadRegister { reg_name } => Doc::text_line(format!(
+                "{} = read_register {}{}",
+                namer.name(context, ins_value),
+                reg_name,
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
             Instruction::Ret(v, t) => {
                 maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::text_line(format!(
                     "ret {} {}{}",

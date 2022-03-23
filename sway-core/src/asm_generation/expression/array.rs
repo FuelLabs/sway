@@ -7,19 +7,19 @@ pub(super) fn convert_array_instantiation_to_asm(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    // If the array is empty then this is a NOOP.  We don't even need to initialise
-    // `return_register`, do we?  Or should we return an error about trying to create this?
-    if contents.is_empty() {
-        return ok(
-            vec![Op::new_comment("array size is zero.")],
-            Vec::new(),
-            Vec::new(),
-        );
-    }
-
     let warnings = Vec::new();
     let mut errors = Vec::new();
-    let mut bytecode = Vec::new();
+
+    // Even for empty arrays we need to set the return register to something.
+    let mut bytecode = vec![Op::unowned_register_move(
+        return_register.clone(),
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
+    )];
+
+    // If the array is empty then this is a NOOP.  The array will point to zero elements at SP.
+    if contents.is_empty() {
+        return ok(bytecode, warnings, errors);
+    }
 
     // Get the array element size.
     let elem_type = check_std_result!(
@@ -31,12 +31,7 @@ pub(super) fn convert_array_instantiation_to_asm(
         check_std_result!(elem_type.size_in_words(&contents[0].span), warnings, errors);
     let mut array_size = elem_size_in_words * 8 * contents.len() as u64;
 
-    // Reserve space on the stack.  First copy $SP and then expand with CFEI.  We may need more
-    // than one expansion to cover the entire array.
-    bytecode.push(Op::unowned_register_move(
-        return_register.clone(),
-        VirtualRegister::Constant(ConstantRegister::StackPointer),
-    ));
+    // Reserve space on the stack.  We may need more than one expansion to cover the entire array.
     while array_size != 0 {
         let expansion_size = std::cmp::min(TWENTY_FOUR_BITS, array_size);
         bytecode.push(Op::unowned_stack_allocate_memory(

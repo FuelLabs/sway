@@ -18,8 +18,7 @@ std = {{ git = "https://github.com/FuelLabs/sway-lib-std" }}
 
 /// Creates a default Cargo manifest for the Rust-based tests.
 /// It includes necessary packages to make the Rust-based
-/// tests work, such as the abigen macro, fuels-rs, and
-/// the fuel client.
+/// tests work.
 pub(crate) fn default_tests_manifest(project_name: &str) -> String {
     let real_name = whoami::realname();
 
@@ -32,11 +31,11 @@ name = "{project_name}"
 version = "0.1.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.2", default-features = false }}
-fuel-tx = "0.3"
-fuels-abigen-macro = "0.3"
-fuels-contract = "0.3"
-fuels-core = "0.3"
+fuel-gql-client = {{ version = "0.4", default-features = false }}
+fuel-tx = "0.6"
+fuels-abigen-macro = "0.6"
+fuels-contract = "0.6"
+fuels-core = "0.6"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 

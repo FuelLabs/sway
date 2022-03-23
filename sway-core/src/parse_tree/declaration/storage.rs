@@ -26,7 +26,7 @@ impl StorageField {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         conf: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut iter = pair.into_inner();
@@ -45,7 +45,15 @@ impl StorageField {
             warnings,
             errors
         );
-        ok(StorageField { name, r#type }, warnings, errors)
+        let res = StorageField { name, r#type };
+        ok(
+            ParserLifter {
+                var_decls: vec![],
+                value: res,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
@@ -53,7 +61,7 @@ impl StorageDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParserLifter<Self>> {
         debug_assert_eq!(pair.as_rule(), Rule::storage_decl);
         let path = config.map(|c| c.path());
         let mut errors = vec![];
@@ -68,17 +76,27 @@ impl StorageDeclaration {
             storage_keyword.map(|x| x.as_rule()),
             Some(Rule::storage_keyword)
         );
-        let fields_results: Vec<CompileResult<StorageField>> = iter
+        let fields_results: Vec<CompileResult<ParserLifter<StorageField>>> = iter
             .next()
             .unwrap()
             .into_inner()
             .map(|x| StorageField::parse_from_pair(x, config))
             .collect();
         let mut fields: Vec<StorageField> = Vec::with_capacity(fields_results.len());
+        let mut var_decls = vec![];
         for res in fields_results {
-            let ok = check!(res, continue, warnings, errors);
-            fields.push(ok);
+            let mut ok = check!(res, continue, warnings, errors);
+            fields.push(ok.value);
+            var_decls.append(&mut ok.var_decls);
         }
-        ok(StorageDeclaration { fields, span }, warnings, errors)
+        let res = StorageDeclaration { fields, span };
+        ok(
+            ParserLifter {
+                var_decls,
+                value: res,
+            },
+            warnings,
+            errors,
+        )
     }
 }

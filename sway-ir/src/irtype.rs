@@ -6,8 +6,6 @@
 //! - [`Type::Union`] is a sum type which resembles a C union.  Each member of the union uses the
 //!   same storage and the size of the union is the size of the largest member.
 //!
-//! [`Type::Contract`] and [`Type::ContractCaller`] are both Sway specific types.
-//!
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
@@ -23,9 +21,6 @@ pub enum Type {
     Array(Aggregate),
     Union(Aggregate),
     Struct(Aggregate),
-
-    Contract,
-    ContractCaller(AbiInstance),
 }
 
 impl Type {
@@ -58,8 +53,6 @@ impl Type {
                 let agg_content = &context.aggregates[agg.0];
                 format!("{{ {} }}", sep_types_str(agg_content, ", "))
             }
-            Type::Contract => "contract".into(),
-            Type::ContractCaller(_) => "TODO CONTRACT CALLER".into(),
         }
     }
 }
@@ -143,31 +136,5 @@ impl AggregateContent {
             AggregateContent::FieldTypes(..) => panic!("Getting array type from fields aggregate."),
             AggregateContent::ArrayType(ty, cnt) => (ty, cnt),
         }
-    }
-}
-
-/// A Sway specific data structure for associating an ABI with an address.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct AbiInstance(pub generational_arena::Index);
-
-#[doc(hidden)]
-#[derive(Debug, Clone, PartialEq)]
-pub struct AbiInstanceContent {
-    pub name: Vec<String>,
-    pub address: String,
-}
-
-impl AbiInstance {
-    pub fn new(
-        context: &mut Context,
-        mut name_prefixes: Vec<String>,
-        name_suffix: String,
-        address: String,
-    ) -> Self {
-        name_prefixes.push(name_suffix);
-        AbiInstance(context.abi_instances.insert(AbiInstanceContent {
-            name: name_prefixes,
-            address,
-        }))
     }
 }

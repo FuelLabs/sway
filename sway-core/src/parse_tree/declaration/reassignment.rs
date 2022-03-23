@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
-    error::{err, ok, CompileError, CompileResult},
-    parse_array_index,
+    error::{err, ok, CompileError, CompileResult, ParserLifter},
+    error_recovery_exp, parse_array_index,
     parse_tree::{ident, Expression},
     parser::Rule,
 };
@@ -51,7 +51,7 @@ impl Reassignment {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Reassignment> {
+    ) -> CompileResult<ParserLifter<Reassignment>> {
         let path = config.map(|c| c.path());
         let span = Span {
             span: pair.as_span(),
@@ -63,7 +63,7 @@ impl Reassignment {
         let variable_or_struct_reassignment = iter.next().expect("guaranteed by grammar");
         match variable_or_struct_reassignment.as_rule() {
             Rule::variable_reassignment => {
-                let (lhs, rhs) = check!(
+                let (name_result, mut body_result) = check!(
                     parse_simple_variable_reassignment(
                         variable_or_struct_reassignment,
                         config,
@@ -74,29 +74,43 @@ impl Reassignment {
                     errors
                 );
 
+                let mut var_decls = name_result.var_decls;
+                var_decls.append(&mut body_result.var_decls);
+                let reassign = Reassignment {
+                    lhs: ReassignmentTarget::VariableExpression(Box::new(name_result.value)),
+                    rhs: body_result.value,
+                    span,
+                };
+
                 ok(
-                    Reassignment {
-                        lhs: ReassignmentTarget::VariableExpression(Box::new(lhs)),
-                        rhs,
-                        span,
+                    ParserLifter {
+                        var_decls,
+                        value: reassign,
                     },
                     warnings,
                     errors,
                 )
             }
             Rule::struct_field_reassignment => {
-                let (lhs, rhs) = check!(
+                let (mut expr_result, body_result) = check!(
                     parse_subfield_reassignment(variable_or_struct_reassignment, config, path),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
 
+                let mut var_decls = body_result.var_decls;
+                var_decls.append(&mut expr_result.var_decls);
+                let exp = Reassignment {
+                    lhs: ReassignmentTarget::VariableExpression(Box::new(expr_result.value)),
+                    rhs: body_result.value,
+                    span,
+                };
+
                 ok(
-                    Reassignment {
-                        lhs: ReassignmentTarget::VariableExpression(Box::new(lhs)),
-                        rhs,
-                        span,
+                    ParserLifter {
+                        var_decls,
+                        value: exp,
                     },
                     warnings,
                     errors,
@@ -128,11 +142,16 @@ impl Reassignment {
                         errors
                     ))
                 }
+
+                let reassign = Reassignment {
+                    lhs: ReassignmentTarget::StorageField(lhs),
+                    rhs: rhs.value,
+                    span,
+                };
                 ok(
-                    Reassignment {
-                        lhs: ReassignmentTarget::StorageField(lhs),
-                        rhs,
-                        span,
+                    ParserLifter {
+                        var_decls: rhs.var_decls,
+                        value: reassign,
                     },
                     warnings,
                     errors,
@@ -143,10 +162,100 @@ impl Reassignment {
     }
 }
 
+fn parse_simple_variable_reassignment(
+    pair: Pair<Rule>,
+    config: Option<&BuildConfig>,
+    path: Option<std::sync::Arc<std::path::PathBuf>>,
+) -> CompileResult<(ParserLifter<Expression>, ParserLifter<Expression>)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut iter = pair.into_inner();
+    let name_result = check!(
+        Expression::parse_from_pair(iter.next().unwrap(), config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let body = iter.next().unwrap();
+    let body_result = check!(
+        Expression::parse_from_pair(body.clone(), config),
+        ParserLifter::empty(error_recovery_exp(Span {
+            span: body.as_span(),
+            path
+        })),
+        warnings,
+        errors
+    );
+
+    ok((name_result, body_result), warnings, errors)
+}
+
+fn parse_subfield_reassignment(
+    pair: Pair<Rule>,
+    config: Option<&BuildConfig>,
+    path: Option<std::sync::Arc<std::path::PathBuf>>,
+) -> CompileResult<(ParserLifter<Expression>, ParserLifter<Expression>)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut iter = pair.into_inner();
+    let lhs = iter.next().expect("guaranteed by grammar");
+    let rhs = iter.next().expect("guaranteed by grammar");
+    let rhs_span = Span {
+        span: rhs.as_span(),
+        path: path.clone(),
+    };
+    let body_result = check!(
+        Expression::parse_from_pair(rhs, config),
+        ParserLifter::empty(error_recovery_exp(rhs_span)),
+        warnings,
+        errors
+    );
+    let inner = lhs.into_inner().next().expect("guaranteed by grammar");
+    assert_eq!(inner.as_rule(), Rule::subfield_path);
+    // treat parent as one expr, final name as the field to be accessed
+    // if there are multiple fields, this is a nested expression
+    // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
+    // of field `b` on `a`
+    // the first thing is either an exp or a var, everything subsequent must be
+    // a field
+    let mut name_parts = inner.into_inner();
+    let mut expr_result = check!(
+        parse_subfield_path_ensure_only_var(
+            name_parts.next().expect("guaranteed by grammar"),
+            config
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    for name_part in name_parts {
+        let expr = Expression::SubfieldExpression {
+            prefix: Box::new(expr_result.value.clone()),
+            span: Span {
+                span: name_part.as_span(),
+                path: path.clone(),
+            },
+            field_to_access: check!(
+                ident::parse_from_pair(name_part, config),
+                continue,
+                warnings,
+                errors
+            ),
+        };
+        expr_result = ParserLifter {
+            var_decls: expr_result.var_decls,
+            value: expr,
+        };
+    }
+
+    ok((expr_result, body_result), warnings, errors)
+}
+
 fn parse_subfield_path_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+) -> CompileResult<ParserLifter<Expression>> {
     let warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -169,14 +278,11 @@ fn parse_subfield_path_ensure_only_var(
                 },
             ));
             // construct unit expression for error recovery
-            let exp = Expression::Tuple {
-                fields: vec![],
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
-            };
-            ok(exp, warnings, errors)
+            let exp_result = ParserLifter::empty(error_recovery_exp(Span {
+                span: item.as_span(),
+                path,
+            }));
+            ok(exp_result, warnings, errors)
         }
     }
 }
@@ -195,7 +301,7 @@ fn parse_subfield_path_ensure_only_var(
 fn parse_call_item_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+) -> CompileResult<ParserLifter<Expression>> {
     let path = config.map(|c| c.path());
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -225,98 +331,12 @@ fn parse_call_item_ensure_only_var(
         }
         a => unreachable!("{:?}", a),
     };
-    ok(exp, warnings, errors)
-}
-
-fn parse_simple_variable_reassignment(
-    pair: Pair<Rule>,
-    config: Option<&BuildConfig>,
-    path: Option<std::sync::Arc<std::path::PathBuf>>,
-) -> CompileResult<(Expression, Expression)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut iter = pair.into_inner();
-    let name = check!(
-        Expression::parse_from_pair(iter.next().unwrap(), config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let body = iter.next().unwrap();
-    let body = check!(
-        Expression::parse_from_pair(body.clone(), config),
-        Expression::Tuple {
-            fields: vec![],
-            span: Span {
-                span: body.as_span(),
-                path
-            }
+    ok(
+        ParserLifter {
+            var_decls: vec![],
+            value: exp,
         },
         warnings,
-        errors
-    );
-
-    ok((name, body), warnings, errors)
-}
-fn parse_subfield_reassignment(
-    pair: Pair<Rule>,
-    config: Option<&BuildConfig>,
-    path: Option<std::sync::Arc<std::path::PathBuf>>,
-) -> CompileResult<(Expression, Expression)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut iter = pair.into_inner();
-    let lhs = iter.next().expect("guaranteed by grammar");
-    let rhs = iter.next().expect("guaranteed by grammar");
-    let rhs_span = Span {
-        span: rhs.as_span(),
-        path: path.clone(),
-    };
-    let body = check!(
-        Expression::parse_from_pair(rhs, config),
-        Expression::Tuple {
-            fields: vec![],
-            span: rhs_span
-        },
-        warnings,
-        errors
-    );
-
-    let inner = lhs.into_inner().next().expect("guaranteed by grammar");
-    assert_eq!(inner.as_rule(), Rule::subfield_path);
-
-    // treat parent as one expr, final name as the field to be accessed
-    // if there are multiple fields, this is a nested expression
-    // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
-    // of field `b` on `a`
-    // the first thing is either an exp or a var, everything subsequent must be
-    // a field
-    let mut name_parts = inner.into_inner();
-    let mut expr = check!(
-        parse_subfield_path_ensure_only_var(
-            name_parts.next().expect("guaranteed by grammar"),
-            config
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    for name_part in name_parts {
-        expr = Expression::SubfieldExpression {
-            prefix: Box::new(expr.clone()),
-            span: Span {
-                span: name_part.as_span(),
-                path: path.clone(),
-            },
-            field_to_access: check!(
-                ident::parse_from_pair(name_part, config),
-                continue,
-                warnings,
-                errors
-            ),
-        }
-    }
-
-    ok((expr, body), warnings, errors)
+        errors,
+    )
 }

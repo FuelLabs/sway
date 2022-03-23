@@ -238,6 +238,18 @@ fn inline_instruction(
                 None,
                 span_md_idx,
             ),
+            Instruction::ContractCall {
+                params,
+                coins,
+                asset_id,
+                gas,
+            } => new_block.ins(context).contract_call(
+                map_value(params),
+                map_value(coins),
+                map_value(asset_id),
+                map_value(gas),
+                span_md_idx,
+            ),
             Instruction::ExtractElement {
                 array,
                 ty,
@@ -292,6 +304,9 @@ fn inline_instruction(
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }
             Instruction::Nop => new_block.ins(context).nop(),
+            Instruction::ReadRegister { reg_name } => {
+                new_block.ins(context).read_register(reg_name, span_md_idx)
+            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {
                 new_block
@@ -318,7 +333,6 @@ fn inline_instruction(
                     .ins(context)
                     .store(map_value(dst_val), map_value(stored_val), span_md_idx)
             }
-
             // NOTE: We're not translating the phi value yet, since this is the single instance of
             // use of a value which may not be mapped yet -- a branch from a subsequent block,
             // back up to this block.  And we don't need to add a `phi` instruction because an
