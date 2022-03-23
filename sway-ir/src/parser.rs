@@ -69,8 +69,6 @@ mod ir_builder {
                     }
                 }
 
-
-
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
                     string_to_hex::<4>(s)
@@ -128,6 +126,7 @@ mod ir_builder {
                 / op_branch()
                 / op_call()
                 / op_cbr()
+                / op_contract_call()
                 / op_const()
                 / op_extract_element()
                 / op_extract_value()
@@ -137,6 +136,7 @@ mod ir_builder {
                 / op_load()
                 / op_nop()
                 / op_phi()
+                / op_read_register()
                 / op_ret()
                 / op_state_load_quad_word()
                 / op_state_load_word()
@@ -165,6 +165,12 @@ mod ir_builder {
                 = "cbr" _ cond:id() comma() tblock:id() comma() fblock:id() {
                     IrAstOperation::Cbr(cond, tblock, fblock)
                 }
+
+            rule op_contract_call() -> IrAstOperation
+                = "contract_call" _
+                params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
+                    IrAstOperation::ContractCall(params, coins, asset_id, gas)
+            }
 
             rule op_const() -> IrAstOperation
                 = "const" _ ast_ty() cv:constant() {
@@ -211,6 +217,12 @@ mod ir_builder {
                 = "phi" _ "(" _ pairs:((bl:id() ":" _ vn:id() { (bl, vn) }) ** comma()) ")" _ {
                     IrAstOperation::Phi(pairs)
                 }
+
+            rule op_read_register() -> IrAstOperation
+                = "read_register" _ reg_name:id() {
+                    IrAstOperation::ReadRegister(reg_name)
+                }
+
 
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
@@ -480,6 +492,7 @@ mod ir_builder {
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
+        ContractCall(String, String, String, String),
         Const(IrAstConst),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
@@ -489,6 +502,7 @@ mod ir_builder {
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
+        ReadRegister(String),
         Ret(IrAstTy, String),
         StateLoadQuadWord(String, String),
         StateLoadWord(String),
@@ -807,6 +821,15 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
+                IrAstOperation::ContractCall(params, coins, asset_id, gas) => {
+                    block.ins(context).contract_call(
+                        *val_map.get(&params).unwrap(),
+                        *val_map.get(&coins).unwrap(),
+                        *val_map.get(&asset_id).unwrap(),
+                        *val_map.get(&gas).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
                 IrAstOperation::ExtractElement(aval, ty, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
@@ -868,6 +891,9 @@ mod ir_builder {
                         );
                     }
                     block.get_phi(context)
+                }
+                IrAstOperation::ReadRegister(reg_name) => {
+                    block.ins(context).read_register(reg_name, opt_ins_md_idx)
                 }
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);

@@ -9,6 +9,6 @@ The Rust SDK supports common tasks like:
 - Running Sway scripts
 - Generating Type-safe Sway contract bindings
 - CLI for common operations
-- [Testing](./testing/testing-with-rust.md)
+- [Testing](../testing/testing-with-rust.md)
 
 Refer [here](https://github.com/FuelLabs/fuels-rs) for full documentation.

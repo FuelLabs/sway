@@ -6,7 +6,7 @@ Sway shares a lot with Rust, especially its syntax. Because they are so similar,
 
 In Rust, enums generally take one of three forms: _unit_ variants, which have no inner data, _struct_ variants, which contain named fields, and _tuple_ variants, which contain within them a tuple of data. If you are unfamiliar with these terms, this is what they look like:
 
-```rust
+```rust,ignore
 // note to those skimming the docs: this is Rust syntax! Not Sway! Don't copy/paste this into a Sway program.
 
 enum Foo {

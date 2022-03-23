@@ -1,8 +1,0 @@
-[[package]]
-name = 'core'
-source = 'git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
-dependencies = []
-
-[[package]]
-name = 'generic_enum'
-dependencies = ['core git+http://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
