@@ -1026,10 +1026,7 @@ impl TestContract for Contract {
 }
 </code></pre>
 <p>Our <code>tests/harness.rs</code> file could look like:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use fuel_core::services::Config;
+<pre><code class="language-rust ignore">use fuel_core::services::Config;
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
 use fuels_contract::contract::Contract;
@@ -1076,8 +1073,7 @@ async fn harness() {
 
     assert_eq!(52, result.value);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>Then, in the root of our project, running <code>forc test</code> or <code>cargo test</code> will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:</p>
 <pre><code class="language-plaintext">$ forc test
 
@@ -1694,10 +1690,7 @@ impl Store for Contract {
 <p>Sway shares a lot with Rust, especially its syntax. Because they are so similar, you may be surprised or caught off guard when they differ. This page serves to outline, from a high level, some of the syntactic <em>gotchas</em> that you may encounter.</p>
 <h2 id="enum-variant-syntax"><a class="header" href="#enum-variant-syntax">Enum Variant Syntax</a></h2>
 <p>In Rust, enums generally take one of three forms: <em>unit</em> variants, which have no inner data, <em>struct</em> variants, which contain named fields, and <em>tuple</em> variants, which contain within them a tuple of data. If you are unfamiliar with these terms, this is what they look like:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// note to those skimming the docs: this is Rust syntax! Not Sway! Don't copy/paste this into a Sway program.
+<pre><code class="language-rust ignore">// note to those skimming the docs: this is Rust syntax! Not Sway! Don't copy/paste this into a Sway program.
 
 enum Foo {
     UnitVariant,
@@ -1707,8 +1700,7 @@ enum Foo {
         field_two: bool
     }
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>In Sway, enums are simplified. Enums variants must all specify exactly one type. This type represents their interior data. This is actually isomorphic to what Rust offers, just with a different syntax. I'll now rewrite the above enum but with Sway syntax:</p>
 <pre><code class="language-sway">// This is equivalent Sway syntax for the above Rust enum.
 enum Foo {
