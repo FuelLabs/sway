@@ -285,6 +285,9 @@ pub struct TypedStructField {
     pub(crate) span: Span,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for TypedStructField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
@@ -292,6 +295,9 @@ impl Hash for TypedStructField {
     }
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedStructField {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
@@ -400,6 +406,9 @@ pub struct TypedEnumVariant {
     pub(crate) span: Span,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for TypedEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
@@ -408,6 +417,9 @@ impl Hash for TypedEnumVariant {
     }
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedEnumVariant {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name

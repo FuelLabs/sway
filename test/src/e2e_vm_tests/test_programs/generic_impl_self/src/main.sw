@@ -78,11 +78,5 @@ fn main() -> u32 {
   let j = 10u8 + 11u8;
   //let k = d.add();
 
-  let z: DoubleIdentity<bool, bool> = DoubleIdentity {
-    first: 4u64,
-    second: false,
-    third: 5u64
-  };
-
   b.get_first()
 }

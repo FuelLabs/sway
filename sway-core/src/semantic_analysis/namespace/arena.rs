@@ -19,7 +19,6 @@ pub trait NamespaceWrapper {
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///
-    ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     #[allow(clippy::result_unit_err)]
     fn resolve_type_with_self(
@@ -28,7 +27,7 @@ pub trait NamespaceWrapper {
         self_type: TypeId,
         span: Span,
     ) -> CompileResult<TypeId>;
-    fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId;
+    fn resolve_type_without_self(&self, ty: &TypeInfo) -> CompileResult<TypeId>;
     fn insert(&self, name: Ident, item: TypedDeclaration) -> CompileResult<()>;
     fn insert_module(&self, module_name: String, module_contents: Namespace);
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef);
@@ -688,34 +687,25 @@ impl NamespaceWrapper for NamespaceRef {
         ok(type_id, warnings, errors)
     }
 
-    fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId {
+    fn resolve_type_without_self(&self, ty: &TypeInfo) -> CompileResult<TypeId> {
         let ty = ty.clone();
         let mut warnings = vec![];
         let mut errors = vec![];
-        match ty {
-            TypeInfo::Custom { name, .. } => {
+        let type_id = match ty {
+            TypeInfo::Custom { name, type_args } => {
                 match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        decl.type_id
-                        /*
-                        if !type_arguments.is_empty() {
-                            let type_mapping = insert_type_parameters(type_arguments);
-                            let mut new_decl = decl.clone();
-                            new_decl.copy_types(&type_mapping);
-                            let new_type_info = TypeInfo::Struct {
-                                name: new_decl.name.as_str().to_string(),
-                                fields: new_decl
-                                    .fields
-                                    .iter()
-                                    .map(TypedStructField::as_owned_typed_struct_field)
-                                    .collect()
-                            };
-                            new_decl.type_id = insert_type(new_type_info);
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = check!(
+                                decl.monomorphize_with_type_ids(self, &type_args),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             new_decl.type_id
                         } else {
                             decl.type_id
                         }
-                        */
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         decl.type_id
@@ -734,7 +724,8 @@ impl NamespaceWrapper for NamespaceRef {
             }
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
-        }
+        };
+        ok(type_id, warnings, errors)
     }
 }
 

@@ -245,13 +245,20 @@ impl TraitMap {
     }
 
     fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
-        //println!("\n----------------------- {:?} -----------------------", r#type.friendly_type_str());
+        /*
+        println!(
+            "\n----------------------- {:?} -----------------------",
+            r#type.friendly_type_str()
+        );
+        */
         let mut methods = vec![];
         for ((_, type_info), l_methods) in self.trait_map.iter() {
-            //println!("\n~~~~~~\n{:?}", type_info.friendly_type_str());
-            //for (name, _) in l_methods.iter() {
-            //    println!("\n{:?}", name);
-            //}
+            /*
+            println!("\n~~~~~~\n{:?}", type_info.friendly_type_str());
+            for (name, _) in l_methods.iter() {
+                println!("\n{:?}", name);
+            }
+            */
             if *type_info == r#type {
                 methods.append(&mut l_methods.values().cloned().collect());
             }

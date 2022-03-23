@@ -69,6 +69,9 @@ pub enum TypeInfo {
     Array(TypeId, usize),
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
@@ -140,27 +143,29 @@ impl Hash for TypeInfo {
             TypeInfo::Unknown => {
                 state.write_u8(13);
             }
-            TypeInfo::Custom { name, type_args } => {
+            TypeInfo::SelfType => {
                 state.write_u8(14);
+            }
+            // UnknownGeneric and Custom have the same variant # on purpose
+            TypeInfo::UnknownGeneric { name } => {
+                state.write_u8(15); // variant #
                 name.hash(state);
-                type_args.len().hash(state);
+            }
+            // UnknownGeneric and Custom have the same variant # on purpose
+            TypeInfo::Custom { name, type_args } => {
+                state.write_u8(15); // variant #
+                name.hash(state);
+                // purposefully do not hash type_args len
                 for type_arg in type_args.iter() {
                     look_up_type_id(*type_arg).hash(state);
                 }
             }
-            TypeInfo::SelfType => {
-                state.write_u8(15);
-            }
-            TypeInfo::UnknownGeneric { name } => {
-                state.write_u8(16);
-                name.hash(state);
-            }
             TypeInfo::Ref(id) => {
-                state.write_u8(17);
+                state.write_u8(16);
                 look_up_type_id(*id).hash(state);
             }
             TypeInfo::Array(elem_ty, count) => {
-                state.write_u8(18);
+                state.write_u8(17);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
@@ -168,6 +173,9 @@ impl Hash for TypeInfo {
     }
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypeInfo {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -180,6 +188,30 @@ impl PartialEq for TypeInfo {
             (Self::Contract, Self::Contract) => true,
             (Self::ErrorRecovery, Self::ErrorRecovery) => true,
             (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
+            (
+                Self::Custom {
+                    name: l_name,
+                    type_args: l_type_args,
+                },
+                Self::Custom {
+                    name: r_name,
+                    type_args: r_type_args,
+                },
+            ) => l_name == r_name && l_type_args == r_type_args,
+            (
+                Self::UnknownGeneric { name: l_name },
+                Self::Custom {
+                    name: r_name,
+                    type_args: r_type_args,
+                },
+            ) => l_name == r_name && r_type_args.is_empty(),
+            (
+                Self::Custom {
+                    name: l_name,
+                    type_args: l_type_args,
+                },
+                Self::UnknownGeneric { name: r_name },
+            ) => l_name == r_name && l_type_args.is_empty(),
             (Self::Str(l), Self::Str(r)) => l == r,
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
@@ -228,16 +260,6 @@ impl PartialEq for TypeInfo {
                     address: r_address,
                 },
             ) => l_abi_name == r_abi_name && l_address == r_address,
-            (
-                Self::Custom {
-                    name: l_name,
-                    type_args: l_type_args,
-                },
-                Self::Custom {
-                    name: r_name,
-                    type_args: r_type_args,
-                },
-            ) => l_name == r_name && l_type_args == r_type_args,
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
             }

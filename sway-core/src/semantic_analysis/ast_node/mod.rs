@@ -476,8 +476,12 @@ impl TypedAstNode {
                             }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
-                            let implementing_for_type_id =
-                                namespace.resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id = check!(
+                                namespace.resolve_type_without_self(&type_implementing_for),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {

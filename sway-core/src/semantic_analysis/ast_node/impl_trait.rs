@@ -31,7 +31,12 @@ pub(crate) fn implementation_of_trait(
         block_span,
         ..
     } = impl_trait;
-    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = check!(
+        namespace.resolve_type_without_self(&type_implementing_for),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     let type_implementing_for = look_up_type_id(type_implementing_for);
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
     for type_argument in type_arguments.iter() {
