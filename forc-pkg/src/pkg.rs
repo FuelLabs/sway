@@ -148,7 +148,7 @@ pub enum SourceGitPinnedParseError {
 /// The name specified on the left hand side of the `=` in a depenedency declaration under
 /// `[dependencies]` within a forc manifest.
 ///
-/// The name of a dependency may differ from the package name in the case that they dependency's
+/// The name of a dependency may differ from the package name in the case that the dependency's
 /// `package` field is specified.
 ///
 /// For example, in the following, `foo` is assumed to be both the package name and the dependency
@@ -249,7 +249,7 @@ impl BuildPlan {
             bail!("Manifest dependencies do not match");
         }
 
-        // Ensure the pkg names of all nodes match their manifest.
+        // Ensure the pkg names of all nodes match their associated manifests.
         for node in self.graph.node_indices() {
             let pkg = &self.graph[node];
             let id = pkg.id();
