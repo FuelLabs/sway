@@ -4,8 +4,8 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use forc_util::{
-    find_file_name, git_checkouts_directory, print_on_failure, print_on_success,
-    print_on_success_library, println_yellow_err,
+    find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
+    print_on_success, print_on_success_library, println_yellow_err,
 };
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
-type Edge = ();
+type Edge = DependencyName;
 pub type Graph = petgraph::Graph<Node, Edge, Directed, GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
 pub type PathMap = HashMap<PinnedId, PathBuf>;
@@ -44,7 +44,7 @@ pub struct Compiled {
 /// A package uniquely identified by name along with its source.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Pkg {
-    /// The unique name of the package.
+    /// The unique name of the package as declared in its manifest.
     pub name: String,
     /// Where the package is sourced from.
     pub source: Source,
@@ -145,6 +145,26 @@ pub enum SourceGitPinnedParseError {
     CommitHash,
 }
 
+/// The name specified on the left hand side of the `=` in a depenedency declaration under
+/// `[dependencies]` within a forc manifest.
+///
+/// The name of a dependency may differ from the package name in the case that they dependency's
+/// `package` field is specified.
+///
+/// For example, in the following, `foo` is assumed to be both the package name and the dependency
+/// name:
+///
+/// ```toml
+/// foo = { git = "https://github.com/owner/repo", branch = "master" }
+/// ```
+///
+/// In the following case however, `foo` is the package name, but the dependency name is `foo-alt`:
+///
+/// ```toml
+/// foo-alt = { git = "https://github.com/owner/repo", branch = "master", package = "foo" }
+/// ```
+pub type DependencyName = String;
+
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
     pub fn new(manifest_dir: &Path, offline: bool) -> Result<Self> {
@@ -189,7 +209,11 @@ impl BuildPlan {
         let plan_dep_pkgs: BTreeSet<_> = self
             .graph
             .edges_directed(proj_node, Direction::Outgoing)
-            .map(|e| self.graph[e.target()].unpinned(&self.path_map))
+            .map(|e| {
+                let dep_name = e.weight();
+                let dep_pkg = self.graph[e.target()].unpinned(&self.path_map);
+                (dep_name, dep_pkg)
+            })
             .collect();
 
         // Collect dependency `Source`s from manifest.
@@ -200,22 +224,23 @@ impl BuildPlan {
             .as_ref()
             .into_iter()
             .flat_map(|deps| deps.iter())
-            .map(|(name, dep)| {
+            .map(|(dep_name, dep)| {
                 // NOTE: Temporarily warn about `version` until we have support for registries.
                 if let Dependency::Detailed(det) = dep {
                     if det.version.is_some() {
                         println_yellow_err(&format!(
                             "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
                             consider using `branch` or `tag` instead",
-                            name
+                            dep_name
                         ))
                         .unwrap();
                     }
                 }
 
-                let name = name.clone();
+                let name = dep.package().unwrap_or(dep_name).to_string();
                 let source = dep_to_source(proj_path, dep)?;
-                Ok(Pkg { name, source })
+                let dep_pkg = Pkg { name, source };
+                Ok((dep_name, dep_pkg))
             })
             .collect::<Result<BTreeSet<_>>>()?;
 
@@ -486,8 +511,8 @@ fn fetch_children(
         None => return Ok(()),
         Some(deps) => deps,
     };
-    for (name, dep) in deps {
-        let name = name.clone();
+    for (dep_name, dep) in deps {
+        let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
@@ -502,7 +527,7 @@ fn fetch_children(
         } else {
             visited[&pinned]
         };
-        graph.add_edge(node, dep_node, ());
+        graph.add_edge(node, dep_node, dep_name.to_string());
     }
     Ok(())
 }
@@ -764,11 +789,20 @@ pub fn dependency_namespace(
 
     // In order of compilation, accumulate dependency namespace refs.
     let namespace = sway_core::create_module();
-    for dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
-        if *dep_node == node {
+    for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
+        if dep_node == node {
             break;
         }
-        namespace.insert_module_ref(graph[*dep_node].name.clone(), namespace_map[dep_node]);
+        // Add the namespace once for each of its names.
+        let namespace_ref = namespace_map[&dep_node];
+        let dep_names: BTreeSet<_> = graph
+            .edges_directed(dep_node, Direction::Incoming)
+            .map(|e| e.weight())
+            .collect();
+        for dep_name in dep_names {
+            let dep_name = kebab_to_snake_case(dep_name);
+            namespace.insert_module_ref(dep_name.to_string(), namespace_ref);
+        }
     }
 
     namespace
