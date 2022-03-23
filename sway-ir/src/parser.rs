@@ -126,8 +126,9 @@ mod ir_builder {
                 / op_branch()
                 / op_call()
                 / op_cbr()
-                / op_contract_call()
+                / op_cmp()
                 / op_const()
+                / op_contract_call()
                 / op_extract_element()
                 / op_extract_value()
                 / op_get_ptr()
@@ -172,16 +173,21 @@ mod ir_builder {
                     IrAstOperation::Cbr(cond, tblock, fblock)
                 }
 
-            rule op_contract_call() -> IrAstOperation
-                = "contract_call" _
-                params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
-                    IrAstOperation::ContractCall(params, coins, asset_id, gas)
-            }
+            rule op_cmp() -> IrAstOperation
+                = "cmp" _ p:cmp_pred() l:id() r:id() {
+                    IrAstOperation::Cmp(p, l, r)
+                }
 
             rule op_const() -> IrAstOperation
                 = "const" _ ast_ty() cv:constant() {
                     IrAstOperation::Const(cv)
                 }
+
+            rule op_contract_call() -> IrAstOperation
+                = "contract_call" _
+                params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
+                    IrAstOperation::ContractCall(params, coins, asset_id, gas)
+            }
 
             rule op_extract_element() -> IrAstOperation
                 = "extract_element" _ name:id() comma() ty:ast_ty() comma() idx:id() {
@@ -258,6 +264,11 @@ mod ir_builder {
             rule op_store() -> IrAstOperation
                 = "store" _ val:id() comma() ptr() dst:id() {
                     IrAstOperation::Store(val, dst)
+                }
+
+            rule cmp_pred() -> String
+                = p:$("eq") _ {
+                    p.to_string()
                 }
 
             rule asm_arg() -> (Ident, Option<IrAstAsmArgInit>)
@@ -453,7 +464,7 @@ mod ir_builder {
         context::Context,
         error::IrError,
         function::Function,
-        instruction::Instruction,
+        instruction::{Instruction, Predicate},
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
@@ -503,8 +514,9 @@ mod ir_builder {
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
-        ContractCall(String, String, String, String),
+        Cmp(String, String, String),
         Const(IrAstConst),
+        ContractCall(String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
         GetPtr(String, IrAstTy, u64),
@@ -833,6 +845,16 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
+                IrAstOperation::Cmp(pred_str, lhs, rhs) => block.ins(context).cmp(
+                    match pred_str.as_str() {
+                        "eq" => Predicate::Equal,
+                        _ => unreachable!("Bug in `cmp` predicate rule."),
+                    },
+                    *val_map.get(&lhs).unwrap(),
+                    *val_map.get(&rhs).unwrap(),
+                    opt_ins_md_idx,
+                ),
+                IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
                 IrAstOperation::ContractCall(params, coins, asset_id, gas) => {
                     block.ins(context).contract_call(
                         *val_map.get(&params).unwrap(),
@@ -842,7 +864,6 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
                 IrAstOperation::ExtractElement(aval, ty, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).extract_element(

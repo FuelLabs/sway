@@ -2,10 +2,6 @@
 //!
 //! During creation, deserialization and optimization the IR should be verified to be in a
 //! consistent valid state, using the functions in this module.
-//!
-//! **NOTE: this module is very much a WIP.  I began to add verifications only for the IR to change
-//! and make them obsolete or outdated.  So once the IR is in a stable state and in use in the Sway
-//! compiler, this module must be updated and used.**
 
 use std::iter::FromIterator;
 
