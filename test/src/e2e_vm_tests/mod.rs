@@ -269,6 +269,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x78, 0x52, 0xb8, 0x55,
             ])),
         ),
+        (
+            "should_pass/language/is_prime",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
