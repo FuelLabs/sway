@@ -1,5 +1,5 @@
 script;
-use std::{chain::assert, constants::{ETH_ID, ZERO}, contract_id::ContractId};
+use std::{chain::assert, constants::{NATIVE_ASSET_ID, ZERO}, contract_id::ContractId};
 use context_testing_abi::*;
 
 fn main() -> bool {
@@ -14,7 +14,7 @@ fn main() -> bool {
 
     // test Context::contract_id():
     let returned_contract_id = test_contract.get_id {
-        gas: gas, coins: 0, asset_id: ETH_ID
+        gas: gas, coins: 0, asset_id: NATIVE_ASSET_ID
     }
     ();
     assert(returned_contract_id.into() == deployed_contract_id);
@@ -22,36 +22,36 @@ fn main() -> bool {
     // @todo set up a test contract to mint some tokens for testing balances.
     // test Context::this_balance():
     let returned_this_balance = test_contract.get_this_balance {
-        gas: gas, coins: 0, asset_id: ETH_ID
+        gas: gas, coins: 0, asset_id: NATIVE_ASSET_ID
     }
-    (ETH_ID);
+    (NATIVE_ASSET_ID);
     assert(returned_this_balance == 0);
 
     // test Context::balance_of_contract():
     let returned_contract_balance = test_contract.get_balance_of_contract {
-        gas: gas, coins: 0, asset_id: ETH_ID
+        gas: gas, coins: 0, asset_id: NATIVE_ASSET_ID
     }
-    (ETH_ID, other_contract_id);
+    (NATIVE_ASSET_ID, other_contract_id);
     assert(returned_contract_balance == 0);
 
     // test Context::msg_value():
     let returned_amount = test_contract.get_amount {
-        gas: gas, coins: amount, asset_id: ETH_ID
+        gas: gas, coins: amount, asset_id: NATIVE_ASSET_ID
     }
     ();
     assert(returned_amount == amount);
 
     // test Context::msg_asset_id():
     let returned_asset_id = test_contract.get_asset_id {
-        gas: gas, coins: amount, asset_id: ETH_ID
+        gas: gas, coins: amount, asset_id: NATIVE_ASSET_ID
     }
     ();
-    assert(returned_asset_id.into() == ETH_ID);
+    assert(returned_asset_id.into() == NATIVE_ASSET_ID);
 
     // test Context::msg_gas():
     // @todo expect the correct gas here... this should fail using `1000`
     let gas = test_contract.get_gas {
-        gas: gas, coins: amount, asset_id: ETH_ID
+        gas: gas, coins: amount, asset_id: NATIVE_ASSET_ID
     }
     ();
     assert(gas == 1000);
@@ -59,7 +59,7 @@ fn main() -> bool {
     // test Context::global_gas():
     // @todo expect the correct gas here... this should fail using `1000`
     let global_gas = test_contract.get_global_gas {
-        gas: gas, coins: amount, asset_id: ETH_ID
+        gas: gas, coins: amount, asset_id: NATIVE_ASSET_ID
     }
     ();
     assert(global_gas == 1000);

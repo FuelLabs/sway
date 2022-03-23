@@ -1,5 +1,5 @@
 script;
-use std::{chain::auth::caller_is_external, constants::ETH_ID};
+use std::{chain::auth::caller_is_external, constants::NATIVE_ASSET_ID};
 use auth_testing_abi::AuthTesting;
 
 // should be false in the case of a script
