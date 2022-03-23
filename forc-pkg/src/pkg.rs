@@ -519,7 +519,7 @@ pub fn graph_to_path_map(
                     println!("  Fetching {}", git.to_string());
                     fetch_git(fetch_id, &dep.name, git)?;
                 }
-                find_pkg_dir_within(&repo_path, &dep.name).ok_or_else(|| {
+                find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
                     anyhow!(
                         "failed to find package `{}` in {}",
                         dep.name,
@@ -814,7 +814,7 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
                     println!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
-                let path = find_pkg_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
+                let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
                     anyhow!(
                         "failed to find package `{}` in {}",
                         pinned.name,
@@ -1084,7 +1084,7 @@ pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_pkg_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -1100,9 +1100,9 @@ pub fn find_pkg_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
         })
 }
 
-/// The same as `find_pkg_within`, but returns the package's project directory.
-pub fn find_pkg_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
-    find_pkg_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
+/// The same as [find_within], but returns the package's project directory.
+pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
 // TODO: Update this to match behaviour described in the `compile` doc comment above.
