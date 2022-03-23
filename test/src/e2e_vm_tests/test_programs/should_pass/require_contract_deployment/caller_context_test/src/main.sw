@@ -6,6 +6,7 @@ fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
     let other_contract_id = ~ContractId::from(0x285dafd64feb42477cfb3da8193ceb28b5f5277c17591d7c10000661cacdd0c9);
+    let native_asset_id = ~ContractId::from(NATIVE_ASSET_ID);
 
     // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
     let deployed_contract_id = 0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322;
@@ -24,14 +25,14 @@ fn main() -> bool {
     let returned_this_balance = test_contract.get_this_balance {
         gas: gas, coins: 0, asset_id: NATIVE_ASSET_ID
     }
-    (NATIVE_ASSET_ID);
+    (native_asset_id);
     assert(returned_this_balance == 0);
 
     // test Context::balance_of_contract():
     let returned_contract_balance = test_contract.get_balance_of_contract {
         gas: gas, coins: 0, asset_id: NATIVE_ASSET_ID
     }
-    (NATIVE_ASSET_ID, other_contract_id);
+    (native_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
 
     // test Context::msg_value():
