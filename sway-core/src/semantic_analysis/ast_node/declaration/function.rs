@@ -533,18 +533,18 @@ pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParam
         .collect()
 }
 
-/// Insert all type parameters as unknown types, using given types.
+/// Insert all type parameters as unknown types, given [TypeArguments]
 /// Return a mapping of type parameter to [TypeId]
-pub(crate) fn insert_type_parameters_with_given_types(
+pub(crate) fn insert_type_parameters_with_type_arguments(
     params: &[TypeParameter],
-    type_ids: &[TypeId],
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> CompileResult<Vec<(TypeParameter, TypeId)>> {
     let warnings = vec![];
     let mut errors = vec![];
-    if params.len() != type_ids.len() {
+    if params.len() != type_arguments.len() {
         errors.push(CompileError::IncorrectNumberOfTypeArguments {
-            given: type_ids.len(),
+            given: type_arguments.len(),
             expected: params.len(),
             span,
         });
@@ -552,8 +552,8 @@ pub(crate) fn insert_type_parameters_with_given_types(
     }
     let output = params
         .iter()
-        .zip(type_ids.iter())
-        .map(|(param, type_id)| (param.clone(), *type_id))
+        .zip(type_arguments.iter())
+        .map(|(param, type_argument)| (param.clone(), type_argument.type_id))
         .collect::<Vec<_>>();
     ok(output, warnings, errors)
 }

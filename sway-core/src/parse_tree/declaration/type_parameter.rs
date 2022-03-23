@@ -1,6 +1,6 @@
 use crate::{
     build_config::BuildConfig, error::*, parse_tree::ident, type_engine::*, CompileError, Rule,
-    TypedDeclaration,
+    TypeArgument, TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -8,7 +8,7 @@ use sway_types::{ident::Ident, span::Span};
 use pest::iterators::Pair;
 use std::convert::From;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub(crate) type_id: TypeId,
     pub(crate) name_ident: Ident,
@@ -120,6 +120,13 @@ impl TypeParameter {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => insert_type(look_up_type_id_raw(self.type_id)),
         };
+    }
+
+    pub(crate) fn to_type_argument(&self) -> TypeArgument {
+        TypeArgument {
+            type_id: self.type_id,
+            span: self.name_ident.span().clone(),
+        }
     }
 }
 

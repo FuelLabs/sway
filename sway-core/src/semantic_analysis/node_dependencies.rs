@@ -237,7 +237,7 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_typeinfo(&field.r#type)
                 })
-                .gather_from_traits(type_parameters),
+                .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
                 variants,
                 type_parameters,
@@ -246,7 +246,7 @@ impl Dependencies {
                 .gather_from_iter(variants.iter(), |deps, variant| {
                     deps.gather_from_typeinfo(&variant.r#type)
                 })
-                .gather_from_traits(type_parameters),
+                .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
             Declaration::TraitDeclaration(TraitDeclaration {
                 interface_surface,
@@ -275,7 +275,7 @@ impl Dependencies {
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_traits(type_arguments)
+                .gather_from_type_parameters(type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -331,7 +331,7 @@ impl Dependencies {
         })
         .gather_from_typeinfo(return_type)
         .gather_from_block(body)
-        .gather_from_traits(type_parameters)
+        .gather_from_type_parameters(type_parameters)
     }
 
     fn gather_from_expr(mut self, expr: &Expression) -> Self {
@@ -482,7 +482,7 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_traits(mut self, type_parameters: &[TypeParameter]) -> Self {
+    fn gather_from_type_parameters(mut self, type_parameters: &[TypeParameter]) -> Self {
         for type_param in type_parameters {
             for constraint in &type_param.trait_constraints {
                 self.deps.insert(DependentSymbol::Symbol(
@@ -493,13 +493,20 @@ impl Dependencies {
         self
     }
 
+    fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
+        self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
+            deps.gather_from_typeinfo(&look_up_type_id(type_argument.type_id))
+        })
+    }
+
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         match type_info {
-            TypeInfo::Custom { name, type_args } => {
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
                 self.deps.insert(DependentSymbol::Symbol(name.to_string()));
-                self.gather_from_iter(type_args.iter(), |deps, type_arg| {
-                    deps.gather_from_typeinfo(&look_up_type_id(*type_arg))
-                })
+                self.gather_from_type_arguments(type_arguments)
             }
             _ => self,
         }

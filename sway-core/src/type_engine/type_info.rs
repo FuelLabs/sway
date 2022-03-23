@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
-    Ident, Rule, TypeParameter,
+    Ident, Rule, TypeArgument, TypeParameter,
 };
 
 use sway_types::span::Span;
@@ -30,7 +30,7 @@ pub enum TypeInfo {
     },
     Struct {
         name: Ident,
-        type_args: Vec<TypeId>,
+        type_arguments: Vec<TypeArgument>,
         fields: Vec<TypedStructField>,
     },
     Boolean,
@@ -54,7 +54,7 @@ pub enum TypeInfo {
     /// until the semantic analysis stage.
     Custom {
         name: Ident,
-        type_args: Vec<TypeId>,
+        type_arguments: Vec<TypeArgument>,
     },
     SelfType,
     Byte,
@@ -115,14 +115,14 @@ impl Hash for TypeInfo {
             }
             TypeInfo::Struct {
                 name,
-                type_args,
+                type_arguments,
                 fields,
             } => {
                 state.write_u8(9);
                 name.hash(state);
-                type_args.len().hash(state);
-                for type_arg in type_args.iter() {
-                    look_up_type_id(*type_arg).hash(state);
+                type_arguments.len().hash(state);
+                for type_argument in type_arguments.iter() {
+                    type_argument.hash(state);
                 }
                 fields.len().hash(state);
                 for field in fields.iter() {
@@ -152,12 +152,15 @@ impl Hash for TypeInfo {
                 name.hash(state);
             }
             // UnknownGeneric and Custom have the same variant # on purpose
-            TypeInfo::Custom { name, type_args } => {
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
                 state.write_u8(15); // variant #
                 name.hash(state);
-                // purposefully do not hash type_args len
-                for type_arg in type_args.iter() {
-                    look_up_type_id(*type_arg).hash(state);
+                // purposefully do not hash type_arguments len
+                for type_argument in type_arguments.iter() {
+                    type_argument.hash(state);
                 }
             }
             TypeInfo::Ref(id) => {
@@ -191,24 +194,24 @@ impl PartialEq for TypeInfo {
             (
                 Self::Custom {
                     name: l_name,
-                    type_args: l_type_args,
+                    type_arguments: l_type_args,
                 },
                 Self::Custom {
                     name: r_name,
-                    type_args: r_type_args,
+                    type_arguments: r_type_args,
                 },
             ) => l_name == r_name && l_type_args == r_type_args,
             (
                 Self::UnknownGeneric { name: l_name },
                 Self::Custom {
                     name: r_name,
-                    type_args: r_type_args,
+                    type_arguments: r_type_args,
                 },
             ) => l_name == r_name && r_type_args.is_empty(),
             (
                 Self::Custom {
                     name: l_name,
-                    type_args: l_type_args,
+                    type_arguments: l_type_args,
                 },
                 Self::UnknownGeneric { name: r_name },
             ) => l_name == r_name && l_type_args.is_empty(),
@@ -227,21 +230,21 @@ impl PartialEq for TypeInfo {
             (
                 Self::Struct {
                     name: l_name,
-                    type_args: l_type_args,
+                    type_arguments: l_type_arguments,
                     fields: l_fields,
                 },
                 Self::Struct {
                     name: r_name,
-                    type_args: r_type_args,
+                    type_arguments: r_type_arguments,
                     fields: r_fields,
                 },
             ) => {
                 l_name == r_name
                     && l_fields == r_fields
-                    && l_type_args
+                    && l_type_arguments
                         .iter()
-                        .zip(r_type_args.iter())
-                        .map(|(l, r)| look_up_type_id(*l) == look_up_type_id(*r))
+                        .zip(r_type_arguments.iter())
+                        .map(|(l, r)| l == r)
                         .all(|x| x)
             }
             (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
@@ -303,25 +306,21 @@ impl TypeInfo {
             Rule::ident => {
                 let type_info = TypeInfo::pair_as_str_to_type_info(input, config);
                 match iter.next() {
-                    Some(types) => {
-                        let mut type_arguments = vec![];
-                        for type_name in types.into_inner() {
-                            let type_arg = check!(
-                                Self::parse_from_pair(type_name, config),
-                                TypeInfo::ErrorRecovery,
+                    Some(types) => match type_info {
+                        TypeInfo::Custom { name, .. } => {
+                            let type_arguments = check!(
+                                TypeArgument::parse_arguments_from_pair(types, config),
+                                vec!(),
                                 warnings,
                                 errors
                             );
-                            type_arguments.push(insert_type(type_arg));
-                        }
-                        match type_info {
-                            TypeInfo::Custom { name, .. } => TypeInfo::Custom {
+                            TypeInfo::Custom {
                                 name,
-                                type_args: type_arguments,
-                            },
-                            _ => unimplemented!(),
+                                type_arguments,
+                            }
                         }
-                    }
+                        _ => unimplemented!(),
+                    },
                     None => type_info,
                 }
             }
@@ -459,7 +458,7 @@ impl TypeInfo {
             "Contract" => TypeInfo::Contract,
             _other => TypeInfo::Custom {
                 name: Ident::new(span),
-                type_args: vec![],
+                type_arguments: vec![],
             },
         }
     }
@@ -820,7 +819,7 @@ impl TypeInfo {
             TypeInfo::Struct {
                 fields,
                 name,
-                type_args,
+                type_arguments,
             } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
@@ -830,18 +829,18 @@ impl TypeInfo {
                         new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
-                let mut new_type_args = type_args.clone();
-                for new_type_arg in new_type_args.iter_mut() {
+                let mut new_type_arguments = type_arguments.clone();
+                for new_type_argument in new_type_arguments.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(*new_type_arg).matches_type_parameter(mapping)
+                        look_up_type_id(new_type_argument.type_id).matches_type_parameter(mapping)
                     {
-                        *new_type_arg = insert_type(TypeInfo::Ref(matching_id));
+                        new_type_argument.type_id = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
                 Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
-                    type_args: new_type_args,
+                    type_arguments: new_type_arguments,
                 }))
             }
             TypeInfo::Enum {

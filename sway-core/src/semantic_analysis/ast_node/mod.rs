@@ -571,15 +571,15 @@ impl TypedAstNode {
                                     TypedStructField { name, r#type, span }
                                 })
                                 .collect::<Vec<_>>();
-                            let type_args = decl
+                            let type_arguments = decl
                                 .type_parameters
                                 .iter()
-                                .map(|x| x.type_id)
+                                .map(|x| x.to_type_argument())
                                 .collect::<Vec<_>>();
                             let type_id = insert_type(TypeInfo::Struct {
                                 name: decl.name.clone(),
                                 fields: fields.clone(),
-                                type_args,
+                                type_arguments,
                             });
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),

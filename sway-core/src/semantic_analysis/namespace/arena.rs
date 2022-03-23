@@ -635,13 +635,13 @@ impl NamespaceWrapper for NamespaceRef {
         let type_id = match ty {
             TypeInfo::Custom {
                 ref name,
-                type_args,
+                type_arguments: type_args,
             } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize_with_type_ids(self, &type_args),
+                                decl.monomorphize_with_type_arguments(self, &type_args),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -692,12 +692,15 @@ impl NamespaceWrapper for NamespaceRef {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match ty {
-            TypeInfo::Custom { name, type_args } => {
+            TypeInfo::Custom {
+                name,
+                type_arguments: type_args,
+            } => {
                 match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize_with_type_ids(self, &type_args),
+                                decl.monomorphize_with_type_arguments(self, &type_args),
                                 return err(warnings, errors),
                                 warnings,
                                 errors

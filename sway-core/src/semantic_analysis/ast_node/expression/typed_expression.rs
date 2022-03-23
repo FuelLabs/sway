@@ -1111,8 +1111,8 @@ impl TypedExpression {
             decl.type_parameters.is_empty(),
             look_up_type_id(type_annotation),
         ) {
-            (false, TypeInfo::Struct { type_args, .. }) => check!(
-                decl.monomorphize_with_type_ids(&module, &type_args),
+            (false, TypeInfo::Struct { type_arguments, .. }) => check!(
+                decl.monomorphize_with_type_arguments(&module, &type_arguments),
                 return err(warnings, errors),
                 warnings,
                 errors

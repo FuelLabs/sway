@@ -220,32 +220,61 @@ pub struct TypedStructDeclaration {
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(&self, namespace: &NamespaceRef) -> Self {
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let type_args = self
+        let type_arguments = self
             .type_parameters
             .iter()
-            .map(|x| x.type_id)
+            .map(|x| x.to_type_argument())
             .collect::<Vec<_>>();
-        Self::monomorphize_inner(self, namespace, type_mapping, &type_args)
+        Self::monomorphize_inner(self, namespace, type_mapping, &type_arguments)
     }
 
-    pub(crate) fn monomorphize_with_type_ids(
+    pub(crate) fn monomorphize_with_type_arguments(
         &self,
         namespace: &NamespaceRef,
-        type_ids: &[TypeId],
+        type_arguments: &[TypeArgument],
+        //type_arguments: &[(TypeId, Span)],
+        //self_type: TypeId,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = check!(
-            insert_type_parameters_with_given_types(
+            insert_type_parameters_with_type_arguments(
                 &self.type_parameters,
-                type_ids,
+                type_arguments,
                 self.span.clone()
             ),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let new_decl = Self::monomorphize_inner(self, namespace, type_mapping, type_ids);
+        let new_decl = Self::monomorphize_inner(self, namespace, type_mapping, type_arguments);
+        /*
+        if type_mapping.len() != type_ids.len() {
+            errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                given: type_ids.len(),
+                expected: params.len(),
+                span,
+            });
+            return err(warnings, errors);
+        }
+        for ((_, interim_type), type_id) in type_mapping.iter().zip(type_ids.iter()) {
+            match unify_with_self(
+                *interim_type,
+                *type_id,
+                self_type,
+                type_argument_span,
+                "Type argument is not assignable to generic type parameter.",
+            ) {
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
+                }
+                Err(e) => {
+                    errors.push(e.into());
+                    continue;
+                }
+            }
+        }
+        */
         ok(new_decl, warnings, errors)
     }
 
@@ -253,7 +282,7 @@ impl TypedStructDeclaration {
         &self,
         namespace: &NamespaceRef,
         type_mapping: Vec<(TypeParameter, usize)>,
-        type_args: &[TypeId],
+        type_arguments: &[TypeArgument],
     ) -> Self {
         let old_type_id = self.type_id;
         let mut new_decl = self.clone();
@@ -261,7 +290,7 @@ impl TypedStructDeclaration {
         new_decl.type_id = insert_type(TypeInfo::Struct {
             name: new_decl.name.clone(),
             fields: new_decl.fields.clone(),
-            type_args: type_args.to_vec(),
+            type_arguments: type_arguments.to_vec(),
         });
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
