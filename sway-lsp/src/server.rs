@@ -3,8 +3,9 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
+use forc_util::find_manifest_dir;
 use std::sync::Arc;
-use sway_utils::helpers::{find_manifest_dir, get_sway_files};
+use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 

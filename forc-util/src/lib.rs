@@ -17,6 +17,32 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
+/// Continually go up in the file tree until a specified file is found.
+#[allow(clippy::branches_sharing_code)]
+pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    let mut path = std::fs::canonicalize(starter_path).ok()?;
+    let empty_path = PathBuf::from("/");
+    while path != empty_path {
+        path.push(file_name);
+        if path.exists() {
+            path.pop();
+            return Some(path);
+        } else {
+            path.pop();
+            path.pop();
+        }
+    }
+    None
+}
+/// Continually go up in the file tree until a Forc manifest file is found.
+pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+/// Continually go up in the file tree until a Cargo manifest file is found.
+pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, "Cargo.toml")
+}
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res

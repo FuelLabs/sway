@@ -3177,6 +3177,7 @@ version = "0.7.0"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
+ "forc-util",
  "futures",
  "ropey",
  "serde_json",
