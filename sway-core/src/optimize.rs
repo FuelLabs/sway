@@ -1,3 +1,4 @@
+use crate::constants;
 use fuel_crypto::Hasher;
 use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
@@ -609,16 +610,30 @@ impl FnCompiler {
             }
             TypedExpressionVariant::FunctionApplication {
                 name,
+                contract_call_params,
                 arguments,
                 function_body,
-                ..
-            } => self.compile_fn_call(
-                context,
-                name.suffix.as_str(),
-                arguments,
-                Some(function_body),
-                span_md_idx,
-            ),
+                selector,
+            } => {
+                if let Some(metadata) = selector {
+                    self.compile_contract_call(
+                        &metadata,
+                        &contract_call_params,
+                        context,
+                        name.suffix.as_str(),
+                        arguments,
+                        span_md_idx,
+                    )
+                } else {
+                    self.compile_fn_call(
+                        context,
+                        name.suffix.as_str(),
+                        arguments,
+                        Some(function_body),
+                        span_md_idx,
+                    )
+                }
+            }
             TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, op, *lhs, *rhs, span_md_idx)
             }
@@ -792,6 +807,175 @@ impl FnCompiler {
 
         self.current_block = final_block;
         Ok(final_block.get_phi(context))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_contract_call(
+        &mut self,
+        metadata: &ContractCallMetadata,
+        contract_call_parameters: &HashMap<String, TypedExpression>,
+        context: &mut Context,
+        ast_name: &str,
+        ast_args: Vec<(Ident, TypedExpression)>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, String> {
+        // Compile each user argument
+        let compiled_args = ast_args
+            .into_iter()
+            .map(|(_, expr)| self.compile_expression(context, expr))
+            .collect::<Result<Vec<Value>, String>>()?;
+
+        // New struct type to hold the user arguments
+        let field_types = compiled_args
+            .iter()
+            .map(|val| val.get_type(context).unwrap())
+            .collect::<Vec<_>>();
+        let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+        let user_args_struct_name = format!("{}{}", "args_struct_for_", ast_name);
+        self.struct_names.add_aggregate_symbols(
+            user_args_struct_name.clone(),
+            user_args_struct_aggregate,
+            None,
+        )?;
+
+        // New local pointer for the struct to hold all user arguments
+        let alias_user_args_struct_local_name =
+            match self.symbol_map.get(user_args_struct_name.as_str()) {
+                None => user_args_struct_name.clone(),
+                Some(shadowed_user_args_struct_local_name) => {
+                    format!("{}_", shadowed_user_args_struct_local_name)
+                }
+            };
+        self.symbol_map.insert(
+            alias_user_args_struct_local_name.clone(),
+            user_args_struct_name,
+        );
+        let user_args_struct_ptr = self
+            .function
+            .new_local_ptr(
+                context,
+                alias_user_args_struct_local_name,
+                Type::Struct(user_args_struct_aggregate),
+                true,
+                None,
+            )
+            .map_err(|ir_error| ir_error.to_string())?;
+
+        // Convert the user_arg pointer to a value using get_ptr after casting to U64. This
+        // represents a pointer to the struct instead of the struct itself
+        let user_args_struct_ptr_val = self.current_block.ins(context).get_ptr(
+            user_args_struct_ptr,
+            Type::Uint(64),
+            0,
+            span_md_idx,
+        );
+
+        let user_args_struct_ptr_val = compiled_args.into_iter().enumerate().fold(
+            user_args_struct_ptr_val,
+            |user_args_struct_ptr_val, (insert_idx, insert_val)| {
+                self.current_block.ins(context).insert_value(
+                    user_args_struct_ptr_val,
+                    user_args_struct_aggregate,
+                    insert_val,
+                    vec![insert_idx as u64],
+                    span_md_idx,
+                )
+            },
+        );
+
+        // Now handle the contract address and the selector. The contract address is just
+        // as B256 while the selector is a [u8; 4] which we have to convert to a U64.
+        let ra_struct_aggregate = Aggregate::new_struct(
+            context,
+            [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
+        );
+        self.struct_names.add_aggregate_symbols(
+            format!("{}{}", "ra_struct_for_", ast_name),
+            ra_struct_aggregate,
+            None,
+        )?;
+
+        let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
+        let mut ra_struct_val =
+            Constant::get_undef(context, Type::Struct(ra_struct_aggregate), span_md_idx);
+
+        // Insert the contract address
+        ra_struct_val = self.current_block.ins(context).insert_value(
+            ra_struct_val,
+            ra_struct_aggregate,
+            addr,
+            vec![0],
+            span_md_idx,
+        );
+
+        // Convert selector to U64 and then insert it
+        let sel = metadata.func_selector;
+        let sel_val = convert_literal_to_value(
+            context,
+            &Literal::U64(
+                sel[3] as u64 + 256 * (sel[2] as u64 + 256 * (sel[1] as u64 + 256 * sel[0] as u64)),
+            ),
+            span_md_idx,
+        );
+        ra_struct_val = self.current_block.ins(context).insert_value(
+            ra_struct_val,
+            ra_struct_aggregate,
+            sel_val,
+            vec![1],
+            span_md_idx,
+        );
+
+        // Insert the pointer to the user args struct
+        ra_struct_val = self.current_block.ins(context).insert_value(
+            ra_struct_val,
+            ra_struct_aggregate,
+            user_args_struct_ptr_val,
+            vec![2],
+            span_md_idx,
+        );
+
+        // Compile all other metadata parameters
+        let coins = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
+        {
+            Some(coins_expr) => self.compile_expression(context, coins_expr.clone())?,
+            None => convert_literal_to_value(
+                context,
+                &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
+                span_md_idx,
+            ),
+        };
+
+        let asset_id = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
+        {
+            Some(asset_id_expr) => self.compile_expression(context, asset_id_expr.clone())?,
+            None => convert_literal_to_value(
+                context,
+                &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
+                span_md_idx,
+            ),
+        };
+
+        let gas = match contract_call_parameters
+            .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
+        {
+            Some(gas_expr) => self.compile_expression(context, gas_expr.clone())?,
+            None => self
+                .current_block
+                .ins(context)
+                .read_register("cgas".to_string(), span_md_idx),
+        };
+
+        // Insert the contract_call instruction
+        Ok(self.current_block.ins(context).contract_call(
+            ra_struct_val,
+            coins,
+            asset_id,
+            gas,
+            span_md_idx,
+        ))
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1055,6 +1239,16 @@ impl FnCompiler {
             is_mutable,
             ..
         } = ast_var_decl;
+
+        // Nothing to do for an abi cast declarations. The address specified in them is already
+        // provided in each contract call node in the AST.
+        if matches!(
+            &resolve_type(body.return_type, &body.span)
+                .map_err(|ty_err| format!("{:?}", ty_err))?,
+            TypeInfo::ContractCaller { .. }
+        ) {
+            return Ok(Constant::get_unit(context, span_md_idx));
+        }
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
@@ -2028,13 +2222,10 @@ fn convert_resolved_type(
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),
         TypeInfo::SelfType { .. } => return Err("can't do self types yet".into()),
-        TypeInfo::Contract => Type::Contract,
-        TypeInfo::ContractCaller { abi_name, address } => Type::ContractCaller(AbiInstance::new(
-            context,
-            abi_name.prefixes.clone(),
-            abi_name.suffix.clone(),
-            address.clone(),
-        )),
+        TypeInfo::Contract => return Err("Contract type cannot be resolved in IR".into()),
+        TypeInfo::ContractCaller { .. } => {
+            return Err("ContractCaller type cannot be reoslved in IR".into())
+        }
         TypeInfo::Unknown => return Err("unknown type found in AST..?".into()),
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
@@ -2167,6 +2358,21 @@ mod tests {
         let mut parsed =
             SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
 
+        let program_type = match parsed
+            .peek()
+            .unwrap()
+            .into_inner()
+            .peek()
+            .unwrap()
+            .as_rule()
+        {
+            Rule::script => TreeType::Script,
+            Rule::contract => TreeType::Contract,
+            Rule::predicate => TreeType::Predicate,
+            Rule::library => todo!(),
+            _ => unreachable!("unexpected program type"),
+        };
+
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
 
@@ -2196,7 +2402,7 @@ mod tests {
             parse_tree.tree,
             crate::create_module(),
             crate::create_module(),
-            &TreeType::Script,
+            &program_type,
             &build_config,
             &mut dead_code_graph,
         )
