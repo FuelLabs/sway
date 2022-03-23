@@ -26,7 +26,7 @@
   - [Loops](./control-flow/loops.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
-  <!-- - [Testing with TypeScript](./testing/testing-with-typescript.md) -->
+  - [Testing with TypeScript](./testing/testing-with-typescript.md)
 - [Sway on the Chain](./sway-on-chain/index.md)
   - [Program Types](./sway-on-chain/program_types.md)
   - [Contracts](./sway-on-chain/smart_contracts.md)
