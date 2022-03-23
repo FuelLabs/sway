@@ -517,8 +517,10 @@ fn test_function_selector_behavior() {
 
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]
-pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParameter, TypeId)> {
-    params
+pub(crate) fn insert_type_parameters(
+    type_parameters: &[TypeParameter],
+) -> Vec<(TypeParameter, TypeId)> {
+    type_parameters
         .iter()
         .map(|x| {
             (
@@ -529,29 +531,4 @@ pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParam
             )
         })
         .collect()
-}
-
-/// Insert all type parameters as unknown types, given [TypeArguments]
-/// Return a mapping of type parameter to [TypeId]
-pub(crate) fn insert_type_parameters_with_type_arguments(
-    type_parameters: &[TypeParameter],
-    type_arguments: &[TypeArgument],
-    span: Span,
-) -> CompileResult<Vec<(TypeParameter, TypeId)>> {
-    let warnings = vec![];
-    let mut errors = vec![];
-    if type_parameters.len() != type_arguments.len() {
-        errors.push(CompileError::IncorrectNumberOfTypeArguments {
-            given: type_arguments.len(),
-            expected: type_parameters.len(),
-            span,
-        });
-        return err(warnings, errors);
-    }
-    let output = type_parameters
-        .iter()
-        .zip(type_arguments.iter())
-        .map(|(param, type_argument)| (param.clone(), type_argument.type_id))
-        .collect::<Vec<_>>();
-    ok(output, warnings, errors)
 }

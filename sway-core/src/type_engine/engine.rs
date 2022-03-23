@@ -249,6 +249,15 @@ pub fn unify_with_self(
     TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
 }
 
+pub(crate) fn unify(
+    a: TypeId,
+    b: TypeId,
+    span: &Span,
+    help_text: impl Into<String>,
+) -> Result<Vec<CompileWarning>, TypeError> {
+    TYPE_ENGINE.unify(a, b, span, help_text)
+}
+
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.resolve_type(id, error_span)
 }
