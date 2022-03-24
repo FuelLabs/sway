@@ -7,6 +7,9 @@ pub const LANGUAGE_NAME: &str = "Sway";
 /// The size, in bytes, of a single word in the FuelVM.
 pub const VM_WORD_SIZE: u64 = 8;
 
+// Keywords
+pub const INVALID_NAMES: &[&str] = &["storage"];
+
 pub const CONTRACT_CALL_GAS_PARAMETER_NAME: &str = "gas";
 
 pub const CONTRACT_CALL_COINS_PARAMETER_NAME: &str = "coins";

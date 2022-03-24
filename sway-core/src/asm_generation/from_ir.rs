@@ -1494,7 +1494,7 @@ impl<'ir> AsmBuilder<'ir> {
                 self.bytecode.push(Op {
                     opcode: Either::Left(match access_type {
                         StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
-                        StateAccessType::Write => VirtualOp::SWWQ(val_reg, key_reg),
+                        StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
                     }),
                     comment: "quad word state access".into(),
                     owning_span: instr_val.get_span(self.context),
@@ -1584,7 +1584,7 @@ impl<'ir> AsmBuilder<'ir> {
                 );
 
                 self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(store_reg, key_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(key_reg, store_reg)),
                     comment: "single word state access".into(),
                     owning_span: instr_val.get_span(self.context),
                 });

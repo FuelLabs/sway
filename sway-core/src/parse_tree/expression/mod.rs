@@ -156,6 +156,10 @@ pub enum Expression {
         variant: DelayedResolutionVariant,
         span: Span,
     },
+    StorageAccess {
+        field_names: Vec<Ident>,
+        span: Span,
+    },
     IfLet {
         scrutinee: Scrutinee,
         expr: Box<Expression>,
@@ -299,6 +303,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             DelayedMatchTypeResolution { span, .. } => span,
+            StorageAccess { span, .. } => span,
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             SizeOfType { span, .. } => span,
@@ -509,6 +514,15 @@ impl Expression {
                 let name = name.unwrap();
                 let exp = Expression::VariableExpression { name, span };
                 ParserLifter::empty(exp)
+            }
+            Rule::var_name_ident => {
+                let name = check!(
+                    ident::parse_from_pair(expr, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                ParserLifter::empty(Expression::VariableExpression { name, span })
             }
             Rule::array_exp => match expr.into_inner().next() {
                 None => ParserLifter::empty(Expression::Array {
@@ -1214,6 +1228,12 @@ impl Expression {
                 warnings,
                 errors
             ),
+            Rule::storage_access => check!(
+                parse_storage_access(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             Rule::if_let_exp => check!(
                 parse_if_let(expr, config),
                 return err(warnings, errors),
@@ -1301,6 +1321,39 @@ fn convert_unary_to_fn_calls(
     ok(expr_result, warnings, errors)
 }
 
+pub(crate) fn parse_storage_access(
+    item: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<ParserLifter<Expression>> {
+    debug_assert!(item.as_rule() == Rule::storage_access);
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let span = item.as_span();
+    let span = Span { span, path };
+    let mut parts = item.into_inner();
+    let _storage_keyword = parts.next();
+
+    let mut field_names = Vec::new();
+    for item in parts {
+        field_names.push(check!(
+            ident::parse_from_pair(item, config),
+            continue,
+            warnings,
+            errors
+        ))
+    }
+
+    let exp = Expression::StorageAccess { field_names, span };
+    ok(
+        ParserLifter {
+            var_decls: vec![],
+            value: exp,
+        },
+        warnings,
+        errors,
+    )
+}
 pub(crate) fn parse_array_index(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,

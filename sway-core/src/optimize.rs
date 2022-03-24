@@ -199,6 +199,7 @@ fn compile_declarations(
             | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
+            | TypedDeclaration::StorageDeclaration(_)
             | TypedDeclaration::ErrorRecovery => (),
         }
     }
@@ -483,6 +484,9 @@ impl FnCompiler {
                             Err("gen ty for fn scope".into())
                         }
                         TypedDeclaration::ErrorRecovery { .. } => Err("error recovery".into()),
+                        TypedDeclaration::StorageDeclaration(_) => {
+                            Err("storage declaration".into())
+                        }
                     },
                     TypedAstNodeContent::Expression(te) => {
                         // An expression with an ignored return value... I assume.
@@ -2256,6 +2260,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
         TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
         TypeInfo::ErrorRecovery => return Err("error recovery type found in AST..?".into()),
+        TypeInfo::Storage { .. } => return Err("storage type found in AST..?".into()),
     })
 }
 

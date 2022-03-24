@@ -370,6 +370,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             "should_pass/require_contract_deployment/token_ops_test",
         ),
+        /* Requires IR - TODO:enable when the IR pipeline is enabled by default
+         * https://github.com/FuelLabs/sway/issues/981
+        (
+            "should_pass/test_contracts/storage_access_contract",
+            "should_pass/require_contract_deployment/storage_access_caller",
+        ),*/
     ];
 
     let total_number_of_tests = positive_project_names.len()
