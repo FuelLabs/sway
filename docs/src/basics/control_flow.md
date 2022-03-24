@@ -46,7 +46,7 @@ while counter < 10 {
 
 You need the `while` keyword, some condition (`value < 10` in this case) which will be evaluated each iteration, and a block of code inside the curly braces (`{...}`) to execute each iteration.
 
-### Break & Continue
+### `break` and `continue`
 
 There are no `break` or `continue` keywords yet, but [they're coming](https://github.com/FuelLabs/sway/issues/587).
 
