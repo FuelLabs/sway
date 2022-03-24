@@ -138,29 +138,27 @@ impl Hash for TypeInfo {
             TypeInfo::SelfType => {
                 state.write_u8(14);
             }
-            // UnknownGeneric and Custom have the same variant # on purpose
             TypeInfo::UnknownGeneric { name } => {
-                state.write_u8(15); // variant #
+                state.write_u8(15);
                 name.hash(state);
             }
-            // UnknownGeneric and Custom have the same variant # on purpose
             TypeInfo::Custom {
                 name,
                 type_arguments,
             } => {
-                state.write_u8(15); // variant #
+                state.write_u8(16);
                 name.hash(state);
-                // purposefully do not hash type_arguments len
+                type_arguments.len().hash(state);
                 for type_argument in type_arguments.iter() {
                     type_argument.hash(state);
                 }
             }
             TypeInfo::Ref(id) => {
-                state.write_u8(16);
+                state.write_u8(17);
                 look_up_type_id(*id).hash(state);
             }
             TypeInfo::Array(elem_ty, count) => {
-                state.write_u8(17);
+                state.write_u8(18);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
@@ -193,20 +191,6 @@ impl PartialEq for TypeInfo {
                     type_arguments: r_type_args,
                 },
             ) => l_name == r_name && l_type_args == r_type_args,
-            (
-                Self::UnknownGeneric { name: l_name },
-                Self::Custom {
-                    name: r_name,
-                    type_arguments: r_type_args,
-                },
-            ) => l_name == r_name && r_type_args.is_empty(),
-            (
-                Self::Custom {
-                    name: l_name,
-                    type_arguments: l_type_args,
-                },
-                Self::UnknownGeneric { name: r_name },
-            ) => l_name == r_name && l_type_args.is_empty(),
             (Self::Str(l), Self::Str(r)) => l == r,
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (

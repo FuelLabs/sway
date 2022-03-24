@@ -102,6 +102,7 @@ fn main() -> u32 {
     },
     third: 1u64
   };
+  let n = ~DoubleIdentity<Data<u8>, Data<u8>>::new(~Data<u8>::new(3u8), ~Data<u8>::new(4u8));
 
   b.get_first()
 }

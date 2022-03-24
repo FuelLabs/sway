@@ -474,22 +474,17 @@ impl TypedAstNode {
                                     break;
                                 }
                             }
-                            let namespace = namespace;
+                            let impl_namespace = create_new_scope(namespace);
                             for type_parameter in type_parameters.iter() {
-                                check!(
-                                    namespace.insert(
-                                        type_parameter.name_ident.clone(),
-                                        type_parameter.into()
-                                    ),
-                                    continue,
-                                    warnings,
-                                    errors
+                                impl_namespace.insert(
+                                    type_parameter.name_ident.clone(),
+                                    type_parameter.into(),
                                 );
                             }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id = check!(
-                                namespace.resolve_type_without_self(&type_implementing_for),
+                                impl_namespace.resolve_type_without_self(&type_implementing_for),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -518,7 +513,7 @@ impl TypedAstNode {
                                 }
                                 let args = TypeCheckArguments {
                                     checkee: fn_decl,
-                                    namespace,
+                                    namespace: impl_namespace,
                                     crate_namespace,
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: "",

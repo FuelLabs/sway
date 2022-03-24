@@ -67,6 +67,7 @@ impl TypedFunctionDeclaration {
             ..
         } = fn_decl;
         opts.purity = purity;
+
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
 
