@@ -24,7 +24,7 @@ In Sway, note that a _statement_ is a _declaration **or** expression with a semi
 
 This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.
 
-### Using _if_ in a _let_ statement
+### Using `if` in a `let` statement
 
 Like Rust, `if`s are expressions in Sway. What this means is you can use `if` expressions on the right side of a `let` statement to assign the outcome to a variable.
 
