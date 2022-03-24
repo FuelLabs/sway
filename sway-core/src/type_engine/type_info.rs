@@ -26,6 +26,7 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
+        type_arguments: Vec<TypeArgument>,
         variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
@@ -37,7 +38,7 @@ pub enum TypeInfo {
     /// For the type inference engine to use when a type references another type
     Ref(TypeId),
 
-    Tuple(Vec<TypeId>),
+    Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
@@ -91,10 +92,7 @@ impl Hash for TypeInfo {
             }
             TypeInfo::Tuple(fields) => {
                 state.write_u8(5);
-                fields.len().hash(state);
-                for field in fields.iter() {
-                    look_up_type_id(*field).hash(state);
-                }
+                fields.hash(state);
             }
             TypeInfo::Byte => {
                 state.write_u8(6);
@@ -104,22 +102,18 @@ impl Hash for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
+                type_arguments,
                 variant_types,
             } => {
                 state.write_u8(8);
                 name.hash(state);
-                variant_types.len().hash(state);
-                for variant_type in variant_types.iter() {
-                    variant_type.hash(state);
-                }
+                type_arguments.hash(state);
+                variant_types.hash(state);
             }
             TypeInfo::Struct { name, fields, .. } => {
                 state.write_u8(9);
                 name.hash(state);
-                fields.len().hash(state);
-                for field in fields.iter() {
-                    field.hash(state);
-                }
+                fields.hash(state);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 state.write_u8(10);
@@ -148,10 +142,7 @@ impl Hash for TypeInfo {
             } => {
                 state.write_u8(16);
                 name.hash(state);
-                type_arguments.len().hash(state);
-                for type_argument in type_arguments.iter() {
-                    type_argument.hash(state);
-                }
+                type_arguments.hash(state);
             }
             TypeInfo::Ref(id) => {
                 state.write_u8(17);
@@ -197,10 +188,12 @@ impl PartialEq for TypeInfo {
                 Self::Enum {
                     name: l_name,
                     variant_types: l_variant_types,
+                    ..
                 },
                 Self::Enum {
                     name: r_name,
                     variant_types: r_variant_types,
+                    ..
                 },
             ) => l_name == r_name && l_variant_types == r_variant_types,
             (
@@ -219,7 +212,7 @@ impl PartialEq for TypeInfo {
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
-                .map(|(l, r)| look_up_type_id(*l) == look_up_type_id(*r))
+                .map(|(l, r)| look_up_type_id(l.type_id) == look_up_type_id(r.type_id))
                 .all(|x| x),
             (
                 Self::ContractCaller {
@@ -362,17 +355,13 @@ impl TypeInfo {
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
             Rule::tuple_type => {
-                let mut field_type_ids = vec![];
-                for field in input.into_inner() {
-                    let field_type = check!(
-                        TypeInfo::parse_from_pair(field, config),
-                        TypeInfo::ErrorRecovery,
-                        warnings,
-                        errors
-                    );
-                    field_type_ids.push(insert_type(field_type));
-                }
-                TypeInfo::Tuple(field_type_ids)
+                let fields = check!(
+                    TypeArgument::parse_arguments_from_pair(input, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypeInfo::Tuple(fields)
             }
             _ => {
                 errors.push(CompileError::Internal(
@@ -463,6 +452,7 @@ impl TypeInfo {
             Enum {
                 name,
                 variant_types,
+                ..
             } => print_inner_types(
                 format!("enum {}", name),
                 variant_types.iter().map(|x| x.r#type),
@@ -542,7 +532,7 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|field_type| {
-                            resolve_type(*field_type, error_msg_span)
+                            resolve_type(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
                         })
@@ -631,7 +621,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => Ok(fields
                 .iter()
                 .map(|field_type| {
-                    resolve_type(*field_type, err_span)
+                    resolve_type(field_type.type_id, err_span)
                         .expect("should be unreachable?")
                         .size_in_words(err_span)
                 })
@@ -697,7 +687,7 @@ impl TypeInfo {
                 .any(|field| look_up_type_id(field.r#type).is_uninhabited()),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| look_up_type_id(*field_type).is_uninhabited()),
+                .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
             _ => false,
         }
     }
@@ -735,7 +725,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let field_type = look_up_type_id(*field);
+                    let field_type = look_up_type_id(field.type_id);
                     if field_type.is_uninhabited() {
                         return true;
                     }
@@ -814,6 +804,7 @@ impl TypeInfo {
             TypeInfo::Enum {
                 variant_types,
                 name,
+                type_arguments,
             } => {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
@@ -823,10 +814,18 @@ impl TypeInfo {
                         new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
-
+                let mut new_type_arguments = type_arguments.clone();
+                for new_type_argument in new_type_arguments.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_type_argument.type_id).matches_type_parameter(mapping)
+                    {
+                        new_type_argument.type_id = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
                 Some(insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
                     name: name.clone(),
+                    type_arguments: new_type_arguments,
                 }))
             }
             TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
@@ -837,21 +836,28 @@ impl TypeInfo {
                 let mut index = 0;
                 while index < fields.len() {
                     let new_field_id_opt =
-                        look_up_type_id(fields[index]).matches_type_parameter(mapping);
+                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
-                        new_fields.push(insert_type(TypeInfo::Ref(new_field_id)));
+                        new_fields.push(TypeArgument {
+                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            span: fields[index].span.clone(),
+                        });
                         index += 1;
                         break;
                     }
                     index += 1;
                 }
                 while index < fields.len() {
-                    let new_field =
-                        match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
-                            Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
-                            None => fields[index],
-                        };
+                    let new_field = match look_up_type_id(fields[index].type_id)
+                        .matches_type_parameter(mapping)
+                    {
+                        Some(new_field_id) => TypeArgument {
+                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            span: fields[index].span.clone(),
+                        },
+                        None => fields[index].clone(),
+                    };
                     new_fields.push(new_field);
                     index += 1;
                 }

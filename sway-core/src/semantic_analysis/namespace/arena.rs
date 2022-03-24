@@ -101,7 +101,7 @@ pub trait NamespaceWrapper {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<Vec<TypeId>>;
+    ) -> CompileResult<Vec<TypeArgument>>;
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
@@ -198,7 +198,7 @@ impl NamespaceWrapper for NamespaceRef {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<Vec<TypeId>> {
+    ) -> CompileResult<Vec<TypeArgument>> {
         let debug_string = debug_string.into();
         read_module(
             |ns| ns.get_tuple_elems(ty, debug_string.clone(), debug_span),
@@ -636,69 +636,87 @@ impl NamespaceWrapper for NamespaceRef {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
-            } => {
-                match self.get_symbol(name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        let mut new_type_arguments = vec![];
-                        for type_argument in type_arguments.into_iter() {
-                            let new_type_id = check!(
-                                Self::resolve_type_with_self(
-                                    self,
-                                    look_up_type_id(type_argument.type_id),
-                                    self_type,
-                                    type_argument.span.clone()
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors
-                            );
-                            let type_argument = TypeArgument {
-                                type_id: new_type_id,
-                                span: type_argument.span,
-                            };
-                            new_type_arguments.push(type_argument);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(self, &new_type_arguments),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id
-                        } else {
-                            decl.type_id
-                        }
+            } => match self.get_symbol(name).ok(&mut warnings, &mut errors) {
+                Some(TypedDeclaration::StructDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            Self::resolve_type_with_self(
+                                self,
+                                look_up_type_id(type_argument.type_id),
+                                self_type,
+                                type_argument.span.clone()
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
                     }
-                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        if !decl.type_parameters.is_empty() {
-                            /*
-                            // the following line is infallible because an error can only arise
-                            // from monomorphizing if there are type arguments specified. Here, we
-                            // are passing in vec![], which therefore means this is infallible.
-                            let new_decl = infallible(decl.monomorphize(vec![], self_type));
-                            */
-                            let new_decl = infallible!(
-                                decl.monomorphize(self, vec!(), self_type),
-                                return err(warnings, errors),
-                                warnings,
-                                errors,
-                                span
-                            );
-                            new_decl.type_id
-                        } else {
-                            decl.type_id
-                        }
-                    }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        insert_type(TypeInfo::UnknownGeneric { name })
-                    }
-                    _ => {
-                        errors.push(CompileError::UnknownType { span });
-                        return err(warnings, errors);
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize_with_type_arguments(
+                                self,
+                                &new_type_arguments,
+                                Some(self_type)
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
+                    } else {
+                        decl.type_id()
                     }
                 }
-            }
+                Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            Self::resolve_type_with_self(
+                                self,
+                                look_up_type_id(type_argument.type_id),
+                                self_type,
+                                type_argument.span.clone()
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
+                    }
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize_with_type_arguments(
+                                self,
+                                &new_type_arguments,
+                                Some(self_type)
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id
+                    } else {
+                        decl.type_id
+                    }
+                }
+                Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
+                    insert_type(TypeInfo::UnknownGeneric { name })
+                }
+                _ => {
+                    errors.push(CompileError::UnknownType { span });
+                    return err(warnings, errors);
+                }
+            },
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
@@ -714,53 +732,69 @@ impl NamespaceWrapper for NamespaceRef {
             TypeInfo::Custom {
                 name,
                 type_arguments,
-            } => {
-                match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        let mut new_type_arguments = vec![];
-                        for type_argument in type_arguments.into_iter() {
-                            let new_type_id = check!(
-                                Self::resolve_type_without_self(
-                                    self,
-                                    &look_up_type_id(type_argument.type_id),
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors
-                            );
-                            let type_argument = TypeArgument {
-                                type_id: new_type_id,
-                                span: type_argument.span,
-                            };
-                            new_type_arguments.push(type_argument);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(self, &new_type_arguments),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id
-                        } else {
-                            decl.type_id
-                        }
+            } => match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
+                Some(TypedDeclaration::StructDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            Self::resolve_type_without_self(
+                                self,
+                                &look_up_type_id(type_argument.type_id),
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
                     }
-                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        decl.type_id
-                        /*
-                        crate::type_engine::insert_type(TypeInfo::Enum {
-                        name: name.as_str().to_string(),
-                        variant_types: variants
-                            .iter()
-                            .map(TypedEnumVariant::as_owned_typed_enum_variant)
-                            .collect()
-                        })
-                        */
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize_with_type_arguments(self, &new_type_arguments, None),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
+                    } else {
+                        decl.type_id()
                     }
-                    _ => crate::type_engine::insert_type(TypeInfo::Unknown),
                 }
-            }
+                Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            Self::resolve_type_without_self(
+                                self,
+                                &look_up_type_id(type_argument.type_id),
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
+                    }
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize_with_type_arguments(self, &new_type_arguments, None),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id
+                    } else {
+                        decl.type_id
+                    }
+                }
+                _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+            },
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
         };

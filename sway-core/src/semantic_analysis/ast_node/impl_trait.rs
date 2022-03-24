@@ -273,27 +273,22 @@ fn type_check_trait_implementation(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match unify_with_self(
+                            let (mut new_warnings, new_errors) = unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
                                 "",
-                            ) {
-                                Ok(mut ws) => {
-                                    warnings.append(&mut ws);
-                                }
-                                Err(_e) => {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: fn_decl_param_type.friendly_type_str(),
-                                        expected: trait_param_type.friendly_type_str(),
-                                    });
-                                }
-                            }
-                            if errors.is_empty() {
+                            );
+                            warnings.append(&mut new_warnings);
+                            if new_errors.is_empty() {
                                 None
                             } else {
+                                errors.push(CompileError::MismatchedTypeInTrait {
+                                    span: trait_param.type_span.clone(),
+                                    given: fn_decl_param_type.friendly_type_str(),
+                                    expected: trait_param_type.friendly_type_str(),
+                                });
                                 Some(errors)
                             }
                         })
@@ -301,27 +296,22 @@ fn type_check_trait_implementation(
                         errors.append(&mut maybe_err);
                     }
 
-                    match unify_with_self(
+                    let (mut new_warnings, new_errors) = unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
                         "",
-                    ) {
-                        Ok(mut ws) => {
-                            warnings.append(&mut ws);
-                        }
-                        Err(_e) => {
-                            errors.push(CompileError::MismatchedTypeInTrait {
-                                span: fn_decl.return_type_span.clone(),
-                                expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str(),
-                            });
-                        }
-                    }
-                    if errors.is_empty() {
+                    );
+                    warnings.append(&mut new_warnings);
+                    if new_errors.is_empty() {
                         None
                     } else {
+                        errors.push(CompileError::MismatchedTypeInTrait {
+                            span: fn_decl.return_type_span.clone(),
+                            expected: return_type.friendly_type_str(),
+                            given: fn_decl.return_type.friendly_type_str(),
+                        });
                         Some(errors)
                     }
                 } else {

@@ -33,6 +33,15 @@ impl PartialEq for TypeArgument {
     }
 }
 
+impl Default for TypeArgument {
+    fn default() -> Self {
+        TypeArgument {
+            type_id: insert_type(TypeInfo::Unknown),
+            span: Span::empty(),
+        }
+    }
+}
+
 impl TypeArgument {
     pub(crate) fn parse_arguments_from_pair(
         pair: Pair<Rule>,
@@ -71,5 +80,13 @@ impl TypeArgument {
         ));
         let type_argument = TypeArgument { type_id, span };
         ok(type_argument, warnings, errors)
+    }
+
+    pub(crate) fn friendly_type_str(&self) -> String {
+        look_up_type_id(self.type_id).friendly_type_str()
+    }
+
+    pub(crate) fn json_abi_str(&self) -> String {
+        look_up_type_id(self.type_id).json_abi_str()
     }
 }

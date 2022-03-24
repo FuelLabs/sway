@@ -14,7 +14,7 @@ pub(crate) fn instantiate_enum(
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
-    type_arguments: Vec<(TypeInfo, Span)>,
+    type_arguments: Vec<TypeArgument>,
     namespace: crate::semantic_analysis::NamespaceRef,
     crate_namespace: NamespaceRef,
     self_type: TypeId,
@@ -26,17 +26,6 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let mut type_args_buf = Vec::with_capacity(type_arguments.len());
-    for (arg, span) in type_arguments.iter() {
-        let ty = check!(
-            namespace.resolve_type_with_self(arg.clone(), self_type, span.clone()),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-        let ty = look_up_type_id(ty);
-        type_args_buf.push((ty, span.clone()));
-    }
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
@@ -44,7 +33,7 @@ pub(crate) fn instantiate_enum(
         enum_decl
     } else {
         check!(
-            enum_decl.monomorphize(&module, type_args_buf, self_type),
+            enum_decl.monomorphize_with_type_arguments(&module, &type_arguments, Some(self_type)),
             return err(warnings, errors),
             warnings,
             errors

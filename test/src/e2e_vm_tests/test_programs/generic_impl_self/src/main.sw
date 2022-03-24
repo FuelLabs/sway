@@ -47,18 +47,6 @@ impl<T, F> DoubleIdentity<T, F> {
   }
 }
 
-/*
-fn test_function<T>(a: T, b: T) -> T {
-  b
-}
-
-impl<T> DoubleIdentity<T, T>  {
-  fn foobar(self) -> T {
-    self.second
-  }
-}
-*/
-
 impl DoubleIdentity<u8, u8> {
   fn add(self) -> u8 {
     self.first + self.second
@@ -87,6 +75,17 @@ fn crazy<T, F>(x: T, y: F) -> F {
   foo.get_second()
 }
 
+enum Option<T> {
+  Some: T,
+  None: ()
+}
+
+impl<T> Option<T> {
+  fn some(value: T) -> Self {
+    Option::Some::<T>(value)
+  }
+}
+
 fn main() -> u32 {
   let a = double_identity(true, true);
   let b = double_identity(10u32, 43u64);
@@ -103,7 +102,6 @@ fn main() -> u32 {
   let i = crazy(7u8, 10u8);
   let j = 10u8 + 11u8;
   let k = d.add();
-
   let l = ~Data<bool>::new(false);
   let m: DoubleIdentity<Data<u8>, Data<u64>> = DoubleIdentity {
     first: Data {
@@ -116,8 +114,9 @@ fn main() -> u32 {
   };
   let n = ~DoubleIdentity<Data<u8>, Data<u8>>::new(~Data<u8>::new(3u8), ~Data<u8>::new(4u8));
   let o: DoubleIdentity<bool, bool> = double_identity(true, true);
-  //let p = o.foobar();
-  //let q = test_function(false, 6);
+  let p = Option::Some::<bool>(false);
+  let q = Option::Some::<()>(());
+  let r = ~Option<u32>::some(5u32);
 
   b.get_first()
 }

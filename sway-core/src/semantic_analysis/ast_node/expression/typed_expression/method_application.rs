@@ -173,23 +173,20 @@ pub(crate) fn type_check_method_application(
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
-        match unify_with_self(
+        let (mut new_warnings, new_errors) = unify_with_self(
             arg.return_type,
             param.r#type,
             self_type,
             &arg.span,
             "This argument's type is not castable to the declared parameter type.",
-        ) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(_e) => {
-                errors.push(CompileError::ArgumentParameterTypeMismatch {
-                    span: arg.span.clone(),
-                    provided: arg.return_type.friendly_type_str(),
-                    should_be: param.r#type.friendly_type_str(),
-                });
-            }
+        );
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(CompileError::ArgumentParameterTypeMismatch {
+                span: arg.span.clone(),
+                provided: arg.return_type.friendly_type_str(),
+                should_be: param.r#type.friendly_type_str(),
+            });
         }
         // The annotation may result in a cast, which is handled in the type engine.
     }

@@ -133,7 +133,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -921,9 +921,8 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
-                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
                 let (maybe_type_args, maybe_instantiator) = {
@@ -970,27 +969,19 @@ impl Expression {
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_else(Vec::new);
-                // if there is an expression in parenthesis, that is the instantiator.
-                let mut type_args_buf = vec![];
+                let mut type_arguments = vec![];
                 for arg in maybe_type_args {
-                    let sp = Span {
-                        span: arg.as_span(),
-                        path: file_path.clone(),
-                    };
-                    type_args_buf.push((
-                        check!(
-                            TypeInfo::parse_from_pair(arg, config),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        sp,
+                    type_arguments.push(check!(
+                        TypeArgument::parse_from_pair(arg, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     ));
                 }
 
                 Expression::DelineatedPath {
                     call_path: path,
-                    type_arguments: type_args_buf,
+                    type_arguments,
                     args,
                     span,
                 }

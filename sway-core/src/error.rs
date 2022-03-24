@@ -47,27 +47,6 @@ macro_rules! assert_or_warn {
     }};
 }
 
-macro_rules! infallible {
-    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident, $span: expr $(,)?) => {{
-        let mut res = $fn_expr;
-        $warnings.append(&mut res.warnings);
-        $errors.append(&mut res.errors);
-        #[allow(clippy::manual_unwrap_or)]
-        match res.value {
-            Some(value) if res.errors.is_empty() && res.warnings.is_empty() => value,
-            _ => {
-                use crate::error::CompileError;
-                let error = CompileError::Internal(
-                    "Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues",
-                    $span
-                );
-                $errors.push(error);
-                $error_recovery
-            },
-        }
-    }};
-}
-
 /// Denotes a non-recoverable state
 pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
     CompileResult {

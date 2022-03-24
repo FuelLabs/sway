@@ -114,6 +114,7 @@ impl TypedAstNode {
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }
     }
+
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -134,6 +135,7 @@ impl TypedAstNode {
             TypedAstNodeContent::SideEffect => (),
         }
     }
+
     fn type_info(&self) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;
@@ -581,22 +583,11 @@ impl TypedAstNode {
                                     TypedStructField { name, r#type, span }
                                 })
                                 .collect::<Vec<_>>();
-                            let type_arguments = decl
-                                .type_parameters
-                                .iter()
-                                .map(|x| x.to_type_argument())
-                                .collect::<Vec<_>>();
-                            let type_id = insert_type(TypeInfo::Struct {
-                                name: decl.name.clone(),
-                                fields: fields.clone(),
-                                type_arguments,
-                            });
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
                                 type_parameters: decl.type_parameters.clone(),
                                 fields,
                                 visibility: decl.visibility,
-                                type_id,
                                 span: decl.span,
                             };
 

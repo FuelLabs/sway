@@ -1,6 +1,6 @@
 use crate::{
-    error::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo, TypeParameter,
-    TypedDeclaration, TypedFunctionDeclaration,
+    error::*, type_engine::*, CallPath, CompileResult, Ident, TypeArgument, TypeInfo,
+    TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use sway_types::span::Span;
@@ -142,7 +142,7 @@ impl Namespace {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<Vec<TypeId>> {
+    ) -> CompileResult<Vec<TypeArgument>> {
         let warnings = vec![];
         let errors = vec![];
         let ty = crate::type_engine::look_up_type_id(ty);

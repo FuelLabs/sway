@@ -195,21 +195,15 @@ impl TypedFunctionDeclaration {
             .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
         for stmt in return_statements {
-            let span = &stmt.span;
-            match unify_with_self(
+            let (mut new_warnings, new_errors) = unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
-                span,
+                &stmt.span,
                 "Return statement must return the declared function return type.",
-            ) {
-                Ok(mut ws) => {
-                    warnings.append(&mut ws);
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            }
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
 
         ok(
@@ -284,21 +278,15 @@ impl TypedFunctionDeclaration {
 
             // check the type arguments
             for ((_, decl_param), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-                match unify_with_self(
+                let (mut new_warnings, new_errors) = unify_with_self(
                     *decl_param,
                     type_argument.type_id,
                     self_type,
                     &type_argument.span,
                     "Type argument is not castable to generic type paramter",
-                ) {
-                    Ok(mut ws) => {
-                        warnings.append(&mut ws);
-                    }
-                    Err(e) => {
-                        errors.push(e.into());
-                        continue;
-                    }
-                }
+                );
+                warnings.append(&mut new_warnings);
+                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
             }
         }
 

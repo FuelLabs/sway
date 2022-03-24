@@ -10,6 +10,13 @@ pub struct Span {
 }
 
 impl Span {
+    pub fn empty() -> Self {
+        Span {
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+            path: None,
+        }
+    }
+
     pub fn start(&self) -> usize {
         self.span.start()
     }

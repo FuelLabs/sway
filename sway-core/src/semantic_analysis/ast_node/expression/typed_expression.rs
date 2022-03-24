@@ -99,6 +99,7 @@ impl TypedExpression {
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
     }
+
     pub(crate) fn type_check(arguments: TypeCheckArguments<'_, Expression>) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
@@ -208,7 +209,6 @@ impl TypedExpression {
                 fields,
                 namespace,
                 crate_namespace,
-                type_annotation,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -419,23 +419,19 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
+
         // if the return type cannot be cast into the annotation type then it is a type error
-        match unify_with_self(
+        let (mut new_warnings, new_errors) = unify_with_self(
             typed_expression.return_type,
             type_annotation,
             self_type,
             &expr_span,
             help_text,
-        ) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(e) => {
-                errors.push(CompileError::TypeError(e));
-            }
-        };
-        // The annotation may result in a cast, which is handled in the type engine.
+        );
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
+        // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
             namespace.resolve_type_with_self(
                 look_up_type_id(typed_expression.return_type),
@@ -705,20 +701,15 @@ impl TypedExpression {
             errors
         );
 
-        match unify_with_self(
+        let (mut new_warnings, new_errors) = unify_with_self(
             block_return_type,
             type_annotation,
             self_type,
             &span,
             help_text,
-        ) {
-            Ok(mut ws) => {
-                warnings.append(&mut ws);
-            }
-            Err(e) => {
-                errors.push(e.into());
-            }
-        };
+        );
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
@@ -760,7 +751,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (enum_type, variant) = check!(
-            check_scrutinee_type(&scrutinee, namespace, self_type),
+            check_scrutinee_type(&scrutinee, namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -859,19 +850,22 @@ impl TypedExpression {
                 );
                 Some(Box::new(type_checked))
             }
-            None => match unify_with_self(
-                then_branch_code_block_return_type,
-                insert_type(TypeInfo::Tuple(vec![])),
-                self_type,
-                &then_branch_span,
-                "Because this `if let` doesn't have an else branch, it cannot implicitly return any value."
-            ) {
-                Ok(_) => None,
-                Err(e) => {
-                    errors.push(e.into());
+            None => {
+                let (mut new_warnings, new_errors) = unify_with_self(
+                    then_branch_code_block_return_type,
+                    insert_type(TypeInfo::Tuple(vec![])),
+                    self_type,
+                    &then_branch_span,
+                    "Because this `if let` doesn't have an else branch, it cannot implicitly return any value."
+                );
+                warnings.append(&mut new_warnings);
+                if new_errors.is_empty() {
+                    None
+                } else {
+                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
                     return err(warnings, errors);
                 }
-            },
+            }
         };
 
         let exp = TypedExpression {
@@ -974,25 +968,23 @@ impl TypedExpression {
             .map(|x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
-        match unify_with_self(
+        let (mut new_warnings, new_errors) = unify_with_self(
             then.return_type,
             r#else_ret_ty,
             self_type,
             &span,
             "The two branches of an if expression must return the same type.",
-        ) {
-            Ok(mut warn) => {
-                warnings.append(&mut warn);
-                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
-                        span: span.clone(),
-                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
-                    });
-                }
+        );
+        warnings.append(&mut new_warnings);
+        if new_errors.is_empty() {
+            if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+                errors.push(CompileError::NoElseBranch {
+                    span: span.clone(),
+                    r#type: look_up_type_id(type_annotation).friendly_type_str(),
+                });
             }
-            Err(e) => {
-                errors.push(e.into());
-            }
+        } else {
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
 
         let exp = TypedExpression {
@@ -1082,7 +1074,6 @@ impl TypedExpression {
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
-        type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1118,29 +1109,14 @@ impl TypedExpression {
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let new_decl = match (
-            decl.type_parameters.is_empty(),
-            look_up_type_id(type_annotation),
-        ) {
-            (false, TypeInfo::Struct { type_arguments, .. }) => check!(
-                decl.monomorphize_with_type_arguments(&module, &type_arguments),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            (false, _) => decl.monomorphize(&module),
-            (true, TypeInfo::Struct { type_arguments, .. }) if !type_arguments.is_empty() => {
-                errors.push(CompileError::Internal(
-                    "expected to find type parameters",
-                    decl.span,
-                ));
-                return err(warnings, errors);
-            }
-            (true, _) => decl,
+        let mut new_decl = if decl.type_parameters.is_empty() {
+            decl
+        } else {
+            decl.monomorphize(&module)
         };
 
         // match up the names with their type annotations from the declaration
-        for def_field in new_decl.fields.iter() {
+        for def_field in new_decl.fields.iter_mut() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
@@ -1182,6 +1158,7 @@ impl TypedExpression {
                 errors
             );
 
+            def_field.span = typed_field.span.clone();
             typed_fields_buf.push(TypedStructExpressionField {
                 value: typed_field,
                 name: expr_field.name.clone(),
@@ -1199,12 +1176,12 @@ impl TypedExpression {
             }
         }
         let expression = TypedExpressionVariant::StructExpression {
-            struct_name: new_decl.name,
+            struct_name: new_decl.name.clone(),
             fields: typed_fields_buf,
         };
         let exp = TypedExpression {
             expression,
-            return_type: new_decl.type_id,
+            return_type: new_decl.type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -1297,7 +1274,7 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let field_type_ids_opt = match look_up_type_id(type_annotation) {
+        let field_type_opt = match look_up_type_id(type_annotation) {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1307,9 +1284,9 @@ impl TypedExpression {
         let mut typed_fields = Vec::with_capacity(fields.len());
         let mut is_constant = IsConstant::Yes;
         for (i, field) in fields.into_iter().enumerate() {
-            let field_type_id = field_type_ids_opt
+            let field_type = field_type_opt
                 .as_ref()
-                .map(|field_type_ids| field_type_ids[i])
+                .map(|field_type_ids| field_type_ids[i].clone())
                 .unwrap_or_default();
             let field_span = field.span();
             let typed_field = check!(
@@ -1317,7 +1294,7 @@ impl TypedExpression {
                     checkee: field,
                     namespace,
                     crate_namespace,
-                    return_type_annotation: field_type_id,
+                    return_type_annotation: field_type.type_id,
                     help_text: "tuple field type does not match the expected type",
                     self_type,
                     build_config,
@@ -1332,7 +1309,10 @@ impl TypedExpression {
             if let IsConstant::No = typed_field.is_constant {
                 is_constant = IsConstant::No;
             }
-            typed_field_types.push(typed_field.return_type);
+            typed_field_types.push(TypeArgument {
+                type_id: typed_field.return_type,
+                span: typed_field.span.clone(),
+            });
             typed_fields.push(typed_field);
         }
         let exp = TypedExpression {
@@ -1386,7 +1366,7 @@ impl TypedExpression {
         );
         for (pos, elem) in tuple_elems.iter().enumerate() {
             if pos == index {
-                tuple_elem_to_access = Some(*elem);
+                tuple_elem_to_access = Some(elem.clone());
             }
         }
         let tuple_elem_to_access = match tuple_elem_to_access {
@@ -1407,7 +1387,7 @@ impl TypedExpression {
                 elem_to_access_num: index,
                 elem_to_access_span: index_span,
             },
-            return_type: tuple_elem_to_access,
+            return_type: tuple_elem_to_access.type_id,
             is_constant: IsConstant::No,
             span,
         };
@@ -1419,7 +1399,7 @@ impl TypedExpression {
         call_path: CallPath,
         span: Span,
         args: Vec<Expression>,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
         self_type: TypeId,
@@ -1705,27 +1685,22 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            match unify_with_self(
+            let (mut new_warnings, new_errors) = unify_with_self(
                 typed_elem.return_type,
                 elem_type,
                 self_type,
                 &typed_elem.span,
                 "",
-            ) {
-                // In both cases, if there are warnings or errors then break here, since we don't
-                // need to spam type errors for every element once we have one.
-                Ok(mut ws) => {
-                    let no_warnings = ws.is_empty();
-                    warnings.append(&mut ws);
-                    if !no_warnings {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                    break;
-                }
-            };
+            );
+            let no_warnings = new_warnings.is_empty();
+            let no_errors = new_errors.is_empty();
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            // In both cases, if there are warnings or errors then break here, since we don't
+            // need to spam type errors for every element once we have one.
+            if !no_warnings && !no_errors {
+                break;
+            }
         }
 
         let array_count = typed_contents.len();
@@ -1919,7 +1894,7 @@ impl TypedExpression {
                         elem_to_access_num: elem_num,
                         elem_to_access_span: span.clone(),
                     },
-                    return_type: tuple_elem_to_access,
+                    return_type: tuple_elem_to_access.type_id,
                     is_constant: IsConstant::No,
                     span,
                 };
@@ -2168,13 +2143,12 @@ impl TypedExpression {
 fn check_scrutinee_type(
     scrutinee: &Scrutinee,
     namespace: NamespaceRef,
-    self_type: TypeId,
 ) -> CompileResult<(TypeId, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (ty, enum_variant) = match scrutinee {
         Scrutinee::EnumScrutinee { ref call_path, .. } => check!(
-            check_enum_scrutinee_type(call_path, namespace, self_type),
+            check_enum_scrutinee_type(call_path, namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -2194,7 +2168,6 @@ fn check_scrutinee_type(
 fn check_enum_scrutinee_type(
     call_path: &CallPath,
     namespace: NamespaceRef,
-    self_type: TypeId,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -2216,17 +2189,7 @@ fn check_enum_scrutinee_type(
         }
     };
     let enum_decl = if !enum_decl.type_parameters.is_empty() {
-        // infallible because it is an invariant that monomorphization can only fail if
-        // type arguments are passed in.
-        // we are passing in an empty vector of type arguments here, so the result
-        // is infallible.
-        infallible!(
-            enum_decl.monomorphize(&namespace, vec!(), self_type),
-            return err(warnings, errors),
-            warnings,
-            errors,
-            call_path.span()
-        )
+        enum_decl.monomorphize(&namespace)
     } else {
         enum_decl
     };

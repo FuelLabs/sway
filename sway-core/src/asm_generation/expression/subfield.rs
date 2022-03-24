@@ -101,7 +101,7 @@ pub(crate) fn get_subfields_for_layout(
                 // sorry
                 let leaked_ix: &'static str = Box::leak(Box::new(pos.to_string()));
                 let access_ident = Ident::new_with_override(leaked_ix, span.clone());
-                (*elem, access_ident.span().clone(), access_ident)
+                (elem.type_id, access_ident.span().clone(), access_ident)
             })
             .collect::<Vec<_>>(),
         _ => {

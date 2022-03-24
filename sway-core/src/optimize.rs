@@ -1649,6 +1649,7 @@ fn convert_resolved_type(
         TypeInfo::Enum {
             name,
             variant_types,
+            ..
         } => {
             match struct_names.get_aggregate_by_name(name.as_str()) {
                 Some(existing_aggregate) => Type::Struct(existing_aggregate),
@@ -1675,7 +1676,8 @@ fn convert_resolved_type(
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::Unit
             } else {
-                create_tuple_aggregate(context, struct_names, fields.clone()).map(Type::Struct)?
+                let new_fields = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(context, struct_names, new_fields).map(Type::Struct)?
             }
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),
