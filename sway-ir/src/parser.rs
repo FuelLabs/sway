@@ -185,8 +185,9 @@ mod ir_builder {
 
             rule op_contract_call() -> IrAstOperation
                 = "contract_call" _
+                ty:ast_ty() _ name:id() _ 
                 params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
-                    IrAstOperation::ContractCall(params, coins, asset_id, gas)
+                    IrAstOperation::ContractCall(ty, name, params, coins, asset_id, gas)
             }
 
             rule op_extract_element() -> IrAstOperation
@@ -520,7 +521,7 @@ mod ir_builder {
         Cbr(String, String, String),
         Cmp(String, String, String),
         Const(IrAstConst),
-        ContractCall(String, String, String, String),
+        ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
         GetPtr(String, IrAstTy, u64),
@@ -859,8 +860,11 @@ mod ir_builder {
                     opt_ins_md_idx,
                 ),
                 IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
-                IrAstOperation::ContractCall(params, coins, asset_id, gas) => {
+                IrAstOperation::ContractCall(return_type, name, params, coins, asset_id, gas) => {
+                    let ir_ty = return_type.to_ir_type(context);
                     block.ins(context).contract_call(
+                        ir_ty,
+                        name,
                         *val_map.get(&params).unwrap(),
                         *val_map.get(&coins).unwrap(),
                         *val_map.get(&asset_id).unwrap(),

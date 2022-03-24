@@ -463,6 +463,7 @@ impl<'ir> AsmBuilder<'ir> {
                     coins,
                     asset_id,
                     gas,
+                    ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
                 Instruction::ExtractElement {
                     array,
@@ -1334,7 +1335,7 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::LW(
+            opcode: Either::Left(VirtualOp::MOVE(
                 instr_reg.clone(),
                 VirtualRegister::Constant(match reg {
                     sway_ir::Register::Of => ConstantRegister::Overflow,
@@ -1352,9 +1353,8 @@ impl<'ir> AsmBuilder<'ir> {
                     sway_ir::Register::Retl => ConstantRegister::ReturnLength,
                     sway_ir::Register::Flag => ConstantRegister::Flags,
                 }),
-                VirtualImmediate12 { value: 0 },
             )),
-            comment: "loading register into abi function".to_owned(),
+            comment: "move register into abi function".to_owned(),
             owning_span: instr_val.get_span(self.context),
         });
 

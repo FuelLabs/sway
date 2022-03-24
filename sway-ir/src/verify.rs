@@ -110,6 +110,7 @@ impl<'a> InstructionVerifier<'a> {
                         coins,
                         asset_id,
                         gas,
+                        ..
                     } => self.verify_contract_call(params, coins, asset_id, gas)?,
                     Instruction::ExtractElement {
                         array,

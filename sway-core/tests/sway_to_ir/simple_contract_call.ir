@@ -1,8 +1,11 @@
 script {
     fn main() -> u64 {
+        local ptr u64 a
         local mut ptr { b256 } args_struct_for_get_b256
         local mut ptr { u64, b256 } args_struct_for_get_s
         local mut ptr { u64 } args_struct_for_get_u64
+        local ptr b256 b
+        local ptr { u64, b256 } s
 
         entry:
         v0 = get_ptr mut ptr { u64 } args_struct_for_get_u64, ptr { u64 }, 0, !1
@@ -18,59 +21,68 @@ script {
         v10 = const u64 0, !4
         v11 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
         v12 = const u64 10000, !6
-        v13 = contract_call v9, v10, v11, v12, !1
-        v14 = get_ptr mut ptr { b256 } args_struct_for_get_b256, ptr { b256 }, 0, !7
-        v15 = const b256 0x3333333333333333333333333333333333333333333333333333333333333333, !8
-        v16 = insert_value v14, { b256 }, v15, 0, !7
-        v17 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }, !7
-        v18 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !9
-        v19 = insert_value v17, { b256, u64, u64 }, v18, 0, !7
-        v20 = const u64 1108491158, !7
-        v21 = insert_value v19, { b256, u64, u64 }, v20, 1, !7
-        v22 = get_ptr mut ptr { b256 } args_struct_for_get_b256, ptr u64, 0, !7
-        v23 = insert_value v21, { b256, u64, u64 }, v22, 2, !7
-        v24 = const u64 0, !10
-        v25 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !11
-        v26 = const u64 20000, !12
-        v27 = contract_call v23, v24, v25, v26, !7
-        v28 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr { u64, b256 }, 0, !13
-        v29 = const u64 5555, !14
-        v30 = insert_value v28, { u64, b256 }, v29, 0, !13
-        v31 = const b256 0x5555555555555555555555555555555555555555555555555555555555555555, !15
-        v32 = insert_value v30, { u64, b256 }, v31, 1, !13
-        v33 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }, !13
-        v34 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !16
-        v35 = insert_value v33, { b256, u64, u64 }, v34, 0, !13
-        v36 = const u64 4234334249, !13
-        v37 = insert_value v35, { b256, u64, u64 }, v36, 1, !13
-        v38 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr u64, 0, !13
-        v39 = insert_value v37, { b256, u64, u64 }, v38, 2, !13
-        v40 = read_register cgas, !13
-        v41 = const u64 0, !17
-        v42 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !18
-        v43 = contract_call v39, v41, v42, v40, !13
-        v44 = const u64 0, !19
-        ret u64 v44
+        v13 = contract_call u64 get_u64 v9, v10, v11, v12, !1
+        v14 = get_ptr ptr u64 a, ptr u64, 0, !7
+        store v13, ptr v14, !7
+        v15 = get_ptr mut ptr { b256 } args_struct_for_get_b256, ptr { b256 }, 0, !8
+        v16 = const b256 0x3333333333333333333333333333333333333333333333333333333333333333, !9
+        v17 = insert_value v15, { b256 }, v16, 0, !8
+        v18 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }, !8
+        v19 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !10
+        v20 = insert_value v18, { b256, u64, u64 }, v19, 0, !8
+        v21 = const u64 1108491158, !8
+        v22 = insert_value v20, { b256, u64, u64 }, v21, 1, !8
+        v23 = get_ptr mut ptr { b256 } args_struct_for_get_b256, ptr u64, 0, !8
+        v24 = insert_value v22, { b256, u64, u64 }, v23, 2, !8
+        v25 = const u64 0, !11
+        v26 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !12
+        v27 = const u64 20000, !13
+        v28 = contract_call b256 get_b256 v24, v25, v26, v27, !8
+        v29 = get_ptr ptr b256 b, ptr b256, 0, !14
+        store v28, ptr v29, !14
+        v30 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr { u64, b256 }, 0, !15
+        v31 = const u64 5555, !16
+        v32 = insert_value v30, { u64, b256 }, v31, 0, !15
+        v33 = const b256 0x5555555555555555555555555555555555555555555555555555555555555555, !17
+        v34 = insert_value v32, { u64, b256 }, v33, 1, !15
+        v35 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }, !15
+        v36 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0, !18
+        v37 = insert_value v35, { b256, u64, u64 }, v36, 0, !15
+        v38 = const u64 4234334249, !15
+        v39 = insert_value v37, { b256, u64, u64 }, v38, 1, !15
+        v40 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr u64, 0, !15
+        v41 = insert_value v39, { b256, u64, u64 }, v40, 2, !15
+        v42 = read_register cgas, !15
+        v43 = const u64 0, !19
+        v44 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !20
+        v45 = contract_call { u64, b256 } get_s v41, v43, v44, v42, !15
+        v46 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0, !21
+        store v45, ptr v46, !21
+        v47 = const u64 0, !22
+        ret u64 v47
     }
 }
 
 !0 = filepath "/path/to/simple_contract_call.sw"
-!1 = span !0 386 543
-!2 = span !0 538 542
+!1 = span !0 301 458
+!2 = span !0 453 457
 !3 = span !0 0 66
-!4 = span !0 418 419
-!5 = span !0 439 505
-!6 = span !0 520 525
-!7 = span !0 564 784
-!8 = span !0 717 783
-!9 = span !0 0 66
-!10 = span !0 597 598
-!11 = span !0 618 684
-!12 = span !0 699 704
-!13 = span !0 805 1007
-!14 = span !0 934 938
-!15 = span !0 940 1006
-!16 = span !0 0 66
-!17 = span !0 835 836
-!18 = span !0 855 921
-!19 = span !0 1013 1014
+!4 = span !0 333 334
+!5 = span !0 354 420
+!6 = span !0 435 440
+!7 = span !0 293 459
+!8 = span !0 473 693
+!9 = span !0 626 692
+!10 = span !0 0 66
+!11 = span !0 506 507
+!12 = span !0 527 593
+!13 = span !0 608 613
+!14 = span !0 465 694
+!15 = span !0 708 910
+!16 = span !0 837 841
+!17 = span !0 843 909
+!18 = span !0 0 66
+!19 = span !0 738 739
+!20 = span !0 758 824
+!21 = span !0 700 911
+!22 = span !0 916 917

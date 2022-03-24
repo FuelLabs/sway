@@ -533,6 +533,7 @@ impl FnCompiler {
                         context,
                         name.suffix.as_str(),
                         arguments,
+                        ast_expr.return_type,
                         span_md_idx,
                     )
                 } else {
@@ -741,6 +742,7 @@ impl FnCompiler {
         context: &mut Context,
         ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
+        return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
         // Compile each user argument
@@ -877,8 +879,12 @@ impl FnCompiler {
                 .read_register(sway_ir::Register::Cgas, span_md_idx),
         };
 
+        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+
         // Insert the contract_call instruction
         Ok(self.current_block.ins(context).contract_call(
+            return_type,
+            ast_name.to_string(),
             ra_struct_val,
             coins,
             asset_id,
