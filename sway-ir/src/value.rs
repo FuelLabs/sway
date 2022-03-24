@@ -105,14 +105,6 @@ impl Value {
         }
     }
 
-    //pub fn get_constant(&self, context: &Context) -> Constant {
-    //    if let ValueContent::Constant(c) = &context.values[self.0] {
-    //        c.clone()
-    //    } else {
-    //        panic!("Value is not a constant.")
-    //    }
-    //}
-
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
     pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
@@ -133,10 +125,4 @@ impl Value {
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
     }
-
-    //pub fn is_bool_ty(&self, context: &Context) -> bool {
-    //    self.get_type(context)
-    //        .map(|ty| ty == Type::Bool)
-    //        .unwrap_or(false)
-    //}
 }

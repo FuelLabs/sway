@@ -106,6 +106,11 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     Ok(())
 }
 
+/// Simple function to convert kebab-case to snake_case.
+pub fn kebab_to_snake_case(s: &str) -> String {
+    s.replace('-', "_")
+}
+
 pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(DEFAULT_OUTPUT_DIRECTORY)
 }

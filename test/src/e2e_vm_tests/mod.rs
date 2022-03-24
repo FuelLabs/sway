@@ -13,6 +13,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // with some known state
     let positive_project_names = vec![
         (
+            "should_pass/forc/dependency_package_field",
+            ProgramState::Return(0),
+        ),
+        (
             "should_pass/language/asm_expr_basic",
             ProgramState::Return(6),
         ),
@@ -269,6 +273,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x78, 0x52, 0xb8, 0x55,
             ])),
         ),
+        ("should_pass/language/is_prime", ProgramState::Return(1)),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -365,6 +370,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             "should_pass/require_contract_deployment/token_ops_test",
         ),
+        /* Requires IR - TODO:enable when the IR pipeline is enabled by default
+         * https://github.com/FuelLabs/sway/issues/981
+        (
+            "should_pass/test_contracts/storage_access_contract",
+            "should_pass/require_contract_deployment/storage_access_caller",
+        ),*/
     ];
 
     let total_number_of_tests = positive_project_names.len()

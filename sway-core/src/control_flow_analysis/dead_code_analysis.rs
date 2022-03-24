@@ -17,6 +17,8 @@ use crate::{
 };
 use sway_types::span::Span;
 
+use crate::semantic_analysis::TypedStorageDeclaration;
+
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
 
@@ -77,6 +79,10 @@ impl ControlFlowGraph {
                 ControlFlowGraphNode::StructField { span, .. } => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::StructFieldNeverRead,
+                }),
+                ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
+                    span: field_name.span().clone(),
+                    warning_content: Warning::DeadStorageDeclaration,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
             })
@@ -391,6 +397,10 @@ fn connect_declaration(
             ..
         } => {
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+            Ok(leaves.to_vec())
+        }
+        StorageDeclaration(storage) => {
+            connect_storage_declaration(storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -983,17 +993,19 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
-        StorageAccess(_fields) => {
-            // Enable the code below once the storage declaration is added to the namespace
-            /*let storage_node = graph.namespace.storage.get(&fields.field_name()).cloned();
-            let this_ix =
-                graph.add_node(format!("storage field access: {}", fields.field_name()).into());
+        StorageAccess(fields) => {
+            let storage_node = graph
+                .namespace
+                .storage
+                .get(&fields.storage_field_name())
+                .cloned();
+            let this_ix = graph
+                .add_node(format!("storage field access: {}", fields.storage_field_name()).into());
             for leaf in leaves {
                 storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
                 graph.add_edge(*leaf, this_ix, "".into());
             }
-            Ok(vec![this_ix])*/
-            Ok(vec![])
+            Ok(vec![this_ix])
         }
         SizeOf { variant } => match variant {
             SizeOfVariant::Type(_) => Ok(vec![]),
@@ -1158,4 +1170,20 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             warning_content: Warning::UnreachableCode,
         },
     })
+}
+
+fn connect_storage_declaration(
+    decl: &TypedStorageDeclaration,
+    graph: &mut ControlFlowGraph,
+    _entry_node: NodeIndex,
+    _tree_type: &TreeType,
+) {
+    let TypedStorageDeclaration { fields, .. } = decl;
+
+    let field_nodes = fields
+        .iter()
+        .map(|field| (field.clone(), graph.add_node(field.into())))
+        .collect::<Vec<_>>();
+
+    graph.namespace.insert_storage(field_nodes);
 }

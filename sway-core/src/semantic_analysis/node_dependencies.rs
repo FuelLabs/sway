@@ -307,18 +307,9 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(
-                    fields.iter(),
-                    |deps,
-                     StorageField {
-                         r#type,
-                         initializer,
-                         ..
-                     }| {
-                        deps.gather_from_typeinfo(r#type)
-                            .gather_from_expr(initializer)
-                    },
-                ),
+                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
+                    deps.gather_from_typeinfo(r#type)
+                }),
         }
     }
 
@@ -405,6 +396,7 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
+            Expression::StorageAccess { .. } => self,
             Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::SizeOfType { .. } => self,
@@ -601,6 +593,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
+        TypeInfo::Storage { .. } => "contract storage",
     }
     .to_string()
 }

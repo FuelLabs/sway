@@ -8,7 +8,8 @@ script {
         v4 = const u64 0, !2
         v5 = insert_value v3, { u64, { () | bool | () } }, v4, 0, !2
         v6 = insert_value v2, { u64, { () | { u64, { () | bool | () } } | () } }, v5, 1, !1
-        ret () v6
+        v7 = const unit ()
+        ret () v7
     }
 }
 

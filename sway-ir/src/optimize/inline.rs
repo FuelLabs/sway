@@ -227,6 +227,12 @@ fn inline_instruction(
                     .as_slice(),
                 span_md_idx,
             ),
+            Instruction::Cmp(pred, lhs_value, rhs_value) => new_block.ins(context).cmp(
+                pred,
+                map_value(lhs_value),
+                map_value(rhs_value),
+                span_md_idx,
+            ),
             Instruction::ConditionalBranch {
                 cond_value,
                 true_block,
@@ -304,8 +310,8 @@ fn inline_instruction(
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::ReadRegister { reg_name } => {
-                new_block.ins(context).read_register(reg_name, span_md_idx)
+            Instruction::ReadRegister(reg) => {
+                new_block.ins(context).read_register(reg, span_md_idx)
             }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => {

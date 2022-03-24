@@ -21,7 +21,7 @@
   - [Built-in Types](./basics/built_in_types.md)
   - [Custom Types](./basics/custom_types.md)
   - [Functions](./basics/functions.md)
-  - [Reference Types](./basics/reference_types.md)
+  <!-- - [Reference Types](./basics/reference_types.md) -->
 - [Control Flow](./control-flow/index.md)
   - [Loops](./control-flow/loops.md)
 - [Testing](./testing/index.md)

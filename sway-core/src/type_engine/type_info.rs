@@ -64,6 +64,12 @@ pub enum TypeInfo {
     ErrorRecovery,
     // Static, constant size arrays.
     Array(TypeId, usize),
+    /// Represents the entire storage declaration struct
+    /// Stored without initializers here, as typed struct fields,
+    /// so type checking is able to treat it as a struct with fields.
+    Storage {
+        fields: Vec<TypedStructField>,
+    },
 }
 
 impl Default for TypeInfo {
@@ -265,6 +271,7 @@ impl TypeInfo {
                 format!("contract caller {}", abi_name.suffix)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
+            Storage { .. } => "contract storage".into(),
         }
     }
 
@@ -307,6 +314,7 @@ impl TypeInfo {
                 format!("contract caller {}", abi_name.suffix)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Storage { .. } => "contract storage".into(),
         }
     }
 
@@ -469,6 +477,7 @@ impl TypeInfo {
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
             }
+            TypeInfo::Storage { .. } => Ok(0),
         }
     }
 
@@ -645,6 +654,7 @@ impl TypeInfo {
             | B256
             | Numeric
             | Contract
+            | Storage { .. }
             | ErrorRecovery => None,
         }
     }

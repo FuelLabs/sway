@@ -274,6 +274,7 @@ pub enum Warning {
     ShadowingReservedRegister {
         reg_name: Ident,
     },
+    DeadStorageDeclaration,
     MatchExpressionUnreachableArm,
 }
 
@@ -379,6 +380,8 @@ impl fmt::Display for Warning {
                 f,
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
+            ),
+            DeadStorageDeclaration => write!(f, "This storage declaration is never accessed and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
@@ -891,6 +894,14 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
+    #[error("Storage field {name} does not exist")]
+    StorageFieldDoesNotExist { name: String, span: Span },
+    #[error("No storage has been declared")]
+    NoDeclaredStorage { span: Span },
+    #[error("Multiple storage declarations were found")]
+    MultipleStorageDeclarations { span: Span },
+    #[error("Expected identifier, found keyword \"{name}\" ")]
+    InvalidVariableName { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1099,6 +1110,10 @@ impl CompileError {
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
             CallParamForNonContractCallMethod { span, .. } => span,
+            StorageFieldDoesNotExist { span, .. } => span,
+            NoDeclaredStorage { span, .. } => span,
+            MultipleStorageDeclarations { span, .. } => span,
+            InvalidVariableName { span, .. } => span,
         }
     }
 

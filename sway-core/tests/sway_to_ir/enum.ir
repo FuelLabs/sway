@@ -16,7 +16,8 @@ script {
         v9 = const u64 3, !6
         v10 = insert_value v8, { u64, { () | () | u64 } }, v9, 1, !5
         v11 = call anon_1(v10), !7
-        ret () v11
+        v12 = const unit ()
+        ret () v12
     }
 
     fn anon_0(meal !8: { u64, { () | () | u64 } }) -> bool {
