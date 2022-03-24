@@ -93,7 +93,7 @@ nocomments: u64,
     ";
     let formatted = r"struct /* i am about to declare a struct */ DummyStruct {
     // properly handling comments?
-    sumn /* hi i am  a comment */ : value, /* another comment */
+    sumn /* hi i am a comment */ : value, /* another comment */
     sumnelse                      : u32, // so many comments
     nocomments                    : u64,
     /* hi */
@@ -137,24 +137,12 @@ pub fn _format_align_data_types(text: &str) -> String {
                 result.push(current_char);
                 result.push(' ');
                 result.push_str(&field_type);
-                if iter.next() != Some((current_column, ' '))
-                    || iter.next() != Some((current_column, '\n'))
+                if iter.peek() != Some(&(current_column, ' '))
+                    || iter.peek() != Some(&(current_column, '\n'))
                 {
-                    match iter.next().unwrap() {
-                        (_, '/') => {
-                            clean_all_whitespace_enumerated(&mut iter);
-                            result.push_str(" /");
-                        }
-                        (_, '*') => {
-                            clean_all_whitespace_enumerated(&mut iter);
-                            result.push_str(" /* ");
-                        }
-                        (_, ' ') => {
-                            clean_all_whitespace_enumerated(&mut iter);
-                            current_column = 0;
-                            result.push_str(&newline_and_tab);
-                        }
-                        _ => (),
+                    if let Some((_, '/')) = iter.peek() {
+                        clean_all_whitespace_enumerated(&mut iter);
+                        result.push(' ');
                     }
                 }
             }
@@ -168,7 +156,21 @@ pub fn _format_align_data_types(text: &str) -> String {
             '\n' => {
                 clean_all_whitespace_enumerated(&mut iter);
                 current_column = 0;
-                result.push_str(&newline_and_tab);
+                if let Some((_, _c)) = iter.peek() {
+                    result.push_str(&newline_and_tab);
+                } else {
+                    result.push('\n');
+                }
+            }
+            ' ' => {
+                if let Some((_, ' ')) = iter.peek() {
+                    clean_all_whitespace_enumerated(&mut iter);
+                    result.push(' ');
+                    current_column += 1;
+                } else {
+                    result.push(' ');
+                }
+                current_column += 1;
             }
             _ => {
                 result.push(current_char);
