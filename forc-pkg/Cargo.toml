@@ -6,7 +6,7 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "Building, locking, fetching and updating sway projects as Forc packages."
+description = "Building, locking, fetching and updating Sway projects as Forc packages."
 
 [dependencies]
 anyhow = "1"
