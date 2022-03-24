@@ -607,6 +607,8 @@ pub enum CompileError {
         method_name: String,
         type_name: String,
     },
+    #[error("Duplicate definitions with name \"{method_name}\".")]
+    DuplicateMethodDefinitions { method_name: String, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -1021,6 +1023,7 @@ impl CompileError {
             StructMissingField { span, .. } => span,
             StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
+            DuplicateMethodDefinitions { span, .. } => span,
             ModuleNotFound { span, .. } => span,
             NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,

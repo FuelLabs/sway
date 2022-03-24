@@ -2,7 +2,7 @@ use crate::semantic_analysis::TypedExpression;
 use crate::Ident;
 use crate::{type_engine::TypeId, TypeParameter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct TypedStructExpressionField {
     pub(crate) name: Ident,
     pub(crate) value: TypedExpression,

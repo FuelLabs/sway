@@ -47,6 +47,18 @@ impl<T, F> DoubleIdentity<T, F> {
   }
 }
 
+/*
+fn test_function<T>(a: T, b: T) -> T {
+  b
+}
+
+impl<T> DoubleIdentity<T, T>  {
+  fn foobar(self) -> T {
+    self.second
+  }
+}
+*/
+
 impl DoubleIdentity<u8, u8> {
   fn add(self) -> u8 {
     self.first + self.second
@@ -103,6 +115,9 @@ fn main() -> u32 {
     third: 1u64
   };
   let n = ~DoubleIdentity<Data<u8>, Data<u8>>::new(~Data<u8>::new(3u8), ~Data<u8>::new(4u8));
+  let o: DoubleIdentity<bool, bool> = double_identity(true, true);
+  //let p = o.foobar();
+  //let q = test_function(false, 6);
 
   b.get_first()
 }

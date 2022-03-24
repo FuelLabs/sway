@@ -12,6 +12,7 @@ use crate::{
 
 use sway_types::span::{join_spans, Span};
 
+use derivative::Derivative;
 use std::sync::Arc;
 
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
@@ -51,7 +52,7 @@ pub(crate) enum IsConstant {
     No,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TypedAstNodeContent {
     ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
@@ -62,9 +63,11 @@ pub(crate) enum TypedAstNodeContent {
     SideEffect,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Derivative)]
+#[derivative(PartialEq)]
 pub struct TypedAstNode {
     pub(crate) content: TypedAstNodeContent,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }
 

@@ -113,7 +113,7 @@ impl TraitDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct Supertrait {
     pub(crate) name: CallPath,
 }

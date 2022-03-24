@@ -20,7 +20,7 @@ use sha2::{Digest, Sha256};
 mod function_parameter;
 pub use function_parameter::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
     pub(crate) name: Ident,
     pub(crate) body: TypedCodeBlock,
@@ -35,6 +35,22 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedFunctionDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.body == other.body
+            && self.parameters == other.parameters
+            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
+            && self.type_parameters == other.type_parameters
+            && self.visibility == other.visibility
+            && self.is_contract_call == other.is_contract_call
+            && self.purity == other.purity
+    }
 }
 
 impl TypedFunctionDeclaration {

@@ -11,7 +11,7 @@ mod method_application;
 use crate::type_engine::TypeId;
 use method_application::type_check_method_application;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedExpression {
     pub(crate) expression: TypedExpressionVariant,
     pub(crate) return_type: TypeId,
@@ -19,6 +19,17 @@ pub struct TypedExpression {
     /// time)
     pub(crate) is_constant: IsConstant,
     pub(crate) span: Span,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedExpression {
+    fn eq(&self, other: &Self) -> bool {
+        self.expression == other.expression
+            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
+            && self.is_constant == other.is_constant
+    }
 }
 
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {

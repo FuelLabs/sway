@@ -2,9 +2,13 @@ use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
-#[derive(Clone, Debug)]
+use derivative::Derivative;
+
+#[derive(Clone, Debug, Eq, Derivative)]
+#[derivative(PartialEq)]
 pub(crate) struct TypedCodeBlock {
     pub(crate) contents: Vec<TypedAstNode>,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) whole_block_span: Span,
 }
 

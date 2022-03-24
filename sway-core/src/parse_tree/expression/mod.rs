@@ -205,7 +205,7 @@ pub struct DelayedTupleVariantResolution {
     pub elem_num: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum LazyOp {
     And,
     Or,

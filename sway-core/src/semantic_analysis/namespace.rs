@@ -256,6 +256,7 @@ impl TraitMap {
             //     println!("\n{:?}", name);
             // }
             if *type_info == r#type {
+                // println!("MATCH!!!!!!!!!!");
                 methods.append(&mut l_methods.values().cloned().collect());
             }
         }

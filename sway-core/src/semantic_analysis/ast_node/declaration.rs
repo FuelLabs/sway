@@ -3,6 +3,7 @@ use crate::{error::*, parse_tree::*, type_engine::*, Ident, NamespaceRef, Namesp
 
 use sway_types::{join_spans, span::Span, Property};
 
+use derivative::Derivative;
 use std::hash::{Hash, Hasher};
 
 mod function;
@@ -10,7 +11,7 @@ mod variable;
 pub use function::*;
 pub use variable::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
     VariableDeclaration(TypedVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
@@ -77,6 +78,7 @@ impl TypedDeclaration {
             ErrorRecovery => "error",
         }
     }
+
     pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
         let type_id = match self {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
@@ -139,6 +141,7 @@ impl TypedDeclaration {
                     is_mutable,
                     name,
                     type_ascription,
+                    body,
                     ..
                 }) => {
                     let mut builder = String::new();
@@ -152,6 +155,8 @@ impl TypedDeclaration {
                     builder.push_str(
                         &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
                     );
+                    builder.push_str(" = ");
+                    builder.push_str(&body.pretty_print());
                     builder
                 }
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
@@ -196,18 +201,24 @@ impl TypedDeclaration {
 }
 
 /// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Derivative)]
+#[derivative(PartialEq, Eq)]
 pub struct TypedAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub(crate) name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
     pub(crate) interface_surface: Vec<TypedTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
+    // NOTE: It may be important in the future to include this component
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
     pub(crate) fields: Vec<TypedStructField>,
@@ -215,6 +226,19 @@ pub struct TypedStructDeclaration {
     pub(crate) visibility: Visibility,
     pub(crate) type_id: TypeId,
     pub(crate) span: Span,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedStructDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.fields == other.fields
+            && self.type_parameters == other.type_parameters
+            && self.visibility == other.visibility
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+    }
 }
 
 impl TypedStructDeclaration {
@@ -336,7 +360,7 @@ impl TypedStructField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
     pub(crate) name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
@@ -344,6 +368,19 @@ pub struct TypedEnumDeclaration {
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
     pub(crate) type_id: TypeId,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedEnumDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.type_parameters == other.type_parameters
+            && self.variants == other.variants
+            && self.visibility == other.visibility
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+    }
 }
 
 impl TypedEnumDeclaration {
@@ -413,7 +450,7 @@ impl TypedEnumDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
@@ -463,7 +500,7 @@ impl TypedEnumVariant {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedConstantDeclaration {
     pub(crate) name: Ident,
     pub(crate) value: TypedExpression,
@@ -476,10 +513,16 @@ impl TypedConstantDeclaration {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Derivative)]
+#[derivative(PartialEq, Eq)]
 pub struct TypedTraitDeclaration {
     pub(crate) name: Ident,
     pub(crate) interface_surface: Vec<TypedTraitFn>,
+    // NOTE: deriving partialeq and hash on this element may be important in the
+    // future, but I am not sure. For now, adding this would 2x the amount of
+    // work, so I am just going to exclude it
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub(crate) visibility: Visibility,
@@ -494,21 +537,33 @@ impl TypedTraitDeclaration {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Derivative)]
+#[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
     pub(crate) name: Ident,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Eq(bound = ""))]
     pub(crate) return_type_span: Span,
 }
 
 /// Represents the left hand side of a reassignment -- a name to locate it in the
 /// namespace, and the type that the name refers to. The type is used for memory layout
 /// in asm generation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for ReassignmentLhs {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+    }
 }
 
 impl ReassignmentLhs {
@@ -517,7 +572,7 @@ impl ReassignmentLhs {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
