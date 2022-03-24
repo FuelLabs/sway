@@ -735,6 +735,7 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_contract_call(
         &mut self,
         metadata: &ContractCallMetadata,

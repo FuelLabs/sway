@@ -185,7 +185,7 @@ mod ir_builder {
 
             rule op_contract_call() -> IrAstOperation
                 = "contract_call" _
-                ty:ast_ty() _ name:id() _ 
+                ty:ast_ty() _ name:id() _
                 params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
                     IrAstOperation::ContractCall(ty, name, params, coins, asset_id, gas)
             }
