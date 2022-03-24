@@ -65,9 +65,19 @@ impl Block {
         context.blocks[self.0].label.clone()
     }
 
+    /// Get the number of instructions in this block, NOT including the phi instruction.
+    pub fn num_instructions(&self, context: &Context) -> usize {
+        context.blocks[self.0].instructions.len() - 1
+    }
+
     /// Get the phi instruction for this block.
     pub fn get_phi(&self, context: &Context) -> Value {
         context.blocks[self.0].instructions[0]
+    }
+
+    /// Get the number of predecessor blocks, i.e., blocks which branch to this one.
+    pub fn num_predecessors(&self, context: &Context) -> usize {
+        context.blocks[self.0].num_predecessors(context)
     }
 
     /// Add a new phi entry to this block.
@@ -243,6 +253,16 @@ impl Block {
     /// Return an instruction iterator for each instruction in this block.
     pub fn instruction_iter(&self, context: &Context) -> InstructionIterator {
         InstructionIterator::new(context, self)
+    }
+}
+
+#[doc(hidden)]
+impl BlockContent {
+    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
+        match &context.values[self.instructions[0].0].value {
+            ValueDatum::Instruction(Instruction::Phi(list)) => list.len(),
+            _ => unreachable!("First value in block instructions is not a phi."),
+        }
     }
 }
 

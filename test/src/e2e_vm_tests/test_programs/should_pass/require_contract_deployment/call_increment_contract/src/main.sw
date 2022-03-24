@@ -1,8 +1,10 @@
 script;
+
 use increment_abi::Incrementor;
-use std::constants::ETH_ID;
+use std::chain::assert;
+
 fn main() {
-    let abi = abi(Incrementor, 0x5b864e5e90c8c0acb8adb66197e6738a72c590742971f23584d0e35010f50dbd);
+    let abi = abi(Incrementor, 0x4c30f62e9947cff714c802afc0c900de272dbeec57ae12ed96aacbfd32c3e3a8);
     abi.initialize {
         gas: 10000
     }
@@ -11,10 +13,15 @@ fn main() {
         gas: 10000
     }
     (5);
-    let result = abi.increment {
+    abi.increment {
         gas: 10000
     }
     (5);
+    let result = abi.get {
+        gas: 10000
+    }
+    ();
+    assert(result == 10);
     log(result);
 }
 

@@ -4,7 +4,8 @@ script {
         v0 = const bool true, !1
         v1 = const bool false, !2
         v2 = call anon_0(v0, v1), !3
-        ret () v2
+        v3 = const unit ()
+        ret () v3
     }
 
     fn anon_0(a !4: bool, b !5: bool) -> { bool, bool } {

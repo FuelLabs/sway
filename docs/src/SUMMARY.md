@@ -21,12 +21,12 @@
   - [Built-in Types](./basics/built_in_types.md)
   - [Custom Types](./basics/custom_types.md)
   - [Functions](./basics/functions.md)
-  - [Reference Types](./basics/reference_types.md)
+  <!-- - [Reference Types](./basics/reference_types.md) -->
 - [Control Flow](./control-flow/index.md)
   - [Loops](./control-flow/loops.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
-  <!-- - [Testing with TypeScript](./testing/testing-with-typescript.md) -->
+  - [Testing with TypeScript](./testing/testing-with-typescript.md)
 - [Sway on the Chain](./sway-on-chain/index.md)
   - [Program Types](./sway-on-chain/program_types.md)
   - [Contracts](./sway-on-chain/smart_contracts.md)

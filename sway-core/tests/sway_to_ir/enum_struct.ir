@@ -12,7 +12,8 @@ script {
         v8 = const u64 53, !5
         v9 = insert_value v7, { b256, bool, u64 }, v8, 2, !2
         v10 = insert_value v2, { u64, { () | { b256, bool, u64 } | () } }, v9, 1, !1
-        ret () v10
+        v11 = const unit ()
+        ret () v11
     }
 }
 
