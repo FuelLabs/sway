@@ -75,6 +75,21 @@ fn crazy<T, F>(x: T, y: F) -> F {
   foo.get_second()
 }
 
+enum Result<T> {
+  Ok: T,
+  Err: u8 // err code
+}
+
+impl<T> Result<T> {
+  fn ok(value: T) -> Self {
+    Result::Ok::<T>(value)
+  }
+
+  fn err(code: u8) -> Self {
+    Result::Err::<T>(code)
+  }
+}
+
 enum Option<T> {
   Some: T,
   None: ()
@@ -83,6 +98,18 @@ enum Option<T> {
 impl<T> Option<T> {
   fn some(value: T) -> Self {
     Option::Some::<T>(value)
+  }
+
+  fn none() -> Self {
+    Option::None::<T>(())
+  }
+
+  fn to_result(self) -> Result<T> {
+    if let Option::Some(value) = self {
+      ~Result<T>::ok(value)
+    } else {
+      ~Result<T>::err(99u8)
+    }
   }
 }
 
@@ -117,6 +144,8 @@ fn main() -> u32 {
   let p = Option::Some::<bool>(false);
   let q = Option::Some::<()>(());
   let r = ~Option<u32>::some(5u32);
+  let s = Option::Some(0u8);
+  let t = ~Option<u64>::none();
 
   b.get_first()
 }

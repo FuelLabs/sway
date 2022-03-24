@@ -519,7 +519,7 @@ pub enum CompileError {
         given: String,
         expected: String,
     },
-    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
+    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\".")]
     NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
     UnknownTrait { span: Span, name: Ident },
@@ -540,6 +540,8 @@ pub enum CompileError {
         expected: usize,
         span: Span,
     },
+    #[error("\"{name}\" does not take type arguments.")]
+    DoesNotTakeTypeArguments { name: Ident, span: Span },
     #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
@@ -995,6 +997,7 @@ impl CompileError {
             FunctionNotAPartOfInterfaceSurface { span, .. } => span,
             MissingInterfaceSurfaceMethods { span, .. } => span,
             IncorrectNumberOfTypeArguments { span, .. } => span,
+            DoesNotTakeTypeArguments { span, .. } => span,
             StructNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,

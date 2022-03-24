@@ -29,17 +29,33 @@ pub(crate) fn instantiate_enum(
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
-    let enum_decl = if enum_decl.type_parameters.is_empty() {
-        enum_decl
-    } else {
-        check!(
-            enum_decl.monomorphize_with_type_arguments(&module, &type_arguments, Some(self_type)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        )
+    let new_decl = match (
+        enum_decl.type_parameters.is_empty(),
+        type_arguments.is_empty(),
+    ) {
+        (true, true) => enum_decl,
+        (false, true) => enum_decl.monomorphize(&namespace),
+        (true, false) => {
+            errors.push(CompileError::DoesNotTakeTypeArguments {
+                name: enum_decl.name.clone(),
+                span: enum_decl.span,
+            });
+            return err(warnings, errors);
+        }
+        (false, false) => {
+            check!(
+                enum_decl.monomorphize_with_type_arguments(
+                    &module,
+                    &type_arguments,
+                    Some(self_type)
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
     };
-    let (enum_field_type, tag, variant_name) = match enum_decl
+    let (enum_field_type, tag, variant_name) = match new_decl
         .variants
         .iter()
         .find(|x| x.name.as_str() == enum_field_name.as_str())
@@ -47,7 +63,7 @@ pub(crate) fn instantiate_enum(
         Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
-                enum_name: enum_decl.name.clone(),
+                enum_name: new_decl.name.clone(),
                 variant_name: enum_field_name.clone(),
                 span: enum_field_name.span().clone(),
             });
@@ -61,11 +77,11 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_field_type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: enum_decl.type_id(),
+                return_type: new_decl.type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
-                    enum_decl,
+                    enum_decl: new_decl,
                     variant_name,
                     instantiation_span: instantiation_span.clone(),
                 },
@@ -99,11 +115,11 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.type_id(),
+                    return_type: new_decl.type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl,
+                        enum_decl: new_decl,
                         variant_name,
                         instantiation_span: instantiation_span.clone(),
                     },
