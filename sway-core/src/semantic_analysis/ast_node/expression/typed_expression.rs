@@ -2162,7 +2162,7 @@ fn check_scrutinee_type(
         }
     };
 
-    ok((ty.type_id, enum_variant), warnings, errors)
+    ok((ty.type_id(), enum_variant), warnings, errors)
 }
 
 fn check_enum_scrutinee_type(

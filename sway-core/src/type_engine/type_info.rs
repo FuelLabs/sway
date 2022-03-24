@@ -26,12 +26,10 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
-        type_arguments: Vec<TypeArgument>,
         variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
         name: Ident,
-        type_arguments: Vec<TypeArgument>,
         fields: Vec<TypedStructField>,
     },
     Boolean,
@@ -102,15 +100,13 @@ impl Hash for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                type_arguments,
                 variant_types,
             } => {
                 state.write_u8(8);
                 name.hash(state);
-                type_arguments.hash(state);
                 variant_types.hash(state);
             }
-            TypeInfo::Struct { name, fields, .. } => {
+            TypeInfo::Struct { name, fields } => {
                 state.write_u8(9);
                 name.hash(state);
                 fields.hash(state);
@@ -774,11 +770,7 @@ impl TypeInfo {
                 }
                 None
             }
-            TypeInfo::Struct {
-                fields,
-                name,
-                type_arguments,
-            } => {
+            TypeInfo::Struct { fields, name } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
                     if let Some(matching_id) =
@@ -787,24 +779,14 @@ impl TypeInfo {
                         new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
-                let mut new_type_arguments = type_arguments.clone();
-                for new_type_argument in new_type_arguments.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_type_argument.type_id).matches_type_parameter(mapping)
-                    {
-                        new_type_argument.type_id = insert_type(TypeInfo::Ref(matching_id));
-                    }
-                }
                 Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
-                    type_arguments: new_type_arguments,
                 }))
             }
             TypeInfo::Enum {
                 variant_types,
                 name,
-                type_arguments,
             } => {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
@@ -814,18 +796,9 @@ impl TypeInfo {
                         new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
-                let mut new_type_arguments = type_arguments.clone();
-                for new_type_argument in new_type_arguments.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_type_argument.type_id).matches_type_parameter(mapping)
-                    {
-                        new_type_argument.type_id = insert_type(TypeInfo::Ref(matching_id));
-                    }
-                }
                 Some(insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
                     name: name.clone(),
-                    type_arguments: new_type_arguments,
                 }))
             }
             TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)

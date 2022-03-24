@@ -1,6 +1,6 @@
 use crate::{
     build_config::BuildConfig, error::*, parse_tree::ident, type_engine::*, CompileError, Rule,
-    TypeArgument, TypedDeclaration,
+    TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -145,13 +145,6 @@ impl TypeParameter {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => insert_type(look_up_type_id_raw(self.type_id)),
         };
-    }
-
-    pub(crate) fn to_type_argument(&self) -> TypeArgument {
-        TypeArgument {
-            type_id: self.type_id,
-            span: self.name_ident.span().clone(),
-        }
     }
 }
 

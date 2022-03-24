@@ -224,7 +224,6 @@ pub struct TypedStructDeclaration {
     pub(crate) fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
-    //pub(crate) type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -237,7 +236,6 @@ impl PartialEq for TypedStructDeclaration {
             && self.fields == other.fields
             && self.type_parameters == other.type_parameters
             && self.visibility == other.visibility
-        //&& look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
@@ -316,18 +314,9 @@ impl TypedStructDeclaration {
     }
 
     pub(crate) fn type_id(&self) -> TypeId {
-        let type_arguments = self
-            .type_parameters
-            .iter()
-            .map(|x| TypeArgument {
-                type_id: x.type_id,
-                span: x.name_ident.span().clone(),
-            })
-            .collect();
         insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
-            type_arguments,
         })
     }
 }
@@ -382,7 +371,6 @@ pub struct TypedEnumDeclaration {
     pub(crate) variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
-    pub(crate) type_id: TypeId,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -394,19 +382,13 @@ impl PartialEq for TypedEnumDeclaration {
             && self.type_parameters == other.type_parameters
             && self.variants == other.variants
             && self.visibility == other.visibility
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
 impl TypedEnumDeclaration {
     pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let type_arguments = self
-            .type_parameters
-            .iter()
-            .map(|x| x.to_type_argument())
-            .collect::<Vec<_>>();
-        Self::monomorphize_inner(self, namespace, &type_mapping, &type_arguments)
+        Self::monomorphize_inner(self, namespace, &type_mapping)
     }
 
     pub(crate) fn monomorphize_with_type_arguments(
@@ -418,7 +400,7 @@ impl TypedEnumDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping, type_arguments);
+        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         if type_mapping.len() != type_arguments.len() {
             errors.push(CompileError::IncorrectNumberOfTypeArguments {
                 given: type_arguments.len(),
@@ -459,19 +441,13 @@ impl TypedEnumDeclaration {
         &self,
         namespace: &NamespaceRef,
         type_mapping: &[(TypeParameter, usize)],
-        type_arguments: &[TypeArgument],
     ) -> Self {
-        let old_type_id = self.type_id;
+        let old_type_id = self.type_id();
         let mut new_decl = self.clone();
         new_decl.copy_types(type_mapping);
-        new_decl.type_id = insert_type(TypeInfo::Enum {
-            name: new_decl.name.clone(),
-            variant_types: new_decl.variants.clone(),
-            type_arguments: type_arguments.to_vec(),
-        });
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id),
+            look_up_type_id(new_decl.type_id()),
             type_mapping,
         );
         new_decl
@@ -481,6 +457,13 @@ impl TypedEnumDeclaration {
         self.variants
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+
+    pub(crate) fn type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
+        })
     }
 }
 #[derive(Debug, Clone, Eq)]

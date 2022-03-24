@@ -704,9 +704,9 @@ impl NamespaceWrapper for NamespaceRef {
                             warnings,
                             errors
                         );
-                        new_decl.type_id
+                        new_decl.type_id()
                     } else {
-                        decl.type_id
+                        decl.type_id()
                     }
                 }
                 Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
@@ -788,9 +788,9 @@ impl NamespaceWrapper for NamespaceRef {
                             warnings,
                             errors
                         );
-                        new_decl.type_id
+                        new_decl.type_id()
                     } else {
-                        decl.type_id
+                        decl.type_id()
                     }
                 }
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),

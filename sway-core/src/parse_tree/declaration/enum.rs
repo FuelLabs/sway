@@ -53,23 +53,12 @@ impl EnumDeclaration {
                 errors
             ));
         }
-        let type_arguments = self
-            .type_parameters
-            .iter()
-            .map(|x| x.to_type_argument())
-            .collect::<Vec<_>>();
-        let type_id = insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: variants_buf.clone(),
-            type_arguments,
-        });
         TypedEnumDeclaration {
             name: self.name.clone(),
             type_parameters: self.type_parameters.clone(),
             variants: variants_buf,
             span: self.span.clone(),
             visibility: self.visibility,
-            type_id,
         }
     }
 
@@ -231,10 +220,8 @@ impl EnumVariant {
                         variant_name: name.clone()
                     }
                 );
-                let x = fields[i + 1].clone();
-                println!("{:?}", x);
                 let r#type = check!(
-                    TypeInfo::parse_from_pair(x, config),
+                    TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                     TypeInfo::Tuple(Vec::new()),
                     warnings,
                     errors

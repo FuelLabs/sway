@@ -60,7 +60,6 @@ impl ToJsonAbi for TypeId {
 fn generic_enum_resolution() {
     use crate::semantic_analysis::ast_node::TypedEnumVariant;
     use crate::Ident;
-    use crate::TypeArgument;
     let engine = Engine::default();
 
     let sp = Span::empty();
@@ -73,17 +72,9 @@ fn generic_enum_resolution() {
         }),
         span: sp.clone(),
     }];
-    let type_arguments = variant_types
-        .iter()
-        .map(|x| TypeArgument {
-            type_id: x.r#type,
-            span: x.span.clone(),
-        })
-        .collect();
     let ty_1 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
-        type_arguments,
     });
 
     let variant_types = vec![TypedEnumVariant {
@@ -92,17 +83,9 @@ fn generic_enum_resolution() {
         r#type: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
     }];
-    let type_arguments = variant_types
-        .iter()
-        .map(|x| TypeArgument {
-            type_id: x.r#type,
-            span: x.span.clone(),
-        })
-        .collect();
     let ty_2 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
-        type_arguments,
     });
 
     // Unify them together...
@@ -112,7 +95,6 @@ fn generic_enum_resolution() {
     if let TypeInfo::Enum {
         name,
         variant_types,
-        ..
     } = engine.look_up_type_id(ty_1)
     {
         assert_eq!(name.as_str(), "Result");
