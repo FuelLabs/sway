@@ -34,7 +34,7 @@ let my_data = if some_bool < 10 { foo() } else { bar() };
 
 ## Loops
 
-### While
+### `while`
 
 Loops in Sway are currently limited to `while` loops. This is what they look like:
 
