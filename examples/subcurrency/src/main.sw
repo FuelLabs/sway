@@ -43,7 +43,7 @@ abi Token {
 ////////////////////////////////////////
 
 /// Address of contract creator.
-const MINTER: Address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+const MINTER : b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
 
 ////////////////////////////////////////
 // Contract storage
@@ -63,7 +63,7 @@ impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
         // Note: authentication is not yet implemented, for now just trust params
         // See https://github.com/FuelLabs/sway/issues/195
-        if receiver == MINTER {
+        if receiver.into() == MINTER {
             let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
 
             let mut receiver_amount = get::<u64>(storage_slot);
@@ -76,13 +76,13 @@ impl Token for Contract {
     }
 
     fn send(sender: Address, receiver: Address, amount: u64) {
-        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender, HashMethod::Sha256);
+        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender.into(), HashMethod::Sha256);
 
         let mut sender_amount = get::<u64>(sender_storage_slot);
         sender_amount = sender_amount - amount;
         store(sender_storage_slot, sender_amount);
 
-        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver, HashMethod::Sha256);
+        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
 
         let mut receiver_amount = get::<u64>(receiver_storage_slot);
         receiver_amount = receiver_amount + amount;
