@@ -8,8 +8,8 @@ use std::*;
 use std::address::Address;
 use std::chain::assert;
 
-const OWNER_ADDRESS: Address = ~Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
-const ETH_ID: ContractId = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
+const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 // storage {
 //     balance: u64,
@@ -22,14 +22,14 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        // if asset_id == ETH_ID {
+        // if asset_id.into() == ETH_ID {
         //     let balance = storage.balance.write();
         //     deref balance = balance + coins_to_forward;
         // };
     }
 
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // assert(sender() == OWNER_ADDRESS);
+        // assert(sender().into() == OWNER_ADDRESS);
         // assert(storage.balance > req.amount_to_send);
         // storage.balance = storage.balance - req.amount_to_send;
         // transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
