@@ -233,11 +233,13 @@ impl TypedExpression {
                 method_name,
                 contract_call_params,
                 arguments,
+                type_arguments,
                 span,
             } => type_check_method_application(
                 method_name,
                 contract_call_params,
                 arguments,
+                type_arguments,
                 span,
                 namespace,
                 crate_namespace,
@@ -1800,11 +1802,13 @@ impl TypedExpression {
                     is_absolute: true,
                 },
                 type_name: None,
+                type_name_span: None,
             };
             type_check_method_application(
                 method_name,
                 vec![],
                 vec![prefix, index],
+                vec![],
                 span,
                 namespace,
                 crate_namespace,

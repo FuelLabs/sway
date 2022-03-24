@@ -55,6 +55,7 @@ pub(crate) fn instantiate_enum(
             )
         }
     };
+
     let (enum_field_type, tag, variant_name) = match new_decl
         .variants
         .iter()

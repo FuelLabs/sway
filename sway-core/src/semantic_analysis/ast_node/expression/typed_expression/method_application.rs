@@ -13,6 +13,7 @@ pub(crate) fn type_check_method_application(
     method_name: MethodName,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
     span: Span,
     namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
@@ -47,21 +48,52 @@ pub(crate) fn type_check_method_application(
 
     let method = match method_name {
         MethodName::FromType {
-            ref type_name,
             ref call_path,
+            ref type_name,
+            ref type_name_span,
         } => {
-            let ty = match type_name {
-                Some(name) => {
-                    if *name == TypeInfo::SelfType {
-                        self_type
+            let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
+                (Some(type_name), Some(type_name_span)) => {
+                    (type_name.clone(), type_name_span.clone())
+                }
+                _ => args_buf
+                    .get(0)
+                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
+                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
+            };
+            let ty = match (ty, type_arguments.is_empty()) {
+                (
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments: type_args,
+                    },
+                    false,
+                ) => {
+                    if type_args.is_empty() {
+                        TypeInfo::Custom {
+                            name,
+                            type_arguments,
+                        }
                     } else {
-                        insert_type(name.clone())
+                        let type_args_span = type_args
+                            .iter()
+                            .map(|x| x.span.clone())
+                            .fold(type_args[0].span.clone(), join_spans);
+                        errors.push(CompileError::Internal(
+                            "did not expect to find type arguments here",
+                            type_args_span,
+                        ));
+                        return err(warnings, errors);
                     }
                 }
-                None => args_buf
-                    .get(0)
-                    .map(|x| x.return_type)
-                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
+                (_, false) => {
+                    errors.push(CompileError::DoesNotTakeTypeArguments {
+                        span: type_name_span,
+                        name: call_path.suffix.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                (ty, true) => ty,
             };
             let from_module = if call_path.is_absolute {
                 Some(crate_namespace)
@@ -70,7 +102,7 @@ pub(crate) fn type_check_method_application(
             };
             check!(
                 namespace.find_method_for_type(
-                    ty,
+                    insert_type(ty),
                     &call_path.suffix,
                     &call_path.prefixes[..],
                     from_module,
