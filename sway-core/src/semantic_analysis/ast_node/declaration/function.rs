@@ -69,15 +69,6 @@ impl TypedFunctionDeclaration {
         opts.purity = purity;
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
-        let return_type = match return_type.matches_type_parameter(&type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => check!(
-                namespace.resolve_type_with_self(return_type, self_type, return_type_span.clone()),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            ),
-        };
 
         // insert parameters and generic type declarations into namespace
         let namespace = create_new_scope(namespace);
@@ -116,6 +107,16 @@ impl TypedFunctionDeclaration {
                 }),
             );
         }
+
+        let return_type = match return_type.matches_type_parameter(&type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => check!(
+                namespace.resolve_type_with_self(return_type, self_type, return_type_span.clone()),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            ),
+        };
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.

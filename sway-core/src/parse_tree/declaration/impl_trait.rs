@@ -24,7 +24,7 @@ pub struct ImplTrait {
 pub struct ImplSelf {
     pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
-    pub(crate) type_arguments: Vec<TypeParameter>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
@@ -192,7 +192,7 @@ impl ImplSelf {
             ImplSelf {
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments,
+                type_parameters: type_arguments,
                 functions: fn_decls_buf,
                 block_span,
             },

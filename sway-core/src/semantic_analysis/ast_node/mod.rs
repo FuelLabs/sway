@@ -462,17 +462,29 @@ impl TypedAstNode {
                             functions,
                             type_implementing_for,
                             block_span,
-                            type_arguments,
+                            type_parameters,
                             ..
                         }) => {
-                            for type_argument in type_arguments.iter() {
-                                if !type_argument.trait_constraints.is_empty() {
+                            for type_parameter in type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::Internal(
                                         "Where clauses are not supported yet.",
-                                        type_argument.name_ident.span().clone(),
+                                        type_parameter.name_ident.span().clone(),
                                     ));
                                     break;
                                 }
+                            }
+                            let namespace = namespace;
+                            for type_parameter in type_parameters.iter() {
+                                check!(
+                                    namespace.insert(
+                                        type_parameter.name_ident.clone(),
+                                        type_parameter.into()
+                                    ),
+                                    continue,
+                                    warnings,
+                                    errors
+                                );
                             }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
@@ -485,9 +497,9 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
-                                let mut type_arguments = type_arguments.clone();
+                                let mut type_parameters = type_parameters.clone();
                                 // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_arguments);
+                                fn_decl.type_parameters.append(&mut type_parameters);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 

@@ -7,7 +7,7 @@ use crate::{
         *,
     },
     type_engine::*,
-    CallPath, TypeParameter, Visibility,
+    CallPath, TypeArgument, TypeParameter, Visibility,
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
@@ -635,13 +635,32 @@ impl NamespaceWrapper for NamespaceRef {
         let type_id = match ty {
             TypeInfo::Custom {
                 ref name,
-                type_arguments: type_args,
+                type_arguments,
             } => {
                 match self.get_symbol(name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let mut new_type_arguments = vec![];
+                        for type_argument in type_arguments.into_iter() {
+                            let new_type_id = check!(
+                                Self::resolve_type_with_self(
+                                    self,
+                                    look_up_type_id(type_argument.type_id),
+                                    self_type,
+                                    type_argument.span.clone()
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors
+                            );
+                            let type_argument = TypeArgument {
+                                type_id: new_type_id,
+                                span: type_argument.span,
+                            };
+                            new_type_arguments.push(type_argument);
+                        }
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(self, &type_args),
+                                decl.monomorphize_with_type_arguments(self, &new_type_arguments),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -694,13 +713,30 @@ impl NamespaceWrapper for NamespaceRef {
         let type_id = match ty {
             TypeInfo::Custom {
                 name,
-                type_arguments: type_args,
+                type_arguments,
             } => {
                 match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        let mut new_type_arguments = vec![];
+                        for type_argument in type_arguments.into_iter() {
+                            let new_type_id = check!(
+                                Self::resolve_type_without_self(
+                                    self,
+                                    &look_up_type_id(type_argument.type_id),
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors
+                            );
+                            let type_argument = TypeArgument {
+                                type_id: new_type_id,
+                                span: type_argument.span,
+                            };
+                            new_type_arguments.push(type_argument);
+                        }
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(self, &type_args),
+                                decl.monomorphize_with_type_arguments(self, &new_type_arguments),
                                 return err(warnings, errors),
                                 warnings,
                                 errors

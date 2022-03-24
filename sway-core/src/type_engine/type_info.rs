@@ -113,17 +113,9 @@ impl Hash for TypeInfo {
                     variant_type.hash(state);
                 }
             }
-            TypeInfo::Struct {
-                name,
-                type_arguments,
-                fields,
-            } => {
+            TypeInfo::Struct { name, fields, .. } => {
                 state.write_u8(9);
                 name.hash(state);
-                type_arguments.len().hash(state);
-                for type_argument in type_arguments.iter() {
-                    type_argument.hash(state);
-                }
                 fields.len().hash(state);
                 for field in fields.iter() {
                     field.hash(state);
@@ -230,23 +222,15 @@ impl PartialEq for TypeInfo {
             (
                 Self::Struct {
                     name: l_name,
-                    type_arguments: l_type_arguments,
                     fields: l_fields,
+                    ..
                 },
                 Self::Struct {
                     name: r_name,
-                    type_arguments: r_type_arguments,
                     fields: r_fields,
+                    ..
                 },
-            ) => {
-                l_name == r_name
-                    && l_fields == r_fields
-                    && l_type_arguments
-                        .iter()
-                        .zip(r_type_arguments.iter())
-                        .map(|(l, r)| l == r)
-                        .all(|x| x)
-            }
+            ) => l_name == r_name && l_fields == r_fields,
             (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()

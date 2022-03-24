@@ -1,5 +1,21 @@
 script;
 
+struct Data<T> {
+  value: T
+}
+
+impl<T> Data<T> {
+  fn new(v: T) -> Self {
+    Data {
+      value: v
+    }
+  }
+
+  fn get_value(self) -> T {
+    self.value
+  }
+}
+
 struct DoubleIdentity<T, F> {
   first: T,
   second: F,
@@ -31,13 +47,11 @@ impl<T, F> DoubleIdentity<T, F> {
   }
 }
 
-/*
 impl DoubleIdentity<u8, u8> {
   fn add(self) -> u8 {
     self.first + self.second
   }
 }
-*/
 
 fn double_identity2<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
   ~DoubleIdentity<T, F>::new(x, y)
@@ -76,7 +90,18 @@ fn main() -> u32 {
   let h = ~DoubleIdentity<u64, bool>::new(3u64, false);
   let i = crazy(7u8, 10u8);
   let j = 10u8 + 11u8;
-  //let k = d.add();
+  let k = d.add();
+
+  let l = ~Data<bool>::new(false);
+  let m: DoubleIdentity<Data<u8>, Data<u64>> = DoubleIdentity {
+    first: Data {
+      value: 1u8
+    },
+    second: Data {
+      value: 2u8
+    },
+    third: 1u64
+  };
 
   b.get_first()
 }
