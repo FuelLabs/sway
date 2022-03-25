@@ -254,7 +254,6 @@ impl TypeInfo {
         type_name_pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        assert!(type_name_pair.as_rule() == Rule::type_name);
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut iter = type_name_pair.into_inner();

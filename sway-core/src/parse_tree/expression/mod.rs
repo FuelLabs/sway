@@ -436,7 +436,7 @@ impl Expression {
                     warnings,
                     errors
                 );
-                let (arguments, type_args) = {
+                let (arguments, type_args_with_path) = {
                     let maybe_type_args = func_app_parts.next().unwrap();
                     match maybe_type_args.as_rule() {
                         Rule::type_args_with_path => {
@@ -460,8 +460,14 @@ impl Expression {
                     arguments_buf.push(arg);
                 }
 
-                let maybe_type_args = type_args
-                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
+                let maybe_type_args = type_args_with_path
+                    .map(|x| {
+                        x.into_inner()
+                            .nth(1)
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
                     .unwrap_or_else(Vec::new);
                 let mut type_arguments = vec![];
                 for type_arg in maybe_type_args.into_iter() {
