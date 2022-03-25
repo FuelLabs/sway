@@ -555,7 +555,8 @@ impl TypedExpression {
             namespace.resolve_type_with_self(
                 look_up_type_id(typed_expression.return_type),
                 self_type,
-                expr_span.clone()
+                expr_span.clone(),
+                false
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -1262,7 +1263,7 @@ impl TypedExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span),
+            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span, false),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -2308,7 +2309,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let type_id = check!(
-            namespace.resolve_type_with_self(type_name, self_type, type_span),
+            namespace.resolve_type_with_self(type_name, self_type, type_span, true),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,

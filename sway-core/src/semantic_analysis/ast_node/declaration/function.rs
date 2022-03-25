@@ -73,7 +73,7 @@ impl TypedFunctionDeclaration {
         let FunctionDeclaration {
             name,
             body,
-            parameters,
+            mut parameters,
             span,
             return_type,
             type_parameters,
@@ -92,35 +92,39 @@ impl TypedFunctionDeclaration {
         type_parameters.iter().for_each(|param| {
             namespace.insert(param.name_ident.clone(), param.into());
         });
-        for FunctionParameter {
-            name,
-            r#type,
-            type_span,
-        } in parameters.clone()
-        {
-            let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
-                insert_type(TypeInfo::Ref(matching_id))
-            } else {
-                check!(
-                    namespace.resolve_type_with_self(r#type, self_type, type_span.clone()),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                )
-            };
+
+        parameters.iter_mut().for_each(|parameter| {
+            parameter.type_id =
+                match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
+                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    None => check!(
+                        namespace.resolve_type_with_self(
+                            look_up_type_id(parameter.type_id),
+                            self_type,
+                            parameter.type_span.clone(),
+                            true
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    ),
+                };
+        });
+
+        for FunctionParameter { name, type_id, .. } in parameters.clone() {
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
                     body: TypedExpression {
                         expression: TypedExpressionVariant::FunctionParameter,
-                        return_type: r#type,
+                        return_type: type_id,
                         is_constant: IsConstant::No,
                         span: name.span().clone(),
                     },
                     is_mutable: VariableMutability::Immutable,
                     const_decl_origin: false,
-                    type_ascription: r#type,
+                    type_ascription: type_id,
                 }),
             );
         }
@@ -128,7 +132,12 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => check!(
-                namespace.resolve_type_with_self(return_type, self_type, return_type_span.clone()),
+                namespace.resolve_type_with_self(
+                    return_type,
+                    self_type,
+                    return_type_span.clone(),
+                    true
+                ),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
@@ -168,21 +177,11 @@ impl TypedFunctionDeclaration {
             .map(
                 |FunctionParameter {
                      name,
-                     r#type,
+                     type_id: r#type,
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping)
-                    {
-                        insert_type(TypeInfo::Ref(matching_id))
-                    } else {
-                        check!(
-                            namespace.resolve_type_with_self(r#type, self_type, type_span.clone()),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors,
-                        )
-                    },
+                    r#type,
                     type_span,
                 },
             )

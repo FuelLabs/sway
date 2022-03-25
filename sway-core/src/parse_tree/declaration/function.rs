@@ -3,7 +3,7 @@ use crate::{
     error::*,
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     style::{is_snake_case, is_upper_camel_case},
-    type_engine::TypeInfo,
+    type_engine::{insert_type, look_up_type_id, TypeId, TypeInfo},
     CodeBlock, Rule,
 };
 
@@ -192,7 +192,7 @@ impl FunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: x.r#type.friendly_type_str(),
+                    type_field: look_up_type_id(x.type_id).friendly_type_str(),
                     components: None,
                 })
                 .collect(),
@@ -208,7 +208,7 @@ impl FunctionDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter {
     pub(crate) name: Ident,
-    pub(crate) r#type: TypeInfo,
+    pub(crate) type_id: TypeId,
     pub(crate) type_span: Span,
 }
 
@@ -227,7 +227,7 @@ impl FunctionParameter {
                     span: pair.as_span(),
                     path: path.clone(),
                 };
-                let r#type = TypeInfo::SelfType;
+                let type_id = insert_type(TypeInfo::SelfType);
                 let name = Ident::new_with_override(
                     "self",
                     Span {
@@ -237,7 +237,7 @@ impl FunctionParameter {
                 );
                 pairs_buf.push(FunctionParameter {
                     name,
-                    r#type,
+                    type_id,
                     type_span,
                 });
                 continue;
@@ -255,15 +255,15 @@ impl FunctionParameter {
                 span: type_pair.as_span(),
                 path: path.clone(),
             };
-            let r#type = check!(
+            let type_id = insert_type(check!(
                 TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
                 errors
-            );
+            ));
             pairs_buf.push(FunctionParameter {
                 name,
-                r#type,
+                type_id,
                 type_span,
             });
         }

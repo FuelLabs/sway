@@ -204,7 +204,12 @@ impl TypedAstNode {
                                             type_ascription: TypeInfo,
                                             value| {
             let type_id = check!(
-                namespace.resolve_type_with_self(type_ascription, self_type, node.span.clone()),
+                namespace.resolve_type_with_self(
+                    type_ascription,
+                    self_type,
+                    node.span.clone(),
+                    false
+                ),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
@@ -275,6 +280,7 @@ impl TypedAstNode {
                                     type_ascription,
                                     self_type,
                                     type_ascription_span.clone(),
+                                    true,
                                 )
                                 .value
                             {
@@ -544,9 +550,11 @@ impl TypedAstNode {
                                 // i.e. fn add(self, other: u64) -> Self becomes fn
                                 // add(self: u64, other: u64) -> u64
                                 fn_decl.parameters.iter_mut().for_each(
-                                    |FunctionParameter { ref mut r#type, .. }| {
-                                        if r#type == &TypeInfo::SelfType {
-                                            *r#type = type_implementing_for.clone();
+                                    |FunctionParameter {
+                                         ref mut type_id, ..
+                                     }| {
+                                        if look_up_type_id(*type_id) == TypeInfo::SelfType {
+                                            *type_id = implementing_for_type_id;
                                         }
                                     },
                                 );
@@ -610,7 +618,7 @@ impl TypedAstNode {
                                         }
                                         None => check!(
                                             namespace.resolve_type_with_self(
-                                                r#type, self_type, type_span
+                                                r#type, self_type, type_span, false
                                             ),
                                             insert_type(TypeInfo::ErrorRecovery),
                                             warnings,
@@ -1156,15 +1164,16 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
-                             r#type,
+                             type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
                             r#type: check!(
                                 namespace.resolve_type_with_self(
-                                    r#type,
+                                    look_up_type_id(type_id),
                                     crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    type_span.clone()
+                                    type_span.clone(),
+                                    true
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -1178,7 +1187,8 @@ fn type_check_interface_surface(
                     namespace.resolve_type_with_self(
                         return_type,
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                        return_type_span
+                        return_type_span,
+                        true
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1216,13 +1226,16 @@ fn type_check_trait_methods(
         let function_namespace = namespace;
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref r#type, ..
+                 name,
+                 type_id: ref r#type,
+                 ..
              }| {
                 let r#type = check!(
                     function_namespace.resolve_type_with_self(
-                        r#type.clone(),
+                        look_up_type_id(*r#type),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                        name.span().clone()
+                        name.span().clone(),
+                        true
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1250,17 +1263,17 @@ fn type_check_trait_methods(
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Custom { ref name, .. } = param.r#type {
+            if let TypeInfo::Custom { ref name, .. } = look_up_type_id(param.type_id) {
                 generic_params_buf_for_error_message.push(name.to_string());
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
         for FunctionParameter {
-            ref r#type, name, ..
+            ref type_id, name, ..
         } in parameters.iter()
         {
             let span = name.span().clone();
-            if let TypeInfo::Custom { name, .. } = r#type {
+            if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
                     |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
@@ -1290,16 +1303,17 @@ fn type_check_trait_methods(
             .map(
                 |FunctionParameter {
                      name,
-                     r#type,
+                     type_id,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
                         r#type: check!(
                             function_namespace.resolve_type_with_self(
-                                r#type,
+                                look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
-                                type_span.clone()
+                                type_span.clone(),
+                                true
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
                             warnings,
@@ -1316,7 +1330,8 @@ fn type_check_trait_methods(
             function_namespace.resolve_type_with_self(
                 return_type,
                 self_type,
-                return_type_span.clone()
+                return_type_span.clone(),
+                true,
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

@@ -28,7 +28,8 @@ pub(crate) fn instantiate_function_application(
             namespace.resolve_type_with_self(
                 look_up_type_id(type_argument.type_id),
                 self_type,
-                type_argument.span.clone()
+                type_argument.span.clone(),
+                true,
             ),
             return err(warnings, errors),
             warnings,

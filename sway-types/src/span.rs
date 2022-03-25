@@ -12,7 +12,7 @@ pub struct Span {
 impl Span {
     pub fn empty() -> Self {
         Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
+            span: pest::Span::new("Source span not available.".into(), 0, 0).unwrap(),
             path: None,
         }
     }

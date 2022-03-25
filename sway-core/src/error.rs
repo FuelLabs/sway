@@ -565,6 +565,8 @@ pub enum CompileError {
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("\"{name}\" needs type arguments.")]
+    NeedsTypeArguments { name: Ident, span: Span },
     #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
@@ -1034,6 +1036,7 @@ impl CompileError {
             MissingInterfaceSurfaceMethods { span, .. } => span,
             IncorrectNumberOfTypeArguments { span, .. } => span,
             DoesNotTakeTypeArguments { span, .. } => span,
+            NeedsTypeArguments { span, .. } => span,
             StructNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,
