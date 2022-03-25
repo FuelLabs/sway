@@ -12,7 +12,7 @@ In Rust, enums generally take one of three forms: _unit_ variants, which have no
 enum Foo {
     UnitVariant,
     TupleVariant(u32, u64, bool),
-    StructVariant { 
+    StructVariant {
         field_one: bool,
         field_two: bool
     }
@@ -26,7 +26,7 @@ In Sway, enums are simplified. Enums variants must all specify exactly one type.
 enum Foo {
     UnitVariant    : (),
     TupleVariant   : (u32, u64, bool),
-    StructVariant  : MyStruct 
+    StructVariant  : MyStruct
 }
 
 struct MyStruct {
@@ -37,22 +37,20 @@ struct MyStruct {
 
 ## If Expressions
 
-Like Rust, ifs are expressions in Sway. What this means is you can do stuff like this:
-
-```sway
-let my_data = if some_bool < 10 { foo() } else { bar() };
-```
-
 In Sway, a _statement_ is a _declaration **or** expression with a semicolon after it_. This means that you need to add a semicolon after an `if` to turn it into a statement, if it is being used for control flow:
 
 ```sway
 fn main() {
-    if something_is_true {
-        do_this();
+    let number = 6;
+
+    if number % 4 == 0 {
+        // do something
+    } else if number % 3 == 0 {
+        // do something else
     } else {
-        do_that();
-    };   // <------------ note this semicolon
-}
+        // do something else
+    };  // <------------ note this semicolon
+
 ```
 
 This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.

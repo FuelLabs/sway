@@ -86,3 +86,9 @@ use std::storage::*;
 ```
 
 Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.
+
+You will also need to link the library in the `Forc.toml` of the `forc` repo that you're calling from. You can do this by opening up the `Forc.toml` file and adding the following line to the bottom:
+
+```toml
+wallet_lib = { path = "../wallet_lib" }
+```
