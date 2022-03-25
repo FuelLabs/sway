@@ -3,7 +3,7 @@ pub const DEFAULT_GAS_LIMIT: u64 = fuel_tx::consts::MAX_GAS_PER_TX;
 pub const DEFAULT_GAS_PRICE: u64 = 0;
 
 #[derive(Debug)]
-pub struct TxParameters {
+pub(crate) struct TxParameters {
     pub byte_price: u64,
     pub gas_limit: u64,
     pub gas_price: u64,
