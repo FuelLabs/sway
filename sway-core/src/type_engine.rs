@@ -64,8 +64,6 @@ fn generic_enum_resolution() {
 
     let sp = Span::empty();
 
-    println!("A: {:?}", engine.len());
-
     let variant_types = vec![TypedEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
@@ -75,14 +73,10 @@ fn generic_enum_resolution() {
         span: sp.clone(),
     }];
 
-    println!("B: {:?}", engine.len());
-
     let ty_1 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
     });
-
-    println!("C: {:?}", engine.len());
 
     let variant_types = vec![TypedEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
@@ -91,20 +85,14 @@ fn generic_enum_resolution() {
         span: sp.clone(),
     }];
 
-    println!("D: {:?}", engine.len());
-
     let ty_2 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
     });
 
-    println!("E: {:?}", engine.len());
-
     // Unify them together...
     let (_, errors) = engine.unify(ty_1, ty_2, &sp, "");
     assert!(errors.is_empty());
-
-    println!("F: {:?}", engine.len());
 
     if let TypeInfo::Enum {
         name,
