@@ -670,4 +670,41 @@ fn main() {
         let (_, formatted_code) = result.unwrap();
         assert_eq!(formatted_code, expected_sway);
     }
+
+    #[test]
+    fn test_logical_not_operator() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let a = true;
+    let b = false;
+
+    if (!a) {
+    } else if !(!a) {
+    } else if !(a == b) {
+    }
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+fn main() {
+    let a = true;
+    let b = false;
+
+    if ( ! a ) {
+    } else if ! (   !  
+        a ) {
+    } else if !   ( a == b) {}
+}
+"#;
+
+        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
 }
