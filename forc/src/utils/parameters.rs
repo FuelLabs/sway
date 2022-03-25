@@ -1,7 +1,3 @@
-pub const DEFAULT_BYTE_PRICE: u64 = 0;
-pub const DEFAULT_GAS_LIMIT: u64 = fuel_tx::consts::MAX_GAS_PER_TX;
-pub const DEFAULT_GAS_PRICE: u64 = 0;
-
 #[derive(Debug)]
 pub(crate) struct TxParameters {
     pub byte_price: u64,
@@ -9,22 +5,24 @@ pub(crate) struct TxParameters {
     pub gas_price: u64,
 }
 
-impl Default for TxParameters {
-    fn default() -> Self {
+impl TxParameters {
+    pub const DEFAULT: Self = Self {
+        byte_price: 0,
+        gas_limit: fuel_tx::consts::MAX_GAS_PER_TX,
+        gas_price: 0,
+    };
+
+    pub fn new(byte_price: Option<u64>, gas_limit: Option<u64>, gas_price: Option<u64>) -> Self {
         Self {
-            byte_price: DEFAULT_BYTE_PRICE,
-            gas_limit: DEFAULT_GAS_LIMIT,
-            gas_price: DEFAULT_GAS_PRICE,
+            byte_price: byte_price.unwrap_or(TxParameters::DEFAULT.byte_price),
+            gas_limit: gas_limit.unwrap_or(TxParameters::DEFAULT.gas_limit),
+            gas_price: gas_price.unwrap_or(TxParameters::DEFAULT.gas_price),
         }
     }
 }
 
-impl TxParameters {
-    pub fn new(byte_price: Option<u64>, gas_limit: Option<u64>, gas_price: Option<u64>) -> Self {
-        Self {
-            byte_price: byte_price.unwrap_or(DEFAULT_BYTE_PRICE),
-            gas_limit: gas_limit.unwrap_or(DEFAULT_GAS_LIMIT),
-            gas_price: gas_price.unwrap_or(DEFAULT_GAS_PRICE),
-        }
+impl Default for TxParameters {
+    fn default() -> Self {
+        Self::DEFAULT
     }
 }
