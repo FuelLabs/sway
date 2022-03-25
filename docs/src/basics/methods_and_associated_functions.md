@@ -22,10 +22,10 @@ impl Foo {
 
     // this is an _associated function_, since it does not take `self` as a parameter.
     fn new_foo(number: u64, boolean: bool) -> Foo {
-      Foo {
-          bar: number,
-          baz: boolean,
-      }
+        Foo {
+            bar: number,
+            baz: boolean,
+        }
     }
 }
 
