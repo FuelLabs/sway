@@ -51,7 +51,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/enum_in_fn_decl",
             ProgramState::Return(255),
         ),
-        ("should_pass/language/empty_impl", ProgramState::Return(0)),
         (
             "should_pass/language/main_returns_unit",
             ProgramState::Return(0),
@@ -274,6 +273,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ])),
         ),
         ("should_pass/language/is_prime", ProgramState::Return(1)),
+        (
+            "should_pass/language/generic_impl_self",
+            ProgramState::Return(10),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -329,6 +332,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/chained_if_let_missing_branch",
         "should_fail/abort_control_flow",
         "should_fail/match_expressions_non_exhaustive",
+        "should_fail/empty_impl",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

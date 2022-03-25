@@ -2254,7 +2254,8 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::Unit
             } else {
-                create_tuple_aggregate(context, fields.clone()).map(Type::Struct)?
+                let new_fields = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(context, new_fields).map(Type::Struct)?
             }
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),

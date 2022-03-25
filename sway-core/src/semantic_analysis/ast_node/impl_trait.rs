@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
+    parse_tree::{FunctionDeclaration, ImplTrait},
     semantic_analysis::*,
     type_engine::*,
     CallPath, Ident,
@@ -28,38 +28,37 @@ pub(crate) fn implementation_of_trait(
         functions,
         type_implementing_for,
         type_implementing_for_span,
-        type_arguments_span,
         block_span,
+        ..
     } = impl_trait;
-    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = check!(
+        namespace.resolve_type_without_self(&type_implementing_for),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     let type_implementing_for = look_up_type_id(type_implementing_for);
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
-    if !type_arguments.is_empty() {
-        errors.push(CompileError::Internal(
-            "Where clauses are not supported yet.",
-            type_arguments[0].clone().name_ident.span().clone(),
-        ));
+    for type_argument in type_arguments.iter() {
+        if !type_argument.trait_constraints.is_empty() {
+            errors.push(CompileError::Internal(
+                "Where clauses are not supported yet.",
+                type_argument.name_ident.span().clone(),
+            ));
+            break;
+        }
     }
     match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
-            if type_arguments.len() != tr.type_parameters.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: tr.type_parameters.len(),
-                    span: type_arguments_span,
-                })
-            }
-
             let functions_buf = check!(
                 type_check_trait_implementation(
                     &tr.interface_surface,
                     &functions,
                     &tr.methods,
                     &tr.name,
-                    &tr.type_parameters,
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -118,8 +117,6 @@ pub(crate) fn implementation_of_trait(
                     &functions,
                     &abi.methods,
                     &abi.name,
-                    // ABIs don't have type parameters
-                    &[],
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -182,7 +179,6 @@ fn type_check_trait_implementation(
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
     trait_name: &Ident,
-    type_arguments: &[TypeParameter],
     namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     _self_type: TypeId,
@@ -227,7 +223,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        let mut fn_decl = fn_decl.replace_self_types(self_type_id);
+        let fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
         let ix_of_thing_to_remove = match function_checklist
             .iter()
@@ -244,10 +240,6 @@ fn type_check_trait_implementation(
             }
         };
         function_checklist.remove(ix_of_thing_to_remove);
-
-        let type_arguments = &(*type_arguments);
-        // add generic params from impl trait into function type params
-        fn_decl.type_parameters.append(&mut type_arguments.to_vec());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -281,27 +273,22 @@ fn type_check_trait_implementation(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match unify_with_self(
+                            let (mut new_warnings, new_errors) = unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
                                 "",
-                            ) {
-                                Ok(mut ws) => {
-                                    warnings.append(&mut ws);
-                                }
-                                Err(_e) => {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: fn_decl_param_type.friendly_type_str(),
-                                        expected: trait_param_type.friendly_type_str(),
-                                    });
-                                }
-                            }
-                            if errors.is_empty() {
+                            );
+                            warnings.append(&mut new_warnings);
+                            if new_errors.is_empty() {
                                 None
                             } else {
+                                errors.push(CompileError::MismatchedTypeInTrait {
+                                    span: trait_param.type_span.clone(),
+                                    given: fn_decl_param_type.friendly_type_str(),
+                                    expected: trait_param_type.friendly_type_str(),
+                                });
                                 Some(errors)
                             }
                         })
@@ -309,27 +296,22 @@ fn type_check_trait_implementation(
                         errors.append(&mut maybe_err);
                     }
 
-                    match unify_with_self(
+                    let (mut new_warnings, new_errors) = unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
                         "",
-                    ) {
-                        Ok(mut ws) => {
-                            warnings.append(&mut ws);
-                        }
-                        Err(_e) => {
-                            errors.push(CompileError::MismatchedTypeInTrait {
-                                span: fn_decl.return_type_span.clone(),
-                                expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str(),
-                            });
-                        }
-                    }
-                    if errors.is_empty() {
+                    );
+                    warnings.append(&mut new_warnings);
+                    if new_errors.is_empty() {
                         None
                     } else {
+                        errors.push(CompileError::MismatchedTypeInTrait {
+                            span: fn_decl.return_type_span.clone(),
+                            expected: return_type.friendly_type_str(),
+                            given: fn_decl.return_type.friendly_type_str(),
+                        });
                         Some(errors)
                     }
                 } else {

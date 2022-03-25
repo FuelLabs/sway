@@ -48,7 +48,7 @@ impl UnaryOp {
 
     pub fn to_fn_application(&self, arg: Expression, span: Span, op_span: Span) -> Expression {
         Expression::FunctionApplication {
-            type_arguments: Default::default(),
+            type_arguments: vec![],
             name: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),

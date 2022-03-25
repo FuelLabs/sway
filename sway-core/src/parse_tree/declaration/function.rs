@@ -2,8 +2,8 @@ use crate::{
     build_config::BuildConfig,
     error::*,
     parse_tree::{declaration::TypeParameter, ident, Visibility},
-    style::is_snake_case,
-    type_engine::TypeInfo,
+    style::{is_snake_case, is_upper_camel_case},
+    type_engine::{insert_type, look_up_type_id, TypeId, TypeInfo},
     CodeBlock, Rule,
 };
 
@@ -54,13 +54,9 @@ impl FunctionDeclaration {
             Purity::Pure
         };
         let _fn_keyword = signature.next().unwrap();
-        let name = signature.next().unwrap();
-        let name_span = Span {
-            span: name.as_span(),
-            path: path.clone(),
-        };
+
         let name = check!(
-            ident::parse_from_pair(name, config),
+            ident::parse_from_pair(signature.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -68,9 +64,10 @@ impl FunctionDeclaration {
         assert_or_warn!(
             is_snake_case(name.as_str()),
             warnings,
-            name_span,
+            name.span().clone(),
             Warning::NonSnakeCaseFunctionName { name: name.clone() }
         );
+
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut parameters_pair = None;
@@ -102,16 +99,36 @@ impl FunctionDeclaration {
             }
         }
 
-        // these are non-optional in a func decl
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
+        for type_parameter in type_parameters.iter() {
+            assert_or_warn!(
+                is_upper_camel_case(type_parameter.name_ident.as_str()),
+                warnings,
+                type_parameter.name_ident.span().clone(),
+                Warning::NonClassCaseTypeParameter {
+                    name: type_parameter.name_ident.clone()
+                }
+            );
+        }
+
         let parameters_pair = parameters_pair.unwrap();
         let parameters_span = parameters_pair.as_span();
-
         let parameters = check!(
             FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
             errors
         );
+
         let return_type_span = Span {
             span: if let Some(ref pair) = return_type_pair {
                 pair.as_span()
@@ -130,12 +147,6 @@ impl FunctionDeclaration {
             ),
             None => TypeInfo::Tuple(Vec::new()),
         };
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         let body = parts.next().unwrap();
         let whole_block_span = Span {
@@ -151,6 +162,7 @@ impl FunctionDeclaration {
             warnings,
             errors
         );
+
         ok(
             FunctionDeclaration {
                 purity,
@@ -180,7 +192,7 @@ impl FunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: x.r#type.friendly_type_str(),
+                    type_field: look_up_type_id(x.type_id).friendly_type_str(),
                     components: None,
                 })
                 .collect(),
@@ -196,7 +208,7 @@ impl FunctionDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter {
     pub(crate) name: Ident,
-    pub(crate) r#type: TypeInfo,
+    pub(crate) type_id: TypeId,
     pub(crate) type_span: Span,
 }
 
@@ -215,7 +227,7 @@ impl FunctionParameter {
                     span: pair.as_span(),
                     path: path.clone(),
                 };
-                let r#type = TypeInfo::SelfType;
+                let type_id = insert_type(TypeInfo::SelfType);
                 let name = Ident::new_with_override(
                     "self",
                     Span {
@@ -225,7 +237,7 @@ impl FunctionParameter {
                 );
                 pairs_buf.push(FunctionParameter {
                     name,
-                    r#type,
+                    type_id,
                     type_span,
                 });
                 continue;
@@ -243,15 +255,15 @@ impl FunctionParameter {
                 span: type_pair.as_span(),
                 path: path.clone(),
             };
-            let r#type = check!(
+            let type_id = insert_type(check!(
                 TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
                 errors
-            );
+            ));
             pairs_buf.push(FunctionParameter {
                 name,
-                r#type,
+                type_id,
                 type_span,
             });
         }

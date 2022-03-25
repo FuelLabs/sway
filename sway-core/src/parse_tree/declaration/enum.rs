@@ -40,10 +40,10 @@ impl EnumDeclaration {
         namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
-        let mut variants_buf = vec![];
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let mut variants_buf = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         for variant in &self.variants {
             variants_buf.push(check!(
@@ -66,13 +66,13 @@ impl EnumDeclaration {
         decl_inner: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let path = config.map(|c| c.path());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
-            path: path.clone(),
+            path,
         };
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
         let inner = decl_inner.into_inner();
         let mut visibility = Visibility::Private;
         let mut enum_name = None;
@@ -101,17 +101,8 @@ impl EnumDeclaration {
             }
         }
 
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
-            type_params,
-            where_clause,
-            config,
-        )
-        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
-
-        // unwrap non-optional fields
-        let enum_name = enum_name.unwrap();
         let name = check!(
-            ident::parse_from_pair(enum_name.clone(), config),
+            ident::parse_from_pair(enum_name.unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -119,14 +110,32 @@ impl EnumDeclaration {
         assert_or_warn!(
             is_upper_camel_case(name.as_str()),
             warnings,
-            Span {
-                span: enum_name.as_span(),
-                path,
-            },
+            name.span().clone(),
             Warning::NonClassCaseEnumName {
                 enum_name: name.clone()
             }
         );
+
+        let type_parameters = check!(
+            TypeParameter::parse_from_type_params_and_where_clause(
+                type_params,
+                where_clause,
+                config,
+            ),
+            vec!(),
+            warnings,
+            errors
+        );
+        for type_parameter in type_parameters.iter() {
+            assert_or_warn!(
+                is_upper_camel_case(type_parameter.name_ident.as_str()),
+                warnings,
+                type_parameter.name_ident.span().clone(),
+                Warning::NonClassCaseTypeParameter {
+                    name: type_parameter.name_ident.clone()
+                }
+            );
+        }
 
         let variants = check!(
             EnumVariant::parse_from_pairs(variants, config),
@@ -157,17 +166,18 @@ impl EnumVariant {
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<TypedEnumVariant> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type =
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace
-                    .resolve_type_with_self(self.r#type.clone(), self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType { span });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    })
+                check!(
+                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, false),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                )
             };
         ok(
             TypedEnumVariant {

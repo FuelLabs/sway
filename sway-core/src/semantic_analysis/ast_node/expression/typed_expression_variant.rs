@@ -4,25 +4,31 @@ use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
 use std::collections::HashMap;
 use sway_types::state::StateIndex;
 
+use derivative::Derivative;
+
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Derivative)]
+#[derivative(Eq)]
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         name: CallPath,
+        #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
+        #[derivative(Eq(bound = ""))]
         selector: Option<ContractCallMetadata>,
     },
     LazyOperator {
+        #[derivative(Eq(bound = ""))]
         op: LazyOp,
         lhs: Box<TypedExpression>,
         rhs: Box<TypedExpression>,
@@ -104,6 +110,225 @@ pub(crate) enum TypedExpressionVariant {
     },
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedExpressionVariant {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
+            (
+                Self::FunctionApplication {
+                    name: l_name,
+                    arguments: l_arguments,
+                    function_body: l_function_body,
+                    ..
+                },
+                Self::FunctionApplication {
+                    name: r_name,
+                    arguments: r_arguments,
+                    function_body: r_function_body,
+                    ..
+                },
+            ) => {
+                l_name == r_name && l_arguments == r_arguments && l_function_body == r_function_body
+            }
+            (
+                Self::LazyOperator {
+                    op: l_op,
+                    lhs: l_lhs,
+                    rhs: l_rhs,
+                },
+                Self::LazyOperator {
+                    op: r_op,
+                    lhs: r_lhs,
+                    rhs: r_rhs,
+                },
+            ) => l_op == r_op && (**l_lhs) == (**r_lhs) && (**l_rhs) == (**r_rhs),
+            (
+                Self::VariableExpression { name: l_name },
+                Self::VariableExpression { name: r_name },
+            ) => l_name == r_name,
+            (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
+                l_fields == r_fields
+            }
+            (
+                Self::Array {
+                    contents: l_contents,
+                },
+                Self::Array {
+                    contents: r_contents,
+                },
+            ) => l_contents == r_contents,
+            (
+                Self::ArrayIndex {
+                    prefix: l_prefix,
+                    index: l_index,
+                },
+                Self::ArrayIndex {
+                    prefix: r_prefix,
+                    index: r_index,
+                },
+            ) => (**l_prefix) == (**r_prefix) && (**l_index) == (**r_index),
+            (
+                Self::StructExpression {
+                    struct_name: l_struct_name,
+                    fields: l_fields,
+                },
+                Self::StructExpression {
+                    struct_name: r_struct_name,
+                    fields: r_fields,
+                },
+            ) => l_struct_name == r_struct_name && l_fields.clone() == r_fields.clone(),
+            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
+            (
+                Self::IfExp {
+                    condition: l_condition,
+                    then: l_then,
+                    r#else: l_r,
+                },
+                Self::IfExp {
+                    condition: r_condition,
+                    then: r_then,
+                    r#else: r_r,
+                },
+            ) => {
+                (**l_condition) == (**r_condition)
+                    && (**l_then) == (**r_then)
+                    && if let (Some(l), Some(r)) = (l_r, r_r) {
+                        (**l) == (**r)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::AsmExpression {
+                    registers: l_registers,
+                    body: l_body,
+                    returns: l_returns,
+                    ..
+                },
+                Self::AsmExpression {
+                    registers: r_registers,
+                    body: r_body,
+                    returns: r_returns,
+                    ..
+                },
+            ) => {
+                l_registers.clone() == r_registers.clone()
+                    && l_body.clone() == r_body.clone()
+                    && l_returns == r_returns
+            }
+            (
+                Self::StructFieldAccess {
+                    prefix: l_prefix,
+                    field_to_access: l_field_to_access,
+                    resolved_type_of_parent: l_resolved_type_of_parent,
+                },
+                Self::StructFieldAccess {
+                    prefix: r_prefix,
+                    field_to_access: r_field_to_access,
+                    resolved_type_of_parent: r_resolved_type_of_parent,
+                },
+            ) => {
+                (**l_prefix) == (**r_prefix)
+                    && l_field_to_access == r_field_to_access
+                    && look_up_type_id(*l_resolved_type_of_parent)
+                        == look_up_type_id(*r_resolved_type_of_parent)
+            }
+            (
+                Self::IfLet {
+                    enum_type: l_enum_type,
+                    expr: l_expr,
+                    variant: l_variant,
+                    variable_to_assign: l_variable_to_assign,
+                    then: l_then,
+                    r#else: l_r,
+                },
+                Self::IfLet {
+                    enum_type: r_enum_type,
+                    expr: r_expr,
+                    variant: r_variant,
+                    variable_to_assign: r_variable_to_assign,
+                    then: r_then,
+                    r#else: r_r,
+                },
+            ) => {
+                look_up_type_id(*l_enum_type) == look_up_type_id(*r_enum_type)
+                    && (**l_expr) == (**r_expr)
+                    && l_variant == r_variant
+                    && l_variable_to_assign == r_variable_to_assign
+                    && l_then == r_then
+                    && if let (Some(l_r), Some(r_r)) = (l_r, r_r) {
+                        (**l_r) == (**r_r)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::TupleElemAccess {
+                    prefix: l_prefix,
+                    elem_to_access_num: l_elem_to_access_num,
+                    resolved_type_of_parent: l_resolved_type_of_parent,
+                    ..
+                },
+                Self::TupleElemAccess {
+                    prefix: r_prefix,
+                    elem_to_access_num: r_elem_to_access_num,
+                    resolved_type_of_parent: r_resolved_type_of_parent,
+                    ..
+                },
+            ) => {
+                (**l_prefix) == (**r_prefix)
+                    && l_elem_to_access_num == r_elem_to_access_num
+                    && look_up_type_id(*l_resolved_type_of_parent)
+                        == look_up_type_id(*r_resolved_type_of_parent)
+            }
+            (
+                Self::EnumInstantiation {
+                    enum_decl: l_enum_decl,
+                    variant_name: l_variant_name,
+                    tag: l_tag,
+                    contents: l_contents,
+                    ..
+                },
+                Self::EnumInstantiation {
+                    enum_decl: r_enum_decl,
+                    variant_name: r_variant_name,
+                    tag: r_tag,
+                    contents: r_contents,
+                    ..
+                },
+            ) => {
+                l_enum_decl == r_enum_decl
+                    && l_variant_name == r_variant_name
+                    && l_tag == r_tag
+                    && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
+                        (**l_contents) == (**r_contents)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::AbiCast {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                    ..
+                },
+                Self::AbiCast {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                    ..
+                },
+            ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
+            (Self::SizeOf { variant: l_variant }, Self::SizeOf { variant: r_variant }) => {
+                l_variant == r_variant
+            }
+            _ => false,
+        }
+    }
+}
+
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
@@ -138,10 +363,37 @@ pub(crate) enum SizeOfVariant {
     Val(Box<TypedExpression>),
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for SizeOfVariant {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Type(l0), Self::Type(r0)) => l0 == r0,
+            (Self::Val(l0), Self::Val(r0)) => (**l0) == (**r0),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct TypedAsmRegisterDeclaration {
     pub(crate) initializer: Option<TypedExpression>,
     pub(crate) name: Ident,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedAsmRegisterDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
+                l == r
+            } else {
+                true
+            }
+    }
 }
 
 impl TypedAsmRegisterDeclaration {
@@ -258,6 +510,7 @@ impl TypedExpressionVariant {
             },
         }
     }
+
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedExpressionVariant::*;

@@ -3,7 +3,7 @@ use crate::{
     type_engine::*, Ident, TypeParameter, Visibility,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
     // private + mutable
     Mutable,
@@ -49,7 +49,7 @@ impl From<VariableMutability> for bool {
         o.is_mutable()
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedVariableDeclaration {
     pub(crate) name: Ident,
     pub(crate) body: TypedExpression,
@@ -58,16 +58,26 @@ pub struct TypedVariableDeclaration {
     pub(crate) const_decl_origin: bool,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedVariableDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.body == other.body
+            && self.is_mutable == other.is_mutable
+            && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
+            && self.const_decl_origin == other.const_decl_origin
+    }
+}
+
 impl TypedVariableDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        if let Some(matching_id) =
-            look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.type_ascription))
-        };
-
+        self.type_ascription =
+            match look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.type_ascription)),
+            };
         self.body.copy_types(type_mapping)
     }
 }

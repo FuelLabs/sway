@@ -1,7 +1,7 @@
 use super::TypedExpression;
 use crate::{type_engine::TypeId, TypeParameter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TypedReturnStatement {
     pub(crate) expr: TypedExpression,
 }

@@ -68,6 +68,7 @@ pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<Matcher
             call_path,
             variable_to_assign,
             span,
+            ..
         } => match_enum(exp, call_path, variable_to_assign, span),
         Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
         scrutinee => {

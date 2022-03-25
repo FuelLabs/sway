@@ -41,7 +41,7 @@ struct Foo2<T> {
     foo: T,
 }
 
-impl Foo2<T> {
+impl<T> Foo2<T> {
     fn trivial(self) -> bool {
         false
     }
@@ -74,7 +74,7 @@ pub enum DumbError {
     Error: (),
 }
 
-impl Rezult<T, E> {
+impl<T, E> Rezult<T, E> {
     fn trivial(self) -> bool {
         false
     }
