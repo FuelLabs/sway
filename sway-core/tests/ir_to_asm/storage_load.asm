@@ -11,29 +11,33 @@ eq   $r0 $r1 $r0              ; function selector comparison
 jnei $zero $r0 i14            ; jump to selected function
 lw   $r0 data_4               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i24            ; jump to selected function
+jnei $zero $r0 i28            ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 move $r2 $sp                  ; save locals base register
-cfei i32                      ; allocate 32 bytes for all locals
+cfei i40                      ; allocate 40 bytes for all locals
 addi $r0 $r2 i0               ; get_ptr
 lw   $r1 data_0               ; literal instantiation
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i32              ; store value
+addi $r0 $r2 i32              ; get_ptr
 addi $r0 $r2 i0               ; get offset
 srw  $r0 $r0                  ; single word state access
+sw   $r2 $r0 i4               ; store value
+addi $r0 $r2 i32              ; get_ptr
+lw   $r0 $r2 i4               ; load value
 ret  $r0
-move $r1 $sp                  ; save locals base register
+move $r0 $sp                  ; save locals base register
 cfei i64                      ; allocate 64 bytes for all locals
-addi $r0 $r1 i0               ; get_ptr
+addi $r1 $r0 i0               ; get_ptr
 lw   $r2 data_1               ; literal instantiation
-addi $r0 $r1 i0               ; get store offset
-mcpi $r0 $r2 i32              ; store value
-addi $r0 $r1 i32              ; get_ptr
-addi $r2 $r1 i32              ; get offset
-addi $r0 $r1 i0               ; get offset
-srwq $r2 $r0                  ; quad word state access
-addi $r0 $r1 i32              ; get_ptr
-addi $r1 $r1 i32              ; load address
+addi $r1 $r0 i0               ; get store offset
+mcpi $r1 $r2 i32              ; store value
+addi $r1 $r0 i32              ; get_ptr
+addi $r2 $r0 i32              ; get offset
+addi $r1 $r0 i0               ; get offset
+srwq $r2 $r1                  ; quad word state access
+addi $r1 $r0 i32              ; get_ptr
+addi $r1 $r0 i32              ; load address
 lw   $r0 data_2               ; loading size for RETD
 retd  $r1 $r0
 .data:
