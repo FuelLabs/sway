@@ -41,7 +41,6 @@ In Sway, a _statement_ is a _declaration **or** expression with a semicolon afte
 
 ```sway
 fn main() {
-
     let number = 6;
 
     if number % 4 == 0 {

@@ -24,9 +24,9 @@ In Sway, note that a _statement_ is a _declaration **or** expression with a semi
 
 This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.
 
-### Using _if_ in a _let_ statement
+### Using `if` in a `let` statement
 
-Like Rust, ifs are expressions in Sway. What this means is you can use _if_ expressions on the right side of a `let` statement to assign the outcome to a variable. all branches must return a value of the same type or panic.
+Like Rust, `if`s are expressions in Sway. What this means is you can use `if` expressions on the right side of a `let` statement to assign the outcome to a variable.
 
 ```sway
 let my_data = if some_bool < 10 { foo() } else { bar() };
@@ -48,7 +48,7 @@ while counter < 10 {
 
 You need the `while` keyword, some condition (`value < 10` in this case) which will be evaluated each iteration, and a block of code inside the curly braces (`{...}`) to execute each iteration.
 
-### Break & Continue
+### `break` and `continue`
 
 There are no `break` or `continue` keywords yet, but [they're coming](https://github.com/FuelLabs/sway/issues/587).
 
