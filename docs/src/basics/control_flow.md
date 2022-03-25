@@ -57,6 +57,7 @@ For now, the way to break out of a `while` loop early is to manually invalidate 
 Building on the previous example, here's what that might look like:
 
 ```sway
+let mut counter = 0;
 let mut break_early = false;
 while counter < 10 {
     if break_early == true {
