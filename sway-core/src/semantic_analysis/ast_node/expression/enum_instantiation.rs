@@ -26,6 +26,20 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let mut type_arguments = type_arguments;
+    for type_argument in type_arguments.iter_mut() {
+        type_argument.type_id = check!(
+            namespace.resolve_type_with_self(
+                look_up_type_id(type_argument.type_id),
+                self_type,
+                type_argument.span.clone()
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+    }
+
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types

@@ -89,19 +89,26 @@ impl VariableDeclaration {
             }
             _ => TypeInfo::Unknown,
         };
-        let body = check!(
+        let body_result = check!(
             Expression::parse_from_pair(maybe_body, config),
             return err(warnings, errors),
             warnings,
             errors
         );
-        VariableDeclaration::desugar_to_decls(
-            lhs,
-            type_ascription,
-            type_ascription_span,
-            body,
-            config,
-        )
+        let mut var_decls = body_result.var_decls;
+        var_decls.append(&mut check!(
+            VariableDeclaration::desugar_to_decls(
+                lhs,
+                type_ascription,
+                type_ascription_span,
+                body_result.value,
+                config,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+        ok(var_decls, warnings, errors)
     }
 
     fn desugar_to_decls(

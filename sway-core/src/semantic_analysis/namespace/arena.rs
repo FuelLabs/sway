@@ -1,5 +1,6 @@
 use crate::{
     error::*,
+    semantic_analysis::{ast_node::*, declaration::TypedStorageField},
     semantic_analysis::{
         ast_node::{
             TypedEnumDeclaration, TypedStructField, TypedVariableDeclaration, VariableMutability,
@@ -105,9 +106,48 @@ pub trait NamespaceWrapper {
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
+    fn apply_storage_load(
+        &self,
+        field: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
+    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)>;
+    fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()>;
+    fn has_storage_declared(&self) -> bool;
+    fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>>;
 }
 
 impl NamespaceWrapper for NamespaceRef {
+    fn apply_storage_load(
+        &self,
+        fields: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
+    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        read_module(
+            move |ns| ns.apply_storage_load(fields.clone(), storage_fields),
+            *self,
+        )
+    }
+    fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+        write_module(|ns| ns.set_storage_declaration(decl), *self)
+    }
+    fn has_storage_declared(&self) -> bool {
+        read_module(move |ns| ns.declared_storage.is_some(), *self)
+    }
+    fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>> {
+        if let Some(fields) = read_module(
+            |ns| ns.declared_storage.as_ref().map(|x| x.fields.clone()),
+            *self,
+        ) {
+            ok(fields, vec![], vec![])
+        } else {
+            let msg = "unknown source location";
+            let span = Span {
+                span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
+                path: None,
+            };
+            err(vec![], vec![CompileError::NoDeclaredStorage { span }])
+        }
+    }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
         write_module(|ns| ns.insert_module(module_name, ix), *self)
     }

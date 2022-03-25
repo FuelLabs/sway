@@ -11,6 +11,7 @@ use sway_types::span::Span;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
+use crate::semantic_analysis::declaration::TypedStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -63,6 +64,9 @@ pub enum ControlFlowGraphNode {
         struct_field_name: Ident,
         span: Span,
     },
+    StorageField {
+        field_name: Ident,
+    },
 }
 
 impl std::fmt::Debug for ControlFlowGraphNode {
@@ -81,8 +85,18 @@ impl std::fmt::Debug for ControlFlowGraphNode {
             } => {
                 format!("Struct field {}", struct_field_name.as_str())
             }
+            ControlFlowGraphNode::StorageField { field_name } => {
+                format!("Storage field {}", field_name.as_str())
+            }
         };
         f.write_str(&text)
+    }
+}
+impl std::convert::From<&TypedStorageField> for ControlFlowGraphNode {
+    fn from(other: &TypedStorageField) -> Self {
+        ControlFlowGraphNode::StorageField {
+            field_name: other.name.clone(),
+        }
     }
 }
 

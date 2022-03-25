@@ -28,6 +28,7 @@ pub struct AsmBlock(pub generational_arena::Index);
 pub struct AsmBlockContent {
     pub args_names: Vec<Ident>,
     pub body: Vec<AsmInstruction>,
+    pub return_type: Type,
     pub return_name: Option<Ident>,
 }
 
@@ -51,25 +52,21 @@ impl AsmBlock {
         context: &mut Context,
         args_names: Vec<Ident>,
         body: Vec<AsmInstruction>,
+        return_type: Type,
         return_name: Option<Ident>,
     ) -> Self {
         let content = AsmBlockContent {
             args_names,
             body,
+            return_type,
             return_name,
         };
         AsmBlock(context.asm_blocks.insert(content))
     }
 
     /// Return the [`AsmBlock`] return type.
-    ///
-    /// Currently this always returns either `None` or `Some(Type::Uint(64))` depending on whether
-    /// the block returns a value at all.
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         // The type is a named register, which will be a u64.
-        context.asm_blocks[self.0]
-            .return_name
-            .as_ref()
-            .map(|_| Type::Uint(64))
+        Some(context.asm_blocks[self.0].return_type)
     }
 }

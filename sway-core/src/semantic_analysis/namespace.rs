@@ -3,6 +3,10 @@ use crate::{
     TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
 };
 
+use crate::semantic_analysis::{
+    ast_node::TypedStorageDeclaration, declaration::TypedStorageField, TypeCheckedStorageAccess,
+};
+
 use sway_types::span::Span;
 
 use std::collections::{BTreeMap, HashMap};
@@ -26,11 +30,40 @@ pub struct Namespace {
     // order.
     modules: BTreeMap<ModuleName, NamespaceRef>,
     use_synonyms: HashMap<Ident, Vec<Ident>>,
-    // Represents an alternative name for a symbol.
+    /// Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
+    /// If there is a storage declaration (which are only valid in contracts), store it here.
+    declared_storage: Option<TypedStorageDeclaration>,
 }
 
 impl Namespace {
+    pub fn apply_storage_load(
+        &self,
+        fields: Vec<Ident>,
+        storage_fields: &[TypedStorageField],
+    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        match self.declared_storage {
+            Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
+            None => err(
+                vec![],
+                vec![CompileError::NoDeclaredStorage {
+                    span: fields[0].span().clone(),
+                }],
+            ),
+        }
+    }
+
+    pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+        if self.declared_storage.is_some() {
+            return err(
+                vec![],
+                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }],
+            );
+        }
+        self.declared_storage = Some(decl);
+        ok((), vec![], vec![])
+    }
+
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols.values()
     }

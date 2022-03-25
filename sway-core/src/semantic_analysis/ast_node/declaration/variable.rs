@@ -1,8 +1,7 @@
-use crate::semantic_analysis::TypedExpression;
-use crate::type_engine::*;
-use crate::Ident;
-use crate::Visibility;
-use crate::{type_engine::TypeId, TypeParameter};
+use crate::{
+    constants::*, error::*, semantic_analysis::TypedExpression, type_engine::TypeId,
+    type_engine::*, Ident, TypeParameter, Visibility,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -81,4 +80,26 @@ impl TypedVariableDeclaration {
             };
         self.body.copy_types(type_mapping)
     }
+}
+
+// there are probably more names we should check here, this is the only one that will result in an
+// actual issue right now, though
+pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
+    INVALID_NAMES
+        .iter()
+        .find_map(|x| {
+            if *x == name.as_str() {
+                Some(err(
+                    vec![],
+                    [CompileError::InvalidVariableName {
+                        name: x.to_string(),
+                        span: name.span().clone(),
+                    }]
+                    .to_vec(),
+                ))
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| ok((), vec![], vec![]))
 }

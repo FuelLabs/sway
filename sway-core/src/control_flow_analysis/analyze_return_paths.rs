@@ -186,6 +186,7 @@ fn connect_declaration(
         | AbiDeclaration(_)
         | StructDeclaration(_)
         | EnumDeclaration(_)
+        | StorageDeclaration(_)
         | GenericTypeForFunctionScope { .. } => leaves.to_vec(),
         VariableDeclaration(_) | ConstantDeclaration(_) => {
             let entry_node = graph.add_node(node.into());
@@ -203,6 +204,13 @@ fn connect_declaration(
             leaves.to_vec()
         }
         Reassignment(TypedReassignment { .. }) => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            vec![entry_node]
+        }
+        StorageReassignment(_) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

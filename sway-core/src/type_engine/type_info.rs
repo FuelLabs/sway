@@ -66,6 +66,12 @@ pub enum TypeInfo {
     ErrorRecovery,
     // Static, constant size arrays.
     Array(TypeId, usize),
+    /// Represents the entire storage declaration struct
+    /// Stored without initializers here, as typed struct fields,
+    /// so type checking is able to treat it as a struct with fields.
+    Storage {
+        fields: Vec<TypedStructField>,
+    },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -149,6 +155,10 @@ impl Hash for TypeInfo {
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
+            TypeInfo::Storage { fields } => {
+                state.write_u8(19);
+                fields.hash(state);
+            }
         }
     }
 }
@@ -222,6 +232,9 @@ impl PartialEq for TypeInfo {
             ) => l_abi_name == r_abi_name && l_address == r_address,
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
+            }
+            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+                l_fields == r_fields
             }
             _ => false,
         }
@@ -461,6 +474,7 @@ impl TypeInfo {
                 format!("contract caller {}", abi_name.suffix)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
+            Storage { .. } => "contract storage".into(),
         }
     }
 
@@ -503,6 +517,7 @@ impl TypeInfo {
                 format!("contract caller {}", abi_name.suffix)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Storage { .. } => "contract storage".into(),
         }
     }
 
@@ -663,6 +678,7 @@ impl TypeInfo {
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
             }
+            TypeInfo::Storage { .. } => Ok(0),
         }
     }
 
@@ -851,6 +867,7 @@ impl TypeInfo {
             | B256
             | Numeric
             | Contract
+            | Storage { .. }
             | ErrorRecovery => None,
         }
     }

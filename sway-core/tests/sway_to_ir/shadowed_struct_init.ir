@@ -4,7 +4,8 @@ script {
         v0 = const bool true, !1
         v1 = const bool false, !2
         v2 = call anon_0(v0, v1), !3
-        ret () v2
+        v3 = const unit ()
+        ret () v3
     }
 
     fn anon_0(a !4: bool, b !5: bool) -> { bool, bool } {
@@ -12,15 +13,15 @@ script {
         local ptr bool b_
 
         entry:
-        v0 = get_ptr ptr bool a_, !6
+        v0 = get_ptr ptr bool a_, ptr bool, 0, !6
         v1 = const bool false, !7
         store v1, ptr v0, !6
-        v2 = get_ptr ptr bool b_, !8
+        v2 = get_ptr ptr bool b_, ptr bool, 0, !8
         v3 = const bool true, !9
         store v3, ptr v2, !8
-        v4 = get_ptr ptr bool a_, !10
+        v4 = get_ptr ptr bool a_, ptr bool, 0, !10
         v5 = load ptr v4, !10
-        v6 = get_ptr ptr bool b_, !11
+        v6 = get_ptr ptr bool b_, ptr bool, 0, !11
         v7 = load ptr v6, !11
         v8 = const { bool, bool } { bool undef, bool undef }, !12
         v9 = insert_value v8, { bool, bool }, v5, 0, !12

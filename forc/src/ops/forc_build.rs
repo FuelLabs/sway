@@ -1,12 +1,12 @@
 use crate::cli::BuildCommand;
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, Manifest};
-use forc_util::{default_output_directory, lock_path};
+use forc_util::{default_output_directory, find_manifest_dir, lock_path};
 use std::{
     fs::{self, File},
     path::PathBuf,
 };
-use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
+use sway_utils::MANIFEST_FILE_NAME;
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {

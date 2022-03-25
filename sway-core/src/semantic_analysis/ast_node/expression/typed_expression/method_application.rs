@@ -5,6 +5,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::TCOpts;
+use pest::iterators::Pairs;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
@@ -414,7 +415,7 @@ fn re_parse_expression(
         path: None,
     };
 
-    let mut contract_pairs = match SwayParser::parse(Rule::expr, contract_string) {
+    let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,
         Err(_e) => {
             errors.push(CompileError::Internal(
@@ -435,15 +436,17 @@ fn re_parse_expression(
         }
     };
 
-    let contract_address = check!(
+    // purposefully ignore var_decls as those have already been lifted during parsing
+    let ParserLifter { value, .. } = check!(
         Expression::parse_from_pair(contract_pair, Some(build_config)),
         return err(warnings, errors),
         warnings,
         errors
     );
+
     let contract_address = check!(
         TypedExpression::type_check(TypeCheckArguments {
-            checkee: contract_address,
+            checkee: value,
             namespace,
             crate_namespace,
             return_type_annotation: insert_type(TypeInfo::Unknown),

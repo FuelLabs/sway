@@ -2,13 +2,14 @@ use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 use forc_pkg::Manifest;
+use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::{parse, TreeType};
-use sway_utils::{constants::*, find_manifest_dir};
+use sway_utils::constants::*;
 use tokio::process::Child;
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {

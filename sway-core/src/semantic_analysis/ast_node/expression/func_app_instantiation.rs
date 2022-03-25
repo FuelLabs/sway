@@ -22,6 +22,20 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let mut type_arguments = type_arguments;
+    for type_argument in type_arguments.iter_mut() {
+        type_argument.type_id = check!(
+            namespace.resolve_type_with_self(
+                look_up_type_id(type_argument.type_id),
+                self_type,
+                type_argument.span.clone()
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+    }
+
     // if this is a generic function, monomorphize its internal types
     let typed_function_decl = if decl.type_parameters.is_empty() {
         decl

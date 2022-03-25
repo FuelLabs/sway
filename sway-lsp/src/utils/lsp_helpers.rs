@@ -1,4 +1,4 @@
-use lspower::lsp::{Position, Range};
+use tower_lsp::lsp_types::{Position, Range};
 
 pub(crate) fn make_range_end_inclusive(range: Range) -> Range {
     Range {

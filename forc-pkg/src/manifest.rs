@@ -1,5 +1,5 @@
-use anyhow::anyhow;
-use forc_util::validate_name;
+use anyhow::{anyhow, bail};
+use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -19,8 +19,6 @@ pub struct Manifest {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
-    #[deprecated = "use the authors field instead, the author field will be removed soon."]
-    pub author: Option<String>,
     pub authors: Option<Vec<String>>,
     pub name: String,
     pub organization: Option<String>,
@@ -56,6 +54,17 @@ pub struct DependencyDetails {
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
+    pub(crate) package: Option<String>,
+}
+
+impl Dependency {
+    /// The string of the `package` field if specified.
+    pub fn package(&self) -> Option<&str> {
+        match *self {
+            Self::Simple(_) => None,
+            Self::Detailed(ref det) => det.package.as_deref(),
+        }
+    }
 }
 
 impl Manifest {
@@ -66,11 +75,15 @@ impl Manifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     pub fn from_file(path: &Path) -> anyhow::Result<Self> {
-        let manifest = std::fs::read_to_string(path)
+        let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let manifest: Self =
-            toml::from_str(&manifest).map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.validate()?;
+        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+            let warning = format!("  WARNING! unused manifest key: {}", path);
+            println_yellow_err(&warning).unwrap();
+        })
+        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        manifest.validate(path)?;
         Ok(manifest)
     }
 
@@ -86,8 +99,19 @@ impl Manifest {
     /// Validate the `Manifest`.
     ///
     /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns.
-    pub fn validate(&self) -> anyhow::Result<()> {
+    /// keywords and patterns, and if a given entry point exists.
+    pub fn validate(&self, path: &Path) -> anyhow::Result<()> {
+        let mut entry_path = path.to_path_buf();
+        entry_path.pop();
+        let entry_path = entry_path
+            .join(constants::SRC_DIR)
+            .join(&self.project.entry);
+        if !entry_path.exists() {
+            bail!(
+                "failed to validate path from entry field {:?} in Forc manifest file.",
+                self.project.entry
+            )
+        }
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
