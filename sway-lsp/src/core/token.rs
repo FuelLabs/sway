@@ -116,15 +116,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         }
         Declaration::Reassignment(reassignment) => {
             let token_type = TokenType::Reassignment;
-            let token = match *reassignment.lhs {
-                // a reassignment's lhs can _only_ be a variable expression or
-                // struct field a subfield expression
-                Expression::SubfieldExpression { span, .. } => Token::from_span(span, token_type),
-                Expression::VariableExpression { name, .. } => Token::from_ident(&name, token_type),
-                _ => {
-                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
-                }
-            };
+            let token = Token::from_span(reassignment.lhs_span(), token_type);
             tokens.push(token);
 
             handle_expression(reassignment.rhs, tokens);
@@ -184,7 +176,7 @@ fn get_range_from_span(span: &Span) -> Range {
     let start_character = start.1 as u32 - 1;
 
     let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 2;
+    let end_character = end.1 as u32 - 1;
 
     Range {
         start: Position::new(start_line, start_character),

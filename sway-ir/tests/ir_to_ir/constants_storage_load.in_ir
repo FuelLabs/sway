@@ -27,6 +27,7 @@ script {
         v11 = load ptr v10
         v12 = get_ptr ptr b256 y, ptr b256, 0
         store v11, ptr v12
-        ret () v11
+        v13 = const unit ()
+        ret () v13
     }
 }

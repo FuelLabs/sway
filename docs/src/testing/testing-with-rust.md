@@ -26,7 +26,7 @@ For example, let's write tests against the following contract, written in Sway. 
 
 Our `tests/harness.rs` file could look like:
 
-```rust
+```rust,ignore
 {{#include ../../../examples/hello_world/tests/harness.rs}}
 ```
 

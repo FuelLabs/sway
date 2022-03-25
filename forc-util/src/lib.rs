@@ -17,6 +17,32 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
+/// Continually go up in the file tree until a specified file is found.
+#[allow(clippy::branches_sharing_code)]
+pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    let mut path = std::fs::canonicalize(starter_path).ok()?;
+    let empty_path = PathBuf::from("/");
+    while path != empty_path {
+        path.push(file_name);
+        if path.exists() {
+            path.pop();
+            return Some(path);
+        } else {
+            path.pop();
+            path.pop();
+        }
+    }
+    None
+}
+/// Continually go up in the file tree until a Forc manifest file is found.
+pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+/// Continually go up in the file tree until a Cargo manifest file is found.
+pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, "Cargo.toml")
+}
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
@@ -78,6 +104,11 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
         bail!("the name `{name}` contains non-ASCII characters which are unsupported");
     }
     Ok(())
+}
+
+/// Simple function to convert kebab-case to snake_case.
+pub fn kebab_to_snake_case(s: &str) -> String {
+    s.replace('-', "_")
 }
 
 pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
@@ -262,7 +293,7 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    eprintln!("{}", DisplayList::from(snippet))
+    eprintln!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
@@ -301,7 +332,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    eprintln!("{}", DisplayList::from(snippet))
+    eprintln!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the

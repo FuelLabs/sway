@@ -1,9 +1,8 @@
 use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, Manifest};
-use forc_util::lock_path;
+use forc_util::{find_manifest_dir, lock_path};
 use std::{fs, path::PathBuf};
-use sway_utils::find_manifest_dir;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
 /// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated

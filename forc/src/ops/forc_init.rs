@@ -141,7 +141,7 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
     download_contents(&custom_url, &out_dir, &responses)
         .with_context(|| format!("couldn't download from: {}", &custom_url))?;
 
-    // Change the project name and author of the Forc.toml file
+    // Change the project name and authors of the Forc.toml file
     edit_forc_toml(&out_dir, &project_name, &real_name)?;
     // Change the project name and authors of the Cargo.toml file
     edit_cargo_toml(&out_dir, &project_name, &real_name)?;
@@ -185,23 +185,11 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     let forc_toml: toml::Value = toml::de::from_str(&toml)?;
     if let Some(table) = forc_toml.as_table() {
         if let Some(package) = table.get("project") {
-            // If authors Vec is currently popultated use that
+            // If authors Vec is currently populated use that
             if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
                 for author in authors_vec {
                     if let toml::value::Value::String(name) = &author {
                         authors.push(name.clone());
-                    }
-                }
-            } else {
-                // Otherwise grab the current author from the author field
-                // Lets remove the author field all together now that it has become deprecated
-                if let Some(project) = manifest_toml.get_mut("project") {
-                    if let Some(toml_edit::Item::Value(toml_edit::Value::String(name))) = project
-                        .as_table_mut()
-                        .context("Unable to get forc manifest as table")?
-                        .remove("author")
-                    {
-                        authors.push(name.value().clone());
                     }
                 }
             }

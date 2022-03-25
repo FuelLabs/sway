@@ -19,8 +19,6 @@ pub struct Manifest {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
-    #[deprecated = "use the authors field instead, the author field will be removed soon."]
-    pub author: Option<String>,
     pub authors: Option<Vec<String>>,
     pub name: String,
     pub organization: Option<String>,
@@ -56,6 +54,17 @@ pub struct DependencyDetails {
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
+    pub(crate) package: Option<String>,
+}
+
+impl Dependency {
+    /// The string of the `package` field if specified.
+    pub fn package(&self) -> Option<&str> {
+        match *self {
+            Self::Simple(_) => None,
+            Self::Detailed(ref det) => det.package.as_deref(),
+        }
+    }
 }
 
 impl Manifest {

@@ -7,8 +7,10 @@ use crate::{
 use sway_types::{join_spans, span::Span, Property};
 
 mod function;
+mod storage;
 mod variable;
 pub use function::*;
+pub use storage::*;
 pub use variable::*;
 
 #[derive(Clone, Debug)]
@@ -33,6 +35,7 @@ pub enum TypedDeclaration {
         name: Ident,
     },
     ErrorRecovery,
+    StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
 }
 
@@ -56,6 +59,7 @@ impl TypedDeclaration {
             }
             // generics in an ABI is unsupported by design
             AbiDeclaration(..) => (),
+            StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
@@ -78,6 +82,7 @@ impl TypedDeclaration {
             AbiDeclaration(..) => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery => "error",
+            StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
         }
     }
@@ -105,6 +110,9 @@ impl TypedDeclaration {
                     fields: fields.clone(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
+                TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
+                    fields: decl.fields_as_typed_struct_fields(),
+                }),
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
                 }
@@ -138,6 +146,7 @@ impl TypedDeclaration {
                 .fold(lhs[0].span(), |acc, this| join_spans(acc, this.span())),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
+            StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
                 unreachable!("No span exists for these ast node types")
@@ -190,6 +199,7 @@ impl TypedDeclaration {
             GenericTypeForFunctionScope { .. }
             | Reassignment(..)
             | ImplTrait { .. }
+            | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,

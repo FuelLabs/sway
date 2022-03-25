@@ -29,11 +29,22 @@ pub enum Instruction {
     Branch(Block),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
+    /// Comparison between two values using various comparators and retuning a boolean.
+    Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
         true_block: Block,
         false_block: Block,
+    },
+    /// A contract call with a list of arguments
+    ContractCall {
+        return_type: Type,
+        name: String,
+        params: Value,
+        coins: Value,
+        asset_id: Value,
+        gas: Value,
     },
     /// Reading a specific element from an array.
     ExtractElement {
@@ -73,6 +84,8 @@ pub enum Instruction {
     Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
+    /// Reads a special register in the VM.
+    ReadRegister(Register),
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
@@ -85,9 +98,48 @@ pub enum Instruction {
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
     StateStoreWord { stored_val: Value, key: Value },
-
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Predicate {
+    /// Equivalence.
+    Equal,
+    // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
+}
+
+/// Special registers in the Fuel Virtual Machine.
+#[derive(Debug, Clone, Copy)]
+pub enum Register {
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    Of,
+    /// The program counter. Memory address of the current instruction.
+    Pc,
+    /// Memory address of bottom of current writable stack area.
+    Ssp,
+    /// Memory address on top of current writable stack area (points to free memory).
+    Sp,
+    /// Memory address of beginning of current call frame.
+    Fp,
+    /// Memory address below the current bottom of the heap (points to free memory).
+    Hp,
+    /// Error codes for particular operations.
+    Error,
+    /// Remaining gas globally.
+    Ggas,
+    /// Remaining gas in the context.
+    Cgas,
+    /// Received balance for this context.
+    Bal,
+    /// Pointer to the start of the currently-executing code.
+    Is,
+    /// Return value or pointer.
+    Ret,
+    /// Return value length in bytes.
+    Retl,
+    /// Flags register.
+    Flag,
 }
 
 impl Instruction {
@@ -99,8 +151,12 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
+            Instruction::Cmp(..) => Some(Type::Bool),
+            Instruction::ContractCall { return_type, .. } => Some(*return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
+            Instruction::InsertElement { array, .. } => array.get_type(context),
+            Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
                     ins.get_type(context)
@@ -108,8 +164,12 @@ impl Instruction {
                     None
                 }
             }
-            Instruction::Phi(_alts) => {
-                unimplemented!("phi get type -- I think we should put the type in the enum.")
+            Instruction::ReadRegister(_) => Some(Type::Uint(64)),
+            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
+            Instruction::Phi(alts) => {
+                // Assuming each alt has the same type, we can take the first one. Note: `verify()`
+                // confirms the types are all the same.
+                alts.get(0).and_then(|(_, val)| val.get_type(context))
             }
 
             // These can be recursed to via Load, so we return the pointer type.
@@ -121,10 +181,7 @@ impl Instruction {
             Instruction::Ret(..) => None,
 
             // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::InsertElement { .. } => None,
-            Instruction::InsertValue { .. } => None,
             Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::StateStoreQuadWord { .. } => None,
             Instruction::StateStoreWord { .. } => None,
             Instruction::Store { .. } => None,
@@ -179,7 +236,23 @@ impl Instruction {
             }),
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
+            Instruction::Cmp(_, lhs_val, rhs_val) => {
+                replace(lhs_val);
+                replace(rhs_val);
+            }
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
+            Instruction::ContractCall {
+                params,
+                coins,
+                asset_id,
+                gas,
+                ..
+            } => {
+                replace(params);
+                replace(coins);
+                replace(asset_id);
+                replace(gas);
+            }
             Instruction::GetPointer { .. } => (),
             Instruction::InsertElement {
                 array,
@@ -207,6 +280,7 @@ impl Instruction {
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
+            Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
@@ -288,6 +362,7 @@ impl<'a> InstructionInserter<'a> {
         self,
         args: Vec<AsmArg>,
         body: Vec<AsmInstruction>,
+        return_type: Type,
         return_name: Option<Ident>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
@@ -295,6 +370,7 @@ impl<'a> InstructionInserter<'a> {
             self.context,
             args.iter().map(|arg| arg.name.clone()).collect(),
             body,
+            return_type,
             return_name,
         );
         self.asm_block_from_asm(asm, args, span_md_idx)
@@ -344,6 +420,22 @@ impl<'a> InstructionInserter<'a> {
         call_val
     }
 
+    pub fn cmp(
+        self,
+        pred: Predicate,
+        lhs_value: Value,
+        rhs_value: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let cmp_val = Value::new_instruction(
+            self.context,
+            Instruction::Cmp(pred, lhs_value, rhs_value),
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0].instructions.push(cmp_val);
+        cmp_val
+    }
+
     pub fn conditional_branch(
         self,
         cond_value: Value,
@@ -367,6 +459,35 @@ impl<'a> InstructionInserter<'a> {
         });
         self.context.blocks[self.block.0].instructions.push(cbr_val);
         cbr_val
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn contract_call(
+        self,
+        return_type: Type,
+        name: String,
+        params: Value,
+        coins: Value,    // amount of coins to forward
+        asset_id: Value, // b256 asset ID of the coint being forwarded
+        gas: Value,      // amount of gas to forward
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let contract_call_val = Value::new_instruction(
+            self.context,
+            Instruction::ContractCall {
+                return_type,
+                name,
+                params,
+                coins,
+                asset_id,
+                gas,
+            },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(contract_call_val);
+        contract_call_val
     }
 
     pub fn extract_element(
@@ -496,6 +617,15 @@ impl<'a> InstructionInserter<'a> {
         let nop_val = Value::new_instruction(self.context, Instruction::Nop, None);
         self.context.blocks[self.block.0].instructions.push(nop_val);
         nop_val
+    }
+
+    pub fn read_register(self, reg: Register, span_md_idx: Option<MetadataIndex>) -> Value {
+        let read_register_val =
+            Value::new_instruction(self.context, Instruction::ReadRegister(reg), span_md_idx);
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(read_register_val);
+        read_register_val
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {

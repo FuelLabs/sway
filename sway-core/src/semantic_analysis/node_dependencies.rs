@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::Scrutinee, parse_tree::*, type_engine::IntegerBits, AstNode,
-    AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, parse_tree::*, type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock,
+    Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -307,18 +307,9 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(
-                    fields.iter(),
-                    |deps,
-                     StorageField {
-                         r#type,
-                         initializer,
-                         ..
-                     }| {
-                        deps.gather_from_typeinfo(r#type)
-                            .gather_from_expr(initializer)
-                    },
-                ),
+                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
+                    deps.gather_from_typeinfo(r#type)
+                }),
         }
     }
 
@@ -361,6 +352,7 @@ impl Dependencies {
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
+            Expression::MatchExp { if_exp, .. } => self.gather_from_expr(if_exp),
             Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
             Expression::Array { contents, .. } => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
@@ -394,22 +386,6 @@ impl Dependencies {
                     deps.gather_from_opt_expr(&register.initializer)
                 })
                 .gather_from_typeinfo(&asm.return_type),
-            Expression::MatchExpression {
-                primary_expression,
-                branches,
-                ..
-            } => self.gather_from_expr(primary_expression).gather_from_iter(
-                branches.iter(),
-                |deps, branch| {
-                    match &branch.condition {
-                        MatchCondition::CatchAll(_) => deps,
-                        MatchCondition::Scrutinee(scrutinee) => {
-                            deps.gather_from_scrutinee(scrutinee)
-                        }
-                    }
-                    .gather_from_expr(&branch.result)
-                },
-            ),
 
             // Not sure about AbiCast, could add the abi_name and address.
             Expression::AbiCast { .. } => self,
@@ -420,16 +396,11 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
-            Expression::IfLet {
-                expr, scrutinee, ..
-            } => self.gather_from_expr(expr).gather_from_scrutinee(scrutinee),
+            Expression::StorageAccess { .. } => self,
+            Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::SizeOfType { .. } => self,
         }
-    }
-
-    fn gather_from_scrutinee(self, _scrutinee: &Scrutinee) -> Self {
-        self
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {
@@ -622,6 +593,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
+        TypeInfo::Storage { .. } => "contract storage",
     }
     .to_string()
 }
