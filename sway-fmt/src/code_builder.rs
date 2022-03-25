@@ -111,6 +111,7 @@ impl CodeBuilder {
                         '%' => code_line.append_with_whitespace("% "),
                         '^' => code_line.append_with_whitespace("^ "),
                         '!' => handle_logical_not_case(&mut code_line, &mut iter),
+
                         // handle beginning of the string
                         '"' => {
                             if !code_line.is_string() {
