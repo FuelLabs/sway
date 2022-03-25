@@ -82,7 +82,7 @@ pub struct Command {
     #[clap(long)]
     pub gas_limit: Option<u64>,
 
-    /// Set the transaction gas limit. Defaults to 0.
+    /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,
 }
