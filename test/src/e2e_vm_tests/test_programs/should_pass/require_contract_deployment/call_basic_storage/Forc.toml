@@ -5,8 +5,8 @@ license = "Apache-2.0"
 name = "call_basic_storage"
 
 [dependencies.std]
-git = "https://github.com/FuelLabs/sway-lib-std"
 branch = "master"
+git = "https://github.com/FuelLabs/sway-lib-std"
 
 [dependencies.basic_storage_abi]
 path = "../../test_abis/basic_storage_abi"

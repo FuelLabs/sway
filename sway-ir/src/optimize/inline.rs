@@ -245,11 +245,15 @@ fn inline_instruction(
                 span_md_idx,
             ),
             Instruction::ContractCall {
+                return_type,
+                name,
                 params,
                 coins,
                 asset_id,
                 gas,
             } => new_block.ins(context).contract_call(
+                return_type,
+                name,
                 map_value(params),
                 map_value(coins),
                 map_value(asset_id),
