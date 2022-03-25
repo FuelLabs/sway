@@ -39,6 +39,8 @@ pub enum Instruction {
     },
     /// A contract call with a list of arguments
     ContractCall {
+        return_type: Type,
+        name: String,
         params: Value,
         coins: Value,
         asset_id: Value,
@@ -150,7 +152,7 @@ impl Instruction {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::Cmp(..) => Some(Type::Bool),
-            Instruction::ContractCall { .. } => None, // TODO fix this
+            Instruction::ContractCall { return_type, .. } => Some(*return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::InsertElement { array, .. } => array.get_type(context),
@@ -462,6 +464,8 @@ impl<'a> InstructionInserter<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn contract_call(
         self,
+        return_type: Type,
+        name: String,
         params: Value,
         coins: Value,    // amount of coins to forward
         asset_id: Value, // b256 asset ID of the coint being forwarded
@@ -471,6 +475,8 @@ impl<'a> InstructionInserter<'a> {
         let contract_call_val = Value::new_instruction(
             self.context,
             Instruction::ContractCall {
+                return_type,
+                name,
                 params,
                 coins,
                 asset_id,

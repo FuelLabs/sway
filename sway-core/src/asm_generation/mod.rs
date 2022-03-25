@@ -1385,12 +1385,11 @@ fn load_bundled_arguments(return_register: VirtualRegister) -> Op {
 /// Given a register, load the current value of $cgas into it
 fn load_gas(return_register: VirtualRegister) -> Op {
     Op {
-        opcode: Either::Left(VirtualOp::LW(
+        opcode: Either::Left(VirtualOp::MOVE(
             return_register,
             VirtualRegister::Constant(ConstantRegister::ContextGas),
-            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
         )),
-        comment: "loading $cgas (gas) into abi function".into(),
+        comment: "move $cgas (gas) into abi function".into(),
         owning_span: None,
     }
 }

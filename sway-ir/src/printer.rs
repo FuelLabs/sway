@@ -353,6 +353,8 @@ fn instruction_to_doc<'a>(
                     )))
             }
             Instruction::ContractCall {
+                return_type,
+                name,
                 params,
                 coins,
                 asset_id,
@@ -361,8 +363,10 @@ fn instruction_to_doc<'a>(
                 .append(maybe_constant_to_doc(context, md_namer, namer, asset_id))
                 .append(maybe_constant_to_doc(context, md_namer, namer, gas))
                 .append(Doc::text_line(format!(
-                    "{} = contract_call {}, {}, {}, {}{}",
+                    "{} = contract_call {} {} {}, {}, {}, {}{}",
                     namer.name(context, ins_value),
+                    return_type.as_string(context),
+                    name,
                     namer.name(context, params),
                     namer.name(context, coins),
                     namer.name(context, asset_id),
