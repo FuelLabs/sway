@@ -43,15 +43,36 @@ impl Engine {
         let help_text = help_text.into();
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
-            (received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
+            (Boolean, Boolean) => (vec![], vec![]),
+            (SelfType, SelfType) => (vec![], vec![]),
+            (Byte, Byte) => (vec![], vec![]),
+            (B256, B256) => (vec![], vec![]),
+            (Numeric, Numeric) => (vec![], vec![]),
+            (Contract, Contract) => (vec![], vec![]),
+            (Str(l), Str(r)) => {
+                let warnings = vec![];
+                let mut errors = vec![];
+                if l != r {
+                    errors.push(TypeError::MismatchedType {
+                        expected,
+                        received,
+                        help_text,
+                        span: span.clone(),
+                    });
+                }
+                (warnings, errors)
+            }
+            //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
 
             // Follow any references
+            (Ref(received), Ref(expected)) if received == expected => (vec![], vec![]),
             (Ref(received), _) => self.unify(received, expected, span, help_text),
             (_, Ref(expected)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
+            (Unknown, Unknown) => (vec![], vec![]),
             (Unknown, _) => {
                 match self
                     .slab
@@ -112,6 +133,11 @@ impl Engine {
                 (warnings, vec![])
             }
 
+            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
+                if l_name == r_name =>
+            {
+                (vec![], vec![])
+            }
             (ref received_info @ UnknownGeneric { .. }, _) => {
                 self.slab
                     .replace(received, received_info, TypeInfo::Ref(expected));
@@ -160,12 +186,10 @@ impl Engine {
                 Enum {
                     name: a_name,
                     variant_types: a_variants,
-                    ..
                 },
                 Enum {
                     name: b_name,
                     variant_types: b_variants,
-                    ..
                 },
             ) => {
                 let mut warnings = vec![];
