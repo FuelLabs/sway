@@ -66,7 +66,7 @@ while counter < 10 {
         // calling some other function to set the bool value
         break_early = get_bool_value();
         counter = counter + 1;
-    }
+    };
 }
 ```
 
