@@ -2,7 +2,7 @@
 
 ## Comments
 
-Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you’ll need to include `//` on each line.
+Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include `//` on each line.
 
 ```sway
 // hello world

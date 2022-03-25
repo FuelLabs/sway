@@ -26,15 +26,17 @@ This need for a semicolon after if expressions to turn them into statements will
 
 ### Using _if_ in a _let_ statement
 
-Like Rust, ifs are expressions in Sway. What this means is you can use _if_ expressions on the right side of a `let` statement to assign the outcome to a variable.
+Like Rust, ifs are expressions in Sway. What this means is you can use _if_ expressions on the right side of a `let` statement to assign the outcome to a variable. all branches must return a value of the same type or panic.
 
 ```sway
 let my_data = if some_bool < 10 { foo() } else { bar() };
 ```
 
+Note that all branches of the `if` expression must return a value of the same type or the code will panic.
+
 ## Loops
 
-### While
+### `while`
 
 Loops in Sway are currently limited to `while` loops. This is what they look like:
 
