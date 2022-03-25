@@ -11,7 +11,7 @@ use super::{
     code_builder_helpers::{
         clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
         handle_dash_case, handle_multiline_comment_case, handle_pipe_case, handle_string_case,
-        handle_whitespace_case, is_comment, is_multiline_comment,
+        handle_whitespace_case, is_comment, is_multiline_comment, handle_logical_not_case
     },
     code_line::{CodeLine, CodeType},
 };
@@ -110,8 +110,7 @@ impl CodeBuilder {
                         }
                         '%' => code_line.append_with_whitespace("% "),
                         '^' => code_line.append_with_whitespace("^ "),
-                        '!' => code_line.append_with_whitespace("!"),
-
+                        '!' => handle_logical_not_case(&mut code_line, &mut iter),
                         // handle beginning of the string
                         '"' => {
                             if !code_line.is_string() {
