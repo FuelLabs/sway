@@ -10,8 +10,8 @@ use crate::code_builder_helpers::{
 use super::{
     code_builder_helpers::{
         clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
-        handle_dash_case, handle_multiline_comment_case, handle_pipe_case, handle_string_case,
-        handle_whitespace_case, is_comment, is_multiline_comment, handle_logical_not_case
+        handle_dash_case, handle_logical_not_case, handle_multiline_comment_case, handle_pipe_case,
+        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
     code_line::{CodeLine, CodeType},
 };
