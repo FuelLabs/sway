@@ -672,7 +672,7 @@ fn main() {
     }
 
     #[test]
-    fn test_if_not_operator() {
+    fn test_logical_not_operator() {
         let correct_sway_code = r#"script;
 fn main() {
     let a = true;
