@@ -1,10 +1,10 @@
 # What is a Smart Contract?
 
-A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#abi-declarations). See [this contract](../examples/subcurrency.md) for an example.
+A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
 
 ## Syntax of a Smart Contract
 
-As with any Sway program, the program starts with a declaration of what [program type](./program_types.md) it is. A contract must also either define or import an [ABI declaration](#abi-declarations) and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:
+As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. A contract must also either define or import an [ABI declaration](#the-abi-declaration) and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:
 
 ```sway
 library wallet_abi;
@@ -15,7 +15,7 @@ abi Wallet {
 }
 ```
 
-There are two declarations going on here. One is a struct representing the data that `send_funds` needs and the other is the ABI declaration. Let's focus on the ABI declaration and inspect it line-by-line.
+Let's focus on the ABI declaration and inspect it line-by-line.
 
 ### The ABI Declaration
 
@@ -38,7 +38,7 @@ In the second line,
     fn receive_funds();
 ```
 
-we are declaring an ABI interface surface method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method does not take any parameters.
+we are declaring an ABI method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method does not take any parameters.
 
 ---
 
@@ -59,7 +59,7 @@ Implementing an ABI for a contract is accomplished with `impl <ABI name> for Con
 ```sway
 impl Wallet for Contract {
     fn receive_funds() {
-        if asset_id == ETH_ID {
+        if asset_id == NATIVE_ASSET_ID {
             let balance = storage.balance.write();
             deref balance = balance + coins_to_forward;
         };
@@ -86,16 +86,17 @@ Now that we have defined our interface and implemented it for our contract, we n
 ```sway
 script;
 
+use std::consts::NATIVE_ASSET_ID;
+
 use wallet_abi::Wallet;
 use wallet_abi::SendFundsRequest;
-use std::consts::ETH_ID;
 
 fn main() {
     let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
     let recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
-    caller.send_funds{gas: 10000, coins: 0, asset_id: ETH_ID}(amount_to_send, recipient_address);
+    caller.send_funds{gas: 10000, coins: 0, asset_id: NATIVE_ASSET_ID}(amount_to_send, recipient_address);
 }
 ```
 
@@ -103,6 +104,6 @@ The main new concept is the _abi cast_: `abi(AbiName, contract_address)`. This r
 
 1. `gas`: represents the gas being forwarded to the contract when it is called.
 2. `coins`: represents how many coins are being forwarded with this call.
-3. `asset_id`: represents the ID of the _asset type_ of the coin being forwarded.
+3. `asset_id`: represents the ID of the _asset type_ of the coins being forwarded.
 
 Each special parameter is optional and assumes a default value when skipped.
