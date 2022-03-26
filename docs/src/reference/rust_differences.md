@@ -26,12 +26,12 @@ In Sway, enums are simplified. Enums variants must all specify exactly one type.
 enum Foo {
     UnitVariant    : (),
     TupleVariant   : (u32, u64, bool),
-    StructVariant  : MyStruct
+    StructVariant  : MyStruct,
 }
 
 struct MyStruct {
     field_one: bool,
-    field_two: bool
+    field_two: bool,
 }
 ```
 
@@ -50,7 +50,7 @@ fn main() {
     } else {
         // do something else
     };  // <------------ note this semicolon
-
+}
 ```
 
 This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.
