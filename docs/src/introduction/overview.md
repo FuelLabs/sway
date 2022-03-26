@@ -158,7 +158,7 @@ Note the contract ID—you will need it in the next step.
 
 ## Write a Sway Script to Call a Sway Contract
 
-_Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handles automagically by the SDK._
+_Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK._
 
 Now that we have deployed our wallet contract, we need to actually _call_ our contract. We can do this by calling the contract from a script.
 

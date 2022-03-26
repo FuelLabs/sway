@@ -38,7 +38,7 @@ In the second line,
     fn receive_funds();
 ```
 
-we are declaring an ABI method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method does not take any parameters.
+we are declaring an ABI method called `receive_funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This particular ABI method does not take any parameters.
 
 ---
 

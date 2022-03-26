@@ -4,7 +4,7 @@ Libraries in Sway are files used to define new common behavior. An example of th
 
 ## Writing Libraries
 
-Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. e.g. `library foo;`.
+Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported, e.g. `library foo;`.
 
 ```sway
 library my_library;
@@ -36,7 +36,7 @@ pub struct MyStruct {
 }
 ```
 
-Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike contract Sway projects which usually contain a `tests` directory and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
+Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike contracts which usually contain a `tests` directory and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
 
 ```toml
 [project]
