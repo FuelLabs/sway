@@ -1,5 +1,7 @@
 library std;
 
+dep option;
+dep result;
 dep constants;
 dep contract_id;
 dep context;
