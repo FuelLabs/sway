@@ -16,6 +16,8 @@ The Sway toolchain and Fuel Core full node can be installed with:
 cargo install forc fuel-core
 ```
 
+Note, please use the `stable` Rust toolchain when installing `forc`.
+
 ### Updating `forc`
 
 You can update `forc` and `fuel-core` with:
