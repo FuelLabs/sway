@@ -2,7 +2,7 @@ use crate::{
     lock::Lock,
     manifest::{Dependency, Manifest},
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
@@ -80,7 +80,19 @@ pub struct SourceGit {
     /// The URL at which the repository is located.
     pub repo: Url,
     /// A git reference, e.g. a branch or tag.
-    pub reference: String,
+    pub reference: GitReference,
+}
+
+/// Used to distinguish between types of git references.
+///
+/// For the most part, `GitReference` is useful to refine the `refspecs` used to fetch remote
+/// repositories.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum GitReference {
+    Branch(String),
+    Tag(String),
+    Rev(String),
+    DefaultBranch,
 }
 
 /// A package from the official registry.
@@ -284,6 +296,56 @@ impl BuildPlan {
     }
 }
 
+impl GitReference {
+    /// Resolves the parsed forc git reference to the associated git ID.
+    pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
+        // Find the commit associated with this tag.
+        fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
+            let refname = format!("refs/remotes/origin/tags/{}", tag);
+            let id = repo.refname_to_id(&refname)?;
+            let obj = repo.find_object(id, None)?;
+            let obj = obj.peel(git2::ObjectType::Commit)?;
+            Ok(obj.id())
+        }
+
+        // Resolve to the target for the given branch.
+        fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
+            let name = format!("origin/{}", branch);
+            let b = repo
+                .find_branch(&name, git2::BranchType::Remote)
+                .with_context(|| format!("failed to find branch `{}`", branch))?;
+            b.get()
+                .target()
+                .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
+        }
+
+        // Use the HEAD commit when default branch is specified.
+        fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
+            let head_id = repo.refname_to_id("refs/remotes/origin/HEAD")?;
+            let head = repo.find_object(head_id, None)?;
+            Ok(head.peel(git2::ObjectType::Commit)?.id())
+        }
+
+        // Find the commit for the given revision.
+        fn resolve_rev(repo: &git2::Repository, rev: &str) -> Result<git2::Oid> {
+            let obj = repo.revparse_single(rev)?;
+            match obj.as_tag() {
+                Some(tag) => Ok(tag.target_id()),
+                None => Ok(obj.id()),
+            }
+        }
+
+        match self {
+            GitReference::Tag(s) => {
+                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{}`", s))
+            }
+            GitReference::Branch(s) => resolve_branch(repo, s),
+            GitReference::DefaultBranch => resolve_default_branch(repo),
+            GitReference::Rev(s) => resolve_rev(repo, s),
+        }
+    }
+}
+
 impl Pinned {
     /// Retrieve the unique ID for the pinned package.
     ///
@@ -317,18 +379,30 @@ impl PinnedId {
 
 impl ToString for SourceGitPinned {
     fn to_string(&self) -> String {
-        // git+<url/to/repo>?reference=<reference>#<commit>
+        // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
+        let reference = self.source.reference.to_string();
         format!(
-            "git+{}?reference={}#{}",
-            self.source.repo, self.source.reference, self.commit_hash,
+            "git+{}?{}#{}",
+            self.source.repo, reference, self.commit_hash
         )
+    }
+}
+
+impl ToString for GitReference {
+    fn to_string(&self) -> String {
+        match self {
+            GitReference::Branch(ref s) => format!("branch={}", s),
+            GitReference::Tag(ref s) => format!("tag={}", s),
+            GitReference::Rev(ref _s) => "rev".to_string(),
+            GitReference::DefaultBranch => "default-branch".to_string(),
+        }
     }
 }
 
 impl FromStr for SourceGitPinned {
     type Err = SourceGitPinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // git+<url/to/repo>?reference=<reference>#<commit>
+        // git+<url/to/repo>?<reference>#<commit>
         let s = s.trim();
 
         // Check for "git+" at the start.
@@ -343,31 +417,43 @@ impl FromStr for SourceGitPinned {
         let repo = Url::parse(repo_str).map_err(|_| SourceGitPinnedParseError::Url)?;
         let s = &s[repo_str.len() + "?".len()..];
 
-        // Parse the "reference=" string.
-        // TODO: This will need updating if we want to support omitting a git reference and allow
-        // for specifying commit hashes directly in `Forc.toml` git dependencies.
-        const REFERENCE: &str = "reference=";
-        if s.find(REFERENCE) != Some(0) {
-            return Err(SourceGitPinnedParseError::Reference);
-        }
-        let s = &s[REFERENCE.len()..];
-
-        // And now retrieve the `reference` and `commit_hash` values.
+        // Parse the git reference and commit hash. This can be any of either:
+        // - `branch=<branch-name>#<commit-hash>`
+        // - `tag=<tag-name>#<commit-hash>`
+        // - `rev#<commit-hash>`
+        // - `default#<commit-hash>`
         let mut s_iter = s.split('#');
-        let reference = s_iter
-            .next()
-            .ok_or(SourceGitPinnedParseError::Reference)?
-            .to_string();
+        let reference = s_iter.next().ok_or(SourceGitPinnedParseError::Reference)?;
         let commit_hash = s_iter
             .next()
             .ok_or(SourceGitPinnedParseError::CommitHash)?
             .to_string();
+        // TODO: Validate the commit hash length here.
+        const BRANCH: &str = "branch=";
+        const TAG: &str = "tag=";
+        let reference = if reference.find(BRANCH) == Some(0) {
+            GitReference::Branch(reference[BRANCH.len()..].to_string())
+        } else if reference.find(TAG) == Some(0) {
+            GitReference::Tag(reference[TAG.len()..].to_string())
+        } else if reference == "rev" {
+            GitReference::Rev(commit_hash.to_string())
+        } else if reference == "default-branch" {
+            GitReference::DefaultBranch
+        } else {
+            return Err(SourceGitPinnedParseError::Reference);
+        };
 
         let source = SourceGit { repo, reference };
         Ok(Self {
             source,
             commit_hash,
         })
+    }
+}
+
+impl Default for GitReference {
+    fn default() -> Self {
+        Self::DefaultBranch
     }
 }
 
@@ -593,36 +679,70 @@ fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
 
-/// Clones the package git repo into a temporary directory and applies the given function.
-fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &Url, f: F) -> Result<O>
+/// Given a git reference, build a list of `refspecs` required for the fetch opration.
+///
+/// Also returns whether or not our reference implies we require fetching tags.
+fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
+    let mut refspecs = vec![];
+    let mut tags = false;
+    match reference {
+        GitReference::Branch(s) => {
+            refspecs.push(format!("+refs/heads/{0}:refs/remotes/origin/{0}", s));
+        }
+        GitReference::Tag(s) => {
+            refspecs.push(format!("+refs/tags/{0}:refs/remotes/origin/tags/{0}", s));
+        }
+        GitReference::Rev(s) => {
+            if s.starts_with("refs/") {
+                refspecs.push(format!("+{0}:{0}", s));
+            } else {
+                // We can't fetch the commit directly, so we fetch all branches and tags in order
+                // to find it.
+                refspecs.push("+refs/heads/*:refs/remotes/origin/*".to_string());
+                refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+                tags = true;
+            }
+        }
+        GitReference::DefaultBranch => {
+            refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+        }
+    }
+    (refspecs, tags)
+}
+
+/// Initializes a temporary git repo for the package and fetches only the reference associated with
+/// the given source.
+fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &SourceGit, f: F) -> Result<O>
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
     // Clear existing temporary directory if it exists.
-    let repo_dir = tmp_git_repo_dir(fetch_id, name, source);
+    let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
-    // Clone repo into temporary directory.
-    let repo_url_string = format!("{}", source);
-    let repo = git2::Repository::clone(&repo_url_string, &repo_dir).map_err(|e| {
-        anyhow!(
-            "failed to clone package '{}' from '{}': {}",
-            name,
-            source,
-            e
-        )
-    })?;
+    // Initialise the repository.
+    let repo = git2::Repository::init(&repo_dir)
+        .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
 
-    // Do something with the repo.
+    // Fetch the necessary references.
+    let (refspecs, tags) = git_ref_to_refspecs(&source.reference);
+
+    // Fetch the refspecs.
+    let mut fetch_opts = git2::FetchOptions::new();
+    if tags {
+        fetch_opts.download_tags(git2::AutotagOption::All);
+    }
+    repo.remote_anonymous(source.repo.as_str())?
+        .fetch(&refspecs, Some(&mut fetch_opts), None)
+        .with_context(|| format!("failed to fetch `{}`", &source.repo))?;
+
+    // Call the user function.
     let output = f(repo)?;
 
     // Clean up the temporary directory.
-    if repo_dir.exists() {
-        let _ = std::fs::remove_dir_all(&repo_dir);
-    }
-
+    let _ = std::fs::remove_dir_all(&repo_dir);
     Ok(output)
 }
 
@@ -631,29 +751,13 @@ where
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
 fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_tmp_git_repo(fetch_id, name, &source.repo, |repo| {
-        // Find specified reference in repo.
-        let reference = repo
-            .resolve_reference_from_short_name(&source.reference)
-            .map_err(|e| {
-                anyhow!(
-                    "failed to find git ref '{}' for package '{}': {}",
-                    source.reference,
-                    name,
-                    e
-                )
-            })?;
-
-        // Follow the reference until we find the latest commit and retrieve its hash.
-        let commit = reference.peel_to_commit().map_err(|e| {
-            anyhow!(
-                "failed to obtain commit for ref '{}' of package '{}': {}",
-                source.reference,
-                name,
-                e
-            )
-        })?;
-        Ok(format!("{}", commit.id()))
+    let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
+        // Resolve the reference to the commit ID.
+        let commit_id = source
+            .reference
+            .resolve(&repo)
+            .with_context(|| "failed to resolve reference".to_string())?;
+        Ok(format!("{}", commit_id))
     })?;
     Ok(SourceGitPinned {
         source,
@@ -726,7 +830,7 @@ fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Path
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
     // Checkout the pinned hash to the path.
-    with_tmp_git_repo(fetch_id, name, &pinned.source.repo, |repo| {
+    with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
@@ -758,28 +862,30 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                 ver_str
             )
         }
-        Dependency::Detailed(ref det) => {
-            match (&det.path, &det.version, &det.git, &det.branch, &det.tag) {
-                (Some(relative_path), _, _, _, _) => {
-                    let path = pkg_path.join(relative_path);
-                    Source::Path(path)
-                }
-                (_, _, Some(repo), branch, tag) => {
-                    let reference = match (branch, tag) {
-                        (Some(branch), None) => branch.clone(),
-                        (None, Some(tag)) => tag.clone(),
-                        // TODO: Consider "main" or having no default at all.
-                        _ => "master".to_string(),
-                    };
-                    let repo = Url::parse(repo)?;
-                    let source = SourceGit { repo, reference };
-                    Source::Git(source)
-                }
-                _ => {
-                    bail!("unsupported set of arguments for dependency: {:?}", dep);
-                }
+        Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
+            (Some(relative_path), _, _) => {
+                let path = pkg_path.join(relative_path);
+                Source::Path(path)
             }
-        }
+            (_, _, Some(repo)) => {
+                let reference = match (&det.branch, &det.tag, &det.rev) {
+                    (Some(branch), None, None) => GitReference::Branch(branch.clone()),
+                    (None, Some(tag), None) => GitReference::Tag(tag.clone()),
+                    (None, None, Some(rev)) => GitReference::Rev(rev.clone()),
+                    (None, None, None) => GitReference::DefaultBranch,
+                    _ => bail!(
+                        "git dependencies support at most one reference: \
+                            either `branch`, `tag` or `rev`"
+                    ),
+                };
+                let repo = Url::parse(repo)?;
+                let source = SourceGit { repo, reference };
+                Source::Git(source)
+            }
+            _ => {
+                bail!("unsupported set of fields for dependency: {:?}", dep);
+            }
+        },
     };
     Ok(source)
 }
@@ -961,32 +1067,50 @@ fn generate_json_abi(ast: &TypedParseTree) -> JsonABI {
 #[test]
 fn test_source_git_pinned_parsing() {
     let strings = [
-        "git+https://github.com/foo/bar?reference=baz#64092602dd6158f3e41d775ed889389440a2cd86",
-        "git+https://github.com/fuellabs/sway-lib-std?reference=v0.1.0#0000000000000000000000000000000000000000",
-        "git+https://github.com/fuellabs/sway-lib-core?reference=v0.0.1#0000000000000000000000000000000000000000",
+        "git+https://github.com/foo/bar?branch=baz#64092602dd6158f3e41d775ed889389440a2cd86",
+        "git+https://github.com/fuellabs/sway-lib-std?tag=v0.1.0#0000000000000000000000000000000000000000",
+        "git+https://github.com/fuellabs/sway-lib-core?tag=v0.0.1#0000000000000000000000000000000000000000",
+        "git+https://some-git-host.com/owner/repo?rev#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "git+https://some-git-host.com/owner/repo?default-branch#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     ];
 
     let expected = [
         SourceGitPinned {
             source: SourceGit {
                 repo: Url::parse("https://github.com/foo/bar").unwrap(),
-                reference: "baz".to_string(),
+                reference: GitReference::Branch("baz".to_string()),
             },
             commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
         },
         SourceGitPinned {
             source: SourceGit {
                 repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
-                reference: "v0.1.0".to_string(),
+                reference: GitReference::Tag("v0.1.0".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         SourceGitPinned {
             source: SourceGit {
                 repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
-                reference: "v0.0.1".to_string(),
+                reference: GitReference::Tag("v0.0.1".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
+        },
+        SourceGitPinned {
+            source: SourceGit {
+                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                reference: GitReference::Rev(
+                    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
+                ),
+            },
+            commit_hash: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
+        },
+        SourceGitPinned {
+            source: SourceGit {
+                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                reference: GitReference::DefaultBranch,
+            },
+            commit_hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(),
         },
     ];
 
