@@ -1,6 +1,6 @@
 script;
 
-use std::chain::panic;
+use std::panic::panic;
 use std::option::*;
 
 fn main() {

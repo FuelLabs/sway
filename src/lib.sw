@@ -1,5 +1,6 @@
 library std;
 
+dep panic;
 dep option;
 dep result;
 dep constants;

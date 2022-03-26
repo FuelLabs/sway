@@ -3,7 +3,7 @@ library token;
 
 use ::contract_id::ContractId;
 use ::address::Address;
-use ::chain::panic;
+use ::panic::panic;
 
 /// Mint `amount` coins of the current contract's `asset_id`.
 pub fn mint(amount: u64) {
