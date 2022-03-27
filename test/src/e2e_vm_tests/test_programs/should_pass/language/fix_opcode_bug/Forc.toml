@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "asm_expr_basic"
+name = "fix_opcode_bug"
 entry = "main.sw"
 
 [dependencies]
