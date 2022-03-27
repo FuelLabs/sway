@@ -1356,6 +1356,13 @@ impl fmt::Display for Op {
                 DataSectionRegisterLoadPlaceholder => {
                     "data section register load placeholder".into()
                 }
+                MOVI(_, _) => todo!(),
+                LOGD(_, _, _, _) => todo!(),
+                XIL(_, _) => todo!(),
+                XIS(_, _) => todo!(),
+                XOL(_, _) => todo!(),
+                XWL(_, _) => todo!(),
+                XWS(_, _) => todo!(),
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
