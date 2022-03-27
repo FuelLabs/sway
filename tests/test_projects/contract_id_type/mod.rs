@@ -31,7 +31,7 @@ async fn contract_id_eq_implementation() {
         id: ContractId::new([0u8; 32]),
         val: 1,
         pc: receipts[0].pc().unwrap(),
-        is: 472,
+        is: 10352,
     };
 
     assert_eq!(expected_receipt, receipts[0]);
