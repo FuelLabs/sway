@@ -1,8 +1,8 @@
 [[package]]
-name = 'asm_expr_basic'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
+name = 'core'
+source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f'
+dependencies = []
 
 [[package]]
-name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
-dependencies = []
+name = 'fix_opcode_bug'
+dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f']
