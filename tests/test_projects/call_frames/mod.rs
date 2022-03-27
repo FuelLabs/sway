@@ -1,12 +1,8 @@
-use fuel_tx::{AssetId, ContractId, Salt};
+use fuel_tx::{ContractId, Salt};
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels_abigen_macro::abigen;
-use fuels_contract::{
-    contract::Contract,
-    parameters::{CallParameters, TxParameters},
-};
+use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::util::test_helpers;
-use rand::{prelude::StdRng, Rng, SeedableRng};
 
 abigen!(
     CallFramesTestContract,
@@ -33,23 +29,6 @@ async fn can_get_contract_id() {
     let c = callframestestcontract_mod::ContractId { value: id.into() };
     let result = instance.get_id().call().await.unwrap();
     assert_eq!(result.value, c);
-}
-
-#[tokio::test]
-async fn can_get_msg_asset_id() {
-    let mut rng = StdRng::seed_from_u64(2322u64);
-    let random_id: [u8; 32] = rng.gen();
-    let (instance, _) = get_call_frames_instance().await;
-    let result = instance
-        .get_asset_id()
-        .call_params(CallParameters::new(None, Some(AssetId::from(random_id))))
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(
-        result.value,
-        callframestestcontract_mod::ContractId { value: random_id }
-    );
 }
 
 #[tokio::test]

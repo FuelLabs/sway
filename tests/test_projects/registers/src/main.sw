@@ -1,6 +1,6 @@
 contract;
 
-use std::context::registers::*;
+use std::context::{*, call_frames::*, registers::*};
 
 abi Registers {
     fn get_overflow() -> u64;
@@ -57,7 +57,7 @@ impl Registers for Contract {
     }
 
     fn get_balance() -> u64 {
-        balance()
+        msg_amount()
     }
 
     fn get_instrs_start() -> u64 {

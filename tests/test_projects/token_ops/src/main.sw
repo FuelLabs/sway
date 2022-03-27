@@ -1,6 +1,6 @@
 contract;
 
-use std::{address::Address, context::balance_of_contract, contract_id::ContractId, token::*};
+use std::{address::Address, context::balance_of, contract_id::ContractId, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
@@ -28,6 +28,6 @@ impl TestFuelCoin for Contract {
     }
 
     fn get_balance(target: ContractId, asset_id: ContractId) -> u64 {
-        balance_of_contract(target, asset_id)
+        balance_of(target, asset_id)
     }
 }
