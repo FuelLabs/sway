@@ -1292,6 +1292,7 @@ impl fmt::Display for Op {
                 MOD(a, b, c) => format!("mod {} {} {}", a, b, c),
                 MODI(a, b, c) => format!("modi {} {} {}", a, b, c),
                 MOVE(a, b) => format!("move {} {}", a, b),
+                MOVI(a, b) => format!("movi {} {}", a, b),
                 MUL(a, b, c) => format!("mul {} {} {}", a, b, c),
                 MULI(a, b, c) => format!("muli {} {} {}", a, b, c),
                 NOT(a, b) => format!("not {} {}", a, b),
@@ -1335,6 +1336,7 @@ impl fmt::Display for Op {
                 CB(a) => format!("cb {}", a),
                 LDC(a, b, c) => format!("ldc {} {} {}", a, b, c),
                 LOG(a, b, c, d) => format!("log {} {} {} {}", a, b, c, d),
+                LOGD(a, b, c, d) => format!("logd {} {} {} {}", a, b, c, d),
                 MINT(a) => format!("mint {}", a),
                 RVRT(a) => format!("rvrt {}", a),
                 SLDC(a, b, c) => format!("sldc {} {} {}", a, b, c),
@@ -1347,7 +1349,12 @@ impl fmt::Display for Op {
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
                 K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
+                XIL(a, b) => format!("xil {} {}", a, b),
+                XIS(a, b) => format!("xis {} {}", a, b),
+                XOL(a, b) => format!("xol {} {}", a, b),
                 XOS(a, b) => format!("xos {} {}", a, b),
+                XWL(a, b) => format!("xwl {} {}", a, b),
+                XWS(a, b) => format!("xws {} {}", a, b),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
@@ -1356,13 +1363,6 @@ impl fmt::Display for Op {
                 DataSectionRegisterLoadPlaceholder => {
                     "data section register load placeholder".into()
                 }
-                MOVI(_, _) => todo!(),
-                LOGD(_, _, _, _) => todo!(),
-                XIL(_, _) => todo!(),
-                XIS(_, _) => todo!(),
-                XOL(_, _) => todo!(),
-                XWL(_, _) => todo!(),
-                XWS(_, _) => todo!(),
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
