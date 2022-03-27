@@ -1362,7 +1362,7 @@ impl<'ir> AsmBuilder<'ir> {
         } else {
             let ret_reg = self.value_to_register(ret_val);
 
-            if matches!(ret_type, Type::Unit | Type::Bool | Type::Uint(_)) {
+            if ret_type.is_copy_type() {
                 self.bytecode.push(Op {
                     owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),

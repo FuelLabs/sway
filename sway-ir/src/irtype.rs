@@ -24,6 +24,11 @@ pub enum Type {
 }
 
 impl Type {
+    /// Return whether this is a 'copy' type, one whose value will always fit in a register.
+    pub fn is_copy_type(&self) -> bool {
+        matches!(self, Type::Unit | Type::Bool | Type::Uint(_))
+    }
+
     /// Return a string representation of type, used for printing.
     pub fn as_string(&self, context: &Context) -> String {
         let sep_types_str = |agg_content: &AggregateContent, sep: &str| {
