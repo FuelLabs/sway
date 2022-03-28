@@ -217,3 +217,14 @@ pub fn tx_output_type(ptr: u32) -> u8 {
         r1: u8
     }
 }
+
+/// Get the amount of coins to send for an output given a pointer to the output.
+/// This method is only meaningful if the output type has the `amount` field.
+/// Specifically: OutputCoin, OutputWithdrawal, OutputChange, OutputVariable.
+pub fn tx_output_amount(ptr: u32) -> u64 {
+    asm(r1, r2, r3: ptr) {
+        addi r2 r3 i40;
+        lw r1 r2 i0;
+        r1: u64
+    }
+}
