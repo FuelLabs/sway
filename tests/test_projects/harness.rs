@@ -1,4 +1,6 @@
 // Add test modules here:
+
+mod auth;
 mod call_frames;
 mod context;
 mod contract_id_type;

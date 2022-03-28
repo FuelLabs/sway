@@ -1,6 +1,7 @@
 library std;
 
 dep panic;
+dep assert;
 dep option;
 dep result;
 dep constants;
