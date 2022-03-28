@@ -21,3 +21,4 @@ sway-types = { version = "0.8.0", path = "../sway-types" }
 sway-utils = { version = "0.8.0", path = "../sway-utils" }
 toml = "0.5"
 url = { version = "2.2", features = ["serde"] }
+walkdir = "2"

@@ -3,6 +3,7 @@ contract;
 
 use std::chain::*;
 use std::hash::*;
+use std::panic::panic;
 use std::storage::*;
 use std::address::Address;
 
