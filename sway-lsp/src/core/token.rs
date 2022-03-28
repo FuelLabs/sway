@@ -90,6 +90,7 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
     match node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
+        AstNodeContent::ImplicitReturnExpression(exp) => handle_expression(exp, tokens),
         // TODO
         // handle other content types
         _ => {}
