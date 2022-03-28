@@ -14,3 +14,4 @@ fuel-crypto = "0.4"
 fuel-tx = "0.7"
 pest = { version = "3.0.4", package = "fuel-pest" }
 serde = { version = "1.0", features = ["derive"] }
+lazy_static = "1.4"

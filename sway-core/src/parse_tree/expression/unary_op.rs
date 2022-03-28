@@ -27,10 +27,7 @@ impl UnaryOp {
             _ => {
                 let errors = vec![CompileError::Internal(
                     "Attempted to parse unary op from invalid op string.",
-                    Span {
-                        span: pair.as_span(),
-                        path: config.map(|c| c.path()),
-                    },
+                    Span::from_pest(pair.as_span(), config.map(|c| c.path())),
                 )];
                 err(Vec::new(), errors)
             }

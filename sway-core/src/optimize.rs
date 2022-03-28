@@ -1,8 +1,11 @@
-use crate::constants;
 use fuel_crypto::Hasher;
-use std::collections::HashMap;
+use std::{
+    sync::Arc,
+    collections::HashMap,
+};
 
 use crate::{
+    constants,
     asm_generation::from_ir::ir_type_size_in_bytes,
     error::CompileError,
     parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
@@ -12,7 +15,7 @@ use crate::{
 
 use sway_types::{
     ident::Ident,
-    span::{join_spans, Span},
+    span::Span,
     state::StateIndex,
 };
 
@@ -47,7 +50,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
         } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))
+        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -838,7 +841,7 @@ impl FnCompiler {
                 true,
                 None,
             )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Initialise each of the fields in the user args struct.
         compiled_args.into_iter().enumerate().fold(
@@ -987,21 +990,14 @@ impl FnCompiler {
             // Firstly create the single-use callee by fudging an AST declaration.
             let callee_name = context.get_unique_name();
             let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(crate::span::Span {
-                span: pest::Span::new(std::sync::Arc::from(callee_name), 0, callee_name_len)
-                    .unwrap(),
-                path: None,
-            });
+            let callee_ident = Ident::new(crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap());
 
             let parameters = ast_args
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
                     r#type: expr.return_type,
-                    type_span: crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })
                 .collect();
 
@@ -1019,16 +1015,10 @@ impl FnCompiler {
                 name: callee_ident,
                 body: callee_body,
                 parameters,
-                span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 return_type,
                 type_parameters: Vec::new(),
-                return_type_span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 visibility: Visibility::Private,
                 is_contract_call: false,
                 purity: Default::default(),
@@ -1200,7 +1190,7 @@ impl FnCompiler {
         let variable_ptr = self
             .function
             .new_local_ptr(context, local_name, variable_type, false, None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let variable_ptr_ty = *variable_ptr.get_type(context);
         let variable_ptr_val = self.current_block.ins(context).get_ptr(
             variable_ptr,
@@ -1326,7 +1316,7 @@ impl FnCompiler {
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{name}'."),
-                Span::empty(),
+                Span::dummy(),
             ))
         }
     }
@@ -1366,7 +1356,7 @@ impl FnCompiler {
         let ptr = self
             .function
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
@@ -1402,7 +1392,7 @@ impl FnCompiler {
             self.function
                 .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
                 .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
 
             // We still insert this into the symbol table, as itself... can they be shadowed?
@@ -1476,7 +1466,7 @@ impl FnCompiler {
                         .lhs
                         .iter()
                         .map(|lhs| lhs.name.span().clone())
-                        .reduce(&join_spans)
+                        .reduce(Span::join)
                         .expect("Joined spans of LHS of reassignment.");
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
@@ -2032,7 +2022,7 @@ impl FnCompiler {
                     .function
                     .new_local_ptr(context, alias_key_name, Type::B256, true, None)
                     .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
 
                 // Const value for the key from the hash
@@ -2087,7 +2077,7 @@ impl FnCompiler {
                             .function
                             .new_local_ptr(context, alias_value_name, *r#type, true, None)
                             .map_err(|ir_error| {
-                                CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                             })?;
 
                         // Convert the local pointer created to a value using get_ptr
@@ -2267,7 +2257,7 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
                 match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
                     None => Err(CompileError::Internal(
                         "Unknown struct in in reassignment.",
-                        Span::empty(),
+                        Span::dummy(),
                     )),
                     Some((struct_name, field_idx)) => match field_idx {
                         None => Err(CompileError::InternalOwned(
@@ -2351,10 +2341,7 @@ fn convert_resolved_typeid_no_span(
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
-    let span = crate::span::Span {
-        span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-        path: None,
-    };
+    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
     convert_resolved_typeid(context, ast_type, &span)
 }
 
@@ -2400,55 +2387,55 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::Custom { .. } => {
             return Err(CompileError::Internal(
                 "Custom type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::SelfType { .. } => {
             return Err(CompileError::Internal(
                 "Self type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::Contract => {
             return Err(CompileError::Internal(
                 "Contract type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::ContractCaller { .. } => {
             return Err(CompileError::Internal(
                 "ContractCaller type cannot be reoslved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::Unknown => {
             return Err(CompileError::Internal(
                 "Unknown type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::UnknownGeneric { .. } => {
             return Err(CompileError::Internal(
                 "Generic type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::Ref(_) => {
             return Err(CompileError::Internal(
                 "Ref type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::ErrorRecovery => {
             return Err(CompileError::Internal(
                 "Error recovery type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
         TypeInfo::Storage { .. } => {
             return Err(CompileError::Internal(
                 "Storage type cannot be resolved in IR.",
-                Span::empty(),
+                Span::dummy(),
             ))
         }
     })

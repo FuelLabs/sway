@@ -67,6 +67,13 @@ impl Ident {
             span,
         }
     }
+
+    pub fn new_no_span(name: &'static str) -> Ident {
+        Ident {
+            name_override_opt: Some(name),
+            span: Span::dummy(),
+        }
+    }
 }
 
 impl fmt::Display for Ident {

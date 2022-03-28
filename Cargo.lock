@@ -3261,6 +3261,7 @@ dependencies = [
  "fuel-crypto 0.4.0",
  "fuel-pest",
  "fuel-tx",
+ "lazy_static",
  "serde",
 ]
 

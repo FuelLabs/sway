@@ -69,21 +69,8 @@ impl<N> ContiguousMemoryLayoutDescriptor<N> {
 
 #[test]
 fn test_struct_memory_layout() {
-    use sway_types::span::Span;
-    let first_field_name = Ident::new_with_override(
-        "foo",
-        Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
-    );
-    let second_field_name = Ident::new_with_override(
-        "bar",
-        Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
-    );
+    let first_field_name = Ident::new_no_span("foo");
+    let second_field_name = Ident::new_no_span("bar");
 
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![

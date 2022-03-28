@@ -8,7 +8,12 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::fmt;
+use std::{
+    fmt,
+    borrow::Cow,
+    sync::Arc,
+    path::PathBuf,
+};
 use thiserror::Error;
 
 macro_rules! check {
@@ -200,8 +205,12 @@ impl CompileWarning {
         (self.span.start(), self.span.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.span.path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.span.path_str()
     }
 
     /// Returns the line and column start and end
@@ -1000,8 +1009,12 @@ impl CompileError {
         (sp.start(), sp.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.internal_span().path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.internal_span().path_str()
     }
 
     pub fn internal_span(&self) -> &Span {

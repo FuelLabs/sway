@@ -37,7 +37,7 @@ impl Default for TypeArgument {
     fn default() -> Self {
         TypeArgument {
             type_id: insert_type(TypeInfo::Unknown),
-            span: Span::empty(),
+            span: Span::dummy(),
         }
     }
 }
@@ -68,10 +68,7 @@ impl TypeArgument {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = Span {
-            span: pair.as_span(),
-            path: config.map(|c| c.path()),
-        };
+        let span = Span::from_pest(pair.as_span(), config.map(|c| c.path()));
         let type_id = insert_type(check!(
             TypeInfo::parse_from_pair(pair, config),
             TypeInfo::ErrorRecovery,
