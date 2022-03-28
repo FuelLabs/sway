@@ -1,6 +1,6 @@
 script;
 
-use std::{block::height, chain::assert};
+use std::{assert::assert, block::height};
 
 fn main() -> bool {
     let h = height();

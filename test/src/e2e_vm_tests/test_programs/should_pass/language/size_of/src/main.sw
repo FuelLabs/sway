@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 // 24 bytes
 // (8 bytes per elemet)

@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 fn main() {
     // This just demonstrates that the `xos` opcode has been added to the compiler.
