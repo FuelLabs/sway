@@ -1,7 +1,7 @@
 script;
 
 // use std::constants::ETH_ID;
-use std::context::balance_of_contract;
+use std::context::balance_of;
 use std::chain::assert;
 use std::address::Address;
 use std::contract_id::ContractId;
@@ -26,7 +26,7 @@ fn main() -> bool {
     // todo: use correct type ContractId
     let fuel_coin = abi(TestFuelCoin, 0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
 
-    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    let mut fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
     fuel_coin.mint {
@@ -35,7 +35,7 @@ fn main() -> bool {
     (11);
 
     // check that the mint was successful
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 11);
 
     fuel_coin.burn {
@@ -44,7 +44,7 @@ fn main() -> bool {
     (7);
 
     // check that the burn was successful
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
 
     // force transfer coins
@@ -54,8 +54,8 @@ fn main() -> bool {
     (3, fuelcoin_id, balance_test_id);
 
     // check that the transfer was successful
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
-    let balance_test_contract_balance = balance_of_contract(fuelcoin_id, balance_test_id);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
     assert(fuelcoin_balance == 1);
     assert(balance_test_contract_balance == 3);
 

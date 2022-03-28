@@ -1,6 +1,8 @@
 script;
 
 use std::chain::*;
+use std::panic::panic;
+
 enum Result<T, E> {
     Ok: T,
     Err: E,

@@ -110,7 +110,7 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
             }
 
             // Did anything change in this iteration?
-            modified = (prev_live_in_op != *live_in_op) || (prev_live_out_op != *live_out_op);
+            modified |= (prev_live_in_op != *live_in_op) || (prev_live_out_op != *live_out_op);
         }
         modified
     } {}
