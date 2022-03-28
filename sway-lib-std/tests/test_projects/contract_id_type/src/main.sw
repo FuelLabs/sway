@@ -1,7 +1,7 @@
 script;
 
 use std::constants::NATIVE_ASSET_ID;
-use std::chain::assert;
+use std::assert::assert;
 use std::contract_id::*;
 
 fn main() -> bool {

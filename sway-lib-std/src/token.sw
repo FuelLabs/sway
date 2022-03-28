@@ -1,9 +1,10 @@
 library token;
 //! Functionality for performing common operations on tokens.
 
-use ::contract_id::ContractId;
 use ::address::Address;
+use ::contract_id::ContractId;
 use ::panic::panic;
+use ::tx::*;
 
 /// Mint `amount` coins of the current contract's `asset_id`.
 pub fn mint(amount: u64) {
@@ -28,69 +29,34 @@ pub fn force_transfer(amount: u64, asset_id: ContractId, contract_id: ContractId
     }
 }
 
-/// Transfer `amount` coins of type `asset_id` to address `recipient`.
 pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address) {
-    // note: if tx format changes, the magic number "56" must be changed !
-    // TransactionScript outputsCount has a 56 byte(7 words * 8 bytes) offset
-    // Transaction Script: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transactionscript
-    // Output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#output
-    const OUTPUT_LENGTH_LOCATION = 56;
-    const OUTPUT_VARIABLE_TYPE = 4u8;
+    const OUTPUT_VARIABLE_TYPE: u8 = 4;
 
-    // get length of outputs from TransactionScript outputsCount:
-    let length: u8 = asm(outputs_length, outputs_length_ptr: OUTPUT_LENGTH_LOCATION) {
-        lb outputs_length outputs_length_ptr i0;
-        outputs_length: u8
-    };
     // maintain a manual index as we only have `while` loops in sway atm:
-    let mut index: u8 = 0u8;
+    let mut index = 0;
     let mut output_index = 0;
     let mut output_found = false;
 
-    // If an output of type `OutputVariable` is found, check if its `amount` is zero.
-    // As one cannot transfer zero coins to an output without a panic, a variable output with a value of zero is by definition unused.
-    while index < length {
-        let output_start = asm(n: index, offset) {
-            xos offset n; // get the offset to the nth output
-            offset: u64
+    // If an output of type `OutputVariable` is found, check if its `amount` is
+    // zero. As one cannot transfer zero coins to an output without a panic, a
+    // variable output with a value of zero is by definition unused.
+    let outputs_count = tx_outputs_count();
+    while index < outputs_count {
+        let output_pointer = tx_output_pointer(index);
+        if tx_output_type(output_pointer) == OUTPUT_VARIABLE_TYPE && tx_output_amount(output_pointer) == 0 {
+            output_index = index;
+            output_found = true;
+            index = outputs_count; // break early and use the output we found
+            // use `break;` when it's implemented #587
         };
-
-        let type = asm(offset: output_start, t) {
-            lb t offset i0; // load the type of the output at 'offset' into t
-            t: u8
-        };
-
-        // if an ouput is found of type `OutputVariable`:
-        if type == OUTPUT_VARIABLE_TYPE {
-            let amount = asm(n: index, a, amount_ptr, output: output_start) {
-                addi amount_ptr output i40;
-                lw a amount_ptr i0;
-                a: u64
-            };
-
-            // && if the amount is zero:
-            if amount == 0 {
-                // then store the index of the output and record the fact that we found a suitable output.
-                output_index = index;
-                output_found = true;
-                // todo: use "break" keyword when it lands ( tracked here: https://github.com/FuelLabs/sway/issues/587 )
-                index = length; // break early and use the output we found
-            } else {
-                // otherwise, increment the index and continue the loop.
-                index = index + 1;
-            };
-        } else {
-            index = length; // break early as there are no suitable outputs.
-        };
+        index = index + 1;
     }
 
     if !output_found {
-        // If no suitable output was found, revert.
         panic(0);
     } else {
-        // perform the transfer
-        asm(amnt: amount, id: asset_id.value, recipient: recipient.value, output: index) {
-            tro recipient output amnt id;
+        asm(r1: recipient.value, r2: output_index, r3: amount, r4: asset_id.value) {
+            tro r1 r2 r3 r4;
         };
     }
 }
