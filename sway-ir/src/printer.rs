@@ -252,7 +252,8 @@ fn maybe_constant_to_doc(
     namer: &mut Namer,
     maybe_const_val: &Value,
 ) -> Doc {
-    if maybe_const_val.is_constant(context) {
+    // Create a new doc only if value is new and unknown, and is a constant.
+    if !namer.is_known(maybe_const_val) && maybe_const_val.is_constant(context) {
         constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty
@@ -391,7 +392,7 @@ fn instruction_to_doc<'a>(
                 aggregate,
                 ty,
                 indices,
-            } => Doc::line(
+            } => maybe_constant_to_doc(context, md_namer, namer, aggregate).append(Doc::line(
                 Doc::text(format!(
                     "{} = extract_value {}, {}, ",
                     namer.name(context, ins_value),
@@ -409,7 +410,7 @@ fn instruction_to_doc<'a>(
                     None => Doc::Empty,
                     Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                 }),
-            ),
+            )),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,
@@ -762,6 +763,10 @@ impl Namer {
             self.names.insert(*value, new_name.clone());
             new_name
         })
+    }
+
+    fn is_known(&self, value: &Value) -> bool {
+        self.names.contains_key(value)
     }
 }
 
