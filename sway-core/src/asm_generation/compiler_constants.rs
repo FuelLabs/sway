@@ -1,5 +1,6 @@
-/// The number of registers available for the compiler to use. Registers reserved by the
-/// compiler are contained within these.
+/// The total number of registers available and the number of registers available for the compiler
+/// to use. Registers reserved by the compiler are contained within these.
+const NUM_TOTAL_REGISTERS: u8 = 64;
 const NUM_FREE_REGISTERS: u8 = 48;
 pub(crate) const TWENTY_FOUR_BITS: u64 = 0b1111_1111_1111_1111_1111_1111;
 pub(crate) const EIGHTEEN_BITS: u64 = 0b11_1111_1111_1111_1111;
@@ -11,6 +12,6 @@ pub(crate) const SIX_BITS: u64 = 0b11_1111;
 /// So far, the compiler-reserved registers are:
 /// 1. DATA_SECTION_BEGIN
 const NUM_COMPILER_RESERVED_REGISTERS: u8 = 1;
-pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_FREE_REGISTERS - 2;
+pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_TOTAL_REGISTERS - 1;
 pub(crate) const NUM_ALLOCATABLE_REGISTERS: u8 =
     NUM_FREE_REGISTERS - NUM_COMPILER_RESERVED_REGISTERS;

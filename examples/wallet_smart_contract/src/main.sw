@@ -9,7 +9,7 @@ use std::address::Address;
 use std::chain::assert;
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const NATIVE_ASSET_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 // storage {
 //     balance: u64,
@@ -22,7 +22,7 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        // if asset_id.into() == ETH_ID {
+        // if asset_id.into() == NATIVE_ASSET_ID {
         //     let balance = storage.balance.write();
         //     deref balance = balance + coins_to_forward;
         // };

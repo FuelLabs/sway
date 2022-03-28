@@ -55,6 +55,7 @@ pub struct DependencyDetails {
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
     pub(crate) package: Option<String>,
+    pub(crate) rev: Option<String>,
 }
 
 impl Dependency {

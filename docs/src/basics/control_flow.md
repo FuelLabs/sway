@@ -22,7 +22,7 @@ fn main() {
 
 In Sway, note that a _statement_ is a _declaration **or** expression with a semicolon after it_. This means that you need to add a semicolon after an `if` to turn it into a statement, if it is being used for control flow.
 
-This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.
+This need for a semicolon after if expressions to turn them into statements may be be removed eventually.
 
 ### Using `if` in a `let` statement
 
@@ -32,7 +32,7 @@ Like Rust, `if`s are expressions in Sway. What this means is you can use `if` ex
 let my_data = if some_bool < 10 { foo() } else { bar() };
 ```
 
-Note that all branches of the `if` expression must return a value of the same type or the code will panic.
+Note that all branches of the `if` expression must return a value of the same type.
 
 ## Loops
 

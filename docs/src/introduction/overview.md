@@ -11,20 +11,20 @@ Before we begin, it may be helpful to understand terminology that will used thro
 - **Sway**: the domain-specific language crafted for the FuelVM; it is inspired by Rust.
 - **Forc**: the build system and package manager for Sway, similar to Cargo for Rust.
 
-Go [here](./sway-toolchain.md) for more detailed information about each of these components.
-
 ## Understand Sway Program Types
 
 There are four types of Sway programs:
 
-- contract
-- predicate
-- script
-- library
+- `contract`
+- `predicate`
+- `script`
+- `library`
 
 Contracts, predicates, and scripts can produce artifacts usable on the blockchain, while a library is simply a project designed for code reuse and is not directly deployable.
 
 Every Sway file must begin with a declaration of what type of program it is.
+
+See [the chapter on program types](../sway-program-types/index.md) for more information.
 
 ## Create Wallet Projects with `forc`
 
@@ -57,23 +57,23 @@ abi Wallet {
 }
 ```
 
-Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a `library`.
+Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a `library` called `wallet_lib`.
 
-Sway contracts should declare an ABI—an **a**pplication **b**inary **i**nterface in a library so that it can be re-used by downstream contracts. Let's focus on the ABI declaration and inspect it line-by-line.
+Sway contracts should declare an ABI—an **a**pplication **b**inary **i**nterface—in a library so that it can be re-used by downstream contracts. Let's focus on the ABI declaration and inspect it line-by-line.
 
 In the first line, we declare the name of this ABI: `Wallet`. To import this ABI into either a script or another contract for calling the contract, or the contract to implement the ABI, you would use `use wallet_lib::Wallet;`.
 
-In the second line we are declaring an ABI method called `receive_funds` which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.
+In the second line we declare an ABI method called `receive_funds` which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.
 
-_Note that we are simply defining an interface here, so there is no_function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [Rust trait declarations](../advanced/traits.md)._
+_Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md)._
 
-In the third line we are declaring another ABI method, this time called `send_funds`. It takes two parameters the amount to send, and the address to send the funds to.
+In the third line we are declare another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
 
 ### Implementing the ABI Methods in `wallet_contract`
 
 Now that we've defined the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.
 
-To do this, navigate to the `wallet_contract` repo that you created with `forc` previously.
+To do this, navigate to the `wallet_contract` directory that you created with `forc` previously.
 
 First, you need to import the `Wallet` declaration from the last step. Open up `Forc.toml`. It should look something like this:
 
@@ -88,7 +88,7 @@ name = "wallet_contract"
 std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
 ```
 
-Include the `wallet_lib` repo by adding the following line to the bottom of the file:
+Include the `wallet_lib` project as a dependency by adding the following line to the bottom of the file:
 
 ```toml
 wallet_lib = { path = "../wallet_lib" }
@@ -127,8 +127,10 @@ It's now time to deploy the wallet contract and call it on a Fuel node. We will 
 In a separate tab in your terminal, spin up a local Fuel node:
 
 ```sh
-Fuel-core --db-type in-memory
+fuel-core --db-type in-memory
 ```
+
+This starts a Fuel node with a volatile database that will be cleared when shut down (good for testing purposes).
 
 ### Deploy `wallet_contract` To Your Local Fuel Node
 
@@ -145,18 +147,18 @@ This should produce some output in `stdout` that looks like this:
 ```console
 $ forc deploy
   Compiled library "wallet_lib".
-  Compiled script "wallet_contract".
+  Compiled contract "wallet_contract".
   Bytecode size is 212 bytes.
 Contract id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38
 Logs:
 HexString256(HexFormatted(0xd9240bc439834bc6afc3f334abf285b3b733560b63d7ce1eb53afa8981984af7))
 ```
 
-Note the contract ID — you will need below.
+Note the contract ID—you will need it in the next step.
 
 ## Write a Sway Script to Call a Sway Contract
 
-_Note that if you are using the TypeScript SDK you do not need to write a script to call the Sway contract._
+_Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK._
 
 Now that we have deployed our wallet contract, we need to actually _call_ our contract. We can do this by calling the contract from a script.
 
@@ -173,8 +175,9 @@ Next, open up `src/main.sw`. Copy and paste the following code:
 ```sway
 script;
 
+use std::constants::NATIVE_ASSET_ID;
+
 use wallet_lib::Wallet;
-use std::constants::ETH_ID;
 
 fn main() {
     let caller = abi(Wallet, <contract_address>);
@@ -184,7 +187,7 @@ fn main() {
 
 Replace `<contract_address>` with the contract ID you noted when deploying the contract.
 
-The main new concept is the _abi cast_: `abi(AbiName, ContractAddress)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We can directly call the contract ABI method as if it was just a regular function.
+The main new concept is the _abi cast_: `abi(AbiName, ContractAddress)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We can directly call a contract ABI method as if it were a trait method.
 
 ## Check That `wallet_script` Builds
 
@@ -198,7 +201,7 @@ from the root of the `wallet_script` directory.
 
 ## Call the Contract
 
-It's now time to call the contract. We will show how to do this using `forc` from the command line, but you can also do this using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#calling-contracts)
+It's now time to call the contract. We will show how to do this using `forc` from the command line, but you can also do this using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#generating-type-safe-rust-bindings) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#calling-contracts)
 
 ### Run `wallet_script` Against Your Local Fuel Node
 
@@ -216,7 +219,7 @@ If the script is successfully run, it will output something that looks like:
 
 ```console
 $ forc run --contract <contract-id>
-  Compiled library "lib-std" with 7 warnings.
+  Compiled library "lib-std".
   Compiled library "wallet_lib".
   Compiled script "wallet_script".
   Bytecode size is 272 bytes.

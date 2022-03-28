@@ -23,7 +23,7 @@ fn main() {
 
 ## Logging
 
-To log integers, you can use the `log_u64`, `log_u32`, `log_u16`, or `log_u8` functions from the `lib-std` library.
+To log integers, you can use the `log_u64`, `log_u32`, `log_u16`, or `log_u8` functions from the standard library.
 
 ```sway
 use std::chain::log_u64;
@@ -34,4 +34,4 @@ fn main() {
 }
 ```
 
-Note that you cannot log arbitrary structs yet because we do not yet support serialization.
+Note that you cannot log arbitrary structs yet because [we do not yet support serialization](../reference/temporary_workarounds.html#serialization-and-deserialization).
