@@ -1,6 +1,7 @@
 use crate::semantic_analysis::{
     TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedStructField,
 };
+use crate::type_engine::look_up_type_id;
 use crate::{
     error::*,
     type_engine::{TypeId, TypeInfo},
@@ -8,9 +9,14 @@ use crate::{
 };
 use sway_types::{state::StateIndex, Span};
 
-#[derive(Clone, Debug)]
+use derivative::Derivative;
+
+#[derive(Clone, Debug, Derivative)]
+#[derivative(PartialEq, Eq)]
 pub struct TypedStorageDeclaration {
     pub(crate) fields: Vec<TypedStorageField>,
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Eq(bound = ""))]
     span: Span,
 }
 
@@ -132,11 +138,20 @@ impl TypedStorageDeclaration {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedStorageField {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+    }
 }
 
 impl TypedStorageField {

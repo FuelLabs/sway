@@ -1,6 +1,7 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
+use crate::utils::parameters::TxParameters;
 use forc_pkg::Manifest;
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
@@ -57,6 +58,11 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             script_data,
                             inputs,
                             outputs,
+                            TxParameters::new(
+                                command.byte_price,
+                                command.gas_limit,
+                                command.gas_price,
+                            ),
                         );
 
                         if command.dry_run {
@@ -146,10 +152,11 @@ fn create_tx_with_script_and_data(
     script_data: Vec<u8>,
     inputs: Vec<fuel_tx::Input>,
     outputs: Vec<fuel_tx::Output>,
+    tx_params: TxParameters,
 ) -> Transaction {
-    let gas_price = 0;
-    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
-    let byte_price = 0;
+    let gas_price = tx_params.gas_price;
+    let gas_limit = tx_params.gas_limit;
+    let byte_price = tx_params.byte_price;
     let maturity = 0;
     let witnesses = vec![];
 

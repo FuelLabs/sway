@@ -15,6 +15,7 @@ use sway_types::{
     state::StateIndex,
 };
 
+use derivative::Derivative;
 use std::sync::Arc;
 
 use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
@@ -59,7 +60,7 @@ pub(crate) enum IsConstant {
     No,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TypedAstNodeContent {
     ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
@@ -70,13 +71,15 @@ pub(crate) enum TypedAstNodeContent {
     SideEffect,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, Derivative)]
+#[derivative(PartialEq)]
 pub struct TypedAstNode {
     pub(crate) content: TypedAstNodeContent,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }
 
-impl std::fmt::Debug for TypedAstNode {
+impl std::fmt::Display for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
@@ -141,6 +144,7 @@ impl TypedAstNode {
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }
     }
+
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -161,6 +165,7 @@ impl TypedAstNode {
             TypedAstNodeContent::SideEffect => (),
         }
     }
+
     fn type_info(&self) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;
@@ -175,6 +180,7 @@ impl TypedAstNode {
             WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
+
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, AstNode>,
     ) -> CompileResult<TypedAstNode> {
@@ -197,14 +203,17 @@ impl TypedAstNode {
                                             crate_namespace: NamespaceRef,
                                             type_ascription: TypeInfo,
                                             value| {
-            let type_id = namespace
-                .resolve_type_with_self(type_ascription, self_type)
-                .unwrap_or_else(|_| {
-                    errors.push(CompileError::UnknownType {
-                        span: node.span.clone(),
-                    });
-                    insert_type(TypeInfo::ErrorRecovery)
-                });
+            let type_id = check!(
+                namespace.resolve_type_with_self(
+                    type_ascription,
+                    self_type,
+                    node.span.clone(),
+                    false
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            );
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: value,
                 namespace,
@@ -262,14 +271,27 @@ impl TypedAstNode {
                             is_mutable,
                         }) => {
                             check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
-                            let type_ascription = namespace
-                                .resolve_type_with_self(type_ascription, self_type)
-                                .unwrap_or_else(|_| {
+                            let type_ascription_span = match type_ascription_span {
+                                Some(type_ascription_span) => type_ascription_span,
+                                None => name.span().clone(),
+                            };
+                            let type_ascription = match namespace
+                                .resolve_type_with_self(
+                                    type_ascription,
+                                    self_type,
+                                    type_ascription_span.clone(),
+                                    true,
+                                )
+                                .value
+                            {
+                                Some(type_ascription) => type_ascription,
+                                None => {
                                     errors.push(CompileError::UnknownType {
-                                        span: type_ascription_span.expect("Invariant violated: type checked an annotation that did not exist in the source"),
+                                        span: type_ascription_span,
                                     });
                                     insert_type(TypeInfo::ErrorRecovery)
-                                });
+                                }
+                            };
                             let result = {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,
@@ -376,7 +398,6 @@ impl TypedAstNode {
                             name,
                             interface_surface,
                             methods,
-                            type_parameters,
                             supertraits,
                             visibility,
                         }) => {
@@ -442,7 +463,6 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     interface_surface,
                                     methods,
-                                    type_parameters,
                                     supertraits,
                                     visibility,
                                 });
@@ -487,29 +507,42 @@ impl TypedAstNode {
                         ),
 
                         Declaration::ImplSelf(ImplSelf {
-                            type_arguments,
                             functions,
                             type_implementing_for,
                             block_span,
+                            type_parameters,
                             ..
                         }) => {
+                            for type_parameter in type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::Internal(
+                                        "Where clauses are not supported yet.",
+                                        type_parameter.name_ident.span().clone(),
+                                    ));
+                                    break;
+                                }
+                            }
+                            let impl_namespace = create_new_scope(namespace);
+                            for type_parameter in type_parameters.iter() {
+                                impl_namespace.insert(
+                                    type_parameter.name_ident.clone(),
+                                    type_parameter.into(),
+                                );
+                            }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
-                            let implementing_for_type_id =
-                                namespace.resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id = check!(
+                                impl_namespace.resolve_type_without_self(&type_implementing_for),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
-
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            if !type_arguments.is_empty() {
-                                errors.push(CompileError::Internal(
-                                    "Where clauses are not supported yet.",
-                                    type_arguments[0].clone().name_ident.span().clone(),
-                                ));
-                            }
                             for mut fn_decl in functions.into_iter() {
-                                let mut type_arguments = type_arguments.clone();
+                                let mut type_parameters = type_parameters.clone();
                                 // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_arguments);
+                                fn_decl.type_parameters.append(&mut type_parameters);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 
@@ -517,29 +550,31 @@ impl TypedAstNode {
                                 // i.e. fn add(self, other: u64) -> Self becomes fn
                                 // add(self: u64, other: u64) -> u64
                                 fn_decl.parameters.iter_mut().for_each(
-                                    |FunctionParameter { ref mut r#type, .. }| {
-                                        if r#type == &TypeInfo::SelfType {
-                                            *r#type = type_implementing_for.clone();
+                                    |FunctionParameter {
+                                         ref mut type_id, ..
+                                     }| {
+                                        if look_up_type_id(*type_id) == TypeInfo::SelfType {
+                                            *type_id = implementing_for_type_id;
                                         }
                                     },
                                 );
                                 if fn_decl.return_type == TypeInfo::SelfType {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
-
+                                let args = TypeCheckArguments {
+                                    checkee: fn_decl,
+                                    namespace: impl_namespace,
+                                    crate_namespace,
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: "",
+                                    self_type: implementing_for_type_id,
+                                    build_config,
+                                    dead_code_graph,
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                };
                                 functions_buf.push(check!(
-                                    TypedFunctionDeclaration::type_check(TypeCheckArguments {
-                                        checkee: fn_decl,
-                                        namespace,
-                                        crate_namespace,
-                                        return_type_annotation: insert_type(TypeInfo::Unknown),
-                                        help_text: Default::default(),
-                                        self_type: implementing_for_type_id,
-                                        build_config,
-                                        dead_code_graph,
-                                        mode: Mode::NonAbi,
-                                        opts
-                                    }),
+                                    TypedFunctionDeclaration::type_check(args),
                                     continue,
                                     warnings,
                                     errors
@@ -552,7 +587,7 @@ impl TypedAstNode {
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
-                                look_up_type_id(implementing_for_type_id),
+                                type_implementing_for.clone(),
                                 functions_buf.clone(),
                             );
                             TypedDeclaration::ImplTrait {
@@ -569,37 +604,36 @@ impl TypedAstNode {
                             let fields = decl
                                 .fields
                                 .into_iter()
-                                .map(
-                                    |StructField {
-                                         name,
-                                         r#type,
-                                         span,
-                                         type_span,
-                                     }| TypedStructField {
+                                .map(|field| {
+                                    let StructField {
                                         name,
-                                        r#type: if let Some(matching_id) =
-                                            r#type.matches_type_parameter(&type_mapping)
-                                        {
-                                            insert_type(TypeInfo::Ref(matching_id))
-                                        } else {
-                                            namespace
-                                                .resolve_type_with_self(r#type, self_type)
-                                                .unwrap_or_else(|_| {
-                                                    errors.push(CompileError::UnknownType {
-                                                        span: type_span.clone(),
-                                                    });
-                                                    insert_type(TypeInfo::ErrorRecovery)
-                                                })
-                                        },
+                                        r#type,
                                         span,
-                                    },
-                                )
+                                        type_span,
+                                    } = field;
+                                    let r#type = match r#type.matches_type_parameter(&type_mapping)
+                                    {
+                                        Some(matching_id) => {
+                                            insert_type(TypeInfo::Ref(matching_id))
+                                        }
+                                        None => check!(
+                                            namespace.resolve_type_with_self(
+                                                r#type, self_type, type_span, false
+                                            ),
+                                            insert_type(TypeInfo::ErrorRecovery),
+                                            warnings,
+                                            errors,
+                                        ),
+                                    };
+                                    TypedStructField { name, r#type, span }
+                                })
                                 .collect::<Vec<_>>();
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
                                 type_parameters: decl.type_parameters.clone(),
                                 fields,
                                 visibility: decl.visibility,
+                                span: decl.span,
                             };
 
                             // insert struct into namespace
@@ -660,7 +694,12 @@ impl TypedAstNode {
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, r#type } in fields {
-                                let r#type = namespace.resolve_type_without_self(&r#type);
+                                let r#type = check!(
+                                    namespace.resolve_type_without_self(&r#type),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                );
                                 fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
                             }
 
@@ -1107,60 +1146,58 @@ fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<Vec<TypedTraitFn>> {
+    let mut warnings = vec![];
     let mut errors = vec![];
-    ok(
-        interface_surface
-            .into_iter()
-            .map(
-                |TraitFn {
-                     name,
-                     parameters,
-                     return_type,
-                     return_type_span,
-                 }| TypedTraitFn {
-                    name,
-                    return_type_span: return_type_span.clone(),
-                    parameters: parameters
-                        .into_iter()
-                        .map(
-                            |FunctionParameter {
-                                 name,
-                                 r#type,
-                                 type_span,
-                             }| TypedFunctionParameter {
-                                name,
-                                r#type: namespace
-                                    .resolve_type_with_self(
-                                        r#type,
-                                        crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    )
-                                    .unwrap_or_else(|_| {
-                                        errors.push(CompileError::UnknownType {
-                                            span: type_span.clone(),
-                                        });
-                                        insert_type(TypeInfo::ErrorRecovery)
-                                    }),
-                                type_span,
-                            },
-                        )
-                        .collect(),
-                    return_type: namespace
-                        .resolve_type_with_self(
-                            return_type,
-                            crate::type_engine::insert_type(TypeInfo::SelfType),
-                        )
-                        .unwrap_or_else(|_| {
-                            errors.push(CompileError::UnknownType {
-                                span: return_type_span,
-                            });
-                            insert_type(TypeInfo::ErrorRecovery)
-                        }),
-                },
-            )
-            .collect::<Vec<_>>(),
-        vec![],
-        errors,
-    )
+    let interface_surface = interface_surface
+        .into_iter()
+        .map(
+            |TraitFn {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+             }| TypedTraitFn {
+                name,
+                return_type_span: return_type_span.clone(),
+                parameters: parameters
+                    .into_iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             type_id,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name,
+                            r#type: check!(
+                                namespace.resolve_type_with_self(
+                                    look_up_type_id(type_id),
+                                    crate::type_engine::insert_type(TypeInfo::SelfType),
+                                    type_span.clone(),
+                                    true
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            ),
+                            type_span,
+                        },
+                    )
+                    .collect(),
+                return_type: check!(
+                    namespace.resolve_type_with_self(
+                        return_type,
+                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                        return_type_span,
+                        true
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                ),
+            },
+        )
+        .collect::<Vec<_>>();
+    ok(interface_surface, warnings, errors)
 }
 
 fn type_check_trait_methods(
@@ -1189,19 +1226,21 @@ fn type_check_trait_methods(
         let function_namespace = namespace;
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref r#type, ..
+                 name,
+                 type_id: ref r#type,
+                 ..
              }| {
-                let r#type = function_namespace
-                    .resolve_type_with_self(
-                        r#type.clone(),
+                let r#type = check!(
+                    function_namespace.resolve_type_with_self(
+                        look_up_type_id(*r#type),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                    )
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: name.span().clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    });
+                        name.span().clone(),
+                        true
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
                 function_namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -1224,32 +1263,31 @@ fn type_check_trait_methods(
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Custom { ref name } = param.r#type {
+            if let TypeInfo::Custom { ref name, .. } = look_up_type_id(param.type_id) {
                 generic_params_buf_for_error_message.push(name.to_string());
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
         for FunctionParameter {
-            ref r#type, name, ..
+            ref type_id, name, ..
         } in parameters.iter()
         {
             let span = name.span().clone();
-            if let TypeInfo::Custom { name, .. } = r#type {
+            if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
                     |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
                 );
-                if type_parameters.iter().any(
-                    |TypeParameter {
-                         name: this_name, ..
-                     }| {
-                        if let TypeInfo::Custom { name: this_name } = this_name {
-                            this_name == name
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
+                    if let TypeInfo::Custom {
+                        name: this_name, ..
+                    } = look_up_type_id(*type_id)
+                    {
+                        this_name == name.clone()
+                    } else {
+                        false
+                    }
+                }) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),
                         span: span.clone(),
@@ -1265,22 +1303,22 @@ fn type_check_trait_methods(
             .map(
                 |FunctionParameter {
                      name,
-                     r#type,
+                     type_id,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: function_namespace
-                            .resolve_type_with_self(
-                                r#type,
+                        r#type: check!(
+                            function_namespace.resolve_type_with_self(
+                                look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
-                            )
-                            .unwrap_or_else(|_| {
-                                errors.push(CompileError::UnknownType {
-                                    span: type_span.clone(),
-                                });
-                                insert_type(TypeInfo::ErrorRecovery)
-                            }),
+                                type_span.clone(),
+                                true
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors,
+                        ),
                         type_span,
                     }
                 },
@@ -1288,14 +1326,17 @@ fn type_check_trait_methods(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let return_type = function_namespace
-            .resolve_type_with_self(return_type, self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType {
-                    span: return_type_span.clone(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
-            });
+        let return_type = check!(
+            function_namespace.resolve_type_with_self(
+                return_type,
+                self_type,
+                return_type_span.clone(),
+                true,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
@@ -1362,7 +1403,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
 }
 
 /// Describes each field being drilled down into in storage and its type.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageReassignment {
     pub(crate) fields: Vec<TypeCheckedStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
@@ -1387,11 +1428,20 @@ impl TypeCheckedStorageReassignment {
 
 /// Describes a single subfield access in the sequence when reassigning to a subfield within
 /// storage.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypeCheckedStorageReassignDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+    }
 }
 
 fn reassign_storage_subfield(

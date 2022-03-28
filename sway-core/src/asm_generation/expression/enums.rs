@@ -44,7 +44,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
         VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
-    let ty = match resolve_type(decl.as_type(), &decl.span) {
+    let ty = match resolve_type(decl.type_id(), &decl.span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());

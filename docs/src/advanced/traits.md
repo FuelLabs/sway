@@ -36,7 +36,7 @@ The above snippet declares all of the methods in the trait `Compare` for the typ
 
 When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another
 trait (ie. a trait with a trait). A good example of this is the `Ord` trait of the `core` library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept as a separate trait as one may decide to implement `Eq`
-without implementing other parts of the `Ord` trait. 
+without implementing other parts of the `Ord` trait.
 
 ```sway
 
@@ -71,7 +71,7 @@ pub enum Suit {
     Hearts: (),
     Diamonds: (),
     Clubs: (),
-    Spades: ()
+    Spades: (),
 }
 
 pub trait Card {
@@ -83,7 +83,6 @@ fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
     // insert some creative card game here
   }
 ```
-
 
 Now, if you want to use the function `play_game_with_deck` with your struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 

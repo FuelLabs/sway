@@ -1,6 +1,6 @@
 [package]
 name = "forc"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -13,23 +13,23 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0.41"
 clap = { version = "3.1", features = ["env", "derive"] }
 clap_complete = "3.1"
-forc-pkg = { version = "0.7.0", path = "../forc-pkg" }
-forc-util = { version = "0.7.0", path = "../forc-util" }
-fuel-asm = "0.2"
-fuel-gql-client = { version = "0.4", default-features = false }
-fuel-tx = "0.6"
-fuel-vm = "0.5"
+forc-pkg = { version = "0.8.0", path = "../forc-pkg" }
+forc-util = { version = "0.8.0", path = "../forc-util" }
+fuel-asm = "0.3"
+fuel-gql-client = { version = "0.5", default-features = false }
+fuel-tx = "0.7"
+fuel-vm = "0.6"
 futures = "0.3"
 hex = "0.4.3"
 prettydiff = "0.5.0"
 reqwest = { version = "0.11.4", default-features = false, features = ["json", "rustls-tls"] }
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0.73"
-sway-core = { version = "0.7.0", path = "../sway-core" }
-sway-fmt = { version = "0.7.0", path = "../sway-fmt" }
-sway-lsp = { version = "0.7.0", path = "../sway-lsp" }
-sway-utils = { version = "0.7.0", path = "../sway-utils" }
-sway-types = { version = "0.7.0", path = "../sway-types" }
+sway-core = { version = "0.8.0", path = "../sway-core" }
+sway-fmt = { version = "0.8.0", path = "../sway-fmt" }
+sway-lsp = { version = "0.8.0", path = "../sway-lsp" }
+sway-utils = { version = "0.8.0", path = "../sway-utils" }
+sway-types = { version = "0.8.0", path = "../sway-types" }
 taplo = "0.7"
 tar = "0.4.35"
 term-table = "1.3"

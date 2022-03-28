@@ -64,6 +64,11 @@ pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
     }
 }
 
+pub fn handle_logical_not_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
+    code_line.push_char('!');
+    clean_all_whitespace(iter);
+}
+
 pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     clean_all_whitespace(iter);
 

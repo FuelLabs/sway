@@ -184,8 +184,7 @@ struct AsmBuilder<'ir> {
 
 #[derive(Clone, Debug)]
 pub(super) enum Storage {
-    Data(DataId),              // Const storage in the data section.
-    Register(VirtualRegister), // Storage in a register.
+    Data(DataId), // Const storage in the data section.
     Stack(u64), // Storage in the runtime stack starting at an absolute word offset.  Essentially a global.
 }
 
@@ -333,8 +332,8 @@ impl<'ir> AsmBuilder<'ir> {
             } else {
                 match ptr_content.ty {
                     Type::Unit | Type::Bool | Type::Uint(_) => {
-                        let reg = self.reg_seqr.next();
-                        self.ptr_map.insert(*ptr, Storage::Register(reg));
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+                        stack_base += 1;
                     }
                     Type::B256 => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
@@ -992,12 +991,6 @@ impl<'ir> AsmBuilder<'ir> {
                     // Not sure if we'll ever need this.
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
-                Storage::Register(var_reg) => {
-                    // Not expecting an offset here nor a pointer cast
-                    assert!(offset == 0);
-                    assert!(ptr_ty.eq(self.context, base_ptr.get_type(self.context)));
-                    self.reg_map.insert(*instr_val, var_reg);
-                }
                 Storage::Stack(word_offs) => {
                     let ptr_ty_size_in_bytes = ir_type_size_in_bytes(self.context, ptr_ty);
 
@@ -1246,13 +1239,6 @@ impl<'ir> AsmBuilder<'ir> {
                         owning_span: instr_val.get_span(self.context),
                     });
                 }
-                Storage::Register(var_reg) => {
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg)),
-                        comment: String::new(),
-                        owning_span: instr_val.get_span(self.context),
-                    });
-                }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
                     // XXX Need to check for zero sized types?
@@ -1375,19 +1361,19 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             let ret_reg = self.value_to_register(ret_val);
-            let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
 
-            if size_in_bytes <= 8 {
+            if ret_type.is_copy_type() {
                 self.bytecode.push(Op {
                     owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
                     comment: "".into(),
                 });
             } else {
-                // If the type is larger than one word, then we use RETD to return data.  First put
-                // the size into the data section, then add a LW to get it, then add a RETD which
-                // uses it.
+                // If the type not a reference type then we use RETD to return data.  First put the
+                // size into the data section, then add a LW to get it, then add a RETD which uses
+                // it.
                 let size_reg = self.reg_seqr.next();
+                let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
                 let size_data_id = self
                     .data_section
                     .insert_data_value(&Literal::U64(size_in_bytes));
@@ -1612,13 +1598,6 @@ impl<'ir> AsmBuilder<'ir> {
             None => unreachable!("Bug! Trying to store to an unknown pointer."),
             Some(storage) => match storage {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
-                Storage::Register(reg) => {
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVE(reg.clone(), stored_reg)),
-                        comment: String::new(),
-                        owning_span: instr_val.get_span(self.context),
-                    });
-                }
                 Storage::Stack(word_offs) => {
                     let word_offs = *word_offs;
                     let store_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(

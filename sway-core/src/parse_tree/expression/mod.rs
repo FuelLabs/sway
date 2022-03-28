@@ -4,7 +4,7 @@ use crate::{
     parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
     type_engine::{IntegerBits, TypeInfo},
-    AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
+    AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };
 
 use sway_types::{ident::Ident, join_spans, Span};
@@ -40,7 +40,7 @@ pub enum Expression {
     FunctionApplication {
         name: CallPath,
         arguments: Vec<Expression>,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     LazyOperator {
@@ -96,6 +96,7 @@ pub enum Expression {
         method_name: MethodName,
         contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
+        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     /// A _subfield expression_ is anything of the form:
@@ -133,7 +134,7 @@ pub enum Expression {
         call_path: CallPath,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<(TypeInfo, Span)>,
+        type_arguments: Vec<TypeArgument>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -209,7 +210,7 @@ pub struct DelayedTupleVariantResolution {
     pub elem_num: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum LazyOp {
     And,
     Or,
@@ -256,9 +257,11 @@ impl Expression {
                     is_absolute: true,
                 },
                 type_name: None,
+                type_name_span: None,
             },
             contract_call_params: vec![],
             arguments,
+            type_arguments: vec![],
             span,
         }
     }
@@ -275,9 +278,11 @@ impl Expression {
                     is_absolute: true,
                 },
                 type_name: None,
+                type_name_span: None,
             },
             contract_call_params: vec![],
             arguments,
+            type_arguments: vec![],
             span,
         }
     }
@@ -411,8 +416,6 @@ impl Expression {
             span: expr.as_span(),
             path: path.clone(),
         };
-        #[allow(unused_assignments)]
-        let mut maybe_type_args = Vec::new();
         let parsed_result = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr, config)
                 .map(|(value, span)| ParserLifter::empty(Expression::Literal { value, span }))
@@ -433,17 +436,16 @@ impl Expression {
                     warnings,
                     errors
                 );
-                let (arguments, type_args) = {
+                let (arguments, type_args_with_path) = {
                     let maybe_type_args = func_app_parts.next().unwrap();
                     match maybe_type_args.as_rule() {
-                        Rule::type_args => (func_app_parts.next().unwrap(), Some(maybe_type_args)),
+                        Rule::type_args_with_path => {
+                            (func_app_parts.next().unwrap(), Some(maybe_type_args))
+                        }
                         Rule::fn_args => (maybe_type_args, None),
                         _ => unreachable!(),
                     }
                 };
-                maybe_type_args = type_args
-                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
-                    .unwrap_or_else(Vec::new);
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
                     let arg = check!(
@@ -457,20 +459,23 @@ impl Expression {
                     );
                     arguments_buf.push(arg);
                 }
-                let mut type_args_buf = vec![];
-                for arg in maybe_type_args {
-                    let sp = Span {
-                        span: arg.as_span(),
-                        path: path.clone(),
-                    };
-                    type_args_buf.push((
-                        check!(
-                            TypeInfo::parse_from_pair(arg.into_inner().next().unwrap(), config),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        sp,
+
+                let maybe_type_args = type_args_with_path
+                    .map(|x| {
+                        x.into_inner()
+                            .nth(1)
+                            .expect("guaranteed by grammar")
+                            .into_inner()
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
+                let mut type_arguments = vec![];
+                for type_arg in maybe_type_args.into_iter() {
+                    type_arguments.push(check!(
+                        TypeArgument::parse_from_pair(type_arg, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     ));
                 }
 
@@ -486,7 +491,7 @@ impl Expression {
                     name,
                     arguments: arguments_buf,
                     span,
-                    type_arguments: type_args_buf,
+                    type_arguments,
                 };
                 ParserLifter {
                     var_decls,
@@ -802,7 +807,7 @@ impl Expression {
                             warnings,
                             errors
                         );
-                        let mut argument_buf = VecDeque::new();
+                        let mut arguments_buf = VecDeque::new();
                         for argument in function_arguments {
                             let ParserLifter {
                                 value,
@@ -817,7 +822,7 @@ impl Expression {
                                 errors
                             );
                             var_decls_buf.append(&mut var_decls);
-                            argument_buf.push_back(value);
+                            arguments_buf.push_back(value);
                         }
                         // the first thing is either an exp or a var, everything subsequent must be
                         // a field
@@ -853,11 +858,12 @@ impl Expression {
                             };
                         }
 
-                        argument_buf.push_front(expr);
+                        arguments_buf.push_front(expr);
                         let exp = Expression::MethodApplication {
                             method_name: MethodName::FromModule { method_name },
                             contract_call_params: fields_buf,
-                            arguments: argument_buf.into_iter().collect(),
+                            arguments: arguments_buf.into_iter().collect(),
+                            type_arguments: vec![],
                             span: whole_exp_span,
                         };
                         ParserLifter {
@@ -869,6 +875,7 @@ impl Expression {
                         let mut call_path = None;
                         let mut type_name = None;
                         let mut method_name = None;
+                        let mut type_args_with_path = None;
                         let mut arguments = None;
                         for pair in pair.into_inner() {
                             match pair.as_rule() {
@@ -881,11 +888,14 @@ impl Expression {
                                         errors
                                     ));
                                 }
-                                Rule::type_name => {
+                                Rule::ident => {
                                     type_name = Some(pair);
                                 }
                                 Rule::call_item => {
                                     method_name = Some(pair);
+                                }
+                                Rule::type_args_with_path => {
+                                    type_args_with_path = Some(pair);
                                 }
                                 Rule::fn_args => {
                                     arguments = Some(pair);
@@ -893,58 +903,63 @@ impl Expression {
                                 a => unreachable!("guaranteed by grammar: {:?}", a),
                             }
                         }
-                        let type_name = check!(
-                            TypeInfo::parse_from_pair(
-                                type_name.expect("guaranteed by grammar"),
-                                config
-                            ),
-                            TypeInfo::ErrorRecovery,
-                            warnings,
-                            errors
-                        );
 
-                        let method_name = match call_path {
+                        let (type_name, type_name_span) = match type_name {
+                            Some(type_name) => {
+                                let type_name_span = Span {
+                                    span: type_name.as_span(),
+                                    path: path.clone(),
+                                };
+                                (
+                                    TypeInfo::pair_as_str_to_type_info(type_name, config),
+                                    type_name_span,
+                                )
+                            }
+                            None => {
+                                return err(warnings, errors);
+                            }
+                        };
+
+                        let type_arguments = match type_args_with_path {
+                            Some(type_args_with_path) => check!(
+                                TypeArgument::parse_arguments_from_pair(
+                                    type_args_with_path
+                                        .into_inner()
+                                        .nth(1)
+                                        .expect("guaranteed by grammar"),
+                                    config
+                                ),
+                                vec!(),
+                                warnings,
+                                errors
+                            ),
+                            None => vec![],
+                        };
+
+                        let (call_path, is_absolute) = match call_path {
                             Some(call_path) => {
                                 let mut call_path_buf = call_path.prefixes;
                                 call_path_buf.push(call_path.suffix);
-
-                                // parse the method name into a call path
-                                MethodName::FromType {
-                                    call_path: CallPath {
-                                        prefixes: call_path_buf,
-                                        suffix: check!(
-                                            ident::parse_from_pair(
-                                                method_name.expect("guaranteed by grammar"),
-                                                config
-                                            ),
-                                            return err(warnings, errors),
-                                            warnings,
-                                            errors
-                                        ),
-                                        is_absolute: call_path.is_absolute, //is_absolute: false,
-                                    },
-                                    type_name: Some(type_name),
-                                }
+                                (call_path_buf, call_path.is_absolute)
                             }
-                            None => {
-                                // parse the method name into a call path
-                                MethodName::FromType {
-                                    call_path: CallPath {
-                                        prefixes: vec![],
-                                        suffix: check!(
-                                            ident::parse_from_pair(
-                                                method_name.expect("guaranteed by grammar"),
-                                                config
-                                            ),
-                                            return err(warnings, errors),
-                                            warnings,
-                                            errors
-                                        ),
-                                        is_absolute: false, //is_absolute: false,
-                                    },
-                                    type_name: Some(type_name),
-                                }
-                            }
+                            None => (vec![], false),
+                        };
+                        let method_name = MethodName::FromType {
+                            call_path: CallPath {
+                                prefixes: call_path,
+                                suffix: check!(
+                                    ident::parse_from_pair(
+                                        method_name.expect("guaranteed by grammar"),
+                                        config
+                                    ),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                ),
+                                is_absolute,
+                            },
+                            type_name: Some(type_name),
+                            type_name_span: Some(type_name_span),
                         };
 
                         let mut argument_results_buf = vec![];
@@ -976,6 +991,7 @@ impl Expression {
                             method_name,
                             contract_call_params: vec![],
                             arguments: arguments_buf,
+                            type_arguments,
                             span: whole_exp_span,
                         };
                         ParserLifter {
@@ -991,16 +1007,15 @@ impl Expression {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
-                let file_path = path;
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
                 let (maybe_type_args, maybe_instantiator) = {
                     let part = parts.next();
                     match part.as_ref().map(|x| x.as_rule()) {
                         Some(Rule::fn_args) => (None, part),
-                        Some(Rule::type_args) => {
+                        Some(Rule::type_args_with_path) => {
                             let next_part = parts.next();
                             (part, next_part)
                         }
@@ -1040,21 +1055,13 @@ impl Expression {
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_else(Vec::new);
-                // if there is an expression in parenthesis, that is the instantiator.
-                let mut type_args_buf = vec![];
+                let mut type_arguments = vec![];
                 for arg in maybe_type_args {
-                    let sp = Span {
-                        span: arg.as_span(),
-                        path: file_path.clone(),
-                    };
-                    type_args_buf.push((
-                        check!(
-                            TypeInfo::parse_from_pair(arg, config),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        sp,
+                    type_arguments.push(check!(
+                        TypeArgument::parse_from_pair(arg, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     ));
                 }
 
@@ -1065,7 +1072,7 @@ impl Expression {
                 let args = arg_results.into_iter().map(|x| x.value).collect::<Vec<_>>();
                 let exp = Expression::DelineatedPath {
                     call_path: path,
-                    type_arguments: type_args_buf,
+                    type_arguments,
                     args,
                     span,
                 };

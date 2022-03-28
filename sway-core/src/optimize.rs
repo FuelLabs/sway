@@ -1290,14 +1290,18 @@ impl FnCompiler {
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
             .map_err(|ir_error| ir_error.to_string())?;
 
+        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+        // otherwise use a store.
         let ptr_ty = *ptr.get_type(context);
-        let ptr_val = self
-            .current_block
-            .ins(context)
-            .get_ptr(ptr, ptr_ty, 0, span_md_idx);
-        self.current_block
-            .ins(context)
-            .store(ptr_val, init_val, span_md_idx);
+        if ir_type_size_in_bytes(context, &ptr_ty) > 0 {
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+            self.current_block
+                .ins(context)
+                .store(ptr_val, init_val, span_md_idx);
+        }
         Ok(init_val)
     }
 
@@ -1438,12 +1442,14 @@ impl FnCompiler {
         contents: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, String> {
-        if contents.is_empty() {
-            return Err("Unable to create zero sized static arrays.".into());
-        }
-
-        // Create a new aggregate, since they're not named.
-        let elem_type = convert_resolved_typeid_no_span(context, &contents[0].return_type)?;
+        let elem_type = if contents.is_empty() {
+            // A zero length array is a pointer to nothing, which is still supported by Sway.
+            // We're unable to get the type though it's irrelevant because it can't be indexed, so
+            // we'll just use Unit.
+            Type::Unit
+        } else {
+            convert_resolved_typeid_no_span(context, &contents[0].return_type)?
+        };
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
@@ -2254,7 +2260,8 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::Unit
             } else {
-                create_tuple_aggregate(context, fields.clone()).map(Type::Struct)?
+                let new_fields = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(context, new_fields).map(Type::Struct)?
             }
         }
         TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),

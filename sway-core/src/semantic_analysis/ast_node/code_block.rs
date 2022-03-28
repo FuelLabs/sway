@@ -2,9 +2,13 @@ use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
-#[derive(Clone, Debug)]
+use derivative::Derivative;
+
+#[derive(Clone, Debug, Eq, Derivative)]
+#[derivative(PartialEq)]
 pub(crate) struct TypedCodeBlock {
     pub(crate) contents: Vec<TypedAstNode>,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) whole_block_span: Span,
 }
 
@@ -82,20 +86,15 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            match unify_with_self(
+            let (mut new_warnings, new_errors) = unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
                 help_text,
-            ) {
-                Ok(mut ws) => {
-                    warnings.append(&mut ws);
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            };
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
             // The annotation will result in a cast, so set the return type accordingly.
         }
 

@@ -37,7 +37,7 @@ macro_rules! check_std_result {
 }
 
 macro_rules! assert_or_warn {
-    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {
+    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {
             use crate::error::CompileWarning;
             $warnings.push(CompileWarning {
@@ -45,7 +45,7 @@ macro_rules! assert_or_warn {
                 span: $span,
             });
         }
-    };
+    }};
 }
 
 /// Denotes a non-recoverable state
@@ -54,15 +54,6 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
         value: None,
         warnings,
         errors,
-    }
-}
-
-pub(crate) fn infallible<T>(res: CompileResult<T>) -> T {
-    match res.value {
-        Some(x) if res.errors.is_empty() && res.warnings.is_empty() => x,
-        _ => {
-            panic!("Internal compiler error: called `infallible` on a fallible compile result. Please report this bug: github.com/FuelLabs/Sway/issues")
-        }
     }
 }
 
@@ -227,6 +218,9 @@ pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
     },
+    NonClassCaseTypeParameter {
+        name: Ident,
+    },
     NonClassCaseTraitName {
         name: Ident,
     },
@@ -289,6 +283,14 @@ impl fmt::Display for Warning {
                  \"{}\".",
                 struct_name,
                 to_upper_camel_case(struct_name.as_str())
+            )
+            }
+            NonClassCaseTypeParameter { name } => {
+                write!(f,
+                "Type parameter \"{}\" is not idiomatic. TypeParameters should have a ClassCase name, like \
+                 \"{}\".",
+                name,
+                to_upper_camel_case(name.as_str())
             )
             }
             NonClassCaseTraitName { name } => {
@@ -540,7 +542,7 @@ pub enum CompileError {
         given: String,
         expected: String,
     },
-    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
+    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\".")]
     NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
     UnknownTrait { span: Span, name: Ident },
@@ -561,6 +563,10 @@ pub enum CompileError {
         expected: usize,
         span: Span,
     },
+    #[error("\"{name}\" does not take type arguments.")]
+    DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("\"{name}\" needs type arguments.")]
+    NeedsTypeArguments { name: Ident, span: Span },
     #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
@@ -607,6 +613,8 @@ pub enum CompileError {
         method_name: String,
         type_name: String,
     },
+    #[error("Duplicate definitions with name \"{method_name}\".")]
+    DuplicateMethodDefinitions { method_name: String, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -1027,6 +1035,8 @@ impl CompileError {
             FunctionNotAPartOfInterfaceSurface { span, .. } => span,
             MissingInterfaceSurfaceMethods { span, .. } => span,
             IncorrectNumberOfTypeArguments { span, .. } => span,
+            DoesNotTakeTypeArguments { span, .. } => span,
+            NeedsTypeArguments { span, .. } => span,
             StructNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,
@@ -1034,6 +1044,7 @@ impl CompileError {
             StructMissingField { span, .. } => span,
             StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
+            DuplicateMethodDefinitions { span, .. } => span,
             ModuleNotFound { span, .. } => span,
             NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,

@@ -2,7 +2,7 @@
 
 ## Standard Library
 
-The standard library is currently not distributed with `forc` if [installed via `cargo`](./installation.md#installing-from-cargo). It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's `Forc.toml` file:
+The standard library is currently not distributed with `forc` if [installed via `cargo`](../introduction/installation.md#installing-from-cargo). It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's `Forc.toml` file:
 
 ```toml
 [dependencies]

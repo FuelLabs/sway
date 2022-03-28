@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::look_up_type_id;
 use crate::{
     error::*, parse_tree::*, type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock,
     Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
@@ -236,7 +237,7 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_typeinfo(&field.r#type)
                 })
-                .gather_from_traits(type_parameters),
+                .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
                 variants,
                 type_parameters,
@@ -245,29 +246,26 @@ impl Dependencies {
                 .gather_from_iter(variants.iter(), |deps, variant| {
                     deps.gather_from_typeinfo(&variant.r#type)
                 })
-                .gather_from_traits(type_parameters),
+                .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
             Declaration::TraitDeclaration(TraitDeclaration {
                 interface_surface,
                 methods,
-                type_parameters,
                 supertraits,
                 ..
             }) => self
                 .gather_from_iter(supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
-                        .gather_from_traits(&sup.type_parameters)
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&param.r#type)
+                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
-                })
-                .gather_from_traits(type_parameters),
+                }),
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,
@@ -277,18 +275,16 @@ impl Dependencies {
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_traits(type_arguments)
+                .gather_from_type_parameters(type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::ImplSelf(ImplSelf {
                 type_implementing_for,
-                type_arguments,
                 functions,
                 ..
             }) => self
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_traits(type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -299,7 +295,7 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&param.r#type)
+                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -322,11 +318,11 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&param.r#type)
+            deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
         })
         .gather_from_typeinfo(return_type)
         .gather_from_block(body)
-        .gather_from_traits(type_parameters)
+        .gather_from_type_parameters(type_parameters)
     }
 
     fn gather_from_expr(mut self, expr: &Expression) -> Self {
@@ -373,10 +369,14 @@ impl Dependencies {
                 })
             }
             Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelineatedPath { call_path, .. } => {
+            Expression::DelineatedPath {
+                call_path, args, ..
+            } => {
                 // It's either a module path which we can ignore, or an enum variant path, in which
-                // case we're interested in the enum name, ignoring the variant name.
+                // case we're interested in the enum name and initialiser args, ignoring the
+                // variant name.
                 self.gather_from_call_path(call_path, true, false)
+                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
             Expression::MethodApplication { arguments, .. } => {
                 self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
@@ -457,7 +457,7 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_traits(mut self, type_parameters: &[TypeParameter]) -> Self {
+    fn gather_from_type_parameters(mut self, type_parameters: &[TypeParameter]) -> Self {
         for type_param in type_parameters {
             for constraint in &type_param.trait_constraints {
                 self.deps.insert(DependentSymbol::Symbol(
@@ -468,11 +468,23 @@ impl Dependencies {
         self
     }
 
+    fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
+        self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
+            deps.gather_from_typeinfo(&look_up_type_id(type_argument.type_id))
+        })
+    }
+
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
-        if let TypeInfo::Custom { name } = type_info {
-            self.deps.insert(DependentSymbol::Symbol(name.to_string()));
+        match type_info {
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                self.deps.insert(DependentSymbol::Symbol(name.to_string()));
+                self.gather_from_type_arguments(type_arguments)
+            }
+            _ => self,
         }
-        self
     }
 
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
@@ -546,7 +558,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
-            let trait_name = Ident::new_with_override("self", decl.type_name_span.clone());
+            let trait_name =
+                Ident::new_with_override("self", decl.type_implementing_for_span.clone());
             impl_sym(trait_name, &decl.type_implementing_for)
         }
         Declaration::ImplTrait(decl) => {
@@ -577,7 +590,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name } => name.as_str(),
+        TypeInfo::Custom { name, .. } => name.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
