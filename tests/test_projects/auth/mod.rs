@@ -24,14 +24,6 @@ async fn is_external_from_sdk() {
 }
 
 #[tokio::test]
-async fn is_external_from_script() {
-    let (auth_instance, _, _, _, _) = get_contracts().await;
-    let result = auth_instance.is_caller_external().call().await.unwrap();
-
-    assert_eq!(result.value, true);
-}
-
-#[tokio::test]
 async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let addr = authcontract_mod::Address {
