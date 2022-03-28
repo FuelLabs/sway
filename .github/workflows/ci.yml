@@ -21,6 +21,42 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
+  build-sway-lib-core:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-core
+        run: forc build --path sway-lib-core
+
+  build-sway-lib-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-std
+        run: forc build --path sway-lib-std
+
   build-sway-examples:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
