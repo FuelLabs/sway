@@ -4,7 +4,7 @@ Libraries in Sway are files used to define new common behavior. An example of th
 
 ## Writing Libraries
 
-Functions in libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
+Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported, e.g. `library foo;`.
 
 ```sway
 library my_library;
@@ -36,7 +36,7 @@ pub struct MyStruct {
 }
 ```
 
-Libraries are composed of just a `Forc.toml` file and a `src` folder, unlike usual Sway projects which usually contain a `tests` folder and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
+Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike contracts which usually contain a `tests` directory and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
 
 ```toml
 [project]
@@ -48,7 +48,7 @@ name = "lib-std"
 [dependencies]
 ```
 
-which denotes the author, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
+which denotes the authors, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
 
 ```sway
 library std;
@@ -61,8 +61,8 @@ dep constants;
 with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
 
 ```sway
-library block;
 //! Functionality for accessing block-related data.
+library block;
 
 /// Get the current block height
 pub fn height() -> u64 {
@@ -86,3 +86,9 @@ use std::storage::*;
 ```
 
 Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.
+
+You will also need to link the library in the `Forc.toml` of the `forc` repo that you're calling from. You can do this by opening up the `Forc.toml` file and adding the following line to the bottom:
+
+```toml
+wallet_lib = { path = "../wallet_lib" }
+```

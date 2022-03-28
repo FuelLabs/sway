@@ -35,7 +35,7 @@ fn main() {
 }
 ```
 
-The project is _script_, one of four different project types. For additional information on different project types, see [here](../sway-on-chain/index.md).
+The project is a _script_, one of four different project types. For additional information on different project types, see [here](../sway-program-types/index.md).
 
 We now compile our project with `forc build`, passing the flag `--print-finalized-asm` to view the generated assembly:
 
@@ -62,12 +62,3 @@ $ forc run
 Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 ```
-
-Use `forc json-abi` to output the ABI of the contract. To write this to a `.json` file (which is necessary for running tests below), pipe it using something like:
-
-```sh
-forc json-abi > my-contract-abi.json
-```
-
-There is currently not a convention for where ABI files should be placed; one
-common choice is loose in the root directory.

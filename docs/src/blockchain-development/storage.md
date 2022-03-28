@@ -6,6 +6,7 @@ Put in conventional programming terms, contract storage is like saving data to a
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
+<!--
 ## Syntax
 
 ### Declaration
@@ -69,4 +70,5 @@ impure fn write_owner() -> MutStorageRef<b256> {
 }
 ```
 
-Note that to write to a mutable reference, you must dereference it first. See [the chapter on reference types](../basics/reference_types.md) for more information on reference types in general..
+Note that to write to a mutable reference, you must dereference it first. See [the chapter on reference types](../basics/reference_types.md) for more information on reference types in general.
+-->

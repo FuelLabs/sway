@@ -406,6 +406,15 @@ impl Op {
                     );
                     VirtualOp::MOVE(r1, r2)
                 }
+                "movi" => {
+                    let (r1, imm) = check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MOVI(r1, imm)
+                }
                 "mul" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -649,15 +658,6 @@ impl Op {
                     );
                     VirtualOp::MCP(r1, r2, r3)
                 }
-                "meq" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MEQ(r1, r2, r3, r4)
-                }
                 "mcpi" => {
                     let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
@@ -666,6 +666,15 @@ impl Op {
                         errors
                     );
                     VirtualOp::MCPI(r1, r2, imm)
+                }
+                "meq" => {
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MEQ(r1, r2, r3, r4)
                 }
                 "sb" => {
                     let (r1, r2, imm) = check!(
@@ -784,6 +793,15 @@ impl Op {
                     );
                     VirtualOp::LOG(r1, r2, r3, r4)
                 }
+                "logd" => {
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LOGD(r1, r2, r3, r4)
+                }
                 "mint" => {
                     let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
@@ -892,6 +910,33 @@ impl Op {
                     );
                     VirtualOp::S256(r1, r2, r3)
                 }
+                "xil" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XIL(r1, r2)
+                }
+                "xis" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XIS(r1, r2)
+                }
+                "xol" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XOL(r1, r2)
+                }
                 "xos" => {
                     let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
@@ -900,6 +945,24 @@ impl Op {
                         errors
                     );
                     VirtualOp::XOS(r1, r2)
+                }
+                "xwl" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XWL(r1, r2)
+                }
+                "xws" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XWS(r1, r2)
                 }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
@@ -1292,6 +1355,7 @@ impl fmt::Display for Op {
                 MOD(a, b, c) => format!("mod {} {} {}", a, b, c),
                 MODI(a, b, c) => format!("modi {} {} {}", a, b, c),
                 MOVE(a, b) => format!("move {} {}", a, b),
+                MOVI(a, b) => format!("movi {} {}", a, b),
                 MUL(a, b, c) => format!("mul {} {} {}", a, b, c),
                 MULI(a, b, c) => format!("muli {} {} {}", a, b, c),
                 NOT(a, b) => format!("not {} {}", a, b),
@@ -1335,6 +1399,7 @@ impl fmt::Display for Op {
                 CB(a) => format!("cb {}", a),
                 LDC(a, b, c) => format!("ldc {} {} {}", a, b, c),
                 LOG(a, b, c, d) => format!("log {} {} {} {}", a, b, c, d),
+                LOGD(a, b, c, d) => format!("logd {} {} {} {}", a, b, c, d),
                 MINT(a) => format!("mint {}", a),
                 RVRT(a) => format!("rvrt {}", a),
                 SLDC(a, b, c) => format!("sldc {} {} {}", a, b, c),
@@ -1347,7 +1412,12 @@ impl fmt::Display for Op {
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
                 K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
+                XIL(a, b) => format!("xil {} {}", a, b),
+                XIS(a, b) => format!("xis {} {}", a, b),
+                XOL(a, b) => format!("xol {} {}", a, b),
                 XOS(a, b) => format!("xos {} {}", a, b),
+                XWL(a, b) => format!("xwl {} {}", a, b),
+                XWS(a, b) => format!("xws {} {}", a, b),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
