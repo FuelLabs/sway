@@ -3,7 +3,7 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration, WhileLoop};
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
 
@@ -91,12 +91,7 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
         AstNodeContent::ImplicitReturnExpression(exp) => handle_expression(exp, tokens),
-        AstNodeContent::WhileLoop(while_loop) => {
-            handle_expression(while_loop.condition, tokens);
-            for node in while_loop.body.contents {
-                traverse_node(node, tokens);
-            }
-        }
+        AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
         // TODO
         // handle other content types
         _ => {}
@@ -172,6 +167,13 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         // TODO
         // handle other expressions
         _ => {}
+    }
+}
+
+fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {
+    handle_expression(while_loop.condition, tokens);
+    for node in while_loop.body.contents {
+        traverse_node(node, tokens);
     }
 }
 
