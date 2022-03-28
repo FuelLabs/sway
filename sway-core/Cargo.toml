@@ -36,6 +36,7 @@ sway-ir = { version = "0.9.2", path = "../sway-ir" }
 sway-types = { version = "0.9.2", path = "../sway-types" }
 sway-utils = { version = "0.9.2", path = "../sway-utils" }
 thiserror = "1.0"
+new-parser-again = { version = "0.0.1", path = "../new-parser-again" }
 
 [[bin]]
 name = "selector-debug"

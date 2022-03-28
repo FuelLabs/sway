@@ -16,6 +16,7 @@ pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
+mod convert_parse_tree;
 
 pub use crate::parser::{Rule, SwayParser};
 use crate::{
@@ -128,28 +129,60 @@ impl ParseTree {
 /// # Panics
 /// Panics if the generated parser from Pest panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
-    let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
-        Ok(o) => o,
-        Err(e) => {
-            let path = config.map(|config| config.path());
-            return err(
-                Vec::new(),
-                vec![CompileError::ParseFailure {
-                    span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
-                    err: e,
-                }],
-            )
-        }
-    };
-    let parsed_root = check!(
-        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(parsed_root, warnings, errors)
+    let use_new_parser = true;
+    if use_new_parser {
+        let path = config.map(|config| config.path());
+        let span = sway_types::Span::new(input.clone(), 0, input.len(), path.clone()).unwrap();
+        let program = match new_parser_again::parse_file(input, path) {
+            Ok(program) => program,
+            Err(error) => {
+                let errors = match error {
+                    new_parser_again::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
+                    new_parser_again::ParseFileError::Parse(errors) => {
+                        errors.into_iter().map(|error| CompileError::Parse { error }).collect()
+                    },
+                };
+                return err(vec![], errors);
+            },
+        };
+        //let sway_parse_tree = crate::convert_parse_tree::program_to_sway_parse_tree(program);
+        let sway_parse_tree_res = std::panic::catch_unwind(|| {
+            crate::convert_parse_tree::program_to_sway_parse_tree(program)
+        });
+        let sway_parse_tree = match sway_parse_tree_res {
+            Ok(sway_parse_tree) => sway_parse_tree,
+            Err(_err) => {
+                let errors = vec![
+                    CompileError::ParseError { span, err: String::from("oh no it failed!")},
+                ];
+                return err(vec![], errors);
+            },
+        };
+        ok(sway_parse_tree, vec![], vec![])
+    } else {
+        let mut warnings: Vec<CompileWarning> = Vec::new();
+        let mut errors: Vec<CompileError> = Vec::new();
+        let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                let path = config.map(|config| config.path());
+                return err(
+                    Vec::new(),
+                    vec![CompileError::ParseFailure {
+                        span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
+                        err: e,
+                    }],
+                )
+            }
+        };
+        let parsed_root = check!(
+            parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(parsed_root, warnings, errors)
+    }
 }
 
 /// Represents the result of compiling Sway code via [compile_to_asm].
@@ -230,6 +263,7 @@ pub(crate) struct InnerDependencyCompileResult {
     name: Ident,
     namespace: Namespace,
 }
+
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
 /// These graphs are merged into the parent program's graphs for accurate analysis.
