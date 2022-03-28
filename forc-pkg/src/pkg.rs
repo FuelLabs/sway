@@ -428,7 +428,9 @@ impl FromStr for SourceGitPinned {
             .next()
             .ok_or(SourceGitPinnedParseError::CommitHash)?
             .to_string();
-        // TODO: Validate the commit hash length here.
+        validate_git_commit_hash(&commit_hash)
+            .map_err(|_| SourceGitPinnedParseError::CommitHash)?;
+
         const BRANCH: &str = "branch=";
         const TAG: &str = "tag=";
         let reference = if reference.find(BRANCH) == Some(0) {
@@ -449,6 +451,21 @@ impl FromStr for SourceGitPinned {
             commit_hash,
         })
     }
+}
+
+fn validate_git_commit_hash(commit_hash: &str) -> Result<()> {
+    const LEN: usize = 40;
+    if commit_hash.len() != LEN {
+        bail!(
+            "invalid hash length: expected {}, found {}",
+            LEN,
+            commit_hash.len()
+        );
+    }
+    if !commit_hash.chars().all(|c| c.is_ascii_alphanumeric()) {
+        bail!("hash contains one or more non-ascii-alphanumeric characters");
+    }
+    Ok(())
 }
 
 impl Default for GitReference {
