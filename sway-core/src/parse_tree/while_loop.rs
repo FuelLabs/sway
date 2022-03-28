@@ -13,8 +13,8 @@ use pest::iterators::Pair;
 /// A parsed while loop. Contains the `condition`, which is defined from an [Expression], and the `body` from a [CodeBlock].
 #[derive(Debug, Clone)]
 pub struct WhileLoop {
-    pub(crate) condition: Expression,
-    pub(crate) body: CodeBlock,
+    pub condition: Expression,
+    pub body: CodeBlock,
 }
 
 impl WhileLoop {
