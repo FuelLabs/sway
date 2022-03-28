@@ -1,6 +1,6 @@
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f'
+source = 'git+https://github.com/FuelLabs/sway-lib-core?branch=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f'
 dependencies = []
 
 [[package]]
@@ -11,10 +11,10 @@ dependencies = []
 name = 'increment_contract'
 dependencies = [
     'increment_abi',
-    'std git+https://github.com/FuelLabs/sway-lib-std?reference=master#a1d77e1140d1b57ee18cc914d320dc7ffdff98fd',
+    'std git+https://github.com/FuelLabs/sway-lib-std?branch=master#3884e9bbadb7c2567700dae847017366629241d3',
 ]
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#a1d77e1140d1b57ee18cc914d320dc7ffdff98fd'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f']
+source = 'git+https://github.com/FuelLabs/sway-lib-std?branch=master#3884e9bbadb7c2567700dae847017366629241d3'
+dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?branch=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f']
