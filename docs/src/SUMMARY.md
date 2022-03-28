@@ -25,7 +25,6 @@
   - [Built-in Types](./basics/built_in_types.md)
   - [Blockchain Types](./basics/blockchain_types.md)
   - [Functions](./basics/functions.md)
-  <!-- - [Reference Types](./basics/reference_types.md) -->
   - [Structs and Tuples](./basics/structs_and_tuples.md)
   - [Methods and Associated Functions](./basics/methods_and_associated_functions.md)
   - [Comments and Logging](./basics/comments_and_logging.md)
@@ -35,8 +34,6 @@
   - [Function Purity](./blockchain-development/purity.md)
   - [Identifiers](./blockchain-development/identifiers.md)
   - [Native Assets](./blockchain-development/native_assets.md)
-- [Control Flow](./control-flow/index.md)
-  - [Loops](./control-flow/loops.md)
 - [Forc](./forc/index.md)
   - [Commands](./forc/commands.md)
     - [forc init](./forc/forc_init.md)
