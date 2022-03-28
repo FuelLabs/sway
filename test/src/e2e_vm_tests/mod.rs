@@ -281,6 +281,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/enum_init_fn_call",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/nested_while_and_if",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
