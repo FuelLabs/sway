@@ -3245,6 +3245,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "nanoid",
+ "new-parser-again",
  "petgraph",
  "prettydiff",
  "regex",

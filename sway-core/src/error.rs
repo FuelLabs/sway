@@ -928,6 +928,14 @@ pub enum CompileError {
     UnexpectedDeclaration { decl_type: &'static str, span: Span },
     #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
     ContractAddressMustBeKnown { span: Span },
+    #[error("lex error: {}", error)]
+    Lex {
+        error: new_parser_again::LexError,
+    },
+    #[error("parse error: {}", error)]
+    Parse {
+        error: new_parser_again::ParseError,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1150,6 +1158,8 @@ impl CompileError {
             InvalidVariableName { span, .. } => span,
             UnexpectedDeclaration { span, .. } => span,
             ContractAddressMustBeKnown { span, .. } => span,
+            Lex { error } => error.span_ref(),
+            Parse { error } => &error.span,
         }
     }
 
