@@ -91,6 +91,9 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
         AstNodeContent::ImplicitReturnExpression(exp) => handle_expression(exp, tokens),
+        AstNodeContent::ReturnStatement(return_statement) => {
+            handle_expression(return_statement.expr, tokens)
+        }
         AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
         // TODO
         // handle other content types
