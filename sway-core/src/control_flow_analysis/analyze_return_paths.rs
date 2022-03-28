@@ -98,10 +98,7 @@ impl ControlFlowGraph {
                             errors.push(CompileError::Internal(
                                 "Attempted to construct return path error \
                                     but no source span was found.",
-                                Span {
-                                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                                    path: None,
-                                },
+                                Span::dummy(),
                             ));
                             return errors;
                         }

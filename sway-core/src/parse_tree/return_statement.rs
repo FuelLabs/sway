@@ -20,10 +20,7 @@ impl ReturnStatement {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
-        let span = span::Span {
-            span: pair.as_span(),
-            path: config.map(|c| c.path()),
-        };
+        let span = span::Span::from_pest(pair.as_span(), config.map(|c| c.path()));
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut inner = pair.into_inner();

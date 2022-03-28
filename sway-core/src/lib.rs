@@ -133,13 +133,11 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
     let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
         Ok(o) => o,
         Err(e) => {
+            let path = config.map(|config| config.path());
             return err(
                 Vec::new(),
                 vec![CompileError::ParseFailure {
-                    span: span::Span {
-                        span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
-                        path: config.map(|config| config.path()),
-                    },
+                    span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
                     err: e,
                 }],
             )
@@ -257,10 +255,7 @@ pub(crate) fn compile_inner_dependency(
         TreeType::Library { name } => name,
         TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
-                span: span::Span {
-                    span: pest::Span::new(input, 0, 0).unwrap(),
-                    path: Some(build_config.path()),
-                },
+                span: span::Span::new(input, 0, 0, Some(build_config.path())).unwrap(),
             });
             return err(warnings, errors);
         }
@@ -488,10 +483,7 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span {
-                        span: pest::Span::new("".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    span::Span::new("".into(), 0, 0, None).unwrap(),
                 )],
             );
         }
@@ -506,10 +498,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span {
-                        span: pest::Span::new("".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    span::Span::new("".into(), 0, 0, None).unwrap(),
                 )],
             );
         }
@@ -594,20 +583,14 @@ fn parse_root_from_pairs(
     let mut errors = Vec::new();
     let mut fuel_ast_opt = None;
     for block in input {
-        let mut parse_tree = ParseTree::new(span::Span {
-            span: block.as_span(),
-            path: path.clone(),
-        });
+        let mut parse_tree = ParseTree::new(span::Span::from_pest(block.as_span(), path.clone()));
         let rule = block.as_rule();
         let input = block.clone().into_inner();
         let mut library_name = None;
         for pair in input {
             match pair.as_rule() {
                 Rule::non_var_decl => {
-                    let span = span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    };
+                    let span = span::Span::from_pest(pair.as_span(), path.clone());
                     let decls = check!(
                         Declaration::parse_non_var_from_pair(pair.clone(), config),
                         continue,
@@ -631,10 +614,10 @@ fn parse_root_from_pairs(
                     for entry in stmt {
                         parse_tree.push(AstNode {
                             content: AstNodeContent::UseStatement(entry.clone()),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
+                            span: span::Span::from_pest(
+                                pair.as_span(),
+                                path.clone(),
+                            ),
                         });
                     }
                 }
@@ -657,10 +640,7 @@ fn parse_root_from_pairs(
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::IncludeStatement(include_statement),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        span: span::Span::from_pest(pair.as_span(), path.clone()),
                     });
                 }
                 _ => unreachable!("{:?}", pair.as_str()),
@@ -699,10 +679,7 @@ fn parse_root_from_pairs(
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(
                 a,
-                span::Span {
-                    span: block.as_span(),
-                    path: path.clone(),
-                },
+                span::Span::from_pest(block.as_span(), path.clone()),
             )),
         }
     }

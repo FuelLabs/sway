@@ -11,7 +11,7 @@ use crate::{
 };
 
 use sway_types::{
-    span::{join_spans, Span},
+    span::Span,
     state::StateIndex,
 };
 
@@ -1359,7 +1359,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1569,7 +1569,7 @@ impl TypeCheckedStorageReassignment {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                join_spans(acc, field.span.clone())
+                Span::join(acc, field.span.clone())
             })
     }
     pub fn names(&self) -> Vec<Ident> {

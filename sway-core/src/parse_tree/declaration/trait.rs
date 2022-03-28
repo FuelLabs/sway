@@ -156,10 +156,7 @@ impl TraitFn {
         let mut signature = pair.into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
-        let name_span = Span {
-            span: name.as_span(),
-            path: path.clone(),
-        };
+        let name_span = Span::from_pest(name.as_span(), path.clone());
         let name = check!(
             ident::parse_from_pair(name, config),
             return err(warnings, errors),
@@ -188,10 +185,7 @@ impl TraitFn {
                 _ => {
                     errors.push(CompileError::Internal(
                         "Unexpected token while parsing function signature.",
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        Span::from_pest(pair.as_span(), path.clone()),
                     ));
                 }
             }
@@ -212,15 +206,13 @@ impl TraitFn {
             warnings,
             errors
         );
-        let return_type_span = Span {
-            span: if let Some(ref pair) = return_type_pair {
-                pair.as_span()
-            } else {
-                /* if this has no return type, just use the fn params as the span. */
-                parameters_span
-            },
-            path: path.clone(),
+        let pest_span = if let Some(ref pair) = return_type_pair {
+            pair.as_span()
+        } else {
+            /* if this has no return type, just use the fn params as the span. */
+            parameters_span
         };
+        let return_type_span = Span::from_pest(pest_span, path.clone());
         let return_type = match return_type_pair {
             Some(ref pair) => check!(
                 TypeInfo::parse_from_pair(pair.clone(), config),
@@ -233,10 +225,7 @@ impl TraitFn {
         if let Some(type_params) = type_params_pair {
             errors.push(CompileError::Unimplemented(
                 "Generic traits have not yet been implemented.",
-                Span {
-                    span: type_params.as_span(),
-                    path,
-                },
+                Span::from_pest(type_params.as_span(), path),
             ));
         }
 

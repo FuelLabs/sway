@@ -35,10 +35,7 @@ impl StructDeclaration {
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = Span {
-            span: decl.as_span(),
-            path: config.map(|x| x.path()),
-        };
+        let span = Span::from_pest(decl.as_span(), config.map(|x| x.path()));
         let decl = decl.into_inner();
         let mut visibility = Visibility::Private;
         let mut name = None;
@@ -135,10 +132,7 @@ impl StructField {
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
-            let span = Span {
-                span: fields[i].as_span(),
-                path: path.clone(),
-            };
+            let span = Span::from_pest(fields[i].as_span(), path.clone());
             let name = check!(
                 ident::parse_from_pair(fields[i].clone(), config),
                 return err(warnings, errors),
@@ -154,10 +148,7 @@ impl StructField {
                 }
             );
             let type_pair = fields[i + 1].clone();
-            let type_span = Span {
-                span: type_pair.as_span(),
-                path: path.clone(),
-            };
+            let type_span = Span::from_pest(type_pair.as_span(), path.clone());
             let r#type = check!(
                 TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                 TypeInfo::Tuple(Vec::new()),

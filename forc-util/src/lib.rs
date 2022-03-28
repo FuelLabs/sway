@@ -261,7 +261,7 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) {
 
 fn format_err(err: &sway_core::CompileError) {
     let input = err.internal_span().input();
-    let path = err.path();
+    let path = err.path_str();
 
     let (mut start_pos, mut end_pos) = err.span();
     if start_pos == end_pos {
@@ -281,7 +281,7 @@ fn format_err(err: &sway_core::CompileError) {
         slices: vec![Slice {
             source: input,
             line_start: start.line,
-            origin: Some(&path),
+            origin: path.as_deref(),
             fold: false,
             annotations: vec![SourceAnnotation {
                 label: &friendly_str,
@@ -299,7 +299,7 @@ fn format_err(err: &sway_core::CompileError) {
 
 fn format_warning(err: &sway_core::CompileWarning) {
     let input = err.span.input();
-    let path = err.path();
+    let path = err.path_str();
 
     let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
     let (mut start_pos, mut end_pos) = err.span();
@@ -320,7 +320,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         slices: vec![Slice {
             source: input,
             line_start: start.line,
-            origin: Some(&path),
+            origin: path.as_deref(),
             fold: false,
             annotations: vec![SourceAnnotation {
                 label: &friendly_str,

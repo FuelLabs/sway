@@ -38,7 +38,7 @@ impl SourceMap {
     }
 
     pub fn insert(&mut self, pc: usize, span: &Span) {
-        if let Some(path) = span.path.as_ref() {
+        if let Some(path) = span.path() {
             let path_index = self
                 .paths
                 .iter()

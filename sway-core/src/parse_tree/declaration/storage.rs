@@ -66,10 +66,7 @@ impl StorageDeclaration {
         let path = config.map(|c| c.path());
         let mut errors = vec![];
         let mut warnings = vec![];
-        let span = Span {
-            span: pair.as_span(),
-            path,
-        };
+        let span = Span::from_pest(pair.as_span(), path);
         let mut iter = pair.into_inner();
         let storage_keyword = iter.next();
         debug_assert_eq!(

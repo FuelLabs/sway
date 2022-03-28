@@ -59,10 +59,7 @@ fn to_bytecode_mut(
         println!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
-            Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
+            Span::new(" ".into(), 0, 0, None).unwrap(),
         ));
         return err(vec![], errors);
     }

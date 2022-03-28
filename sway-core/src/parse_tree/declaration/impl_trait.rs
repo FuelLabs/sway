@@ -39,10 +39,7 @@ impl ImplTrait {
         let mut errors = Vec::new();
 
         let path = config.map(|c| c.path());
-        let block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let block_span = Span::from_pest(pair.as_span(), path.clone());
 
         let mut iter = pair.into_inner().peekable();
 
@@ -66,10 +63,7 @@ impl ImplTrait {
 
         // construct the type that we are implementing for
         let type_name = iter.next().unwrap();
-        let type_implementing_for_span = Span {
-            span: type_name.as_span(),
-            path,
-        };
+        let type_implementing_for_span = Span::from_pest(type_name.as_span(), path);
         let type_implementing_for = check!(
             TypeInfo::parse_from_pair(type_name, config),
             return err(warnings, errors),
@@ -130,10 +124,7 @@ impl ImplSelf {
         let mut errors = Vec::new();
 
         let path = config.map(|c| c.path());
-        let block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let block_span = Span::from_pest(pair.as_span(), path.clone());
 
         let mut iter = pair.into_inner().peekable();
 
@@ -148,10 +139,7 @@ impl ImplSelf {
 
         // construct the type that we are implementing for
         let type_name = iter.next().unwrap();
-        let type_implementing_for_span = Span {
-            span: type_name.as_span(),
-            path,
-        };
+        let type_implementing_for_span = Span::from_pest(type_name.as_span(), path);
         let type_implementing_for = check!(
             TypeInfo::parse_from_pair(type_name, config),
             return err(warnings, errors),
