@@ -18,4 +18,6 @@ fi
 done
 
 echo "building project..."
-cd sway-lib-std/tests && forc build
+pushd sway-lib-std/tests
+cargo test
+popd
