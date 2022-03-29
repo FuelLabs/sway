@@ -420,7 +420,6 @@ impl TypedAstNode {
                                     Some(TypedDeclaration::TraitDeclaration(
                                         TypedTraitDeclaration {
                                             ref interface_surface,
-                                            ref methods: _methods,
                                             ..
                                         },
                                     )) => {
