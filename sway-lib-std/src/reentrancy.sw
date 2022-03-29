@@ -3,17 +3,21 @@
 
 library reentrancy;
 
-use ::context::contract_id;
-use ::auth::caller_is_external;
+use ::context::call_frames::contract_id;
+use ::chain::auth::caller_is_external;
 use ::option::*;
-use ::constants::{SAVED_REGISTERS_OFFSET,CALL_FRAME_OFFSET};
+use ::contract_id::ContractId;
+use ::context::registers::frame_ptr;
+
+const SAVED_REGISTERS_OFFSET = 64;
+const CALL_FRAME_OFFSET = 48;
 
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
 pub fn is_reentrant() -> bool {
     let mut reentrancy = false;
     let mut internal = !caller_is_external();
 
-    let mut call_frame_pointer = get_current_frame_pointer();
+    let mut call_frame_pointer = frame_ptr();
 
     // Get our current contract ID
     let target_id = contract_id();
@@ -32,13 +36,6 @@ pub fn is_reentrant() -> bool {
         };
     }
     reentrancy
-}
-
-// get a pointer to the current call frame
-fn get_current_frame_pointer() -> u64 {
-    asm() {
-        fp: u64
-    };
 }
 
 // get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
