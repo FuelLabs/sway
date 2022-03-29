@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "nested_while_and_if"
 
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway", branch = "master" }
+std = { path = "../../../../../../../sway-lib-std" }
