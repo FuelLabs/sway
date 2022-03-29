@@ -7,7 +7,7 @@ do
 if [ -d "${f}" ];
 then
 echo "building test $f..."
-  /Users/furnic/dev/fuel/sway/target/debug/forc build -o temp -p $f
+  forc build -o temp -p $f
   if ! [ -f temp ];
   then
   echo "Failed to build $f"
