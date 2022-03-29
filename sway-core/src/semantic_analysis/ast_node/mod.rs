@@ -420,7 +420,7 @@ impl TypedAstNode {
                                     Some(TypedDeclaration::TraitDeclaration(
                                         TypedTraitDeclaration {
                                             ref interface_surface,
-                                            ref methods,
+                                            ref methods: _methods,
                                             ..
                                         },
                                     )) => {
@@ -433,6 +433,10 @@ impl TypedAstNode {
                                                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                                                 .collect(),
                                         );
+                                        // TODO: use `_methods` to insert dummy funcs for those
+                                        // methods into the namespace here
+                                        // will need to implement something for converting
+                                        // non-type-checked functions into dummy functions
                                     }
                                     Some(TypedDeclaration::AbiDeclaration(_)) => {
                                         errors.push(CompileError::AbiAsSupertrait {
