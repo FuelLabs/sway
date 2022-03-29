@@ -52,6 +52,7 @@ async fn get_contracts() -> (
 async fn can_get_this_balance() {
     let (context_instance, context_id, caller_instance, caller_id) = get_contracts().await;
     let send_amount = 42;
+
     let context_sway_id = testcontextcallercontract_mod::ContractId {
         value: context_id.into(),
     };

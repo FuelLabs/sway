@@ -1,25 +1,41 @@
 contract;
 
 use std::reentrancy::is_reentrant;
-use std::chain::panic;
+// use std::panic::panic;
 use std::contract_id::ContractId;
-use std::constants::ETH_ID;
-use std::chain::auth::msg_sender;
+use std::constants::NATIVE_ASSET_ID;
+use std::chain::auth::*;
+use std::result::Result;
 use std::context::gas;
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
+fn unwrap_msg_sender(result: Result<Sender, AuthError>) -> ContractId {
+    if ! result.is_err() {
+        let attacker_id = if let Sender::ContractId(v) = unwrapped {
+            v
+        } else {
+            ~ContractId::from(NATIVE_ASSET_ID)
+        };
+    };
+    attacker_id
+}
+
 impl Target for Contract {
     fn can_be_reentered() -> bool {
+        let mut was_reentered = false;
         let safe_from_reentry: bool = false;
-        // let attacker_id = msg_sender();
-        // let caller = abi(Attacker, attacker_id);
-        // TEMP: use hardcoded attacker ContractID until Result type can be better utilized
-        let caller = abi(Attacker, <ATTACKER_ID>);
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        caller.innocent_callback(42);
+        let result = msg_sender();
+        let id = unwrap_msg_sender(result);
 
-        let was_reentered = is_reentrant();
+        if id.value != NATIVE_ASSET_ID {
+            let val = id.value;
+            let caller = abi(Attacker, val);
+            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+            caller.innocent_callback(42);
+            was_reentered = is_reentrant();
+        };
+
         was_reentered
     }
 
@@ -28,12 +44,15 @@ impl Target for Contract {
         if is_reentrant() {
             reentrant_proof = true;
         };
-        // let attacker_id = msg_sender();
-        // let caller = abi(Attacker, attacker_id);
-        // TEMP: use hardcoded attacker ContractID until Result type can be better utilized
-        let caller = abi(Attacker, <ATTACKER_ID>);
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        caller.innocent_callback(42);
+        let result = msg_sender();
+        let id = unwrap_msg_sender(result);
+
+        if id.value != NATIVE_ASSET_ID {
+            let val = id.value;
+            let caller = abi(Attacker, val);
+            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+            caller.innocent_callback(42);
+        };
         reentrant_proof
     }
 }
