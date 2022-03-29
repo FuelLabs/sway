@@ -6,4 +6,4 @@ name = "call_increment_contract"
 
 [dependencies]
 increment_abi = { path = "../../test_abis/increment_abi" }
-std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { path = "../../../../../../../sway-lib-std" }

@@ -21,6 +21,42 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
+  build-sway-lib-core:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-core
+        run: forc build --path sway-lib-core
+
+  build-sway-lib-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-std
+        run: forc build --path sway-lib-std
+
   build-sway-examples:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -126,7 +162,7 @@ jobs:
           command: test
 
   notify-slack-on-failure:
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs: [build-sway-examples, build-sway-lib-core, build-sway-lib-std, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
@@ -144,7 +180,7 @@ jobs:
 
   publish:
     # Only do this job if publishing a release
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs: [build-sway-examples, build-sway-lib-core, build-sway-lib-std, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
@@ -190,7 +226,7 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-master-image:
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs: [build-sway-examples, build-sway-lib-core, build-sway-lib-std, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:

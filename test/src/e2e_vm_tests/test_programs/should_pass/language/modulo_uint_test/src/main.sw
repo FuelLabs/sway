@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 fn main() -> bool {
     let uint64_test1: u64 = 100000000000;

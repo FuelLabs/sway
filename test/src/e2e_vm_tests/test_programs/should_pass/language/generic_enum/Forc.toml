@@ -5,4 +5,4 @@ name = "generic_enum"
 entry = "main.sw"
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
+core = { path = "../../../../../../../sway-lib-core" }
