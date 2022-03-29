@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "size_of"
 
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { path = "../../../../../../../sway-lib-std" }

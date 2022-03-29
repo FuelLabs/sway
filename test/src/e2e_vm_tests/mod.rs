@@ -281,6 +281,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/enum_init_fn_call",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/nested_while_and_if",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
@@ -337,6 +341,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/abort_control_flow",
         "should_fail/match_expressions_non_exhaustive",
         "should_fail/empty_impl",
+        "should_fail/generics_unhelpful_error",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

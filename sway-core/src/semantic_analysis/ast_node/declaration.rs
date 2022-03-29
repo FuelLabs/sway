@@ -273,11 +273,16 @@ impl TypedStructDeclaration {
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let type_arguments_span = type_arguments
+            .iter()
+            .map(|x| x.span.clone())
+            .reduce(join_spans)
+            .unwrap_or_else(|| self.span.clone());
         if type_mapping.len() != type_arguments.len() {
             errors.push(CompileError::IncorrectNumberOfTypeArguments {
                 given: type_arguments.len(),
                 expected: type_mapping.len(),
-                span: self.span.clone(),
+                span: type_arguments_span,
             });
             return err(warnings, errors);
         }
@@ -419,11 +424,16 @@ impl TypedEnumDeclaration {
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let type_arguments_span = type_arguments
+            .iter()
+            .map(|x| x.span.clone())
+            .reduce(join_spans)
+            .unwrap_or_else(|| self.span.clone());
         if type_mapping.len() != type_arguments.len() {
             errors.push(CompileError::IncorrectNumberOfTypeArguments {
                 given: type_arguments.len(),
                 expected: type_mapping.len(),
-                span: self.span.clone(),
+                span: type_arguments_span,
             });
             return err(warnings, errors);
         }

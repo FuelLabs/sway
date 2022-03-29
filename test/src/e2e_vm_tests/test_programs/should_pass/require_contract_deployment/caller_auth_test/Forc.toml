@@ -6,4 +6,4 @@ name = "caller_auth_test"
 
 [dependencies]
 auth_testing_abi = { path = "../../test_abis/auth_testing_abi" }
-std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { path = "../../../../../../../sway-lib-std" }

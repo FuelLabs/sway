@@ -17,7 +17,7 @@ use pest::iterators::Pair;
 pub struct TraitDeclaration {
     pub name: Ident,
     pub(crate) interface_surface: Vec<TraitFn>,
-    pub(crate) methods: Vec<FunctionDeclaration>,
+    pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
 }
