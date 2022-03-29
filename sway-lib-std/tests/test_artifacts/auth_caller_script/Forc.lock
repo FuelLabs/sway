@@ -1,0 +1,18 @@
+[[package]]
+name = 'auth_caller_script'
+dependencies = [
+    'auth_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'auth_testing_abi'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

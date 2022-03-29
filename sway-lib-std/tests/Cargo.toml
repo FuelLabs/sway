@@ -22,3 +22,5 @@ tokio = { version = "1.12", features = ["rt", "macros"] }
 harness = true
 name = "integration_tests"
 path = "test_projects/harness.rs"
+
+[workspace]
