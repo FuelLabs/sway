@@ -1,5 +1,5 @@
 script;
-use std::{chain::assert, constants::{NATIVE_ASSET_ID, ZERO}, contract_id::ContractId};
+use std::{assert::assert, constants::{NATIVE_ASSET_ID, ZERO}, contract_id::ContractId};
 use context_testing_abi::*;
 
 fn main() -> bool {

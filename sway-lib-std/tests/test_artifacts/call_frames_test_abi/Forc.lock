@@ -1,0 +1,11 @@
+[[package]]
+name = 'call_frames_test_abi'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

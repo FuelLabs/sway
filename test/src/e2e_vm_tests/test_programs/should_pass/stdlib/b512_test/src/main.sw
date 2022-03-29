@@ -1,7 +1,7 @@
 script;
 
 use std::b512::B512;
-use std::chain::assert;
+use std::assert::assert;
 use std::constants::ZERO;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.

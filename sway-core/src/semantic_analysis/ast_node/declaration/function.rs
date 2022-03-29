@@ -263,15 +263,16 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&new_decl.type_parameters);
         if !type_arguments.is_empty() {
             // check type arguments against parameters
+            let type_arguments_span = type_arguments
+                .iter()
+                .map(|x| x.span.clone())
+                .reduce(join_spans)
+                .unwrap_or_else(|| self.span.clone());
             if new_decl.type_parameters.len() != type_arguments.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
                     expected: new_decl.type_parameters.len(),
-                    span: type_arguments
-                        .iter()
-                        .fold(type_arguments[0].span.clone(), |acc, type_argument| {
-                            join_spans(acc, type_argument.span.clone())
-                        }),
+                    span: type_arguments_span,
                 });
             }
 

@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 trait A {
     fn f(self) -> u64;

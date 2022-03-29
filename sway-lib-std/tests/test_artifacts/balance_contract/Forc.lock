@@ -1,0 +1,11 @@
+[[package]]
+name = 'balance_contract'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

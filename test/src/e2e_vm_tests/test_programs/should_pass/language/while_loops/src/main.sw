@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 fn main() -> bool {
     let mut counter = 0;

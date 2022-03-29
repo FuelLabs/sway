@@ -4,7 +4,7 @@ use std::b512::B512;
 use std::address::Address;
 use std::ecr::ec_recover_address;
 use std::ecr::ec_recover;
-use std::chain::assert;
+use std::assert::assert;
 
 fn main() -> bool {
 
