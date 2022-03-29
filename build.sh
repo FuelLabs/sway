@@ -7,7 +7,7 @@ do
 if [ -d "${f}" ];
 then
 echo "building test $f..."
-  forc build -o temp -p $f
+  /Users/furnic/dev/fuel/sway/target/debug/forc build -o temp -p $f
   if ! [ -f temp ];
   then
   echo "Failed to build $f"
@@ -17,7 +17,4 @@ echo "building test $f..."
 fi
 done
 
-echo "building project..."
-pushd sway-lib-std/tests
-cargo test
-popd
+echo "Successfully built all projects."
