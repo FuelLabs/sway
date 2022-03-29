@@ -2,10 +2,12 @@ contract;
 
 use std::contract_id::ContractId;
 use reentrancy_target_abi::Target;
-use std::chain::auth::msg_sender;
-use std::context::contract_id;
-use std::constants::ETH_ID;
+use std::chain::auth::*;
+use std::context::call_frames::contract_id;
+use std::constants::NATIVE_ASSET_ID;
 use reentrancy_attacker_abi::Attacker;
+use std::result::*;
+use std::panic::panic;
 
 
 impl Attacker for Contract {
@@ -24,13 +26,24 @@ impl Attacker for Contract {
      }
 
     fn innocent_callback(some_value: u64) -> bool {
-        let attack_thwarted = true;
-        let target_id = msg_sender();
+        let mut attack_thwarted = false;
+        let result: Result<Sender, AuthError> = msg_sender();
         let attacker_caller = abi(Attacker, ~ContractId::into(contract_id()));
-        // TODO: fix this to use the 'target_id' returned by mesage_sender()!
-        // attacker_caller.launch_attack(1000, 0, ETH_ID, target_id);
-        attacker_caller.launch_attack(<TARGET_ID>);
-        // consider use of 'if let' here to set value of attack_thwarted conditionally
-        attack_thwarted
+
+
+        let target_id = if let Sender::ContractId(v) = result.unwrap() {
+            v
+        } else {
+            ~ContractId::from(NATIVE_ASSET_ID)
+        };
+
+        let can_be_reentered = attacker_caller.launch_attack(target_id);
+
+        if can_be_reentered {
+            attack_thwarted
+        } else {
+            attack_thwarted = true;
+            attack_thwarted
+        }
     }
 }
