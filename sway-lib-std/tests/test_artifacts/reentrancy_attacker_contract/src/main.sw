@@ -1,11 +1,11 @@
 contract;
 
 use std::contract_id::ContractId;
-use target_abi::Target;
+use reentrancy_target_abi::Target;
 use std::chain::auth::msg_sender;
 use std::context::contract_id;
 use std::constants::ETH_ID;
-use attacker_abi::Attacker;
+use reentrancy_attacker_abi::Attacker;
 
 
 impl Attacker for Contract {

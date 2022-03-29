@@ -6,8 +6,8 @@ use std::contract_id::ContractId;
 use std::constants::ETH_ID;
 use std::chain::auth::msg_sender;
 use std::context::gas;
-use attacker_abi::Attacker;
-use target_abi::Target;
+use reentrancy_attacker_abi::Attacker;
+use reentrancy_target_abi::Target;
 
 impl Target for Contract {
     fn can_be_reentered() -> bool {

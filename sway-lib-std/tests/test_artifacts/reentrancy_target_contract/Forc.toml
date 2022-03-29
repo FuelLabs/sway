@@ -6,5 +6,5 @@ name = "reentrancy_target_contract"
 
 [dependencies]
 std = { path = "../../../" }
-attacker_abi = { path = "../reentrancy_attacker_abi"}
-target_abi = { path = "../reentrancy_target_abi"}
+reentrancy_attacker_abi = { path = "../reentrancy_attacker_abi"}
+reentrancy_target_abi = { path = "../reentrancy_target_abi"}
