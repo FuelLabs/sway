@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'ge_test'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+dependencies = ['core']

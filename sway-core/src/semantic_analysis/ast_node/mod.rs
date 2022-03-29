@@ -409,6 +409,7 @@ impl TypedAstNode {
                                 errors
                             );
 
+                            let trait_namespace = create_new_scope(namespace);
                             // Error checking. Make sure that each supertrait exists and that none
                             // of the supertraits are actually an ABI declaration
                             for supertrait in &supertraits {
@@ -416,7 +417,23 @@ impl TypedAstNode {
                                     .get_call_path(&supertrait.name)
                                     .ok(&mut warnings, &mut errors)
                                 {
-                                    Some(TypedDeclaration::TraitDeclaration(_)) => (),
+                                    Some(TypedDeclaration::TraitDeclaration(
+                                        TypedTraitDeclaration {
+                                            ref interface_surface,
+                                            ref methods,
+                                            ..
+                                        },
+                                    )) => {
+                                        // insert trait implementations for all of the supertraits
+                                        trait_namespace.insert_trait_implementation(
+                                            supertrait.name.clone(),
+                                            TypeInfo::SelfType,
+                                            interface_surface
+                                                .iter()
+                                                .map(|x| x.to_dummy_func(Mode::NonAbi))
+                                                .collect(),
+                                        );
+                                    }
                                     Some(TypedDeclaration::AbiDeclaration(_)) => {
                                         errors.push(CompileError::AbiAsSupertrait {
                                             span: name.span().clone(),
@@ -428,8 +445,6 @@ impl TypedAstNode {
                                     }),
                                 }
                             }
-
-                            let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
                             trait_namespace.insert_trait_implementation(

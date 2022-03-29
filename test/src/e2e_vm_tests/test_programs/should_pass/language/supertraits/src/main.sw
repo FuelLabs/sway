@@ -17,7 +17,7 @@ trait B: A {
     fn g(self) -> u64;
 } {
     fn add_g(self, x: u64) -> u64 {
-        self.g() + x
+        self.g() + x + self.f()
     }
     fn mul_g(self, x: u64) -> u64 {
         self.g() * x
