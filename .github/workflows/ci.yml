@@ -172,8 +172,8 @@ jobs:
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
-          command: run
-          args: --test --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --no-capture
+          command: test
+          args: --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --no-capture
 
   cargo-test-workspace:
     needs: cancel-previous-runs
