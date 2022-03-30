@@ -89,3 +89,13 @@ impl From<anyhow::Error> for CliError {
         }
     }
 }
+
+impl From<serde_json::Error> for CliError {
+    fn from(e: serde_json::Error) -> Self {
+        CliError {
+            message: e.to_string(),
+        }
+    }
+}
+
+impl std::error::Error for CliError {}

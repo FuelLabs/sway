@@ -3,6 +3,7 @@ use forc::test::{
     forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
     RunCommand,
 };
+use forc::utils::cli_error::CliError;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -147,7 +148,7 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn compile_to_json_abi(file_name: &str) -> Result<Value> {
+fn compile_to_json_abi(file_name: &str) -> Result<Value, CliError> {
     println!("   ABI gen {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_abi_json::build(JsonAbiCommand {
