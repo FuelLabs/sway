@@ -17,5 +17,6 @@ dep math;
 dep block;
 dep token;
 dep ecr;
+dep vec;
 
 use core::*;
