@@ -50,5 +50,6 @@ impl Attacker for Contract {
         }
     }
 
-    fn innocent_callback(){}
+    fn innocent_callback() {
+    }
 }

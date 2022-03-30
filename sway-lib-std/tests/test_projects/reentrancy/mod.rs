@@ -93,10 +93,7 @@ async fn get_attacker_instance(
     (instance, id)
 }
 
-async fn get_target_instance(
-    provider: Provider,
-    wallet: Wallet,
-) -> (TargetContract, ContractId) {
+async fn get_target_instance(provider: Provider, wallet: Wallet) -> (TargetContract, ContractId) {
     let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract(
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
