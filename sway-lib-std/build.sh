@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Place in root of project and run to build the project and all its tests and artifacts
-FILES="./sway-lib-std/tests/test_*/*"
+FILES="./tests/test_*/*"
 for f in $FILES
 do
 if [ -d "${f}" ];
