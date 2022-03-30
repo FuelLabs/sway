@@ -9,8 +9,8 @@ use ::option::*;
 use ::contract_id::ContractId;
 use ::context::registers::frame_ptr;
 
-const SAVED_REGISTERS_OFFSET = 64;
-const CALL_FRAME_OFFSET = 48;
+// const SAVED_REGISTERS_OFFSET = 64;
+// const CALL_FRAME_OFFSET = 48;
 
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
 pub fn is_reentrant() -> bool {
@@ -40,7 +40,8 @@ pub fn is_reentrant() -> bool {
 
 // get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
 fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
-    let offset = SAVED_REGISTERS_OFFSET + CALL_FRAME_OFFSET;
+    // let offset = SAVED_REGISTERS_OFFSET + CALL_FRAME_OFFSET;
+    let offset = 64 + 48;
     asm(res, ptr: frame_pointer, offset: offset) {
         add res ptr offset;
         res: u64
