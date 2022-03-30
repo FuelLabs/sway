@@ -36,9 +36,10 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, CliError> {
                             minify_json_abi: command.minify,
                             ..Default::default()
                         };
+
                         let compiled = crate::ops::forc_build::build(build_command)?;
                         let json_abi = json!(compiled.json_abi);
-                        println!("this is the output {:?}", compiled.json_abi);
+
                         if let Some(outfile) = command.json_outfile {
                             let file = File::create(outfile).map_err(|e| e)?;
                             let res = if command.minify {
@@ -52,6 +53,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, CliError> {
                         } else {
                             println!("{:#}", json_abi);
                         }
+
                         Ok(json_abi)
                     }
                     TreeType::Script => Err(CliError::wrong_sway_type(
