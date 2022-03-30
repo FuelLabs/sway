@@ -1,16 +1,20 @@
-//! A reentrancy guard for use in Sway contracts.
+//! A reentrancy check for use in Sway contracts.
 //! Note that this only works in internal contexts.
+//! to prevent reentrancy: `assert(!is_reentrant);
 
 library reentrancy;
 
-use ::context::call_frames::contract_id;
+use ::context::call_frames::*;
+use ::assert::assert;
 use ::chain::auth::caller_is_external;
 use ::option::*;
 use ::contract_id::ContractId;
 use ::context::registers::frame_ptr;
 
-// const SAVED_REGISTERS_OFFSET = 64;
-// const CALL_FRAME_OFFSET = 48;
+
+pub fn reentrancy_guard() {
+    assert(!is_reentrant());
+}
 
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
 pub fn is_reentrant() -> bool {
@@ -36,21 +40,4 @@ pub fn is_reentrant() -> bool {
         };
     }
     reentrancy
-}
-
-// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
-fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
-    // let offset = SAVED_REGISTERS_OFFSET + CALL_FRAME_OFFSET;
-    let offset = 64 + 48;
-    asm(res, ptr: frame_pointer, offset: offset) {
-        add res ptr offset;
-        res: u64
-    }
-}
-
-// get the value of the previous `ContractId` from the previous call frame on the stack
-fn get_previous_contract_id(previous_frame_ptr: u64) -> ContractId {
-    ~ContractId::from(asm(res, ptr: previous_frame_ptr) {
-        ptr: b256
-    })
 }

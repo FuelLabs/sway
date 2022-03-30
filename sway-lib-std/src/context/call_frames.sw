@@ -5,6 +5,14 @@ library call_frames;
 
 use ::contract_id::ContractId;
 
+// Note that everything when serialized is padded to word length.
+//
+// Call Frame        :  saved registers = 8*WORD_SIZE = 8*8 = 64
+// Reserved Registers:  frame pointer   = 6*WORD_SIZE = 6*8 = 48
+
+const SAVED_REGISTERS_OFFSET = 64;
+const CALL_FRAME_OFFSET = 48;
+
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
 ///////////////////////////////////////////////////////////
@@ -48,4 +56,25 @@ pub fn second_param() -> u64 {
         add size fp offset;
         size: u64
     }
+}
+
+///////////////////////////////////////////////////////////
+//  Accessing arbitrary call frames by pointer
+///////////////////////////////////////////////////////////
+
+/// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
+pub fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
+    // let offset = SAVED_REGISTERS_OFFSET + CALL_FRAME_OFFSET;
+    let offset = 64 + 48;
+    asm(res, ptr: frame_pointer, offset: offset) {
+        add res ptr offset;
+        res: u64
+    }
+}
+
+/// get the value of the previous `ContractId` from the previous call frame on the stack.
+pub fn get_previous_contract_id(previous_frame_ptr: u64) -> ContractId {
+    ~ContractId::from(asm(res, ptr: previous_frame_ptr) {
+        ptr: b256
+    })
 }
