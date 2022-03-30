@@ -4,7 +4,7 @@ use std::{assert::assert, chain::auth::*, constants::ZERO, context::gas, contrac
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
-// Return the sender as an Address or panic:
+// Return the sender as a ContractId or panic:
 fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
     let mut ret = ~ContractId::from(ZERO);
     if result.is_err() {
