@@ -122,6 +122,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/stdlib/b512_struct_alignment",
             ProgramState::Return(1),
         ), // true
+        ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1),
@@ -139,7 +140,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/stdlib/ec_recover_test",
             ProgramState::Return(1),
         ), // true
-        ("should_pass/stdlib/address_test", ProgramState::Return(1)),   // true
+        ("should_pass/stdlib/address_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_struct",
             ProgramState::Return(1),
@@ -148,7 +149,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/zero_field_types",
             ProgramState::Return(10),
         ), // true
-        ("should_pass/stdlib/assert_test", ProgramState::Return(1)),    // true
+        ("should_pass/stdlib/assert_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/match_expressions",
             ProgramState::Return(42),
