@@ -1,7 +1,5 @@
 # Building & running the sway-lib-std tests
 
-As we currently don't have a CI job which runs these automatically, make sure tests are all passing before requesting a PR review or merging to master.
-
 ## Building test projects
 
 First, ensure we have the current version of `forc` installed.
