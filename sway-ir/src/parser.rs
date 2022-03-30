@@ -329,7 +329,7 @@ mod ir_builder {
                 = "()" _ { IrAstConstValue::Unit }
                 / "true" _ { IrAstConstValue::Bool(true) }
                 / "false" _ { IrAstConstValue::Bool(false) }
-                / "0x" s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<64>) _ {
+                / "0x" s:$(hex_digit()*<64>) _ {
                     IrAstConstValue::B256(string_to_hex::<32>(s))
                 }
                 / n:decimal() { IrAstConstValue::Number(n) }
@@ -338,12 +338,32 @@ mod ir_builder {
                 / struct_const()
 
             rule string_const() -> IrAstConstValue
-                = ['"'] chs:$(str_char()*) ['"'] _ {
-                    IrAstConstValue::String(chs.to_owned())
+                = ['"'] chs:str_char()* ['"'] _ {
+                    IrAstConstValue::String(chs)
                 }
 
-            rule str_char()
-                = [^ '"' | '\\'] / ['\\'] ['\\' | 't' | 'n' | 'r']
+            rule str_char() -> u8
+                // Match any of the printable characters except '"' and '\'.
+                = c:$([' ' | '!' | '#'..='[' | ']'..='~']) {
+                    *c.as_bytes().get(0).unwrap()
+                }
+                / "\\x" h:hex_digit() l:hex_digit() {
+                    (dbg!(h) << 4) | dbg!(l)
+                }
+
+            //  There may be a better way to do this, dunno.  In `str_char()` we're parsing '\xHH'
+            //  from a hex byte to a u8.  We do it by parsing each hex nybble into a u8 and then OR
+            //  them together.  In hex_digit(), to convert e.g., 'c' to 12, we match the pattern,
+            //  convert the str into a u8 iterator, take the first value which is the ascii digit,
+            //  convert the 'A'-'F' to uppercase by setting the 6th bit (0x20) and subtracting the
+            //  right offset.  Fiddly.
+            rule hex_digit() -> u8
+                = d:$(['0'..='9']) {
+                    d.as_bytes().get(0).unwrap() - b'0'
+                }
+                / d:$(['a'..='f' | 'A'..='F']) {
+                    (d.as_bytes().get(0).unwrap() | 0x20) - b'a' + 10
+                }
 
             rule array_const() -> IrAstConstValue
                 = "[" _ els:(field_or_element_const() ++ comma()) "]" _ {
@@ -548,7 +568,7 @@ mod ir_builder {
         Bool(bool),
         B256([u8; 32]),
         Number(u64),
-        String(String),
+        String(Vec<u8>),
         Array(IrAstTy, Vec<IrAstConst>),
         Struct(Vec<(IrAstTy, IrAstConst)>),
     }
@@ -578,7 +598,7 @@ mod ir_builder {
                 IrAstConstValue::Bool(b) => Constant::new_bool(*b),
                 IrAstConstValue::B256(bs) => Constant::new_b256(*bs),
                 IrAstConstValue::Number(n) => Constant::new_uint(64, *n),
-                IrAstConstValue::String(s) => Constant::new_string(s.clone()),
+                IrAstConstValue::String(bs) => Constant::new_string(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
                     let els: Vec<_> = els.iter().map(|cv| cv.value.as_constant(context)).collect();
                     let el_ty = el_ty.to_ir_type(context);

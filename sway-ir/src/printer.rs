@@ -697,7 +697,20 @@ impl Constant {
                     .collect::<Vec<String>>()
                     .concat()
             ),
-            ConstantValue::String(s) => format!("{} \"{s}\"", self.ty.as_string(context)),
+            ConstantValue::String(bs) => format!(
+                "{} \"{}\"",
+                self.ty.as_string(context),
+                bs.iter()
+                    .map(
+                        |b| if b.is_ascii() && !b.is_ascii_control() && *b != b'\\' && *b != b'"' {
+                            format!("{}", *b as char)
+                        } else {
+                            format!("\\x{b:02x}")
+                        }
+                    )
+                    .collect::<Vec<_>>()
+                    .join("")
+            ),
             ConstantValue::Array(elems) => format!(
                 "{} [{}]",
                 self.ty.as_string(context),
