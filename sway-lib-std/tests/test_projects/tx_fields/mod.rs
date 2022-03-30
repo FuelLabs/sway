@@ -95,7 +95,7 @@ async fn can_get_maturity() {
 async fn can_get_script_length() {
     let (contract_instance, _, _) = get_contracts().await;
     // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181
-    let script_length = 20;
+    let script_length = 24;
 
     let result = contract_instance
         .get_tx_script_length()
@@ -109,7 +109,7 @@ async fn can_get_script_length() {
 async fn can_get_script_data_length() {
     let (contract_instance, _, _) = get_contracts().await;
     // TODO make this programmatic.
-    let script_data_length = 72;
+    let script_data_length = 80;
 
     let result = contract_instance
         .get_tx_script_data_length()
@@ -148,9 +148,7 @@ async fn can_get_outputs_count() {
 #[tokio::test]
 async fn can_get_witnesses_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    // TODO figure out why this is 2 instead of 1.
-    // https://github.com/FuelLabs/fuels-rs/issues/182
-    let witnesses_count = 2;
+    let witnesses_count = 1;
 
     let result = contract_instance
         .get_tx_witnesses_count()
@@ -259,7 +257,7 @@ async fn can_get_tx_output_type() {
     // Contract output
     let output_type = 1;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(0)
+        .get_tx_output_pointer(1)
         .call()
         .await
         .unwrap();
@@ -273,7 +271,7 @@ async fn can_get_tx_output_type() {
     // Change output
     let output_type = 3;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(1)
+        .get_tx_output_pointer(0)
         .call()
         .await
         .unwrap();
