@@ -162,6 +162,11 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
       - name: Build All Tests
         run: cd sway-lib-std && bash build.sh && cd ..
       - name: Cargo Test sway-lib-std
