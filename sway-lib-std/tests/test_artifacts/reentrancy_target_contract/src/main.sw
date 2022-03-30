@@ -32,7 +32,7 @@ impl Target for Contract {
         let caller = abi(Attacker, id);
 
         /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        caller.innocent_callback(42);
+        caller.evil_callback(42);
     }
 
     fn reentrancy_detected() -> bool {
@@ -45,8 +45,18 @@ impl Target for Contract {
             let caller = abi(Attacker, id);
 
             /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-            caller.innocent_callback(42);
+            caller.evil_callback(42);
             false
         }
+    }
+
+    fn guarded_function() -> bool {
+        reentrancy_guard();
+        let result: Result<Sender, AuthError> = msg_sender();
+        let id = get_msg_sender_id_or_panic(result);
+        let id = id.value;
+        let caller = abi(Attacker, id);
+        caller.innocent_callback();
+        true
     }
 }

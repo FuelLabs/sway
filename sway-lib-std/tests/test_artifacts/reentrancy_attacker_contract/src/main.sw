@@ -22,7 +22,14 @@ impl Attacker for Contract {
         caller.reentrance_denied();
     }
 
-    fn innocent_callback(some_value: u64) -> bool {
+    fn innocent_call(target: ContractId) -> bool {
+        let id = target.value;
+        let caller = abi(Target, id);
+        let return_val = caller.guarded_function();
+        return_val
+    }
+
+    fn evil_callback(some_value: u64) -> bool {
         let mut success = false;
         let result: Result<Sender, AuthError> = msg_sender();
         let attacker_caller = abi(Attacker, ~ContractId::into(contract_id()));
@@ -42,4 +49,6 @@ impl Attacker for Contract {
             success
         }
     }
+
+    fn innocent_callback(){}
 }
