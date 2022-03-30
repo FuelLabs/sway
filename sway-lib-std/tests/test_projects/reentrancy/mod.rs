@@ -57,8 +57,10 @@ async fn can_block_reentrancy() {
 #[tokio::test]
 async fn can_call_guarded_function() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
+    let (attacker_instance, attacker_id) = get_attacker_instance(provider.clone(), wallet.clone()).await;
     let (_, target_id) = get_target_instance(provider, wallet).await;
+    println!("Attacker contract ID: {:?}", &attacker_id);
+    println!("Target contract ID: {:?}", &target_id);
 
     let sway_target_id = attackercontract_mod::ContractId {
         value: target_id.into(),
