@@ -4,4 +4,3 @@ abi Target {
     fn reentrance_denied();
     fn reentrancy_detected() -> bool;
 }
-

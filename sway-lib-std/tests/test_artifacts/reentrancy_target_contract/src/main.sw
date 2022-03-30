@@ -1,17 +1,8 @@
 contract;
 
-use std::reentrancy::is_reentrant;
-use std::panic::panic;
-use std::assert::assert;
-// use std::address::Address;
-use std::contract_id::ContractId;
-use std::constants::ZERO;
-use std::chain::auth::*;
-use std::result::*;
-use std::context::gas;
+use std::{assert::assert, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::is_reentrant, result::*, chain::auth::*};
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
-
 
 // Return the sender as an Address or panic:
 fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {

@@ -9,7 +9,6 @@ use reentrancy_attacker_abi::Attacker;
 use std::result::*;
 use std::panic::panic;
 
-
 impl Attacker for Contract {
     fn launch_attack(target: ContractId) -> bool {
         let id = target.value;
@@ -17,17 +16,16 @@ impl Attacker for Contract {
         caller.reentrancy_detected()
     }
 
-     fn launch_thwarted_attack(target: ContractId) {
-         let id = target.value;
-         let caller = abi(Target, id);
-         caller.reentrance_denied();
-     }
+    fn launch_thwarted_attack(target: ContractId) {
+        let id = target.value;
+        let caller = abi(Target, id);
+        caller.reentrance_denied();
+    }
 
     fn innocent_callback(some_value: u64) -> bool {
         let mut success = false;
         let result: Result<Sender, AuthError> = msg_sender();
         let attacker_caller = abi(Attacker, ~ContractId::into(contract_id()));
-
 
         let target_id = if let Sender::ContractId(v) = result.unwrap() {
             v
