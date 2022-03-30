@@ -365,10 +365,6 @@ mod ir_builder {
                     (ty.clone(), IrAstConst { value: IrAstConstValue::Undef(ty), meta_idx: None })
                 }
 
-            // NOTE: a struct with a single element and a union with a single variant have the same
-            // syntax, and below we assume it to be a struct.  A union with a single variant isn't
-            // really a union, but they *could* exist, so perhaps the syntax should change to be
-            // unambiguous.
             rule ast_ty() -> IrAstTy
                 = ("unit" / "()") _ { IrAstTy::Unit }
                 / "bool" _ { IrAstTy::Bool }
@@ -385,7 +381,7 @@ mod ir_builder {
                 }
 
             rule union_ty() -> IrAstTy
-                = "{" _ tys:(ast_ty() ++ ("|" _)) "}" _ {
+                = "(" _ tys:(ast_ty() ++ ("|" _)) ")" _ {
                     IrAstTy::Union(tys)
                 }
 
