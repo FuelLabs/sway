@@ -173,7 +173,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --no-capture
+          args: --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     needs: cancel-previous-runs
