@@ -1,5 +1,5 @@
 use crate::cli::{BuildCommand, JsonAbiCommand};
-use crate::utils::cli_error::CliError;
+use crate::utils::cli_error::*;
 use anyhow::Result;
 use forc_pkg::Manifest;
 use forc_util::find_manifest_dir;
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use sway_core::{parse, TreeType};
 use sway_utils::constants::*;
 
-pub fn build(command: JsonAbiCommand) -> Result<Value, CliError> {
+pub fn build(command: JsonAbiCommand) -> Result<Value> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
@@ -56,25 +56,19 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, CliError> {
 
                         Ok(json_abi)
                     }
-                    TreeType::Script => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_SCRIPT,
-                    )),
-                    TreeType::Predicate => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_PREDICATE,
-                    )),
-                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_LIBRARY,
-                    )),
+                    TreeType::Script => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_SCRIPT))
+                    }
+                    TreeType::Predicate => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_PREDICATE))
+                    }
+                    TreeType::Library { .. } => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_LIBRARY))
+                    }
                 },
-                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
+                None => Err(parsing_failed(project_name, parsed_result.errors)),
             }
         }
-        None => Err(CliError::manifest_file_missing(curr_dir)),
+        None => Err(manifest_file_missing(curr_dir)),
     }
 }

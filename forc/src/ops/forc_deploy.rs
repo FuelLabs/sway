@@ -1,7 +1,7 @@
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::CliError;
-use anyhow::Result;
+use crate::utils::cli_error::*;
+use anyhow::{anyhow, Result};
 use forc_pkg::Manifest;
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use sway_core::{parse, TreeType};
 use sway_utils::constants::*;
 
-pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
@@ -76,29 +76,23 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
                                 println!("Logs:\n{:?}", logs);
                                 Ok(contract_id)
                             }
-                            Err(e) => Err(e.to_string().into()),
+                            Err(e) => Err(anyhow!("{}", e)),
                         }
                     }
-                    TreeType::Script => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_SCRIPT,
-                    )),
-                    TreeType::Predicate => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_PREDICATE,
-                    )),
-                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_LIBRARY,
-                    )),
+                    TreeType::Script => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_SCRIPT))
+                    }
+                    TreeType::Predicate => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_PREDICATE))
+                    }
+                    TreeType::Library { .. } => {
+                        Err(wrong_sway_type(project_name, SWAY_CONTRACT, SWAY_LIBRARY))
+                    }
                 },
-                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
+                None => Err(parsing_failed(project_name, parsed_result.errors)),
             }
         }
-        None => Err(CliError::manifest_file_missing(curr_dir)),
+        None => Err(manifest_file_missing(curr_dir)),
     }
 }
 

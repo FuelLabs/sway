@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 mod cli;
 mod ops;
-pub mod utils;
+mod utils;
 
 #[cfg(feature = "test")]
 pub mod test {

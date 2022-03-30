@@ -1,7 +1,8 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::CliError;
+use crate::utils::cli_error::*;
 use crate::utils::parameters::TxParameters;
+use anyhow::{anyhow, Result};
 use forc_pkg::Manifest;
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
@@ -13,11 +14,11 @@ use sway_core::{parse, TreeType};
 use sway_utils::constants::*;
 use tokio::process::Child;
 
-pub async fn run(command: RunCommand) -> Result<(), CliError> {
+pub async fn run(command: RunCommand) -> Result<()> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
 
     match find_manifest_dir(&path_dir) {
@@ -85,26 +86,20 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             Ok(())
                         }
                     }
-                    TreeType::Contract => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_CONTRACT,
-                    )),
-                    TreeType::Predicate => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_PREDICATE,
-                    )),
-                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_LIBRARY,
-                    )),
+                    TreeType::Contract => {
+                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_CONTRACT))
+                    }
+                    TreeType::Predicate => {
+                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_PREDICATE))
+                    }
+                    TreeType::Library { .. } => {
+                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_LIBRARY))
+                    }
                 },
-                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
+                None => Err(parsing_failed(project_name, parsed_result.errors)),
             }
         }
-        None => Err(CliError::manifest_file_missing(path_dir)),
+        None => Err(manifest_file_missing(path_dir)),
     }
 }
 
@@ -112,7 +107,7 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
-) -> Result<Option<Child>, CliError> {
+) -> Result<Option<Child>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
@@ -120,15 +115,11 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print).await?;
             Ok(None)
         }
-        Err(_) => Err(CliError::fuel_core_not_running(node_url)),
+        Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
 
-async fn send_tx(
-    client: &FuelClient,
-    tx: &Transaction,
-    pretty_print: bool,
-) -> Result<(), CliError> {
+async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> Result<()> {
     let id = format!("{:#x}", tx.id());
     match client
         .submit(tx)
@@ -143,7 +134,7 @@ async fn send_tx(
             }
             Ok(())
         }
-        Err(e) => Err(e.to_string().into()),
+        Err(e) => Err(anyhow!("{}", e)),
     }
 }
 
