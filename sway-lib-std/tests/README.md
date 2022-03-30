@@ -4,10 +4,10 @@ As we currently don't have a CI job which runs these automatically, make sure te
 
 ## Building test projects
 
-In the root of the `sway` repo is a bash build script. To run it:
+In the root of the `sway-lib-std` is a bash build script. To run it:
 
 ```sh
-$ cd sway
+$ cd sway/sway-lib-std
 $ ./build.sh
 ```
 
@@ -27,7 +27,7 @@ $ cargo test --  --test-threads=1
 ## To capture output (ie: logs from println!) even for passing tests
 
 ```sh
-$ cargo test --  --test-threads=1 --no-capture
+$ cargo test --  --test-threads=1 --nocapture
 ```
 
 ## To run a subset of tests, use the filter option
