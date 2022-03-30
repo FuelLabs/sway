@@ -53,17 +53,16 @@ impl Target for Contract {
             // to actually prevent reentrancy in a contract, simply do:
             // assert(!is_reentrant());
             // for testing, we just set reentrant_proof to 'true' to signify that we can at least detect reentrancy, and could easily forbid it.
-            reentrancy_detected = true;
-            return reentrancy_detected
+            return true;
         };
 
         let result: Result<Sender, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
-        let caller = abi(Attacker, val);
+        let caller = abi(Attacker, id);
 
         /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
         caller.innocent_callback(42);
-        reentrant_proof
+        reentrancy_detected
     }
 }
