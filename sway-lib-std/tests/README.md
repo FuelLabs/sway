@@ -4,10 +4,17 @@ As we currently don't have a CI job which runs these automatically, make sure te
 
 ## Building test projects
 
+First, ensure we have the current version of `forc` installed.
+
+```sh
+$ cd sway
+$ cargo install --path ./forc
+```
+
 In the root of the `sway-lib-std` is a bash build script. To run it:
 
 ```sh
-$ cd sway/sway-lib-std
+$ cd sway-lib-std
 $ ./build.sh
 ```
 
@@ -15,7 +22,7 @@ This will build all contracts and scripts under the `sway/sway-lib-std/tests/` d
 After a sucessfull build of all the projects:
 
 ```sh
-$ cd sway-lib-std/tests
+$ cd tests
 ```
 
 ## To run all tests single threaded
