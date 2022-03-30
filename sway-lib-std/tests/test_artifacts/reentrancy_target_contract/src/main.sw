@@ -50,13 +50,7 @@ impl Target for Contract {
         }
     }
 
-    fn guarded_function() -> bool {
+    fn guarded_function_is_callable() {
         reentrancy_guard();
-        let result: Result<Sender, AuthError> = msg_sender();
-        let id = get_msg_sender_id_or_panic(result);
-        let id = id.value;
-        let caller = abi(Attacker, id);
-        caller.innocent_callback();
-        true
     }
 }

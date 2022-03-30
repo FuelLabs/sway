@@ -3,5 +3,5 @@ library reentrancy_target_abi;
 abi Target {
     fn reentrance_denied();
     fn reentrancy_detected() -> bool;
-    fn guarded_function() -> bool;
+    fn guarded_function_is_callable();
 }
