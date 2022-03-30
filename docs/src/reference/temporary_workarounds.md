@@ -6,7 +6,7 @@ The standard library is currently not distributed with `forc` if [installed via 
 
 ```toml
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master" }
+std = { git = "https://github.com/FuelLabs/sway", branch = "master" }
 ```
 
 Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
