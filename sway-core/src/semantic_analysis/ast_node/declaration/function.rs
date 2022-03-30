@@ -89,9 +89,16 @@ impl TypedFunctionDeclaration {
 
         // insert parameters and generic type declarations into namespace
         let namespace = create_new_scope(namespace);
-        type_parameters.iter().for_each(|param| {
-            namespace.insert(param.name_ident.clone(), param.into());
-        });
+
+        // check to see if the type parameters shadow one another
+        for type_parameter in type_parameters.iter() {
+            check!(
+                namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
 
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
