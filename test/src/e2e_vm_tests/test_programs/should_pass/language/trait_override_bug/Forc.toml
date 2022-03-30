@@ -5,4 +5,4 @@ entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", branch = "master" }
+core = { path = "../../../../../../../sway-lib-core" }

@@ -132,11 +132,9 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
 
 fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
     match &expr {
-        Expression::StructExpression {
-            struct_name: _,
-            fields: _,
-            span,
-        } => changes.push(Change::new(span, ChangeType::Struct)),
+        Expression::StructExpression { span, .. } => {
+            changes.push(Change::new(span, ChangeType::Struct))
+        }
         Expression::IfExp {
             condition: _,
             then,

@@ -1,5 +1,5 @@
 script;
-use std::chain::*;
+use std::assert::assert;
 
 struct W {
     t5: u64,

@@ -1,8 +1,7 @@
 [[package]]
 name = 'array_basics'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?branch=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f']
+dependencies = ['core']
 
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?branch=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f'
 dependencies = []

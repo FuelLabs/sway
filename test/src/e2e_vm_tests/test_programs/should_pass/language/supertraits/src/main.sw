@@ -1,6 +1,6 @@
 script;
 
-use std::chain::assert;
+use std::assert::assert;
 
 trait A {
     fn f(self) -> u64;
@@ -21,6 +21,9 @@ trait B: A {
     }
     fn mul_g(self, x: u64) -> u64 {
         self.g() * x
+    }
+    fn test_inheritance(self) {
+        self.f();
     }
 }
 

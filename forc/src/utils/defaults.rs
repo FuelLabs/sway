@@ -11,7 +11,7 @@ license = "Apache-2.0"
 name = "{project_name}"
 
 [dependencies]
-std = {{ git = "https://github.com/FuelLabs/sway-lib-std" }}
+std = {{ git = "https://github.com/FuelLabs/sway", branch = "master" }}
 "#
     )
 }
@@ -36,6 +36,7 @@ fuel-tx = "0.7"
 fuels-abigen-macro = "0.8"
 fuels-contract = "0.8"
 fuels-core = "0.8"
+fuels-signers = "0.8"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 

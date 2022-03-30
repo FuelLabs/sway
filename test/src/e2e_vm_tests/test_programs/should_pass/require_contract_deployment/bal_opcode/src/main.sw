@@ -1,6 +1,6 @@
 script;
 
-use std::{chain::assert, constants::NATIVE_ASSET_ID, contract_id::ContractId};
+use std::{assert::assert, constants::NATIVE_ASSET_ID, contract_id::ContractId};
 use balance_test_abi::BalanceTest;
 
 fn main() -> bool {

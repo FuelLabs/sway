@@ -132,8 +132,11 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             let token = Token::from_ident(ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
-            // todo
-            // traverse methods: Vec<FunctionDeclaration<'sc>> field as well ?
+            for func_dec in trait_dec.methods {
+                for node in func_dec.body.contents {
+                    traverse_node(node, tokens);
+                }
+            }
         }
         Declaration::StructDeclaration(struct_dec) => {
             let ident = &struct_dec.name;
@@ -159,13 +162,16 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 traverse_node(node, tokens);
             }
         }
-        Expression::FunctionApplication { name, .. } => {
+        Expression::FunctionApplication {
+            name, arguments, ..
+        } => {
             let ident = name.suffix;
             let token = Token::from_ident(&ident, TokenType::FunctionApplication);
             tokens.push(token);
 
-            // TODO
-            // perform a for/in on arguments ?
+            for exp in arguments {
+                handle_expression(exp, tokens);
+            }
         }
         // TODO
         // handle other expressions

@@ -245,8 +245,7 @@ impl BuildPlan {
                             "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
                             consider using `branch` or `tag` instead",
                             dep_name
-                        ))
-                        .unwrap();
+                        ));
                     }
                 }
 

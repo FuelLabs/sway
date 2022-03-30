@@ -89,9 +89,16 @@ impl TypedFunctionDeclaration {
 
         // insert parameters and generic type declarations into namespace
         let namespace = create_new_scope(namespace);
-        type_parameters.iter().for_each(|param| {
-            namespace.insert(param.name_ident.clone(), param.into());
-        });
+
+        // check to see if the type parameters shadow one another
+        for type_parameter in type_parameters.iter() {
+            check!(
+                namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
 
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
@@ -263,15 +270,16 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&new_decl.type_parameters);
         if !type_arguments.is_empty() {
             // check type arguments against parameters
+            let type_arguments_span = type_arguments
+                .iter()
+                .map(|x| x.span.clone())
+                .reduce(join_spans)
+                .unwrap_or_else(|| self.span.clone());
             if new_decl.type_parameters.len() != type_arguments.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
                     expected: new_decl.type_parameters.len(),
-                    span: type_arguments
-                        .iter()
-                        .fold(type_arguments[0].span.clone(), |acc, type_argument| {
-                            join_spans(acc, type_argument.span.clone())
-                        }),
+                    span: type_arguments_span,
                 });
             }
 
