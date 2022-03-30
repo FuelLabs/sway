@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'nested_while_and_if'
+name = 'option'
 dependencies = ['std']
 
 [[package]]
