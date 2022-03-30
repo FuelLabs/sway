@@ -1,6 +1,6 @@
 contract;
 
-use std::{assert::assert, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::*, result::*, chain::auth::*};
+use std::{assert::assert, chain::auth::*, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::*, result::*};
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 

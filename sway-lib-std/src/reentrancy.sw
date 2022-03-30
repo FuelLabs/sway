@@ -11,7 +11,6 @@ use ::option::*;
 use ::contract_id::ContractId;
 use ::context::registers::frame_ptr;
 
-
 pub fn reentrancy_guard() {
     assert(!is_reentrant());
 }
