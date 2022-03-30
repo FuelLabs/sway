@@ -3,6 +3,7 @@ use forc::test::{
     forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
     RunCommand,
 };
+use forc::utils::cli_error::CliError;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -121,7 +122,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
 }
 
 pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
-    let _script = compile_to_json_abi(file_name);
+    let _compiled_res = compile_to_json_abi(file_name)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -147,7 +148,7 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn compile_to_json_abi(file_name: &str) -> Value {
+fn compile_to_json_abi(file_name: &str) -> Result<Value, CliError> {
     println!("   ABI gen {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_abi_json::build(JsonAbiCommand {
@@ -162,7 +163,6 @@ fn compile_to_json_abi(file_name: &str) -> Value {
         silent_mode: true,
         ..Default::default()
     })
-    .unwrap()
 }
 
 fn get_test_config_from_env() -> (bool, bool) {
