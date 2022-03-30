@@ -1,58 +1,69 @@
 contract;
 
 use std::reentrancy::is_reentrant;
-// use std::panic::panic;
+use std::panic::panic;
+// use std::address::Address;
 use std::contract_id::ContractId;
-use std::constants::NATIVE_ASSET_ID;
+use std::constants::ZERO;
 use std::chain::auth::*;
-use std::result::Result;
+use std::result::*;
 use std::context::gas;
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
-fn unwrap_msg_sender(result: Result<Sender, AuthError>) -> ContractId {
-    if ! result.is_err() {
-        let attacker_id = if let Sender::ContractId(v) = unwrapped {
-            v
+
+// Return the sender as an Address or panic:
+fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
+    let mut ret = ~ContractId::from(ZERO);
+    if result.is_err() {
+        panic(0);
+    } else {
+        let unwrapped = result.unwrap();
+        if let Sender::ContractId(v) = unwrapped {
+            ret = v;
         } else {
-            ~ContractId::from(NATIVE_ASSET_ID)
+            panic(0);
         };
     };
-    attacker_id
+
+    ret
 }
 
 impl Target for Contract {
+    // rename to vulnerable_to_reentry()
     fn can_be_reentered() -> bool {
         let mut was_reentered = false;
         let safe_from_reentry: bool = false;
-        let result = msg_sender();
-        let id = unwrap_msg_sender(result);
+        let result: Result<Sender, AuthError> = msg_sender();
 
-        if id.value != NATIVE_ASSET_ID {
-            let val = id.value;
-            let caller = abi(Attacker, val);
-            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-            caller.innocent_callback(42);
-            was_reentered = is_reentrant();
-        };
+        let id = get_msg_sender_id_or_panic(result);
+        let id = id.value;
+        let caller = abi(Attacker, id);
 
+        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        caller.innocent_callback(42);
+        was_reentered = is_reentrant();
         was_reentered
     }
 
+    // rename to reentrancy_detected()
     fn reentrant_proof() -> bool {
-        let mut reentrant_proof = false;
+        let mut reentrancy_detected = false;
         if is_reentrant() {
-            reentrant_proof = true;
+            // to actually prevent reentrancy in a contract, simply do:
+            // assert(!is_reentrant());
+            // for testing, we just set reentrant_proof to 'true' to signify that we can at least detect reentrancy, and could easily forbid it.
+            reentrancy_detected = true;
+            return reentrancy_detected
         };
-        let result = msg_sender();
-        let id = unwrap_msg_sender(result);
 
-        if id.value != NATIVE_ASSET_ID {
-            let val = id.value;
-            let caller = abi(Attacker, val);
-            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-            caller.innocent_callback(42);
-        };
+        let result: Result<Sender, AuthError> = msg_sender();
+        let id = get_msg_sender_id_or_panic(result);
+        let id = id.value;
+        let caller = abi(Attacker, val);
+
+        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        caller.innocent_callback(42);
         reentrant_proof
     }
 }
