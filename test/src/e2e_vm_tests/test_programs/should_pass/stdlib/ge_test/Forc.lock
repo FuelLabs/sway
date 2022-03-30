@@ -4,10 +4,7 @@ dependencies = []
 
 [[package]]
 name = 'ge_test'
-dependencies = [
-    'core',
-    'std',
-]
+dependencies = ['std']
 
 [[package]]
 name = 'std'
