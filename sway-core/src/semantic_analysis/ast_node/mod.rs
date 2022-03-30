@@ -409,6 +409,7 @@ impl TypedAstNode {
                                 errors
                             );
 
+                            let trait_namespace = create_new_scope(namespace);
                             // Error checking. Make sure that each supertrait exists and that none
                             // of the supertraits are actually an ABI declaration
                             for supertrait in &supertraits {
@@ -416,7 +417,26 @@ impl TypedAstNode {
                                     .get_call_path(&supertrait.name)
                                     .ok(&mut warnings, &mut errors)
                                 {
-                                    Some(TypedDeclaration::TraitDeclaration(_)) => (),
+                                    Some(TypedDeclaration::TraitDeclaration(
+                                        TypedTraitDeclaration {
+                                            ref interface_surface,
+                                            ..
+                                        },
+                                    )) => {
+                                        // insert trait implementations for all of the supertraits
+                                        trait_namespace.insert_trait_implementation(
+                                            supertrait.name.clone(),
+                                            TypeInfo::SelfType,
+                                            interface_surface
+                                                .iter()
+                                                .map(|x| x.to_dummy_func(Mode::NonAbi))
+                                                .collect(),
+                                        );
+                                        // TODO: use `_methods` to insert dummy funcs for those
+                                        // methods into the namespace here
+                                        // will need to implement something for converting
+                                        // non-type-checked functions into dummy functions
+                                    }
                                     Some(TypedDeclaration::AbiDeclaration(_)) => {
                                         errors.push(CompileError::AbiAsSupertrait {
                                             span: name.span().clone(),
@@ -428,8 +448,6 @@ impl TypedAstNode {
                                     }),
                                 }
                             }
-
-                            let trait_namespace = create_new_scope(namespace);
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
                             trait_namespace.insert_trait_implementation(
@@ -540,9 +558,6 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
-                                let mut type_parameters = type_parameters.clone();
-                                // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_parameters);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 

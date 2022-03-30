@@ -133,7 +133,7 @@ tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
-struct_expression  =  {call_path ~ "{" ~ struct_expr_fields ~ "}"}
+struct_expression  =  {call_path ~ type_args_with_path? ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
