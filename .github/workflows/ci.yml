@@ -146,6 +146,30 @@ jobs:
           command: run
           args: --release --bin test
 
+  # TODO: Remove this upon merging std tests with the rest of the E2E tests.
+  cargo-test-lib-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core:v0.5.0
+        ports:
+          - 4000:4000
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Build All Tests
+        run: cd sway-lib-std && bash build.sh && cd ..
+      - name: Cargo Test sway-lib-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --test --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --no-capture
+
   cargo-test-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
