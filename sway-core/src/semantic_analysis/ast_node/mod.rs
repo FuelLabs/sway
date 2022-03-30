@@ -558,9 +558,6 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
-                                let mut type_parameters = type_parameters.clone();
-                                // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_parameters);
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 
