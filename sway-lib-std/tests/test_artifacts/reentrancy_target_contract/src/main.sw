@@ -1,6 +1,6 @@
 contract;
 
-use std::{assert::assert, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::is_reentrant, result::*, chain::auth::*};
+use std::{assert::assert, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::*, result::*, chain::auth::*};
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
@@ -24,7 +24,8 @@ fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
 impl Target for Contract {
     fn reentrance_denied() {
         // panic if reentrancy detected
-        assert(!is_reentrant());
+        reentrancy_guard();
+
         let result: Result<Sender, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
