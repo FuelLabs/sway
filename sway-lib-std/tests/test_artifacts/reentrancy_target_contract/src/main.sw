@@ -32,7 +32,7 @@ impl Target for Contract {
         let caller = abi(Attacker, id);
 
         /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        caller.evil_callback(42);
+        let return_value = caller.evil_callback(42);
     }
 
     fn reentrancy_detected() -> bool {
@@ -45,7 +45,7 @@ impl Target for Contract {
             let caller = abi(Attacker, id);
 
             /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-            caller.evil_callback(42);
+            let return_value = caller.evil_callback(42);
             false
         }
     }
