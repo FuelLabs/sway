@@ -342,6 +342,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/abort_control_flow",
         "should_fail/match_expressions_non_exhaustive",
         "should_fail/empty_impl",
+        "should_fail/disallow_turbofish",
         "should_fail/generics_unhelpful_error",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
