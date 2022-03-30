@@ -36,17 +36,16 @@ impl Target for Contract {
 
     fn reentrancy_detected() -> bool {
         if is_reentrant() {
-            return true;
-        };
+            true
+        } else {
+            let result: Result<Sender, AuthError> = msg_sender();
+            let id = get_msg_sender_id_or_panic(result);
+            let id = id.value;
+            let caller = abi(Attacker, id);
 
-        let result: Result<Sender, AuthError> = msg_sender();
-        let id = get_msg_sender_id_or_panic(result);
-        let id = id.value;
-        let caller = abi(Attacker, id);
-
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        caller.innocent_callback(42);
-
-        false
+            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+            caller.innocent_callback(42);
+            false
+        }
     }
 }
