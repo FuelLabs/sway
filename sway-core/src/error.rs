@@ -843,6 +843,8 @@ pub enum CompileError {
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
+    GenericShadowsGeneric { name: String, span: Span },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
     StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
@@ -1103,6 +1105,7 @@ impl CompileError {
             ArrayOutOfBounds { span, .. } => span,
             TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            GenericShadowsGeneric { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             MatchExpressionNonExhaustive { span, .. } => span,

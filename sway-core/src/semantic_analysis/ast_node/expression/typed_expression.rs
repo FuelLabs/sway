@@ -299,11 +299,13 @@ impl TypedExpression {
             ),
             Expression::StructExpression {
                 span,
+                type_arguments,
                 struct_name,
                 fields,
             } => Self::type_check_struct_expression(
                 span,
                 struct_name,
+                type_arguments,
                 fields,
                 namespace,
                 crate_namespace,
@@ -1315,6 +1317,7 @@ impl TypedExpression {
     fn type_check_struct_expression(
         span: Span,
         call_path: CallPath,
+        type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
@@ -1332,6 +1335,7 @@ impl TypedExpression {
             warnings,
             errors
         );
+
         let decl = match module.clone().get_symbol(&call_path.suffix).value {
             Some(TypedDeclaration::StructDeclaration(decl)) => decl,
             Some(_) => {
@@ -1353,10 +1357,42 @@ impl TypedExpression {
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let mut new_decl = if decl.type_parameters.is_empty() {
-            decl
-        } else {
-            decl.monomorphize(&module)
+        let mut new_decl = match (decl.type_parameters.is_empty(), type_arguments.is_empty()) {
+            (true, true) => decl,
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(join_spans)
+                    .unwrap_or_else(|| call_path.suffix.span().clone());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: call_path.suffix,
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            _ => {
+                let mut type_arguments = type_arguments;
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        namespace.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            type_argument.span.clone(),
+                            true,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
+                check!(
+                    decl.monomorphize(&module, &type_arguments, Some(self_type)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
         };
 
         // match up the names with their type annotations from the declaration

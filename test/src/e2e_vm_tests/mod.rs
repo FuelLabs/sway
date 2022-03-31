@@ -118,6 +118,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/stdlib/b512_struct_alignment",
             ProgramState::Return(1), // true
         ),
+        ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
@@ -364,7 +365,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/abort_control_flow",
         "should_fail/match_expressions_non_exhaustive",
         "should_fail/empty_impl",
+        "should_fail/disallow_turbofish",
         "should_fail/generics_unhelpful_error",
+        "should_fail/generic_shadows_generic",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

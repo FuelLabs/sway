@@ -69,6 +69,7 @@ pub enum Expression {
     },
     StructExpression {
         struct_name: CallPath,
+        type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
     },
@@ -592,7 +593,7 @@ impl Expression {
                 }
             }
             Rule::struct_expression => {
-                let mut expr_iter = expr.into_inner();
+                let mut expr_iter = expr.into_inner().peekable();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = check!(
                     CallPath::parse_from_pair(struct_name, config),
@@ -600,6 +601,23 @@ impl Expression {
                     warnings,
                     errors
                 );
+                let type_arguments = match expr_iter.peek() {
+                    Some(pair) if pair.as_rule() == Rule::type_args_with_path => check!(
+                        TypeArgument::parse_arguments_from_pair(
+                            expr_iter
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .nth(1)
+                                .expect("guaranteed by grammar"),
+                            config
+                        ),
+                        vec!(),
+                        warnings,
+                        errors
+                    ),
+                    _ => vec![],
+                };
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::new();
                 let mut var_decls = vec![];
@@ -630,6 +648,7 @@ impl Expression {
 
                 let exp = Expression::StructExpression {
                     struct_name,
+                    type_arguments,
                     fields: fields_buf,
                     span,
                 };

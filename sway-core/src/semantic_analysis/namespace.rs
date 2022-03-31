@@ -75,6 +75,8 @@ impl Namespace {
     pub(crate) fn insert(&mut self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        // purposefully do not preemptively return errors so that the
+        // new definiton allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
@@ -83,7 +85,12 @@ impl Namespace {
                         span: name.span().clone(),
                         name: name.as_str().to_string(),
                     });
-                    return err(warnings, errors);
+                }
+                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                    errors.push(CompileError::GenericShadowsGeneric {
+                        span: name.span().clone(),
+                        name: name.as_str().to_string(),
+                    });
                 }
                 _ => {
                     warnings.push(CompileWarning {

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Place in root of project and run to build the project and all its tests and artifacts
-FILES="./sway-lib-std/tests/test_*/*"
+FILES="./tests/test_*/*"
 for f in $FILES
 do
 if [ -d "${f}" ];
@@ -17,7 +17,4 @@ echo "building test $f..."
 fi
 done
 
-echo "building project..."
-pushd sway-lib-std/tests
-cargo test
-popd
+echo "Successfully built all projects."
