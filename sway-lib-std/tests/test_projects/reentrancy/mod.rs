@@ -1,4 +1,4 @@
-use fuel_tx::{ContractId, Salt, consts::MAX_GAS_PER_TX};
+use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId, Salt};
 use fuels_abigen_macro::abigen;
 use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::provider::Provider;
@@ -77,8 +77,7 @@ async fn can_block_cross_function_reentrancy() {
 #[tokio::test]
 async fn can_call_guarded_function() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) =
-        get_attacker_instance(provider.clone(), wallet.clone()).await;
+    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
     let (_, target_id) = get_target_instance(provider, wallet).await;
 
     let sway_target_id = attackercontract_mod::ContractId {
