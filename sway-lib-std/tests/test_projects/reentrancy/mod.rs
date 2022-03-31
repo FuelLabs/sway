@@ -25,8 +25,6 @@ async fn can_detect_reentrancy() {
         value: target_id.into(),
     };
 
-    println!("Max Gas: {:?}", MAX_GAS_PER_TX);
-
     let result = attacker_instance
         .launch_attack(sway_target_id)
         .set_contracts(&[target_id])
@@ -39,7 +37,7 @@ async fn can_detect_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "")]
+#[should_panic(expected = "RESERV00")]
 async fn can_block_reentrancy() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
@@ -58,7 +56,7 @@ async fn can_block_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "")]
+#[should_panic(expected = "RESERV00")]
 async fn can_block_cross_function_reentrancy() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
@@ -79,11 +77,9 @@ async fn can_block_cross_function_reentrancy() {
 #[tokio::test]
 async fn can_call_guarded_function() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, attacker_id) =
+    let (attacker_instance, _) =
         get_attacker_instance(provider.clone(), wallet.clone()).await;
     let (_, target_id) = get_target_instance(provider, wallet).await;
-    println!("Attacker contract ID: {:?}", &attacker_id);
-    println!("Target contract ID: {:?}", &target_id);
 
     let sway_target_id = attackercontract_mod::ContractId {
         value: target_id.into(),
