@@ -55,7 +55,7 @@ impl<T> RawVec<T> {
         let new_ptr = heap_ptr() + 1;
 
         // Copy old contents into newly-allocated memory.
-        asm(new_ptr: new_ptr, old_ptr: self.ptr, size: self.cap) {
+        asm(new_ptr: new_ptr, old_ptr: self.ptr, size: self.cap * size_of::<T>()) {
             mcp new_ptr old_ptr size;
         };
 
