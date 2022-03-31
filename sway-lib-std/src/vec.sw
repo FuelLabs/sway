@@ -130,7 +130,7 @@ impl<T> Vec<T> {
     /// Returns the number of elements in the vector, also referred to
     /// as its 'length'.
     pub fn len(self) -> u64 {
-        self.buf.cap
+        self.len
     }
 
     /// Returns `true` if the vector contains no elements.
