@@ -1,17 +1,14 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::*;
+use crate::utils::cli_error::{check_tree_type, fuel_core_not_running};
 use crate::utils::parameters::TxParameters;
 use anyhow::{anyhow, Result};
-use forc_pkg::Manifest;
-use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
-use sway_core::{parse, TreeType};
-use sway_utils::constants::*;
+use sway_utils::constants::SWAY_SCRIPT;
 use tokio::process::Child;
 
 pub async fn run(command: RunCommand) -> Result<()> {
@@ -20,86 +17,56 @@ pub async fn run(command: RunCommand) -> Result<()> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
+    let manifest = check_tree_type(path_dir, SWAY_SCRIPT)?;
 
-    match find_manifest_dir(&path_dir) {
-        Some(manifest_dir) => {
-            let manifest = Manifest::from_dir(&manifest_dir)?;
-            let project_name = &manifest.project.name;
-            let entry_string = manifest.entry_string(&manifest_dir)?;
+    let input_data = &command.data.unwrap_or_else(|| "".into());
+    let data = format_hex_data(input_data);
+    let script_data = hex::decode(data).expect("Invalid hex");
 
-            // Parse the entry point string and check is it a script.
-            let parsed_result = parse(entry_string, None);
-            match parsed_result.value {
-                Some(parse_tree) => match parse_tree.tree_type {
-                    TreeType::Script => {
-                        let input_data = &command.data.unwrap_or_else(|| "".into());
-                        let data = format_hex_data(input_data);
-                        let script_data = hex::decode(data).expect("Invalid hex");
+    let build_command = BuildCommand {
+        path: command.path,
+        use_ir: command.use_ir,
+        print_finalized_asm: command.print_finalized_asm,
+        print_intermediate_asm: command.print_intermediate_asm,
+        print_ir: command.print_ir,
+        binary_outfile: command.binary_outfile,
+        debug_outfile: command.debug_outfile,
+        offline_mode: false,
+        silent_mode: command.silent_mode,
+        output_directory: command.output_directory,
+        minify_json_abi: command.minify_json_abi,
+    };
 
-                        let build_command = BuildCommand {
-                            path: command.path,
-                            use_ir: command.use_ir,
-                            print_finalized_asm: command.print_finalized_asm,
-                            print_intermediate_asm: command.print_intermediate_asm,
-                            print_ir: command.print_ir,
-                            binary_outfile: command.binary_outfile,
-                            debug_outfile: command.debug_outfile,
-                            offline_mode: false,
-                            silent_mode: command.silent_mode,
-                            output_directory: command.output_directory,
-                            minify_json_abi: command.minify_json_abi,
-                        };
+    let compiled = forc_build::build(build_command)?;
+    let contracts = command.contract.unwrap_or_default();
+    let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
-                        let compiled = forc_build::build(build_command)?;
-                        let contracts = command.contract.unwrap_or_default();
-                        let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
+    let tx = create_tx_with_script_and_data(
+        compiled.bytecode,
+        script_data,
+        inputs,
+        outputs,
+        TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
+    );
 
-                        let tx = create_tx_with_script_and_data(
-                            compiled.bytecode,
-                            script_data,
-                            inputs,
-                            outputs,
-                            TxParameters::new(
-                                command.byte_price,
-                                command.gas_limit,
-                                command.gas_price,
-                            ),
-                        );
+    if command.dry_run {
+        println!("{:?}", tx);
+        Ok(())
+    } else {
+        let node_url = match &manifest.network {
+            Some(network) => &network.url,
+            _ => &command.node_url,
+        };
 
-                        if command.dry_run {
-                            println!("{:?}", tx);
-                            Ok(())
-                        } else {
-                            let node_url = match &manifest.network {
-                                Some(network) => &network.url,
-                                _ => &command.node_url,
-                            };
+        let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
 
-                            let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
-
-                            if command.kill_node {
-                                if let Some(mut child) = child {
-                                    child.kill().await.expect("Node should be killed");
-                                }
-                            }
-
-                            Ok(())
-                        }
-                    }
-                    TreeType::Contract => {
-                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_CONTRACT))
-                    }
-                    TreeType::Predicate => {
-                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_PREDICATE))
-                    }
-                    TreeType::Library { .. } => {
-                        Err(wrong_sway_type(project_name, SWAY_SCRIPT, SWAY_LIBRARY))
-                    }
-                },
-                None => Err(parsing_failed(project_name, parsed_result.errors)),
+        if command.kill_node {
+            if let Some(mut child) = child {
+                child.kill().await.expect("Node should be killed");
             }
         }
-        None => Err(manifest_file_missing(path_dir)),
+
+        Ok(())
     }
 }
 

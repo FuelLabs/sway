@@ -15,7 +15,9 @@ use crate::{
     type_engine::*,
     AstNode, ParseTree,
 };
-
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result;
 use sway_types::{ident::Ident, span::Span};
 
 /// Represents the different variants of the AST.
@@ -25,6 +27,25 @@ pub enum TreeType {
     Script,
     Contract,
     Library { name: Ident },
+}
+
+impl Display for TreeType {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            TreeType::Predicate => {
+                write!(f, "predicate")
+            }
+            TreeType::Script => {
+                write!(f, "script")
+            }
+            TreeType::Contract => {
+                write!(f, "contract")
+            }
+            TreeType::Library { name: _ident } => {
+                write!(f, "library")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
