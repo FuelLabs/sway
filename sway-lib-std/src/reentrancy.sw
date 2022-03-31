@@ -5,6 +5,7 @@
 library reentrancy;
 
 use ::context::call_frames::*;
+use ::constants::ZERO;
 use ::assert::assert;
 use ::panic::panic;
 use ::chain::auth::caller_is_external;
@@ -20,22 +21,22 @@ pub fn reentrancy_guard() {
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
 pub fn is_reentrant() -> bool {
     let mut reentrancy = false;
-    let mut internal = !caller_is_external();
     let mut call_frame_pointer = frame_ptr();
     // Get our current contract ID
     let this_id = contract_id();
+    // initially, previous_contract_id == this_id
+    let mut previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
+    let zero_id = ~ContractId::from(ZERO);
 
     // Seeing as reentrancy cannot happen in an external context, if not detected by the time we get to an external context in the stack then the reentrancy pattern is not present.
-    while internal {
-        call_frame_pointer = get_previous_frame_pointer(call_frame_pointer);
-        // get the ContractId value from the previous call frame
-        let previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
-
+    while previous_contract_id != zero_id {
         if previous_contract_id == this_id {
             reentrancy = true;
-            internal = false;
+            previous_contract_id = zero_id;
         } else {
-            internal = !caller_is_external();
+            call_frame_pointer = get_previous_frame_pointer(call_frame_pointer);
+            // get the ContractId value from the previous call frame
+            previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
         };
     }
     reentrancy
