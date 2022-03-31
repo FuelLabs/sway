@@ -69,7 +69,7 @@ impl Attacker for Contract {
         let id = get_msg_sender_id_or_panic(result);
 
         let attacker = abi(Attacker, ~ContractId::into(contract_id()));
-        attacker.launch_thwarted_attack_2(id);
+        attacker.launch_thwarted_attack_1(id);
         true
     }
 
