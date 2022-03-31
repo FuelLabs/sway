@@ -24,19 +24,15 @@ pub fn is_reentrant() -> bool {
     let mut call_frame_pointer = frame_ptr();
     // Get our current contract ID
     let this_id = contract_id();
-    // initially, previous_contract_id == this_id
-    let mut previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
-    let zero_id = ~ContractId::from(ZERO);
 
     // Seeing as reentrancy cannot happen in an external context, if not detected by the time we get to an external context in the stack then the reentrancy pattern is not present.
-    while previous_contract_id != zero_id {
+    while call_frame_pointer != 0 {
+        call_frame_pointer = get_previous_frame_pointer(call_frame_pointer);
+        // get the ContractId value from the previous call frame
+        let previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
         if previous_contract_id == this_id {
             reentrancy = true;
-            previous_contract_id = zero_id;
-        } else {
-            call_frame_pointer = get_previous_frame_pointer(call_frame_pointer);
-            // get the ContractId value from the previous call frame
-            previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
+            call_frame_pointer = 0;
         };
     }
     reentrancy
