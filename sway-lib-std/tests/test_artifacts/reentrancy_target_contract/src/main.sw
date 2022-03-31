@@ -63,7 +63,8 @@ impl Target for Contract {
         let return_value = caller.evil_callback_3();
     }
 
-    fn guarded_function_is_callable() {
+    fn guarded_function_is_callable() -> bool {
         reentrancy_guard();
+        true
     }
 }
