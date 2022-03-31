@@ -1,4 +1,4 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::{ContractId, Salt, consts::MAX_GAS_PER_TX};
 use fuels_abigen_macro::abigen;
 use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::provider::Provider;
@@ -25,9 +25,12 @@ async fn can_detect_reentrancy() {
         value: target_id.into(),
     };
 
+    println!("Max Gas: {:?}", MAX_GAS_PER_TX);
+
     let result = attacker_instance
         .launch_attack(sway_target_id)
         .set_contracts(&[target_id])
+        .tx_params(TxParameters::new(Some(0), Some(MAX_GAS_PER_TX), None))
         .call()
         .await
         .unwrap();
