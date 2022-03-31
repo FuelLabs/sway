@@ -113,4 +113,28 @@ impl<T> Vec<T> {
         // Increment length.
         self.len = self.len + 1;
     }
+
+    /// Gets the capacity of the allocation.
+    pub fn capacity(self) -> u64 {
+        self.buf.cap
+    }
+
+    /// Clears the vector, removing all values.
+    ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the vector.
+    pub fn clear(self) {
+        self.len = 0;
+    }
+
+    /// Returns the number of elements in the vector, also referred to
+    /// as its 'length'.
+    pub fn len(self) -> u64 {
+        self.buf.cap
+    }
+
+    /// Returns `true` if the vector contains no elements.
+    pub fn is_empty(self) -> bool {
+        self.len == 0
+    }
 }
