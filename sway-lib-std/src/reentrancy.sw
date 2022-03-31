@@ -15,9 +15,6 @@ use ::context::registers::frame_ptr;
 
 pub fn reentrancy_guard() {
     assert(is_reentrant() == false);
-    // if is_reentrant() {
-    //     panic(1)
-    // }
 }
 
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
