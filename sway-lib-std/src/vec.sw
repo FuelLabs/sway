@@ -11,7 +11,8 @@ impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
         RawVec {
-            ptr: heap_ptr(),
+            // Heap pointer points to _unallocated_ memory.
+            ptr: heap_ptr() + 1,
             cap: 0,
         }
     }
@@ -20,16 +21,14 @@ impl<T> RawVec<T> {
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
-        let v = RawVec {
-            ptr: heap_ptr(),
-            cap: capacity,
-        };
-
         asm(size: capacity * size_of::<T>()) {
             aloc size;
         };
-
-        return v;
+        RawVec {
+            // Heap pointer points to _unallocated_ memory.
+            ptr: heap_ptr() + 1,
+            cap: capacity,
+        }
     }
 
     /// Gets the pointer of the allocation.
@@ -50,10 +49,10 @@ impl<T> RawVec<T> {
         };
 
         // Allocate for `new_cap` elements.
-        let new_ptr = (heap_ptr());
         asm(size: new_cap * size_of::<T>()) {
             aloc size;
         };
+        let new_ptr = heap_ptr() + 1;
 
         // Copy old contents into newly-allocated memory.
         // TODO actually do this
