@@ -47,7 +47,26 @@ async fn can_block_reentrancy() {
     };
 
     attacker_instance
-        .launch_thwarted_attack(sway_target_id)
+        .launch_thwarted_attack_1(sway_target_id)
+        .set_contracts(&[target_id])
+        .call()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+#[should_panic]
+async fn can_block_cross_function_reentrancy() {
+    let (provider, wallet) = setup_test_provider_and_wallet().await;
+    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
+    let (_, target_id) = get_target_instance(provider, wallet).await;
+
+    let sway_target_id = attackercontract_mod::ContractId {
+        value: target_id.into(),
+    };
+
+    attacker_instance
+        .launch_thwarted_attack_2(sway_target_id)
         .set_contracts(&[target_id])
         .call()
         .await

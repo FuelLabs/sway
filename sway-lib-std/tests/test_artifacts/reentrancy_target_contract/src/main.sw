@@ -22,19 +22,6 @@ fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
 }
 
 impl Target for Contract {
-    fn reentrance_denied() {
-        // panic if reentrancy detected
-        reentrancy_guard();
-
-        let result: Result<Sender, AuthError> = msg_sender();
-        let id = get_msg_sender_id_or_panic(result);
-        let id = id.value;
-        let caller = abi(Attacker, id);
-
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-        let return_value = caller.evil_callback(42);
-    }
-
     fn reentrancy_detected() -> bool {
         if is_reentrant() {
             true
@@ -45,9 +32,35 @@ impl Target for Contract {
             let caller = abi(Attacker, id);
 
             /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
-            let return_value = caller.evil_callback(42);
+            let return_value = caller.evil_callback_1();
             false
         }
+    }
+
+    fn reentrance_denied() {
+        // panic if reentrancy detected
+        reentrancy_guard();
+
+        let result: Result<Sender, AuthError> = msg_sender();
+        let id = get_msg_sender_id_or_panic(result);
+        let id = id.value;
+        let caller = abi(Attacker, id);
+
+        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        let return_value = caller.evil_callback_2();
+    }
+
+    fn cross_function_reentrance_denied() {
+        // panic if reentrancy detected
+        reentrancy_guard();
+
+        let result: Result<Sender, AuthError> = msg_sender();
+        let id = get_msg_sender_id_or_panic(result);
+        let id = id.value;
+        let caller = abi(Attacker, id);
+
+        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        let return_value = caller.evil_callback_3();
     }
 
     fn guarded_function_is_callable() {
