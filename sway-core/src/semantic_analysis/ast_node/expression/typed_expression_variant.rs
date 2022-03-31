@@ -105,8 +105,12 @@ pub(crate) enum TypedExpressionVariant {
     },
     #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
-    SizeOf {
-        variant: SizeOfVariant,
+    TypeProperty {
+        property: BuiltinProperty,
+        type_id: TypeId,
+    },
+    SizeOfValue {
+        expr: Box<TypedExpression>,
     },
 }
 
@@ -321,8 +325,18 @@ impl PartialEq for TypedExpressionVariant {
                     ..
                 },
             ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
-            (Self::SizeOf { variant: l_variant }, Self::SizeOf { variant: r_variant }) => {
-                l_variant == r_variant
+            (
+                Self::TypeProperty {
+                    property: l_prop,
+                    type_id: l_type_id,
+                },
+                Self::TypeProperty {
+                    property: r_prop,
+                    type_id: r_type_id,
+                },
+            ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
+            (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
+                l_expr == r_expr
             }
             _ => false,
         }
@@ -355,25 +369,6 @@ pub struct TypeCheckedStorageAccessDescriptor {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum SizeOfVariant {
-    Type(TypeId),
-    Val(Box<TypedExpression>),
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for SizeOfVariant {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Type(l0), Self::Type(r0)) => l0 == r0,
-            (Self::Val(l0), Self::Val(r0)) => (**l0) == (**r0),
-            _ => false,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -502,12 +497,16 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TypedExpressionVariant::SizeOf { variant } => match variant {
-                SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
-                SizeOfVariant::Type(type_name) => {
-                    format!("size_of({:?})", type_name.friendly_type_str())
+            TypedExpressionVariant::TypeProperty { property, type_id } => {
+                let type_str = look_up_type_id(*type_id).friendly_type_str();
+                match property {
+                    BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
+                    BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
                 }
-            },
+            }
+            TypedExpressionVariant::SizeOfValue { expr } => {
+                format!("size_of_val({:?})", expr.pretty_print())
+            }
         }
     }
 
@@ -624,10 +623,16 @@ impl TypedExpressionVariant {
             AbiCast { address, .. } => address.copy_types(type_mapping),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
-            SizeOf { variant } => match variant {
-                SizeOfVariant::Type(_) => (),
-                SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),
-            },
+            TypeProperty { type_id, .. } => {
+                *type_id = if let Some(matching_id) =
+                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*type_id))
+                };
+            }
+            SizeOfValue { expr } => expr.copy_types(type_mapping),
         }
     }
 }

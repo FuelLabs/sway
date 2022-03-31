@@ -173,11 +173,18 @@ pub enum Expression {
         exp: Box<Expression>,
         span: Span,
     },
-    SizeOfType {
+    BuiltinGetTypeProperty {
+        builtin: BuiltinProperty,
         type_name: TypeInfo,
         type_span: Span,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BuiltinProperty {
+    SizeOfType,
+    IsRefType,
 }
 
 #[derive(Debug, Clone)]
@@ -312,7 +319,7 @@ impl Expression {
             StorageAccess { span, .. } => span,
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
-            SizeOfType { span, .. } => span,
+            BuiltinGetTypeProperty { span, .. } => span,
         })
         .clone()
     }
@@ -1266,8 +1273,8 @@ impl Expression {
                 warnings,
                 errors
             ),
-            Rule::size_of_expr => check!(
-                parse_size_of_expr(expr, config),
+            Rule::built_in_expr => check!(
+                parse_built_in_expr(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1439,7 +1446,7 @@ pub(crate) fn parse_array_index(
     )
 }
 
-pub(crate) fn parse_size_of_expr(
+pub(crate) fn parse_built_in_expr(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
@@ -1471,10 +1478,12 @@ pub(crate) fn parse_size_of_expr(
                 value: exp,
             }
         }
-        Rule::size_of_type_expr => {
+        // The size_of_type and is_ref_type_expr rules have identical grammar apart from the
+        // keyword.
+        Rule::size_of_type_expr | Rule::is_ref_type_expr => {
             let mut inner_iter = size_of.into_inner();
-            let _keyword = inner_iter.next();
-            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let keyword = inner_iter.next().expect("guaranteed by grammar");
+            let elem = inner_iter.next().expect("guaranteed by grammar");
             let type_span = Span {
                 span: elem.as_span(),
                 path: config.map(|c| c.path()),
@@ -1485,7 +1494,12 @@ pub(crate) fn parse_size_of_expr(
                 warnings,
                 errors
             );
-            let exp = Expression::SizeOfType {
+            let exp = Expression::BuiltinGetTypeProperty {
+                builtin: match keyword.as_str() {
+                    "size_of" => BuiltinProperty::SizeOfType,
+                    "is_reference_type" => BuiltinProperty::IsRefType,
+                    _otherwise => unreachable!("unexpected built in keyword: {keyword}"),
+                },
                 type_name,
                 type_span,
                 span,

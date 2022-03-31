@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
+    parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
@@ -637,32 +637,30 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::SizeOf { variant } => {
-                match variant {
-                    SizeOfVariant::Type(type_id) => {
-                        let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
-                        Ok(Constant::get_uint(
-                            context,
-                            64,
-                            ir_type_size_in_bytes(context, &ir_type),
-                            None,
-                        ))
-                    }
-                    SizeOfVariant::Val(exp) => {
-                        let ir_type =
-                            convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-
-                        // Compile the expression in case of side-effects but ignore its value.
-                        self.compile_expression(context, *exp)?;
-
-                        Ok(Constant::get_uint(
-                            context,
-                            64,
-                            ir_type_size_in_bytes(context, &ir_type),
-                            None,
-                        ))
+            TypedExpressionVariant::TypeProperty { property, type_id } => {
+                let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
+                match property {
+                    BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
+                        context,
+                        64,
+                        ir_type_size_in_bytes(context, &ir_type),
+                        None,
+                    )),
+                    BuiltinProperty::IsRefType => {
+                        Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
                     }
                 }
+            }
+            TypedExpressionVariant::SizeOfValue { expr } => {
+                // Compile the expression in case of side-effects but ignore its value.
+                let ir_type = convert_resolved_typeid(context, &expr.return_type, &expr.span)?;
+                self.compile_expression(context, *expr)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
             }
         }
     }
