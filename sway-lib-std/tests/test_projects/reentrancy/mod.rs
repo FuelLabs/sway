@@ -39,7 +39,7 @@ async fn can_detect_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic]
+#[should_panic(expected = "")]
 async fn can_block_reentrancy() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
@@ -58,7 +58,7 @@ async fn can_block_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic]
+#[should_panic(expected = "")]
 async fn can_block_cross_function_reentrancy() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
