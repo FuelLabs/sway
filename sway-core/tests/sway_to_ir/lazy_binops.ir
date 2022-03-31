@@ -2,7 +2,6 @@ script {
     fn main() -> bool {
         entry:
         v0 = const bool false, !1
-        v0 = const bool false, !1
         cbr v0, block0, block1, !2
 
         block0:

@@ -2183,7 +2183,9 @@ fn convert_literal_to_value(
         Literal::U32(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
         Literal::U64(n) => Constant::get_uint(context, 64, *n, span_id_idx),
         Literal::Numeric(n) => Constant::get_uint(context, 64, *n, span_id_idx),
-        Literal::String(s) => Constant::get_string(context, s.as_str().to_owned(), span_id_idx),
+        Literal::String(s) => {
+            Constant::get_string(context, s.as_str().as_bytes().to_vec(), span_id_idx)
+        }
         Literal::Boolean(b) => Constant::get_bool(context, *b, span_id_idx),
         Literal::B256(bs) => Constant::get_b256(context, *bs, span_id_idx),
     }
@@ -2197,7 +2199,7 @@ fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
         Literal::U32(n) => Constant::new_uint(64, *n as u64),
         Literal::U64(n) => Constant::new_uint(64, *n),
         Literal::Numeric(n) => Constant::new_uint(64, *n),
-        Literal::String(s) => Constant::new_string(s.as_str().to_owned()),
+        Literal::String(s) => Constant::new_string(s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(*b),
         Literal::B256(bs) => Constant::new_b256(*bs),
     }
@@ -2234,7 +2236,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
         TypeInfo::Numeric => Type::Uint(64),
         TypeInfo::Boolean => Type::Bool,
-        TypeInfo::Byte => Type::Uint(64), // XXX?
+        TypeInfo::Byte => Type::Uint(64),
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
         TypeInfo::Struct { fields, .. } => get_aggregate_for_types(
@@ -2328,7 +2330,7 @@ mod tests {
         let expected_bytes = std::fs::read(&ir_path).unwrap();
         let expected = String::from_utf8_lossy(&expected_bytes);
 
-        let typed_ast = parse_to_typed_ast(sw_path, &input);
+        let typed_ast = parse_to_typed_ast(sw_path.clone(), &input);
         let ir = super::compile_ast(typed_ast).unwrap();
         let output = sway_ir::printer::to_string(&ir);
 
@@ -2341,8 +2343,8 @@ mod tests {
 
         if output != expected {
             println!("{}", prettydiff::diff_lines(&expected, &output));
+            panic!("{} failed.", sw_path.display());
         }
-        assert_eq!(output, expected);
     }
 
     // -------------------------------------------------------------------------------------------------
@@ -2393,8 +2395,8 @@ mod tests {
         let printed = sway_ir::printer::to_string(&parsed_ctx);
         if printed != input {
             println!("{}", prettydiff::diff_lines(&input, &printed));
+            panic!("{} failed.", path.display());
         }
-        assert_eq!(input, printed);
     }
 
     // -------------------------------------------------------------------------------------------------

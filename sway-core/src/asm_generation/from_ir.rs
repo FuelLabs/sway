@@ -336,15 +336,15 @@ impl<'ir> AsmBuilder<'ir> {
                         stack_base += 1;
                     }
                     Type::B256 => {
+                        // XXX Like strings, should we just reserve space for a pointer?
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 4;
                     }
-                    Type::String(count) => {
+                    Type::String(_) => {
+                        // Strings are always constant and used by reference, so we only store the
+                        // pointer on the stack.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                        // XXX `count` is a CHAR count, not BYTE count.  We need to count the size
-                        // of the string before allocating.  For now assuming CHAR == BYTE.
-                        stack_base += size_bytes_in_words!(count);
+                        stack_base += 1;
                     }
                     Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
                         // Store this aggregate at the current stack base.
@@ -1923,7 +1923,7 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Bool(_) => 8,
             ConstantValue::Uint(_) => 8,
             ConstantValue::B256(_) => 32,
-            ConstantValue::String(s) => s.len() as u64, // String::len() returns the byte size, not char count.
+            ConstantValue::String(_) => 8,
             ConstantValue::Array(elems) => {
                 if elems.is_empty() {
                     0
@@ -1953,7 +1953,8 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Unit
             | ConstantValue::Bool(_)
             | ConstantValue::Uint(_)
-            | ConstantValue::B256(_) => {
+            | ConstantValue::B256(_)
+            | ConstantValue::String(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -2045,18 +2046,6 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             }
 
-            ConstantValue::String(_) => {
-                // These are still not properly implemented until we refactor for spans!  There's
-                // an issue on GitHub for it.
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "strings aren't implemented!".into(),
-                    owning_span: span,
-                });
-
-                0
-            }
-
             ConstantValue::Array(items) | ConstantValue::Struct(items) => {
                 // Recurse for each item, accumulating the field offset and the final size.
                 items.iter().fold(0, |local_offs, item| {
@@ -2091,10 +2080,14 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::Bool(b) => Literal::Boolean(*b),
         ConstantValue::Uint(n) => Literal::U64(*n),
         ConstantValue::B256(bs) => Literal::B256(*bs),
-        ConstantValue::String(str) => Literal::String(crate::span::Span {
-            span: pest::Span::new(std::sync::Arc::from(str.as_str()), 0, str.len()).unwrap(),
-            path: None,
-        }),
+        ConstantValue::String(bs) => {
+            // ConstantValue::String bytes are guaranteed to be valid UTF8.
+            let s = std::str::from_utf8(bs).unwrap();
+            Literal::String(crate::span::Span {
+                span: pest::Span::new(std::sync::Arc::from(s), 0, s.len()).unwrap(),
+                path: None,
+            })
+        }
         ConstantValue::Array(_) | ConstantValue::Struct(_) => {
             unreachable!("Cannot convert aggregates to a literal.")
         }
@@ -2107,7 +2100,7 @@ pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) => 8,
         Type::B256 => 32,
-        Type::String(n) => *n,
+        Type::String(_) => 8,
         Type::Array(aggregate) => {
             if let AggregateContent::ArrayType(el_ty, cnt) = &context.aggregates[aggregate.0] {
                 cnt * ir_type_size_in_bytes(context, el_ty)
