@@ -6,19 +6,15 @@ use reentrancy_target_abi::Target;
 
 // Return the sender as a ContractId or panic:
 fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
-    let mut ret = ~ContractId::from(ZERO);
-    if result.is_err() {
-        panic(0);
-    } else {
-        let unwrapped = result.unwrap();
-        if let Sender::ContractId(v) = unwrapped {
-            ret = v;
+    if let Result::Ok(s) = result {
+        if let Sender::ContractId(v) = s {
+            v
         } else {
             panic(0);
-        };
-    };
-
-    ret
+        }
+    } else {
+        panic(0);
+    }
 }
 
 impl Target for Contract {
