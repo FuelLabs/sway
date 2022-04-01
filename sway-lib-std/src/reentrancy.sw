@@ -13,7 +13,7 @@ use ::contract_id::ContractId;
 use ::context::registers::frame_ptr;
 
 pub fn reentrancy_guard() {
-    assert(is_reentrant() == false);
+    assert(!is_reentrant());
 }
 
 /// Returns `true` if the reentrancy pattern is detected, and `false` otherwise.
