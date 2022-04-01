@@ -42,8 +42,8 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     Error::msg(message)
 }
 
-/// Given the current directory and file type, determines whether the correct file type is present.
-pub fn check_tree_type(curr_dir: PathBuf, wanted_type: &str) -> Result<Manifest> {
+/// Given the current directory and file type, determines whether the correct project type is present.
+pub fn check_project_type(curr_dir: PathBuf, wanted_type: &str) -> Result<Manifest> {
     match find_manifest_dir(&curr_dir) {
         Some(manifest_dir) => {
             let manifest = Manifest::from_dir(&manifest_dir)?;

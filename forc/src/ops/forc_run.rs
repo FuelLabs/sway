@@ -1,6 +1,6 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::{check_tree_type, fuel_core_not_running};
+use crate::utils::cli_error::{check_project_type, fuel_core_not_running};
 use crate::utils::parameters::TxParameters;
 use anyhow::{anyhow, Result};
 use fuel_gql_client::client::FuelClient;
@@ -17,7 +17,7 @@ pub async fn run(command: RunCommand) -> Result<()> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = check_tree_type(path_dir, SWAY_SCRIPT)?;
+    let manifest = check_project_type(path_dir, SWAY_SCRIPT)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);

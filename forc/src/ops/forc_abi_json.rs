@@ -1,5 +1,5 @@
 use crate::cli::{BuildCommand, JsonAbiCommand};
-use crate::utils::cli_error::check_tree_type;
+use crate::utils::cli_error::check_project_type;
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::fs::File;
@@ -12,7 +12,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     } else {
         std::env::current_dir()?
     };
-    check_tree_type(curr_dir, SWAY_CONTRACT)?;
+    check_project_type(curr_dir, SWAY_CONTRACT)?;
 
     let build_command = BuildCommand {
         path: command.path,

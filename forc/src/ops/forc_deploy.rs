@@ -1,6 +1,6 @@
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::check_tree_type;
+use crate::utils::cli_error::check_project_type;
 use anyhow::{anyhow, Result};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
@@ -14,7 +14,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = check_tree_type(curr_dir, SWAY_CONTRACT)?;
+    let manifest = check_project_type(curr_dir, SWAY_CONTRACT)?;
 
     let DeployCommand {
         path,
