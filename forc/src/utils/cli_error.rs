@@ -25,7 +25,11 @@ pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::
     Error::msg(message)
 }
 
-pub fn wrong_sway_type(project_name: &str, wanted_type: &str, parse_type: &str) -> anyhow::Error {
+pub fn wrong_project_type(
+    project_name: &str,
+    wanted_type: &str,
+    parse_type: &str,
+) -> anyhow::Error {
     let message = format!(
         "{} is not a '{}' it is a '{}'",
         project_name, wanted_type, parse_type
@@ -50,7 +54,7 @@ pub fn check_tree_type(curr_dir: PathBuf, wanted_type: &str) -> Result<Manifest>
             match parsed_result.value {
                 Some(parse_tree) => {
                     if parse_tree.tree_type.to_string() != wanted_type {
-                        Err(wrong_sway_type(
+                        Err(wrong_project_type(
                             project_name,
                             wanted_type,
                             &parse_tree.tree_type.to_string(),

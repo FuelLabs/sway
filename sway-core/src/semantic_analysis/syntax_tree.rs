@@ -15,9 +15,7 @@ use crate::{
     type_engine::*,
     AstNode, ParseTree,
 };
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result;
+use std::fmt::{Display, Formatter, Result};
 use sway_types::{ident::Ident, span::Span};
 
 /// Represents the different variants of the AST.
