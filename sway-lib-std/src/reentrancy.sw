@@ -7,10 +7,8 @@ library reentrancy;
 use ::context::call_frames::*;
 use ::constants::ZERO;
 use ::assert::assert;
-use ::panic::panic;
 use ::chain::auth::caller_is_external;
 use ::chain::log_u64;
-use ::option::*;
 use ::contract_id::ContractId;
 use ::context::registers::frame_ptr;
 
