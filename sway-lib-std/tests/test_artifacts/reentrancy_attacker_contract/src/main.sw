@@ -27,7 +27,7 @@ impl Attacker for Contract {
     fn launch_thwarted_attack_1(target: ContractId) {
         let id = target.value;
         let target = abi(Target, id);
-        target.reentrance_denied();
+        target.intra_contract_call();
     }
 
     fn launch_thwarted_attack_2(target: ContractId) {

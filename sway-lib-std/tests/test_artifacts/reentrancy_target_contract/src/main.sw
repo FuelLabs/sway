@@ -1,6 +1,6 @@
 contract;
 
-use std::{assert::assert, chain::auth::*, constants::ZERO, context::gas, contract_id::ContractId, panic::panic, reentrancy::*, result::*};
+use std::{assert::assert, chain::auth::*, constants::ZERO, context::{gas, call_frames::contract_id}, contract_id::ContractId, panic::panic, reentrancy::*, result::*};
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
@@ -59,7 +59,13 @@ impl Target for Contract {
         let return_value = caller.evil_callback_3();
     }
 
+    fn intra_contract_call() {
+        let this = abi(Target, ~ContractId::into(contract_id()));
+        this.cross_function_reentrance_denied();
+    }
+
     fn guarded_function_is_callable() -> bool {
+        // panic if reentrancy detected
         reentrancy_guard();
         true
     }
