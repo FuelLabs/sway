@@ -39,8 +39,7 @@ impl Attacker for Contract {
     fn innocent_call(target: ContractId) -> bool {
         let id = target.value;
         let target = abi(Target, id);
-        let return_value = target.guarded_function_is_callable();
-        return_value
+        target.guarded_function_is_callable()
     }
 
     fn evil_callback_1() -> bool {
