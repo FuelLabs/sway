@@ -41,7 +41,7 @@ impl Display for TreeType {
             TreeType::Contract => {
                 write!(f, "contract")
             }
-            TreeType::Library { name: _ident } => {
+            TreeType::Library { .. } => {
                 write!(f, "library")
             }
         }

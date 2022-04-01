@@ -10,9 +10,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     };
 
     // Non-contract programs that should successfully compile and terminate
-    // with some known state. Note that if you are adding a program
-    // that is a contract, it may pass by mistake. Please add contracts
-    // to `positive_project_names_with_abi`.
+    // with some known state. Note that if you are adding a contract, it may pass by mistake.
+    // Please add contracts to `positive_project_names_with_abi`.
     let positive_project_names_no_abi = vec![
         (
             "should_pass/forc/dependency_package_field",
@@ -293,8 +292,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             });
 
     // Programs that should successfully compile, include abi and terminate
-    // with some known state. Note that if a non-contract file is included
-    // in this array, it will be rejected at assertion time. Please move it to
+    // with some known state. Note that if a non-contract is included
+    // it will be rejected during assertion. Please move it to
     // `positive_project_names_no_abi` above.
     let positive_project_names_with_abi = vec![
         // contracts revert because this test runs them against the VM
