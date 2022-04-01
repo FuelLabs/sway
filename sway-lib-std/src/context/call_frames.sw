@@ -7,8 +7,8 @@ use ::contract_id::ContractId;
 
 // Note that everything when serialized is padded to word length.
 //
-// Call Frame        :  saved registers = 8*WORD_SIZE = 8*8 = 64
-// Reserved Registers:  frame pointer   = 6*WORD_SIZE = 6*8 = 48
+// Call Frame        :  saved registers offset         = 8*WORD_SIZE = 8*8 = 64
+// Reserved Registers:  previous frame pointer offset  = 6*WORD_SIZE = 6*8 = 48
 
 const SAVED_REGISTERS_OFFSET = 64;
 const PREV_FRAME_POINTER_OFFSET = 48;
@@ -64,7 +64,7 @@ pub fn second_param() -> u64 {
 
 /// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
 pub fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
-    // let offset = SAVED_REGISTERS_OFFSET + CALL_FRAME_OFFSET;
+    // let offset = SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET;
     let offset = frame_pointer + 64 + 48;
     asm(res, ptr: offset) {
         lw res ptr i0;
