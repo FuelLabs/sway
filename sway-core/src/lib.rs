@@ -310,31 +310,51 @@ pub fn compile_to_ast(
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = check!(
-        parse(input, Some(build_config)),
-        return CompileAstResult::Failure { errors, warnings },
-        warnings,
-        errors
-    );
+
+    let CompileResult {
+        value: parse_tree_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = parse(input, Some(build_config));
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let parse_tree = match parse_tree_result {
+        Some(parse_tree) => parse_tree,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
     let mut dead_code_graph = ControlFlowGraph {
         graph: Graph::new(),
         entry_points: vec![],
         namespace: Default::default(),
     };
 
-    let typed_parse_tree = check!(
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            initial_namespace,
-            initial_namespace,
-            &parse_tree.tree_type,
-            &build_config.clone(),
-            &mut dead_code_graph,
-        ),
-        return CompileAstResult::Failure { errors, warnings },
-        warnings,
-        errors
+    let CompileResult {
+        value: typed_parse_tree_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = TypedParseTree::type_check(
+        parse_tree.tree,
+        initial_namespace,
+        initial_namespace,
+        &parse_tree.tree_type,
+        &build_config.clone(),
+        &mut dead_code_graph,
     );
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let typed_parse_tree = match typed_parse_tree_result {
+        Some(typed_parse_tree) => typed_parse_tree,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
 
     let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
         &typed_parse_tree,
