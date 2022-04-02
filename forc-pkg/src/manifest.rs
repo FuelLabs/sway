@@ -49,7 +49,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -78,15 +78,19 @@ impl Manifest {
     ///
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
+    ///
+    /// If `core` and `std` are unspecified, they will be added to the `dependencies` table
+    /// implicitly.
     pub fn from_file(path: &Path) -> Result<Self> {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
-        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+        let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        manifest.implicitly_include_core_std_if_missing();
         manifest.validate(path)?;
         Ok(manifest)
     }
@@ -164,6 +168,55 @@ impl Manifest {
             None => bail!(parsing_failed(&self.project.name, program_type.errors)),
         }
     }
+
+    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// them implicitly.
+    ///
+    /// This makes the common case of depending on `core` and `std` a lot smoother for most users,
+    /// while still allowing for the uncommon case of custom `core`/`std` deps.
+    ///
+    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
+    /// guarantee that the user's `core` is compatible with the implicit `std`. Similarly if only
+    /// `std` is specified, we are unable to implicitly include `core`.
+    fn implicitly_include_core_std_if_missing(&mut self) {
+        const CORE: &str = "core";
+        const STD: &str = "std";
+        // If either `core` or `std` is user-specified, we do not implicitly include anything.
+        if self.pkg_dep(CORE).is_some() || self.pkg_dep(STD).is_some() {
+            return;
+        }
+        // Add a `[dependencies]` table if there isn't one.
+        let deps = self.dependencies.get_or_insert_with(Default::default);
+        // Add the missing dependencies.
+        deps.insert(CORE.to_string(), implicit_core_std_dep());
+        deps.insert(STD.to_string(), implicit_core_std_dep());
+    }
+
+    /// Finds and returns the name of the dependency associated with a package of the specified
+    /// name if there is one.
+    ///
+    /// Returns `None` in the case that no dependencies associate with a package of the given name.
+    fn pkg_dep<'a>(&'a self, pkg_name: &str) -> Option<&'a str> {
+        for (dep_name, dep) in self.deps() {
+            if dep.package().unwrap_or(dep_name) == pkg_name {
+                return Some(dep_name);
+            }
+        }
+        None
+    }
+}
+
+/// The definition for the implicit `core`/`std` dependency.
+///
+/// By default, the `core` and `std` dependencies
+fn implicit_core_std_dep() -> Dependency {
+    const SWAY_GIT_REPO: &str = "https://github.com/fuellabs/sway";
+    let det = DependencyDetails {
+        git: Some(SWAY_GIT_REPO.to_string()),
+        tag: unimplemented!("pass through the semver string from `forc`, i.e. \"v1.0.0\""),
+        ..Default::default()
+    };
+    Dependency::Detailed(det)
 }
 
 fn default_entry() -> String {
