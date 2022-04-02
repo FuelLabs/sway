@@ -1,0 +1,23 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'reentrancy_attacker_abi'
+dependencies = ['std']
+
+[[package]]
+name = 'reentrancy_attacker_contract'
+dependencies = [
+    'reentrancy_attacker_abi',
+    'reentrancy_target_abi',
+    'std',
+]
+
+[[package]]
+name = 'reentrancy_target_abi'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']
