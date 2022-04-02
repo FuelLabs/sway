@@ -156,13 +156,12 @@ impl Manifest {
 
     /// Parse and return the associated project's program type.
     pub fn program_type(&self, manifest_dir: PathBuf) -> Result<TreeType> {
-        let manifest = Manifest::from_dir(&manifest_dir)?;
-        let entry_string = manifest.entry_string(&manifest_dir)?;
+        let entry_string = self.entry_string(&manifest_dir)?;
         let program_type = parse(entry_string, None);
 
         match program_type.value {
             Some(parse_tree) => Ok(parse_tree.tree_type),
-            None => bail!(parsing_failed(&manifest.project.name, program_type.errors)),
+            None => bail!(parsing_failed(&self.project.name, program_type.errors)),
         }
     }
 }
