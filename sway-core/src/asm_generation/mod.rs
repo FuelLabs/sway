@@ -1430,7 +1430,15 @@ fn ret_or_retd_value(
         );
     }
 
-    if main_func_ret_ty.is_copy_type() {
+    let main_func_ret_ty_is_copy_type = match main_func_ret_ty.is_copy_type(&func.return_type_span)
+    {
+        Ok(is_copy) => is_copy,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    if main_func_ret_ty_is_copy_type {
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RET(return_register)),

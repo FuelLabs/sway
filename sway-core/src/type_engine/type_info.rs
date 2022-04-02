@@ -681,11 +681,27 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn is_copy_type(&self) -> bool {
-        matches!(
-            self,
-            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte
-        )
+    pub(crate) fn is_copy_type(&self, err_span: &Span) -> Result<bool, CompileError> {
+        match self {
+            // Copy types.
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Numeric
+            | TypeInfo::Boolean
+            | TypeInfo::Byte => Ok(true),
+            TypeInfo::Tuple(_) if self.is_unit() => Ok(true),
+
+            // Unknown types.
+            TypeInfo::Unknown
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
+                ty: self.friendly_type_str(),
+                span: err_span.clone(),
+            }),
+
+            // Otherwise default to non-copy.
+            _otherwise => Ok(false),
+        }
     }
 
     pub fn is_uninhabited(&self) -> bool {
