@@ -105,9 +105,19 @@ impl<T> Vec<T> {
         // be inserted.
         let end = self.buf.ptr() + self.len * size_of::<T>();
 
-        // Loop over each word and insert it.
-        // TODO actually do this
-        asm(ptr: end) {
+        if !is_reference_type::<T>() {
+            // If `T` is not a reference type, then it is a one-word primitive.
+            // Simply store it at `end` pointer.
+            asm(end: end, value: value) {
+                sw end value i0;
+            };
+        } else {
+            // If `T` is a reference type, then it points to a memory range.
+            // Copy the `value`'s memory range to the range pointed to by `end`.
+            let size = size_of::<T>();
+            asm(end: end, ptr: value, size: size) {
+                mcp end ptr size;
+            };
         };
 
         // Increment length.
