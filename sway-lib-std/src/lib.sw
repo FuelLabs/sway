@@ -18,5 +18,6 @@ dep block;
 dep token;
 dep ecr;
 dep vec;
+dep reentrancy;
 
 use core::*;

@@ -5,6 +5,14 @@ library call_frames;
 
 use ::contract_id::ContractId;
 
+// Note that everything when serialized is padded to word length.
+//
+// Call Frame        :  saved registers offset         = 8*WORD_SIZE = 8*8 = 64
+// Reserved Registers:  previous frame pointer offset  = 6*WORD_SIZE = 6*8 = 48
+
+const SAVED_REGISTERS_OFFSET: u64 = 64;
+const PREV_FRAME_POINTER_OFFSET: u64 = 48;
+
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
 ///////////////////////////////////////////////////////////
@@ -48,4 +56,26 @@ pub fn second_param() -> u64 {
         add size fp offset;
         size: u64
     }
+}
+
+///////////////////////////////////////////////////////////
+//  Accessing arbitrary call frames by pointer
+///////////////////////////////////////////////////////////
+
+/// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
+pub fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
+    // TODO use const values as soon as IR is turned on, tracked here: https://github.com/FuelLabs/sway/issues/1127
+    // let offset = frame_pointer + SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET;
+    let offset = frame_pointer + 64 + 48;
+    asm(res, ptr: offset) {
+        lw res ptr i0;
+        res: u64
+    }
+}
+
+/// get the value of `ContractId` from any call frame on the stack.
+pub fn get_contract_id_from_call_frame(frame_pointer: u64) -> ContractId {
+    ~ContractId::from(asm(res, ptr: frame_pointer) {
+        ptr: b256
+    })
 }
