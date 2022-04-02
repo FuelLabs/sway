@@ -166,7 +166,7 @@ impl Manifest {
                 | TreeType::Predicate
                 | TreeType::Library { .. } => Ok(parse_tree.tree_type),
             },
-            None => Err(parsing_failed(&manifest.project.name, program_type.errors)),
+            None => bail!(parsing_failed(&manifest.project.name, program_type.errors)),
         }
     }
 }
