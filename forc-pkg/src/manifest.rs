@@ -1,4 +1,5 @@
-use anyhow::{anyhow, bail};
+use crate::pkg::parsing_failed;
+use anyhow::{anyhow, bail, Result};
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -6,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+use sway_core::{parse, TreeType};
 use sway_utils::constants;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -75,7 +78,7 @@ impl Manifest {
     ///
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
-    pub fn from_file(path: &Path) -> anyhow::Result<Self> {
+    pub fn from_file(path: &Path) -> Result<Self> {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
@@ -92,7 +95,7 @@ impl Manifest {
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> anyhow::Result<Self> {
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path)
     }
@@ -101,7 +104,7 @@ impl Manifest {
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns, and if a given entry point exists.
-    pub fn validate(&self, path: &Path) -> anyhow::Result<()> {
+    pub fn validate(&self, path: &Path) -> Result<()> {
         let mut entry_path = path.to_path_buf();
         entry_path.pop();
         let entry_path = entry_path
@@ -129,7 +132,7 @@ impl Manifest {
     }
 
     /// Produces the string of the entry point file.
-    pub fn entry_string(&self, manifest_dir: &Path) -> anyhow::Result<Arc<str>> {
+    pub fn entry_string(&self, manifest_dir: &Path) -> Result<Arc<str>> {
         let entry_path = self.entry_path(manifest_dir);
         let entry_string = std::fs::read_to_string(&entry_path)?;
         Ok(Arc::from(entry_string))
@@ -149,6 +152,22 @@ impl Manifest {
             Dependency::Detailed(ref det) => Some((name, det)),
             Dependency::Simple(_) => None,
         })
+    }
+
+    /// Parse and return the associated project's program type.
+    pub fn program_type(&self, manifest_dir: PathBuf, manifest: &Manifest) -> Result<TreeType> {
+        let entry_string = manifest.entry_string(&manifest_dir)?;
+        let program_type = parse(entry_string, None);
+
+        match program_type.value {
+            Some(parse_tree) => match parse_tree.tree_type {
+                TreeType::Contract
+                | TreeType::Script
+                | TreeType::Predicate
+                | TreeType::Library { .. } => Ok(parse_tree.tree_type),
+            },
+            None => Err(parsing_failed(&manifest.project.name, program_type.errors)),
+        }
     }
 }
 

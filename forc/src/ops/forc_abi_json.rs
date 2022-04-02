@@ -1,10 +1,10 @@
 use crate::cli::{BuildCommand, JsonAbiCommand};
-use crate::utils::cli_error::check_project_type;
 use anyhow::Result;
+use forc_pkg::check_program_type;
 use serde_json::{json, Value};
 use std::fs::File;
 use std::path::PathBuf;
-use sway_utils::constants::SWAY_CONTRACT;
+use sway_core::TreeType;
 
 pub fn build(command: JsonAbiCommand) -> Result<Value> {
     let curr_dir = if let Some(ref path) = command.path {
@@ -12,7 +12,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     } else {
         std::env::current_dir()?
     };
-    check_project_type(curr_dir, SWAY_CONTRACT)?;
+    check_program_type(curr_dir, TreeType::Contract)?;
 
     let build_command = BuildCommand {
         path: command.path,
@@ -34,7 +34,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
         };
         res.map_err(|e| e)?;
     } else if command.minify {
-        println!("{}", json_abi);
+        println!("{json_abi}");
     } else {
         println!("{:#}", json_abi);
     }

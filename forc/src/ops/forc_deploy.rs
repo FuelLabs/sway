@@ -1,12 +1,13 @@
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::check_project_type;
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
+use forc_pkg::check_program_type;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
 use std::path::PathBuf;
-use sway_utils::constants::{DEFAULT_NODE_URL, SWAY_CONTRACT};
+use sway_core::TreeType;
+use sway_utils::constants::DEFAULT_NODE_URL;
 
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
@@ -14,7 +15,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = check_project_type(curr_dir, SWAY_CONTRACT)?;
+    let manifest = check_program_type(curr_dir, TreeType::Contract)?;
 
     let DeployCommand {
         path,
@@ -63,7 +64,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
             println!("Logs:\n{:?}", logs);
             Ok(contract_id)
         }
-        Err(e) => Err(anyhow!("{}", e)),
+        Err(e) => bail!("{e}"),
     }
 }
 

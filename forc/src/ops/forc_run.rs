@@ -1,14 +1,14 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::{check_project_type, fuel_core_not_running};
 use crate::utils::parameters::TxParameters;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
+use forc_pkg::{check_program_type, fuel_core_not_running};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
-use sway_utils::constants::SWAY_SCRIPT;
+use sway_core::TreeType;
 use tokio::process::Child;
 
 pub async fn run(command: RunCommand) -> Result<()> {
@@ -17,7 +17,7 @@ pub async fn run(command: RunCommand) -> Result<()> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = check_project_type(path_dir, SWAY_SCRIPT)?;
+    let manifest = check_program_type(path_dir, TreeType::Script)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
@@ -101,7 +101,7 @@ async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> R
             }
             Ok(())
         }
-        Err(e) => Err(anyhow!("{}", e)),
+        Err(e) => bail!("{e}"),
     }
 }
 
