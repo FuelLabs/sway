@@ -1,6 +1,7 @@
 use crate::cli::{BuildCommand, JsonAbiCommand};
 use anyhow::Result;
-use forc_pkg::check_program_type;
+use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
+use forc_util::find_manifest_dir;
 use serde_json::{json, Value};
 use std::fs::File;
 use std::path::PathBuf;
@@ -12,7 +13,10 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     } else {
         std::env::current_dir()?
     };
-    check_program_type(curr_dir, TreeType::Contract)?;
+    let manifest_dir =
+        find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
+    let manifest = Manifest::from_dir(&manifest_dir)?;
+    check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
 
     let build_command = BuildCommand {
         path: command.path,

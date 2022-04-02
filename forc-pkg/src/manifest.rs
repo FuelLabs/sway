@@ -155,17 +155,13 @@ impl Manifest {
     }
 
     /// Parse and return the associated project's program type.
-    pub fn program_type(&self, manifest_dir: PathBuf, manifest: &Manifest) -> Result<TreeType> {
+    pub fn program_type(&self, manifest_dir: PathBuf) -> Result<TreeType> {
+        let manifest = Manifest::from_dir(&manifest_dir)?;
         let entry_string = manifest.entry_string(&manifest_dir)?;
         let program_type = parse(entry_string, None);
 
         match program_type.value {
-            Some(parse_tree) => match parse_tree.tree_type {
-                TreeType::Contract
-                | TreeType::Script
-                | TreeType::Predicate
-                | TreeType::Library { .. } => Ok(parse_tree.tree_type),
-            },
+            Some(parse_tree) => Ok(parse_tree.tree_type),
             None => bail!(parsing_failed(&manifest.project.name, program_type.errors)),
         }
     }

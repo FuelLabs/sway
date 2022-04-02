@@ -4,8 +4,8 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    find_file_name, find_manifest_dir, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success, print_on_success_library, println_yellow_err,
+    find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
+    print_on_success, print_on_success_library, println_yellow_err,
 };
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
@@ -1212,21 +1212,20 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     Error::msg(message)
 }
 
-/// Given the current directory and expected program type, determines whether the correct program type is present and returns a manifest.
-pub fn check_program_type(curr_dir: PathBuf, expected_type: TreeType) -> Result<Manifest> {
-    if let Some(manifest_dir) = find_manifest_dir(&curr_dir) {
-        let manifest = Manifest::from_dir(&manifest_dir)?;
-        let parsed_type = manifest.program_type(manifest_dir, &manifest)?;
-        if parsed_type != expected_type {
-            bail!(wrong_program_type(
-                &manifest.project.name,
-                expected_type,
-                parsed_type
-            ));
-        } else {
-            Ok(manifest)
-        }
+/// Given the current directory and expected program type, determines whether the correct program type is present.
+pub fn check_program_type(
+    manifest: &Manifest,
+    manifest_dir: PathBuf,
+    expected_type: TreeType,
+) -> Result<()> {
+    let parsed_type = manifest.program_type(manifest_dir)?;
+    if parsed_type != expected_type {
+        bail!(wrong_program_type(
+            &manifest.project.name,
+            expected_type,
+            parsed_type
+        ));
     } else {
-        bail!(manifest_file_missing(curr_dir))
+        Ok(())
     }
 }
