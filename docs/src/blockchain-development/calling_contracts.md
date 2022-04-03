@@ -68,7 +68,7 @@ impl ContractB for Contract {
 
 ## Advanced Calls
 
-Calls forward gas and may push Native Assets into contracts as well.
+All calls forward a gas stipend, and may additionally forward one native asset with the call.
 
 Here is an example of how to specify the `gas`, [Native `asset_id`](./native_assets.md) and `amount` to forward:
 
