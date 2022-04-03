@@ -124,4 +124,4 @@ It differs in *two* key ways:
 
 2) [**No Data Serialization**](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#vm-initialization): Fuel calls **do not** need to serialize data into ABI format, instead they simply pass pointers.
 
-This is because Fuel has a shared global memory context which all call frames can read from and so calling contracts only requires pointers to be passed, and no re-serialization of data is ncessarly.
+This is because Fuel has a shared global memory context which all call frames can read from and so calling contracts only requires pointers to be passed, and no re-serialization of data is necessarily.
