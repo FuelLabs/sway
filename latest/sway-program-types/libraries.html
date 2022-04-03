@@ -210,8 +210,7 @@ dep storage;
 dep constants;
 </code></pre>
 <p>with other libraries contained in the <code>src</code> folder, like the block library (inside of <code>block.sw</code>):</p>
-<pre><code class="language-sway">//! Functionality for accessing block-related data.
-library block;
+<pre><code class="language-sway">library block;
 
 /// Get the current block height
 pub fn height() -&gt; u64 {

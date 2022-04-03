@@ -213,7 +213,7 @@
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
 <pre><code class="language-sway">let x: (u64, bool) = (42, true);
-assert(x.1)
+assert(x.1);
 </code></pre>
 <p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
 <pre><code class="language-sway">struct Foo {}
@@ -235,7 +235,6 @@ assert(classmates.contains(name));
 </code></pre>
 <p>To access an element in an array, use <em>array indexing syntax</em>:</p>
 <pre><code class="language-sway">let x: [bool; 2] = [true, false];
-
 assert(x[0]);
 </code></pre>
 <p>Note that arrays are zero-indexed, just like tuples.</p>

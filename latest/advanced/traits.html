@@ -229,11 +229,13 @@ pub trait Card {
 
 fn play_game_with_deck&lt;T&gt;(a: Vec&lt;T&gt;) where T: Card {
     // insert some creative card game here
-  }
+}
 </code></pre>
 <p>Now, if you want to use the function <code>play_game_with_deck</code> with your struct, you must implement <code>Card</code> for your struct. Note that the following code example assumes a dependency <em>games</em> has been included in the <code>Forc.toml</code> file.</p>
 <pre><code class="language-sway">script;
+
 use games::*;
+
 struct MyCard {
     suit: Suit,
     value: u8

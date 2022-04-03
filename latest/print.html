@@ -785,8 +785,7 @@ dep storage;
 dep constants;
 </code></pre>
 <p>with other libraries contained in the <code>src</code> folder, like the block library (inside of <code>block.sw</code>):</p>
-<pre><code class="language-sway">//! Functionality for accessing block-related data.
-library block;
+<pre><code class="language-sway">library block;
 
 /// Get the current block height
 pub fn height() -&gt; u64 {
@@ -929,7 +928,7 @@ let baz: bool = true;
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
 <pre><code class="language-sway">let x: (u64, bool) = (42, true);
-assert(x.1)
+assert(x.1);
 </code></pre>
 <p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
 <pre><code class="language-sway">struct Foo {}
@@ -951,7 +950,6 @@ assert(classmates.contains(name));
 </code></pre>
 <p>To access an element in an array, use <em>array indexing syntax</em>:</p>
 <pre><code class="language-sway">let x: [bool; 2] = [true, false];
-
 assert(x[0]);
 </code></pre>
 <p>Note that arrays are zero-indexed, just like tuples.</p>
@@ -1026,11 +1024,11 @@ assert(foo.baz);
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
 <pre><code class="language-sway">enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
 }
 </code></pre>
 <p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
@@ -1061,11 +1059,11 @@ enum InventoryEvent {
 }
 </code></pre>
 <pre><code class="language-sway">enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
 }
 
 fn main() {
@@ -1123,20 +1121,20 @@ fn main() {
 To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
 <h2 id="syntax-examples"><a class="header" href="#syntax-examples">Syntax Examples</a></h2>
 <pre><code class="language-sway">enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
     // etc...
 }
 
 enum Make {
-    Ford      : (),
-    Toyota    : (),
-    Mazda     : (),
-    Chevrolet : (),
-    BMW       : (),
+    Ford: (),
+    Toyota: (),
+    Mazda: (),
+    Chevrolet: (),
+    BMW: (),
     // etc...
 }
 struct Car {
@@ -1437,14 +1435,13 @@ For example, let's try to implement the successor function, <code>successor()</c
 }
 </code></pre>
 <p>Run <code>forc build</code>, and you will get:</p>
-<pre><code class="language-sway">.. |
+<pre><code class="language-console">.. |
  9 |   where T: Add
 10 |   {
 11 |     argument + 1                                        
    |                ^ Mismatched types: expected type &quot;T&quot; but saw type &quot;u64&quot;
 12 |   }
 13 |
-
 </code></pre>
 <p>This is because we don't know for a fact that <code>1</code>, which in this case defaulted to <code>1u64</code>, actually can be added to <code>T</code>. What if <code>T</code> is <code>f64</code>? Or <code>b256</code>? What does it mean to add <code>1u64</code> in these cases?</p>
 <p>We can solve this problem with another trait constraint. We can only find the successor of some value of type <code>T</code> if that type <code>T</code> defines some incrementor. Let's make a trait:</p>
@@ -1560,11 +1557,13 @@ pub trait Card {
 
 fn play_game_with_deck&lt;T&gt;(a: Vec&lt;T&gt;) where T: Card {
     // insert some creative card game here
-  }
+}
 </code></pre>
 <p>Now, if you want to use the function <code>play_game_with_deck</code> with your struct, you must implement <code>Card</code> for your struct. Note that the following code example assumes a dependency <em>games</em> has been included in the <code>Forc.toml</code> file.</p>
 <pre><code class="language-sway">script;
+
 use games::*;
+
 struct MyCard {
     suit: Suit,
     value: u8
@@ -1708,9 +1707,9 @@ enum Foo {
 <p>In Sway, enums are simplified. Enums variants must all specify exactly one type. This type represents their interior data. This is actually isomorphic to what Rust offers, just with a different syntax. I'll now rewrite the above enum but with Sway syntax:</p>
 <pre><code class="language-sway">// This is equivalent Sway syntax for the above Rust enum.
 enum Foo {
-    UnitVariant    : (),
-    TupleVariant   : (u32, u64, bool),
-    StructVariant  : MyStruct,
+    UnitVariant: (),
+    TupleVariant: (u32, u64, bool),
+    StructVariant: MyStruct,
 }
 
 struct MyStruct {

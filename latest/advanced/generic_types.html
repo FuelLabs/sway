@@ -205,14 +205,13 @@ For example, let's try to implement the successor function, <code>successor()</c
 }
 </code></pre>
 <p>Run <code>forc build</code>, and you will get:</p>
-<pre><code class="language-sway">.. |
+<pre><code class="language-console">.. |
  9 |   where T: Add
 10 |   {
 11 |     argument + 1                                        
    |                ^ Mismatched types: expected type &quot;T&quot; but saw type &quot;u64&quot;
 12 |   }
 13 |
-
 </code></pre>
 <p>This is because we don't know for a fact that <code>1</code>, which in this case defaulted to <code>1u64</code>, actually can be added to <code>T</code>. What if <code>T</code> is <code>f64</code>? Or <code>b256</code>? What does it mean to add <code>1u64</code> in these cases?</p>
 <p>We can solve this problem with another trait constraint. We can only find the successor of some value of type <code>T</code> if that type <code>T</code> defines some incrementor. Let's make a trait:</p>
