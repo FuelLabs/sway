@@ -99,9 +99,7 @@ impl ContractB for Contract {
 
 ## Differences from Ethereum
 
-While Fuel does share some similar conceptual call paradigms to Ethereum (i.e. gas forwarding and data). 
-
-It differs in *two* key ways:
+While Fuel does share some similar conceptual call paradigms to Ethereum (i.e. gas forwarding and data), it differs in *two* key ways:
 
 1) [**Native Assets**](./native_assets.md): FuelVM calls can forward any native asset not just Ether.
 
