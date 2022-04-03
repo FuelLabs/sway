@@ -20,7 +20,7 @@ abi MyContract {
 const contract_id = 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0;
 
 fn main() {
-    let x = abi(MyContract, contract_address);
+    let x = abi(MyContract, contract_id);
     x.foo(true, 3);
 }
 ```
