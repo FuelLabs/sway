@@ -91,11 +91,9 @@ fn main() {
 
 ## Handling Re-entrancy
 
-A common attack vector for smart contracts is [re-entrancy](https://quantstamp.com/blog/what-is-a-re-entrancy-attack).
+A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the Ethereum Virtual Machine, the FuelVM allows for re-entrancy.
 
-This is no different in Fuel and Sway contracts.
-
-Luckily for Sway developers, we provide a stateless re-entracy gaurd in our standard library:
+A _stateless_ re-entrancy guard in the Sway standard library.
 
 ```rs
 contract;
