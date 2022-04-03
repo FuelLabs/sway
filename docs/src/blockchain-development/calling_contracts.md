@@ -1,12 +1,10 @@
 # Calling Contracts
 
-End users and smart contracts typically need to communicate with each other.
+Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract) instruction.
 
-The FuelVM achieves end user and inter contract communication primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract) opcode.
+Sway provides a nice way to manage callable interfaces with its `abi` system.
 
-Sway provides a nice way to manage calls with its `abi` system.
-
-Calls can be made both between contracts and from scripts to contracts.
+Calls can be made both from one contract to another and from scripts to contracts.
 
 ## Example
 
