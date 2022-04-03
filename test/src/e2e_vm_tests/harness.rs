@@ -15,7 +15,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
     println!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let (verbose, use_ir) = get_test_config_from_env();
+    let (verbose, use_orig_asm) = get_test_config_from_env();
 
     tokio::runtime::Runtime::new()
         .unwrap()
@@ -24,7 +24,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            use_ir,
+            use_orig_asm,
             silent_mode: !verbose,
             ..Default::default()
         }))
@@ -42,7 +42,7 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
         contracts.push(contract);
     }
 
-    let (verbose, use_ir) = get_test_config_from_env();
+    let (verbose, use_orig_asm) = get_test_config_from_env();
 
     let command = RunCommand {
         path: Some(format!(
@@ -50,7 +50,7 @@ pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]
             manifest_dir, file_name
         )),
         node_url: "127.0.0.1:4000".into(),
-        use_ir,
+        use_orig_asm,
         silent_mode: !verbose,
         contract: Some(contracts),
         ..Default::default()
@@ -107,13 +107,13 @@ pub(crate) fn does_not_compile(file_name: &str) {
 pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
     println!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let (verbose, use_ir) = get_test_config_from_env();
+    let (verbose, use_orig_asm) = get_test_config_from_env();
     forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        use_ir,
+        use_orig_asm,
         silent_mode: !verbose,
         ..Default::default()
     })
@@ -169,6 +169,6 @@ fn get_test_config_from_env() -> (bool, bool) {
 
     (
         var_exists("SWAY_TEST_VERBOSE"),
-        var_exists("SWAY_TEST_USE_IR"),
+        var_exists("SWAY_TEST_USE_ORIG_ASM"),
     )
 }

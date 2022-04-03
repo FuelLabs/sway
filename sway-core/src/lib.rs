@@ -404,10 +404,10 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        if build_config.use_ir {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
-                        } else {
+                        if build_config.use_orig_asm {
                             compile_ast_to_asm(*parse_tree, build_config)
+                        } else {
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
