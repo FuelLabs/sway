@@ -4,7 +4,7 @@ End users and smart contracts typically need to communicate with each other.
 
 The FuelVM achieves end user and inter contract communication primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract) opcode.
 
-Sway provides a nice way manage calls with its `abi` system.
+Sway provides a nice way to manage calls with its `abi` system.
 
 ## Script Calls
 
