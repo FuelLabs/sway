@@ -95,10 +95,9 @@ impl ContractB for Contract {
 
 ## Differences from Ethereum
 
-While Fuel does share some similar conceptual call paradigms to Ethereum (i.e. gas forwarding and data), it differs in *two* key ways:
+While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI, forwarding gas and data), it differs in *two* key ways:
 
-1) [**Native Assets**](./native_assets.md): FuelVM calls can forward any native asset not just Ether.
+1. [**Native assets**](./native_assets.md): FuelVM calls can forward any native asset not just base asset.
 
-2) [**No Data Serialization**](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#vm-initialization): Fuel calls **do not** need to serialize data into ABI format, instead they simply pass pointers.
+2. **No data serialization**: Contract calls in the FuelVM do not need to serialize data to pass it between contracts; instead they simply pass a pointer to the data. This is because the FuelVM has a shared global memory which all call frames can read from.
 
-This is because Fuel has a shared global memory context which all call frames can read from and so calling contracts only requires pointers to be passed, and no re-serialization of data is necessarily.
