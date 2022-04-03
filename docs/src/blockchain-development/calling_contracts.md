@@ -17,7 +17,7 @@ abi MyContract {
     fn foo(field_1: bool, field_2: u64);
 }
 
-const contract_address = 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0;
+const contract_id = 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0;
 
 fn main() {
     let x = abi(MyContract, contract_address);
