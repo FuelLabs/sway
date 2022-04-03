@@ -100,7 +100,7 @@ Luckily for Sway developers, we provide a stateless re-entracy gaurd in our stan
 ```rs
 contract;
 
-use std::reentrancy::{reentrancy_guard};
+use std::reentrancy::reentrancy_guard;
 
 abi MyContract {
     fn some_method();
