@@ -95,7 +95,7 @@ impl ContractB for Contract {
 
 ## Differences from Ethereum
 
-While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI, forwarding gas and data), it differs in *two* key ways:
+While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI, forwarding gas and data), it differs in _two_ key ways:
 
 1. [**Native assets**](./native_assets.md): FuelVM calls can forward any native asset not just base asset.
 
