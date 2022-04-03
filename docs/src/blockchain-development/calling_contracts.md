@@ -70,7 +70,7 @@ impl ContractB for Contract {
 
 All calls forward a gas stipend, and may additionally forward one native asset with the call.
 
-Here is an example of how to specify the `gas`, [Native `asset_id`](./native_assets.md) and `amount` to forward:
+Here is an example of how to specify the amount of gas (`gas`), the asset ID of the native asset (`asset_id`), and the amount of the native asset (`amount`) to forward:
 
 ```rs
 script;
