@@ -6,30 +6,13 @@ The FuelVM achieves end user and inter contract communication primarily with the
 
 Sway provides a nice way to manage calls with its `abi` system.
 
-## Script Calls
+Calls can be made both between contracts and from scripts to contracts.
 
-Here is an example of a *script calling a contract* in Sway:
-
-```rs
-script;
-
-abi MyContract {
-    fn foo(field_1: bool, field_2: u64);
-}
-
-const contract_id = 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0;
-
-fn main() {
-    let x = abi(MyContract, contract_id);
-    x.foo(true, 3);
-}
-```
-
-## Inter Contract Calls
+## Example
 
 Here is an example of a *contract calling another contract* in Sway:
 
-```rs
+```sway
 // ./contract_a.sw
 contract;
 
@@ -46,7 +29,7 @@ impl ContractA for Contract {
 }
 ```
 
-```rs
+```sway
 // ./contract_b.sw
 contract;
 
@@ -72,7 +55,7 @@ All calls forward a gas stipend, and may additionally forward one native asset w
 
 Here is an example of how to specify the amount of gas (`gas`), the asset ID of the native asset (`asset_id`), and the amount of the native asset (`amount`) to forward:
 
-```rs
+```sway
 script;
 
 abi MyContract {
@@ -95,7 +78,9 @@ A common attack vector for smart contracts is [re-entrancy](https://docs.solidit
 
 A _stateless_ re-entrancy guard in the Sway standard library.
 
-```rs
+Note, this gaurd method will panic if re-entrancy is detected.
+
+```sway
 contract;
 
 use std::reentrancy::reentrancy_guard;
