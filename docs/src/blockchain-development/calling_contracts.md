@@ -70,7 +70,7 @@ impl ContractB for Contract {
 
 Calls forward gas and may push Native Assets into contracts as well.
 
-Here is an example of how to specify the `gas`, native `asset_id` and `amount` to forward:
+Here is an example of how to specify the `gas`, [Native `asset_id`](./native_assets.md) and `amount` to forward:
 
 ```rs
 script;
@@ -120,8 +120,8 @@ While Fuel does share some similar conceptual call paradigms to Ethereum (i.e. g
 
 It differs in *two* key ways:
 
-1) **Native Assets**: FuelVM calls can forward any native asset not just Ether.
+1) [**Native Assets**](./native_assets.md): FuelVM calls can forward any native asset not just Ether.
 
-2) **No Data Serialization**: Fuel calls **do not** need to serialize data into ABI format, instead they simply pass pointers.
+2) [**No Data Serialization**](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#vm-initialization): Fuel calls **do not** need to serialize data into ABI format, instead they simply pass pointers.
 
 This is because Fuel has a shared global memory context which all call frames can read from and so calling contracts only requires pointers to be passed, and no re-serialization of data is ncessarly.
