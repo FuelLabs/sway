@@ -27,7 +27,7 @@ fn main() {
 
 ## Inter Contract Calls
 
-Here is an example of *contract calling another contract* in Sway:
+Here is an example of a *contract calling another contract* in Sway:
 
 ```rs
 // ./contract_a.sw
