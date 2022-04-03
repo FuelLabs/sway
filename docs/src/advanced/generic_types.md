@@ -56,7 +56,7 @@ fn successor<T>(argument: T)
 
 Run `forc build`, and you will get:
 
-```sway
+```console
 .. |
  9 |   where T: Add
 10 |   {
@@ -64,7 +64,6 @@ Run `forc build`, and you will get:
    |                ^ Mismatched types: expected type "T" but saw type "u64"
 12 |   }
 13 |
-
 ```
 
 This is because we don't know for a fact that `1`, which in this case defaulted to `1u64`, actually can be added to `T`. What if `T` is `f64`? Or `b256`? What does it mean to add `1u64` in these cases?
