@@ -4,8 +4,6 @@ Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, th
 
 Sway provides a nice way to manage callable interfaces with its `abi` system.
 
-Calls can be made both from one contract to another and from scripts to contracts.
-
 ## Example
 
 Here is an example of a *contract calling another contract* in Sway:
