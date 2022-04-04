@@ -1,6 +1,6 @@
 contract;
 
-use std::{context::{*, call_frames::*, registers::global_gas}, contract_id::ContractId};
+use std::{context::{balance_of, call_frames::{contract_id, msg_asset_id}, gas, msg_amount, registers::global_gas, this_balance}, contract_id::ContractId};
 use context_testing_abi::*;
 
 impl ContextTesting for Contract {

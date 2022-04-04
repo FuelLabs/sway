@@ -24,12 +24,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/basic_func_decl",
             ProgramState::Return(1),
         ), // 1 == true
-        // contracts revert because this test runs them against the VM
-        // and no selectors will match
-        (
-            "should_pass/test_contracts/contract_abi_impl",
-            ProgramState::Revert(0),
-        ),
         ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
         (
             "should_pass/language/if_elseif_enum",
@@ -379,10 +373,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/require_contract_deployment/caller_context_test",
         ),
         (
-            "should_pass/test_contracts/contract_abi_impl",
-            "should_pass/require_contract_deployment/contract_call",
-        ),
-        (
             "should_pass/test_contracts/balance_test_contract",
             "should_pass/require_contract_deployment/bal_opcode",
         ),
@@ -390,12 +380,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             "should_pass/require_contract_deployment/token_ops_test",
         ),
-        /* Requires IR - TODO:enable when the IR pipeline is enabled by default
-         * https://github.com/FuelLabs/sway/issues/981
         (
             "should_pass/test_contracts/storage_access_contract",
             "should_pass/require_contract_deployment/storage_access_caller",
-        ),*/
+        ),
     ];
 
     let total_number_of_tests = positive_project_names.len()

@@ -1,6 +1,5 @@
 library test_fuel_coin_abi;
 
-use std::address::Address;
 use std::contract_id::ContractId;
 
 abi TestFuelCoin {
