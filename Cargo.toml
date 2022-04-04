@@ -15,6 +15,7 @@ members = [
     "sway-utils",
     "test",
     "test-sig-gen-util",
+    "scripts/forc-documenter"
 ]
 exclude = [
     "examples/fizzbuzz",
