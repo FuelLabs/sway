@@ -440,14 +440,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match optimize::compile_ast(ast) {
         Ok(ir) => ir,
-        Err(msg) => {
-            errors.push(CompileError::InternalOwned(
-                msg,
-                span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
-            ));
+        Err(e) => {
+            errors.push(e);
             return err(warnings, errors);
         }
     };
