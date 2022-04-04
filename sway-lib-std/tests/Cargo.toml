@@ -12,9 +12,9 @@ fuel-tx = "0.7"
 fuel-types = "0.3"
 fuel-vm = "0.6"
 fuels-abigen-macro = "0.8"
-fuels-signers = { version = "0.8", features=["test-helpers"] }
 fuels-contract = "0.8"
 fuels-core = "0.8"
+fuels-signers = { version = "0.8", features=["test-helpers"] }
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
