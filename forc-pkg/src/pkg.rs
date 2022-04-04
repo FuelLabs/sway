@@ -618,6 +618,7 @@ fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 }
 
 /// Fetch children nodes of the given node and add unvisited nodes to the graph.
+#[allow(clippy::too_many_arguments)]
 fn fetch_children(
     fetch_id: u64,
     offline_mode: bool,
@@ -928,7 +929,7 @@ pub fn sway_build_config(
     build_conf: &BuildConfig,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
-    let file_name = find_file_name(&manifest_dir, &entry_path)?;
+    let file_name = find_file_name(manifest_dir, entry_path)?;
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
