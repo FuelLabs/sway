@@ -91,7 +91,7 @@ impl Manifest {
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.implicitly_include_core_std_if_missing(sway_git_tag);
+        manifest.implicitly_include_std_if_missing(sway_git_tag);
         manifest.validate(path)?;
         Ok(manifest)
     }
@@ -178,7 +178,7 @@ impl Manifest {
     ///
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
-    fn implicitly_include_core_std_if_missing(&mut self, sway_git_tag: &str) {
+    fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
         const CORE: &str = "core";
         const STD: &str = "std";
         // Don't include `std` if:
