@@ -22,7 +22,7 @@ pub enum ConstantValue {
     Bool(bool),
     Uint(u64),
     B256([u8; 32]),
-    String(String),
+    String(Vec<u8>),
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
 }
@@ -78,10 +78,9 @@ impl Constant {
         }
     }
 
-    pub fn new_string(string: String) -> Self {
-        // XXX Need to parse the string for escapes?  To do.
+    pub fn new_string(string: Vec<u8>) -> Self {
         Constant {
-            ty: Type::String(string.chars().count() as u64),
+            ty: Type::String(string.len() as u64),
             value: ConstantValue::String(string),
         }
     }
@@ -135,7 +134,7 @@ impl Constant {
 
     pub fn get_string(
         context: &mut Context,
-        value: String,
+        value: Vec<u8>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         Value::new_constant(context, Constant::new_string(value), span_md_idx)

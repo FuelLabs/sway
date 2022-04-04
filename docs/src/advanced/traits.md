@@ -81,14 +81,16 @@ pub trait Card {
 
 fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
     // insert some creative card game here
-  }
+}
 ```
 
 Now, if you want to use the function `play_game_with_deck` with your struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
 ```sway
 script;
+
 use games::*;
+
 struct MyCard {
     suit: Suit,
     value: u8

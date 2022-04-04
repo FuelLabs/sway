@@ -22,7 +22,7 @@ fn main() {
 
 In Sway, note that a _statement_ is a _declaration **or** expression with a semicolon after it_. This means that you need to add a semicolon after an `if` to turn it into a statement, if it is being used for control flow.
 
-This need for a semicolon after if expressions to turn them into statements may be be removed eventually.
+This need for a semicolon after if expressions to turn them into statements may be removed eventually.
 
 ### Using `if` in a `let` statement
 

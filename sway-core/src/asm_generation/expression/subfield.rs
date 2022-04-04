@@ -160,7 +160,14 @@ pub(crate) fn convert_subfield_to_asm(
         }
     };
 
-    asm_buf.push(if resolved_type_of_this_field.is_copy_type() {
+    let field_has_copy_type = match resolved_type_of_this_field.is_copy_type(&span) {
+        Ok(is_copy) => is_copy,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    asm_buf.push(if field_has_copy_type {
         let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
             Ok(o) => o,
             Err(e) => {
