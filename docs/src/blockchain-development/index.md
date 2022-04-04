@@ -8,3 +8,4 @@ These are also some concepts related to the FuelVM and Fuel ecosystem that you m
 - [Function Purity](./purity.md)
 - [Identifiers](./identifiers.md)
 - [Native Assets](./native_assets.md)
+- [Calling Contracts](./calling_contracts.md)
