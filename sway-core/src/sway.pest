@@ -29,6 +29,7 @@ const_decl_keyword   =  {"const"}
 impurity_keyword     =  {"impure"}
 size_of_type_keyword =  {"size_of"}
 size_of_val_keyword  =  {"size_of_val"}
+is_ref_type_keyword  =  {"is_reference_type"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -60,10 +61,31 @@ call_path_          =  {relative_call_path_|absolute_call_path_}
 relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
 absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
 
-expr_inner               = _{unary_op_expr|asm_expression|size_of_expr|match_expression|abi_cast|if_let_exp|if_exp|code_block|tuple_index|struct_expression|storage_access|delineated_path|func_app|literal_value|method_exp|struct_field_access|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+expr_inner = _{ unary_op_expr
+              | asm_expression
+              | built_in_expr
+              | match_expression
+              | abi_cast
+              | if_let_exp
+              | if_exp
+              | code_block
+              | tuple_index
+              | struct_expression
+              | storage_access
+              | delineated_path
+              | func_app
+              | literal_value
+              | method_exp
+              | struct_field_access
+              | array_index
+              | var_exp
+              | array_exp
+              | parenthesized_expression
+              | tuple_expr
+              }
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
-// // op exps built in to expr to prevent left recursion
+// op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
 func_app                 =  {call_path ~ type_args_with_path? ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
@@ -83,10 +105,11 @@ path_ident               =  {ident}
 array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 storage_access           =  {storage_keyword ~ "." ~ ident ~ ("." ~ ident)*}
 
-// size_of
-size_of_expr      =  {size_of_type_expr|size_of_val_expr}
+// built in expressions
+built_in_expr     =  {size_of_type_expr|size_of_val_expr|is_ref_type_expr}
 size_of_type_expr =  {size_of_type_keyword ~ "::<" ~ type_name ~ ">" ~ "(" ~ ")"}
 size_of_val_expr  =  {size_of_val_keyword ~ "(" ~ expr ~ ")"}
+is_ref_type_expr  =  {is_ref_type_keyword ~ "::<" ~ type_name ~ ">" ~ "(" ~ ")"}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ call_path ~ "," ~ expr ~ ")"}

@@ -1,6 +1,5 @@
 # Testing
 
-There are a couple options for testing your Sway contract:
+Testing your Sway contracts can be done with the Rust SDK.
 
 - [Testing with Rust](./testing-with-rust.md)
-- [Testing with TypeScript](./testing-with-typescript.md)

@@ -72,7 +72,7 @@ This is a tuple, denoted by parenthesized, comma-separated values. Note that the
 
 ```sway
 let x: (u64, bool) = (42, true);
-assert(x.1)
+assert(x.1);
 ```
 
 In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
@@ -111,7 +111,6 @@ To access an element in an array, use _array indexing syntax_:
 
 ```sway
 let x: [bool; 2] = [true, false];
-
 assert(x[0]);
 ```
 

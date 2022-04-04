@@ -66,13 +66,11 @@ impl TypedExpression {
                 .map(|x| x.deterministically_aborts())
                 .unwrap_or(false),
             AbiCast { address, .. } => address.deterministically_aborts(),
-            SizeOf {
-                variant: SizeOfVariant::Val(v),
-            } => v.deterministically_aborts(),
+            SizeOfValue { expr } => expr.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
-            | SizeOf { .. }
+            | TypeProperty { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -171,7 +169,8 @@ impl TypedExpression {
             | TypedExpressionVariant::TupleElemAccess { .. }
             | TypedExpressionVariant::EnumInstantiation { .. }
             | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::SizeOf { .. }
+            | TypedExpressionVariant::SizeOfValue { .. }
+            | TypedExpressionVariant::TypeProperty { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::StorageAccess { .. }
@@ -500,11 +499,13 @@ impl TypedExpression {
                 },
                 span,
             ),
-            Expression::SizeOfType {
+            Expression::BuiltinGetTypeProperty {
+                builtin,
                 type_name,
                 type_span,
                 span,
-            } => Self::type_check_size_of_type(
+            } => Self::type_check_get_type_property(
+                builtin,
                 TypeCheckArguments {
                     checkee: (type_name, type_span),
                     namespace,
@@ -519,17 +520,6 @@ impl TypedExpression {
                 },
                 span,
             ),
-            /*
-            a => {
-                let errors = vec![CompileError::Unimplemented(
-                    "Unimplemented type checking for expression",
-                    a.span(),
-                )];
-
-                let exp = error_recovery_expr(a.span());
-                ok(exp, vec![], errors)
-            }
-            */
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -2320,8 +2310,8 @@ impl TypedExpression {
             errors
         );
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOf {
-                variant: SizeOfVariant::Val(Box::new(exp)),
+            expression: TypedExpressionVariant::SizeOfValue {
+                expr: Box::new(exp),
             },
             return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
                 IntegerBits::SixtyFour,
@@ -2332,7 +2322,8 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_size_of_type(
+    fn type_check_get_type_property(
+        builtin: BuiltinProperty,
         arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -2350,13 +2341,18 @@ impl TypedExpression {
             warnings,
             errors,
         );
+        let return_type = match builtin {
+            BuiltinProperty::SizeOfType => {
+                crate::type_engine::insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+            }
+            BuiltinProperty::IsRefType => crate::type_engine::insert_type(TypeInfo::Boolean),
+        };
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOf {
-                variant: SizeOfVariant::Type(type_id),
+            expression: TypedExpressionVariant::TypeProperty {
+                property: builtin,
+                type_id,
             },
-            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
+            return_type,
             is_constant: IsConstant::No,
             span,
         };
@@ -2549,7 +2545,7 @@ mod tests {
             file_name: Arc::new("test.sw".into()),
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
-            use_ir: false,
+            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

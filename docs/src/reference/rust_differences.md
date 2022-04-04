@@ -24,9 +24,9 @@ In Sway, enums are simplified. Enums variants must all specify exactly one type.
 ```sway
 // This is equivalent Sway syntax for the above Rust enum.
 enum Foo {
-    UnitVariant    : (),
-    TupleVariant   : (u32, u64, bool),
-    StructVariant  : MyStruct,
+    UnitVariant: (),
+    TupleVariant: (u32, u64, bool),
+    StructVariant: MyStruct,
 }
 
 struct MyStruct {

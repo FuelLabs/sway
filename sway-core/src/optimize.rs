@@ -4,21 +4,23 @@ use std::collections::HashMap;
 
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
+    error::CompileError,
+    parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
 
-use sway_types::{ident::Ident, span::Span, state::StateIndex};
+use sway_types::{
+    ident::Ident,
+    span::{join_spans, Span},
+    state::StateIndex,
+};
 
 use sway_ir::*;
 
 // -------------------------------------------------------------------------------------------------
-// XXX This needs to return a CompileResult.  OTOH, retrofitting a CompileResult here would add
-// very little value and require a lot of work.  An alternative might be returning
-// Result<T, CompileError>.
 
-pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
+pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> {
     let mut ctx = Context::default();
     match ast {
         TypedParseTree::Script {
@@ -44,7 +46,8 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
             all_nodes: _,
         } => unimplemented!("compile library to ir"),
     }?;
-    ctx.verify().map_err(|ir_error| ir_error.to_string())
+    ctx.verify()
+        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -54,7 +57,7 @@ fn compile_script(
     main_function: TypedFunctionDeclaration,
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
-) -> Result<Module, String> {
+) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
 
     compile_constants(context, module, namespace, false)?;
@@ -69,7 +72,7 @@ fn compile_contract(
     abi_entries: Vec<TypedFunctionDeclaration>,
     namespace: NamespaceRef,
     declarations: Vec<TypedDeclaration>,
-) -> Result<Module, String> {
+) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
 
     compile_constants(context, module, namespace, false)?;
@@ -88,9 +91,9 @@ fn compile_constants(
     module: Module,
     namespace: NamespaceRef,
     public_only: bool,
-) -> Result<(), String> {
+) -> Result<(), CompileError> {
     read_module(
-        |ns| -> Result<(), String> {
+        |ns| -> Result<(), CompileError> {
             for decl in ns.get_all_declared_symbols() {
                 let decl_name_value = match decl {
                     TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
@@ -136,12 +139,15 @@ fn compile_constants(
 fn compile_constant_expression(
     context: &mut Context,
     const_expr: &TypedExpression,
-) -> Result<Value, String> {
+) -> Result<Value, CompileError> {
     if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
         let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
         Ok(convert_literal_to_value(context, literal, span_md_idx))
     } else {
-        Err("Unsupported constant expression type.".into())
+        Err(CompileError::Internal(
+            "Unsupported constant expression type.",
+            const_expr.span.clone(),
+        ))
     }
 }
 
@@ -160,7 +166,7 @@ fn compile_declarations(
     context: &mut Context,
     module: Module,
     declarations: Vec<TypedDeclaration>,
-) -> Result<(), String> {
+) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
@@ -211,11 +217,11 @@ fn compile_declarations(
 fn get_aggregate_for_types(
     context: &mut Context,
     type_ids: &[TypeId],
-) -> Result<Aggregate, String> {
+) -> Result<Aggregate, CompileError> {
     let types = type_ids
         .iter()
         .map(|ty_id| convert_resolved_typeid_no_span(context, ty_id))
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect::<Result<Vec<_>, CompileError>>()?;
     Ok(Aggregate::new_struct(context, types))
 }
 
@@ -224,13 +230,13 @@ fn get_aggregate_for_types(
 fn create_enum_aggregate(
     context: &mut Context,
     variants: Vec<TypedEnumVariant>,
-) -> Result<Aggregate, String> {
+) -> Result<Aggregate, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
         .into_iter()
         .map(|tev| convert_resolved_typeid_no_span(context, &tev.r#type))
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect::<Result<Vec<_>, CompileError>>()?;
     let enum_aggregate = Aggregate::new_struct(context, field_types);
 
     // Create the tagged union struct next.
@@ -242,11 +248,14 @@ fn create_enum_aggregate(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(context: &mut Context, fields: Vec<TypeId>) -> Result<Aggregate, String> {
+fn create_tuple_aggregate(
+    context: &mut Context,
+    fields: Vec<TypeId>,
+) -> Result<Aggregate, CompileError> {
     let field_types = fields
         .into_iter()
         .map(|ty_id| convert_resolved_typeid_no_span(context, &ty_id))
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
 }
@@ -257,7 +266,7 @@ fn compile_function(
     context: &mut Context,
     module: Module,
     ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<Option<Function>, String> {
+) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
@@ -270,7 +279,7 @@ fn compile_function(
                 convert_resolved_typeid(context, &param.r#type, &param.type_span)
                     .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
             })
-            .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
+            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(context, module, ast_fn_decl, args, None).map(&Some)
     }
@@ -284,7 +293,7 @@ fn compile_fn_with_args(
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
-) -> Result<Function, String> {
+) -> Result<Function, CompileError> {
     let TypedFunctionDeclaration {
         name,
         body,
@@ -354,7 +363,7 @@ fn compile_impl(
     module: Module,
     self_type: TypeInfo,
     ast_methods: Vec<TypedFunctionDeclaration>,
-) -> Result<(), String> {
+) -> Result<(), CompileError> {
     for method in ast_methods {
         let args = method
             .parameters
@@ -367,7 +376,7 @@ fn compile_impl(
                 }
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
             })
-            .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
+            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(context, module, method, args, None)?;
     }
@@ -381,11 +390,27 @@ fn compile_abi_method(
     context: &mut Context,
     module: Module,
     ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<Function, String> {
-    let selector = ast_fn_decl.to_fn_selector_value().value.ok_or(format!(
-        "Cannot generate selector for ABI method: {}",
-        ast_fn_decl.name.as_str()
-    ))?;
+) -> Result<Function, CompileError> {
+    // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
+    let get_selector_result = ast_fn_decl.to_fn_selector_value();
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+    let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
+        Some(selector) => selector,
+        None => {
+            return if !errors.is_empty() {
+                Err(errors[0].clone())
+            } else {
+                Err(CompileError::InternalOwned(
+                    format!(
+                        "Cannot generate selector for ABI method: {}",
+                        ast_fn_decl.name.as_str()
+                    ),
+                    ast_fn_decl.name.span().clone(),
+                ))
+            };
+        }
+    };
 
     let args = ast_fn_decl
         .parameters
@@ -394,7 +419,7 @@ fn compile_abi_method(
             convert_resolved_typeid(context, &param.r#type, &param.type_span)
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
         })
-        .collect::<Result<Vec<(String, Type, Span)>, String>>()?;
+        .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
     compile_fn_with_args(context, module, ast_fn_decl, args, Some(selector))
 }
@@ -434,7 +459,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_block: TypedCodeBlock,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         ast_block
             .contents
             .into_iter()
@@ -451,9 +476,24 @@ impl FnCompiler {
                         TypedDeclaration::ConstantDeclaration(tcd) => {
                             self.compile_const_decl(context, tcd, span_md_idx)
                         }
-                        TypedDeclaration::FunctionDeclaration(_) => Err("func decl".into()),
-                        TypedDeclaration::TraitDeclaration(_) => Err("trait decl".into()),
-                        TypedDeclaration::StructDeclaration(_) => Err("struct decl".into()),
+                        TypedDeclaration::FunctionDeclaration(_) => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "function",
+                                span: ast_node.span,
+                            })
+                        }
+                        TypedDeclaration::TraitDeclaration(_) => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "trait",
+                                span: ast_node.span,
+                            })
+                        }
+                        TypedDeclaration::StructDeclaration(_) => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "struct",
+                                span: ast_node.span,
+                            })
+                        }
                         TypedDeclaration::EnumDeclaration(ted) => {
                             let span_md_idx = MetadataIndex::from_span(context, &ted.span);
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
@@ -471,7 +511,7 @@ impl FnCompiler {
                                 span_md_idx,
                             ),
                         TypedDeclaration::ImplTrait { span, .. } => {
-                            // XXX What if I ignore the trait implementation???  Potentially since
+                            // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
                             // This is obviously not really correct, and eventually we want to
@@ -479,13 +519,29 @@ impl FnCompiler {
                             let span_md_idx = MetadataIndex::from_span(context, &span);
                             Ok(Constant::get_unit(context, span_md_idx))
                         }
-                        TypedDeclaration::AbiDeclaration(_) => Err("abi decl".into()),
-                        TypedDeclaration::GenericTypeForFunctionScope { .. } => {
-                            Err("gen ty for fn scope".into())
+                        TypedDeclaration::AbiDeclaration(_) => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "abi",
+                                span: ast_node.span,
+                            })
                         }
-                        TypedDeclaration::ErrorRecovery { .. } => Err("error recovery".into()),
+                        TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "abi",
+                                span: ast_node.span,
+                            })
+                        }
+                        TypedDeclaration::ErrorRecovery { .. } => {
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "error recovery",
+                                span: ast_node.span,
+                            })
+                        }
                         TypedDeclaration::StorageDeclaration(_) => {
-                            Err("storage declaration".into())
+                            Err(CompileError::UnexpectedDeclaration {
+                                decl_type: "storage",
+                                span: ast_node.span,
+                            })
                         }
                     },
                     TypedAstNodeContent::Expression(te) => {
@@ -498,10 +554,13 @@ impl FnCompiler {
                     TypedAstNodeContent::WhileLoop(twl) => {
                         self.compile_while_loop(context, twl, span_md_idx)
                     }
-                    TypedAstNodeContent::SideEffect => Err("code block side effect".into()),
+                    TypedAstNodeContent::SideEffect => Err(CompileError::Internal(
+                        "unexpected side effect",
+                        ast_node.span,
+                    )),
                 }
             })
-            .collect::<Result<Vec<_>, String>>()
+            .collect::<Result<Vec<_>, CompileError>>()
             .map(|vals| vals.last().cloned())
             .transpose()
             .unwrap_or_else(|| Ok(Constant::get_unit(context, None)))
@@ -513,7 +572,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_expr: TypedExpression,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
         match ast_expr.expression {
             TypedExpressionVariant::Literal(l) => {
@@ -562,7 +621,10 @@ impl FnCompiler {
                 self.compile_struct_expr(context, fields, span_md_idx)
             }
             TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, cb),
-            TypedExpressionVariant::FunctionParameter => Err("expr func param".into()),
+            TypedExpressionVariant::FunctionParameter => Err(CompileError::Internal(
+                "Unexpected function parameter declaration.",
+                ast_expr.span,
+            )),
             TypedExpressionVariant::IfExp {
                 condition,
                 then,
@@ -637,32 +699,30 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::SizeOf { variant } => {
-                match variant {
-                    SizeOfVariant::Type(type_id) => {
-                        let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
-                        Ok(Constant::get_uint(
-                            context,
-                            64,
-                            ir_type_size_in_bytes(context, &ir_type),
-                            None,
-                        ))
-                    }
-                    SizeOfVariant::Val(exp) => {
-                        let ir_type =
-                            convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-
-                        // Compile the expression in case of side-effects but ignore its value.
-                        self.compile_expression(context, *exp)?;
-
-                        Ok(Constant::get_uint(
-                            context,
-                            64,
-                            ir_type_size_in_bytes(context, &ir_type),
-                            None,
-                        ))
+            TypedExpressionVariant::TypeProperty { property, type_id } => {
+                let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
+                match property {
+                    BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
+                        context,
+                        64,
+                        ir_type_size_in_bytes(context, &ir_type),
+                        None,
+                    )),
+                    BuiltinProperty::IsRefType => {
+                        Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
                     }
                 }
+            }
+            TypedExpressionVariant::SizeOfValue { expr } => {
+                // Compile the expression in case of side-effects but ignore its value.
+                let ir_type = convert_resolved_typeid(context, &expr.return_type, &expr.span)?;
+                self.compile_expression(context, *expr)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
             }
         }
     }
@@ -673,12 +733,15 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_expr: TypedExpression,
-    ) -> Result<Value, String> {
-        let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
-        let ret_value = self.compile_expression(context, ast_expr)?;
+    ) -> Result<Value, CompileError> {
+        let ret_value = self.compile_expression(context, ast_expr.clone())?;
         match ret_value.get_type(context) {
-            None => Err("Unable to determine type for return statement expression.".into()),
+            None => Err(CompileError::Internal(
+                "Unable to determine type for return statement expression.",
+                ast_expr.span,
+            )),
             Some(ret_ty) => {
+                let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
                 self.current_block
                     .ins(context)
                     .ret(ret_value, ret_ty, span_md_idx);
@@ -699,7 +762,7 @@ impl FnCompiler {
         ast_lhs: TypedExpression,
         ast_rhs: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
         let lhs_val = self.compile_expression(context, ast_lhs)?;
@@ -745,12 +808,12 @@ impl FnCompiler {
         ast_args: Vec<(Ident, TypedExpression)>,
         return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Compile each user argument
         let compiled_args = ast_args
             .into_iter()
             .map(|(_, expr)| self.compile_expression(context, expr))
-            .collect::<Result<Vec<Value>, String>>()?;
+            .collect::<Result<Vec<Value>, CompileError>>()?;
 
         // New struct type to hold the user arguments
         let field_types = compiled_args
@@ -772,7 +835,7 @@ impl FnCompiler {
                 true,
                 None,
             )
-            .map_err(|ir_error| ir_error.to_string())?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
 
         // Initialise each of the fields in the user args struct.
         compiled_args.into_iter().enumerate().fold(
@@ -903,7 +966,7 @@ impl FnCompiler {
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
         // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
         // straight in, no questions asked.  Library functions are provided in an initial namespace
@@ -974,7 +1037,7 @@ impl FnCompiler {
             let args = ast_args
                 .into_iter()
                 .map(|(_, expr)| self.compile_expression(context, expr))
-                .collect::<Result<Vec<Value>, String>>()?;
+                .collect::<Result<Vec<Value>, CompileError>>()?;
             Ok(self
                 .current_block
                 .ins(context)
@@ -1005,7 +1068,7 @@ impl FnCompiler {
         ast_condition: TypedExpression,
         ast_then: TypedExpression,
         ast_else: Option<Box<TypedExpression>>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = MetadataIndex::from_span(context, &ast_condition.span);
@@ -1070,7 +1133,7 @@ impl FnCompiler {
         variable_to_assign: Ident,
         ast_then: TypedCodeBlock,
         ast_else: Option<Box<TypedExpression>>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Similar to a regular `if` expression we create the different blocks in order, being
         // careful to track the 'current' block as it evolves.
         //
@@ -1083,7 +1146,10 @@ impl FnCompiler {
         {
             aggregate
         } else {
-            return Err("Enum type for `if let` is not an enum.".into());
+            return Err(CompileError::Internal(
+                "Enum type for `if let` is not an enum.",
+                ast_expr.span,
+            ));
         };
         let matched_value = self.compile_expression(context, *ast_expr)?;
         let matched_tag_value = self.current_block.ins(context).extract_value(
@@ -1112,7 +1178,12 @@ impl FnCompiler {
         let var_span_md_idx = MetadataIndex::from_span(context, variable_to_assign.span());
         let variable_type = enum_aggregate
             .get_field_type(context, &[1, variant_tag])
-            .ok_or_else(|| "Unable to get type of enum variant from its tag.".to_owned())?;
+            .ok_or_else(|| {
+                CompileError::Internal(
+                    "Unable to get type of enum variant from its tag.",
+                    variable_to_assign.span().clone(),
+                )
+            })?;
         let var_init_value = self.current_block.ins(context).extract_value(
             matched_value,
             enum_aggregate,
@@ -1126,7 +1197,7 @@ impl FnCompiler {
         let variable_ptr = self
             .function
             .new_local_ptr(context, local_name, variable_type, false, None)
-            .map_err(|ir_error| ir_error.to_string())?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
         let variable_ptr_ty = *variable_ptr.get_type(context);
         let variable_ptr_val = self.current_block.ins(context).get_ptr(
             variable_ptr,
@@ -1179,7 +1250,7 @@ impl FnCompiler {
         context: &mut Context,
         ast_while_loop: TypedWhileLoop,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
@@ -1227,7 +1298,7 @@ impl FnCompiler {
         context: &mut Context,
         name: &str,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
         if let Some(ptr) = self
@@ -1250,7 +1321,10 @@ impl FnCompiler {
         } else if let Some(const_val) = self.module.get_global_constant(context, name) {
             Ok(const_val)
         } else {
-            Err(format!("Unable to resolve variable '{}'.", name))
+            Err(CompileError::InternalOwned(
+                format!("Unable to resolve variable '{name}'."),
+                Span::empty(),
+            ))
         }
     }
 
@@ -1261,7 +1335,7 @@ impl FnCompiler {
         context: &mut Context,
         ast_var_decl: TypedVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let TypedVariableDeclaration {
             name,
             body,
@@ -1271,8 +1345,9 @@ impl FnCompiler {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &resolve_type(body.return_type, &body.span)
-                .map_err(|ty_err| format!("{:?}", ty_err))?,
+            &resolve_type(body.return_type, &body.span).map_err(|ty_err| {
+                CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+            })?,
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(Constant::get_unit(context, span_md_idx));
@@ -1288,7 +1363,7 @@ impl FnCompiler {
         let ptr = self
             .function
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
-            .map_err(|ir_error| ir_error.to_string())?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
@@ -1312,7 +1387,7 @@ impl FnCompiler {
         context: &mut Context,
         ast_const_decl: TypedConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
@@ -1323,7 +1398,9 @@ impl FnCompiler {
             let name = name.as_str().to_owned();
             self.function
                 .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
-                .map_err(|ir_error| ir_error.to_string())?;
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                })?;
 
             // We still insert this into the symbol table, as itself... can they be shadowed?
             // (Hrmm, name resolution in the variable expression code could be smarter about var
@@ -1332,7 +1409,10 @@ impl FnCompiler {
 
             Ok(Constant::get_unit(context, span_md_idx))
         } else {
-            Err("Unsupported constant declaration type.".into())
+            Err(CompileError::Internal(
+                "Unsupported constant declaration type, expecting a literal.",
+                name.span().clone(),
+            ))
         }
     }
 
@@ -1343,15 +1423,14 @@ impl FnCompiler {
         context: &mut Context,
         ast_reassignment: TypedReassignment,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let name = self
             .lexical_map
             .get(ast_reassignment.lhs[0].name.as_str())
             .expect("All local symbols must be in the lexical symbol map.");
-        let ptr = self
-            .function
-            .get_local_ptr(context, name)
-            .ok_or(format!("variable not found: {name}"))?;
+        let ptr = self.function.get_local_ptr(context, name).ok_or_else(|| {
+            CompileError::InternalOwned(format!("variable not found: {name}"), Span::empty())
+        })?;
 
         let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
 
@@ -1375,7 +1454,16 @@ impl FnCompiler {
             let ty = match ptr.get_type(context) {
                 Type::Struct(aggregate) => *aggregate,
                 _otherwise => {
-                    return Err("Reassignment with multiple accessors to non-aggregate.".into())
+                    let spans = ast_reassignment
+                        .lhs
+                        .iter()
+                        .map(|lhs| lhs.name.span().clone())
+                        .reduce(&join_spans)
+                        .expect("Joined spans of LHS of reassignment.");
+                    return Err(CompileError::Internal(
+                        "Reassignment with multiple accessors to non-aggregate.",
+                        spans,
+                    ));
                 }
             };
 
@@ -1407,7 +1495,7 @@ impl FnCompiler {
         ix: &StateIndex,
         rhs: &TypedExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
         let rhs = self.compile_expression(context, rhs.clone())?;
 
@@ -1441,7 +1529,7 @@ impl FnCompiler {
         context: &mut Context,
         contents: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let elem_type = if contents.is_empty() {
             // A zero length array is a pointer to nothing, which is still supported by Sway.
             // We're unable to get the type though it's irrelevant because it can't be indexed, so
@@ -1486,21 +1574,21 @@ impl FnCompiler {
         array_expr: TypedExpression,
         index_expr: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
+        let array_expr_span = array_expr.span.clone();
         let array_val = self.compile_expression(context, array_expr)?;
         let aggregate = match &context.values[array_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
-                    format!(
-                        "Unsupported instruction as array value for index expression. {:?}",
-                        instruction
-                    )
+                    CompileError::InternalOwned(format!(
+                        "Unsupported instruction as array value for index expression. {instruction:?}"),
+                        array_expr_span)
                 })
             }
             ValueDatum::Argument(Type::Array(aggregate)) => Ok(*aggregate),
-            otherwise => Err(format!(
-                "Unsupported array value for index expression: {:?}",
-                otherwise
+            otherwise => Err(CompileError::InternalOwned(
+                format!("Unsupported array value for index expression: {otherwise:?}"),
+                array_expr_span,
             )),
         }?;
 
@@ -1511,10 +1599,11 @@ impl FnCompiler {
                 // XXX Here is a very specific case where we want to return an Error enum
                 // specifically, if not an actual CompileError.  This should be a
                 // CompileError::ArrayOutOfBounds, or at least converted to one.
-                return Err(format!(
-                    "Array index out of bounds; the length is {} but the index is {}.",
-                    *count, index
-                ));
+                return Err(CompileError::ArrayOutOfBounds {
+                    index,
+                    count: *count,
+                    span: index_expr.span,
+                });
             }
         }
 
@@ -1535,7 +1624,7 @@ impl FnCompiler {
         context: &mut Context,
         fields: Vec<TypedStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
         // We don't know the actual type of the struct, but the AST guarantees that the fields are
         // in the declared order (regardless of how they are initialised in source) so we can
@@ -1551,7 +1640,7 @@ impl FnCompiler {
                 self.compile_expression(context, struct_field.value)
                     .map(|insert_val| ((insert_val, insert_idx as u64), field_ty))
             })
-            .collect::<Result<Vec<_>, String>>()?;
+            .collect::<Result<Vec<_>, CompileError>>()?;
         let (inserted_values_indices, field_types): (Vec<(Value, u64)>, Vec<TypeId>) =
             field_descrs.into_iter().unzip();
 
@@ -1581,30 +1670,40 @@ impl FnCompiler {
         struct_type_id: TypeId,
         ast_field: TypedStructField,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
+        let ast_struct_expr_span = ast_struct_expr.span.clone();
         let struct_val = self.compile_expression(context, ast_struct_expr)?;
         let aggregate = match &context.values[struct_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
-                    format!(
-                        "Unsupported instruction as struct value for field expression. {:?}",
-                        instruction
+                    CompileError::InternalOwned(
+                        format!(
+                            "Unsupported instruction as struct value for \
+                            field expression: {instruction:?}",
+                        ),
+                        ast_struct_expr_span,
                     )
                 })
             }
             ValueDatum::Argument(Type::Struct(aggregate)) => Ok(*aggregate),
-            otherwise => Err(format!(
-                "Unsupported struct value for field expression: {:?}",
-                otherwise
+            otherwise => Err(CompileError::InternalOwned(
+                format!("Unsupported struct value for field expression: {otherwise:?}",),
+                ast_struct_expr_span,
             )),
         }?;
 
         let field_idx = match get_struct_name_and_field_index(struct_type_id, &ast_field.name) {
-            None => Err("Unknown struct in field expression.".to_owned()),
+            None => Err(CompileError::Internal(
+                "Unknown struct in field expression.",
+                ast_field.span,
+            )),
             Some((struct_name, field_idx)) => match field_idx {
-                None => Err(format!(
-                    "Unknown field name '{}' for struct '{struct_name}' in field expression.",
-                    ast_field.name
+                None => Err(CompileError::InternalOwned(
+                    format!(
+                        "Unknown field name '{}' for struct '{struct_name}' in field expression.",
+                        ast_field.name
+                    ),
+                    ast_field.span,
                 )),
                 Some(field_idx) => Ok(field_idx),
             },
@@ -1626,7 +1725,7 @@ impl FnCompiler {
         enum_decl: TypedEnumDeclaration,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
         // it and add its type/aggregate to the context.  We can re-use them here if we recognise
@@ -1670,7 +1769,7 @@ impl FnCompiler {
         context: &mut Context,
         fields: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
@@ -1686,7 +1785,7 @@ impl FnCompiler {
                         },
                     )
                 })
-                .collect::<Result<Vec<_>, String>>()?
+                .collect::<Result<Vec<_>, CompileError>>()?
                 .into_iter()
                 .unzip();
 
@@ -1717,7 +1816,7 @@ impl FnCompiler {
         tuple_type: TypeId,
         idx: usize,
         span: Span,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, tuple)?;
         if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
             let span_md_idx = MetadataIndex::from_span(context, &span);
@@ -1728,7 +1827,10 @@ impl FnCompiler {
                 span_md_idx,
             ))
         } else {
-            Err("Invalid (non-aggregate?) tuple type for TupleElemAccess?".into())
+            Err(CompileError::Internal(
+                "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
+                span,
+            ))
         }
     }
 
@@ -1740,7 +1842,7 @@ impl FnCompiler {
         fields: &[TypeCheckedStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
             context,
@@ -1774,7 +1876,7 @@ impl FnCompiler {
         return_type: TypeId,
         returns: Option<(AsmRegister, Span)>,
         whole_block_span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         let registers = registers
             .into_iter()
             .map(
@@ -1792,7 +1894,7 @@ impl FnCompiler {
                         })
                 },
             )
-            .collect::<Result<Vec<AsmArg>, String>>()?;
+            .collect::<Result<Vec<AsmArg>, CompileError>>()?;
         let body = body
             .into_iter()
             .map(
@@ -1835,7 +1937,7 @@ impl FnCompiler {
         r#type: &Type,
         rhs: &Option<Value>,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, CompileError> {
         Ok(match r#type {
             Type::Struct(aggregate) => {
                 let mut struct_val =
@@ -1916,7 +2018,9 @@ impl FnCompiler {
                 let key_ptr = self
                     .function
                     .new_local_ptr(context, alias_key_name, Type::B256, true, None)
-                    .map_err(|ir_error| ir_error.to_string())?;
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                    })?;
 
                 // Const value for the key from the hash
                 let const_key = convert_literal_to_value(
@@ -1969,7 +2073,9 @@ impl FnCompiler {
                         let value_ptr = self
                             .function
                             .new_local_ptr(context, alias_value_name, *r#type, true, None)
-                            .map_err(|ir_error| ir_error.to_string())?;
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                            })?;
 
                         // Convert the local pointer created to a value using get_ptr
                         let value_ptr_val = self.current_block.ins(context).get_ptr(
@@ -2136,7 +2242,9 @@ impl_typed_named_field_for!(ReassignmentLhs);
 impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
 impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
 
-fn get_indices_for_struct_access<F: TypedNamedField>(fields: &[F]) -> Result<Vec<u64>, String> {
+fn get_indices_for_struct_access<F: TypedNamedField>(
+    fields: &[F],
+) -> Result<Vec<u64>, CompileError> {
     fields[1..]
         .iter()
         .fold(Ok((Vec::new(), fields[0].get_type())), |acc, field| {
@@ -2144,11 +2252,17 @@ fn get_indices_for_struct_access<F: TypedNamedField>(fields: &[F]) -> Result<Vec
             acc.and_then(|(mut fld_idcs, prev_type_id)| {
                 // Get the field index and also its type for the next iteration.
                 match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
-                    None => Err("Unknown struct in in reassignment.".to_owned()),
+                    None => Err(CompileError::Internal(
+                        "Unknown struct in in reassignment.",
+                        Span::empty(),
+                    )),
                     Some((struct_name, field_idx)) => match field_idx {
-                        None => Err(format!(
-                            "Unknown field name '{}' for struct {struct_name} in reassignment.",
-                            field.get_name(),
+                        None => Err(CompileError::InternalOwned(
+                            format!(
+                                "Unknown field name '{}' for struct {struct_name} in reassignment.",
+                                field.get_name(),
+                            ),
+                            field.get_name().span().clone(),
                         )),
                         Some(field_idx) => {
                             // Save the field index.
@@ -2209,19 +2323,20 @@ fn convert_resolved_typeid(
     context: &mut Context,
     ast_type: &TypeId,
     span: &Span,
-) -> Result<Type, String> {
+) -> Result<Type, CompileError> {
     // There's probably a better way to convert TypeError to String, but... we'll use something
     // other than String eventually?  IrError?
     convert_resolved_type(
         context,
-        &resolve_type(*ast_type, span).map_err(|ty_err| format!("{:?}", ty_err))?,
+        &resolve_type(*ast_type, span)
+            .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
     )
 }
 
 fn convert_resolved_typeid_no_span(
     context: &mut Context,
     ast_type: &TypeId,
-) -> Result<Type, String> {
+) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span {
         span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
@@ -2230,7 +2345,7 @@ fn convert_resolved_typeid_no_span(
     convert_resolved_typeid(context, ast_type, &span)
 }
 
-fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<Type, String> {
+fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<Type, CompileError> {
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
@@ -2266,17 +2381,63 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
                 create_tuple_aggregate(context, new_fields).map(Type::Struct)?
             }
         }
-        TypeInfo::Custom { .. } => return Err("can't do custom types yet".into()),
-        TypeInfo::SelfType { .. } => return Err("can't do self types yet".into()),
-        TypeInfo::Contract => return Err("Contract type cannot be resolved in IR".into()),
-        TypeInfo::ContractCaller { .. } => {
-            return Err("ContractCaller type cannot be reoslved in IR".into())
+
+        // Unsupported types which shouldn't exist in the AST after type checking and
+        // monomorphisation.
+        TypeInfo::Custom { .. } => {
+            return Err(CompileError::Internal(
+                "Custom type cannot be resolved in IR.",
+                Span::empty(),
+            ))
         }
-        TypeInfo::Unknown => return Err("unknown type found in AST..?".into()),
-        TypeInfo::UnknownGeneric { .. } => return Err("unknowngeneric type found in AST..?".into()),
-        TypeInfo::Ref(_) => return Err("ref type found in AST..?".into()),
-        TypeInfo::ErrorRecovery => return Err("error recovery type found in AST..?".into()),
-        TypeInfo::Storage { .. } => return Err("storage type found in AST..?".into()),
+        TypeInfo::SelfType { .. } => {
+            return Err(CompileError::Internal(
+                "Self type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::Contract => {
+            return Err(CompileError::Internal(
+                "Contract type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::ContractCaller { .. } => {
+            return Err(CompileError::Internal(
+                "ContractCaller type cannot be reoslved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::Unknown => {
+            return Err(CompileError::Internal(
+                "Unknown type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::UnknownGeneric { .. } => {
+            return Err(CompileError::Internal(
+                "Generic type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::Ref(_) => {
+            return Err(CompileError::Internal(
+                "Ref type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::ErrorRecovery => {
+            return Err(CompileError::Internal(
+                "Error recovery type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
+        TypeInfo::Storage { .. } => {
+            return Err(CompileError::Internal(
+                "Storage type cannot be resolved in IR.",
+                Span::empty(),
+            ))
+        }
     })
 }
 
@@ -2427,7 +2588,7 @@ mod tests {
             file_name,
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
-            use_ir: false,
+            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

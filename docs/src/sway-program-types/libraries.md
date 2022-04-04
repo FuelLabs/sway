@@ -61,7 +61,6 @@ dep constants;
 with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
 
 ```sway
-//! Functionality for accessing block-related data.
 library block;
 
 /// Get the current block height

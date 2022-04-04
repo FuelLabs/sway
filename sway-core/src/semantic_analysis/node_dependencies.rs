@@ -399,7 +399,7 @@ impl Dependencies {
             Expression::StorageAccess { .. } => self,
             Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
-            Expression::SizeOfType { .. } => self,
+            Expression::BuiltinGetTypeProperty { .. } => self,
         }
     }
 
