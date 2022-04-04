@@ -404,10 +404,10 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        if build_config.use_ir {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
-                        } else {
+                        if build_config.use_orig_asm {
                             compile_ast_to_asm(*parse_tree, build_config)
+                        } else {
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
@@ -440,14 +440,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match optimize::compile_ast(ast) {
         Ok(ir) => ir,
-        Err(msg) => {
-            errors.push(CompileError::InternalOwned(
-                msg,
-                span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
-            ));
+        Err(e) => {
+            errors.push(e);
             return err(warnings, errors);
         }
     };
