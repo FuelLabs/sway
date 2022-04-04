@@ -1,6 +1,6 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -49,6 +49,12 @@ struct ContentResponse {
 
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
+    if project_name == "test" {
+        bail!(
+            "the name `test` cannot be used as a package name, \
+            it conflicts with Sway's built-in test library"
+        );
+    }
 
     match command.template {
         Some(template) => {
