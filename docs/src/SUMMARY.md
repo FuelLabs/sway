@@ -31,6 +31,7 @@
   - [Function Purity](./blockchain-development/purity.md)
   - [Identifiers](./blockchain-development/identifiers.md)
   - [Native Assets](./blockchain-development/native_assets.md)
+  - [Calling Contracts](./blockchain-development/calling_contracts.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
 - [Advanced Concepts](./advanced/index.md)
