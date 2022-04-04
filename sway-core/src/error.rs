@@ -912,6 +912,11 @@ pub enum CompileError {
     MultipleStorageDeclarations { span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
     InvalidVariableName { name: String, span: Span },
+    #[error(
+        "Internal compiler error: Unexpected {decl_type} declaration found.\n\
+        Please file an issue on the repository and include the code that triggered this error."
+    )]
+    UnexpectedDeclaration { decl_type: &'static str, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1128,6 +1133,7 @@ impl CompileError {
             NoDeclaredStorage { span, .. } => span,
             MultipleStorageDeclarations { span, .. } => span,
             InvalidVariableName { span, .. } => span,
+            UnexpectedDeclaration { span, .. } => span,
         }
     }
 

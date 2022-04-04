@@ -42,20 +42,20 @@ To call a method, simply use dot syntax: `foo.iz_baz_true()`.
 
 ```sway
 enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
     // etc...
 }
 
 enum Make {
-    Ford      : (),
-    Toyota    : (),
-    Mazda     : (),
-    Chevrolet : (),
-    BMW       : (),
+    Ford: (),
+    Toyota: (),
+    Mazda: (),
+    Chevrolet: (),
+    BMW: (),
     // etc...
 }
 struct Car {

@@ -14,7 +14,7 @@ $ tree .
     └── harness.rs
 ```
 
-Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs) (`fuels-rs`).
+Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs), (`fuels-rs`).
 
 These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init`).
 
@@ -26,6 +26,7 @@ For example, let's write tests against the following contract, written in Sway. 
 
 Our `tests/harness.rs` file could look like:
 
+<!--TODO add test here once examples are tested-->
 ```rust,ignore
 {{#include ../../../examples/hello_world/tests/harness.rs}}
 ```
@@ -40,5 +41,3 @@ test harness ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 ```
-
-Instead of writing tests in Rust, tests can also be written in TypeScript using our [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/).

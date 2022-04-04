@@ -2545,7 +2545,7 @@ mod tests {
             file_name: Arc::new("test.sw".into()),
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
-            use_ir: false,
+            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

@@ -47,11 +47,11 @@ _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type tha
 
 ```sway
 enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
 }
 ```
 
@@ -87,11 +87,11 @@ enum InventoryEvent {
 
 ```sway
 enum Color {
-    Blue   : (),
-    Green  : (),
-    Red    : (),
-    Silver : (),
-    Grey   : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
 }
 
 fn main() {
