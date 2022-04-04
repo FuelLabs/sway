@@ -184,7 +184,7 @@
 }
 </code></pre>
 <p>In Sway, note that a <em>statement</em> is a <em>declaration <strong>or</strong> expression with a semicolon after it</em>. This means that you need to add a semicolon after an <code>if</code> to turn it into a statement, if it is being used for control flow.</p>
-<p>This need for a semicolon after if expressions to turn them into statements may be be removed eventually.</p>
+<p>This need for a semicolon after if expressions to turn them into statements may be removed eventually.</p>
 <h3 id="using-if-in-a-let-statement"><a class="header" href="#using-if-in-a-let-statement">Using <code>if</code> in a <code>let</code> statement</a></h3>
 <p>Like Rust, <code>if</code>s are expressions in Sway. What this means is you can use <code>if</code> expressions on the right side of a <code>let</code> statement to assign the outcome to a variable.</p>
 <pre><code class="language-sway">let my_data = if some_bool &lt; 10 { foo() } else { bar() };
