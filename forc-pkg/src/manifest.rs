@@ -170,14 +170,13 @@ impl Manifest {
     }
 
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
-    /// them implicitly.
+    /// `std` implicitly.
     ///
-    /// This makes the common case of depending on `core` and `std` a lot smoother for most users,
-    /// while still allowing for the uncommon case of custom `core`/`std` deps.
+    /// This makes the common case of depending on `std` a lot smoother for most users, while still
+    /// allowing for the uncommon case of custom `core`/`std` deps.
     ///
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
-    /// guarantee that the user's `core` is compatible with the implicit `std`. Similarly if only
-    /// `std` is specified, we are unable to implicitly include `core`.
+    /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_core_std_if_missing(&mut self) {
         const CORE: &str = "core";
         const STD: &str = "std";
@@ -187,9 +186,10 @@ impl Manifest {
         }
         // Add a `[dependencies]` table if there isn't one.
         let deps = self.dependencies.get_or_insert_with(Default::default);
-        // Add the missing dependencies.
-        deps.insert(CORE.to_string(), implicit_core_std_dep());
-        deps.insert(STD.to_string(), implicit_core_std_dep());
+        // Add the missing dependency.
+        let sway_git_tag =
+            unimplemented!("pass through the semver string from `forc`, i.e. \"v1.0.0\"");
+        deps.insert(STD.to_string(), implicit_std_dep(sway_git_tag));
     }
 
     /// Finds and returns the name of the dependency associated with a package of the specified
@@ -206,14 +206,12 @@ impl Manifest {
     }
 }
 
-/// The definition for the implicit `core`/`std` dependency.
-///
-/// By default, the `core` and `std` dependencies
-fn implicit_core_std_dep() -> Dependency {
-    const SWAY_GIT_REPO: &str = "https://github.com/fuellabs/sway";
+/// The definition for the implicit `std` dependency.
+fn implicit_std_dep(sway_git_tag: String) -> Dependency {
+    const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
     let det = DependencyDetails {
-        git: Some(SWAY_GIT_REPO.to_string()),
-        tag: unimplemented!("pass through the semver string from `forc`, i.e. \"v1.0.0\""),
+        git: Some(SWAY_GIT_REPO_URL.to_string()),
+        tag: Some(sway_git_tag),
         ..Default::default()
     };
     Dependency::Detailed(det)
