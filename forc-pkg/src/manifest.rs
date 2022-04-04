@@ -79,9 +79,10 @@ impl Manifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, they will be added to the `dependencies` table
-    /// implicitly.
-    pub fn from_file(path: &Path) -> Result<Self> {
+    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
+    /// we fetch `std`.
+    pub fn from_file(path: &Path, sway_git_tag: &str) -> Result<Self> {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
@@ -90,7 +91,7 @@ impl Manifest {
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.implicitly_include_core_std_if_missing();
+        manifest.implicitly_include_core_std_if_missing(sway_git_tag);
         manifest.validate(path)?;
         Ok(manifest)
     }
@@ -99,9 +100,9 @@ impl Manifest {
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path)
+        Self::from_file(&file_path, sway_git_tag)
     }
 
     /// Validate the `Manifest`.
@@ -177,19 +178,26 @@ impl Manifest {
     ///
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
-    fn implicitly_include_core_std_if_missing(&mut self) {
+    fn implicitly_include_core_std_if_missing(&mut self, sway_git_tag: &str) {
         const CORE: &str = "core";
         const STD: &str = "std";
-        // If either `core` or `std` is user-specified, we do not implicitly include anything.
-        if self.pkg_dep(CORE).is_some() || self.pkg_dep(STD).is_some() {
+        // If either of the `core` or `std` packages is user-specified, or if a dependency already
+        // exists with the name "std", we do not implicitly include anything.
+        if self.pkg_dep(CORE).is_some() || self.pkg_dep(STD).is_some() || self.dep(STD).is_some() {
             return;
         }
         // Add a `[dependencies]` table if there isn't one.
         let deps = self.dependencies.get_or_insert_with(Default::default);
         // Add the missing dependency.
-        let sway_git_tag =
-            unimplemented!("pass through the semver string from `forc`, i.e. \"v1.0.0\"");
-        deps.insert(STD.to_string(), implicit_std_dep(sway_git_tag));
+        let std_dep = implicit_std_dep(sway_git_tag.to_string());
+        deps.insert(STD.to_string(), std_dep);
+    }
+
+    /// Retrieve a reference to the dependency with the given name.
+    pub fn dep(&self, dep_name: &str) -> Option<&Dependency> {
+        self.dependencies
+            .as_ref()
+            .and_then(|deps| deps.get(dep_name))
     }
 
     /// Finds and returns the name of the dependency associated with a package of the specified
