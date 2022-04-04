@@ -1,4 +1,4 @@
-use crate::cli::{BuildCommand, DeployCommand};
+use crate::{cli::{BuildCommand, DeployCommand}, utils::SWAY_GIT_TAG};
 use crate::ops::forc_build;
 use anyhow::{bail, Result};
 use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
@@ -18,7 +18,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     };
     let manifest_dir =
         find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir)?;
+    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
     check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
 
     let DeployCommand {
