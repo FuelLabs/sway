@@ -15,7 +15,6 @@ use crate::{
     type_engine::*,
     AstNode, ParseTree,
 };
-
 use sway_types::{ident::Ident, span::Span};
 
 /// Represents the different variants of the AST.
