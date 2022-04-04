@@ -181,9 +181,16 @@ impl Manifest {
     fn implicitly_include_core_std_if_missing(&mut self, sway_git_tag: &str) {
         const CORE: &str = "core";
         const STD: &str = "std";
-        // If either of the `core` or `std` packages is user-specified, or if a dependency already
-        // exists with the name "std", we do not implicitly include anything.
-        if self.pkg_dep(CORE).is_some() || self.pkg_dep(STD).is_some() || self.dep(STD).is_some() {
+        // Don't include `std` if:
+        // - this *is* `core` or `std`.
+        // - either `core` or `std` packages are already specified.
+        // - a dependency already exists with the name "std".
+        if self.project.name == CORE
+            || self.project.name == STD
+            || self.pkg_dep(CORE).is_some()
+            || self.pkg_dep(STD).is_some()
+            || self.dep(STD).is_some()
+        {
             return;
         }
         // Add a `[dependencies]` table if there isn't one.
