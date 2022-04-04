@@ -6,7 +6,7 @@ Sway provides a nice way to manage callable interfaces with its `abi` system.
 
 ## Example
 
-Here is an example of a *contract calling another contract* in Sway:
+Here is an example of a contract calling another contract in Sway. A script can call a contract in the same way.
 
 ```sway
 // ./contract_a.sw
