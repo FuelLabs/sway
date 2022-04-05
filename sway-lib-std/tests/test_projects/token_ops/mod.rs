@@ -1,9 +1,9 @@
-use fuel_tx::{ContractId, AssetId, Salt};
+use fuel_tx::{AssetId, ContractId, Salt};
 use fuels_abigen_macro::abigen;
 use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::provider::Provider;
-use fuels_signers::{util::test_helpers::setup_test_provider_and_wallet, Signer};
 use fuels_signers::wallet::Wallet;
+use fuels_signers::{util::test_helpers::setup_test_provider_and_wallet, Signer};
 
 abigen!(
     TestFuelCoinContract,
@@ -192,11 +192,13 @@ async fn can_mint_and_send_to_address() {
         .await
         .unwrap();
 
-    assert_eq!(wallet
-        .get_spendable_coins(&AssetId::from(asset_id_array), 1)
-        .await
-        .unwrap()[0]
-        .amount, amount.into()
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
     );
 }
 
