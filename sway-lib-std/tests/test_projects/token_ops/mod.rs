@@ -185,7 +185,7 @@ async fn can_mint_and_send_to_address() {
         value: address.into(),
     };
 
-    let result = fuelcoin_instance
+    fuelcoin_instance
         .mint_and_send_to_address(amount, recipient)
         .append_variable_outputs(1)
         .call()
