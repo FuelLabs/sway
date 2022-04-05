@@ -300,12 +300,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // it will be rejected during assertion. Please move it to
     // `positive_project_names_no_abi` above.
     let positive_project_names_with_abi = vec![
-        // contracts revert because this test runs them against the VM
-        // and no selectors will match
-        (
-            "should_pass/test_contracts/contract_abi_impl",
-            ProgramState::Revert(0),
-        ),
         (
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
