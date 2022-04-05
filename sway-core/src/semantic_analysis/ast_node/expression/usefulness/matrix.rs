@@ -7,6 +7,8 @@ use crate::{
 
 use super::patstack::PatStack;
 
+use indexmap::IndexSet;
+
 /// A `Matrix` is a `Vec<PatStack>` that is implemented with special methods
 /// particular to the match exhaustivity algorithm.
 ///
@@ -55,8 +57,8 @@ impl Matrix {
     /// Returns the number of rows *m* and the number of columns *n* of the
     /// `Matrix` in the form (*m*, *n*).
     pub(crate) fn m_n(&self, span: &Span) -> CompileResult<(usize, usize)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let first = match self.rows.first() {
             Some(first) => first,
             None => return ok((0, 0), warnings, errors),
@@ -64,7 +66,7 @@ impl Matrix {
         let n = first.len();
         for row in self.rows.iter().skip(1) {
             if row.len() != n {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "found invalid matrix size",
                     span.clone(),
                 ));
@@ -83,10 +85,10 @@ impl Matrix {
     /// Checks to see if the `Matrix` is a vector, and if it is, returns the
     /// single `PatStack` from its elements.
     pub(crate) fn unwrap_vector(&self, span: &Span) -> CompileResult<PatStack> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if !self.is_a_vector() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "found invalid matrix size",
                 span.clone(),
             ));
@@ -95,7 +97,7 @@ impl Matrix {
         match self.rows.first() {
             Some(first) => ok(first.clone(), warnings, errors),
             None => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "found invalid matrix size",
                     span.clone(),
                 ));
@@ -107,8 +109,8 @@ impl Matrix {
     /// Computes Σ, where Σ is a `PatStack` containing the first element of
     /// every row of the `Matrix`.
     pub(crate) fn compute_sigma(&self, span: &Span) -> CompileResult<PatStack> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut pat_stack = PatStack::empty();
         for row in self.rows.iter() {
             let first = check!(

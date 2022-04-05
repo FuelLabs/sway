@@ -17,6 +17,8 @@ use self::{
     witness_report::WitnessReport,
 };
 
+use indexmap::IndexSet;
+
 /// Given the arms of a match expression, checks to see if the arms are
 /// exhaustive and checks to see if each arm is reachable.
 ///
@@ -205,8 +207,8 @@ pub(crate) fn check_match_expression_usefulness(
     arms: Vec<MatchCondition>,
     span: Span,
 ) -> CompileResult<(WitnessReport, Vec<(MatchCondition, bool)>)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
     let factory = ConstructorFactory::new();
@@ -240,7 +242,7 @@ pub(crate) fn check_match_expression_usefulness(
             }
         }
         None => {
-            errors.push(CompileError::Internal("empty match arms", span));
+            errors.insert(CompileError::Internal("empty match arms", span));
             return err(warnings, errors);
         }
     }
@@ -274,8 +276,8 @@ fn is_useful(
     q: &PatStack,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
     match (m, n) {
         (0, 0) => ok(
@@ -359,8 +361,8 @@ fn is_useful_wildcard(
     q: &PatStack,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     // 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
     //    as root constructors of the patterns of *P*'s first column.
@@ -545,8 +547,8 @@ fn is_useful_constructed(
     c: Pattern,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     // 1. Extract the specialized `Matrix` *S(c, P)*
     let s_c_p = check!(
@@ -562,7 +564,7 @@ fn is_useful_constructed(
         errors
     );
     if s_c_p_m > 0 && s_c_p_n != (c.a() + q.len() - 1) {
-        errors.push(CompileError::Internal(
+        errors.insert(CompileError::Internal(
             "S(c,P) matrix is misshappen",
             span.clone(),
         ));
@@ -605,8 +607,8 @@ fn is_useful_or(
     pats: PatStack,
     span: &Span,
 ) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let (_, q_rest) = check!(
         q.split_first(span),
         return err(warnings, errors),
@@ -642,8 +644,8 @@ fn is_useful_or(
 /// the rows of *P* depending on if the row is able to generally match all
 /// patterns in a default case.
 fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut d_p = Matrix::empty();
     for p_i in p.rows().iter() {
         d_p.append(&mut check!(
@@ -682,8 +684,8 @@ fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
 ///     2. The resulting rows are the rows obtained from calling the recursive
 ///        *D(P')*
 fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<PatStack>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut rows: Vec<PatStack> = vec![];
     let (p_i_1, mut p_i_rest) = check!(
         p_i.split_first(span),
@@ -733,8 +735,8 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
 /// Intuition: A specialized `Matrix` is a transformation upon *P* that
 /// "unwraps" the rows of *P* depending on if they are congruent with *c*.
 fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileResult<Matrix> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut s_c_p = Matrix::empty();
     for p_i in p.rows().iter() {
         s_c_p.append(&mut check!(
@@ -751,7 +753,7 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
         errors
     );
     if p.is_a_vector() && m > 1 {
-        errors.push(CompileError::Internal(
+        errors.insert(CompileError::Internal(
             "S(c,p) must be a vector",
             span.clone(),
         ));
@@ -795,8 +797,8 @@ fn compute_specialized_matrix_row(
     p_i: &PatStack,
     span: &Span,
 ) -> CompileResult<Vec<PatStack>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut rows: Vec<PatStack> = vec![];
     let (p_i_1, mut p_i_rest) = check!(
         p_i.split_first(span),

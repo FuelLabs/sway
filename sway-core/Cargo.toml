@@ -20,6 +20,7 @@ fuel-asm = "0.3"
 fuel-crypto = "0.4"
 fuel-vm = "0.6"
 hex = { version = "0.4", optional = true }
+indexmap = "1.8.1"
 itertools = "0.10"
 lazy_static = "1.4"
 nanoid = "0.4"

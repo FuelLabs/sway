@@ -1,10 +1,11 @@
+use indexmap::IndexSet;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use sway_core::{CompileError, CompileWarning};
 
 pub fn get_diagnostics(
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
+    warnings: IndexSet<CompileWarning>,
+    errors: IndexSet<CompileError>,
 ) -> Vec<Diagnostic> {
     let errors: Vec<Diagnostic> = errors
         .iter()

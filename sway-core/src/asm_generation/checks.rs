@@ -6,12 +6,16 @@ use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::asm_lang::*;
 use crate::error::*;
 
+use indexmap::IndexSet;
+
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
 pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
     match asm {
-        FinalizedAsm::ContractAbi { .. } | FinalizedAsm::Library => ok((), vec![], vec![]),
+        FinalizedAsm::ContractAbi { .. } | FinalizedAsm::Library => {
+            ok((), IndexSet::new(), IndexSet::new())
+        }
         FinalizedAsm::ScriptMain {
             program_section, ..
         } => check_for_contract_opcodes(&program_section.ops[..]),
@@ -29,11 +33,11 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
         span: pest::Span::new("no span found for opcode".into(), 0, 1).unwrap(),
         path: None,
     };
-    let mut errors = vec![];
+    let mut errors = IndexSet::new();
     for op in ops {
         match op.opcode {
             GM(_, VirtualImmediate18 { value: 1 }) | GM(_, VirtualImmediate18 { value: 2 }) => {
-                errors.push(CompileError::GMFromExternalContract {
+                errors.insert(CompileError::GMFromExternalContract {
                     span: op
                         .owning_span
                         .clone()
@@ -41,7 +45,7 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
                 });
             }
             MINT(..) => {
-                errors.push(CompileError::MintFromExternalContext {
+                errors.insert(CompileError::MintFromExternalContext {
                     span: op
                         .owning_span
                         .clone()
@@ -49,7 +53,7 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
                 });
             }
             BURN(..) => {
-                errors.push(CompileError::BurnFromExternalContext {
+                errors.insert(CompileError::BurnFromExternalContext {
                     span: op
                         .owning_span
                         .clone()
@@ -57,7 +61,7 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
                 });
             }
             SWW(..) | SRW(..) | SRWQ(..) | SWWQ(..) => {
-                errors.push(CompileError::ContractStorageFromExternalContext {
+                errors.insert(CompileError::ContractStorageFromExternalContext {
                     span: op
                         .owning_span
                         .clone()
@@ -69,8 +73,8 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     }
 
     if errors.is_empty() {
-        ok((), vec![], errors)
+        ok((), IndexSet::new(), errors)
     } else {
-        err(vec![], errors)
+        err(IndexSet::new(), errors)
     }
 }

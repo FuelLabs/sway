@@ -10,6 +10,8 @@ use crate::{
 use itertools::Itertools;
 use sway_types::Span;
 
+use indexmap::IndexSet;
+
 pub(crate) trait MyMath<T> {
     fn global_max() -> T;
     fn global_min() -> T;
@@ -178,10 +180,10 @@ where
     /// Creates a `Range<T>` and ensures that it is a "valid `Range<T>`"
     /// (i.e.) that `first` is <= to `last`
     fn from_double(first: T, last: T, span: &Span) -> CompileResult<Range<T>> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if last < first {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "attempted to create an invalid range",
                 span.clone(),
             ));
@@ -246,10 +248,10 @@ where
     /// }
     /// ```
     fn join_ranges(a: &Range<T>, b: &Range<T>, span: &Span) -> CompileResult<Range<T>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if !a.overlaps(b) && !a.within_one(b) {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "these two ranges cannot be joined",
                 span.clone(),
             ));
@@ -290,8 +292,8 @@ where
     ///         update stack top with the ending time of current interval.
     /// 4. At the end stack contains the merged intervals.
     fn condense_ranges(ranges: Vec<Range<T>>, span: &Span) -> CompileResult<Vec<Range<T>>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut ranges = ranges;
         let mut stack: Vec<Range<T>> = vec![];
 
@@ -302,7 +304,7 @@ where
         let (first, rest) = match ranges.split_first() {
             Some((first, rest)) => (first.to_owned(), rest.to_owned()),
             None => {
-                errors.push(CompileError::Internal("unable to split vec", span.clone()));
+                errors.insert(CompileError::Internal("unable to split vec", span.clone()));
                 return err(warnings, errors);
             }
         };
@@ -312,7 +314,7 @@ where
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::Internal("stack empty", span.clone()));
+                    errors.insert(CompileError::Internal("stack empty", span.clone()));
                     return err(warnings, errors);
                 }
             };
@@ -372,8 +374,8 @@ where
         oracle: Range<T>,
         span: &Span,
     ) -> CompileResult<Vec<Range<T>>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         // 1. Convert *guides* to a vec of ordered, distinct, non-overlapping
         //    ranges *guides*'
@@ -387,7 +389,7 @@ where
         // 2. Check to ensure that *oracle* fully encompasses all ranges in
         //    *guides*'.
         if !oracle.encompasses_all(&condensed) {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "ranges OOB with the oracle",
                 span.clone(),
             ));
@@ -400,7 +402,7 @@ where
         let (first, last) = match (condensed.split_first(), condensed.split_last()) {
             (Some((first, _)), Some((last, _))) => (first, last),
             _ => {
-                errors.push(CompileError::Internal("could not split vec", span.clone()));
+                errors.insert(CompileError::Internal("could not split vec", span.clone()));
                 return err(warnings, errors);
             }
         };
@@ -450,8 +452,8 @@ where
         oracle: Range<T>,
         span: &Span,
     ) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let condensed_ranges = check!(
             Range::condense_ranges(ranges, span),
             return err(warnings, errors),
@@ -464,7 +466,7 @@ where
             let first_range = match condensed_ranges.first() {
                 Some(first_range) => first_range.clone(),
                 _ => {
-                    errors.push(CompileError::Internal("vec empty", span.clone()));
+                    errors.insert(CompileError::Internal("vec empty", span.clone()));
                     return err(warnings, errors);
                 }
             };

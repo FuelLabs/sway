@@ -10,6 +10,7 @@ use crate::{
 use sway_types::span::Span;
 
 use derivative::Derivative;
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
@@ -254,8 +255,8 @@ impl TypeInfo {
         type_name_pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut iter = type_name_pair.into_inner();
         let input = iter.next().unwrap();
         let span = Span {
@@ -297,7 +298,7 @@ impl TypeInfo {
                 let mut array_inner_iter = input.into_inner();
                 let elem_type_info = match array_inner_iter.next() {
                     None => {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Missing array element type while parsing array type.",
                             span,
                         ));
@@ -314,7 +315,7 @@ impl TypeInfo {
                 };
                 let elem_count: usize = match array_inner_iter.next() {
                     None => {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Missing array element count while parsing array type.",
                             span,
                         ));
@@ -334,15 +335,15 @@ impl TypeInfo {
                                         .map_or_else(
                                             |_err| {
                                                 err(
-                                                    Vec::new(),
-                                                    vec![CompileError::Internal(
+                                                    IndexSet::new(),
+                                                    IndexSet::from([CompileError::Internal(
                                                         "Failed to parse array elem count as \
                                                         integer while parsing array type.",
                                                         span,
-                                                    )],
+                                                    )]),
                                                 )
                                             },
-                                            |count| ok(count, Vec::new(), Vec::new()),
+                                            |count| ok(count, IndexSet::new(), IndexSet::new()),
                                         ),
                                     return err(warnings, errors),
                                     warnings,
@@ -350,7 +351,7 @@ impl TypeInfo {
                                 )
                             }
                             _otherwise => {
-                                errors.push(CompileError::Internal(
+                                errors.insert(CompileError::Internal(
                                     "Unexpected token for array element count \
                                     while parsing array type.",
                                     span,
@@ -372,7 +373,7 @@ impl TypeInfo {
                 TypeInfo::Tuple(fields)
             }
             _ => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "Unexpected token while parsing inner type.",
                     span,
                 ));
@@ -386,8 +387,8 @@ impl TypeInfo {
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let type_info = match input.as_rule() {
             Rule::type_param => Self::pair_as_str_to_type_info(input, config),
             _ => {
@@ -395,7 +396,7 @@ impl TypeInfo {
                     span: input.as_span(),
                     path: config.map(|config| config.dir_of_code.clone()),
                 };
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "Unexpected token while parsing type.",
                     span,
                 ));
@@ -585,7 +586,7 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match resolve_type(ty.r#type, error_msg_span) {
-                                Err(e) => return err(vec![], vec![e.into()]),
+                                Err(e) => return err(IndexSet::new(), IndexSet::from([e.into()])),
                                 Ok(ty) => ty,
                             };
                             ty.to_selector_name(error_msg_span)
@@ -605,14 +606,14 @@ impl TypeInfo {
             }
             _ => {
                 return err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
+                    IndexSet::new(),
+                    IndexSet::from([CompileError::InvalidAbiType {
                         span: error_msg_span.clone(),
-                    }],
+                    }]),
                 )
             }
         };
-        ok(name, vec![], vec![])
+        ok(name, IndexSet::new(), IndexSet::new())
     }
 
     pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {

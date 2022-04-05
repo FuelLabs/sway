@@ -5,6 +5,7 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
+use indexmap::IndexSet;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -130,7 +131,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
-    warnings: &[CompileWarning],
+    warnings: &IndexSet<CompileWarning>,
     tree_type: &TreeType,
 ) {
     let type_str = match &tree_type {
@@ -161,7 +162,11 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
+pub fn print_on_success_library(
+    silent_mode: bool,
+    proj_name: &str,
+    warnings: &IndexSet<CompileWarning>,
+) {
     if !silent_mode {
         warnings.iter().for_each(format_warning);
     }
@@ -182,16 +187,17 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(
+    silent_mode: bool,
+    warnings: &IndexSet<CompileWarning>,
+    errors: &IndexSet<CompileError>,
+) {
     let e_len = errors.len();
 
     if !silent_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
-
-    warnings.iter().for_each(format_warning);
-    errors.iter().for_each(format_err);
 
     println_red_err(&format!(
         "  Aborting due to {} {}.",

@@ -6,6 +6,7 @@ use crate::{
     CodeBlock, Expression,
 };
 
+use indexmap::IndexSet;
 use sway_types::span::Span;
 
 use pest::iterators::Pair;
@@ -23,8 +24,8 @@ impl WhileLoop {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut iter = pair.into_inner();
         let _while_keyword = iter.next().unwrap();
         let condition = iter.next().unwrap();

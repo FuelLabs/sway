@@ -12,6 +12,7 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 anyhow = "1"
 forc-util = { version = "0.9.2", path = "../forc-util" }
 git2 = "0.14"
+indexmap = "1.8.1"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }

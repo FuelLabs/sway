@@ -1,5 +1,6 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
+use indexmap::IndexSet;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
 
@@ -38,22 +39,22 @@ impl Engine {
         expected: TypeId,
         span: &Span,
         help_text: impl Into<String>,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+    ) -> (IndexSet<CompileWarning>, IndexSet<TypeError>) {
         use TypeInfo::*;
         let help_text = help_text.into();
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
-            (Boolean, Boolean) => (vec![], vec![]),
-            (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
-            (B256, B256) => (vec![], vec![]),
-            (Numeric, Numeric) => (vec![], vec![]),
-            (Contract, Contract) => (vec![], vec![]),
+            (Boolean, Boolean) => (IndexSet::new(), IndexSet::new()),
+            (SelfType, SelfType) => (IndexSet::new(), IndexSet::new()),
+            (Byte, Byte) => (IndexSet::new(), IndexSet::new()),
+            (B256, B256) => (IndexSet::new(), IndexSet::new()),
+            (Numeric, Numeric) => (IndexSet::new(), IndexSet::new()),
+            (Contract, Contract) => (IndexSet::new(), IndexSet::new()),
             (Str(l), Str(r)) => {
-                let warnings = vec![];
-                let mut errors = vec![];
+                let warnings = IndexSet::new();
+                let mut errors = IndexSet::new();
                 if l != r {
-                    errors.push(TypeError::MismatchedType {
+                    errors.insert(TypeError::MismatchedType {
                         expected,
                         received,
                         help_text,
@@ -62,23 +63,25 @@ impl Engine {
                 }
                 (warnings, errors)
             }
-            //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
+            //(received_info, expected_info) if received_info == expected_info => (IndexSet::new(), IndexSet::new()),
 
             // Follow any references
-            (Ref(received), Ref(expected)) if received == expected => (vec![], vec![]),
+            (Ref(received), Ref(expected)) if received == expected => {
+                (IndexSet::new(), IndexSet::new())
+            }
             (Ref(received), _) => self.unify(received, expected, span, help_text),
             (_, Ref(expected)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
-            (Unknown, Unknown) => (vec![], vec![]),
+            (Unknown, Unknown) => (IndexSet::new(), IndexSet::new()),
             (Unknown, _) => {
                 match self
                     .slab
                     .replace(received, &Unknown, TypeInfo::Ref(expected))
                 {
-                    None => (vec![], vec![]),
+                    None => (IndexSet::new(), IndexSet::new()),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
@@ -87,14 +90,14 @@ impl Engine {
                     .slab
                     .replace(expected, &Unknown, TypeInfo::Ref(received))
                 {
-                    None => (vec![], vec![]),
+                    None => (IndexSet::new(), IndexSet::new()),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
 
             (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
+                let mut warnings = IndexSet::new();
+                let mut errors = IndexSet::new();
                 for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
                     let (new_warnings, new_errors) = self.unify(
                         field_a.type_id,
@@ -117,37 +120,35 @@ impl Engine {
                 // `u64`.  So we're casting received TO expected.
                 let warnings = match numeric_cast_compat(expected_width, received_width) {
                     NumericCastCompatResult::CastableWithWarning(warn) => {
-                        vec![CompileWarning {
+                        IndexSet::from([CompileWarning {
                             span: span.clone(),
                             warning_content: warn,
-                        }]
+                        }])
                     }
-                    NumericCastCompatResult::Compatible => {
-                        vec![]
-                    }
+                    NumericCastCompatResult::Compatible => IndexSet::new(),
                 };
 
                 // Cast the expected type to the received type.
                 self.slab
                     .replace(received, received_info, expected_info.clone());
-                (warnings, vec![])
+                (warnings, IndexSet::new())
             }
 
             (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
                 if l_name == r_name =>
             {
-                (vec![], vec![])
+                (IndexSet::new(), IndexSet::new())
             }
             (ref received_info @ UnknownGeneric { .. }, _) => {
                 self.slab
                     .replace(received, received_info, TypeInfo::Ref(expected));
-                (vec![], vec![])
+                (IndexSet::new(), IndexSet::new())
             }
 
             (_, ref expected_info @ UnknownGeneric { .. }) => {
                 self.slab
                     .replace(expected, expected_info, TypeInfo::Ref(received));
-                (vec![], vec![])
+                (IndexSet::new(), IndexSet::new())
             }
 
             // if the types, once their ids have been looked up, are the same, we are done
@@ -163,8 +164,8 @@ impl Engine {
                     ..
                 },
             ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
+                let mut warnings = IndexSet::new();
+                let mut errors = IndexSet::new();
                 if a_name == b_name && a_fields.len() == b_fields.len() {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
@@ -173,7 +174,7 @@ impl Engine {
                         errors.extend(new_errors);
                     });
                 } else {
-                    errors.push(TypeError::MismatchedType {
+                    errors.insert(TypeError::MismatchedType {
                         expected,
                         received,
                         help_text,
@@ -192,8 +193,8 @@ impl Engine {
                     variant_types: b_variants,
                 },
             ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
+                let mut warnings = IndexSet::new();
+                let mut errors = IndexSet::new();
                 if a_name == b_name && a_variants.len() == b_variants.len() {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
@@ -202,7 +203,7 @@ impl Engine {
                         errors.extend(new_errors);
                     });
                 } else {
-                    errors.push(TypeError::MismatchedType {
+                    errors.insert(TypeError::MismatchedType {
                         expected,
                         received,
                         help_text,
@@ -214,20 +215,20 @@ impl Engine {
 
             (Numeric, expected_info @ UnsignedInteger(_)) => {
                 match self.slab.replace(received, &Numeric, expected_info) {
-                    None => (vec![], vec![]),
+                    None => (IndexSet::new(), IndexSet::new()),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
             (received_info @ UnsignedInteger(_), Numeric) => {
                 match self.slab.replace(expected, &Numeric, received_info) {
-                    None => (vec![], vec![]),
+                    None => (IndexSet::new(), IndexSet::new()),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
 
             (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
+                let mut warnings = IndexSet::new();
+                let mut errors = IndexSet::new();
                 if a_count == b_count {
                     let (new_warnings, new_errors) =
                         self.unify(a_elem, b_elem, span, help_text.clone());
@@ -236,7 +237,7 @@ impl Engine {
                     if new_errors.is_empty() {
                         warnings.extend(new_warnings);
                     } else {
-                        errors.push(TypeError::MismatchedType {
+                        errors.insert(TypeError::MismatchedType {
                             expected,
                             received,
                             help_text,
@@ -244,7 +245,7 @@ impl Engine {
                         });
                     }
                 } else {
-                    errors.push(TypeError::MismatchedType {
+                    errors.insert(TypeError::MismatchedType {
                         expected,
                         received,
                         help_text,
@@ -263,16 +264,16 @@ impl Engine {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
-            (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
+            (TypeInfo::ErrorRecovery, _) => (IndexSet::new(), IndexSet::new()),
+            (_, TypeInfo::ErrorRecovery) => (IndexSet::new(), IndexSet::new()),
             _ => {
-                let errors = vec![TypeError::MismatchedType {
+                let errors = IndexSet::from([TypeError::MismatchedType {
                     expected,
                     received,
                     help_text,
                     span: span.clone(),
-                }];
-                (vec![], errors)
+                }]);
+                (IndexSet::new(), errors)
             }
         }
     }
@@ -284,7 +285,7 @@ impl Engine {
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+    ) -> (IndexSet<CompileWarning>, IndexSet<TypeError>) {
         let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
             self_type
         } else {
@@ -327,7 +328,7 @@ pub fn unify_with_self(
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
+) -> (IndexSet<CompileWarning>, IndexSet<TypeError>) {
     TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
 }
 
@@ -336,7 +337,7 @@ pub(crate) fn unify(
     b: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
+) -> (IndexSet<CompileWarning>, IndexSet<TypeError>) {
     TYPE_ENGINE.unify(a, b, span, help_text)
 }
 

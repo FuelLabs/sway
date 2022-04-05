@@ -1,3 +1,5 @@
+use indexmap::IndexSet;
+
 use crate::{
     asm_generation::{AsmNamespace, RegisterSequencer},
     asm_lang::Op,
@@ -11,5 +13,5 @@ pub(crate) fn convert_fn_decl_to_asm(
     _register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
     // for now, we inline all functions as a shortcut.
-    ok(vec![], vec![], vec![])
+    ok(vec![], IndexSet::new(), IndexSet::new())
 }

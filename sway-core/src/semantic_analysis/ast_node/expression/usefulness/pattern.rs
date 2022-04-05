@@ -10,6 +10,8 @@ use crate::{
 
 use super::{patstack::PatStack, range::Range};
 
+use indexmap::IndexSet;
+
 /// A `Pattern` represents something that could be on the LHS of a match
 /// expression arm.
 ///
@@ -116,15 +118,15 @@ impl Pattern {
     /// Converts a `MatchCondition` to a `Pattern`.
     pub(crate) fn from_match_condition(match_condition: MatchCondition) -> CompileResult<Self> {
         match match_condition {
-            MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, vec![], vec![]),
+            MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, IndexSet::new(), IndexSet::new()),
             MatchCondition::Scrutinee(scrutinee) => Pattern::from_scrutinee(scrutinee),
         }
     }
 
     /// Converts a `Scrutinee` to a `Pattern`.
     fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match scrutinee {
             Scrutinee::Variable { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Literal { value, .. } => match value {
@@ -180,14 +182,14 @@ impl Pattern {
                 ok(Pattern::Tuple(new_elems), warnings, errors)
             }
             Scrutinee::Unit { span } => {
-                errors.push(CompileError::Unimplemented(
+                errors.insert(CompileError::Unimplemented(
                     "unit exhaustivity checking",
                     span,
                 ));
                 err(warnings, errors)
             }
             Scrutinee::EnumScrutinee { span, .. } => {
-                errors.push(CompileError::Unimplemented(
+                errors.insert(CompileError::Unimplemented(
                     "enum exhaustivity checking",
                     span,
                 ));
@@ -203,7 +205,7 @@ impl Pattern {
         if pat_stack.len() == 1 {
             pat_stack.first(span)
         } else {
-            ok(Pattern::Or(pat_stack), vec![], vec![])
+            ok(Pattern::Or(pat_stack), IndexSet::new(), IndexSet::new())
         }
     }
 
@@ -314,13 +316,13 @@ impl Pattern {
         args: PatStack,
         span: &Span,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let pat = match c {
             Pattern::Wildcard => unreachable!(),
             Pattern::U8(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -330,7 +332,7 @@ impl Pattern {
             }
             Pattern::U16(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -340,7 +342,7 @@ impl Pattern {
             }
             Pattern::U32(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -350,7 +352,7 @@ impl Pattern {
             }
             Pattern::U64(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -360,7 +362,7 @@ impl Pattern {
             }
             Pattern::B256(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -370,7 +372,7 @@ impl Pattern {
             }
             Pattern::Boolean(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -380,7 +382,7 @@ impl Pattern {
             }
             Pattern::Byte(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -390,7 +392,7 @@ impl Pattern {
             }
             Pattern::Numeric(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -400,7 +402,7 @@ impl Pattern {
             }
             Pattern::String(s) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -410,7 +412,7 @@ impl Pattern {
             }
             Pattern::Struct(struct_pattern) => {
                 if args.len() != struct_pattern.fields.len() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -445,7 +447,7 @@ impl Pattern {
             }
             Pattern::Tuple(elems) => {
                 if elems.len() != args.len() {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
                     ));
@@ -581,8 +583,8 @@ impl Pattern {
     /// ]
     /// ```
     pub(crate) fn sub_patterns(&self, span: &Span) -> CompileResult<PatStack> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let pats = match self {
             Pattern::Struct(StructPattern { fields, .. }) => fields
                 .iter()
@@ -593,7 +595,7 @@ impl Pattern {
             _ => PatStack::empty(),
         };
         if self.a() != pats.len() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "invariant self.a() == pats.len() broken",
                 span.clone(),
             ));

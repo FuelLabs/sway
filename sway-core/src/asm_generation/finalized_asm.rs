@@ -6,6 +6,7 @@ use crate::source_map::SourceMap;
 use sway_types::span::Span;
 
 use either::Either;
+use indexmap::IndexSet;
 use std::io::Read;
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
@@ -36,7 +37,7 @@ impl FinalizedAsm {
                 ref mut data_section,
             } => to_bytecode_mut(program_section, data_section, source_map),
             // libraries are not compiled to asm
-            Library => ok(vec![], vec![], vec![]),
+            Library => ok(vec![], IndexSet::new(), IndexSet::new()),
             ScriptMain {
                 program_section,
                 ref mut data_section,
@@ -54,17 +55,17 @@ fn to_bytecode_mut(
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
 ) -> CompileResult<Vec<u8>> {
-    let mut errors = vec![];
+    let mut errors = IndexSet::new();
     if program_section.ops.len() & 1 != 0 {
         println!("ops len: {}", program_section.ops.len());
-        errors.push(CompileError::Internal(
+        errors.insert(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
             Span {
                 span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         ));
-        return err(vec![], errors);
+        return err(IndexSet::new(), errors);
     }
     // The below invariant is introduced to word-align the data section.
     // A noop is inserted in ASM generation if there is an odd number of ops.
@@ -124,5 +125,5 @@ fn to_bytecode_mut(
 
     buf.append(&mut data_section);
 
-    ok(buf, vec![], errors)
+    ok(buf, IndexSet::new(), errors)
 }

@@ -3,6 +3,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
 use crate::type_engine::TypeId;
+use indexmap::IndexSet;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -19,8 +20,8 @@ pub(crate) fn instantiate_function_application(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     // if this is a generic function, monomorphize its internal types
     let typed_function_decl = match (decl.type_parameters.is_empty(), type_arguments.is_empty()) {
@@ -31,7 +32,7 @@ pub(crate) fn instantiate_function_application(
                 .map(|x| x.span.clone())
                 .reduce(join_spans)
                 .unwrap_or_else(|| name.span());
-            errors.push(CompileError::DoesNotTakeTypeArguments {
+            errors.insert(CompileError::DoesNotTakeTypeArguments {
                 name: name.suffix,
                 span: type_arguments_span,
             });
@@ -71,7 +72,7 @@ pub(crate) fn instantiate_function_application(
     } = typed_function_decl;
 
     if opts.purity != purity {
-        errors.push(CompileError::PureCalledImpure { span: name.span() });
+        errors.insert(CompileError::PureCalledImpure { span: name.span() });
     }
 
     match arguments.len().cmp(&parameters.len()) {
@@ -83,7 +84,7 @@ pub(crate) fn instantiate_function_application(
                     .unwrap_or_else(|| name.span()),
                 |acc, arg| join_spans(acc, arg.span()),
             );
-            errors.push(CompileError::TooManyArgumentsForFunction {
+            errors.insert(CompileError::TooManyArgumentsForFunction {
                 span: arguments_span,
                 method_name: name.suffix.clone(),
                 expected: parameters.len(),
@@ -98,7 +99,7 @@ pub(crate) fn instantiate_function_application(
                     .unwrap_or_else(|| name.span()),
                 |acc, arg| join_spans(acc, arg.span()),
             );
-            errors.push(CompileError::TooFewArgumentsForFunction {
+            errors.insert(CompileError::TooFewArgumentsForFunction {
                 span: arguments_span,
                 method_name: name.suffix.clone(),
                 expected: parameters.len(),

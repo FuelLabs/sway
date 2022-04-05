@@ -1,6 +1,7 @@
 //! Used to debug function selectors
 //! Given an input function declaration, return the selector for it in hexidecimal.
 use clap::Parser as ClapParser;
+use indexmap::IndexSet;
 use pest::Parser;
 use std::sync::Arc;
 use sway_core::{
@@ -23,8 +24,8 @@ struct Opt {
 fn main() {
     let opt = Opt::parse();
     let fn_decl = opt.fn_decl;
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let parsed_fn_decl = SwayParser::parse(Rule::fn_decl, Arc::from(fn_decl));
     let mut parsed_fn_decl = match parsed_fn_decl {

@@ -7,6 +7,7 @@ use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
 };
+use indexmap::IndexSet;
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -1183,7 +1184,7 @@ pub fn manifest_file_missing(curr_dir: PathBuf) -> anyhow::Error {
 }
 
 /// Format an error message for failed parsing of a manifest.
-pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
+pub fn parsing_failed(project_name: &str, errors: IndexSet<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
         .map(|e| e.to_friendly_error_string())

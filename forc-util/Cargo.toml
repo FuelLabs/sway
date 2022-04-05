@@ -12,6 +12,7 @@ description = "Utility items shared between forc crates."
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1"
 dirs = "3.0.2"
+indexmap = "1.8.1"
 sway-core = { version = "0.9.2", path = "../sway-core" }
 sway-utils = { version = "0.9.2", path = "../sway-utils" }
 termcolor = "1.1"

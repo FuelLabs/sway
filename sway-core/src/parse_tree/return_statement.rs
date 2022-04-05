@@ -6,6 +6,7 @@ use crate::{
     CompileResult, Expression,
 };
 
+use indexmap::IndexSet;
 use sway_types::span;
 
 use pest::iterators::Pair;
@@ -24,8 +25,8 @@ impl ReturnStatement {
             span: pair.as_span(),
             path: config.map(|c| c.path()),
         };
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut inner = pair.into_inner();
         let _ret_keyword = inner.next();
         let expr = inner.next();

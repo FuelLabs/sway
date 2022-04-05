@@ -1,0 +1,5 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "duplicate_error_messages"
+entry = "main.sw"

@@ -2,6 +2,7 @@ use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule
 
 use sway_types::span::{join_spans, Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
@@ -84,14 +85,14 @@ impl CallPath {
         config: Option<&BuildConfig>,
     ) -> CompileResult<CallPath> {
         assert!(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_);
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),
         };
         if !(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_) {
-            errors.push(CompileError::ParseError {
+            errors.insert(CompileError::ParseError {
                 span,
                 err: "expected call path here".to_string(),
             });

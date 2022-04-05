@@ -11,6 +11,7 @@ use crate::{
     type_engine::resolve_type,
     CompileResult, Literal,
 };
+use indexmap::IndexSet;
 use sway_types::Span;
 
 pub(crate) fn convert_enum_instantiation_to_asm(
@@ -22,8 +23,8 @@ pub(crate) fn convert_enum_instantiation_to_asm(
     register_sequencer: &mut RegisterSequencer,
     instantiation_span: &Span,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     // step 0: load the tag into a register
     // step 1: load the data into a register
     // step 2: write both registers sequentially to memory, extending the call frame
@@ -47,20 +48,20 @@ pub(crate) fn convert_enum_instantiation_to_asm(
     let ty = match resolve_type(decl.type_id(), &decl.span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
+            errors.insert(e.into());
             return err(warnings, errors);
         }
     };
     let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(instantiation_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
 
     if size_of_enum > EIGHTEEN_BITS {
-        errors.push(CompileError::Unimplemented(
+        errors.insert(CompileError::Unimplemented(
             "Stack variables which exceed 2^18 words in size are not supported yet.",
             decl.clone().span,
         ));

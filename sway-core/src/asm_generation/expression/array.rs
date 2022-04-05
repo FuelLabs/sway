@@ -7,8 +7,8 @@ pub(super) fn convert_array_instantiation_to_asm(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let warnings = Vec::new();
-    let mut errors = Vec::new();
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     // Even for empty arrays we need to set the return register to something.
     let mut bytecode = vec![Op::unowned_register_move(
@@ -78,8 +78,8 @@ fn initialize_small_array_instantiation(
     mut bytecode: Vec<Op>,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-    mut warnings: Vec<CompileWarning>,
-    mut errors: Vec<CompileError>,
+    mut warnings: IndexSet<CompileWarning>,
+    mut errors: IndexSet<CompileError>,
 ) -> CompileResult<Vec<Op>> {
     assert!(contents.len() as u64 - 1 <= TWELVE_BITS);
 
@@ -111,8 +111,8 @@ fn initialize_large_array_instantiation(
     mut bytecode: Vec<Op>,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-    mut warnings: Vec<CompileWarning>,
-    mut errors: Vec<CompileError>,
+    mut warnings: IndexSet<CompileWarning>,
+    mut errors: IndexSet<CompileError>,
 ) -> CompileResult<Vec<Op>> {
     let elem_offs_reg = register_sequencer.next();
     bytecode.push(Op::unowned_register_move(
@@ -208,8 +208,8 @@ pub(super) fn convert_array_index_to_asm(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut bytecode = Vec::new();
 
     // Get the array element type and count.
@@ -223,7 +223,7 @@ pub(super) fn convert_array_index_to_asm(
             count as u64,
         ),
         _otherwise => {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "attempt to index a non-array",
                 span.clone(),
             ));
@@ -234,7 +234,7 @@ pub(super) fn convert_array_index_to_asm(
     // Check for out of bounds if we have a literal index.
     if let TypedExpressionVariant::Literal(Literal::U64(index)) = index.expression {
         if index >= count {
-            errors.push(CompileError::ArrayOutOfBounds {
+            errors.insert(CompileError::ArrayOutOfBounds {
                 index,
                 count,
                 span: span.clone(),

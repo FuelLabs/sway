@@ -11,6 +11,7 @@ use crate::{
     type_engine::{resolve_type, TypeInfo},
 };
 use either::Either;
+use indexmap::IndexSet;
 
 pub(crate) fn convert_reassignment_to_asm(
     reassignment: &TypedReassignment,
@@ -22,8 +23,8 @@ pub(crate) fn convert_reassignment_to_asm(
     // 2. move the return register of the RHS into the register in the namespace
 
     let mut buf = vec![];
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     // step 0
     let return_register = register_sequencer.next();
     let mut rhs = check!(
@@ -97,7 +98,7 @@ pub(crate) fn convert_reassignment_to_asm(
             {
                 Ok(o) => o,
                 Err(e) => {
-                    errors.push(e);
+                    errors.insert(e);
                     return err(warnings, errors);
                 }
             };
@@ -108,7 +109,7 @@ pub(crate) fn convert_reassignment_to_asm(
                 let r#type = match resolve_type(*r#type, name.span()) {
                     Ok(o) => o,
                     Err(e) => {
-                        errors.push(CompileError::TypeError(e));
+                        errors.insert(CompileError::TypeError(e));
                         TypeInfo::ErrorRecovery
                     }
                 };
@@ -144,7 +145,7 @@ pub(crate) fn convert_reassignment_to_asm(
                 fields = match r#type {
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     a => {
-                        errors.push(CompileError::NotAStruct {
+                        errors.insert(CompileError::NotAStruct {
                             name: name.as_str().to_string(),
                             span: name.span().clone(),
                             actually: a.friendly_type_str(),
@@ -165,7 +166,7 @@ pub(crate) fn convert_reassignment_to_asm(
                 match VirtualImmediate12::new(offset_in_words, reassignment.rhs.span.clone()) {
                     Ok(o) => o,
                     Err(e) => {
-                        errors.push(e);
+                        errors.insert(e);
                         return err(warnings, errors);
                     }
                 };
@@ -179,7 +180,7 @@ pub(crate) fn convert_reassignment_to_asm(
             let size_of_ty = look_up_type_id(reassignment.rhs.return_type)
                 .size_in_words(&reassignment.rhs.span)
                 .unwrap_or_else(|e| {
-                    errors.push(e);
+                    errors.insert(e);
                     0
                 });
             match size_of_ty {

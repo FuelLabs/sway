@@ -1,5 +1,6 @@
 use crate::{build_config::BuildConfig, error::*, parser::Rule};
 
+use indexmap::IndexSet;
 use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
@@ -24,7 +25,7 @@ pub(crate) fn parse_from_pair(
             }
         }
     };
-    ok(Ident::new(span), Vec::new(), Vec::new())
+    ok(Ident::new(span), IndexSet::new(), IndexSet::new())
 }
 
 pub(crate) fn random_name(span: Span, config: Option<&BuildConfig>) -> Ident {

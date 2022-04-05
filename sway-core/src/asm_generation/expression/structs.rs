@@ -9,6 +9,7 @@ use crate::{
     type_engine::{look_up_type_id, resolve_type, TypeId},
     CompileResult, Ident,
 };
+use indexmap::IndexSet;
 use sway_types::span::Span;
 
 /// Contains an ordered array of fields and their sizes in words. Used in the code generation
@@ -36,13 +37,13 @@ impl ContiguousMemoryLayoutDescriptor<Ident> {
                 }) {
             ix
         } else {
-            return err(vec![],
-                vec![
+            return err(IndexSet::new(),
+                IndexSet::from([
                 CompileError::Internal(
                     "Attempted to calculate struct memory offset on field that did not exist in struct.",
                     span
                     )
-                ]);
+                ]));
         };
 
         ok(
@@ -52,8 +53,8 @@ impl ContiguousMemoryLayoutDescriptor<Ident> {
                 .fold(0, |acc, FieldMemoryLayoutDescriptor { size, .. }| {
                     acc + *size
                 }),
-            vec![],
-            vec![],
+            IndexSet::new(),
+            IndexSet::new(),
         )
     }
 }
@@ -98,8 +99,8 @@ fn test_struct_memory_layout() {
         ],
     };
 
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
     assert_eq!(numbers.total_size(), 2u64);
     assert_eq!(
         numbers
@@ -119,14 +120,14 @@ pub(crate) fn get_contiguous_memory_layout<N: Clone>(
     fields_with_names: &[(TypeId, Span, N)],
 ) -> CompileResult<ContiguousMemoryLayoutDescriptor<N>> {
     let mut fields_with_sizes = Vec::with_capacity(fields_with_names.len());
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     for (field, span, name) in fields_with_names {
         let ty = look_up_type_id(*field);
         let stack_size = match ty.size_in_words(span) {
             Ok(o) => o,
             Err(e) => {
-                errors.push(e);
+                errors.insert(e);
                 return err(warnings, errors);
             }
         };
@@ -152,8 +153,8 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
     register_sequencer: &mut RegisterSequencer,
     mut asm_buf: Vec<Op>,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     // step 0: calculate the total size needed for the whole struct
     // step 1: store the value currently in $sp, it will become the pointer to the first field
     // step 2: use CFE to extend the call frame by the size calculated in step 0
@@ -233,12 +234,12 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
             Ok(o) => match o.size_in_words(span) {
                 Ok(o) => o,
                 Err(e) => {
-                    errors.push(e);
+                    errors.insert(e);
                     return err(warnings, errors);
                 }
             },
             Err(e) => {
-                errors.push(e.into());
+                errors.insert(e.into());
                 return err(warnings, errors);
             }
         };

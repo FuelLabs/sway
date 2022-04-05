@@ -9,6 +9,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span, Function, Property};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 mod purity;
@@ -31,8 +32,8 @@ impl FunctionDeclaration {
     pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut parts = pair.clone().into_inner();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let signature_or_visibility = parts.next().unwrap();
         let (visibility, signature) = if signature_or_visibility.as_rule() == Rule::visibility {
             (
@@ -88,7 +89,7 @@ impl FunctionDeclaration {
                 }
                 Rule::fn_returns => (),
                 _ => {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "Unexpected token while parsing function signature.",
                         Span {
                             span: pair.as_span(),
@@ -218,8 +219,8 @@ impl FunctionParameter {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<FunctionParameter>> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut pairs_buf = Vec::new();
         for pair in pairs {
             if pair.as_str().trim() == "self" {

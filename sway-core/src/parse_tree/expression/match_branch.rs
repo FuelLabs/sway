@@ -2,6 +2,7 @@ use crate::{build_config::BuildConfig, error::*, parser::Rule, CatchAll, CodeBlo
 
 use sway_types::{span, Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 use super::scrutinee::Scrutinee;
@@ -17,8 +18,8 @@ pub struct MatchBranch {
 impl MatchBranch {
     pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = span::Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -27,7 +28,7 @@ impl MatchBranch {
         let condition = match branch.next() {
             Some(o) => o,
             None => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
@@ -62,7 +63,7 @@ impl MatchBranch {
                             e.as_str(),
                             e.as_rule()
                         );
-                        errors.push(CompileError::UnimplementedRule(
+                        errors.insert(CompileError::UnimplementedRule(
                             a,
                             span::Span {
                                 span: e.as_span(),
@@ -80,7 +81,7 @@ impl MatchBranch {
                 }
             }
             None => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "Unexpected empty iterator in match condition parsing.",
                     span::Span {
                         span: pair.as_span(),
@@ -93,7 +94,7 @@ impl MatchBranch {
         let result = match branch.next() {
             Some(o) => o,
             None => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
@@ -127,7 +128,7 @@ impl MatchBranch {
                     span: result.as_span(),
                     path,
                 };
-                errors.push(CompileError::UnimplementedRule(a, span.clone()));
+                errors.insert(CompileError::UnimplementedRule(a, span.clone()));
                 Expression::Tuple {
                     fields: vec![],
                     span,

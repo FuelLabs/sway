@@ -1,6 +1,7 @@
 use super::{FunctionDeclaration, TraitFn};
 use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule};
 
+use indexmap::IndexSet;
 use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
@@ -28,8 +29,8 @@ impl AbiDeclaration {
             path: config.map(|c| c.path()),
         };
         let mut iter = pair.into_inner();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
         let name = check!(
             ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),

@@ -26,9 +26,9 @@ use crate::{
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 use pest::Parser;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
@@ -128,20 +128,20 @@ impl ParseTree {
 /// # Panics
 /// Panics if the generated parser from Pest panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
     let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
         Ok(o) => o,
         Err(e) => {
             return err(
-                Vec::new(),
-                vec![CompileError::ParseFailure {
+                IndexSet::new(),
+                IndexSet::from([CompileError::ParseFailure {
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
                         path: config.map(|config| config.path()),
                     },
                     err: e,
-                }],
+                }]),
             )
         }
     };
@@ -159,16 +159,16 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
 pub enum CompilationResult {
     Success {
         asm: FinalizedAsm,
-        warnings: Vec<CompileWarning>,
+        warnings: IndexSet<CompileWarning>,
     },
     Library {
         name: Ident,
         namespace: NamespaceRef,
-        warnings: Vec<CompileWarning>,
+        warnings: IndexSet<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
+        warnings: IndexSet<CompileWarning>,
+        errors: IndexSet<CompileError>,
     },
 }
 
@@ -176,11 +176,11 @@ pub enum CompileAstResult {
     Success {
         parse_tree: Box<TypedParseTree>,
         tree_type: TreeType,
-        warnings: Vec<CompileWarning>,
+        warnings: IndexSet<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
+        warnings: IndexSet<CompileWarning>,
+        errors: IndexSet<CompileError>,
     },
 }
 
@@ -189,14 +189,14 @@ pub enum CompileAstResult {
 pub enum BytecodeCompilationResult {
     Success {
         bytes: Vec<u8>,
-        warnings: Vec<CompileWarning>,
+        warnings: IndexSet<CompileWarning>,
     },
     Library {
-        warnings: Vec<CompileWarning>,
+        warnings: IndexSet<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
+        warnings: IndexSet<CompileWarning>,
+        errors: IndexSet<CompileError>,
     },
 }
 
@@ -245,8 +245,8 @@ pub(crate) fn compile_inner_dependency(
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<InnerDependencyCompileResult> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let parse_tree = check!(
         parse(input.clone(), Some(&build_config)),
         return err(warnings, errors),
@@ -256,7 +256,7 @@ pub(crate) fn compile_inner_dependency(
     let library_name = match &parse_tree.tree_type {
         TreeType::Library { name } => name,
         TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            errors.push(CompileError::ImportMustBeLibrary {
+            errors.insert(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
                     path: Some(build_config.path()),
@@ -281,7 +281,7 @@ pub(crate) fn compile_inner_dependency(
 
     // look for return path errors
     let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
-    errors.append(&mut graph.analyze_return_paths());
+    errors.extend(graph.analyze_return_paths());
 
     // The dead code will be analyzed later wholistically with the rest of the program
     // since we can't tell what is dead and what isn't just from looking at this file
@@ -290,7 +290,7 @@ pub(crate) fn compile_inner_dependency(
         &parse_tree.tree_type,
         dead_code_graph,
     ) {
-        errors.push(e)
+        errors.insert(e);
     };
 
     ok(
@@ -308,8 +308,8 @@ pub fn compile_to_ast(
     initial_namespace: crate::semantic_analysis::NamespaceRef,
     build_config: &BuildConfig,
 ) -> CompileAstResult {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let CompileResult {
         value: parse_tree_result,
@@ -321,8 +321,6 @@ pub fn compile_to_ast(
     let parse_tree = match parse_tree_result {
         Some(parse_tree) => parse_tree,
         None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
             return CompileAstResult::Failure { errors, warnings };
         }
     };
@@ -350,22 +348,18 @@ pub fn compile_to_ast(
     let typed_parse_tree = match typed_parse_tree_result {
         Some(typed_parse_tree) => typed_parse_tree,
         None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
             return CompileAstResult::Failure { errors, warnings };
         }
     };
 
-    let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
+    let (l_warnings, l_errors) = perform_control_flow_analysis(
         &typed_parse_tree,
         &parse_tree.tree_type,
         &mut dead_code_graph,
     );
 
-    errors.append(&mut l_errors);
-    warnings.append(&mut l_warnings);
-    errors = dedup_unsorted(errors);
-    warnings = dedup_unsorted(warnings);
+    errors.extend(l_errors);
+    warnings.extend(l_warnings);
     if !errors.is_empty() {
         return CompileAstResult::Failure { errors, warnings };
     }
@@ -400,7 +394,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             tree_type,
             mut warnings,
         } => {
-            let mut errors = vec![];
+            let mut errors = IndexSet::new();
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
@@ -435,13 +429,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     tree_type: TreeType,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let mut ir = match optimize::compile_ast(ast) {
         Ok(ir) => ir,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -485,36 +479,36 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
             return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
+                IndexSet::new(),
+                IndexSet::from([CompileError::InternalOwned(
                     ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,
                     },
-                )],
+                )]),
             );
         }
     }
-    ok((), Vec::new(), Vec::new())
+    ok((), IndexSet::new(), IndexSet::new())
 }
 
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
             return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
+                IndexSet::new(),
+                IndexSet::from([CompileError::InternalOwned(
                     ir_error.to_string(),
                     span::Span {
                         span: pest::Span::new("".into(), 0, 0).unwrap(),
                         path: None,
                     },
-                )],
+                )]),
             );
         }
     }
-    ok((), Vec::new(), Vec::new())
+    ok((), IndexSet::new(), IndexSet::new())
 }
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
@@ -540,8 +534,8 @@ pub fn asm_to_bytecode(
             mut asm,
             mut warnings,
         } => {
-            let mut asm_res = asm.to_bytecode_mut(source_map);
-            warnings.append(&mut asm_res.warnings);
+            let asm_res = asm.to_bytecode_mut(source_map);
+            warnings.extend(asm_res.warnings);
             if asm_res.value.is_none() || !asm_res.errors.is_empty() {
                 BytecodeCompilationResult::Failure {
                     warnings,
@@ -570,16 +564,16 @@ fn perform_control_flow_analysis(
     tree: &TypedParseTree,
     tree_type: &TreeType,
     dead_code_graph: &mut ControlFlowGraph,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
+) -> (IndexSet<CompileWarning>, IndexSet<CompileError>) {
     match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
         Ok(_) => (),
-        Err(e) => return (vec![], vec![e]),
+        Err(e) => return (IndexSet::new(), IndexSet::from([e])),
     }
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    warnings.append(&mut dead_code_graph.find_dead_code());
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
+    warnings.extend(dead_code_graph.find_dead_code());
     let graph = ControlFlowGraph::construct_return_path_graph(tree);
-    errors.append(&mut graph.analyze_return_paths());
+    errors.extend(graph.analyze_return_paths());
     (warnings, errors)
 }
 
@@ -590,8 +584,8 @@ fn parse_root_from_pairs(
     config: Option<&BuildConfig>,
 ) -> CompileResult<SwayParseTree> {
     let path = config.map(|config| config.dir_of_code.clone());
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut fuel_ast_opt = None;
     for block in input {
         let mut parse_tree = ParseTree::new(span::Span {
@@ -697,13 +691,15 @@ fn parse_root_from_pairs(
                 });
             }
             Rule::EOI => (),
-            a => errors.push(CompileError::InvalidTopLevelItem(
-                a,
-                span::Span {
-                    span: block.as_span(),
-                    path: path.clone(),
-                },
-            )),
+            a => {
+                errors.insert(CompileError::InvalidTopLevelItem(
+                    a,
+                    span::Span {
+                        span: block.as_span(),
+                        path: path.clone(),
+                    },
+                ));
+            }
         }
     }
 
@@ -797,8 +793,8 @@ fn test_basic_prog() {
         .into(),
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
     prog.unwrap(&mut warnings, &mut errors);
 }
 #[test]
@@ -814,8 +810,8 @@ fn test_parenthesized() {
         .into(),
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
     prog.unwrap(&mut warnings, &mut errors);
 }
 
@@ -833,8 +829,8 @@ fn test_unary_ordering() {
         .into(),
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
     let prog = prog.unwrap(&mut warnings, &mut errors);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
@@ -859,43 +855,4 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
-}
-
-/// We want compile errors and warnings to retain their ordering, since typically
-/// they are grouped by relevance. However, we want to deduplicate them.
-/// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
-/// A hash set would also mess up the order, so this is just a brute force way of doing it
-/// with a vector.
-fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
-    use smallvec::SmallVec;
-    use std::collections::hash_map::{DefaultHasher, Entry};
-    use std::hash::Hasher;
-
-    let mut write_index = 0;
-    let mut indexes: HashMap<u64, SmallVec<[usize; 1]>> = HashMap::with_capacity(data.len());
-    for read_index in 0..data.len() {
-        let hash = {
-            let mut hasher = DefaultHasher::new();
-            data[read_index].hash(&mut hasher);
-            hasher.finish()
-        };
-        let index_vec = match indexes.entry(hash) {
-            Entry::Occupied(oe) => {
-                if oe
-                    .get()
-                    .iter()
-                    .any(|index| data[*index] == data[read_index])
-                {
-                    continue;
-                }
-                oe.into_mut()
-            }
-            Entry::Vacant(ve) => ve.insert(SmallVec::new()),
-        };
-        data.swap(write_index, read_index);
-        index_vec.push(write_index);
-        write_index += 1;
-    }
-    data.truncate(write_index);
-    data
 }

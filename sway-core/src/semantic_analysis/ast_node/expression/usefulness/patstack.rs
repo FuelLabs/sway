@@ -10,6 +10,8 @@ use crate::{
 
 use super::{pattern::Pattern, range::Range};
 
+use indexmap::IndexSet;
+
 /// A `PatStack` is a `Vec<Pattern>` that is implemented with special methods
 /// particular to the match exhaustivity algorithm.
 #[derive(Clone, Debug, PartialEq)]
@@ -40,12 +42,12 @@ impl PatStack {
 
     /// Returns the first element of a `PatStack`.
     pub(crate) fn first(&self, span: &Span) -> CompileResult<Pattern> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match self.pats.first() {
             Some(first) => ok(first.to_owned(), warnings, errors),
             None => {
-                errors.push(CompileError::Internal("empty PatStack", span.clone()));
+                errors.insert(CompileError::Internal("empty PatStack", span.clone()));
                 err(warnings, errors)
             }
         }
@@ -54,8 +56,8 @@ impl PatStack {
     /// Returns a tuple of the first element of a `PatStack` and the rest of the
     /// elements.
     pub(crate) fn split_first(&self, span: &Span) -> CompileResult<(Pattern, PatStack)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match self.pats.split_first() {
             Some((first, pat_stack_contents)) => {
                 let pat_stack = PatStack {
@@ -64,7 +66,7 @@ impl PatStack {
                 ok((first.to_owned(), pat_stack), warnings, errors)
             }
             None => {
-                errors.push(CompileError::Internal("empty PatStack", span.clone()));
+                errors.insert(CompileError::Internal("empty PatStack", span.clone()));
                 err(warnings, errors)
             }
         }
@@ -72,10 +74,10 @@ impl PatStack {
 
     /// Given a usize *n*, splits the `PatStack` at *n* and returns both halves.
     pub(crate) fn split_at(&self, n: usize, span: &Span) -> CompileResult<(PatStack, PatStack)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if n > self.len() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "attempting to split OOB",
                 span.clone(),
             ));
@@ -95,12 +97,12 @@ impl PatStack {
     /// Given a usize *n*, returns a mutable reference to the `PatStack` at
     /// index *n*.
     fn get_mut(&mut self, n: usize, span: &Span) -> CompileResult<&mut Pattern> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match self.pats.get_mut(n) {
             Some(elem) => ok(elem, warnings, errors),
             None => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "cant retrieve mutable reference to element",
                     span.clone(),
                 ));
@@ -205,8 +207,8 @@ impl PatStack {
     /// this would also be a complete signature as it does contain all elements
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(&self, span: &Span) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let preprocessed = self.flatten().filter_out_wildcards();
         if preprocessed.pats.is_empty() {
             return ok(false, warnings, errors);
@@ -228,7 +230,7 @@ impl PatStack {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -241,7 +243,7 @@ impl PatStack {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -254,7 +256,7 @@ impl PatStack {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -267,7 +269,7 @@ impl PatStack {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -280,7 +282,7 @@ impl PatStack {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -293,7 +295,7 @@ impl PatStack {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -314,7 +316,7 @@ impl PatStack {
                             false => false_found = true,
                         },
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -448,15 +450,15 @@ impl PatStack {
     /// ]
     /// ```
     pub(crate) fn serialize_multi_patterns(self, span: &Span) -> CompileResult<Vec<PatStack>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut output: Vec<PatStack> = vec![];
         let mut stack: Vec<PatStack> = vec![self];
         while !stack.is_empty() {
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::Internal("can't pop Vec", span.clone()));
+                    errors.insert(CompileError::Internal("can't pop Vec", span.clone()));
                     return err(warnings, errors);
                 }
             };

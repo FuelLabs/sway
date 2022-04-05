@@ -10,6 +10,7 @@ use crate::{
 use sway_types::{ident::Ident, join_spans, Span};
 
 use either::Either;
+use indexmap::IndexSet;
 use pest;
 use pest::iterators::Pair;
 use std::collections::VecDeque;
@@ -329,8 +330,8 @@ impl Expression {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let expr_for_debug = expr.clone();
         let mut expr_iter = expr.into_inner();
         // first expr is always here
@@ -373,7 +374,7 @@ impl Expression {
                     errors
                 ),
                 None => {
-                    errors.push(CompileError::ExpectedExprAfterOp {
+                    errors.insert(CompileError::ExpectedExprAfterOp {
                         op: op_str,
                         span: Span {
                             span: expr_for_debug.as_span(),
@@ -418,8 +419,8 @@ impl Expression {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let span = Span {
             span: expr.as_span(),
             path: path.clone(),
@@ -1167,7 +1168,7 @@ impl Expression {
                 let index = match index {
                     Ok(index) => index,
                     Err(e) => {
-                        errors.push(e);
+                        errors.insert(e);
                         return err(warnings, errors);
                     }
                 };
@@ -1286,7 +1287,7 @@ impl Expression {
                     expr.as_str(),
                     expr.as_rule()
                 );
-                errors.push(CompileError::UnimplementedRule(
+                errors.insert(CompileError::UnimplementedRule(
                     a,
                     Span {
                         span: expr.as_span(),
@@ -1310,8 +1311,8 @@ fn convert_unary_to_fn_calls(
 ) -> CompileResult<ParserLifter<Expression>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut expr_result = None;
     for item in iter {
         match item.as_rule() {
@@ -1359,8 +1360,8 @@ pub(crate) fn parse_storage_access(
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
     debug_assert!(item.as_rule() == Rule::storage_access);
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let path = config.map(|c| c.path());
     let span = item.as_span();
     let span = Span { span, path };
@@ -1391,8 +1392,8 @@ pub(crate) fn parse_array_index(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let path = config.map(|c| c.path());
     let span = item.as_span();
     let mut inner_iter = item.into_inner();
@@ -1450,8 +1451,8 @@ pub(crate) fn parse_built_in_expr(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let span = Span {
         span: item.as_span(),
         path: config.map(|c| c.path()),
@@ -1515,8 +1516,8 @@ fn parse_subfield_path(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let path = config.map(|c| c.path());
     let item = item.into_inner().next().expect("guarenteed by grammar");
     match item.as_rule() {
@@ -1529,7 +1530,7 @@ fn parse_subfield_path(
                 item.as_str(),
                 item.as_rule()
             );
-            errors.push(CompileError::UnimplementedRule(
+            errors.insert(CompileError::UnimplementedRule(
                 a,
                 Span {
                     span: item.as_span(),
@@ -1553,8 +1554,8 @@ fn parse_call_item(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     assert_eq!(item.as_rule(), Rule::call_item);
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp_result = match item.as_rule() {
@@ -1588,8 +1589,8 @@ fn parse_array_elems(
     elems: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let path = config.map(|cfg| cfg.path());
     let span = Span {
@@ -1671,7 +1672,7 @@ fn parse_array_elems(
 fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
     let path = config.map(|c| c.path());
     use OpVariant::*;
-    let mut errors = Vec::new();
+    let mut errors = IndexSet::new();
     let op_variant = match op.as_str() {
         "+" => Add,
         "-" => Subtract,
@@ -1690,14 +1691,14 @@ fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
         ">=" => GreaterThanOrEqualTo,
         "<=" => LessThanOrEqualTo,
         a => {
-            errors.push(CompileError::ExpectedOp {
+            errors.insert(CompileError::ExpectedOp {
                 op: a.to_string(),
                 span: Span {
                     span: op.as_span(),
                     path,
                 },
             });
-            return err(Vec::new(), errors);
+            return err(IndexSet::new(), errors);
         }
     };
     ok(
@@ -1708,7 +1709,7 @@ fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
             },
             op_variant,
         },
-        Vec::new(),
+        IndexSet::new(),
         errors,
     )
 }
@@ -1800,8 +1801,8 @@ fn arrange_by_order_of_operations(
     expression_results: Vec<Either<Op, ParserLifter<Expression>>>,
     debug_span: Span,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut errors = Vec::new();
-    let warnings = Vec::new();
+    let mut errors = IndexSet::new();
+    let warnings = IndexSet::new();
     let mut expression_result_stack: Vec<ParserLifter<Expression>> = Vec::new();
     let mut op_stack = Vec::new();
 
@@ -1818,14 +1819,14 @@ fn arrange_by_order_of_operations(
                     let lhs = expression_result_stack.pop();
                     let new_op = op_stack.pop().unwrap();
                     if lhs.is_none() {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Prematurely empty expression stack for left hand side.",
                             debug_span,
                         ));
                         return err(warnings, errors);
                     }
                     if rhs.is_none() {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Prematurely empty expression stack for right hand side.",
                             debug_span,
                         ));
@@ -1868,14 +1869,14 @@ fn arrange_by_order_of_operations(
         let lhs = expression_result_stack.pop();
 
         if lhs.is_none() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Prematurely empty expression stack for left hand side.",
                 debug_span,
             ));
             return err(warnings, errors);
         }
         if rhs.is_none() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Prematurely empty expression stack for right hand side.",
                 debug_span,
             ));
@@ -1908,7 +1909,7 @@ fn arrange_by_order_of_operations(
     }
 
     if expression_result_stack.len() != 1 {
-        errors.push(CompileError::Internal(
+        errors.insert(CompileError::Internal(
             "Invalid expression stack length",
             debug_span,
         ));
@@ -1976,8 +1977,8 @@ pub(crate) fn desugar_match_expression(
     branches: Vec<MatchBranch>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<(Expression, Ident, Vec<MatchCondition>)> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
 
     // 0. Create a VariableDeclaration that assigns the primary expression to a variable.
     let var_decl_span = primary_expression.span();
@@ -2014,12 +2015,13 @@ pub(crate) fn desugar_match_expression(
                 });
             }
             None => {
-                let errors = vec![CompileError::Internal("found None", branch_span.clone())];
+                let errors =
+                    IndexSet::from([CompileError::Internal("found None", branch_span.clone())]);
                 let exp = Expression::Tuple {
                     fields: vec![],
                     span: branch_span.clone(),
                 };
-                return ok((exp, var_decl_name, vec![]), vec![], errors);
+                return ok((exp, var_decl_name, vec![]), IndexSet::new(), errors);
             }
         }
     }
@@ -2175,7 +2177,7 @@ pub(crate) fn desugar_match_expression(
             }
             Some(if_statement) => {
                 eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
-                errors.push(CompileError::Unimplemented(
+                errors.insert(CompileError::Unimplemented(
                     "this desugared if expression pattern is not implemented",
                     if_statement.span(),
                 ));
@@ -2195,7 +2197,7 @@ pub(crate) fn desugar_match_expression(
         .map(|x| x.condition)
         .collect::<Vec<_>>();
     match if_statement {
-        None => err(vec![], vec![]),
+        None => err(IndexSet::new(), IndexSet::new()),
         Some(if_statement) => ok(
             (if_statement, var_decl_name, cases_covered),
             warnings,
@@ -2208,8 +2210,8 @@ fn parse_if_let(
     expr: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let path = config.map(|c| c.path());
 
     let span = Span {

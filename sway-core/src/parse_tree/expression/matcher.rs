@@ -6,6 +6,8 @@ use crate::{
 
 use sway_types::span::Span;
 
+use indexmap::IndexSet;
+
 /// List of requirements that a desugared if expression must include in the conditional.
 pub type MatchReqMap = Vec<(Expression, Expression)>;
 /// List of variable declarations that must be placed inside of the body of the if expression.
@@ -54,8 +56,8 @@ pub type MatcherResult = Option<(MatchReqMap, MatchImplMap)>;
 /// ]
 /// ```
 pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<MatcherResult> {
-    let mut errors = vec![];
-    let warnings = vec![];
+    let mut errors = IndexSet::new();
+    let warnings = IndexSet::new();
     match scrutinee {
         Scrutinee::Literal { value, span } => match_literal(exp, value, span),
         Scrutinee::Variable { name, span } => match_variable(exp, name, span),
@@ -73,7 +75,7 @@ pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<Matcher
         Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
         scrutinee => {
             eprintln!("Unimplemented scrutinee: {:?}", scrutinee,);
-            errors.push(CompileError::Unimplemented(
+            errors.insert(CompileError::Unimplemented(
                 "this match expression scrutinee is not implemented",
                 scrutinee.span(),
             ));
@@ -95,7 +97,11 @@ fn match_literal(
         },
     )];
     let match_impl_map = vec![];
-    ok(Some((match_req_map, match_impl_map)), vec![], vec![])
+    ok(
+        Some((match_req_map, match_impl_map)),
+        IndexSet::new(),
+        IndexSet::new(),
+    )
 }
 
 fn match_variable(
@@ -105,7 +111,11 @@ fn match_variable(
 ) -> CompileResult<MatcherResult> {
     let match_req_map = vec![];
     let match_impl_map = vec![(scrutinee_name.to_owned(), exp.to_owned())];
-    ok(Some((match_req_map, match_impl_map)), vec![], vec![])
+    ok(
+        Some((match_req_map, match_impl_map)),
+        IndexSet::new(),
+        IndexSet::new(),
+    )
 }
 
 fn match_struct(
@@ -114,8 +124,8 @@ fn match_struct(
     fields: &[StructScrutineeField],
     span: &Span,
 ) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut match_req_map = vec![];
     let mut match_impl_map = vec![];
     for field in fields.iter() {
@@ -163,17 +173,17 @@ fn match_enum(
     span: &Span,
 ) -> CompileResult<MatcherResult> {
     err(
-        vec![],
-        vec![CompileError::Unimplemented(
+        IndexSet::new(),
+        IndexSet::from([CompileError::Unimplemented(
             "Matching enums has not yet been implemented.",
             span.clone(),
-        )],
+        )]),
     )
 }
 
 fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut match_req_map = vec![];
     let mut match_impl_map = vec![];
     for (pos, elem) in elems.iter().enumerate() {

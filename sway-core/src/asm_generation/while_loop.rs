@@ -1,13 +1,16 @@
 use super::*;
 use crate::asm_lang::{ConstantRegister, VirtualRegister};
 use crate::semantic_analysis::ast_node::TypedWhileLoop;
+
+use indexmap::IndexSet;
+
 pub(super) fn convert_while_loop_to_asm(
     r#loop: &TypedWhileLoop,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut buf: Vec<Op> = vec![];
     // A while loop consists of (in order of asm):
     // 0. A label to jump to

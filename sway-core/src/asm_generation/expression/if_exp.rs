@@ -1,3 +1,5 @@
+use indexmap::IndexSet;
+
 use crate::asm_generation::{
     convert_expression_to_asm, AsmNamespace,
     Either::{Left, Right},
@@ -35,8 +37,8 @@ pub(crate) fn convert_if_exp_to_asm(
     //         after else branch label
 
     // step 3: put return value from whatever branch was evaluated into the return register
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![];
 
     let else_label = register_sequencer.get_label();

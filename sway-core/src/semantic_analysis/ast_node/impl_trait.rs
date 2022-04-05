@@ -12,6 +12,8 @@ use crate::{
 
 use sway_types::span::Span;
 
+use indexmap::IndexSet;
+
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
     namespace: crate::semantic_analysis::NamespaceRef,
@@ -20,8 +22,8 @@ pub(crate) fn implementation_of_trait(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedDeclaration> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
     let ImplTrait {
         trait_name,
         type_arguments,
@@ -41,7 +43,7 @@ pub(crate) fn implementation_of_trait(
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
     for type_argument in type_arguments.iter() {
         if !type_argument.trait_constraints.is_empty() {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Where clauses are not supported yet.",
                 type_argument.name_ident.span().clone(),
             ));
@@ -82,7 +84,7 @@ pub(crate) fn implementation_of_trait(
                 match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
                     Ok(o) => o,
                     Err(e) => {
-                        errors.push(e.into());
+                        errors.insert(e.into());
                         return err(warnings, errors);
                     }
                 },
@@ -105,7 +107,7 @@ pub(crate) fn implementation_of_trait(
             // in contract ABIs yet (or ever?) due to the complexity of communicating
             // the ABI layout in the descriptor file.
             if type_implementing_for != TypeInfo::Contract {
-                errors.push(CompileError::ImplAbiForNonContract {
+                errors.insert(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
                     ty: type_implementing_for.friendly_type_str(),
                 });
@@ -152,7 +154,7 @@ pub(crate) fn implementation_of_trait(
             )
         }
         Some(_) | None => {
-            errors.push(CompileError::UnknownTrait {
+            errors.insert(CompileError::UnknownTrait {
                 name: trait_name.suffix.clone(),
                 span: trait_name.span(),
             });
@@ -191,8 +193,8 @@ fn type_check_trait_implementation(
     opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
     let self_type_id = type_implementing_for;
     // this list keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
@@ -231,7 +233,7 @@ fn type_check_trait_implementation(
         {
             Some(ix) => ix,
             None => {
-                errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                errors.insert(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
                     trait_name: trait_name.clone(),
                     span: fn_decl.name.span().clone(),
@@ -243,7 +245,7 @@ fn type_check_trait_implementation(
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
-        if let Some(mut l_e) = interface_surface.iter().find_map(
+        if let Some(l_e) = interface_surface.iter().find_map(
             |TypedTraitFn {
                  name,
                  parameters,
@@ -252,7 +254,7 @@ fn type_check_trait_implementation(
              }| {
                 if fn_decl.name == *name {
                     if fn_decl.parameters.len() != parameters.len() {
-                        errors.push(
+                        errors.insert(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
                                 fn_name: fn_decl.name.clone(),
@@ -262,29 +264,29 @@ fn type_check_trait_implementation(
                             },
                         );
                     }
-                    let mut errors = vec![];
-                    if let Some(mut maybe_err) = parameters
+                    let mut errors = IndexSet::new();
+                    if let Some(maybe_err) = parameters
                         .iter()
                         .zip(fn_decl.parameters.iter())
                         .find_map(|(fn_decl_param, trait_param)| {
-                            let mut errors = vec![];
+                            let mut errors = IndexSet::new();
                             // TODO use trait constraints as part of the type here to
                             // implement trait constraint solver */
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            let (mut new_warnings, new_errors) = unify_with_self(
+                            let (new_warnings, new_errors) = unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
                                 "",
                             );
-                            warnings.append(&mut new_warnings);
+                            warnings.extend(new_warnings);
                             if new_errors.is_empty() {
                                 None
                             } else {
-                                errors.push(CompileError::MismatchedTypeInTrait {
+                                errors.insert(CompileError::MismatchedTypeInTrait {
                                     span: trait_param.type_span.clone(),
                                     given: fn_decl_param_type.friendly_type_str(),
                                     expected: trait_param_type.friendly_type_str(),
@@ -293,21 +295,21 @@ fn type_check_trait_implementation(
                             }
                         })
                     {
-                        errors.append(&mut maybe_err);
+                        errors.extend(maybe_err);
                     }
 
-                    let (mut new_warnings, new_errors) = unify_with_self(
+                    let (new_warnings, new_errors) = unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
                         "",
                     );
-                    warnings.append(&mut new_warnings);
+                    warnings.extend(new_warnings);
                     if new_errors.is_empty() {
                         None
                     } else {
-                        errors.push(CompileError::MismatchedTypeInTrait {
+                        errors.insert(CompileError::MismatchedTypeInTrait {
                             span: fn_decl.return_type_span.clone(),
                             expected: return_type.friendly_type_str(),
                             given: fn_decl.return_type.friendly_type_str(),
@@ -319,7 +321,7 @@ fn type_check_trait_implementation(
                 }
             },
         ) {
-            errors.append(&mut l_e);
+            errors.extend(l_e);
             continue;
         }
 
@@ -338,7 +340,7 @@ fn type_check_trait_implementation(
         match resolve_type(type_implementing_for, type_implementing_for_span) {
             Ok(o) => o,
             Err(e) => {
-                errors.push(e.into());
+                errors.insert(e.into());
                 return err(warnings, errors);
             }
         },
@@ -373,7 +375,7 @@ fn type_check_trait_implementation(
 
     // check that the implementation checklist is complete
     if !function_checklist.is_empty() {
-        errors.push(CompileError::MissingInterfaceSurfaceMethods {
+        errors.insert(CompileError::MissingInterfaceSurfaceMethods {
             span: block_span.clone(),
             missing_functions: function_checklist
                 .into_iter()

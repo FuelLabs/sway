@@ -13,6 +13,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -40,8 +41,8 @@ impl EnumDeclaration {
         namespace: crate::semantic_analysis::NamespaceRef,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
 
         let mut variants_buf = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
@@ -66,8 +67,8 @@ impl EnumDeclaration {
         decl_inner: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let path = config.map(|c| c.path());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
@@ -166,8 +167,8 @@ impl EnumVariant {
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<TypedEnumVariant> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let enum_variant_type =
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
@@ -186,7 +187,7 @@ impl EnumVariant {
                 tag: self.tag,
                 span: self.span.clone(),
             },
-            vec![],
+            IndexSet::new(),
             errors,
         )
     }
@@ -195,8 +196,8 @@ impl EnumVariant {
         decl_inner: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut fields_buf = Vec::new();
         let mut tag = 0;
         if let Some(decl_inner) = decl_inner {

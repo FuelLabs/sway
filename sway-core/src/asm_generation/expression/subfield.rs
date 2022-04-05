@@ -33,8 +33,8 @@ pub(crate) fn convert_subfield_expression_to_asm(
 
     // step 0
     let mut asm_buf = vec![];
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let prefix_reg = register_sequencer.next();
     let mut prefix_ops = check!(
         convert_expression_to_asm(parent, namespace, &prefix_reg, register_sequencer),
@@ -118,8 +118,8 @@ pub(crate) fn convert_subfield_to_asm(
     descriptor: &ContiguousMemoryLayoutDescriptor<Ident>,
 ) -> CompileResult<Vec<Op>> {
     let mut asm_buf = vec![];
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let field_to_access_span = field_to_access.span().clone();
     let field_to_access_name = field_to_access.to_string();
@@ -155,7 +155,7 @@ pub(crate) fn convert_subfield_to_asm(
     let resolved_type_of_this_field = match resolve_type(*type_of_this_field, &span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
+            errors.insert(e.into());
             return err(warnings, errors);
         }
     };
@@ -163,7 +163,7 @@ pub(crate) fn convert_subfield_to_asm(
     let field_has_copy_type = match resolved_type_of_this_field.is_copy_type(&span) {
         Ok(is_copy) => is_copy,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -171,7 +171,7 @@ pub(crate) fn convert_subfield_to_asm(
         let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
             Ok(o) => o,
             Err(e) => {
-                errors.push(e);
+                errors.insert(e);
                 return err(warnings, errors);
             }
         };
@@ -196,7 +196,7 @@ pub(crate) fn convert_subfield_to_asm(
         let offset_in_bytes = match VirtualImmediate12::new(offset_in_words * 8, span.clone()) {
             Ok(o) => o,
             Err(e) => {
-                errors.push(e);
+                errors.insert(e);
                 return err(warnings, errors);
             }
         };

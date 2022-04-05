@@ -6,16 +6,18 @@ use crate::{
     type_engine::*,
     VariableDeclaration,
 };
+
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use std::fmt;
 use thiserror::Error;
 
 macro_rules! check {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident $(,)?) => {{
-        let mut res = $fn_expr;
-        $warnings.append(&mut res.warnings);
-        $errors.append(&mut res.errors);
+        let res = $fn_expr;
+        $warnings.extend(res.warnings);
+        $errors.extend(res.errors);
         #[allow(clippy::manual_unwrap_or)]
         match res.value {
             None => $error_recovery,
@@ -29,7 +31,7 @@ macro_rules! check_std_result {
         match $result_expr {
             Ok(res) => res,
             Err(e) => {
-                $errors.push(e.into());
+                $errors.insert(e.into());
                 return err($warnings, $errors);
             }
         }
@@ -40,7 +42,7 @@ macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {
             use crate::error::CompileWarning;
-            $warnings.push(CompileWarning {
+            $warnings.insert(CompileWarning {
                 warning_content: $warning,
                 span: $span,
             });
@@ -49,7 +51,10 @@ macro_rules! assert_or_warn {
 }
 
 /// Denotes a non-recoverable state
-pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
+pub(crate) fn err<T>(
+    warnings: IndexSet<CompileWarning>,
+    errors: IndexSet<CompileError>,
+) -> CompileResult<T> {
     CompileResult {
         value: None,
         warnings,
@@ -60,8 +65,8 @@ pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -
 /// Denotes a recovered or non-error state
 pub(crate) fn ok<T>(
     value: T,
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
+    warnings: IndexSet<CompileWarning>,
+    errors: IndexSet<CompileError>,
 ) -> CompileResult<T> {
     CompileResult {
         value: Some(value),
@@ -92,8 +97,8 @@ impl<T> ParserLifter<T> {
 #[derive(Debug, Clone)]
 pub struct CompileResult<T> {
     pub value: Option<T>,
-    pub warnings: Vec<CompileWarning>,
-    pub errors: Vec<CompileError>,
+    pub warnings: IndexSet<CompileWarning>,
+    pub errors: IndexSet<CompileError>,
 }
 
 impl<T> From<Result<T, TypeError>> for CompileResult<T> {
@@ -101,20 +106,24 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
         match o {
             Ok(o) => CompileResult {
                 value: Some(o),
-                warnings: vec![],
-                errors: vec![],
+                warnings: IndexSet::new(),
+                errors: IndexSet::new(),
             },
             Err(e) => CompileResult {
                 value: None,
-                warnings: vec![],
-                errors: vec![e.into()],
+                warnings: IndexSet::new(),
+                errors: IndexSet::from([e.into()]),
             },
         }
     }
 }
 
 impl<T> CompileResult<T> {
-    pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
+    pub fn new(
+        value: Option<T>,
+        warnings: IndexSet<CompileWarning>,
+        errors: IndexSet<CompileError>,
+    ) -> Self {
         CompileResult {
             value,
             warnings,
@@ -123,12 +132,12 @@ impl<T> CompileResult<T> {
     }
 
     pub fn ok(
-        mut self,
-        warnings: &mut Vec<CompileWarning>,
-        errors: &mut Vec<CompileError>,
+        self,
+        warnings: &mut IndexSet<CompileWarning>,
+        errors: &mut IndexSet<CompileError>,
     ) -> Option<T> {
-        warnings.append(&mut self.warnings);
-        errors.append(&mut self.errors);
+        warnings.extend(self.warnings);
+        errors.extend(self.errors);
         self.value
     }
 
@@ -146,22 +155,34 @@ impl<T> CompileResult<T> {
                 let res = f(value);
                 CompileResult {
                     value: res.value,
-                    warnings: [self.warnings, res.warnings].concat(),
-                    errors: [self.errors, res.errors].concat(),
+                    warnings: self
+                        .warnings
+                        .union(&res.warnings)
+                        .cloned()
+                        .collect::<IndexSet<_>>(),
+                    errors: self
+                        .errors
+                        .union(&res.errors)
+                        .cloned()
+                        .collect::<IndexSet<_>>(),
                 }
             }
         }
     }
 
-    pub fn unwrap(self, warnings: &mut Vec<CompileWarning>, errors: &mut Vec<CompileError>) -> T {
+    pub fn unwrap(
+        self,
+        warnings: &mut IndexSet<CompileWarning>,
+        errors: &mut IndexSet<CompileError>,
+    ) -> T {
         let panic_msg = format!("Unwrapped an err {:?}", self.errors);
         self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
     }
 
     pub fn unwrap_or_else<F: FnOnce() -> T>(
         self,
-        warnings: &mut Vec<CompileWarning>,
-        errors: &mut Vec<CompileError>,
+        warnings: &mut IndexSet<CompileWarning>,
+        errors: &mut IndexSet<CompileError>,
         or_else: F,
     ) -> T {
         self.ok(warnings, errors).unwrap_or_else(or_else)
@@ -170,7 +191,7 @@ impl<T> CompileResult<T> {
 
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct CompileWarning {
     pub span: Span,
     pub warning_content: Warning,
@@ -213,7 +234,7 @@ impl CompileWarning {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
@@ -392,7 +413,7 @@ impl fmt::Display for Warning {
 
 // TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
 // this type.
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span },
@@ -925,7 +946,7 @@ impl std::convert::From<TypeError> for CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Hash, Eq)]
 pub enum TypeError {
     #[error(
         "Mismatched types.\n\

@@ -11,6 +11,7 @@ use sway_types::{
     Ident,
 };
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 /// Represents the left hand side of a reassignment, which could either be a regular variable
@@ -57,8 +58,8 @@ impl Reassignment {
             span: pair.as_span(),
             path: path.clone(),
         };
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut iter = pair.into_inner();
         let variable_or_struct_reassignment = iter.next().expect("guaranteed by grammar");
         match variable_or_struct_reassignment.as_rule() {
@@ -167,8 +168,8 @@ fn parse_simple_variable_reassignment(
     config: Option<&BuildConfig>,
     path: Option<std::sync::Arc<std::path::PathBuf>>,
 ) -> CompileResult<(ParserLifter<Expression>, ParserLifter<Expression>)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut iter = pair.into_inner();
     let name_result = check!(
         Expression::parse_from_pair(iter.next().unwrap(), config),
@@ -195,8 +196,8 @@ fn parse_subfield_reassignment(
     config: Option<&BuildConfig>,
     path: Option<std::sync::Arc<std::path::PathBuf>>,
 ) -> CompileResult<(ParserLifter<Expression>, ParserLifter<Expression>)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut iter = pair.into_inner();
     let lhs = iter.next().expect("guaranteed by grammar");
     let rhs = iter.next().expect("guaranteed by grammar");
@@ -256,8 +257,8 @@ fn parse_subfield_path_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let path = config.map(|c| c.path());
     let item = item.into_inner().next().expect("guarenteed by grammar");
     match item.as_rule() {
@@ -270,7 +271,7 @@ fn parse_subfield_path_ensure_only_var(
                 item.as_str(),
                 item.as_rule()
             );
-            errors.push(CompileError::UnimplementedRule(
+            errors.insert(CompileError::UnimplementedRule(
                 a,
                 Span {
                     span: item.as_span(),
@@ -303,8 +304,8 @@ fn parse_call_item_ensure_only_var(
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
     let path = config.map(|c| c.path());
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     assert_eq!(item.as_rule(), Rule::call_item);
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp = match item.as_rule() {
@@ -321,7 +322,7 @@ fn parse_call_item_ensure_only_var(
             },
         },
         Rule::expr => {
-            errors.push(CompileError::InvalidExpressionOnLhs {
+            errors.insert(CompileError::InvalidExpressionOnLhs {
                 span: Span {
                     span: item.as_span(),
                     path,

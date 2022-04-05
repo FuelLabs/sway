@@ -1,4 +1,5 @@
 use generational_arena::Index;
+use indexmap::IndexSet;
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -23,8 +24,8 @@ pub(crate) fn instantiate_enum(
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let instantiation_span = enum_field_name.span();
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let mut type_arguments = type_arguments;
     for type_argument in type_arguments.iter_mut() {
@@ -51,7 +52,7 @@ pub(crate) fn instantiate_enum(
         (true, true) => enum_decl,
         (false, true) => enum_decl.monomorphize(&namespace),
         (true, false) => {
-            errors.push(CompileError::DoesNotTakeTypeArguments {
+            errors.insert(CompileError::DoesNotTakeTypeArguments {
                 name: enum_decl.name.clone(),
                 span: enum_decl.span,
             });
@@ -78,7 +79,7 @@ pub(crate) fn instantiate_enum(
     {
         Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
-            errors.push(CompileError::UnknownEnumVariant {
+            errors.insert(CompileError::UnknownEnumVariant {
                 enum_name: new_decl.name.clone(),
                 variant_name: enum_field_name.clone(),
                 span: enum_field_name.span().clone(),
@@ -147,19 +148,19 @@ pub(crate) fn instantiate_enum(
             )
         }
         ([], _) => {
-            errors.push(CompileError::MissingEnumInstantiator {
+            errors.insert(CompileError::MissingEnumInstantiator {
                 span: enum_field_name.span().clone(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
-            errors.push(CompileError::UnnecessaryEnumInstantiator {
+            errors.insert(CompileError::UnnecessaryEnumInstantiator {
                 span: enum_field_name.span().clone(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
-            errors.push(CompileError::MoreThanOneEnumInstantiator {
+            errors.insert(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_field_name.span().clone(),
                 ty: ty.friendly_type_str(),
             });

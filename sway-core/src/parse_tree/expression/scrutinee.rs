@@ -8,6 +8,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
@@ -63,8 +64,8 @@ impl Scrutinee {
     }
 
     pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut scrutinees = pair.into_inner();
         let scrutinee = scrutinees.next().unwrap();
         let scrutinee = check!(
@@ -83,10 +84,10 @@ impl Scrutinee {
         match self {
             Scrutinee::EnumScrutinee {
                 variable_to_assign, ..
-            } => ok(variable_to_assign, vec![], vec![]),
+            } => ok(variable_to_assign, IndexSet::new(), IndexSet::new()),
             _ => err(
-                vec![],
-                vec![CompileError::IfLetNonEnum { span: self.span() }],
+                IndexSet::new(),
+                IndexSet::from([CompileError::IfLetNonEnum { span: self.span() }]),
             ),
         }
     }
@@ -96,8 +97,8 @@ impl Scrutinee {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let span = Span {
             span: scrutinee.as_span(),
             path: path.clone(),
@@ -140,7 +141,7 @@ impl Scrutinee {
                     scrutinee.as_str(),
                     scrutinee.as_rule()
                 );
-                errors.push(CompileError::UnimplementedRule(
+                errors.insert(CompileError::UnimplementedRule(
                     a,
                     Span {
                         span: scrutinee.as_span(),
@@ -164,8 +165,8 @@ impl Scrutinee {
         config: Option<&BuildConfig>,
         span: Span,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let scrutinee = Literal::parse_from_pair(scrutinee, config)
             .map(|(value, span)| Scrutinee::Literal { value, span })
             .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
@@ -179,8 +180,8 @@ impl Scrutinee {
         config: Option<&BuildConfig>,
         span: Span,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let scrutinee = ident::parse_from_pair(scrutinee, config)
             .map(|name| Scrutinee::Variable {
                 name,
@@ -198,8 +199,8 @@ impl Scrutinee {
         span: Span,
         path: Option<Arc<PathBuf>>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut it = scrutinee.into_inner();
         let struct_name = it.next().unwrap();
         let struct_name = check!(
@@ -256,8 +257,8 @@ impl Scrutinee {
     }
 
     fn parse_from_pair_enum(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = pair.as_span();
         let span = Span {
             span,
@@ -296,8 +297,8 @@ impl Scrutinee {
         config: Option<&BuildConfig>,
         span: Span,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let parts = scrutinee.into_inner();
         let mut elems = vec![];
         for part in parts {

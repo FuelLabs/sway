@@ -7,6 +7,7 @@ use crate::{
     BuildConfig, CompileResult, Ident,
 };
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 use sway_types::span::Span;
 
@@ -51,8 +52,8 @@ impl VariableDeclaration {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut var_decl_parts = pair.into_inner();
         let _let_keyword = var_decl_parts.next();
         let lhs = check!(
@@ -118,8 +119,8 @@ impl VariableDeclaration {
         body: Expression,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let decls = match lhs {
             VariableDeclarationLHS::Name(LHSName {
                 name, is_mutable, ..
@@ -165,8 +166,8 @@ impl VariableDeclaration {
         lhs: VariableDeclarationLHS,
         body: Expression,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let decls = match lhs {
             VariableDeclarationLHS::Name(LHSName {
                 name, is_mutable, ..
@@ -208,8 +209,8 @@ impl VariableDeclarationLHS {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         assert_eq!(pair.as_rule(), Rule::var_lhs);
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path: config.map(|x| x.path()),

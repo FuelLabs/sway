@@ -7,6 +7,7 @@ use crate::{
     Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
+use indexmap::IndexSet;
 use sway_types::{ident::Ident, span::Span};
 
 // -------------------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
         errors.sort_by(|lhs, rhs| lhs.span().0.cmp(&rhs.span().0));
-        err(Vec::new(), errors)
+        err(IndexSet::new(), errors)
     } else {
         // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
         // reordered declarations, then anything else.  To keep the list stable and simple we can
@@ -34,8 +35,8 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
                 .fold(Vec::<AstNode>::new(), |ordered, node| {
                     insert_into_ordered_nodes(&decl_dependencies, ordered, node)
                 }),
-            Vec::new(),
-            Vec::new(),
+            IndexSet::new(),
+            IndexSet::new(),
         )
     }
 }
@@ -43,11 +44,11 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
 // -------------------------------------------------------------------------------------------------
 // Recursion detection.
 
-fn find_recursive_calls(decl_dependencies: &DependencyMap) -> Vec<CompileError> {
+fn find_recursive_calls(decl_dependencies: &DependencyMap) -> IndexSet<CompileError> {
     decl_dependencies
         .iter()
         .filter_map(|(dep_sym, _)| find_recursive_call(decl_dependencies, dep_sym))
-        .collect()
+        .collect::<IndexSet<_>>()
 }
 
 fn find_recursive_call(

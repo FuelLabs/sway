@@ -9,6 +9,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -33,8 +34,8 @@ impl StructDeclaration {
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: decl.as_span(),
             path: config.map(|x| x.path()),
@@ -130,8 +131,8 @@ impl StructField {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {

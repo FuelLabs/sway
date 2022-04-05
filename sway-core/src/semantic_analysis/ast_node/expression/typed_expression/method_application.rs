@@ -5,6 +5,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::TCOpts;
+use indexmap::IndexSet;
 use pest::iterators::Pairs;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
@@ -23,8 +24,8 @@ pub(crate) fn type_check_method_application(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut args_buf = VecDeque::new();
     let mut contract_call_params_map = HashMap::new();
     for arg in arguments {
@@ -80,7 +81,7 @@ pub(crate) fn type_check_method_application(
                             .iter()
                             .map(|x| x.span.clone())
                             .fold(type_args[0].span.clone(), join_spans);
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "did not expect to find type arguments here",
                             type_args_span,
                         ));
@@ -88,7 +89,7 @@ pub(crate) fn type_check_method_application(
                     }
                 }
                 (_, false) => {
-                    errors.push(CompileError::DoesNotTakeTypeArguments {
+                    errors.insert(CompileError::DoesNotTakeTypeArguments {
                         span: type_name_span,
                         name: call_path.suffix.clone(),
                     });
@@ -136,7 +137,7 @@ pub(crate) fn type_check_method_application(
 
     if !method.is_contract_call {
         if !contract_call_params.is_empty() {
-            errors.push(CompileError::CallParamForNonContractCallMethod {
+            errors.insert(CompileError::CallParamForNonContractCallMethod {
                 span: contract_call_params[0].name.span().clone(),
             });
         }
@@ -152,7 +153,7 @@ pub(crate) fn type_check_method_application(
                 .count()
                 > 1
             {
-                errors.push(CompileError::ContractCallParamRepeated {
+                errors.insert(CompileError::ContractCallParamRepeated {
                     param_name: param_name.to_string(),
                     span: span.clone(),
                 });
@@ -194,7 +195,7 @@ pub(crate) fn type_check_method_application(
                     );
                 }
                 _ => {
-                    errors.push(CompileError::UnrecognizedContractParam {
+                    errors.insert(CompileError::UnrecognizedContractParam {
                         param_name: param.name.to_string(),
                         span: param.name.span().clone(),
                     });
@@ -206,16 +207,16 @@ pub(crate) fn type_check_method_application(
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (new_warnings, new_errors) = unify_with_self(
             arg.return_type,
             param.r#type,
             self_type,
             &arg.span,
             "This argument's type is not castable to the declared parameter type.",
         );
-        warnings.append(&mut new_warnings);
+        warnings.extend(new_warnings);
         if !new_errors.is_empty() {
-            errors.push(CompileError::ArgumentParameterTypeMismatch {
+            errors.insert(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
                 provided: arg.return_type.friendly_type_str(),
                 should_be: param.r#type.friendly_type_str(),
@@ -227,7 +228,7 @@ pub(crate) fn type_check_method_application(
         // something like a.b(c)
         MethodName::FromModule { method_name } => {
             if args_buf.len() > method.parameters.len() {
-                errors.push(CompileError::TooManyArgumentsForFunction {
+                errors.insert(CompileError::TooManyArgumentsForFunction {
                     span: span.clone(),
                     method_name: method_name.clone(),
                     expected: method.parameters.len(),
@@ -236,7 +237,7 @@ pub(crate) fn type_check_method_application(
             }
 
             if args_buf.len() < method.parameters.len() {
-                errors.push(CompileError::TooFewArgumentsForFunction {
+                errors.insert(CompileError::TooFewArgumentsForFunction {
                     span: span.clone(),
                     method_name: method_name.clone(),
                     expected: method.parameters.len(),
@@ -257,7 +258,7 @@ pub(crate) fn type_check_method_application(
                 {
                     Some(TypeInfo::ContractCaller { address, .. }) => address,
                     _ => {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
@@ -312,7 +313,7 @@ pub(crate) fn type_check_method_application(
         // something like blah::blah::~Type::foo()
         MethodName::FromType { ref call_path, .. } => {
             if args_buf.len() > method.parameters.len() {
-                errors.push(CompileError::TooManyArgumentsForFunction {
+                errors.insert(CompileError::TooManyArgumentsForFunction {
                     span: span.clone(),
                     method_name: method_name.easy_name(),
                     expected: method.parameters.len(),
@@ -321,7 +322,7 @@ pub(crate) fn type_check_method_application(
             }
 
             if args_buf.len() < method.parameters.len() {
-                errors.push(CompileError::TooFewArgumentsForFunction {
+                errors.insert(CompileError::TooFewArgumentsForFunction {
                     span: span.clone(),
                     method_name: method_name.easy_name(),
                     expected: method.parameters.len(),
@@ -342,7 +343,7 @@ pub(crate) fn type_check_method_application(
                 {
                     Some(TypeInfo::ContractCaller { address, .. }) => address,
                     _ => {
-                        errors.push(CompileError::Internal(
+                        errors.insert(CompileError::Internal(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
@@ -403,8 +404,8 @@ fn re_parse_expression(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let span = sway_types::span::Span {
         span: pest::Span::new(
             "TODO(static span): use Idents instead of Strings".into(),
@@ -418,7 +419,7 @@ fn re_parse_expression(
     let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,
         Err(_e) => {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Internal error handling contract call address parsing.",
                 span,
             ));
@@ -428,7 +429,7 @@ fn re_parse_expression(
     let contract_pair = match contract_pairs.next() {
         Some(o) => o,
         None => {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Internal error handling contract call address parsing. No address.",
                 span,
             ));

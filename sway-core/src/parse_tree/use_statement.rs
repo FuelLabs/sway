@@ -1,6 +1,7 @@
 use crate::{build_config::BuildConfig, error::*, parse_tree::ident, span, Rule};
 use pest::iterators::Pair;
 
+use indexmap::IndexSet;
 use sway_types::ident::Ident;
 
 #[derive(Debug, Clone)]
@@ -26,8 +27,8 @@ impl UseStatement {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let stmt = pair.into_inner().next().unwrap();
         let is_absolute = stmt.as_rule() == Rule::absolute_use_statement;
         let mut stmt = stmt.into_inner();
@@ -54,8 +55,8 @@ fn handle_import_path(
     config: Option<&BuildConfig>,
     is_absolute: bool,
 ) -> CompileResult<Vec<UseStatement>> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
 
     // Populate the call path
     let mut import_path_buf = vec![];
@@ -153,7 +154,7 @@ fn handle_import_path(
             Rule::star => {
                 // Check that a star import does not have an alias
                 if top_level_alias.is_some() {
-                    errors.push(CompileError::AsteriskWithAlias {
+                    errors.insert(CompileError::AsteriskWithAlias {
                         span: span::Span {
                             span: last_item.as_span(),
                             path: config.map(|c| c.path()),

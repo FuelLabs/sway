@@ -11,6 +11,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -27,8 +28,8 @@ impl TraitDeclaration {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut trait_parts = pair.into_inner().peekable();
         let trait_keyword_or_visibility = trait_parts.next().unwrap();
         let (visibility, _trait_keyword) =
@@ -123,8 +124,8 @@ impl Supertrait {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut supertrait_parts = pair.into_inner();
         let name = supertrait_parts.next().unwrap();
         let name = check!(
@@ -151,8 +152,8 @@ impl TraitFn {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut signature = pair.into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
@@ -186,7 +187,7 @@ impl TraitFn {
                 }
                 Rule::fn_returns => (),
                 _ => {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "Unexpected token while parsing function signature.",
                         Span {
                             span: pair.as_span(),
@@ -231,7 +232,7 @@ impl TraitFn {
             None => TypeInfo::Tuple(Vec::new()),
         };
         if let Some(type_params) = type_params_pair {
-            errors.push(CompileError::Unimplemented(
+            errors.insert(CompileError::Unimplemented(
                 "Generic traits have not yet been implemented.",
                 Span {
                     span: type_params.as_span(),

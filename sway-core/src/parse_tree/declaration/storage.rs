@@ -2,6 +2,7 @@ use crate::{error::*, parse_tree::ident, parser::Rule, type_engine::*, BuildConf
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -27,8 +28,8 @@ impl StorageField {
         pair: Pair<Rule>,
         conf: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let mut iter = pair.into_inner();
         let name = iter.next().expect("guaranteed by grammar");
         let r#type = iter.next().expect("guaranteed by grammar");
@@ -64,8 +65,8 @@ impl StorageDeclaration {
     ) -> CompileResult<ParserLifter<Self>> {
         debug_assert_eq!(pair.as_rule(), Rule::storage_decl);
         let path = config.map(|c| c.path());
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path,

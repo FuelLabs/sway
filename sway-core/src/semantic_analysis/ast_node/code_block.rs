@@ -23,8 +23,8 @@ impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         let TypeCheckArguments {
             checkee: other,
@@ -86,15 +86,20 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
                 help_text,
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
             // The annotation will result in a cast, so set the return type accordingly.
         }
 

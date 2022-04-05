@@ -9,6 +9,7 @@ use crate::{
 
 mod method_application;
 use crate::type_engine::TypeId;
+use indexmap::IndexSet;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug, Eq)]
@@ -531,15 +532,20 @@ impl TypedExpression {
         // if one of the expressions deterministically aborts, we don't want to type check it.
         if !typed_expression.deterministically_aborts() {
             // if the return type cannot be cast into the annotation type then it is a type error
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 typed_expression.return_type,
                 type_annotation,
                 self_type,
                 &expr_span,
                 help_text,
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
         }
 
         // The annotation may result in a cast, which is handled in the type engine.
@@ -610,7 +616,7 @@ impl TypedExpression {
             is_constant: IsConstant::Yes,
             span,
         };
-        ok(exp, vec![], vec![])
+        ok(exp, IndexSet::new(), IndexSet::new())
     }
 
     pub(crate) fn type_check_variable_expression(
@@ -618,7 +624,7 @@ impl TypedExpression {
         span: Span,
         namespace: crate::semantic_analysis::NamespaceRef,
     ) -> CompileResult<TypedExpression> {
-        let mut errors = vec![];
+        let mut errors = IndexSet::new();
         let exp = match namespace.get_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
@@ -639,7 +645,7 @@ impl TypedExpression {
                 span,
             },
             Some(a) => {
-                errors.push(CompileError::NotAVariable {
+                errors.insert(CompileError::NotAVariable {
                     name: name.span().as_str().to_string(),
                     span: name.span().clone(),
                     what_it_is: a.friendly_name(),
@@ -647,14 +653,14 @@ impl TypedExpression {
                 error_recovery_expr(name.span().clone())
             }
             None => {
-                errors.push(CompileError::UnknownVariable {
+                errors.insert(CompileError::UnknownVariable {
                     var_name: name.span().as_str().trim().to_string(),
                     span: name.span().clone(),
                 });
                 error_recovery_expr(name.span().clone())
             }
         };
-        ok(exp, vec![], errors)
+        ok(exp, IndexSet::new(), errors)
     }
 
     #[allow(clippy::type_complexity)]
@@ -662,8 +668,8 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, (CallPath, Vec<Expression>, Vec<TypeArgument>)>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
             namespace,
@@ -683,7 +689,7 @@ impl TypedExpression {
         let typed_function_decl = match function_declaration {
             TypedDeclaration::FunctionDeclaration(decl) => decl,
             _ => {
-                errors.push(CompileError::NotAFunction {
+                errors.insert(CompileError::NotAFunction {
                     name: name.span().as_str().to_string(),
                     span: name.span(),
                     what_it_is: function_declaration.friendly_name(),
@@ -721,8 +727,8 @@ impl TypedExpression {
             ..
         } = arguments;
 
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let typed_lhs = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: lhs.clone(),
@@ -787,8 +793,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: contents,
@@ -813,15 +819,20 @@ impl TypedExpression {
             errors
         );
 
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (new_warnings, new_errors) = unify_with_self(
             block_return_type,
             type_annotation,
             self_type,
             &span,
             help_text,
         );
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        warnings.extend(new_warnings);
+        errors.extend(
+            new_errors
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<CompileError>>(),
+        );
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
@@ -860,8 +871,8 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let (enum_type, variant) = check!(
             check_scrutinee_type(&scrutinee, namespace),
             return err(warnings, errors),
@@ -947,15 +958,20 @@ impl TypedExpression {
             } else {
                 insert_type(TypeInfo::Tuple(vec![]))
             };
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 then_branch_code_block_return_type,
                 ty_to_check,
                 self_type,
                 then.span(),
                 "`then` branch must return expected type.",
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
         }
 
         let r#else = match r#else {
@@ -982,31 +998,41 @@ impl TypedExpression {
 
                 if !r#else.deterministically_aborts() {
                     // if this does not deterministically_abort, check the block return type
-                    let (mut new_warnings, new_errors) = unify_with_self(
+                    let (new_warnings, new_errors) = unify_with_self(
                         r#else.return_type,
                         then_branch_code_block_return_type,
                         self_type,
                         &r#else.span,
                         "`else` branch must return expected type.",
                     );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    warnings.extend(new_warnings);
+                    errors.extend(
+                        new_errors
+                            .into_iter()
+                            .map(|x| x.into())
+                            .collect::<Vec<CompileError>>(),
+                    );
                 }
                 Some(Box::new(r#else))
             }
             None => {
-                let (mut new_warnings, new_errors) = unify_with_self(
+                let (new_warnings, new_errors) = unify_with_self(
                     then_branch_code_block_return_type,
                     insert_type(TypeInfo::Tuple(vec![])),
                     self_type,
                     &then_branch_span,
                     "Because this `if let` doesn't have an else branch, it cannot implicitly return any value."
                 );
-                warnings.append(&mut new_warnings);
+                warnings.extend(new_warnings);
                 if new_errors.is_empty() {
                     None
                 } else {
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    errors.extend(
+                        new_errors
+                            .into_iter()
+                            .map(|x| x.into())
+                            .collect::<Vec<CompileError>>(),
+                    );
                     return err(warnings, errors);
                 }
             }
@@ -1047,8 +1073,8 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let condition = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *condition.clone(),
@@ -1092,15 +1118,20 @@ impl TypedExpression {
             } else {
                 insert_type(TypeInfo::Tuple(vec![]))
             };
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 then.return_type,
                 ty_to_check,
                 self_type,
                 &then.span,
                 "`then` branch must return expected type.",
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
         }
         let mut else_deterministically_aborts = false;
         let r#else = r#else.map(|expr| {
@@ -1124,15 +1155,20 @@ impl TypedExpression {
             else_deterministically_aborts = r#else.deterministically_aborts();
             if !else_deterministically_aborts {
                 // if this does not deterministically_abort, check the block return type
-                let (mut new_warnings, new_errors) = unify_with_self(
+                let (new_warnings, new_errors) = unify_with_self(
                     r#else.return_type,
                     then.return_type,
                     self_type,
                     &r#else.span,
                     "`else` branch must return expected type.",
                 );
-                warnings.append(&mut new_warnings);
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                warnings.extend(new_warnings);
+                errors.extend(
+                    new_errors
+                        .into_iter()
+                        .map(|x| x.into())
+                        .collect::<Vec<CompileError>>(),
+                );
             }
             Box::new(r#else)
         });
@@ -1143,23 +1179,28 @@ impl TypedExpression {
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
         if !else_deterministically_aborts && !then_deterministically_aborts {
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 then.return_type,
                 r#else_ret_ty,
                 self_type,
                 &span,
                 "The two branches of an if expression must return the same type.",
             );
-            warnings.append(&mut new_warnings);
+            warnings.extend(new_warnings);
             if new_errors.is_empty() {
                 if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
+                    errors.insert(CompileError::NoElseBranch {
                         span: span.clone(),
                         r#type: look_up_type_id(type_annotation).friendly_type_str(),
                     });
                 }
             } else {
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                errors.extend(
+                    new_errors
+                        .into_iter()
+                        .map(|x| x.into())
+                        .collect::<Vec<CompileError>>(),
+                );
             }
         }
 
@@ -1181,8 +1222,8 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, (Expression, Vec<MatchCondition>)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let TypeCheckArguments {
             checkee: (if_exp, cases_covered),
             namespace,
@@ -1220,14 +1261,14 @@ impl TypedExpression {
         );
         for (arm, reachable) in arms_reachability.into_iter() {
             if !reachable {
-                warnings.push(CompileWarning {
+                warnings.insert(CompileWarning {
                     span: arm.span(),
                     warning_content: Warning::MatchExpressionUnreachableArm,
                 });
             }
         }
         if witness_report.has_witnesses() {
-            errors.push(CompileError::MatchExpressionNonExhaustive {
+            errors.insert(CompileError::MatchExpressionNonExhaustive {
                 missing_patterns: format!("{}", witness_report),
                 span,
             });
@@ -1247,8 +1288,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let asm_span = asm
             .returns
             .clone()
@@ -1316,8 +1357,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut typed_fields_buf = vec![];
         let module = check!(
             namespace.find_module_relative(&call_path.prefixes),
@@ -1329,14 +1370,14 @@ impl TypedExpression {
         let decl = match module.clone().get_symbol(&call_path.suffix).value {
             Some(TypedDeclaration::StructDeclaration(decl)) => decl,
             Some(_) => {
-                errors.push(CompileError::DeclaredNonStructAsStruct {
+                errors.insert(CompileError::DeclaredNonStructAsStruct {
                     name: call_path.suffix.clone(),
                     span,
                 });
                 return err(warnings, errors);
             }
             None => {
-                errors.push(CompileError::StructNotFound {
+                errors.insert(CompileError::StructNotFound {
                     name: call_path.suffix.clone(),
                     span,
                 });
@@ -1355,7 +1396,7 @@ impl TypedExpression {
                     .map(|x| x.span.clone())
                     .reduce(join_spans)
                     .unwrap_or_else(|| call_path.suffix.span().clone());
-                errors.push(CompileError::DoesNotTakeTypeArguments {
+                errors.insert(CompileError::DoesNotTakeTypeArguments {
                     name: call_path.suffix,
                     span: type_arguments_span,
                 });
@@ -1391,7 +1432,7 @@ impl TypedExpression {
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
-                        errors.push(CompileError::StructMissingField {
+                        errors.insert(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
                             struct_name: new_decl.name.clone(),
                             span: span.clone(),
@@ -1438,7 +1479,7 @@ impl TypedExpression {
         // check that there are no extra fields
         for field in fields {
             if !new_decl.fields.iter().any(|x| x.name == field.name) {
-                errors.push(CompileError::StructDoesNotHaveField {
+                errors.insert(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
                     struct_name: new_decl.name.clone(),
                     span: field.span,
@@ -1470,8 +1511,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let parent = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *prefix,
@@ -1505,7 +1546,7 @@ impl TypedExpression {
         {
             field
         } else {
-            errors.push(CompileError::FieldNotFound {
+            errors.insert(CompileError::FieldNotFound {
                 span: field_to_access.span().clone(),
                 available_fields: fields
                     .iter()
@@ -1542,8 +1583,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let field_type_opt = match look_up_type_id(type_annotation) {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
@@ -1603,10 +1644,10 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, Vec<Ident>>,
         span: &Span,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if !arguments.namespace.has_storage_declared() {
-            errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
+            errors.insert(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
         }
 
@@ -1650,8 +1691,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let parent = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix,
@@ -1684,7 +1725,7 @@ impl TypedExpression {
         let tuple_elem_to_access = match tuple_elem_to_access {
             Some(tuple_elem_to_access) => tuple_elem_to_access,
             None => {
-                errors.push(CompileError::TupleOutOfBounds {
+                errors.insert(CompileError::TupleOutOfBounds {
                     index,
                     count: tuple_elems.len(),
                     span: index_span,
@@ -1719,16 +1760,16 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         // The first step is to determine if the call path refers to a module, enum, or function.
         // We could rely on the capitalization convention, where modules are lowercase
         // and enums are uppercase, but this is not robust in the long term.
         // Instead, we try to resolve all paths.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
-        let mut probe_warnings = Vec::new();
-        let mut probe_errors = Vec::new();
+        let mut probe_warnings = IndexSet::new();
+        let mut probe_errors = IndexSet::new();
         let module_result = namespace
             .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors);
@@ -1748,7 +1789,7 @@ impl TypedExpression {
         // function application
         let exp: TypedExpression = match (module_result, enum_module_combined_result) {
             (Some(_module), Some(_enum_res)) => {
-                errors.push(CompileError::AmbiguousPath { span });
+                errors.insert(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
             (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
@@ -1791,7 +1832,7 @@ impl TypedExpression {
                         errors
                     ),
                     a => {
-                        errors.push(CompileError::NotAnEnum {
+                        errors.insert(CompileError::NotAnEnum {
                             name: call_path.friendly_name(),
                             span,
                             actually: a.friendly_name().to_string(),
@@ -1800,7 +1841,7 @@ impl TypedExpression {
                     }
                 },
                 None => {
-                    errors.push(CompileError::SymbolNotFound {
+                    errors.insert(CompileError::SymbolNotFound {
                         name: call_path.suffix.as_str().to_string(),
                         span: call_path.suffix.span().clone(),
                     });
@@ -1826,7 +1867,7 @@ impl TypedExpression {
                 errors
             ),
             (None, None) => {
-                errors.push(CompileError::SymbolNotFound {
+                errors.insert(CompileError::SymbolNotFound {
                     name: call_path.suffix.as_str().to_string(),
                     span: call_path.suffix.span().clone(),
                 });
@@ -1849,8 +1890,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
@@ -1885,7 +1926,7 @@ impl TypedExpression {
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
             a => {
-                errors.push(CompileError::NotAnAbi {
+                errors.insert(CompileError::NotAnAbi {
                     span: abi_name.span(),
                     actually_is: a.friendly_name(),
                 });
@@ -1964,13 +2005,13 @@ impl TypedExpression {
                     is_constant: IsConstant::Yes,
                     span,
                 },
-                Vec::new(),
-                Vec::new(),
+                IndexSet::new(),
+                IndexSet::new(),
             );
         };
 
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let typed_contents: Vec<TypedExpression> = contents
             .into_iter()
             .map(|expr| {
@@ -1997,7 +2038,7 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 typed_elem.return_type,
                 elem_type,
                 self_type,
@@ -2006,8 +2047,13 @@ impl TypedExpression {
             );
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
             // In both cases, if there are warnings or errors then break here, since we don't
             // need to spam type errors for every element once we have one.
             if !no_warnings && !no_errors {
@@ -2044,8 +2090,8 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         let prefix_te = check!(
             TypedExpression::type_check(TypeCheckArguments {
@@ -2149,8 +2195,8 @@ impl TypedExpression {
         dead_code_graph: &mut ControlFlowGraph,
         opts: TCOpts,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match variant {
             DelayedResolutionVariant::TupleVariant(DelayedTupleVariantResolution {
                 exp,
@@ -2192,7 +2238,7 @@ impl TypedExpression {
                 }
                 let tuple_elem_to_access = match tuple_elem_to_access {
                     None => {
-                        errors.push(CompileError::MatchWrongType {
+                        errors.insert(CompileError::MatchWrongType {
                             expected: parent.return_type,
                             span: parent.span,
                         });
@@ -2218,7 +2264,7 @@ impl TypedExpression {
                 call_path,
                 ..
             }) => {
-                errors.push(CompileError::Unimplemented(
+                errors.insert(CompileError::Unimplemented(
                     "Pattern matching of enum types in this position has not yet been implemented",
                     call_path.span(),
                 ));
@@ -2258,7 +2304,7 @@ impl TypedExpression {
                     errors
                 );
                 if struct_name.as_str() != other_struct_name.as_str() {
-                    errors.push(CompileError::MatchWrongType {
+                    errors.insert(CompileError::MatchWrongType {
                         expected: parent.return_type,
                         span: struct_name.span().clone(),
                     });
@@ -2273,7 +2319,7 @@ impl TypedExpression {
                 }
                 let field_to_access = match field_to_access {
                     None => {
-                        errors.push(CompileError::MatchWrongType {
+                        errors.insert(CompileError::MatchWrongType {
                             expected: parent.return_type,
                             span: struct_name.span().clone(),
                         });
@@ -2301,8 +2347,8 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, Expression>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let exp = check!(
             TypedExpression::type_check(arguments),
             return err(warnings, errors),
@@ -2327,8 +2373,8 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let TypeCheckArguments {
             checkee: (type_name, type_span),
             self_type,
@@ -2364,7 +2410,7 @@ impl TypedExpression {
         span: Span,
         new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
-        let mut errors = vec![];
+        let mut errors = IndexSet::new();
         let pest_span = span.clone().span;
         let path = span.clone().path;
 
@@ -2441,12 +2487,12 @@ impl TypedExpression {
                     is_constant: IsConstant::Yes,
                     span,
                 };
-                ok(exp, vec![], vec![])
+                ok(exp, IndexSet::new(), IndexSet::new())
             }
             Err(e) => {
-                errors.push(e);
+                errors.insert(e);
                 let exp = error_recovery_expr(span);
-                ok(exp, vec![], errors)
+                ok(exp, IndexSet::new(), errors)
             }
         }
     }
@@ -2464,8 +2510,8 @@ fn check_scrutinee_type(
     scrutinee: &Scrutinee,
     namespace: NamespaceRef,
 ) -> CompileResult<(TypeId, TypedEnumVariant)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let (ty, enum_variant) = match scrutinee {
         Scrutinee::EnumScrutinee { ref call_path, .. } => check!(
             check_enum_scrutinee_type(call_path, namespace),
@@ -2474,7 +2520,7 @@ fn check_scrutinee_type(
             errors
         ),
         _ => {
-            errors.push(CompileError::Unimplemented(
+            errors.insert(CompileError::Unimplemented(
                 "Destructuring this type is not yet implemented.",
                 scrutinee.span(),
             ));
@@ -2489,8 +2535,8 @@ fn check_enum_scrutinee_type(
     call_path: &CallPath,
     namespace: NamespaceRef,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
     let decl: TypedDeclaration = check!(
@@ -2502,7 +2548,7 @@ fn check_enum_scrutinee_type(
     let enum_decl = match decl {
         TypedDeclaration::EnumDeclaration(decl) => decl,
         _ => {
-            errors.push(CompileError::IfLetNonEnum {
+            errors.insert(CompileError::IfLetNonEnum {
                 span: call_path.span(),
             });
             return err(warnings, errors);
@@ -2522,7 +2568,7 @@ fn check_enum_scrutinee_type(
     match matching_variant {
         Some(variant) => ok((enum_decl, variant), warnings, errors),
         None => {
-            errors.push(CompileError::UnknownEnumVariant {
+            errors.insert(CompileError::UnknownEnumVariant {
                 variant_name: enum_variant,
                 enum_name: enum_decl.name,
                 span: call_path.span(),

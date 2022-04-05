@@ -15,6 +15,7 @@ use crate::{
 
 use sway_types::{join_spans, span::Span, Function, Property};
 
+use indexmap::IndexSet;
 use sha2::{Digest, Sha256};
 
 mod function_parameter;
@@ -57,8 +58,8 @@ impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,
     ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let TypeCheckArguments {
             checkee: fn_decl,
             namespace,
@@ -201,15 +202,20 @@ impl TypedFunctionDeclaration {
             .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
         for stmt in return_statements {
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
                 &stmt.span,
                 "Return statement must return the declared function return type.",
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            warnings.extend(new_warnings);
+            errors.extend(
+                new_errors
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<CompileError>>(),
+            );
         }
 
         ok(
@@ -258,8 +264,8 @@ impl TypedFunctionDeclaration {
         type_arguments: Vec<TypeArgument>,
         self_type: TypeId,
     ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings: Vec<CompileWarning> = vec![];
-        let mut errors: Vec<CompileError> = vec![];
+        let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+        let mut errors: IndexSet<CompileError> = IndexSet::new();
         debug_assert!(
             !self.type_parameters.is_empty(),
             "Only generic functions can be monomorphized"
@@ -276,7 +282,7 @@ impl TypedFunctionDeclaration {
                 .reduce(join_spans)
                 .unwrap_or_else(|| self.span.clone());
             if new_decl.type_parameters.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                errors.insert(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
                     expected: new_decl.type_parameters.len(),
                     span: type_arguments_span,
@@ -285,15 +291,20 @@ impl TypedFunctionDeclaration {
 
             // check the type arguments
             for ((_, decl_param), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-                let (mut new_warnings, new_errors) = unify_with_self(
+                let (new_warnings, new_errors) = unify_with_self(
                     *decl_param,
                     type_argument.type_id,
                     self_type,
                     &type_argument.span,
                     "Type argument is not castable to generic type paramter",
                 );
-                warnings.append(&mut new_warnings);
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                warnings.extend(new_warnings);
+                errors.extend(
+                    new_errors
+                        .into_iter()
+                        .map(|x| x.into())
+                        .collect::<Vec<CompileError>>(),
+                );
             }
         }
 
@@ -340,8 +351,8 @@ impl TypedFunctionDeclaration {
     }
 
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let mut hasher = Sha256::new();
         let data = check!(
             self.to_selector_name(),
@@ -358,8 +369,8 @@ impl TypedFunctionDeclaration {
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
     pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let hash = check!(
             self.to_fn_selector_value_untruncated(),
             return err(warnings, errors),
@@ -373,8 +384,8 @@ impl TypedFunctionDeclaration {
     }
 
     pub fn to_selector_name(&self) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+        let mut errors = IndexSet::new();
+        let mut warnings = IndexSet::new();
         let named_params = self
             .parameters
             .iter()

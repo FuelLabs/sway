@@ -16,6 +16,7 @@ use sway_types::{
 };
 
 use derivative::Derivative;
+use indexmap::IndexSet;
 use std::sync::Arc;
 
 use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
@@ -196,8 +197,8 @@ impl TypedAstNode {
             opts,
             ..
         } = arguments;
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |namespace: crate::semantic_analysis::NamespaceRef,
                                             crate_namespace: NamespaceRef,
@@ -237,7 +238,7 @@ impl TypedAstNode {
                     } else {
                         None
                     };
-                    let mut res = match a.import_type {
+                    let res = match a.import_type {
                         ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::SelfImport => {
                             namespace.self_import(from_module, a.call_path, a.alias)
@@ -246,8 +247,8 @@ impl TypedAstNode {
                             namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
                     };
-                    warnings.append(&mut res.warnings);
-                    errors.append(&mut res.errors);
+                    warnings.extend(res.warnings);
+                    errors.extend(res.errors);
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::IncludeStatement(ref a) => {
@@ -286,7 +287,7 @@ impl TypedAstNode {
                             {
                                 Some(type_ascription) => type_ascription,
                                 None => {
-                                    errors.push(CompileError::UnknownType {
+                                    errors.insert(CompileError::UnknownType {
                                         span: type_ascription_span,
                                     });
                                     insert_type(TypeInfo::ErrorRecovery)
@@ -438,14 +439,16 @@ impl TypedAstNode {
                                         // non-type-checked functions into dummy functions
                                     }
                                     Some(TypedDeclaration::AbiDeclaration(_)) => {
-                                        errors.push(CompileError::AbiAsSupertrait {
+                                        errors.insert(CompileError::AbiAsSupertrait {
                                             span: name.span().clone(),
-                                        })
+                                        });
                                     }
-                                    _ => errors.push(CompileError::TraitNotFound {
-                                        name: supertrait.name.span().as_str().to_string(),
-                                        span: name.span().clone(),
-                                    }),
+                                    _ => {
+                                        errors.insert(CompileError::TraitNotFound {
+                                            name: supertrait.name.span().as_str().to_string(),
+                                            span: name.span().clone(),
+                                        });
+                                    }
                                 }
                             }
                             // insert placeholder functions representing the interface surface
@@ -533,7 +536,7 @@ impl TypedAstNode {
                         }) => {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
+                                    errors.insert(CompileError::Internal(
                                         "Where clauses are not supported yet.",
                                         type_parameter.name_ident.span().clone(),
                                     ));
@@ -886,8 +889,8 @@ fn import_new_file(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
 
     let mut canonical_path = (*build_config.dir_of_code).clone();
     canonical_path.push(statement.path_span.as_str());
@@ -902,7 +905,7 @@ fn import_new_file(
     let res = if canonical_path.exists() {
         std::fs::read_to_string(&*canonical_path)
     } else {
-        errors.push(CompileError::FileNotFound {
+        errors.insert(CompileError::FileNotFound {
             span: statement.path_span.clone(),
             file_path: canonical_path.to_string_lossy().to_string(),
         });
@@ -912,7 +915,7 @@ fn import_new_file(
     let file_as_string = match res {
         Ok(s) => Arc::from(s),
         Err(e) => {
-            errors.push(CompileError::FileCouldNotBeRead {
+            errors.insert(CompileError::FileCouldNotBeRead {
                 span: statement.path_span.clone(),
                 file_path: canonical_path.to_string_lossy().to_string(),
                 stringified_error: e.to_string(),
@@ -963,8 +966,8 @@ fn reassignment(
         opts,
         ..
     } = arguments;
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
     // ensure that the lhs is a variable expression or struct field access
     match lhs {
         ReassignmentTarget::VariableExpression(var) => {
@@ -979,7 +982,7 @@ fn reassignment(
                             ..
                         })) => {
                             if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable(
+                                errors.insert(CompileError::AssignmentToNonMutable(
                                     name.as_str().to_string(),
                                     span.clone(),
                                 ));
@@ -988,7 +991,7 @@ fn reassignment(
                             body
                         }
                         Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
+                            errors.insert(CompileError::ReassignmentToNonVariable {
                                 name: name.clone(),
                                 kind: o.friendly_name(),
                                 span,
@@ -996,7 +999,7 @@ fn reassignment(
                             return err(warnings, errors);
                         }
                         None => {
-                            errors.push(CompileError::UnknownVariable {
+                            errors.insert(CompileError::UnknownVariable {
                                 var_name: name.as_str().to_string(),
                                 span: name.span().clone(),
                             });
@@ -1083,7 +1086,7 @@ fn reassignment(
                                 expr = *prefix;
                             }
                             _ => {
-                                errors.push(CompileError::InvalidExpressionOnLhs { span });
+                                errors.insert(CompileError::InvalidExpressionOnLhs { span });
                                 return err(warnings, errors);
                             }
                         }
@@ -1136,7 +1139,7 @@ fn reassignment(
                     )
                 }
                 _ => {
-                    errors.push(CompileError::InvalidExpressionOnLhs { span });
+                    errors.insert(CompileError::InvalidExpressionOnLhs { span });
                     err(warnings, errors)
                 }
             }
@@ -1161,8 +1164,8 @@ fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: crate::semantic_analysis::NamespaceRef,
 ) -> CompileResult<Vec<TypedTraitFn>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let interface_surface = interface_surface
         .into_iter()
         .map(
@@ -1223,8 +1226,8 @@ fn type_check_trait_methods(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut methods_buf = Vec::new();
     for FunctionDeclaration {
         body,
@@ -1303,7 +1306,7 @@ fn type_check_trait_methods(
                         false
                     }
                 }) {
-                    errors.push(CompileError::TypeParameterNotInTypeScope {
+                    errors.insert(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
@@ -1474,10 +1477,10 @@ fn reassign_storage_subfield(
         opts,
         ..
     } = arguments;
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    let mut errors = IndexSet::new();
+    let mut warnings = IndexSet::new();
     if !namespace.has_storage_declared() {
-        errors.push(CompileError::NoDeclaredStorage { span });
+        errors.insert(CompileError::NoDeclaredStorage { span });
 
         return err(warnings, errors);
     }
@@ -1499,7 +1502,7 @@ fn reassign_storage_subfield(
     {
         Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
         None => {
-            errors.push(CompileError::StorageFieldDoesNotExist {
+            errors.insert(CompileError::StorageFieldDoesNotExist {
                 name: first_field.as_str().to_string(),
                 span: first_field.span().clone(),
             });
@@ -1546,7 +1549,7 @@ fn reassign_storage_subfield(
                     .iter()
                     .map(|x| x.name.as_str())
                     .collect::<Vec<_>>();
-                errors.push(CompileError::FieldNotFound {
+                errors.insert(CompileError::FieldNotFound {
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
                     struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),

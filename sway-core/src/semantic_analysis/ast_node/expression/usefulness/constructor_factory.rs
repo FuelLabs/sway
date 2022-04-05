@@ -11,6 +11,8 @@ use super::{
     range::Range,
 };
 
+use indexmap::IndexSet;
+
 pub(crate) struct ConstructorFactory {}
 
 impl ConstructorFactory {
@@ -60,8 +62,8 @@ impl ConstructorFactory {
         sigma: PatStack,
         span: &Span,
     ) -> CompileResult<Pattern> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let (first, rest) = check!(
             sigma.flatten().filter_out_wildcards().split_first(span),
             return err(warnings, errors),
@@ -75,7 +77,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -103,7 +105,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -131,7 +133,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -159,7 +161,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -187,7 +189,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }
@@ -228,7 +230,7 @@ impl ConstructorFactory {
                     false_found = true;
                 }
                 if true_found && false_found {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "unable to create a new pattern",
                         span.clone(),
                     ));
@@ -245,7 +247,7 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.insert(CompileError::Internal("type mismatch", span.clone()));
                             return err(warnings, errors);
                         }
                     }

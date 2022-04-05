@@ -3,6 +3,7 @@ use crate::{
     types::ResolvedType, CompileError, TypeInfo,
 };
 
+use indexmap::IndexSet;
 use sway_types::span;
 
 use pest::iterators::Pair;
@@ -285,8 +286,8 @@ impl Literal {
         };
 
         match parsed {
-            Ok(lit) => ok((lit, span), Vec::new(), Vec::new()),
-            Err(compile_err) => err(Vec::new(), vec![compile_err]),
+            Ok(lit) => ok((lit, span), IndexSet::new(), IndexSet::new()),
+            Err(compile_err) => err(IndexSet::new(), IndexSet::from([compile_err])),
         }
     }
     /// Converts a literal to a big-endian representation. This is padded to words.

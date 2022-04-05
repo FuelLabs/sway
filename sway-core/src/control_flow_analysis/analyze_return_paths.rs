@@ -16,6 +16,7 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use petgraph::prelude::NodeIndex;
 
 impl ControlFlowGraph {
@@ -36,14 +37,15 @@ impl ControlFlowGraph {
 
         graph
     }
+
     /// This function looks through the control flow graph and ensures that all paths that are
     /// required to return a value do, indeed, return a value of the correct type.
     /// It does this by checking every function declaration in both the methods namespace
     /// and the functions namespace and validating that all paths leading to the function exit node
     /// return the same type. Additionally, if a function has a return type, all paths must indeed
     /// lead to the function exit node.
-    pub(crate) fn analyze_return_paths(&self) -> Vec<CompileError> {
-        let mut errors = vec![];
+    pub(crate) fn analyze_return_paths(&self) -> IndexSet<CompileError> {
+        let mut errors = IndexSet::new();
         for (
             name,
             FunctionNamespaceEntry {
@@ -54,7 +56,7 @@ impl ControlFlowGraph {
         ) in &self.namespace.function_namespace
         {
             // For every node connected to the entry point
-            errors.append(&mut self.ensure_all_paths_reach_exit(
+            errors.extend(self.ensure_all_paths_reach_exit(
                 *entry_point,
                 *exit_point,
                 name,
@@ -63,15 +65,16 @@ impl ControlFlowGraph {
         }
         errors
     }
+
     fn ensure_all_paths_reach_exit(
         &self,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &Ident,
         return_ty: &TypeInfo,
-    ) -> Vec<CompileError> {
+    ) -> IndexSet<CompileError> {
         let mut rovers = vec![entry_point];
-        let mut errors = vec![];
+        let mut errors = IndexSet::new();
         let mut max_iterations = 50;
         while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
@@ -96,7 +99,7 @@ impl ControlFlowGraph {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
-                            errors.push(CompileError::Internal(
+                            errors.insert(CompileError::Internal(
                                 "Attempted to construct return path error \
                                     but no source span was found.",
                                 Span {
@@ -107,7 +110,7 @@ impl ControlFlowGraph {
                             return errors;
                         }
                     };
-                    errors.push(CompileError::PathDoesNotReturn {
+                    errors.insert(CompileError::PathDoesNotReturn {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
                         span,

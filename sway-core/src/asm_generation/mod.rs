@@ -26,6 +26,7 @@ use crate::{
 pub(crate) use expression::subfield::{convert_subfield_to_asm, get_subfields_for_layout};
 
 use either::Either;
+use indexmap::IndexSet;
 
 pub(crate) mod checks;
 pub(crate) mod compiler_constants;
@@ -590,14 +591,14 @@ impl AsmNamespace {
     /// checked for in the type checking stage.
     pub(crate) fn look_up_variable(&self, var_name: &Ident) -> CompileResult<&VirtualRegister> {
         match self.variables.get(var_name) {
-            Some(o) => ok(o, vec![], vec![]),
+            Some(o) => ok(o, IndexSet::new(), IndexSet::new()),
             None => err(
-                vec![],
-                vec![CompileError::Internal(
+                IndexSet::new(),
+                IndexSet::from([CompileError::Internal(
                     "Unknown variable in assembly generation. This should have been an error \
                      during type checking.",
                     var_name.span().clone(),
-                )],
+                )]),
             ),
         }
     }
@@ -613,8 +614,8 @@ pub(crate) fn compile_ast_to_asm(
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut register_sequencer = RegisterSequencer::new();
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let (asm, _asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
@@ -627,8 +628,8 @@ pub(crate) fn compile_ast_to_asm(
             // generate any const decls
             read_module(
                 |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
+                    let mut warnings = IndexSet::new();
+                    let mut errors = IndexSet::new();
                     let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
                         if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
@@ -707,8 +708,8 @@ pub(crate) fn compile_ast_to_asm(
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             read_module(
                 |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
+                    let mut warnings = IndexSet::new();
+                    let mut errors = IndexSet::new();
                     let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
                         if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
@@ -774,8 +775,8 @@ pub(crate) fn compile_ast_to_asm(
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             read_module(
                 |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
+                    let mut warnings = IndexSet::new();
+                    let mut errors = IndexSet::new();
                     let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
                         if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
@@ -1041,8 +1042,8 @@ fn convert_node_to_asm(
     // Where to put the return value of this node, if it is needed.
     return_register: Option<&VirtualRegister>,
 ) -> CompileResult<NodeAsmResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     match &node.content {
         TypedAstNodeContent::WhileLoop(r#loop) => {
             let res = check!(
@@ -1128,7 +1129,7 @@ fn convert_node_to_asm(
         }
         a => {
             println!("Unimplemented: {:?}", a);
-            errors.push(CompileError::Unimplemented(
+            errors.insert(CompileError::Unimplemented(
                 "The ASM for this construct has not been written yet.",
                 node.clone().span,
             ));
@@ -1279,8 +1280,8 @@ fn compile_contract_to_selectors(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<SerializedAbiFunction> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     // for every ABI function, we need:
     // 0) a jump label
     // 1) loading the argument from the call frame into the register for the function
@@ -1402,13 +1403,13 @@ fn ret_or_retd_value(
     register_sequencer: &mut RegisterSequencer,
     namespace: &mut AsmNamespace,
 ) -> CompileResult<Vec<Op>> {
-    let mut errors = vec![];
-    let warnings = vec![];
+    let mut errors = IndexSet::new();
+    let warnings = IndexSet::new();
     let mut asm_buf = vec![];
     let main_func_ret_ty: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
+            errors.insert(e.into());
             return err(warnings, errors);
         }
     };
@@ -1434,7 +1435,7 @@ fn ret_or_retd_value(
     {
         Ok(is_copy) => is_copy,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -1449,7 +1450,7 @@ fn ret_or_retd_value(
             match main_func_ret_ty.size_in_bytes(&func.return_type_span) {
                 Ok(sz) => sz,
                 Err(e) => {
-                    errors.push(e);
+                    errors.insert(e);
                     return err(warnings, errors);
                 }
             };

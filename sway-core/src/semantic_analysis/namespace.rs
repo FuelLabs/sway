@@ -9,6 +9,7 @@ use crate::semantic_analysis::{
 
 use sway_types::span::Span;
 
+use indexmap::IndexSet;
 use std::collections::{BTreeMap, HashMap};
 
 pub mod arena;
@@ -45,10 +46,10 @@ impl Namespace {
         match self.declared_storage {
             Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
             None => err(
-                vec![],
-                vec![CompileError::NoDeclaredStorage {
+                IndexSet::new(),
+                IndexSet::from([CompileError::NoDeclaredStorage {
                     span: fields[0].span().clone(),
-                }],
+                }]),
             ),
         }
     }
@@ -56,12 +57,12 @@ impl Namespace {
     pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
-                vec![],
-                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }],
+                IndexSet::new(),
+                IndexSet::from([CompileError::MultipleStorageDeclarations { span: decl.span() }]),
             );
         }
         self.declared_storage = Some(decl);
-        ok((), vec![], vec![])
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
@@ -73,27 +74,27 @@ impl Namespace {
     }
 
     pub(crate) fn insert(&mut self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         // purposefully do not preemptively return errors so that the
         // new definiton allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
                 | TypedDeclaration::StructDeclaration { .. } => {
-                    errors.push(CompileError::ShadowsOtherSymbol {
+                    errors.insert(CompileError::ShadowsOtherSymbol {
                         span: name.span().clone(),
                         name: name.as_str().to_string(),
                     });
                 }
                 TypedDeclaration::GenericTypeForFunctionScope { .. } => {
-                    errors.push(CompileError::GenericShadowsGeneric {
+                    errors.insert(CompileError::GenericShadowsGeneric {
                         span: name.span().clone(),
                         name: name.as_str().to_string(),
                     });
                 }
                 _ => {
-                    warnings.push(CompileWarning {
+                    warnings.insert(CompileWarning {
                         span: name.span().clone(),
                         warning_content: Warning::ShadowsOtherSymbol {
                             name: name.span().as_str().to_string(),
@@ -112,8 +113,8 @@ impl Namespace {
         type_implementing_for: TypeInfo,
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
@@ -183,19 +184,19 @@ impl Namespace {
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<Vec<TypeArgument>> {
-        let warnings = vec![];
-        let errors = vec![];
+        let warnings = IndexSet::new();
+        let errors = IndexSet::new();
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
             TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
-                vec![],
-                vec![CompileError::NotATuple {
+                IndexSet::new(),
+                IndexSet::from([CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
                     actually: a.friendly_type_str(),
-                }],
+                }]),
             ),
         }
     }
@@ -238,8 +239,8 @@ impl TraitMap {
         type_implementing_for: TypeInfo,
         methods: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
-        let warnings = vec![];
-        let errors = vec![];
+        let warnings = IndexSet::new();
+        let errors = IndexSet::new();
         let mut methods_map = HashMap::new();
         for method in methods.into_iter() {
             let method_name = method.name.as_str().to_string();
@@ -251,8 +252,8 @@ impl TraitMap {
     }
 
     pub(crate) fn extend(&mut self, other: TraitMap) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         for ((trait_name, type_implementing_for), methods) in other.trait_map.into_iter() {
             check!(
                 self.insert(

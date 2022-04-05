@@ -13,8 +13,8 @@ pub(crate) fn convert_contract_call_to_asm(
     namespace: &mut AsmNamespace,
     span: Span,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![];
 
     let bundled_arguments_register = register_sequencer.next();

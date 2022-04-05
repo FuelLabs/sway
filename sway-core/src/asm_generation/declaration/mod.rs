@@ -8,6 +8,7 @@ mod var_decl;
 
 pub(crate) use const_decl::convert_constant_decl_to_asm;
 pub(crate) use fn_decl::convert_fn_decl_to_asm;
+use indexmap::IndexSet;
 pub(crate) use reassignment::convert_reassignment_to_asm;
 pub(crate) use var_decl::convert_variable_decl_to_asm;
 
@@ -18,17 +19,17 @@ pub(crate) fn convert_decl_to_asm(
 ) -> CompileResult<Vec<Op>> {
     match decl {
         // For an enum declaration, we don't generate any asm.
-        TypedDeclaration::EnumDeclaration(_) => ok(vec![], vec![], vec![]),
+        TypedDeclaration::EnumDeclaration(_) => ok(vec![], IndexSet::new(), IndexSet::new()),
         TypedDeclaration::FunctionDeclaration(typed_fn_decl) => {
             convert_fn_decl_to_asm(typed_fn_decl, namespace, register_sequencer)
         }
         // a trait declaration also does not have any asm directly generated from it
-        TypedDeclaration::TraitDeclaration(_) => ok(vec![], vec![], vec![]),
+        TypedDeclaration::TraitDeclaration(_) => ok(vec![], IndexSet::new(), IndexSet::new()),
         // since all functions are inlined (for now -- shortcut), we also don't need to do anything
         // for this.
-        TypedDeclaration::ImplTrait { .. } => ok(vec![], vec![], vec![]),
+        TypedDeclaration::ImplTrait { .. } => ok(vec![], IndexSet::new(), IndexSet::new()),
         // once again the declaration of a type has no inherent asm, only instantiations
-        TypedDeclaration::StructDeclaration(_) => ok(vec![], vec![], vec![]),
+        TypedDeclaration::StructDeclaration(_) => ok(vec![], IndexSet::new(), IndexSet::new()),
         TypedDeclaration::VariableDeclaration(var_decl) => {
             convert_variable_decl_to_asm(var_decl, namespace, register_sequencer)
         }
@@ -39,11 +40,11 @@ pub(crate) fn convert_decl_to_asm(
             convert_reassignment_to_asm(reassignment, namespace, register_sequencer)
         }
         _ => err(
-            vec![],
-            vec![CompileError::Unimplemented(
+            IndexSet::new(),
+            IndexSet::from([CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this declaration variant.",
                 decl.span(),
-            )],
+            )]),
         ),
     }
 }

@@ -7,6 +7,7 @@ use crate::{
     type_engine::TypeInfo,
 };
 
+use indexmap::IndexSet;
 use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
@@ -25,8 +26,8 @@ impl ConstantDeclaration {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<ConstantDeclaration>> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut const_decl_parts = pair.into_inner();
         let visibility = match const_decl_parts.next().unwrap().as_rule() {
             Rule::const_decl_keyword => Visibility::Private,

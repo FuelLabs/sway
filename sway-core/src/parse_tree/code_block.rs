@@ -7,6 +7,7 @@ use crate::{
     AstNode, AstNodeContent, Declaration, VariableDeclaration,
 };
 
+use indexmap::IndexSet;
 use sway_types::span::Span;
 
 use pest::iterators::Pair;
@@ -26,8 +27,8 @@ impl CodeBlock {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let whole_block_span = Span {
             span: block.as_span(),
             path: path.clone(),
@@ -117,7 +118,7 @@ impl CodeBlock {
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
-                    errors.push(CompileError::UnimplementedRule(
+                    errors.insert(CompileError::UnimplementedRule(
                         a,
                         Span {
                             span: pair.as_span(),

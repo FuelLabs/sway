@@ -15,6 +15,7 @@ pub(crate) use abi::*;
 pub(crate) use constant::*;
 pub use function::*;
 pub(crate) use impl_trait::*;
+use indexmap::IndexSet;
 pub(crate) use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
@@ -47,8 +48,8 @@ impl Declaration {
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
@@ -170,8 +171,8 @@ impl Declaration {
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declarations = match decl_inner.as_rule() {

@@ -6,6 +6,7 @@ use crate::{
     Ident,
 };
 
+use indexmap::IndexSet;
 use sway_types::span::Span;
 
 use pest::iterators::Pair;
@@ -21,18 +22,18 @@ impl UnaryOp {
     pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         use UnaryOp::*;
         match pair.as_str() {
-            "!" => ok(Not, Vec::new(), Vec::new()),
-            "ref" => ok(Ref, Vec::new(), Vec::new()),
-            "deref" => ok(Deref, Vec::new(), Vec::new()),
+            "!" => ok(Not, IndexSet::new(), IndexSet::new()),
+            "ref" => ok(Ref, IndexSet::new(), IndexSet::new()),
+            "deref" => ok(Deref, IndexSet::new(), IndexSet::new()),
             _ => {
-                let errors = vec![CompileError::Internal(
+                let errors = IndexSet::from([CompileError::Internal(
                     "Attempted to parse unary op from invalid op string.",
                     Span {
                         span: pair.as_span(),
                         path: config.map(|c| c.path()),
                     },
-                )];
-                err(Vec::new(), errors)
+                )]);
+                err(IndexSet::new(), errors)
             }
         }
     }

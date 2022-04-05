@@ -11,6 +11,7 @@ use pest::iterators::Pair;
 
 use super::Expression;
 use crate::type_engine::IntegerBits;
+use indexmap::IndexSet;
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression {
@@ -31,8 +32,8 @@ impl AsmExpression {
             span: pair.as_span(),
             path: path.clone(),
         };
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut iter = pair.into_inner();
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
@@ -152,8 +153,8 @@ impl AsmRegister {
             AsmRegister {
                 name: pair.as_str().to_string(),
             },
-            vec![],
-            vec![],
+            IndexSet::new(),
+            IndexSet::new(),
         )
     }
 }
@@ -167,8 +168,8 @@ impl From<AsmRegister> for String {
 impl AsmOp {
     fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -180,7 +181,7 @@ impl AsmOp {
             warnings,
             errors
         );
-        errors.append(&mut disallow_opcode(&opcode));
+        errors.extend(disallow_opcode(&opcode));
         let mut args = vec![];
         let mut immediate_value = None;
         for pair in iter {
@@ -225,8 +226,8 @@ impl AsmRegisterDeclaration {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Vec<Self>>> {
         let iter = pair.into_inner();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut reg_buf: Vec<AsmRegisterDeclaration> = Vec::new();
         let mut var_decl_buf: Vec<VariableDeclaration> = vec![];
         for pair in iter {
@@ -274,17 +275,17 @@ impl AsmRegisterDeclaration {
     }
 }
 
-fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
-    let mut errors = vec![];
+fn disallow_opcode(op: &Ident) -> IndexSet<CompileError> {
+    let mut errors = IndexSet::new();
 
     match op.as_str().to_lowercase().as_str() {
         "jnei" => {
-            errors.push(CompileError::DisallowedJnei {
+            errors.insert(CompileError::DisallowedJnei {
                 span: op.span().clone(),
             });
         }
         "ji" => {
-            errors.push(CompileError::DisallowedJi {
+            errors.insert(CompileError::DisallowedJi {
                 span: op.span().clone(),
             });
         }

@@ -18,6 +18,7 @@ use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use sway_types::span::Span;
 
 use either::Either;
+use indexmap::IndexSet;
 use std::{collections::HashSet, fmt};
 
 /// The column where the ; for comments starts
@@ -258,8 +259,8 @@ impl Op {
         immediate: &Option<Ident>,
         whole_op_span: Span,
     ) -> CompileResult<VirtualOp> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         ok(
             match name.as_str() {
                 "add" => {
@@ -984,7 +985,7 @@ impl Op {
                     VirtualOp::GM(r1, imm)
                 }
                 _ => {
-                    errors.push(CompileError::UnrecognizedOp {
+                    errors.insert(CompileError::UnrecognizedOp {
                         op_name: name.clone(),
                         span: name.span().clone(),
                     });
@@ -1002,10 +1003,10 @@ fn single_reg(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<VirtualRegister> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 1 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             expected: 1,
             received: args.len(),
             span: whole_op_span.clone(),
@@ -1015,7 +1016,7 @@ fn single_reg(
     let reg = match args.get(0) {
         Some(reg) => reg,
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 1,
                 received: args.len(),
@@ -1026,7 +1027,7 @@ fn single_reg(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate {
+            errors.insert(CompileError::UnnecessaryImmediate {
                 span: i.span().clone(),
             });
         }
@@ -1040,10 +1041,10 @@ fn two_regs(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<(VirtualRegister, VirtualRegister)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 2 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 2,
             received: args.len(),
@@ -1053,7 +1054,7 @@ fn two_regs(
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 2,
                 received: args.len(),
@@ -1063,9 +1064,11 @@ fn two_regs(
     };
     match immediate {
         None => (),
-        Some(i) => errors.push(CompileError::UnnecessaryImmediate {
-            span: i.span().clone(),
-        }),
+        Some(i) => {
+            errors.insert(CompileError::UnnecessaryImmediate {
+                span: i.span().clone(),
+            });
+        }
     };
 
     ok((reg.clone(), reg2.clone()), warnings, errors)
@@ -1081,10 +1084,10 @@ fn four_regs(
     VirtualRegister,
     VirtualRegister,
 )> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 4 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 4,
             received: args.len(),
@@ -1094,7 +1097,7 @@ fn four_regs(
     let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 4,
                 received: args.len(),
@@ -1105,7 +1108,7 @@ fn four_regs(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::MissingImmediate {
+            errors.insert(CompileError::MissingImmediate {
                 span: i.span().clone(),
             });
         }
@@ -1152,10 +1155,10 @@ fn three_regs(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualRegister)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 3 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 3,
             received: args.len(),
@@ -1165,7 +1168,7 @@ fn three_regs(
     let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 3,
                 received: args.len(),
@@ -1176,7 +1179,7 @@ fn three_regs(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate {
+            errors.insert(CompileError::UnnecessaryImmediate {
                 span: i.span().clone(),
             });
         }
@@ -1189,10 +1192,10 @@ fn single_imm_24(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<VirtualImmediate24> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if !args.is_empty() {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 0,
             received: args.len(),
@@ -1200,7 +1203,7 @@ fn single_imm_24(
     }
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            errors.insert(CompileError::MissingImmediate {
                 span: whole_op_span,
             });
             return err(warnings, errors);
@@ -1208,7 +1211,7 @@ fn single_imm_24(
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span().clone()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
+                errors.insert(CompileError::InvalidImmediateValue {
                     span: i.span().clone(),
                 });
                 return err(warnings, errors);
@@ -1219,7 +1222,7 @@ fn single_imm_24(
     let imm = match VirtualImmediate24::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -1231,10 +1234,10 @@ fn single_reg_imm_18(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<(VirtualRegister, VirtualImmediate18)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 1 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 1,
             received: args.len(),
@@ -1243,7 +1246,7 @@ fn single_reg_imm_18(
     let reg = match args.get(0) {
         Some(reg) => reg,
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 1,
                 received: args.len(),
@@ -1253,7 +1256,7 @@ fn single_reg_imm_18(
     };
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            errors.insert(CompileError::MissingImmediate {
                 span: whole_op_span,
             });
             return err(warnings, errors);
@@ -1261,7 +1264,7 @@ fn single_reg_imm_18(
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span().clone()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
+                errors.insert(CompileError::InvalidImmediateValue {
                     span: i.span().clone(),
                 });
                 return err(warnings, errors);
@@ -1272,7 +1275,7 @@ fn single_reg_imm_18(
     let imm = match VirtualImmediate18::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -1284,10 +1287,10 @@ fn two_regs_imm_12(
     immediate: &Option<Ident>,
     whole_op_span: Span,
 ) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualImmediate12)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     if args.len() > 2 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 2,
             received: args.len(),
@@ -1296,7 +1299,7 @@ fn two_regs_imm_12(
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            errors.insert(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span,
                 expected: 2,
                 received: args.len(),
@@ -1306,7 +1309,7 @@ fn two_regs_imm_12(
     };
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            errors.insert(CompileError::MissingImmediate {
                 span: whole_op_span,
             });
             return err(warnings, errors);
@@ -1314,7 +1317,7 @@ fn two_regs_imm_12(
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span().clone()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
+                errors.insert(CompileError::InvalidImmediateValue {
                     span: i.span().clone(),
                 });
                 return err(warnings, errors);
@@ -1325,7 +1328,7 @@ fn two_regs_imm_12(
     let imm = match VirtualImmediate12::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };

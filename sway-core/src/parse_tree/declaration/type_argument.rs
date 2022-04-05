@@ -1,3 +1,4 @@
+use indexmap::IndexSet;
 use std::hash::{Hash, Hasher};
 
 use pest::iterators::Pair;
@@ -47,8 +48,8 @@ impl TypeArgument {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let iter = pair.into_inner();
         let mut type_arguments = vec![];
         for type_arg in iter {
@@ -66,8 +67,8 @@ impl TypeArgument {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),

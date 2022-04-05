@@ -10,6 +10,8 @@ use crate::{
 
 use super::{patstack::PatStack, pattern::Pattern};
 
+use indexmap::IndexSet;
+
 /// A `WitnessReport` is a report of the witnesses to a `Pattern` being useful
 /// and is used in the match expression exhaustivity checking algorithm.
 #[derive(Debug)]
@@ -47,11 +49,11 @@ impl WitnessReport {
         c: &Pattern,
         span: &Span,
     ) -> CompileResult<(Pattern, Self)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match witness_report {
             WitnessReport::NoWitnesses => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "expected to find witnesses to use as arguments to a constructor",
                     span.clone(),
                 ));
@@ -77,11 +79,11 @@ impl WitnessReport {
 
     /// Prepends a witness `Pattern` onto the `WitnessReport`.
     pub(crate) fn add_witness(&mut self, witness: Pattern, span: &Span) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
+        let warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         match self {
             WitnessReport::NoWitnesses => {
-                errors.push(CompileError::Internal(
+                errors.insert(CompileError::Internal(
                     "expected to find witnesses",
                     span.clone(),
                 ));

@@ -1,3 +1,5 @@
+use indexmap::IndexSet;
+
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
     asm_lang::{ConstantRegister, Op, VirtualRegister},
@@ -17,8 +19,8 @@ pub(crate) fn convert_lazy_operator_to_asm(
 ) -> CompileResult<Vec<Op>> {
     // Short circuiting operators need to evaluate the LHS first, and then only conditionally
     // evaluate the RHS.
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_ops = vec![];
 
     // Always evaluate the LHS.  Put the result into the return register since with short

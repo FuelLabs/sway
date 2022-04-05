@@ -17,6 +17,8 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
+
 /// Represents the different variants of the AST.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TreeType {
@@ -94,8 +96,8 @@ impl TypedParseTree {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         let ordered_nodes = check!(
             node_dependencies::order_ast_nodes_by_dependency(parsed.root_nodes),
@@ -133,8 +135,8 @@ impl TypedParseTree {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Vec<TypedAstNode>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let typed_nodes = nodes
             .into_iter()
             .map(|node| {
@@ -166,15 +168,15 @@ impl TypedParseTree {
         span: Span,
         namespace: NamespaceRef,
         tree_type: &TreeType,
-        warnings: Vec<CompileWarning>,
-        mut errors: Vec<CompileError>,
+        warnings: IndexSet<CompileWarning>,
+        mut errors: IndexSet<CompileError>,
     ) -> CompileResult<Self> {
         // Keep a copy of the nodes as they are.
         let all_nodes = typed_tree_nodes.clone();
 
         // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
         // then B is also implemented for type T
-        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+        errors.extend(check_supertraits(&all_nodes, &namespace));
 
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
@@ -202,7 +204,7 @@ impl TypedParseTree {
 
         // impure functions are disallowed in non-contracts
         if *tree_type != TreeType::Contract {
-            errors.append(&mut disallow_impure_functions(&declarations, &mains));
+            errors.extend(disallow_impure_functions(&declarations, &mains));
         }
 
         // Perform other validation based on the tree type.
@@ -210,20 +212,22 @@ impl TypedParseTree {
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoPredicateMainFunction(span));
+                    errors.insert(CompileError::NoPredicateMainFunction(span));
                     return err(warnings, errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
+                    errors.insert(CompileError::MultiplePredicateMainFunctions(
                         mains.last().unwrap().span.clone(),
                     ));
                 }
                 let main_func = &mains[0];
                 match look_up_type_id(main_func.return_type) {
                     TypeInfo::Boolean => (),
-                    _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
-                        main_func.span.clone(),
-                    )),
+                    _ => {
+                        errors.insert(CompileError::PredicateMainDoesNotReturnBool(
+                            main_func.span.clone(),
+                        ));
+                    }
                 }
                 TypedParseTree::Predicate {
                     main_function: main_func.clone(),
@@ -235,11 +239,11 @@ impl TypedParseTree {
             TreeType::Script => {
                 // A script must have exactly one main function.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoScriptMainFunction(span));
+                    errors.insert(CompileError::NoScriptMainFunction(span));
                     return err(warnings, errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
+                    errors.insert(CompileError::MultipleScriptMainFunctions(
                         mains.last().unwrap().span.clone(),
                     ));
                 }
@@ -276,8 +280,8 @@ impl TypedParseTree {
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
     namespace: &NamespaceRef,
-) -> Vec<CompileError> {
-    let mut errors = vec![];
+) -> IndexSet<CompileError> {
+    let mut errors = IndexSet::new();
     for node in typed_tree_nodes {
         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
             trait_name,
@@ -323,12 +327,12 @@ fn check_supertraits(
                         // The two errors below should really be a single error (and a "note"),
                         // but we don't have a way today to point to two separate locations in the
                         // user code with a single error.
-                        errors.push(CompileError::SupertraitImplMissing {
+                        errors.insert(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.to_string(),
                             type_name: type_implementing_for.friendly_type_str(),
                             span: span.clone(),
                         });
-                        errors.push(CompileError::SupertraitImplRequired {
+                        errors.insert(CompileError::SupertraitImplRequired {
                             supertrait_name: supertrait.name.to_string(),
                             trait_name: tr.name.to_string(),
                             span: tr.name.span().clone(),

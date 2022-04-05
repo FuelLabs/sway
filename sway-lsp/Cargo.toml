@@ -11,6 +11,7 @@ description = "LSP server for Sway."
 [dependencies]
 dashmap = "4.0.2"
 forc-util = { version = "0.9.2", path = "../forc-util" }
+indexmap = "1.8.1"
 tower-lsp = "0.16.0"
 ropey = "1.2"
 serde_json = "1.0.60"

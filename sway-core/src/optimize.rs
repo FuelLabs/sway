@@ -1,5 +1,6 @@
 use crate::constants;
 use fuel_crypto::Hasher;
+use indexmap::IndexSet;
 use std::collections::HashMap;
 
 use crate::{
@@ -393,8 +394,8 @@ fn compile_abi_method(
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
         Some(selector) => selector,
         None => {
@@ -2453,6 +2454,7 @@ mod tests {
         parser::{Rule, SwayParser},
         semantic_analysis::{TreeType, TypedParseTree},
     };
+    use indexmap::IndexSet;
     use pest::Parser;
 
     // -------------------------------------------------------------------------------------------------
@@ -2595,8 +2597,8 @@ mod tests {
             generated_names: Default::default(),
         };
 
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let parse_tree =
             crate::parse_root_from_pairs(parsed.next().unwrap().into_inner(), Some(&build_config))
                 .unwrap(&mut warnings, &mut errors);

@@ -5,6 +5,7 @@ use crate::{
 
 use sway_types::span::Span;
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -35,8 +36,8 @@ impl ImplTrait {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         let path = config.map(|c| c.path());
         let block_span = Span {
@@ -126,8 +127,8 @@ impl ImplSelf {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
 
         let path = config.map(|c| c.path());
         let block_span = Span {

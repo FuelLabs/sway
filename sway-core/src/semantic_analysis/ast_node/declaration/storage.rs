@@ -10,6 +10,7 @@ use crate::{
 use sway_types::{state::StateIndex, Span};
 
 use derivative::Derivative;
+use indexmap::IndexSet;
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
@@ -31,8 +32,8 @@ impl TypedStorageDeclaration {
         fields: Vec<Ident>,
         storage_fields: &[TypedStorageField],
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
-        let mut errors = vec![];
-        let warnings = vec![];
+        let mut errors = IndexSet::new();
+        let warnings = IndexSet::new();
 
         let mut type_checked_buf = vec![];
         let mut fields: Vec<_> = fields.into_iter().rev().collect();
@@ -45,7 +46,7 @@ impl TypedStorageDeclaration {
         {
             Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
             None => {
-                errors.push(CompileError::StorageFieldDoesNotExist {
+                errors.insert(CompileError::StorageFieldDoesNotExist {
                     name: first_field.as_str().to_string(),
                     span: first_field.span().clone(),
                 });
@@ -90,7 +91,7 @@ impl TypedStorageDeclaration {
                         .iter()
                         .map(|x| x.name.as_str())
                         .collect::<Vec<_>>();
-                    errors.push(CompileError::FieldNotFound {
+                    errors.insert(CompileError::FieldNotFound {
                         field_name: field.clone(),
                         available_fields: available_fields.join(", "),
                         struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),

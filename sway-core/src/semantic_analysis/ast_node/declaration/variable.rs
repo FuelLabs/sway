@@ -1,3 +1,5 @@
+use indexmap::IndexSet;
+
 use crate::{
     constants::*, error::*, semantic_analysis::TypedExpression, type_engine::TypeId,
     type_engine::*, Ident, TypeParameter, Visibility,
@@ -90,16 +92,15 @@ pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
         .find_map(|x| {
             if *x == name.as_str() {
                 Some(err(
-                    vec![],
-                    [CompileError::InvalidVariableName {
+                    IndexSet::new(),
+                    IndexSet::from([CompileError::InvalidVariableName {
                         name: x.to_string(),
                         span: name.span().clone(),
-                    }]
-                    .to_vec(),
+                    }]),
                 ))
             } else {
                 None
             }
         })
-        .unwrap_or_else(|| ok((), vec![], vec![]))
+        .unwrap_or_else(|| ok((), IndexSet::new(), IndexSet::new()))
 }

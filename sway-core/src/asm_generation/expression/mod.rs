@@ -35,8 +35,8 @@ pub(crate) fn convert_expression_to_asm(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     match &exp.expression {
         TypedExpressionVariant::Literal(ref lit) => ok(
             convert_literal_to_asm(
@@ -111,8 +111,8 @@ pub(crate) fn convert_expression_to_asm(
             whole_block_span,
         } => {
             let mut asm_buf = vec![];
-            let mut warnings = vec![];
-            let mut errors = vec![];
+            let mut warnings = IndexSet::new();
+            let mut errors = IndexSet::new();
             // Keep track of the mapping from the declared names of the registers to the actual
             // registers from the sequencer for replacement
             let mut mapping_of_real_registers_to_declared_names: HashMap<&str, VirtualRegister> =
@@ -167,7 +167,7 @@ pub(crate) fn convert_expression_to_asm(
                     .into_iter()
                     .filter_map(|x| match x {
                         Err(e) => {
-                            errors.push(e);
+                            errors.insert(e);
                             None
                         }
                         Ok(o) => Some(o),
@@ -202,7 +202,7 @@ pub(crate) fn convert_expression_to_asm(
                     ) {
                         Some(reg) => reg,
                         None => {
-                            errors.push(CompileError::UnknownRegister {
+                            errors.insert(CompileError::UnknownRegister {
                                 span: asm_reg_span.clone(),
                                 initialized_registers: mapping_of_real_registers_to_declared_names
                                     .iter()
@@ -221,7 +221,7 @@ pub(crate) fn convert_expression_to_asm(
                 }
                 _ if look_up_type_id(exp.return_type).is_unit() => (),
                 _ => {
-                    errors.push(CompileError::InvalidAssemblyMismatchedReturn {
+                    errors.insert(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
                     });
                 }
@@ -365,7 +365,7 @@ pub(crate) fn convert_expression_to_asm(
             exp.span.clone(),
         ),
         _ => {
-            errors.push(CompileError::Unimplemented(
+            errors.insert(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
             ));
@@ -394,8 +394,8 @@ pub(crate) fn convert_code_block_to_asm(
     return_register: Option<&VirtualRegister>,
 ) -> CompileResult<Vec<Op>> {
     let mut asm_buf: Vec<Op> = vec![];
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     // generate a label for this block
     let exit_label = register_sequencer.get_label();
     for node in &block.contents {
@@ -446,20 +446,20 @@ fn convert_is_ref_type_to_asm(
     register_sequencer: &mut RegisterSequencer,
     span: Span,
 ) -> CompileResult<Vec<Op>> {
-    let warnings = vec![];
-    let mut errors = vec![];
+    let warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![Op::new_comment("is_ref_type".to_string())];
     let ty = match resolve_type(*type_id, &span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
+            errors.insert(e.into());
             return err(warnings, errors);
         }
     };
     let is_ref_type = match ty.is_copy_type(&span) {
         Ok(is_copy) => !is_copy,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -482,8 +482,8 @@ fn convert_size_of_to_asm(
     register_sequencer: &mut RegisterSequencer,
     span: Span,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![Op::new_comment("size_of_val".to_string())];
     if let Some(expr) = expr {
         let mut ops = check!(
@@ -497,14 +497,14 @@ fn convert_size_of_to_asm(
     let ty = match resolve_type(*type_id, &span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
+            errors.insert(e.into());
             return err(warnings, errors);
         }
     };
     let size_in_bytes: u64 = match ty.size_in_bytes(&span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
+            errors.insert(e);
             return err(warnings, errors);
         }
     };
@@ -528,8 +528,8 @@ fn convert_fn_app_to_asm(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![Op::new_comment(format!("{} fn call", name.suffix.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
@@ -586,8 +586,8 @@ pub(crate) fn convert_abi_fn_to_asm(
     parent_namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<Vec<Op>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut asm_buf = vec![Op::new_comment(format!("{} abi fn", decl.name.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
@@ -648,8 +648,8 @@ fn convert_if_let_to_asm(
     // 6. evaluate the then branch with that variable in scope
     // 7. insert a jump label for the else branch
     // 8. evaluate the else branch, if any
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let mut warnings = IndexSet::new();
+    let mut errors = IndexSet::new();
     let mut buf = vec![];
     // 1.
     let expr_return_register = register_sequencer.next();

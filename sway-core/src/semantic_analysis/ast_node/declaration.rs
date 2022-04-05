@@ -7,6 +7,7 @@ use crate::{
 use sway_types::{join_spans, span::Span, Property};
 
 use derivative::Derivative;
+use indexmap::IndexSet;
 use std::hash::{Hash, Hasher};
 
 mod function;
@@ -97,11 +98,11 @@ impl TypedDeclaration {
             }
             TypedDeclaration::FunctionDeclaration { .. } => {
                 return err(
-                    vec![],
-                    vec![CompileError::Unimplemented(
+                    IndexSet::new(),
+                    IndexSet::from([CompileError::Unimplemented(
                         "Function pointers have not yet been implemented.",
                         self.span(),
-                    )],
+                    )]),
                 )
             }
             TypedDeclaration::StructDeclaration(decl) => decl.type_id(),
@@ -114,16 +115,16 @@ impl TypedDeclaration {
             }
             decl => {
                 return err(
-                    vec![],
-                    vec![CompileError::NotAType {
+                    IndexSet::new(),
+                    IndexSet::from([CompileError::NotAType {
                         span: decl.span(),
                         name: decl.pretty_print(),
                         actually_is: decl.friendly_name(),
-                    }],
+                    }]),
                 )
             }
         };
-        ok(type_id, vec![], vec![])
+        ok(type_id, IndexSet::new(), IndexSet::new())
     }
 
     pub(crate) fn span(&self) -> Span {
@@ -264,8 +265,8 @@ impl TypedStructDeclaration {
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         let type_arguments_span = type_arguments
@@ -275,7 +276,7 @@ impl TypedStructDeclaration {
             .unwrap_or_else(|| self.span.clone());
         if !type_arguments.is_empty() {
             if type_mapping.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                errors.insert(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
                     expected: type_mapping.len(),
                     span: type_arguments_span,
@@ -286,25 +287,35 @@ impl TypedStructDeclaration {
             {
                 match self_type {
                     Some(self_type) => {
-                        let (mut new_warnings, new_errors) = unify_with_self(
+                        let (new_warnings, new_errors) = unify_with_self(
                             *interim_type,
                             type_argument.type_id,
                             self_type,
                             &type_argument.span,
                             "Type argument is not assignable to generic type parameter.",
                         );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        warnings.extend(new_warnings);
+                        errors.extend(
+                            new_errors
+                                .into_iter()
+                                .map(|x| x.into())
+                                .collect::<Vec<CompileError>>(),
+                        );
                     }
                     None => {
-                        let (mut new_warnings, new_errors) = unify(
+                        let (new_warnings, new_errors) = unify(
                             *interim_type,
                             type_argument.type_id,
                             &type_argument.span,
                             "Type argument is not assignable to generic type parameter.",
                         );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        warnings.extend(new_warnings);
+                        errors.extend(
+                            new_errors
+                                .into_iter()
+                                .map(|x| x.into())
+                                .collect::<Vec<CompileError>>(),
+                        );
                     }
                 }
             }
@@ -418,8 +429,8 @@ impl TypedEnumDeclaration {
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         let type_arguments_span = type_arguments
@@ -428,7 +439,7 @@ impl TypedEnumDeclaration {
             .reduce(join_spans)
             .unwrap_or_else(|| self.span.clone());
         if type_mapping.len() != type_arguments.len() {
-            errors.push(CompileError::IncorrectNumberOfTypeArguments {
+            errors.insert(CompileError::IncorrectNumberOfTypeArguments {
                 given: type_arguments.len(),
                 expected: type_mapping.len(),
                 span: type_arguments_span,
@@ -438,25 +449,35 @@ impl TypedEnumDeclaration {
         for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
             match self_type {
                 Some(self_type) => {
-                    let (mut new_warnings, new_errors) = unify_with_self(
+                    let (new_warnings, new_errors) = unify_with_self(
                         *interim_type,
                         type_argument.type_id,
                         self_type,
                         &type_argument.span,
                         "Type argument is not assignable to generic type parameter.",
                     );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    warnings.extend(new_warnings);
+                    errors.extend(
+                        new_errors
+                            .into_iter()
+                            .map(|x| x.into())
+                            .collect::<Vec<CompileError>>(),
+                    );
                 }
                 None => {
-                    let (mut new_warnings, new_errors) = unify(
+                    let (new_warnings, new_errors) = unify(
                         *interim_type,
                         type_argument.type_id,
                         &type_argument.span,
                         "Type argument is not assignable to generic type parameter.",
                     );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    warnings.extend(new_warnings);
+                    errors.extend(
+                        new_errors
+                            .into_iter()
+                            .map(|x| x.into())
+                            .collect::<Vec<CompileError>>(),
+                    );
                 }
             }
         }

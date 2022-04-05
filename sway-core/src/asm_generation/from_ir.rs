@@ -7,6 +7,7 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
+use indexmap::IndexSet;
 use std::collections::HashMap;
 
 use crate::{
@@ -27,8 +28,8 @@ use sway_types::span::Span;
 use either::Either;
 
 pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileResult<FinalizedAsm> {
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
+    let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+    let mut errors: IndexSet<CompileError> = IndexSet::new();
 
     let mut reg_seqr = RegisterSequencer::new();
     let mut bytecode: Vec<Op> = build_preamble(&mut reg_seqr).to_vec();
@@ -99,8 +100,8 @@ fn compile_module_to_asm(
                 .flat_map(|_| builder.finalize())
         }
         Kind::Contract => {
-            let mut warnings = Vec::new();
-            let mut errors = Vec::new();
+            let mut warnings = IndexSet::new();
+            let mut errors = IndexSet::new();
 
             let mut selectors_and_labels: Vec<([u8; 4], Label)> = Vec::new();
 
@@ -401,8 +402,8 @@ impl<'ir> AsmBuilder<'ir> {
         // XXX Assuming no warnings...
         ok(
             (self.data_section, self.bytecode, self.reg_seqr),
-            Vec::new(),
-            Vec::new(),
+            IndexSet::new(),
+            IndexSet::new(),
         )
     }
 
@@ -410,8 +411,8 @@ impl<'ir> AsmBuilder<'ir> {
         // Compile instructions.
         self.add_locals(function);
         self.compile_fn_args(function);
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         for block in function.block_iter(self.context) {
             self.add_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
@@ -427,8 +428,8 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<()> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         if let ValueDatum::Instruction(instruction) = &self.context.values[instr_val.0].value {
             match instruction {
                 Instruction::AsmBlock(asm, args) => {
@@ -441,7 +442,7 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Instruction::Branch(to_block) => self.compile_branch(block, to_block),
                 Instruction::Call(..) => {
-                    errors.push(CompileError::Internal(
+                    errors.insert(CompileError::Internal(
                         "Calls are not yet supported.",
                         instr_val
                             .get_span(self.context)
@@ -544,7 +545,7 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
             }
         } else {
-            errors.push(CompileError::Internal(
+            errors.insert(CompileError::Internal(
                 "Value not an instruction.",
                 instr_val
                     .get_span(self.context)
@@ -565,8 +566,8 @@ impl<'ir> AsmBuilder<'ir> {
         asm: &AsmBlock,
         asm_args: &[AsmArg],
     ) -> CompileResult<()> {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
+        let mut warnings: IndexSet<CompileWarning> = IndexSet::new();
+        let mut errors: IndexSet<CompileError> = IndexSet::new();
         let mut inline_reg_map = HashMap::new();
         let mut inline_ops = Vec::new();
         for AsmArg { name, initializer } in asm_args {
@@ -611,7 +612,7 @@ impl<'ir> AsmBuilder<'ir> {
                 })
                 .filter_map(|res| match res {
                     Err(e) => {
-                        errors.push(e);
+                        errors.insert(e);
                         None
                     }
                     Ok(o) => Some(o),
@@ -632,7 +633,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Some(span_md_idx) => match span_md_idx.to_span(self.context) {
                     Ok(span) => span,
                     Err(ir_error) => {
-                        errors.push(CompileError::InternalOwned(
+                        errors.insert(CompileError::InternalOwned(
                             ir_error.to_string(),
                             instr_val
                                 .get_span(self.context)
@@ -668,7 +669,7 @@ impl<'ir> AsmBuilder<'ir> {
             let ret_reg = match realize_register(ret_reg_name.as_str()) {
                 Some(reg) => reg,
                 None => {
-                    errors.push(CompileError::UnknownRegister {
+                    errors.insert(CompileError::UnknownRegister {
                         initialized_registers: inline_reg_map
                             .iter()
                             .map(|(name, _)| name.to_string())
@@ -1315,7 +1316,7 @@ impl<'ir> AsmBuilder<'ir> {
             },
         }
         self.reg_map.insert(*instr_val, instr_reg);
-        ok((), Vec::new(), Vec::new())
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
@@ -1489,7 +1490,7 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and val"),
         }
 
-        ok((), Vec::new(), Vec::new())
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
@@ -1528,7 +1529,7 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         self.reg_map.insert(*instr_val, load_reg);
-        ok((), Vec::new(), Vec::new())
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     fn compile_state_store_word(
@@ -1578,7 +1579,7 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and store_val"),
         }
 
-        ok((), Vec::new(), Vec::new())
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     fn compile_store(
@@ -1739,7 +1740,7 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             },
         };
-        ok((), Vec::new(), Vec::new())
+        ok((), IndexSet::new(), IndexSet::new())
     }
 
     fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<(Pointer, Type, u64)> {
@@ -1748,15 +1749,19 @@ impl<'ir> AsmBuilder<'ir> {
                 base_ptr,
                 ptr_ty,
                 offset,
-            }) => ok((*base_ptr, *ptr_ty, *offset), Vec::new(), Vec::new()),
+            }) => ok(
+                (*base_ptr, *ptr_ty, *offset),
+                IndexSet::new(),
+                IndexSet::new(),
+            ),
             _otherwise => err(
-                Vec::new(),
-                vec![CompileError::Internal(
+                IndexSet::new(),
+                IndexSet::from([CompileError::Internal(
                     "Pointer arg for load/store is not a get_ptr instruction.",
                     ptr_val
                         .get_span(self.context)
                         .unwrap_or_else(Self::empty_span),
-                )],
+                )]),
             ),
         }
     }
@@ -2229,8 +2234,8 @@ mod tests {
             },
         );
 
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let asm = asm_result.unwrap(&mut warnings, &mut errors);
         assert!(warnings.is_empty() && errors.is_empty());
 

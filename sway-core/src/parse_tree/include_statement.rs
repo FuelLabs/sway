@@ -2,6 +2,7 @@ use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
@@ -19,8 +20,8 @@ impl IncludeStatement {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let span = Span {
             span: pair.as_span(),
             path: path.clone(),

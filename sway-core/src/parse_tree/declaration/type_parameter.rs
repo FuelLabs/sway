@@ -5,6 +5,7 @@ use crate::{
 
 use sway_types::{ident::Ident, span::Span};
 
+use indexmap::IndexSet;
 use pest::iterators::Pair;
 use std::{
     convert::From,
@@ -55,12 +56,12 @@ impl TypeParameter {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<TypeParameter>> {
         let path = config.map(|c| c.path());
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let params = match (type_params_pair, where_clause_pair) {
             (None, None) => vec![],
             (None, Some(where_clause_pair)) => {
-                errors.push(CompileError::UnexpectedWhereClause(Span {
+                errors.insert(CompileError::UnexpectedWhereClause(Span {
                     span: where_clause_pair.as_span(),
                     path,
                 }));
@@ -92,7 +93,7 @@ impl TypeParameter {
                         }) {
                             Some(o) => o,
                             None => {
-                                errors.push(CompileError::ConstrainedNonExistentType {
+                                errors.insert(CompileError::ConstrainedNonExistentType {
                                     type_name: where_clause.type_param,
                                     trait_name: where_clause.trait_constraint.clone(),
                                     span: where_clause.trait_constraint.span().clone(),
@@ -115,8 +116,8 @@ impl TypeParameter {
         type_params_pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut buf = vec![];
         for pair in type_params_pair.into_inner() {
             let name_ident = check!(
@@ -163,8 +164,8 @@ impl WhereClause {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Vec<WhereClause>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut iter = pair.into_inner().peekable();
         let mut clauses = vec![];
         while iter.peek().is_some() {

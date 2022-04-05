@@ -15,6 +15,7 @@ use lazy_static::lazy_static;
 use std::{collections::VecDeque, sync::RwLock};
 use sway_types::{join_spans, Ident, Span};
 pub type NamespaceRef = Index;
+use indexmap::IndexSet;
 
 pub trait NamespaceWrapper {
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
@@ -139,28 +140,31 @@ impl NamespaceWrapper for NamespaceRef {
             |ns| ns.declared_storage.as_ref().map(|x| x.fields.clone()),
             *self,
         ) {
-            ok(fields, vec![], vec![])
+            ok(fields, IndexSet::new(), IndexSet::new())
         } else {
             let msg = "unknown source location";
             let span = Span {
                 span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
                 path: None,
             };
-            err(vec![], vec![CompileError::NoDeclaredStorage { span }])
+            err(
+                IndexSet::new(),
+                IndexSet::from([CompileError::NoDeclaredStorage { span }]),
+            )
         }
     }
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
         write_module(|ns| ns.insert_module(module_name, ix), *self)
     }
     fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let mut ident_iter = subfield_exp.iter().peekable();
         let first_ident = ident_iter.next().unwrap();
         let symbol = match read_module(|m| m.symbols.get(first_ident).cloned(), *self) {
             Some(s) => s,
             None => {
-                errors.push(CompileError::UnknownVariable {
+                errors.insert(CompileError::UnknownVariable {
                     var_name: first_ident.as_str().to_string(),
                     span: first_ident.span().clone(),
                 });
@@ -182,10 +186,10 @@ impl NamespaceWrapper for NamespaceRef {
             warnings,
             errors
         );
-        let mut type_fields =
+        let type_fields =
             self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
-        warnings.append(&mut type_fields.warnings);
-        errors.append(&mut type_fields.errors);
+        warnings.extend(type_fields.warnings);
+        errors.extend(type_fields.errors);
         let (mut fields, struct_name): (Vec<TypedStructField>, Ident) = match type_fields.value {
             // if it is missing, the error message comes from within the above method
             // so we don't need to re-add it here
@@ -205,7 +209,7 @@ impl NamespaceWrapper for NamespaceRef {
                         let available_fields =
                             fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
 
-                        errors.push(CompileError::FieldNotFound {
+                        errors.insert(CompileError::FieldNotFound {
                             field_name: ident.clone(),
                             struct_name: struct_name.to_string(),
                             available_fields: available_fields.join(", "),
@@ -256,17 +260,19 @@ impl NamespaceWrapper for NamespaceRef {
     ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
         let ty = look_up_type_id(ty);
         match ty {
-            TypeInfo::Struct { name, fields, .. } => ok((fields.to_vec(), name), vec![], vec![]),
+            TypeInfo::Struct { name, fields, .. } => {
+                ok((fields.to_vec(), name), IndexSet::new(), IndexSet::new())
+            }
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere
-            TypeInfo::ErrorRecovery => err(vec![], vec![]),
+            TypeInfo::ErrorRecovery => err(IndexSet::new(), IndexSet::new()),
             a => err(
-                vec![],
-                vec![CompileError::NotAStruct {
+                IndexSet::new(),
+                IndexSet::from([CompileError::NotAStruct {
                     name: debug_string.into(),
                     span: debug_span.clone(),
                     actually: a.friendly_type_str(),
-                }],
+                }]),
             ),
         }
     }
@@ -314,8 +320,8 @@ impl NamespaceWrapper for NamespaceRef {
     }
 
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let module = check!(
             self.find_module_relative(path),
             return err(warnings, errors),
@@ -325,7 +331,7 @@ impl NamespaceWrapper for NamespaceRef {
         match read_module(|module| module.symbols.get(name).cloned(), module) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
-                errors.push(CompileError::SymbolNotFound {
+                errors.insert(CompileError::SymbolNotFound {
                     name: name.as_str().to_string(),
                     span: name.span().clone(),
                 });
@@ -355,8 +361,8 @@ impl NamespaceWrapper for NamespaceRef {
         from_module: Option<NamespaceRef>,
         path: Vec<Ident>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let namespace = {
             let base_namespace = match from_module {
                 Some(base_namespace) => base_namespace,
@@ -396,7 +402,7 @@ impl NamespaceWrapper for NamespaceRef {
                 );
                 for symbol in symbols {
                     if m.use_synonyms.contains_key(&symbol) {
-                        errors.push(CompileError::StarImportShadowsOtherSymbol {
+                        errors.insert(CompileError::StarImportShadowsOtherSymbol {
                             name: symbol.as_str().to_string(),
                             span: symbol.span().clone(),
                         });
@@ -418,8 +424,8 @@ impl NamespaceWrapper for NamespaceRef {
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let base_module = match from_module {
             Some(base_module) => base_module,
             None => *self,
@@ -462,7 +468,7 @@ impl NamespaceWrapper for NamespaceRef {
                 if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
                     != Some(TypeInfo::ErrorRecovery)
                 {
-                    errors.push(CompileError::MethodNotFound {
+                    errors.insert(CompileError::MethodNotFound {
                         method_name: method_name.as_str().to_string(),
                         type_name: r#type.friendly_type_str(),
                         span: method_name.span().clone(),
@@ -474,8 +480,8 @@ impl NamespaceWrapper for NamespaceRef {
     }
 
     fn find_module_relative(&self, path: &[Ident]) -> CompileResult<NamespaceRef> {
-        let mut errors = vec![];
-        let warnings = vec![];
+        let mut errors = IndexSet::new();
+        let warnings = IndexSet::new();
         if path.is_empty() {
             return ok(*self, warnings, errors);
         }
@@ -483,7 +489,7 @@ impl NamespaceWrapper for NamespaceRef {
         let mut ix: NamespaceRef = match ix {
             Some(ix) => ix,
             None => {
-                errors.push(CompileError::ModuleNotFound {
+                errors.insert(CompileError::ModuleNotFound {
                     span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
                         join_spans(acc, this_one.span().clone())
                     }),
@@ -505,7 +511,7 @@ impl NamespaceWrapper for NamespaceRef {
                     ix = ns_ix;
                 }
                 _ => {
-                    errors.push(CompileError::ModuleNotFound {
+                    errors.insert(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
                             join_spans(acc, this_one.span().clone())
                         }),
@@ -531,8 +537,8 @@ impl NamespaceWrapper for NamespaceRef {
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let base_namespace = match from_namespace {
             Some(base_namespace) => base_namespace,
             None => *self,
@@ -548,7 +554,7 @@ impl NamespaceWrapper for NamespaceRef {
         match read_module(|namespace| namespace.symbols.get(item).cloned(), namespace) {
             Some(decl) => {
                 if decl.visibility() != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol {
+                    errors.insert(CompileError::ImportPrivateSymbol {
                         name: item.as_str().to_string(),
                         span: item.span().clone(),
                     });
@@ -581,7 +587,7 @@ impl NamespaceWrapper for NamespaceRef {
                         match alias.clone() {
                             Some(alias) => {
                                 if m.use_synonyms.contains_key(&alias) {
-                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                    errors.insert(CompileError::ShadowsOtherSymbol {
                                         name: alias.as_str().to_string(),
                                         span: alias.span().clone(),
                                     });
@@ -592,7 +598,7 @@ impl NamespaceWrapper for NamespaceRef {
                             }
                             None => {
                                 if m.use_synonyms.contains_key(item) {
-                                    errors.push(CompileError::ShadowsOtherSymbol {
+                                    errors.insert(CompileError::ShadowsOtherSymbol {
                                         name: item.as_str().to_string(),
                                         span: item.span().clone(),
                                     });
@@ -605,7 +611,7 @@ impl NamespaceWrapper for NamespaceRef {
                 );
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
+                errors.insert(CompileError::SymbolNotFound {
                     name: item.as_str().to_string(),
                     span: item.span().clone(),
                 });
@@ -674,8 +680,8 @@ impl NamespaceWrapper for NamespaceRef {
         span: Span,
         enforce_type_args: bool,
     ) -> CompileResult<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let type_id = match ty {
             TypeInfo::Custom {
                 ref name,
@@ -707,7 +713,7 @@ impl NamespaceWrapper for NamespaceRef {
                             && new_type_arguments.is_empty()
                             && !decl.type_parameters.is_empty()
                         {
-                            errors.push(CompileError::NeedsTypeArguments {
+                            errors.insert(CompileError::NeedsTypeArguments {
                                 name: name.clone(),
                                 span: name.span().clone(),
                             });
@@ -730,7 +736,7 @@ impl NamespaceWrapper for NamespaceRef {
                             && new_type_arguments.is_empty()
                             && !decl.type_parameters.is_empty()
                         {
-                            errors.push(CompileError::NeedsTypeArguments {
+                            errors.insert(CompileError::NeedsTypeArguments {
                                 name: name.clone(),
                                 span: name.span().clone(),
                             });
@@ -756,7 +762,7 @@ impl NamespaceWrapper for NamespaceRef {
                         insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => {
-                        errors.push(CompileError::UnknownType { span });
+                        errors.insert(CompileError::UnknownType { span });
                         return err(warnings, errors);
                     }
                 }
@@ -770,8 +776,8 @@ impl NamespaceWrapper for NamespaceRef {
 
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> CompileResult<TypeId> {
         let ty = ty.clone();
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let mut warnings = IndexSet::new();
+        let mut errors = IndexSet::new();
         let type_id = match ty {
             TypeInfo::Custom {
                 name,
