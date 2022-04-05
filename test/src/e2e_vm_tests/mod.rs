@@ -310,6 +310,34 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
         ),
+        (
+            "should_pass/test_contracts/auth_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/balance_test_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/basic_storage",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/context_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/increment_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/storage_access_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/test_fuel_coin_contract",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
