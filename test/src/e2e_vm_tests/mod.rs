@@ -299,6 +299,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // with some known state. Note that if a non-contract is included
     // it will be rejected during assertion. Please move it to
     // `positive_project_names_no_abi` above.
+<<<<<<< HEAD
     let positive_project_names_with_abi = vec![
         // contracts revert because this test runs them against the VM
         // and no selectors will match
@@ -339,6 +340,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Revert(0),
         ),
     ];
+=======
+    let positive_project_names_with_abi = vec![(
+        "should_pass/language/valid_impurity",
+        ProgramState::Revert(0), // false
+    )];
+>>>>>>> 2485b5dbb9c47444987a09d5f1659e69fddf2072
 
     number_of_tests_run += positive_project_names_with_abi
         .iter()
@@ -426,10 +433,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/require_contract_deployment/caller_context_test",
         ),
         (
-            "should_pass/test_contracts/contract_abi_impl",
-            "should_pass/require_contract_deployment/contract_call",
-        ),
-        (
             "should_pass/test_contracts/balance_test_contract",
             "should_pass/require_contract_deployment/bal_opcode",
         ),
@@ -437,12 +440,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             "should_pass/require_contract_deployment/token_ops_test",
         ),
-        /* Requires IR - TODO:enable when the IR pipeline is enabled by default
-         * https://github.com/FuelLabs/sway/issues/981
         (
             "should_pass/test_contracts/storage_access_contract",
             "should_pass/require_contract_deployment/storage_access_caller",
-        ),*/
+        ),
     ];
 
     let total_number_of_tests = positive_project_names_no_abi.len()

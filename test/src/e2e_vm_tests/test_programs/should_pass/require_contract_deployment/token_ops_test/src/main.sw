@@ -1,6 +1,5 @@
 script;
 
-// use std::constants::ETH_ID;
 use std::assert::assert;
 use std::address::Address;
 use std::context::balance_of;
@@ -18,13 +17,13 @@ fn main() -> bool {
     let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ~ContractId::from(0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
+    let fuelcoin_id = ~ContractId::from(0x9ebec04226fdd4c962dc0f299da0555d180e3d60e39610a49613512a9846316a);
 
-    // contract ID for sway/test/src/e2e_vm_tests/test_programs/balance_test_contract
-    let balance_test_id = ~ContractId::from(0xa835193dabf3fe80c0cb62e2ecc424f5ac03bc7f5c896ecc4bd2fd06cc434322);
+    // contract ID for sway/test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/balance_test_contract/
+    let balance_test_id = ~ContractId::from(0xb4c0d8c9056c0cde34b66e7e4e3f361d927d26ffdc16c2645dd0e2699bc96cad);
 
     // todo: use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, 0xff95564b8f788b6a2a884813eadfff2dbfe008a881008e7b298ce14208a73864);
+    let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
 
     let mut fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 0);

@@ -1,6 +1,5 @@
 contract;
 use std::storage::*;
-use std::hash::*;
 use basic_storage_abi::*;
 
 impl StoreU64 for Contract {

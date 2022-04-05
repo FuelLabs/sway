@@ -25,7 +25,7 @@ impl Token {
             name,
             token_type,
             line_start: range.start.line,
-            length: range.end.character - range.start.character + 1,
+            length: range.end.character - range.start.character,
         }
     }
 
