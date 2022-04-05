@@ -171,11 +171,11 @@ async fn can_mint_and_send_to_contract() {
     assert_eq!(result.value, amount)
 }
 
+#[tokio::test]
 async fn can_mint_and_send_to_address() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) =
         get_fuelcoin_instance(provider.clone(), wallet.clone()).await;
-    let balance_id = get_balance_contract_id(provider, wallet.clone()).await;
     let amount = 55u64;
 
     let asset_id_array: [u8; 32] = fuelcoin_id.into();
@@ -185,12 +185,13 @@ async fn can_mint_and_send_to_address() {
         value: address.into(),
     };
 
-    fuelcoin_instance
+    let result = fuelcoin_instance
         .mint_and_send_to_address(amount, recipient)
-        .set_contracts(&[balance_id])
+        .append_variable_outputs(1)
         .call()
         .await
         .unwrap();
+    dbg!(&result);
 
     assert_eq!(
         wallet
