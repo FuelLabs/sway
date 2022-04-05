@@ -1,8 +1,8 @@
-use anyhow::{anyhow, bail, Result};
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
+use anyhow::{anyhow, bail, Result};
 use forc_pkg::{check_program_type, fuel_core_not_running, manifest_file_missing, Manifest};
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;

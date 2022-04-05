@@ -1,9 +1,9 @@
-use anyhow::{bail, Result};
 use crate::ops::forc_build;
 use crate::{
     cli::{BuildCommand, DeployCommand},
     utils::SWAY_GIT_TAG,
 };
+use anyhow::{bail, Result};
 use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
