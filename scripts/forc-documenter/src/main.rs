@@ -1,8 +1,10 @@
-use clap::{Parser, Subcommand};
 use anyhow::{anyhow, Result};
-use std::fs::File;
+use clap::{Parser, Subcommand};
+use std::fs::{create_dir_all, File, OpenOptions};
 use std::io;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process;
 use std::str;
 
@@ -35,14 +37,43 @@ pub enum LineKind {
 }
 
 pub const SUBHEADERS: &[&str] = &["USAGE:", "ARGS:", "OPTIONS:", "SUBCOMMANDS:"];
+pub const INDEX_HEADER: &str = "Here are a list of commands available to forc:\n\n";
+
+fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
+    let curr_dir = std::env::current_dir().unwrap();
+    let sway_dir = curr_dir
+        .parent()
+        .unwrap()
+        .parent()
+        .expect("Unable to navigate to project root");
+    let sway_path = Path::new(sway_dir);
+    let forc_commands_docs_path = sway_path.join("docs/src/forc/commands");
+
+    if !forc_commands_docs_path.is_dir() {
+        println!("Generating");
+        create_dir_all(&forc_commands_docs_path)?;
+    }
+
+    Ok(forc_commands_docs_path)
+}
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
+    let forc_commands_docs_path =
+        prepare_forc_commands_docs_dir().expect("Failed to prepare forc commands docs directory");
+
     match cli.command {
         Commands::Run(_command) => {
+            let index_file_path = forc_commands_docs_path.join("index.md");
+            let mut index_file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .append(true)
+                .open(index_file_path)
+                .expect("Problem opening or creating forc/commands/index.md");
             if _command.command_name.is_some() {
-                generate(&_command.command_name.unwrap());
+                generate_doc_output(&_command.command_name.unwrap());
             } else {
                 let output = process::Command::new("forc")
                     .arg("--help")
@@ -57,8 +88,7 @@ fn main() -> io::Result<()> {
 
                 for line in lines {
                     if subcommand_is_parsed {
-                        let (command, description) =
-                            line.trim().split_once(" ").unwrap_or(("", ""));
+                        let (command, _) = line.trim().split_once(" ").unwrap_or(("", ""));
                         possible_commands.push(command.clone());
                     }
                     if line == "SUBCOMMANDS:" {
@@ -66,17 +96,54 @@ fn main() -> io::Result<()> {
                     }
                 }
 
-                for command in possible_commands {
-                    generate(command);
+                for (index, command) in possible_commands.iter().enumerate() {
+                    let result = match generate_doc_output(command) {
+                        Ok(output) => output,
+                        Err(_) => continue,
+                    };
+
+                    let document_name = format_command_doc_name(command);
+                    let index_entry_name = format_index_entry_name(command);
+                    let index_entry_string =
+                        format_index_entry_string(&document_name, &index_entry_name);
+
+                    let forc_command_file_path = forc_commands_docs_path.join(document_name);
+                    let mut command_file = File::create(forc_command_file_path)
+                        .expect("Failed to create documentation");
+
+                    command_file
+                        .write_all(&result.as_bytes())
+                        .expect("Failed to write to file");
+
+                    if index == 0 {
+                        index_file
+                            .write(&INDEX_HEADER.as_bytes())
+                            .expect("Failed to write to forc/commands/index.md");
+                    }
+
+                    index_file
+                        .write(&index_entry_string.as_bytes())
+                        .expect("Failed to write to forc/commands/index.md");
                 }
             }
+            println!("Done.");
         }
     }
-
     Ok(())
 }
 
-fn generate(subcommand: &str) -> Result<()>{
+fn format_command_doc_name(command: &str) -> String {
+    "forc_".to_owned() + &command + ".md"
+}
+
+fn format_index_entry_name(command: &str) -> String {
+    "forc ".to_owned() + command
+}
+fn format_index_entry_string(document_name: &str, index_entry_name: &str) -> String {
+    "- [".to_owned() + &index_entry_name + "](./" + &document_name + ")\n"
+}
+
+fn generate_doc_output(subcommand: &str) -> Result<String> {
     let mut result = String::new();
 
     let output = process::Command::new("forc")
@@ -106,18 +173,11 @@ fn generate(subcommand: &str) -> Result<()>{
 
         if !formatted_line.ends_with("\n") {
             result.push_str("\n");
-
         }
     }
 
-
-    let mut file = File::create(subcommand.to_owned() + ".md").expect("Failed to create file");
-
-    file.write_all(&result.as_bytes())
-        .expect("Failed to write to file");
-    
-    Ok(())
-
+    println!("Generating docs for command: forc {}...", &subcommand);
+    Ok(result)
 }
 
 fn format_line(line: &str) -> String {
@@ -183,7 +243,7 @@ fn format_arg_line(arg_line: &str) -> String {
             "\n\n",
         );
     }
-    formatted_arg_line
+    "\n".to_owned() + &formatted_arg_line
 }
 
 fn format_option_line(option_line: &str) -> String {
@@ -214,8 +274,7 @@ fn format_option_line(option_line: &str) -> String {
     result.push_str(&rest_of_line);
     result.push_str("\n");
 
-    println!("result: {}", result);
-    result
+    "\n".to_owned() + &result
 }
 
 fn is_option(token: &str) -> bool {
@@ -288,8 +347,7 @@ mod tests {
 
     #[test]
     fn test_format_option_line() {
-        let example_option_line_1 = 
-        "-c, --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1
+        let example_option_line_1 = "-c, --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1
         and prints a diff if formatting is required";
         let example_option_line_2 =
             "-o <JSON_OUTFILE> If set, outputs a json file representing the output json abi";
