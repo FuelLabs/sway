@@ -112,6 +112,15 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
 
+        let mut diagnostics = vec![];
+        self.session.documents
+            .iter()
+            .for_each(|document| {
+                diagnostics.extend(capabilities::diagnostic::generate_warnings_for_parsed_tokens(document.get_tokens()))
+            });
+
+        eprintln!("{:#?}", diagnostics);
+        
         if !diagnostics.is_empty() {
             self.client
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
