@@ -191,7 +191,6 @@ async fn can_mint_and_send_to_address() {
         .call()
         .await
         .unwrap();
-    dbg!(&result);
 
     assert_eq!(
         wallet
