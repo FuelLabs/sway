@@ -1,9 +1,9 @@
 script;
 use storage_access_abi::{S, StorageAccess, T};
-use std::chain::*;
+use std::assert::assert;
 
 fn main() -> bool {
-    let contract_id = 0x19280009c101a694ec13061a4d1853826dd04ec5594a0ab05fd275904c2e4dbf;
+    let contract_id = 0x1c305447488d8da2c5bd6b025222970b699edd84aa405f15cace2b33a13ddaf4;
     let caller = abi(StorageAccess, contract_id);
 
     // Test 1

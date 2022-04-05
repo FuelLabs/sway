@@ -1,16 +1,14 @@
 contract;
 
-use storage_access_abi::{S, T, StorageAccess};
+use storage_access_abi::{S, StorageAccess, T};
 use std::constants::NATIVE_ASSET_ID;
 
 storage {
-    x: u64,
-    y: b256,
-    s: S
+    x: u64, y: b256, s: S
 }
 
 impl StorageAccess for Contract {
-    // Setters    
+    // Setters
     impure fn set_x(x: u64) {
         storage.x = x;
     }

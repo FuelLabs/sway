@@ -1,19 +1,17 @@
 [[package]]
 name = 'call_basic_storage'
 dependencies = [
-    'std git+http://github.com/FuelLabs/sway-lib-std?reference=master#a1d77e1140d1b57ee18cc914d320dc7ffdff98fd',
+    'std',
     'storage_access_abi',
 ]
 
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f'
 dependencies = []
 
 [[package]]
 name = 'std'
-source = 'git+http://github.com/FuelLabs/sway-lib-std?reference=master#a1d77e1140d1b57ee18cc914d320dc7ffdff98fd'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#082bc8eb0616586ac0000825bfe6e9d47b0c713f']
+dependencies = ['core']
 
 [[package]]
 name = 'storage_access_abi'
