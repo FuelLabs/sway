@@ -4,8 +4,8 @@ use crate::{
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
     semantic_analysis::{
-        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
-        NamespaceRef, NamespaceWrapper,
+        ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+        create_new_scope, NamespaceRef, NamespaceWrapper,
     },
     style::is_upper_camel_case,
     type_engine::*,
@@ -42,12 +42,20 @@ impl EnumDeclaration {
     ) -> TypedEnumDeclaration {
         let mut errors = vec![];
         let mut warnings = vec![];
+        let local_namespace = create_new_scope(namespace);
+        for type_parameter in self.type_parameters.iter() {
+            check!(
+                local_namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
 
         let mut variants_buf = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
         for variant in &self.variants {
             variants_buf.push(check!(
-                variant.to_typed_decl(namespace, self_type, variant.span.clone(), &type_mapping),
+                variant.to_typed_decl(local_namespace, self_type, variant.span.clone()),
                 continue,
                 warnings,
                 errors
@@ -164,21 +172,15 @@ impl EnumVariant {
         namespace: NamespaceRef,
         self_type: TypeId,
         span: Span,
-        type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<TypedEnumVariant> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let enum_variant_type =
-            if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
-                insert_type(TypeInfo::Ref(matching_id))
-            } else {
-                check!(
-                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, false),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                )
-            };
+        let enum_variant_type = check!(
+            namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, true),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),

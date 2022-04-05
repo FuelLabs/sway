@@ -1,13 +1,8 @@
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::*,
-    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
-    type_engine::*,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
+    semantic_analysis::*, type_engine::*, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{
@@ -615,7 +610,18 @@ impl TypedAstNode {
                         Declaration::StructDeclaration(decl) => {
                             // look up any generic or struct types in the namespace
                             // insert type parameters
-                            let type_mapping = insert_type_parameters(&decl.type_parameters);
+                            let local_namespace = create_new_scope(namespace);
+                            for type_parameter in decl.type_parameters.iter() {
+                                check!(
+                                    local_namespace.insert(
+                                        type_parameter.name_ident.clone(),
+                                        type_parameter.into()
+                                    ),
+                                    continue,
+                                    warnings,
+                                    errors
+                                );
+                            }
                             let fields = decl
                                 .fields
                                 .into_iter()
@@ -626,20 +632,14 @@ impl TypedAstNode {
                                         span,
                                         type_span,
                                     } = field;
-                                    let r#type = match r#type.matches_type_parameter(&type_mapping)
-                                    {
-                                        Some(matching_id) => {
-                                            insert_type(TypeInfo::Ref(matching_id))
-                                        }
-                                        None => check!(
-                                            namespace.resolve_type_with_self(
-                                                r#type, self_type, type_span, false
-                                            ),
-                                            insert_type(TypeInfo::ErrorRecovery),
-                                            warnings,
-                                            errors,
+                                    let r#type = check!(
+                                        local_namespace.resolve_type_with_self(
+                                            r#type, self_type, type_span, false
                                         ),
-                                    };
+                                        insert_type(TypeInfo::ErrorRecovery),
+                                        warnings,
+                                        errors,
+                                    );
                                     TypedStructField { name, r#type, span }
                                 })
                                 .collect::<Vec<_>>();

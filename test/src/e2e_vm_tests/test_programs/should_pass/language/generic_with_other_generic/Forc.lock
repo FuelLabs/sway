@@ -1,0 +1,3 @@
+[[package]]
+name = 'generic_with_other_generic'
+dependencies = []

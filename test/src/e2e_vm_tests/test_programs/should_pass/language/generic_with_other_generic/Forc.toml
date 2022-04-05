@@ -1,0 +1,5 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "generic_with_other_generic"
+entry = "main.sw"

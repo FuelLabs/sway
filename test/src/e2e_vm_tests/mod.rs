@@ -281,6 +281,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/is_reference_type",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/generic_with_other_generic",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =
