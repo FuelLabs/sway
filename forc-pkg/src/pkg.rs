@@ -2,7 +2,7 @@ use crate::{
     lock::Lock,
     manifest::{Dependency, Manifest},
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
@@ -16,7 +16,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
+    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, NamespaceRef,
     NamespaceWrapper, TreeType, TypedParseTree,
 };
 use sway_types::JsonABI;
@@ -1169,5 +1169,63 @@ fn test_source_git_pinned_parsing() {
         assert_eq!(&parsed, expected);
         let serialized = expected.to_string();
         assert_eq!(&serialized, string);
+    }
+}
+
+/// Format an error message for an absent `Forc.toml`.
+pub fn manifest_file_missing(curr_dir: PathBuf) -> anyhow::Error {
+    let message = format!(
+        "could not find `{}` in `{}` or any parent directory",
+        constants::MANIFEST_FILE_NAME,
+        curr_dir.display()
+    );
+    Error::msg(message)
+}
+
+/// Format an error message for failed parsing of a manifest.
+pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
+    let error = errors
+        .iter()
+        .map(|e| e.to_friendly_error_string())
+        .collect::<Vec<String>>()
+        .join("\n");
+    let message = format!("Parsing {} failed: \n{}", project_name, error);
+    Error::msg(message)
+}
+
+/// Format an error message if an incorrect program type is present.
+pub fn wrong_program_type(
+    project_name: &str,
+    expected_type: TreeType,
+    parse_type: TreeType,
+) -> anyhow::Error {
+    let message = format!(
+        "{} is not a '{:?}' it is a '{:?}'",
+        project_name, expected_type, parse_type
+    );
+    Error::msg(message)
+}
+
+/// Format an error message if a given URL fails to produce a working node.
+pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
+    let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
+    Error::msg(message)
+}
+
+/// Given the current directory and expected program type, determines whether the correct program type is present.
+pub fn check_program_type(
+    manifest: &Manifest,
+    manifest_dir: PathBuf,
+    expected_type: TreeType,
+) -> Result<()> {
+    let parsed_type = manifest.program_type(manifest_dir)?;
+    if parsed_type != expected_type {
+        bail!(wrong_program_type(
+            &manifest.project.name,
+            expected_type,
+            parsed_type
+        ));
+    } else {
+        Ok(())
     }
 }

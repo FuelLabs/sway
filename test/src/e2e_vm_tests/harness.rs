@@ -121,7 +121,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
 }
 
 pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
-    let _script = compile_to_json_abi(file_name)?;
+    let _compiled_res = compile_to_json_abi(file_name)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
