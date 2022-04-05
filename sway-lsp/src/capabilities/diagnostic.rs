@@ -1,7 +1,6 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use sway_core::{CompileError, CompileWarning};
-use crate::core::token::Token;
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
@@ -34,21 +33,6 @@ pub fn get_diagnostics(
         .collect();
 
     vec![warnings, errors].into_iter().flatten().collect()
-}
-
-pub fn generate_warnings_for_parsed_tokens(tokens: &Vec<Token>) -> Vec<Diagnostic> {
-    let warnings = tokens
-        .iter()
-        .map(|token| {
-            Diagnostic {
-                range: token.range,
-                severity: Some(DiagnosticSeverity::WARNING),
-                ..Default::default()
-            }
-        })
-        .collect();
-
-    warnings
 }
 
 fn get_range(warning_or_error: &WarningOrError<'_>) -> Range {
