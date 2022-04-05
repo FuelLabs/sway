@@ -49,9 +49,9 @@ struct ContentResponse {
 
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
-    if project_name == "test" {
+    if project_name.to_lowercase() == "test" {
         bail!(
-            "the name `test` cannot be used as a package name, \
+            "the name `test` cannot be used as a project name, \
             it conflicts with Sway's built-in test library"
         );
     }

@@ -78,7 +78,7 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
             it conflicts with Forc's build directory names"
         );
     }
-    if name == "test" {
+    if name.to_lowercase() == "test" {
         bail!(
             "the name `test` cannot be used as a package name, \
             it conflicts with Sway's built-in test library"
