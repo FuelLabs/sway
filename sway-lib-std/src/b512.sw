@@ -18,7 +18,7 @@ pub trait From {
 
 impl core::ops::Eq for B512 {
     fn eq(self, other: Self) -> bool {
-        // An `Address` in Sway is 32 bytes
+        // A `B512` in Sway is an array of 2 32 byte values
         asm(r1: self, r2: other, result, bytes_to_compare: 64) {
             meq result r1 r2 bytes_to_compare;
             result: bool
@@ -31,7 +31,7 @@ impl From for B512 {
     fn from(h: b256, l: b256) -> B512 {
         B512 {
             bytes: [h,
-            l], 
+            l],
         }
     }
 }
@@ -42,7 +42,7 @@ impl B512 {
     fn new() -> B512 {
         B512 {
             bytes: [0x0000000000000000000000000000000000000000000000000000000000000000,
-            0x0000000000000000000000000000000000000000000000000000000000000000], 
+            0x0000000000000000000000000000000000000000000000000000000000000000],
         }
     }
 }
