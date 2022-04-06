@@ -1,15 +1,19 @@
-# Format
 
-## SYNOPSIS
+# forc-fmt
+Format all Sway files of the current project
 
-`forc fmt` [_options_]
 
-## DESCRIPTION
+## USAGE:
+forc fmt [OPTIONS]
 
-Format all Sway files of the current project.
 
-## OPTIONS
+## OPTIONS:
 
-`-c`, `--check`
+`-c`, `--check`, 
 
-Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1 and prints a diff if formatting is required
+Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1
+and prints a diff if formatting is required
+
+`-h`, `--help`, 
+
+Print help information

@@ -1,27 +1,30 @@
-# Addr2line
 
-## SYNOPSIS
+# forc-addr2line
+Show location and context of an opcode address in its source file
 
-`forc addr2line` [_options_] --sourcemap-path <_sourcemap_path_> --opcode-index <_opcode_index_>
 
-## DESCRIPTION
+## USAGE:
+forc addr2line [OPTIONS] --sourcemap-path <SOURCEMAP_PATH> --opcode-index <OPCODE_INDEX>
 
-Shows location and context of an opcode address in its source file.
 
-## OPTIONS
+## OPTIONS:
 
-`-c`, `--context` <_context_>
+`-c`, `--context`, <_CONTEXT_>
 
 How many lines of context to show [default: 2]
 
-`-g`, `--sourcemap-path` <_sourcemap_path_>
+`-g`, `--sourcemap-path`, <_SOURCEMAP_PATH_>
 
 Source file mapping in JSON format
 
-`-i`, `--opcode-index` <_opcode_index_>
+`-h`, `--help`, 
+
+Print help information
+
+`-i`, `--opcode-index`, <_OPCODE_INDEX_>
 
 Opcode index
 
-`-s`, `--search-dir` <_search_dir_>
+`-s`, `--search-dir`, <_SEARCH_DIR_>
 
 Where to search for the project root [default: .]

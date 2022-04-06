@@ -1,27 +1,30 @@
-# Update
 
-## SYNOPSIS
+# forc-update
+Update dependencies in the Forc dependencies directory
 
-`forc update` [_options_]
 
-## DESCRIPTION
+## USAGE:
+forc update [OPTIONS]
 
-Updates each of the dependencies so that they point to the latest suitable commit or version given their dependency declaration. The result is written to the `Forc.lock` file.
 
-## OPTIONS
+## OPTIONS:
 
-`-c`, `--check`
+`-c`, `--check`, 
 
 Checks if the dependencies have newer versions. Won't actually
 perform the update, will output which ones are up-to-date and
 outdated
 
-`-d` _target_dependency_
+`-d`, <_TARGET_DEPENDENCY_>
 
 Dependency to be updated. If not set, all dependencies will be
 updated
 
-`-p`, `--path` _path_
+`-h`, `--help`, 
+
+Print help information
+
+`-p`, `--path`, <_PATH_>
 
 Path to the project, if not specified, current working directory
 will be used

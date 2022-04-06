@@ -1,19 +1,23 @@
-# Explorer
 
-## SYNOPSIS
+# forc-explorer
+Run the network explorer
 
-`forc explorer` [_options_] [_subcommand_]
 
-## DESCRIPTION
+## USAGE:
+forc explorer [OPTIONS] [SUBCOMMAND]
 
-Runs the network explorer.
 
-## OPTIONS
+## OPTIONS:
 
-`-p`, `--port` _port_
+`-h`, `--help`, 
+
+Print help information
+
+`-p`, `--port`, <_PORT_>
 
 The port number [default: 3030]
 
-## SUBCOMMANDS
 
-`clean`
+## SUBCOMMANDS:
+clean
+help     Print this message or the help of the given subcommand(s)

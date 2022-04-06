@@ -1,31 +1,39 @@
-# JSON-ABI
 
-## SYNOPSIS
+# forc-json-abi
+Output the JSON associated with the ABI
 
-`forc json-abi` [_options_]
 
-## DESCRIPTION
+## USAGE:
+forc json-abi [OPTIONS]
 
-Output the JSON associated with the ABI.
 
-## OPTIONS
+## OPTIONS:
 
-`--minify`
+`-h`, `--help`, 
 
-By default the JSON for ABIs is formatted for human readability. By using this option JSON output will be "minified", i.e. all on one line without whitespace
+Print help information
 
-`-o` _json_outfile_
+`--minify`, 
+
+By default the JSON for ABIs is formatted for human readability. By
+using this option JSON output will be "minified", i.e. all on one line
+without whitespace
+
+`-o`, <_JSON_OUTFILE_>
 
 If set, outputs a json file representing the output json abi
 
-`--offline`
+`--offline`, 
 
-Offline mode, prevents Forc from using the network when managing dependencies. Meaning it will only try to use previously downloaded dependencies
+Offline mode, prevents Forc from using the network when managing
+dependencies. Meaning it will only try to use previously downloaded
+dependencies
 
-`-p`, `--path` _path_
+`-p`, `--path`, <_PATH_>
 
-Path to the project, if not specified, current working directory will be used
+Path to the project, if not specified, current working directory will
+be used
 
-`-s`, `--silent`
+`-s`, `--silent`, 
 
 Silent mode. Don't output any warnings or errors to the command line

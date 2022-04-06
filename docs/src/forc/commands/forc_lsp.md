@@ -1,9 +1,14 @@
-# LSP
 
-## SYNOPSIS
+# forc-lsp
+Run the LSP server
 
-`forc lsp`
 
-## DESCRIPTION
+## USAGE:
+forc lsp
 
-Runs the LSP server.
+
+## OPTIONS:
+
+`-h`, `--help`, 
+
+Print help information
