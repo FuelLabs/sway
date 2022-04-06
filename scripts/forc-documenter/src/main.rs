@@ -71,7 +71,7 @@ fn main() -> io::Result<()> {
             let mut index_file = OpenOptions::new()
                 .create(true)
                 .read(true)
-                .append(true)
+                .write(true)
                 .open(index_file_path)
                 .expect("Problem opening or creating forc/commands/index.md");
 
@@ -256,9 +256,12 @@ fn format_option_line(option_line: &str) -> String {
             result.push_str(&format_option(token));
         } else if is_arg(token) {
             result.push_str(&format_arg(token));
-        } else if token.is_empty() {
+        } else {
+            println!("{:?}", token);
+            rest_of_line.push_str(token);
+            rest_of_line.push(' ');
             rest_of_line = tokens_iter
-                .fold(String::new(), |mut a, b| {
+                .fold(rest_of_line, |mut a, b| {
                     a.reserve(b.len() + 1);
                     a.push_str(b);
                     a.push(' ');
@@ -270,6 +273,7 @@ fn format_option_line(option_line: &str) -> String {
         }
     }
     result.push_str("\n\n");
+    println!("rest: {:?}", &rest_of_line);
     result.push_str(&rest_of_line);
     result.push('\n');
 
@@ -291,7 +295,7 @@ fn format_option(option: &str) -> String {
             s.pop();
             "`".to_owned() + &s + "`, "
         }
-        false => "`".to_owned() + option + "`, ",
+        false => "`".to_owned() + option + "` ",
     }
 }
 
@@ -337,8 +341,8 @@ mod tests {
     fn test_format_arg_line() {
         let example_arg_line_1 = "<PROJECT_NAME> Some description";
         let example_arg_line_2 = "<arg1> <arg2> Some description";
-        let expected_arg_line_1 = "<_PROJECT_NAME_>\n\nSome description";
-        let expected_arg_line_2 = "<_arg1_> <_arg2_>\n\nSome description";
+        let expected_arg_line_1 = "\n<_PROJECT_NAME_>\n\nSome description";
+        let expected_arg_line_2 = "\n<_arg1_> <_arg2_>\n\nSome description";
 
         assert_eq!(expected_arg_line_1, format_arg_line(example_arg_line_1));
         assert_eq!(expected_arg_line_2, format_arg_line(example_arg_line_2));
@@ -346,13 +350,11 @@ mod tests {
 
     #[test]
     fn test_format_option_line() {
-        let example_option_line_1 = "-c, --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1
-        and prints a diff if formatting is required";
+        let example_option_line_1 = "-c, --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1 and prints a diff if formatting is required";
         let example_option_line_2 =
             "-o <JSON_OUTFILE> If set, outputs a json file representing the output json abi";
-        let expected_option_line_1= "`-c`, `--check`\n\nRun in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1 and prints a diff if formatting is required\n";
-        let expected_option_line_2 = "`-o` <_JSON_OUTFILE_>\n\n
-        If set, outputs a json file representing the output json abi";
+        let expected_option_line_1= "\n`-c`, `--check` \n\nRun in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1 and prints a diff if formatting is required\n";
+        let expected_option_line_2 = "\n`-o` <_JSON_OUTFILE_>\n\nIf set, outputs a json file representing the output json abi\n";
 
         assert_eq!(
             expected_option_line_1,
