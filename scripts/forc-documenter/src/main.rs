@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use std::process;
 use std::str;
 
+pub mod constants;
+
 #[derive(Parser)]
 #[clap(name = "forc-documenter", about = "Forc Documenter")]
 struct Cli {
@@ -58,6 +60,17 @@ fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
     Ok(forc_commands_docs_path)
 }
 
+fn get_example_for_command(command: &str) -> &str {
+    match command {
+        "init" => constants::FORC_INIT_EXAMPLE,
+        "build" => constants::FORC_BUILD_EXAMPLE,
+        "test" => constants::FORC_TEST_EXAMPLE,
+        "deploy" => constants::FORC_DEPLOY_EXAMPLE,
+        "parse-bytecode" => constants::FORC_PARSE_BYTECODE_EXAMPLE,
+        _ => "",
+    }
+}
+
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
@@ -96,10 +109,16 @@ fn main() -> io::Result<()> {
             }
 
             for (index, command) in possible_commands.iter().enumerate() {
-                let result = match generate_doc_output(command) {
+                let mut result = match generate_doc_output(command) {
                     Ok(output) => output,
                     Err(_) => continue,
                 };
+
+                let example = get_example_for_command(command);
+                if !example.is_empty() {
+                    result.push_str(constants::EXAMPLES_HEADER);
+                    result.push_str(example);
+                }
 
                 let document_name = format_command_doc_name(command);
                 let index_entry_name = format_index_entry_name(command);
