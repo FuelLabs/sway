@@ -4,7 +4,6 @@ use ::address::Address;
 use ::b512::B512;
 use ::constants::ZERO;
 use ::hash::{HashMethod, hash_pair};
-use ::option::Option;
 use ::result::Result;
 
 pub enum EcRecoverError {
