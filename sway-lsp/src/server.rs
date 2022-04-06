@@ -354,9 +354,13 @@ fn main() {
         assert_eq!(response, Ok(None));
     }
 
+    fn config() -> DebugFlags {
+        Default::default()
+    } 
+
     #[tokio::test]
     async fn initialize() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -364,7 +368,7 @@ fn main() {
 
     #[tokio::test]
     async fn initialized() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -375,7 +379,7 @@ fn main() {
 
     #[tokio::test]
     async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let initialize = initialize_request(&mut service).await;
@@ -391,7 +395,7 @@ fn main() {
 
     #[tokio::test]
     async fn shutdown() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -413,7 +417,7 @@ fn main() {
 
     #[tokio::test]
     async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -428,7 +432,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_open() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -453,7 +457,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_close() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -478,7 +482,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_change() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
