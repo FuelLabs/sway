@@ -28,8 +28,8 @@ serde_json = "1.0.73"
 sway-core = { version = "0.9.2", path = "../sway-core" }
 sway-fmt = { version = "0.9.2", path = "../sway-fmt" }
 sway-lsp = { version = "0.9.2", path = "../sway-lsp" }
-sway-utils = { version = "0.9.2", path = "../sway-utils" }
 sway-types = { version = "0.9.2", path = "../sway-types" }
+sway-utils = { version = "0.9.2", path = "../sway-utils" }
 taplo = "0.7"
 tar = "0.4.35"
 term-table = "1.3"
