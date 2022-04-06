@@ -1,6 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
 use anyhow::{anyhow, Context, Result};
+use forc_util::validate_name;
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -49,6 +50,7 @@ struct ContentResponse {
 
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
+    validate_name(&project_name, "project name")?;
 
     match command.template {
         Some(template) => {
