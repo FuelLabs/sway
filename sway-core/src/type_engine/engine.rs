@@ -254,6 +254,38 @@ impl Engine {
                 (warnings, errors)
             }
 
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_a,
+                    address,
+                },
+                ref e @ TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_b,
+                    ..
+                },
+            ) if abi_name_a == abi_name_b && address.is_empty() => {
+                // if one address is empty, coerce to the other one
+                match self.slab.replace(expected, &e, TypeInfo::Ref(received)) {
+                    None => (vec![], vec![]),
+                    Some(_) => self.unify(received, expected, span, help_text),
+                }
+            }
+            (
+                ref r @ TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_a,
+                    ..
+                },
+                TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_b,
+                    address,
+                },
+            ) if abi_name_a == abi_name_b && address.is_empty() => {
+                // if one address is empty, coerce to the other one
+                match self.slab.replace(received, &r, TypeInfo::Ref(expected)) {
+                    None => (vec![], vec![]),
+                    Some(_) => self.unify(received, expected, span, help_text),
+                }
+            }
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.
             // (List(a_item), List(b_item)) => self.unify(a_item, b_item),

@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
-    Ident, Rule, TypeArgument, TypeParameter,
+    CallPath, Ident, Rule, TypeArgument, TypeParameter,
 };
 
 use sway_types::span::Span;
@@ -299,7 +299,7 @@ impl TypeInfo {
                 }
             }
             Rule::contract_caller_type => check!(
-                parse_contract_caller_type(input),
+                parse_contract_caller_type(input, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -924,8 +924,21 @@ fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) ->
     )
 }
 
-fn parse_contract_caller_type(raw: Pair<Rule>) -> CompileResult<TypeInfo> {
-    let abi_path = pair.into_inner().next().expect("guaranteed by grammar");
+fn parse_contract_caller_type(
+    raw: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<TypeInfo> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let abi_path = raw.into_inner().next().expect("guaranteed by grammar");
+    let abi_path = check!(
+        CallPath::parse_from_pair(abi_path, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let abi_path = abi_path.to_owned_call_path();
+
     ok(
         TypeInfo::ContractCaller {
             address: Default::default(),
@@ -933,5 +946,5 @@ fn parse_contract_caller_type(raw: Pair<Rule>) -> CompileResult<TypeInfo> {
         },
         vec![],
         vec![],
-    );
+    )
 }
