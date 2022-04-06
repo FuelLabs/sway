@@ -18,6 +18,6 @@ forc test [TEST_NAME]
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information

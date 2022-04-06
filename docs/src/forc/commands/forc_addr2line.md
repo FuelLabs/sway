@@ -9,22 +9,22 @@ forc addr2line [OPTIONS] --sourcemap-path <SOURCEMAP_PATH> --opcode-index <OPCOD
 
 ## OPTIONS:
 
-`-c`, `--context`, <_CONTEXT_>
+`-c`, `--context` <_CONTEXT_>
 
 How many lines of context to show [default: 2]
 
-`-g`, `--sourcemap-path`, <_SOURCEMAP_PATH_>
+`-g`, `--sourcemap-path` <_SOURCEMAP_PATH_>
 
 Source file mapping in JSON format
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
 
-`-i`, `--opcode-index`, <_OPCODE_INDEX_>
+`-i`, `--opcode-index` <_OPCODE_INDEX_>
 
 Opcode index
 
-`-s`, `--search-dir`, <_SEARCH_DIR_>
+`-s`, `--search-dir` <_SEARCH_DIR_>
 
 Where to search for the project root [default: .]

@@ -9,11 +9,11 @@ forc completions --shell <SHELL>
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
 
-`-s`, `--shell`, <_SHELL_>
+`-s`, `--shell` <_SHELL_>
 
 [possible values: zsh, bash, fish, powershell, elvish]
 

@@ -9,11 +9,11 @@ forc fmt [OPTIONS]
 
 ## OPTIONS:
 
-`-c`, `--check`, 
+`-c`, `--check` 
 
 Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with 1
 and prints a diff if formatting is required
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information

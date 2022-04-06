@@ -14,6 +14,6 @@ forc parse-bytecode <FILE_PATH>
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information

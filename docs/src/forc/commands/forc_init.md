@@ -16,11 +16,11 @@ forc init [OPTIONS] <PROJECT_NAME>
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
 
-`-t`, `--template`, <_TEMPLATE_>
+`-t`, `--template` <_TEMPLATE_>
 
 Initialize a new project from a template.
 

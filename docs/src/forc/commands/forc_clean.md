@@ -10,11 +10,11 @@ forc clean [OPTIONS]
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
 
-`-p`, `--path`, <_PATH_>
+`-p`, `--path` <_PATH_>
 
 Path to the project, if not specified, current working directory will be
 used

@@ -9,11 +9,11 @@ forc explorer [OPTIONS] [SUBCOMMAND]
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
 
-`-p`, `--port`, <_PORT_>
+`-p`, `--port` <_PORT_>
 
 The port number [default: 3030]
 

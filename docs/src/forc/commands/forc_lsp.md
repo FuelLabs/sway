@@ -9,6 +9,6 @@ forc lsp
 
 ## OPTIONS:
 
-`-h`, `--help`, 
+`-h`, `--help` 
 
 Print help information
