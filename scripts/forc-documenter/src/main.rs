@@ -19,11 +19,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Run(RunCommand),
+    WriteDocs(WriteDocsCommand),
 }
 
 #[derive(Debug, Parser)]
-struct RunCommand {
+struct WriteDocsCommand {
     #[clap(short = 'c', long = "command")]
     pub command_name: Option<String>,
 }
@@ -78,7 +78,7 @@ fn main() -> io::Result<()> {
         prepare_forc_commands_docs_dir().expect("Failed to prepare forc commands docs directory");
 
     match cli.command {
-        Commands::Run(_command) => {
+        Commands::WriteDocs(_command) => {
             let index_file_path = forc_commands_docs_path.join("index.md");
             let mut index_file = OpenOptions::new()
                 .create(true)
