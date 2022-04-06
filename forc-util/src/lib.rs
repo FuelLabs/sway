@@ -80,7 +80,7 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     }
     if name.to_lowercase() == "test" {
         bail!(
-            "the name `test` cannot be used as a package name, \
+            "the name `test` cannot be used as a project name, \
             it conflicts with Sway's built-in test library"
         );
     }

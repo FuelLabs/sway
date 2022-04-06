@@ -1,6 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
+use forc_util::validate_name;
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -49,12 +50,7 @@ struct ContentResponse {
 
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
-    if project_name.to_lowercase() == "test" {
-        bail!(
-            "the name `test` cannot be used as a project name, \
-            it conflicts with Sway's built-in test library"
-        );
-    }
+    validate_name(&project_name, "project name")?;
 
     match command.template {
         Some(template) => {
