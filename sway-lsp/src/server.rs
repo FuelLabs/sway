@@ -3,7 +3,7 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
-use crate::utils::debug;
+use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
@@ -14,19 +14,16 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 pub struct Backend {
     pub client: Client,
     session: Arc<Session>,
-    debug: debug::DebugFlags,
+    config: DebugFlags,
 }
 
 impl Backend {
-    pub fn new(client: Client) -> Self {
+    pub fn new(client: Client, config: DebugFlags) -> Self {
         let session = Arc::new(Session::new());
-        let debug = debug::DebugFlags {
-            parsed_tokens_as_warnings: false,
-        };
         Backend {
             client,
             session,
-            debug,
+            config,
         }
     }
 
@@ -125,7 +122,7 @@ impl LanguageServer for Backend {
         // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
-        if self.debug.parsed_tokens_as_warnings {
+        if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
                 self.client

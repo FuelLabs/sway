@@ -1,3 +1,3 @@
 pub(crate) mod common;
-pub(crate) mod debug;
+pub mod debug;
 pub(crate) mod function;

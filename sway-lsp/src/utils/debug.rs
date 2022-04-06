@@ -2,7 +2,7 @@ use crate::core::token::Token;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 // Flags for debugging various parts of the server
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DebugFlags {
     /// Instructs the client to draw squiggly lines
     /// under all of the tokens that our server managed to parse
