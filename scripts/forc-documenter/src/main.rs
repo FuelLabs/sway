@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io;
 use std::io::Write;
-use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 use std::str;
@@ -39,15 +38,18 @@ pub enum LineKind {
 pub const SUBHEADERS: &[&str] = &["USAGE:", "ARGS:", "OPTIONS:", "SUBCOMMANDS:"];
 pub const INDEX_HEADER: &str = "Here are a list of commands available to forc:\n\n";
 
-fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
+fn get_sway_path() -> PathBuf {
     let curr_dir = std::env::current_dir().unwrap();
     let sway_dir = curr_dir
         .parent()
         .unwrap()
         .parent()
         .expect("Unable to navigate to project root");
-    let sway_path = Path::new(sway_dir);
-    let forc_commands_docs_path = sway_path.join("docs/src/forc/commands");
+    sway_dir.to_path_buf()
+}
+
+fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
+    let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
 
     if !forc_commands_docs_path.is_dir() {
         println!("Generating");
@@ -72,59 +74,56 @@ fn main() -> io::Result<()> {
                 .append(true)
                 .open(index_file_path)
                 .expect("Problem opening or creating forc/commands/index.md");
-            if _command.command_name.is_some() {
-                generate_doc_output(&_command.command_name.unwrap());
-            } else {
-                let output = process::Command::new("forc")
-                    .arg("--help")
-                    .output()
-                    .expect("Failed to run help command");
 
-                let s = String::from_utf8_lossy(&output.stdout);
-                let lines = s.lines();
+            let output = process::Command::new("forc")
+                .arg("--help")
+                .output()
+                .expect("Failed to run help command");
 
-                let mut subcommand_is_parsed = false;
-                let mut possible_commands = vec![];
+            let s = String::from_utf8_lossy(&output.stdout);
+            let lines = s.lines();
 
-                for line in lines {
-                    if subcommand_is_parsed {
-                        let (command, _) = line.trim().split_once(" ").unwrap_or(("", ""));
-                        possible_commands.push(command.clone());
-                    }
-                    if line == "SUBCOMMANDS:" {
-                        subcommand_is_parsed = true;
-                    }
+            let mut subcommand_is_parsed = false;
+            let mut possible_commands = vec![];
+
+            for line in lines {
+                if subcommand_is_parsed {
+                    let (command, _) = line.trim().split_once(' ').unwrap_or(("", ""));
+                    possible_commands.push(command);
                 }
+                if line == "SUBCOMMANDS:" {
+                    subcommand_is_parsed = true;
+                }
+            }
 
-                for (index, command) in possible_commands.iter().enumerate() {
-                    let result = match generate_doc_output(command) {
-                        Ok(output) => output,
-                        Err(_) => continue,
-                    };
+            for (index, command) in possible_commands.iter().enumerate() {
+                let result = match generate_doc_output(command) {
+                    Ok(output) => output,
+                    Err(_) => continue,
+                };
 
-                    let document_name = format_command_doc_name(command);
-                    let index_entry_name = format_index_entry_name(command);
-                    let index_entry_string =
-                        format_index_entry_string(&document_name, &index_entry_name);
+                let document_name = format_command_doc_name(command);
+                let index_entry_name = format_index_entry_name(command);
+                let index_entry_string =
+                    format_index_entry_string(&document_name, &index_entry_name);
 
-                    let forc_command_file_path = forc_commands_docs_path.join(document_name);
-                    let mut command_file = File::create(forc_command_file_path)
-                        .expect("Failed to create documentation");
+                let forc_command_file_path = forc_commands_docs_path.join(document_name);
+                let mut command_file =
+                    File::create(forc_command_file_path).expect("Failed to create documentation");
 
-                    command_file
-                        .write_all(&result.as_bytes())
-                        .expect("Failed to write to file");
+                command_file
+                    .write_all(result.as_bytes())
+                    .expect("Failed to write to file");
 
-                    if index == 0 {
-                        index_file
-                            .write(&INDEX_HEADER.as_bytes())
-                            .expect("Failed to write to forc/commands/index.md");
-                    }
-
+                if index == 0 {
                     index_file
-                        .write(&index_entry_string.as_bytes())
+                        .write_all(INDEX_HEADER.as_bytes())
                         .expect("Failed to write to forc/commands/index.md");
                 }
+
+                index_file
+                    .write_all(index_entry_string.as_bytes())
+                    .expect("Failed to write to forc/commands/index.md");
             }
             println!("Done.");
         }
@@ -133,14 +132,14 @@ fn main() -> io::Result<()> {
 }
 
 fn format_command_doc_name(command: &str) -> String {
-    "forc_".to_owned() + &command + ".md"
+    "forc_".to_owned() + command + ".md"
 }
 
 fn format_index_entry_name(command: &str) -> String {
     "forc ".to_owned() + command
 }
 fn format_index_entry_string(document_name: &str, index_entry_name: &str) -> String {
-    "- [".to_owned() + &index_entry_name + "](./" + &document_name + ")\n"
+    "- [".to_owned() + index_entry_name + "](./" + document_name + ")\n"
 }
 
 fn generate_doc_output(subcommand: &str) -> Result<String> {
@@ -151,7 +150,7 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         .output()
         .expect("forc --help failed to run");
 
-    if output.status.success() == false {
+    if !output.status.success() {
         return Err(anyhow!("Failed to run forc {} --help", subcommand));
     }
 
@@ -164,15 +163,15 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         if index == 0 {
             formatted_line.push_str(&format_header_line(line));
         } else if index == 1 {
-            formatted_line.push_str(&line);
+            formatted_line.push_str(line);
         } else {
             formatted_line.push_str(&format_line(line))
         }
 
         result.push_str(&formatted_line);
 
-        if !formatted_line.ends_with("\n") {
-            result.push_str("\n");
+        if !formatted_line.ends_with('\n') {
+            result.push('\n');
         }
     }
 
@@ -193,9 +192,9 @@ fn format_line(line: &str) -> String {
 fn get_line_kind(line: &str) -> LineKind {
     if SUBHEADERS.contains(&line) {
         LineKind::SubHeader
-    } else if is_args_line(&line) {
+    } else if is_args_line(line) {
         LineKind::Arg
-    } else if is_options_line(&line) {
+    } else if is_options_line(line) {
         LineKind::Option
     } else {
         LineKind::Text
@@ -211,11 +210,11 @@ fn is_options_line(line: &str) -> bool {
 }
 
 fn format_header_line(header_line: &str) -> String {
-    "\n# ".to_owned() + header_line + &"\n".to_owned()
+    "\n# ".to_owned() + header_line + "\n"
 }
 
 fn format_subheader_line(subheader_line: &str) -> String {
-    "\n## ".to_owned() + subheader_line + &"\n".to_owned()
+    "\n## ".to_owned() + subheader_line + "\n"
 }
 
 fn format_usage_line(usage_line: &str) -> String {
@@ -247,7 +246,7 @@ fn format_arg_line(arg_line: &str) -> String {
 }
 
 fn format_option_line(option_line: &str) -> String {
-    let mut tokens_iter = option_line.trim().split(" ").into_iter();
+    let mut tokens_iter = option_line.trim().split(' ');
 
     let mut result = String::new();
     let mut rest_of_line = String::new();
@@ -257,12 +256,12 @@ fn format_option_line(option_line: &str) -> String {
             result.push_str(&format_option(token));
         } else if is_arg(token) {
             result.push_str(&format_arg(token));
-        } else if token == "" {
+        } else if token.is_empty() {
             rest_of_line = tokens_iter
                 .fold(String::new(), |mut a, b| {
                     a.reserve(b.len() + 1);
                     a.push_str(b);
-                    a.push_str(" ");
+                    a.push(' ');
                     a
                 })
                 .trim()
@@ -272,27 +271,27 @@ fn format_option_line(option_line: &str) -> String {
     }
     result.push_str("\n\n");
     result.push_str(&rest_of_line);
-    result.push_str("\n");
+    result.push('\n');
 
     "\n".to_owned() + &result
 }
 
 fn is_option(token: &str) -> bool {
-    token.starts_with("-")
+    token.starts_with('-')
 }
 
 fn is_arg(token: &str) -> bool {
-    token.starts_with("<")
+    token.starts_with('<')
 }
 
 fn format_option(option: &str) -> String {
-    match option.ends_with(",") {
+    match option.ends_with(',') {
         true => {
             let mut s = option.to_string();
             s.pop();
-            "`".to_owned() + &s + &"`, ".to_owned()
+            "`".to_owned() + &s + "`, "
         }
-        false => "`".to_owned() + option + &"` ".to_owned(),
+        false => "`".to_owned() + option + "`, ",
     }
 }
 
