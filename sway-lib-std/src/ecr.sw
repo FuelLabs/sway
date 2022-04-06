@@ -3,10 +3,9 @@ library ecr;
 use ::address::Address;
 use ::b512::B512;
 use ::constants::ZERO;
-use ::hash::{hash_pair, HashMethod};
+use ::hash::{HashMethod, hash_pair};
 use ::option::Option;
 use ::result::Result;
-
 
 pub enum EcRecoverError {
     UnrecoverableAddress: (),
@@ -34,11 +33,11 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
 
     if let Result::Ok(p) = pub_key_result {
         let address = ~Address::from(hash_pair((p.bytes)[0], (p.bytes)[1], HashMethod::Sha256));
-            if address != ~Address::from(ZERO) {
-                Result::Ok(address)
-            } else {
-                Result::Err(EcRecoverError::UnrecoverableAddress)
-            }
+        if address != ~Address::from(ZERO) {
+            Result::Ok(address)
+        } else {
+            Result::Err(EcRecoverError::UnrecoverableAddress)
+        }
     } else {
         // propagate the error if it exists
         Result::Err(EcRecoverError::UnrecoverablePublicKey)
