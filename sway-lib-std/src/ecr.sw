@@ -31,9 +31,9 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
     let pub_key_result = ec_recover(signature, msg_hash);
 
     if let Result::Ok(p) = pub_key_result {
-        let address = ~Address::from(hash_pair((p.bytes)[0], (p.bytes)[1], HashMethod::Sha256));
-        if address != ~Address::from(ZERO) {
-            Result::Ok(address)
+        let address = hash_pair((p.bytes)[0], (p.bytes)[1], HashMethod::Sha256);
+        if address != ZERO {
+            Result::Ok(~Address::from(address))
         } else {
             Result::Err(EcRecoverError::UnrecoverableAddress)
         }
