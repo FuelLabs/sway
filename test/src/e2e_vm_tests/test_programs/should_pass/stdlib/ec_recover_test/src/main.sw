@@ -1,16 +1,16 @@
 script;
 
-use std::b512::B512;
 use std::address::Address;
-use std::ecr::ec_recover_address;
-use std::ecr::ec_recover;
 use std::assert::assert;
+use std::b512::B512;
+use std::ecr::*;
+use std::panic::panic;
+use std::result::Result;
 
 fn main() -> bool {
-
-   //======================================================
-   // test data from sig-gen-util: /sway/sig_gen_util/src/main.rs
-   /**
+    //======================================================
+    // test data from sig-gen-util: /sway/sig_gen_util/src/main.rs
+    /**
    Secret Key: SecretKey(3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c)
    Public Key: 1d152307c6b72b0ed0418b0e70cd80e7f5295b8d86f5722d3f5213fbd2394f36
                b7ce9c3e45905178455900b44abb308f3ef480481a4b2ee3f70aca157fde396a
@@ -33,13 +33,20 @@ fn main() -> bool {
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // recover the address:
-    let recovered_address: Address = ec_recover_address(signature, msg_hash);
-    assert(recovered_address.value == address.value);
+    let address_result: Result<Address, EcRecoverError> = ec_recover_address(signature, msg_hash);
+    if let Result::Ok(a) = address_result {
+        assert(a.value == address.value);
+    } else {
+        panic(0);
+    };
 
     // recover the public key:
-    let recovered_pubkey: B512 = ec_recover(signature, msg_hash);
-    assert((recovered_pubkey.bytes)[0] == (pubkey.bytes)[0]);
-    assert((recovered_pubkey.bytes)[1] == (pubkey.bytes)[1]);
+    let pubkey_result: Result<B512, EcRecoverError> = ec_recover(signature, msg_hash);
+    if let Result::Ok(p) = pubkey_result {
+        assert(p == pubkey);
+    } else {
+        panic(0);
+    };
 
     true
 }
