@@ -1,21 +1,33 @@
 library ecr;
 
-use ::b512::B512;
 use ::address::Address;
+use ::b512::B512;
+use ::constants::ZERO;
+use ::result::Result;
+
+
+pub enum EcRecoverError {
+    UnrecoverableAddress: (),
+    UnrecoverablePublicKey: (),
+}
 
 /// Recover the public key derived from the private key used to sign a message
-pub fn ec_recover(signature: B512, msg_hash: b256) -> B512 {
+pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = ~B512::new();
 
     asm(buffer: public_key.bytes, sig: signature.bytes, hash: msg_hash) {
         ecr buffer sig hash;
     };
-
-    public_key
+    /// if recovered key is empty
+    if public_key == ~B512::new() {
+        Result::Err(EcRecoverError::UnrecoverablePublicKey)
+    } else {
+        Result::Ok(public_key)
+    }
 }
 
 /// Recover the address derived from the private key used to sign a message
-pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Address {
+pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let address = asm(sig: signature.bytes, hash: msg_hash, addr_buffer, pub_key_buffer, hash_len: 64) {
         move addr_buffer sp; // Buffer for address.
         cfei i32;
@@ -27,5 +39,11 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Address {
         addr_buffer: b256
     };
 
-    ~Address::from(address)
+    let address = ~Address::from(address);
+
+    if address == ~Address::from(ZERO) {
+        Result::Err(EcRecoverError::UnrecoverableAddress)
+    } else {
+        Result::Ok(address)
+    }
 }
