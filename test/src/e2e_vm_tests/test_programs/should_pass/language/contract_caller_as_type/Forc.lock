@@ -1,0 +1,12 @@
+[[package]]
+name = 'contract_caller_as_type'
+dependencies = ['std git+https://github.com/FuelLabs/sway?branch=master#9fde15ff4232ad71a81bc5fa913576124a0d64a4']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/FuelLabs/sway?branch=master#9fde15ff4232ad71a81bc5fa913576124a0d64a4'
+dependencies = ['core']
