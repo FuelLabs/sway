@@ -299,10 +299,40 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // with some known state. Note that if a non-contract is included
     // it will be rejected during assertion. Please move it to
     // `positive_project_names_no_abi` above.
-    let positive_project_names_with_abi = vec![(
-        "should_pass/language/valid_impurity",
-        ProgramState::Revert(0), // false
-    )];
+    let positive_project_names_with_abi = vec![
+        (
+            "should_pass/language/valid_impurity",
+            ProgramState::Revert(0), // false
+        ),
+        (
+            "should_pass/test_contracts/auth_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/balance_test_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/basic_storage",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/context_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/increment_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/storage_access_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/test_fuel_coin_contract",
+            ProgramState::Revert(0),
+        ),
+    ];
 
     number_of_tests_run += positive_project_names_with_abi
         .iter()
