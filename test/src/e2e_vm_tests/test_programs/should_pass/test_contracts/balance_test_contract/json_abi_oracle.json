@@ -1,12 +1,12 @@
 [
   {
     "inputs": [],
-    "name": "returns_gm_one",
+    "name": "get_42",
     "outputs": [
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "u64"
       }
     ],
     "type": "function"

@@ -1,13 +1,11 @@
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44'
 dependencies = []
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#7b973a638d5220228be616f1f89a249846001549'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#30274cf817c1848e28f984c2e8703eb25e7a3a44']
+dependencies = ['core']
 
 [[package]]
 name = 'test_fuel_coin_abi'
-dependencies = ['std git+https://github.com/FuelLabs/sway-lib-std?reference=master#7b973a638d5220228be616f1f89a249846001549']
+dependencies = ['std']

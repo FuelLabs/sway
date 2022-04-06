@@ -9,8 +9,14 @@
 use generational_arena::Arena;
 
 use crate::{
-    asm::AsmBlockContent, block::BlockContent, function::FunctionContent, irtype::AggregateContent,
-    metadata::Metadatum, module::ModuleContent, module::ModuleIterator, pointer::PointerContent,
+    asm::AsmBlockContent,
+    block::BlockContent,
+    function::FunctionContent,
+    irtype::AggregateContent,
+    metadata::{MetadataIndex, Metadatum},
+    module::ModuleContent,
+    module::ModuleIterator,
+    pointer::PointerContent,
     value::ValueContent,
 };
 
@@ -28,7 +34,10 @@ pub struct Context {
     pub aggregates: Arena<AggregateContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
 
+    // The metadata indices for locations need a fast lookup, hence the metadata_reverse_map.
+    // Using a HashMap might be overkill as most projects have only a handful of source files.
     pub metadata: Arena<Metadatum>,
+    pub metadata_reverse_map: std::collections::HashMap<*const std::path::PathBuf, MetadataIndex>,
 
     next_unique_sym_tag: u64,
 }

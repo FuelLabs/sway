@@ -1,9 +1,9 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::{AssetId, ContractId, Salt};
 use fuels_abigen_macro::abigen;
 use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::provider::Provider;
-use fuels_signers::util::test_helpers::setup_test_provider_and_wallet;
 use fuels_signers::wallet::Wallet;
+use fuels_signers::{util::test_helpers::setup_test_provider_and_wallet, Signer};
 
 abigen!(
     TestFuelCoinContract,
@@ -136,6 +136,70 @@ async fn can_force_transfer() {
         .unwrap();
     // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
     //assert_eq!(balance_result.value, 42);
+}
+
+#[tokio::test]
+async fn can_mint_and_send_to_contract() {
+    let (provider, wallet) = setup_test_provider_and_wallet().await;
+    let (fuelcoin_instance, fuelcoin_id) =
+        get_fuelcoin_instance(provider.clone(), wallet.clone()).await;
+    let balance_id = get_balance_contract_id(provider, wallet).await;
+    let amount = 55u64;
+
+    let asset_id = testfuelcoincontract_mod::ContractId {
+        value: fuelcoin_id.into(),
+    };
+
+    let target = testfuelcoincontract_mod::ContractId {
+        value: balance_id.into(),
+    };
+
+    fuelcoin_instance
+        .mint_and_send_to_contract(amount, target.clone())
+        .set_contracts(&[balance_id])
+        .call()
+        .await
+        .unwrap();
+
+    let result = fuelcoin_instance
+        .get_balance(asset_id, target)
+        .set_contracts(&[balance_id])
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(result.value, amount)
+}
+
+#[tokio::test]
+async fn can_mint_and_send_to_address() {
+    let (provider, wallet) = setup_test_provider_and_wallet().await;
+    let (fuelcoin_instance, fuelcoin_id) =
+        get_fuelcoin_instance(provider.clone(), wallet.clone()).await;
+    let amount = 55u64;
+
+    let asset_id_array: [u8; 32] = fuelcoin_id.into();
+
+    let address = wallet.address();
+    let recipient = testfuelcoincontract_mod::Address {
+        value: address.into(),
+    };
+
+    fuelcoin_instance
+        .mint_and_send_to_address(amount, recipient)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
+    );
 }
 
 async fn get_fuelcoin_instance(

@@ -16,6 +16,12 @@ pub trait From {
     // fn into() {...}
 }
 
+impl core::ops::Eq for B512 {
+    fn eq(self, other: Self) -> bool {
+        (self.bytes)[0] == (other.bytes)[0] && (self.bytes)[1] == (other.bytes)[1]
+    }
+}
+
 /// Functions for casting between B512 and raw byte arrays.
 impl From for B512 {
     fn from(h: b256, l: b256) -> B512 {
