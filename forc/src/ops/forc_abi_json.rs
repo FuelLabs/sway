@@ -1,4 +1,7 @@
-use crate::cli::{BuildCommand, JsonAbiCommand};
+use crate::{
+    cli::{BuildCommand, JsonAbiCommand},
+    utils::SWAY_GIT_TAG,
+};
 use anyhow::Result;
 use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
 use forc_util::find_manifest_dir;
@@ -15,7 +18,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     };
     let manifest_dir =
         find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir)?;
+    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
     check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
 
     let build_command = BuildCommand {

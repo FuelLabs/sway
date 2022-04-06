@@ -49,7 +49,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -78,15 +78,20 @@ impl Manifest {
     ///
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
-    pub fn from_file(path: &Path) -> Result<Self> {
+    ///
+    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
+    /// we fetch `std`.
+    pub fn from_file(path: &Path, sway_git_tag: &str) -> Result<Self> {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
-        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+        let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        manifest.implicitly_include_std_if_missing(sway_git_tag);
         manifest.validate(path)?;
         Ok(manifest)
     }
@@ -95,9 +100,9 @@ impl Manifest {
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path)
+        Self::from_file(&file_path, sway_git_tag)
     }
 
     /// Validate the `Manifest`.
@@ -164,6 +169,67 @@ impl Manifest {
             None => bail!(parsing_failed(&self.project.name, program_type.errors)),
         }
     }
+
+    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// `std` implicitly.
+    ///
+    /// This makes the common case of depending on `std` a lot smoother for most users, while still
+    /// allowing for the uncommon case of custom `core`/`std` deps.
+    ///
+    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
+    /// guarantee that the user's `core` is compatible with the implicit `std`.
+    fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
+        const CORE: &str = "core";
+        const STD: &str = "std";
+        // Don't include `std` if:
+        // - this *is* `core` or `std`.
+        // - either `core` or `std` packages are already specified.
+        // - a dependency already exists with the name "std".
+        if self.project.name == CORE
+            || self.project.name == STD
+            || self.pkg_dep(CORE).is_some()
+            || self.pkg_dep(STD).is_some()
+            || self.dep(STD).is_some()
+        {
+            return;
+        }
+        // Add a `[dependencies]` table if there isn't one.
+        let deps = self.dependencies.get_or_insert_with(Default::default);
+        // Add the missing dependency.
+        let std_dep = implicit_std_dep(sway_git_tag.to_string());
+        deps.insert(STD.to_string(), std_dep);
+    }
+
+    /// Retrieve a reference to the dependency with the given name.
+    pub fn dep(&self, dep_name: &str) -> Option<&Dependency> {
+        self.dependencies
+            .as_ref()
+            .and_then(|deps| deps.get(dep_name))
+    }
+
+    /// Finds and returns the name of the dependency associated with a package of the specified
+    /// name if there is one.
+    ///
+    /// Returns `None` in the case that no dependencies associate with a package of the given name.
+    fn pkg_dep<'a>(&'a self, pkg_name: &str) -> Option<&'a str> {
+        for (dep_name, dep) in self.deps() {
+            if dep.package().unwrap_or(dep_name) == pkg_name {
+                return Some(dep_name);
+            }
+        }
+        None
+    }
+}
+
+/// The definition for the implicit `std` dependency.
+fn implicit_std_dep(sway_git_tag: String) -> Dependency {
+    const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
+    let det = DependencyDetails {
+        git: Some(SWAY_GIT_REPO_URL.to_string()),
+        tag: Some(sway_git_tag),
+        ..Default::default()
+    };
+    Dependency::Detailed(det)
 }
 
 fn default_entry() -> String {

@@ -3,3 +3,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "name_shadowing"
 entry = "main.sw"
+
+[dependencies]
+core = { path = "../../../../../../sway-lib-core" }

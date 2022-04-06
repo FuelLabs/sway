@@ -1,3 +1,7 @@
 [[package]]
-name = 'star_import_alias'
+name = 'core'
 dependencies = []
+
+[[package]]
+name = 'star_import_alias'
+dependencies = ['core']
