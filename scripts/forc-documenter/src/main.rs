@@ -52,7 +52,6 @@ fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
     let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
 
     if !forc_commands_docs_path.is_dir() {
-        println!("Generating");
         create_dir_all(&forc_commands_docs_path)?;
     }
 
@@ -257,7 +256,6 @@ fn format_option_line(option_line: &str) -> String {
         } else if is_arg(token) {
             result.push_str(&format_arg(token));
         } else {
-            println!("{:?}", token);
             rest_of_line.push_str(token);
             rest_of_line.push(' ');
             rest_of_line = tokens_iter
@@ -273,7 +271,6 @@ fn format_option_line(option_line: &str) -> String {
         }
     }
     result.push_str("\n\n");
-    println!("rest: {:?}", &rest_of_line);
     result.push_str(&rest_of_line);
     result.push('\n');
 
