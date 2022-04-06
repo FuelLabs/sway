@@ -19,7 +19,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
         ecr buffer sig hash;
     };
     /// if recovered key is empty
-    if public_key == ~B512::new() {
+    if (public_key.bytes)[0] == ZERO && (public_key.bytes)[1] == ZERO {
         Result::Err(EcRecoverError::UnrecoverablePublicKey)
     } else {
         Result::Ok(public_key)
