@@ -138,12 +138,11 @@ fn main() -> Result<()> {
                             if existing_contents == result {
                                 println!("forc {}: documentation ok.", &command);
                             } else {
-                                println!("Documentation inconsistent for {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command);
                                 return Err(anyhow!("Documentation inconsistent for {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command));
                             }
                         }
                         Err(_) => {
-                            eprintln!("Error: documentation for forc {} does not exist - please run `cargo run write-docs` within scripts/forc-documenter.", &command);
+                            return Err(anyhow!("Documentation does not exist for forc {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command));
                         }
                     }
                 } else {
