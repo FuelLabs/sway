@@ -87,11 +87,10 @@ jobs:
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: '0.4.7'
-      - run: mdbook build docs &> tmp.txt && cat tmp.txt | grep "ERROR"
+        run: mdbook build docs &> tmp.txt
       - name: Fail if build logs contain "ERROR"
-      - uses: actions/checkout@v2
         if: ${{ [ -s tmp.txt ] }}
-      - run: rm tmp.txt && exit 1
+        run: rm tmp.txt && exit 1
 
   cargo-build-workspace:
     needs: cancel-previous-runs
