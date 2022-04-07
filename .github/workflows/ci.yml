@@ -83,12 +83,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Try if mdbook builds successfully
+      - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: '0.4.7'
-
-      - run: mdbook build docs
+      - run: mdbook build docs &> tmp.txt && cat tmp.txt | grep "ERROR"
+      - name: Fail if build logs contain "ERROR"
+      - if: ${{ [ -s tmp.txt ] }}
+      - run: rm tmp.txt && exit 1
 
   cargo-build-workspace:
     needs: cancel-previous-runs
@@ -214,7 +216,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: write-docs --dry-run
+          args: --bin forc-documenter write-docs --dry-run
 
   notify-slack-on-failure:
     needs:
