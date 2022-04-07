@@ -37,9 +37,6 @@ pub enum LineKind {
     Text,
 }
 
-pub const SUBHEADERS: &[&str] = &["USAGE:", "ARGS:", "OPTIONS:", "SUBCOMMANDS:"];
-pub const INDEX_HEADER: &str = "Here are a list of commands available to forc:\n\n";
-
 fn get_sway_path() -> PathBuf {
     let curr_dir = std::env::current_dir().unwrap();
     let sway_dir = curr_dir
@@ -135,7 +132,7 @@ fn main() -> io::Result<()> {
 
                 if index == 0 {
                     index_file
-                        .write_all(INDEX_HEADER.as_bytes())
+                        .write_all(constants::INDEX_HEADER.as_bytes())
                         .expect("Failed to write to forc/commands/index.md");
                 }
 
@@ -208,7 +205,7 @@ fn format_line(line: &str) -> String {
 }
 
 fn get_line_kind(line: &str) -> LineKind {
-    if SUBHEADERS.contains(&line) {
+    if constants::SUBHEADERS.contains(&line) {
         LineKind::SubHeader
     } else if is_args_line(line) {
         LineKind::Arg
