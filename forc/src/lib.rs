@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-mod cli;
+pub mod cli;
 mod ops;
 mod utils;
 

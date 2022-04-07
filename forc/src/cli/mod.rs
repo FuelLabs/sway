@@ -51,7 +51,7 @@ enum Forc {
     Lsp(LspCommand),
 }
 
-pub(crate) async fn run_cli() -> Result<()> {
+pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
 
     match opt.command {

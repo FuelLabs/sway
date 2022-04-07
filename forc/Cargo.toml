@@ -8,6 +8,14 @@ license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 description = "Fuel Orchestrator."
 
+[lib]
+name = "forc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "forc"
+path = "src/main.rs"
+
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0.41"
