@@ -1,3 +1,7 @@
 [[package]]
-name = 'use_full_path_names'
+name = 'core'
 dependencies = []
+
+[[package]]
+name = 'use_full_path_names'
+dependencies = ['core']

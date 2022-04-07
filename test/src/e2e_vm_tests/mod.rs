@@ -285,6 +285,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/self_impl_reassignment",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =

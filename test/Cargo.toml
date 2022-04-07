@@ -13,5 +13,5 @@ fuel-tx = "0.7"
 fuel-vm = { version = "0.6", features = ["random"] }
 rand = "0.8"
 regex = "1"
-tokio = "1.12"
 serde_json = "1.0.73"
+tokio = "1.12"

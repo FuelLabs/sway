@@ -1,6 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
 use anyhow::{anyhow, Context, Result};
+use forc_util::validate_name;
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -23,6 +24,8 @@ enum FileType {
     Dir,
 }
 
+// Dead fields required for deserialization.
+#[allow(dead_code)]
 #[derive(serde::Deserialize, Debug)]
 struct Links {
     git: String,
@@ -31,6 +34,8 @@ struct Links {
     cur: String,
 }
 
+// Dead fields required for deserialization.
+#[allow(dead_code)]
 #[derive(serde::Deserialize, Debug)]
 struct ContentResponse {
     #[serde(rename = "_links")]
@@ -49,6 +54,7 @@ struct ContentResponse {
 
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
+    validate_name(&project_name, "project name")?;
 
     match command.template {
         Some(template) => {

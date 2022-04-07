@@ -1,3 +1,7 @@
 [[package]]
-name = 'main_returns_unit'
+name = 'core'
 dependencies = []
+
+[[package]]
+name = 'main_returns_unit'
+dependencies = ['core']
