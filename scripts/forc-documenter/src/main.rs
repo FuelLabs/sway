@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use std::fs::{create_dir_all, read_to_string, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::str;
 
@@ -47,7 +47,7 @@ fn get_sway_path() -> PathBuf {
     sway_dir.to_path_buf()
 }
 
-fn create_forc_commands_docs_dir(path: &PathBuf) -> Result<()> {
+fn create_forc_commands_docs_dir(path: &Path) -> Result<()> {
     if !path.is_dir() {
         create_dir_all(&path)?;
     }
@@ -160,14 +160,10 @@ fn main() -> Result<()> {
                 let mut existing_index_contents = String::new();
                 index_file.read_to_string(&mut existing_index_contents)?;
 
-                if existing_index_contents.is_empty() {
-                    eprintln!("Error: failed to read an existing index.md for the commands section - please run `cargo run write-docs` within /scripts/forc-documenter");
+                if index_contents == existing_index_contents {
+                    println!("index.md ok.");
                 } else {
-                    if index_contents == existing_index_contents {
-                        println!("index.md ok.");
-                    } else {
-                        return Err(anyhow!("index.md inconsistent - please run `cargo run write-docs` within scripts/forc-documenter."));
-                    }
+                    return Err(anyhow!("index.md inconsistent - please run `cargo run write-docs` within scripts/forc-documenter."));
                 }
             } else {
                 index_file
