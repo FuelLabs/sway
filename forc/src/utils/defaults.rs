@@ -49,23 +49,59 @@ path = "tests/harness.rs"
 }
 
 pub(crate) fn default_program() -> String {
-    r#"script;
+    r#"contract ;
 
-fn main() {
+    abi MyContract {
 
-}
+    }
+
+    impl MyContract for Contract {
+
+    }
 "#
     .into()
 }
 
-pub(crate) fn default_test_program() -> String {
-    r#"
-
-#[tokio::test]
-async fn harness() {
-    assert_eq!(true, true);
-}
-"#
+pub(crate) fn default_test_program(project_name: &str) -> String {
+    format!("{}{}{}{}{}", r#"
+    use fuel_tx::{ContractId, Salt};
+    use fuels_abigen_macro::abigen;
+    use fuels_contract::{contract::Contract, parameters::TxParameters};
+    use fuels_signers::util::test_helpers;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+    use std::env;
+    
+    // Load abi from json
+    abigen!(MyContract, "./"#,  project_name, r#".json");
+    
+    async fn get_contract_instance() -> (MyContract, ContractId) {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+    
+        // Build the contract
+        let salt = Salt::from([0u8; 32]);
+        let compiled = Contract::load_sway_contract("./out/debug/"#, project_name, r#".bin", salt).unwrap();
+    
+        // Launch a local network and deploy the contract
+        let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    
+    
+        let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default()).await.unwrap();
+    
+        let instance = MyContract::new(id.to_string(), provider, wallet);
+    
+        (instance, id)
+    
+    }
+    
+    
+    #[tokio::test]
+    async fn can_get_contract_id() {
+    
+        let (instance, id) = get_contract_instance().await;
+    
+        // Now you have an instance of your contract you can use to test each functioncarg
+    }"#)
     .into()
 }
 

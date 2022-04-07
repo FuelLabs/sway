@@ -104,7 +104,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
     // Insert default test function
     fs::write(
         Path::new(&project_name).join("tests").join("harness.rs"),
-        defaults::default_test_program(),
+        defaults::default_test_program(&project_name),
     )?;
 
     // Ignore default `out` and `target` directories created by forc and cargo.
