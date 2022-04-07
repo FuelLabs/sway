@@ -10,6 +10,5 @@ pub mod test {
 
 #[cfg(feature = "util")]
 pub mod util {
-    pub use crate::utils::client::start_fuel_core;
     pub use sway_utils::constants;
 }
