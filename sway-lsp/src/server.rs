@@ -356,7 +356,7 @@ fn main() {
 
     fn config() -> DebugFlags {
         Default::default()
-    } 
+    }
 
     #[tokio::test]
     async fn initialize() {
