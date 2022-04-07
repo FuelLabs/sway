@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use std::fs::{create_dir_all, File, OpenOptions};
-use std::io;
+use std::fs::{create_dir_all, read_to_string, File, OpenOptions};
+use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -24,8 +24,8 @@ enum Commands {
 
 #[derive(Debug, Parser)]
 struct WriteDocsCommand {
-    #[clap(short = 'c', long = "command")]
-    pub command_name: Option<String>,
+    #[clap(long)]
+    pub dry_run: bool,
 }
 
 #[derive(PartialEq)]
@@ -47,14 +47,12 @@ fn get_sway_path() -> PathBuf {
     sway_dir.to_path_buf()
 }
 
-fn prepare_forc_commands_docs_dir() -> Result<PathBuf> {
-    let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
-
-    if !forc_commands_docs_path.is_dir() {
-        create_dir_all(&forc_commands_docs_path)?;
+fn create_forc_commands_docs_dir(path: &PathBuf) -> Result<()> {
+    if !path.is_dir() {
+        create_dir_all(&path)?;
     }
 
-    Ok(forc_commands_docs_path)
+    Ok(())
 }
 
 fn get_example_for_command(command: &str) -> &str {
@@ -68,21 +66,26 @@ fn get_example_for_command(command: &str) -> &str {
     }
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    let forc_commands_docs_path =
-        prepare_forc_commands_docs_dir().expect("Failed to prepare forc commands docs directory");
 
     match cli.command {
         Commands::WriteDocs(_command) => {
+            let WriteDocsCommand { dry_run } = _command;
+
+            let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
             let index_file_path = forc_commands_docs_path.join("index.md");
+
+            if !dry_run {
+                create_forc_commands_docs_dir(&forc_commands_docs_path)
+                    .expect("Failed to prepare forc commands docs directory");
+            }
             let mut index_file = OpenOptions::new()
-                .create(true)
                 .read(true)
-                .write(true)
+                .create(!dry_run)
+                .write(!dry_run)
                 .open(index_file_path)
-                .expect("Problem opening or creating forc/commands/index.md");
+                .expect("Problem reading, opening or creating forc/commands/index.md");
 
             let output = process::Command::new("forc")
                 .arg("--help")
@@ -105,7 +108,10 @@ fn main() -> io::Result<()> {
                 }
             }
 
-            for (index, command) in possible_commands.iter().enumerate() {
+            let mut index_contents = String::new();
+            index_contents.push_str(constants::INDEX_HEADER);
+
+            for command in possible_commands.iter() {
                 let mut result = match generate_doc_output(command) {
                     Ok(output) => output,
                     Err(_) => continue,
@@ -123,23 +129,56 @@ fn main() -> io::Result<()> {
                     format_index_entry_string(&document_name, &index_entry_name);
 
                 let forc_command_file_path = forc_commands_docs_path.join(document_name);
-                let mut command_file =
-                    File::create(forc_command_file_path).expect("Failed to create documentation");
+                index_contents.push_str(&index_entry_string);
 
-                command_file
-                    .write_all(result.as_bytes())
-                    .expect("Failed to write to file");
-
-                if index == 0 {
-                    index_file
-                        .write_all(constants::INDEX_HEADER.as_bytes())
-                        .expect("Failed to write to forc/commands/index.md");
+                if dry_run {
+                    let existing_contents = read_to_string(&forc_command_file_path);
+                    match existing_contents {
+                        Ok(existing_contents) => {
+                            if existing_contents == result {
+                                println!("forc {}: documentation ok.", &command);
+                            } else {
+                                println!("Documentation inconsistent for {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command);
+                                return Err(anyhow!("Documentation inconsistent for {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command));
+                            }
+                        }
+                        Err(_) => {
+                            eprintln!("Error: documentation for forc {} does not exist - please run `cargo run write-docs` within scripts/forc-documenter.", &command);
+                        }
+                    }
+                } else {
+                    println!("Generating docs for command: forc {}...", &command);
+                    let mut command_file = File::create(&forc_command_file_path)
+                        .expect("Failed to create documentation");
+                    command_file
+                        .write_all(result.as_bytes())
+                        .expect("Failed to write to file");
                 }
+            }
+
+            if dry_run {
+                let mut existing_index_contents = String::new();
+                index_file.read_to_string(&mut existing_index_contents)?;
+
+                if existing_index_contents.is_empty() {
+                    eprintln!("Error: failed to read an existing index.md for the commands section - please run `cargo run write-docs` within /scripts/forc-documenter");
+                } else {
+                    if index_contents == existing_index_contents {
+                        println!("index.md ok.");
+                    } else {
+                        return Err(anyhow!("index.md inconsistent - please run `cargo run write-docs` within scripts/forc-documenter."));
+                    }
+                }
+            } else {
+                index_file
+                    .write_all(constants::INDEX_HEADER.as_bytes())
+                    .expect("Failed to write to forc/commands/index.md");
 
                 index_file
-                    .write_all(index_entry_string.as_bytes())
+                    .write_all(index_contents.as_bytes())
                     .expect("Failed to write to forc/commands/index.md");
             }
+
             println!("Done.");
         }
     }
@@ -189,8 +228,6 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
             result.push('\n');
         }
     }
-
-    println!("Generating docs for command: forc {}...", &subcommand);
     Ok(result)
 }
 
