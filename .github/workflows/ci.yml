@@ -89,7 +89,8 @@ jobs:
           mdbook-version: '0.4.7'
       - run: mdbook build docs &> tmp.txt && cat tmp.txt | grep "ERROR"
       - name: Fail if build logs contain "ERROR"
-      - if: ${{ [ -s tmp.txt ] }}
+      - uses: actions/checkout@v2
+        if: ${{ [ -s tmp.txt ] }}
       - run: rm tmp.txt && exit 1
 
   cargo-build-workspace:
