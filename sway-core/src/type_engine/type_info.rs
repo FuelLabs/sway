@@ -2,7 +2,6 @@ use super::*;
 
 use crate::{
     build_config::BuildConfig,
-    parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
     CallPath, Ident, Rule, TypeArgument, TypeParameter,
 };
@@ -40,7 +39,7 @@ pub enum TypeInfo {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: OwnedCallPath,
+        abi_name: CallPath,
         // this is raw source code to be evaluated later.
         // TODO(static span): we can just use `TypedExpression` here or something more elegant
         // `TypedExpression` requires implementing a lot of `Hash` all over the place, not the
@@ -937,7 +936,6 @@ fn parse_contract_caller_type(
         warnings,
         errors
     );
-    let abi_path = abi_path.to_owned_call_path();
 
     ok(
         TypeInfo::ContractCaller {

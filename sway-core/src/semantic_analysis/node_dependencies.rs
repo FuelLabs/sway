@@ -176,7 +176,9 @@ fn depends_on(
             match (decl_name(dependant), decl_name(dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
                     .get(&dependant_name)
-                    .map(|deps_set| deps_set.deps.contains(&dependee_name))
+                    .map(|deps_set| {
+                        recursively_depends_on(&deps_set.deps, &dependee_name, decl_dependencies)
+                    })
                     .unwrap_or(false),
                 _ => false,
             }
@@ -387,8 +389,11 @@ impl Dependencies {
                 })
                 .gather_from_typeinfo(&asm.return_type),
 
-            // Not sure about AbiCast, could add the abi_name and address.
-            Expression::AbiCast { .. } => self,
+            // we should do address someday, but due to the whole `re_parse_expression` thing
+            // it isn't possible right now
+            Expression::AbiCast { abi_name, .. } => {
+                self.gather_from_call_path(abi_name, false, false)
+            }
 
             Expression::Literal { .. } => self,
             Expression::Tuple { fields, .. } => {
@@ -476,6 +481,9 @@ impl Dependencies {
 
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         match type_info {
+            TypeInfo::ContractCaller { abi_name, .. } => {
+                self.gather_from_call_path(abi_name, false, false)
+            }
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -602,7 +610,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Ref(x) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
-        TypeInfo::ContractCaller { .. } => "contract caller",
+        TypeInfo::ContractCaller { abi_name, .. } => {
+            return format!("contract caller {}", abi_name);
+        }
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
@@ -611,4 +621,21 @@ fn type_info_name(type_info: &TypeInfo) -> String {
     .to_string()
 }
 
+/// Checks if any dependant depends on a dependee via a chain of dependencies.
+fn recursively_depends_on(
+    set: &HashSet<DependentSymbol>,
+    dependee: &DependentSymbol,
+    decl_dependencies: &DependencyMap,
+) -> bool {
+    set.contains(dependee)
+        || set.iter().any(|dep| {
+            decl_dependencies
+                .get(dep)
+                .map(|dep| recursively_depends_on(&dep.deps, dependee, decl_dependencies))
+                .unwrap_or(false)
+        })
+}
+
 // -------------------------------------------------------------------------------------------------
+//
+//

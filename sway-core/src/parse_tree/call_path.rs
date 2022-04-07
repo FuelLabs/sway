@@ -24,12 +24,6 @@ impl std::convert::From<Ident> for CallPath {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct OwnedCallPath {
-    pub prefixes: Vec<String>,
-    pub suffix: String,
-}
-
 use std::fmt;
 impl fmt::Display for CallPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -52,16 +46,6 @@ impl CallPath {
                 suffix: self.prefixes.last().unwrap().clone(),
                 is_absolute: self.is_absolute,
             }
-        }
-    }
-    pub(crate) fn to_owned_call_path(&self) -> OwnedCallPath {
-        OwnedCallPath {
-            prefixes: self
-                .prefixes
-                .iter()
-                .map(|x| x.as_str().to_string())
-                .collect(),
-            suffix: self.suffix.as_str().to_string(),
         }
     }
 }

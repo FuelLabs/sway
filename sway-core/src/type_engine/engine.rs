@@ -297,7 +297,7 @@ impl Engine {
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
-            _ => {
+            (a, b) => {
                 let errors = vec![TypeError::MismatchedType {
                     expected,
                     received,
