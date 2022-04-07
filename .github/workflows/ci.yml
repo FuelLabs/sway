@@ -190,6 +190,12 @@ jobs:
         with:
           command: test
           args: --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --nocapture
+      - name: Archive forc binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: forc_x86_64-unknown-linux-gnu
+          path: |
+            ./target/debug/forc
 
   cargo-test-workspace:
     needs: cancel-previous-runs
