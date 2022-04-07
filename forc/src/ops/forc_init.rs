@@ -24,6 +24,8 @@ enum FileType {
     Dir,
 }
 
+// Dead fields required for deserialization.
+#[allow(dead_code)]
 #[derive(serde::Deserialize, Debug)]
 struct Links {
     git: String,
@@ -32,6 +34,8 @@ struct Links {
     cur: String,
 }
 
+// Dead fields required for deserialization.
+#[allow(dead_code)]
 #[derive(serde::Deserialize, Debug)]
 struct ContentResponse {
     #[serde(rename = "_links")]

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub mod cli;
 mod ops;
 mod utils;
