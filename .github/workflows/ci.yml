@@ -87,6 +87,7 @@ jobs:
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: '0.4.7'
+      - name: Emit logs to tmp.txt
         run: mdbook build docs &> tmp.txt
       - name: Fail if build logs contain "ERROR"
         if: ${{ [ -s tmp.txt ] }}
