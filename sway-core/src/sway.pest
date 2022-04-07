@@ -207,7 +207,7 @@ type_param           =  {ident}
 type_args_with_path  =  {path_separator ~ type_args}
 type_args            =  {"<" ~ type_name ~ (", " ~ type_name)* ~ ">"}
 type_name            =  {str_type|contract_caller_type|ident ~ type_args?|tuple_type|array_type}
-contract_caller_type =  {"ContractCaller" ~ "<" ~ call_path ~ ">" }
+contract_caller_type =  {"ContractCaller" ~ "<" ~ (call_path|"_") ~ ">" }
 str_type             =  { "str" ~ "[" ~ basic_integer ~ "]" }
 trait_bounds         =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
 // Array size can be any constant u64 expression, but we don't properly support constant expressions.  See `array_elems rule above.

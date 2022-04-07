@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     semantic_analysis::ast_node::*,
-    type_engine::{insert_type, IntegerBits},
+    type_engine::{insert_type, AbiName, IntegerBits},
 };
 
 mod method_application;
@@ -1882,8 +1882,45 @@ impl TypedExpression {
             errors
         );
         // make sure the declaration is actually an abi
+        dbg!(&abi);
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: ref expr,
+                ..
+            }) => {
+                let ret_ty = look_up_type_id(expr.return_type);
+                let abi_name = match ret_ty {
+                    TypeInfo::ContractCaller { abi_name, .. } => abi_name,
+                    _ => {
+                        errors.push(CompileError::NotAnAbi {
+                            span: abi_name.span(),
+                            actually_is: abi.friendly_name(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                match abi_name {
+                    AbiName::Known(abi_name) => {
+                        let decl = check!(
+                            namespace.get_call_path(&abi_name),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let abi = match abi {
+                            TypedDeclaration::AbiDeclaration(abi) => abi,
+                            _ => todo!(),
+                        };
+                        abi
+                    }
+                    _ => {
+                        errors.push(CompileError::AbiTypeUnknown { span: todo!() });
+                        return err(warnings, errors);
+                    }
+                }
+                // look up the call path and get the declaration it references
+            }
             a => {
                 errors.push(CompileError::NotAnAbi {
                     span: abi_name.span(),
@@ -1893,7 +1930,7 @@ impl TypedExpression {
             }
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
-            abi_name: abi_name.clone(),
+            abi_name: AbiName::Known(abi_name.clone()),
             address: address_str,
         });
         let mut functions_buf = abi

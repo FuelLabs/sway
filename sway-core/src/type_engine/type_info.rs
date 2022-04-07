@@ -12,6 +12,22 @@ use derivative::Derivative;
 use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub enum AbiName {
+    Deferred,
+    Known(CallPath),
+}
+
+impl std::fmt::Display for AbiName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            &(match self {
+                AbiName::Deferred => "for unspecified ABI".to_string(),
+                AbiName::Known(cp) => cp.to_string(),
+            }),
+        )
+    }
+}
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
@@ -39,7 +55,7 @@ pub enum TypeInfo {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: CallPath,
+        abi_name: AbiName,
         // this is raw source code to be evaluated later.
         // TODO(static span): we can just use `TypedExpression` here or something more elegant
         // `TypedExpression` requires implementing a lot of `Hash` all over the place, not the
@@ -494,7 +510,7 @@ impl TypeInfo {
                 fields.iter().map(|field| field.r#type),
             ),
             ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name.suffix)
+                format!("contract caller {}", abi_name)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
             Storage { .. } => "contract storage".into(),
@@ -537,7 +553,7 @@ impl TypeInfo {
                 format!("struct {}", name)
             }
             ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name.suffix)
+                format!("contract caller {}", abi_name)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
@@ -929,7 +945,19 @@ fn parse_contract_caller_type(
 ) -> CompileResult<TypeInfo> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let abi_path = raw.into_inner().next().expect("guaranteed by grammar");
+    let abi_path = match raw.into_inner().next() {
+        Some(x) => x,
+        None => {
+            return ok(
+                TypeInfo::ContractCaller {
+                    address: Default::default(),
+                    abi_name: AbiName::Deferred,
+                },
+                warnings,
+                errors,
+            )
+        }
+    };
     let abi_path = check!(
         CallPath::parse_from_pair(abi_path, config),
         return err(warnings, errors),
@@ -940,9 +968,9 @@ fn parse_contract_caller_type(
     ok(
         TypeInfo::ContractCaller {
             address: Default::default(),
-            abi_name: abi_path,
+            abi_name: AbiName::Known(abi_path),
         },
-        vec![],
-        vec![],
+        warnings,
+        errors,
     )
 }

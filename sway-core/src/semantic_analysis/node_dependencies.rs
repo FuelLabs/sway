@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_engine::look_up_type_id;
 use crate::{
-    error::*, parse_tree::*, type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock,
-    Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*,
+    parse_tree::*,
+    type_engine::{look_up_type_id, AbiName, IntegerBits},
+    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
+    WhileLoop,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -481,9 +483,10 @@ impl Dependencies {
 
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         match type_info {
-            TypeInfo::ContractCaller { abi_name, .. } => {
-                self.gather_from_call_path(abi_name, false, false)
-            }
+            TypeInfo::ContractCaller {
+                abi_name: AbiName::Known(abi_name),
+                ..
+            } => self.gather_from_call_path(abi_name, false, false),
             TypeInfo::Custom {
                 name,
                 type_arguments,
