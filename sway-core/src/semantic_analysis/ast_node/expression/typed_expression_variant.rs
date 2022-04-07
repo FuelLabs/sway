@@ -113,6 +113,7 @@ pub(crate) enum TypedExpressionVariant {
     SizeOfValue {
         expr: Box<TypedExpression>,
     },
+    AbiName(AbiName),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -508,6 +509,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::SizeOfValue { expr } => {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
+            TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
         }
     }
 
@@ -634,6 +636,7 @@ impl TypedExpressionVariant {
                 };
             }
             SizeOfValue { expr } => expr.copy_types(type_mapping),
+            AbiName(_) => (),
         }
     }
 }

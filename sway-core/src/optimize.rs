@@ -724,6 +724,9 @@ impl FnCompiler {
                     None,
                 ))
             }
+            TypedExpressionVariant::AbiName(_) => {
+                Ok(Value::new_constant(context, Constant::new_unit(), None))
+            }
         }
     }
 

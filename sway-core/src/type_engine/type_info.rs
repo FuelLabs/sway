@@ -440,8 +440,8 @@ impl TypeInfo {
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        let warnings = vec![];
+        let errors = vec![];
         let span = Span {
             span: input.as_span(),
             path: config.map(|config| config.dir_of_code.clone()),

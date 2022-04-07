@@ -117,6 +117,7 @@ impl TypedExpression {
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
+            AbiName(_) => false,
         }
     }
     /// recurse into `self` and get any return statements -- used to validate that all returns
@@ -173,6 +174,7 @@ impl TypedExpression {
             | TypedExpressionVariant::TypeProperty { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
@@ -1881,8 +1883,6 @@ impl TypedExpression {
             warnings,
             errors
         );
-        // make sure the declaration is actually an abi
-        let span = abi.span();
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -1908,7 +1908,7 @@ impl TypedExpression {
                             warnings,
                             errors
                         );
-                        let abi = match abi {
+                        let abi = match decl {
                             TypedDeclaration::AbiDeclaration(abi) => abi,
                             _ => {
                                 errors.push(CompileError::NotAnAbi {
