@@ -49,6 +49,7 @@ enum Forc {
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
     Lsp(LspCommand),
+    Gm,
 }
 
 pub async fn run_cli() -> Result<()> {
@@ -69,5 +70,9 @@ pub async fn run_cli() -> Result<()> {
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
         Forc::Lsp(command) => lsp::exec(command).await,
+        Forc::Gm => {
+            println!("gn");
+            Ok(())
+        }
     }
 }
