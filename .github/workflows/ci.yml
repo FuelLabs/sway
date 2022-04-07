@@ -89,13 +89,13 @@ jobs:
           mdbook-version: '0.4.7'
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-        mdbook build docs &> tmp.txt
-        if grep '[ERROR]' tmp.txt > /dev/null
-        then
-          rm tmp.txt && exit 1
-        else
-          rm tmp.txt && exit 0
-        fi
+          mdbook build docs &> tmp.txt
+          if grep '[ERROR]' tmp.txt > /dev/null
+          then
+            rm tmp.txt && exit 1
+          else
+            rm tmp.txt && exit 0
+          fi
 
   cargo-build-workspace:
     needs: cancel-previous-runs
