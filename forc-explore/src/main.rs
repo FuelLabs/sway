@@ -125,9 +125,9 @@ async fn download_build(url: &str, version: &str) -> Result<File> {
     Ok(file)
 }
 
-fn unpack_archive(version: &str) -> Result<(), std::io::Error> {
-    let mut ar = Archive::new(File::open(path::build_archive(version)).unwrap());
-    ar.unpack(path::web_app_version(version)).unwrap();
+fn unpack_archive(version: &str) -> Result<()> {
+    let mut ar = Archive::new(File::open(path::build_archive(version))?);
+    ar.unpack(path::web_app_version(version))?;
     Ok(())
 }
 
