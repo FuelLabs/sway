@@ -1882,7 +1882,7 @@ impl TypedExpression {
             errors
         );
         // make sure the declaration is actually an abi
-        dbg!(&abi);
+        let span = abi.span();
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -1910,13 +1910,30 @@ impl TypedExpression {
                         );
                         let abi = match abi {
                             TypedDeclaration::AbiDeclaration(abi) => abi,
-                            _ => todo!(),
+                            _ => {
+                                errors.push(CompileError::NotAnAbi {
+                                    span: abi_name.span(),
+                                    actually_is: abi.friendly_name(),
+                                });
+                                return err(warnings, errors);
+                            }
                         };
                         abi
                     }
-                    _ => {
-                        errors.push(CompileError::AbiTypeUnknown { span: todo!() });
-                        return err(warnings, errors);
+                    AbiName::Deferred => {
+                        return ok(
+                            TypedExpression {
+                                return_type: insert_type(TypeInfo::ContractCaller {
+                                    abi_name: AbiName::Deferred,
+                                    address: String::new(),
+                                }),
+                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
+                                is_constant: IsConstant::Yes,
+                                span,
+                            },
+                            warnings,
+                            errors,
+                        )
                     }
                 }
                 // look up the call path and get the declaration it references
