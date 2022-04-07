@@ -1111,6 +1111,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-explore"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+ "forc-util",
+ "reqwest",
+ "serde",
+ "tar",
+ "tokio",
+ "warp",
+]
+
+[[package]]
 name = "forc-lsp"
 version = "0.9.2"
 dependencies = [
