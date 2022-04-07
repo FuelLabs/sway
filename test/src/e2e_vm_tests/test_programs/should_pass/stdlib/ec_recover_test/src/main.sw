@@ -48,5 +48,27 @@ fn main() -> bool {
         panic(0);
     };
 
+    /////////////////////////////////////////
+    ///  Failure to recover
+    /////////////////////////////////////////
+
+    // using invalid data here to test the handling of failed pubkey/address recovery.
+    let bad_sig_hi = 0x000000000_8d8fe7dd522d88_000000000000000_34b6326ff51129776_000000000;
+    let bad_sig_lo = 0x000000000_4a11e49a2ee69f_000000000000000_dba8d779d323ab2a5_000000000;
+    let bad_signature: B512 = ~B512::from(bad_sig_hi, bad_sig_lo);
+
+    // this should return a Result::Err, so if it returns Result::Ok, we panic.
+    let pubkey_result: Result<B512, EcRecoverError> = ec_recover(bad_signature, msg_hash);
+    if let Result::Ok(v) = pubkey_result {
+        panic(0)
+    };
+
+    // this should return a Result::Err, so if it returns Result::Ok, we panic.
+    let pubkey_result: Result<Address, EcRecoverError> = ec_recover_address(bad_signature, msg_hash);
+    if let Result::Ok(v) = pubkey_result {
+        panic(0)
+    };
+
+
     true
 }
