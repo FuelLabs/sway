@@ -21,18 +21,16 @@ pub fn handle_open_file(
         }
     }
 
-    match session.parse_document(path) {
-        Ok(diagnostics) => diagnostics,
-        Err(DocumentError::FailedToParse(diagnostics)) => diagnostics,
-        _ => vec![],
-    }
+    parse_document(session, path)
 }
 
 pub fn handle_change_file(
     session: Arc<Session>,
     params: DidChangeTextDocumentParams,
-) -> Result<(), DocumentError> {
-    session.update_text_document(&params.text_document.uri, params.content_changes)
+) -> Vec<Diagnostic> {
+    let path = params.text_document.uri.path();
+    let _ = session.update_text_document(&params.text_document.uri, params.content_changes);
+    parse_document(session, path)
 }
 
 pub fn handle_save_file(
@@ -51,5 +49,16 @@ pub fn handle_save_file(
         }
         Err(DocumentError::FailedToParse(diagnostics)) => Some(diagnostics),
         _ => None,
+    }
+}
+
+fn parse_document(
+    session: Arc<Session>,
+    path: &str
+) -> Vec<Diagnostic> {
+    match session.parse_document(path) {
+        Ok(diagnostics) => diagnostics,
+        Err(DocumentError::FailedToParse(diagnostics)) => diagnostics,
+        _ => vec![],
     }
 }
