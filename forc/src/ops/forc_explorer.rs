@@ -12,7 +12,6 @@ type DownloadResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send
 
 #[derive(Deserialize, Debug)]
 struct GitHubRelease {
-    url: String,
     assets: Vec<GitHubReleaseAsset>,
     name: String,
 }
