@@ -78,6 +78,18 @@ jobs:
           command: run
           args: --bin build-all-examples
 
+  build-mdbook:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Try if mdbook builds successfully
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: '0.4.7'
+
+      - run: mdbook build docs
+
   cargo-build-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -189,6 +201,20 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+  forc-documenter-dry-run:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Run forc-documenter in dry run mode
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: write-docs --dry-run
 
   notify-slack-on-failure:
     needs:
