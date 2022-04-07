@@ -8,7 +8,6 @@ use ::hash::{HashMethod, hash_pair};
 use ::result::*;
 
 pub enum EcRecoverError {
-    UnrecoverableAddress: (),
     UnrecoverablePublicKey: (),
 }
 
