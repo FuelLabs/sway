@@ -89,7 +89,7 @@ jobs:
           mdbook-version: '0.4.7'
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-        mdbook build docs &> tmp.txt \
+        mdbook build docs &> tmp.txt
         if grep '[ERROR]' tmp.txt > /dev/null
         then
           rm tmp.txt && exit 1
