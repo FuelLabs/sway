@@ -16,7 +16,7 @@ pub use explorer::Command as ExplorerCommand;
 pub use format::Command as FormatCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
-use lsp::Command as LspCommand;
+pub use lsp::Command as LspCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
