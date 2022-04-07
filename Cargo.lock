@@ -1095,7 +1095,6 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-fmt",
- "sway-lsp",
  "sway-types",
  "sway-utils",
  "taplo",
@@ -1109,6 +1108,16 @@ dependencies = [
  "uwuify",
  "warp",
  "whoami",
+]
+
+[[package]]
+name = "forc-lsp"
+version = "0.9.0"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+ "sway-lsp",
+ "tokio",
 ]
 
 [[package]]
