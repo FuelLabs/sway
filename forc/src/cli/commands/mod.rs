@@ -3,7 +3,6 @@ pub mod build;
 pub mod clean;
 pub mod completions;
 pub mod deploy;
-pub mod format;
 pub mod init;
 pub mod json_abi;
 pub mod parse_bytecode;
