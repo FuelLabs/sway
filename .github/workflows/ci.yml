@@ -206,6 +206,27 @@ jobs:
         with:
           command: test
 
+  cargo-unused-deps-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          # `cargo-udeps` requires nightly to run
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v1
+      - name: Install cargo-udeps
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-udeps
+      - name: Check Unused Deps
+        uses: actions-rs/cargo@v1
+        with:
+          command: udeps
+          args: --all-targets
+
   notify-slack-on-failure:
     needs:
       [
