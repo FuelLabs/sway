@@ -1,4 +1,4 @@
-use crate::cli::UpdateCommand;
+use crate::{cli::UpdateCommand, utils::SWAY_GIT_TAG};
 use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, Manifest};
 use forc_util::{find_manifest_dir, lock_path};
@@ -40,11 +40,11 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         }
     };
 
-    let manifest = Manifest::from_dir(&manifest_dir)?;
+    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
     let lock_path = lock_path(&manifest_dir);
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
+    let new_plan = pkg::BuildPlan::new(&manifest_dir, SWAY_GIT_TAG, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     lock::print_diff(&manifest.project.name, &diff);

@@ -1,6 +1,7 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::parameters::TxParameters;
+use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{check_program_type, fuel_core_not_running, manifest_file_missing, Manifest};
 use forc_util::find_manifest_dir;
@@ -20,7 +21,7 @@ pub async fn run(command: RunCommand) -> Result<()> {
     };
     let manifest_dir =
         find_manifest_dir(&path_dir).ok_or_else(|| manifest_file_missing(path_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir)?;
+    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
     check_program_type(&manifest, manifest_dir, TreeType::Script)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
@@ -61,15 +62,12 @@ pub async fn run(command: RunCommand) -> Result<()> {
             Some(network) => &network.url,
             _ => &command.node_url,
         };
-
         let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
-
         if command.kill_node {
             if let Some(mut child) = child {
                 child.kill().await.expect("Node should be killed");
             }
         }
-
         Ok(())
     }
 }

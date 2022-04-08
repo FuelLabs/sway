@@ -12,7 +12,6 @@ type DownloadResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send
 
 #[derive(Deserialize, Debug)]
 struct GitHubRelease {
-    url: String,
     assets: Vec<GitHubReleaseAsset>,
     name: String,
 }
@@ -124,7 +123,7 @@ async fn get_github_releases() -> Result<Vec<GitHubRelease>, reqwest::Error> {
         .header("User-Agent", "warp")
         .send()
         .await?;
-    Ok(response.json().await?)
+    response.json().await
 }
 
 fn get_latest_release_name(releases: &[GitHubRelease]) -> &str {
