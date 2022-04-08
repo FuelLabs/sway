@@ -640,6 +640,12 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
                 span,
             },
+            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
+                return_type: decl.as_type(),
+                is_constant: IsConstant::Yes,
+                expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                span,
+            },
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.span().as_str().to_string(),

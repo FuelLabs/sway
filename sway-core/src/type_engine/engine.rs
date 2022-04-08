@@ -268,7 +268,7 @@ impl Engine {
                 || matches!(abi_name_a, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(expected, &e, TypeInfo::Ref(received)) {
+                match self.slab.replace(expected, e, TypeInfo::Ref(received)) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
@@ -286,7 +286,7 @@ impl Engine {
                 || matches!(abi_name_b, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(received, &r, TypeInfo::Ref(expected)) {
+                match self.slab.replace(received, r, TypeInfo::Ref(expected)) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
