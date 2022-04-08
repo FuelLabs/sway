@@ -36,26 +36,13 @@ pub fn handle_change_file(
 pub fn handle_save_file(
     session: Arc<Session>,
     params: &DidSaveTextDocumentParams,
-) -> Option<Vec<Diagnostic>> {
+) -> Vec<Diagnostic> {
     let path = params.text_document.uri.path();
-
-    match session.parse_document(path) {
-        Ok(diagnostics) => {
-            if diagnostics.is_empty() {
-                None
-            } else {
-                Some(diagnostics)
-            }
-        }
-        Err(DocumentError::FailedToParse(diagnostics)) => Some(diagnostics),
-        _ => None,
-    }
+    parse_document(session, path)
 }
 
-fn parse_document(
-    session: Arc<Session>,
-    path: &str
-) -> Vec<Diagnostic> {
+// Parse the document and return diagnostics even if a DocumentError::FailedToParse error is encountered.
+fn parse_document(session: Arc<Session>, path: &str) -> Vec<Diagnostic> {
     match session.parse_document(path) {
         Ok(diagnostics) => diagnostics,
         Err(DocumentError::FailedToParse(diagnostics)) => diagnostics,
