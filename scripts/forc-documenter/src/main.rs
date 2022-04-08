@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use std::fs::{create_dir_all, read_to_string, File, OpenOptions};
+use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -82,12 +82,14 @@ fn main() -> Result<()> {
             let index_file_path = forc_commands_docs_path.join("index.md");
 
             if !dry_run {
+                remove_dir_all(&forc_commands_docs_path)
+                    .expect("Failed to clean commands directory");
                 create_forc_commands_docs_dir(&forc_commands_docs_path)
                     .expect("Failed to prepare forc commands docs directory");
             }
             let mut index_file = OpenOptions::new()
-                .read(true)
                 .create(!dry_run)
+                .read(true)
                 .write(!dry_run)
                 .open(index_file_path)
                 .expect("Problem reading, opening or creating forc/commands/index.md");
@@ -145,7 +147,7 @@ fn main() -> Result<()> {
                             if existing_contents == result {
                                 println!("forc {}: documentation ok.", &command);
                             } else {
-                                return Err(anyhow!("Documentation inconsistent for {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command));
+                                return Err(anyhow!("Documentation inconsistent for forc {} - please run `cargo run write-docs` within scripts/forc-documenter.", &command));
                             }
                         }
                         Err(_) => {
