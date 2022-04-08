@@ -68,15 +68,11 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
     use fuels_abigen_macro::abigen;
     use fuels_contract::{contract::Contract, parameters::TxParameters};
     use fuels_signers::util::test_helpers;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
-    use std::env;
     
     // Load abi from json
     abigen!(MyContract, "./"#,  project_name, r#".json");
     
     async fn get_contract_instance() -> (MyContract, ContractId) {
-        let rng = &mut StdRng::seed_from_u64(2322u64);
     
         // Build the contract
         let salt = Salt::from([0u8; 32]);
@@ -98,7 +94,7 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
     #[tokio::test]
     async fn can_get_contract_id() {
     
-        let (instance, id) = get_contract_instance().await;
+        let (_instance, _id) = get_contract_instance().await;
     
         // Now you have an instance of your contract you can use to test each functioncarg
     }"#)
