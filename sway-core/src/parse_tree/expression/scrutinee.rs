@@ -67,7 +67,7 @@ impl Scrutinee {
         let mut errors = Vec::new();
         let mut scrutinees = pair.into_inner();
         let scrutinee = scrutinees.next().unwrap();
-        let scrutinee = check!(
+        let scrutinee = recover!(
             Scrutinee::parse_from_pair_inner(scrutinee, config),
             return err(warnings, errors),
             warnings,
@@ -103,31 +103,31 @@ impl Scrutinee {
             path: path.clone(),
         };
         let parsed = match scrutinee.as_rule() {
-            Rule::literal_value => check!(
+            Rule::literal_value => recover!(
                 Self::parse_from_pair_literal(scrutinee, config, span),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::ident => check!(
+            Rule::ident => recover!(
                 Self::parse_from_pair_ident(scrutinee, config, span),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::struct_scrutinee => check!(
+            Rule::struct_scrutinee => recover!(
                 Self::parse_from_pair_struct(scrutinee, config, span, path),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::enum_scrutinee => check!(
+            Rule::enum_scrutinee => recover!(
                 Self::parse_from_pair_enum(scrutinee, config),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::tuple_scrutinee => check!(
+            Rule::tuple_scrutinee => recover!(
                 Self::parse_from_pair_tuple(scrutinee, config, span),
                 return err(warnings, errors),
                 warnings,
@@ -202,7 +202,7 @@ impl Scrutinee {
         let mut errors = vec![];
         let mut it = scrutinee.into_inner();
         let struct_name = it.next().unwrap();
-        let struct_name = check!(
+        let struct_name = recover!(
             ident::parse_from_pair(struct_name, config),
             return err(warnings, errors),
             warnings,
@@ -217,7 +217,7 @@ impl Scrutinee {
             };
             let mut field_parts = field.clone().into_inner();
             let name = field_parts.next().unwrap();
-            let name = check!(
+            let name = recover!(
                 ident::parse_from_pair(name, config),
                 return err(warnings, errors),
                 warnings,
@@ -228,7 +228,7 @@ impl Scrutinee {
                 Some(field_scrutinee) => match field_scrutinee.as_rule() {
                     Rule::field_scrutinee => {
                         let field_scrutinee = field_scrutinee.into_inner().next().unwrap();
-                        let field_scrutinee = check!(
+                        let field_scrutinee = recover!(
                             Scrutinee::parse_from_pair(field_scrutinee, config),
                             Scrutinee::Unit { span: span.clone() },
                             warnings,
@@ -266,14 +266,14 @@ impl Scrutinee {
         let mut iter = pair.into_inner();
         let enum_scrutinee_component_pair = iter.next().expect("guaranteed by grammar");
         let assignment_for_value_pair = iter.next().expect("guaranteed by grammar");
-        let variable_to_assign = check!(
+        let variable_to_assign = recover!(
             ident::parse_from_pair(assignment_for_value_pair, config),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        let call_path = check!(
+        let call_path = recover!(
             CallPath::parse_from_pair(enum_scrutinee_component_pair, config),
             return err(warnings, errors),
             warnings,
@@ -301,7 +301,7 @@ impl Scrutinee {
         let parts = scrutinee.into_inner();
         let mut elems = vec![];
         for part in parts {
-            elems.push(check!(
+            elems.push(recover!(
                 Scrutinee::parse_from_pair(part, config),
                 return err(warnings, errors),
                 warnings,

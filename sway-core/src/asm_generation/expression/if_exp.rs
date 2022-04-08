@@ -42,7 +42,7 @@ pub(crate) fn convert_if_exp_to_asm(
     let else_label = register_sequencer.get_label();
     let after_else_label = register_sequencer.get_label();
     let condition_result = register_sequencer.next();
-    let mut condition = check!(
+    let mut condition = recover!(
         convert_expression_to_asm(condition, namespace, &condition_result, register_sequencer),
         return err(warnings, errors),
         warnings,
@@ -63,7 +63,7 @@ pub(crate) fn convert_if_exp_to_asm(
     ));
 
     let then_branch_result = register_sequencer.next();
-    let mut then_branch = check!(
+    let mut then_branch = recover!(
         convert_expression_to_asm(then, namespace, &then_branch_result, register_sequencer),
         return err(warnings, errors),
         warnings,
@@ -101,7 +101,7 @@ pub(crate) fn convert_if_exp_to_asm(
             "beginning of else branch",
         ));
         let else_branch_result = register_sequencer.next();
-        let mut else_branch = check!(
+        let mut else_branch = recover!(
             convert_expression_to_asm(r#else, namespace, &else_branch_result, register_sequencer),
             return err(warnings, errors),
             warnings,

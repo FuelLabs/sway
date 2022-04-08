@@ -335,7 +335,7 @@ impl Expression {
         let mut expr_iter = expr.into_inner();
         // first expr is always here
         let first_expr = expr_iter.next().unwrap();
-        let first_expr_result = check!(
+        let first_expr_result = recover!(
             Expression::parse_from_pair_inner(first_expr.clone(), config),
             ParserLifter::empty(error_recovery_exp(Span {
                 span: first_expr.as_span(),
@@ -354,7 +354,7 @@ impl Expression {
                 path: path.clone(),
             };
 
-            let op = check!(
+            let op = recover!(
                 parse_op(op, config),
                 return err(warnings, errors),
                 warnings,
@@ -363,7 +363,7 @@ impl Expression {
 
             // an op is necessarily followed by an expression
             let next_expr_result = match expr_iter.next() {
-                Some(o) => check!(
+                Some(o) => recover!(
                     Expression::parse_from_pair_inner(o.clone(), config),
                     ParserLifter::empty(error_recovery_exp(Span {
                         span: o.as_span(),
@@ -438,7 +438,7 @@ impl Expression {
                 let mut func_app_parts = expr.into_inner();
                 let first_part = func_app_parts.next().unwrap();
                 assert!(first_part.as_rule() == Rule::call_path);
-                let name = check!(
+                let name = recover!(
                     CallPath::parse_from_pair(first_part, config),
                     return err(warnings, errors),
                     warnings,
@@ -456,7 +456,7 @@ impl Expression {
                 };
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
-                    let arg = check!(
+                    let arg = recover!(
                         Expression::parse_from_pair(argument.clone(), config),
                         ParserLifter::empty(error_recovery_exp(Span {
                             span: argument.as_span(),
@@ -479,7 +479,7 @@ impl Expression {
                     .unwrap_or_else(Vec::new);
                 let mut type_arguments = vec![];
                 for type_arg in maybe_type_args.into_iter() {
-                    type_arguments.push(check!(
+                    type_arguments.push(recover!(
                         TypeArgument::parse_from_pair(type_arg, config),
                         return err(warnings, errors),
                         warnings,
@@ -513,7 +513,7 @@ impl Expression {
                 for pair in expr.into_inner() {
                     match pair.as_rule() {
                         Rule::var_name_ident => {
-                            name = Some(check!(
+                            name = Some(recover!(
                                 ident::parse_from_pair(pair, config),
                                 Ident::new_with_override("error parsing var name", span.clone()),
                                 warnings,
@@ -529,7 +529,7 @@ impl Expression {
                 ParserLifter::empty(exp)
             }
             Rule::var_name_ident => {
-                let name = check!(
+                let name = recover!(
                     ident::parse_from_pair(expr, config),
                     return err(warnings, errors),
                     warnings,
@@ -542,7 +542,7 @@ impl Expression {
                     contents: Vec::new(),
                     span,
                 }),
-                Some(array_elems) => check!(
+                Some(array_elems) => recover!(
                     parse_array_elems(array_elems, config),
                     ParserLifter::empty(error_recovery_exp(span)),
                     warnings,
@@ -551,7 +551,7 @@ impl Expression {
             },
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
-                let primary_expression_result = check!(
+                let primary_expression_result = recover!(
                     Expression::parse_from_pair(expr_iter.next().unwrap(), config),
                     ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
@@ -559,7 +559,7 @@ impl Expression {
                 );
                 let mut branches = Vec::new();
                 for exp in expr_iter {
-                    let res = check!(
+                    let res = recover!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
                             condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
@@ -575,7 +575,7 @@ impl Expression {
                     branches.push(res);
                 }
                 let primary_expression = primary_expression_result.value;
-                let (if_exp, var_decl_name, cases_covered) = check!(
+                let (if_exp, var_decl_name, cases_covered) = recover!(
                     desugar_match_expression(&primary_expression, branches, config),
                     return err(warnings, errors),
                     warnings,
@@ -602,14 +602,14 @@ impl Expression {
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner().peekable();
                 let struct_name = expr_iter.next().unwrap();
-                let struct_name = check!(
+                let struct_name = recover!(
                     CallPath::parse_from_pair(struct_name, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let type_arguments = match expr_iter.peek() {
-                    Some(pair) if pair.as_rule() == Rule::type_args_with_path => check!(
+                    Some(pair) if pair.as_rule() == Rule::type_args_with_path => recover!(
                         TypeArgument::parse_arguments_from_pair(
                             expr_iter
                                 .next()
@@ -629,7 +629,7 @@ impl Expression {
                 let mut fields_buf = Vec::new();
                 let mut var_decls = vec![];
                 for i in (0..fields.len()).step_by(2) {
-                    let name = check!(
+                    let name = recover!(
                         ident::parse_from_pair(fields[i].clone(), config),
                         return err(warnings, errors),
                         warnings,
@@ -639,7 +639,7 @@ impl Expression {
                         span: fields[i].as_span(),
                         path: path.clone(),
                     };
-                    let mut value_result = check!(
+                    let mut value_result = recover!(
                         Expression::parse_from_pair(fields[i + 1].clone(), config),
                         ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
@@ -665,7 +665,7 @@ impl Expression {
                 }
             }
             Rule::parenthesized_expression => {
-                check!(
+                recover!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
                     ParserLifter::empty(error_recovery_exp(Span {
                         span: expr.as_span(),
@@ -680,7 +680,7 @@ impl Expression {
                     span: expr.as_span(),
                     path,
                 };
-                let expr = check!(
+                let expr = recover!(
                     CodeBlock::parse_from_pair(expr, config),
                     CodeBlock {
                         contents: Vec::new(),
@@ -705,20 +705,20 @@ impl Expression {
                 let condition_pair = if_exp_pairs.next().unwrap();
                 let then_pair = if_exp_pairs.next().unwrap();
                 let else_pair = if_exp_pairs.next();
-                let condition_result = check!(
+                let condition_result = recover!(
                     Expression::parse_from_pair(condition_pair, config),
                     ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
                     errors
                 );
-                let mut then_result = check!(
+                let mut then_result = recover!(
                     Expression::parse_from_pair_inner(then_pair, config),
                     ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
                     errors
                 );
                 let r#else_result = else_pair.map(|else_pair| {
-                    check!(
+                    recover!(
                         Expression::parse_from_pair_inner(else_pair, config),
                         ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
@@ -748,7 +748,7 @@ impl Expression {
                     span: expr.as_span(),
                     path,
                 };
-                let asm_result = check!(
+                let asm_result = recover!(
                     AsmExpression::parse_from_pair(expr, config),
                     return err(warnings, errors),
                     warnings,
@@ -794,7 +794,7 @@ impl Expression {
                                 .into_inner()
                                 .collect::<Vec<_>>();
                             for i in (0..fields.len()).step_by(2) {
-                                let name = check!(
+                                let name = recover!(
                                     ident::parse_from_pair(fields[i].clone(), config),
                                     return err(warnings, errors),
                                     warnings,
@@ -807,7 +807,7 @@ impl Expression {
                                 let ParserLifter {
                                     value,
                                     mut var_decls,
-                                } = check!(
+                                } = recover!(
                                     Expression::parse_from_pair(fields[i + 1].clone(), config),
                                     ParserLifter::empty(error_recovery_exp(span.clone())),
                                     warnings,
@@ -827,7 +827,7 @@ impl Expression {
                         // then these parts are
                         //
                         // ["a", "b", "c", "add"]
-                        let method_name = check!(
+                        let method_name = recover!(
                             ident::parse_from_pair(name_parts.pop().unwrap(), config),
                             return err(warnings, errors),
                             warnings,
@@ -838,7 +838,7 @@ impl Expression {
                             let ParserLifter {
                                 value,
                                 mut var_decls,
-                            } = check!(
+                            } = recover!(
                                 Expression::parse_from_pair(argument.clone(), config),
                                 ParserLifter::empty(error_recovery_exp(Span {
                                     span: argument.as_span(),
@@ -856,7 +856,7 @@ impl Expression {
                         let ParserLifter {
                             value,
                             mut var_decls,
-                        } = check!(
+                        } = recover!(
                             parse_subfield_path(
                                 name_parts.next().expect("guaranteed by grammar"),
                                 config
@@ -875,7 +875,7 @@ impl Expression {
                                     span: name_part.as_span(),
                                     path: path.clone(),
                                 },
-                                field_to_access: check!(
+                                field_to_access: recover!(
                                     ident::parse_from_pair(name_part, config),
                                     continue,
                                     warnings,
@@ -907,7 +907,7 @@ impl Expression {
                             match pair.as_rule() {
                                 Rule::path_separator => (),
                                 Rule::call_path => {
-                                    call_path = Some(check!(
+                                    call_path = Some(recover!(
                                         CallPath::parse_from_pair(pair, config),
                                         continue,
                                         warnings,
@@ -947,7 +947,7 @@ impl Expression {
                         };
 
                         let type_arguments = match type_args_with_path {
-                            Some(type_args_with_path) => check!(
+                            Some(type_args_with_path) => recover!(
                                 TypeArgument::parse_arguments_from_pair(
                                     type_args_with_path
                                         .into_inner()
@@ -973,7 +973,7 @@ impl Expression {
                         let method_name = MethodName::FromType {
                             call_path: CallPath {
                                 prefixes: call_path,
-                                suffix: check!(
+                                suffix: recover!(
                                     ident::parse_from_pair(
                                         method_name.expect("guaranteed by grammar"),
                                         config
@@ -984,7 +984,7 @@ impl Expression {
                                 ),
                                 is_absolute,
                             },
-                            type_name: Some(check!(
+                            type_name: Some(recover!(
                                 type_name,
                                 TypeInfo::ErrorRecovery,
                                 warnings,
@@ -997,7 +997,7 @@ impl Expression {
                         // evaluate  the arguments passed in to the method
                         if let Some(arguments) = arguments {
                             for argument in arguments.into_inner() {
-                                let arg_result = check!(
+                                let arg_result = recover!(
                                     Expression::parse_from_pair(argument.clone(), config),
                                     ParserLifter::empty(error_recovery_exp(Span {
                                         span: argument.as_span(),
@@ -1054,7 +1054,7 @@ impl Expression {
                         Some(_) => unreachable!("guaranteed by grammar"),
                     }
                 };
-                let path = check!(
+                let path = recover!(
                     CallPath::parse_from_pair(path_component, config),
                     return err(warnings, errors),
                     warnings,
@@ -1064,7 +1064,7 @@ impl Expression {
                 let arg_results = if let Some(inst) = maybe_instantiator {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
-                        let exp_result = check!(
+                        let exp_result = recover!(
                             Expression::parse_from_pair(exp, config),
                             return err(warnings, errors),
                             warnings,
@@ -1088,7 +1088,7 @@ impl Expression {
                     .unwrap_or_else(Vec::new);
                 let mut type_arguments = vec![];
                 for arg in maybe_type_args {
-                    type_arguments.push(check!(
+                    type_arguments.push(recover!(
                         TypeArgument::parse_from_pair(arg, config),
                         return err(warnings, errors),
                         warnings,
@@ -1116,7 +1116,7 @@ impl Expression {
                 let fields = expr.into_inner().collect::<Vec<_>>();
                 let mut field_results_buf = Vec::with_capacity(fields.len());
                 for field in fields {
-                    let value_result = check!(
+                    let value_result = recover!(
                         Expression::parse_from_pair(field.clone(), config),
                         ParserLifter::empty(error_recovery_exp(span.clone())),
                         warnings,
@@ -1149,7 +1149,7 @@ impl Expression {
                 let mut inner = expr.into_inner();
                 let call_item = inner.next().expect("guarenteed by grammar");
                 assert_eq!(call_item.as_rule(), Rule::call_item);
-                let prefix_result = check!(
+                let prefix_result = recover!(
                     parse_call_item(call_item, config),
                     return err(warnings, errors),
                     warnings,
@@ -1192,7 +1192,7 @@ impl Expression {
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
 
                 let mut name_parts = inner.into_inner();
-                let mut expr_result = check!(
+                let mut expr_result = recover!(
                     parse_subfield_path(name_parts.next().expect("guaranteed by grammar"), config),
                     return err(warnings, errors),
                     warnings,
@@ -1206,7 +1206,7 @@ impl Expression {
                             span: name_part.as_span(),
                             path: path.clone(),
                         },
-                        field_to_access: check!(
+                        field_to_access: recover!(
                             ident::parse_from_pair(name_part, config),
                             continue,
                             warnings,
@@ -1229,14 +1229,14 @@ impl Expression {
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
                 let abi_name = iter.next().expect("guaranteed by grammar");
-                let abi_name = check!(
+                let abi_name = recover!(
                     CallPath::parse_from_pair(abi_name, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let address = iter.next().expect("guaranteed by grammar");
-                let address_result = check!(
+                let address_result = recover!(
                     Expression::parse_from_pair(address, config),
                     return err(warnings, errors),
                     warnings,
@@ -1253,32 +1253,32 @@ impl Expression {
                 }
             }
             Rule::unary_op_expr => {
-                check!(
+                recover!(
                     convert_unary_to_fn_calls(expr, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 )
             }
-            Rule::array_index => check!(
+            Rule::array_index => recover!(
                 parse_array_index(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::storage_access => check!(
+            Rule::storage_access => recover!(
                 parse_storage_access(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::if_let_exp => check!(
+            Rule::if_let_exp => recover!(
                 parse_if_let(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
             ),
-            Rule::built_in_expr => check!(
+            Rule::built_in_expr => recover!(
                 parse_built_in_expr(expr, config),
                 return err(warnings, errors),
                 warnings,
@@ -1325,7 +1325,7 @@ fn convert_unary_to_fn_calls(
                     span: item.as_span(),
                     path: config.map(|c| c.path()),
                 },
-                check!(
+                recover!(
                     UnaryOp::parse_from_pair(item, config),
                     return err(warnings, errors),
                     warnings,
@@ -1333,7 +1333,7 @@ fn convert_unary_to_fn_calls(
                 ),
             )),
             _ => {
-                expr_result = Some(check!(
+                expr_result = Some(recover!(
                     Expression::parse_from_pair_inner(item, config),
                     return err(warnings, errors),
                     warnings,
@@ -1374,7 +1374,7 @@ pub(crate) fn parse_storage_access(
 
     let mut field_names = Vec::new();
     for item in parts {
-        field_names.push(check!(
+        field_names.push(recover!(
             ident::parse_from_pair(item, config),
             continue,
             warnings,
@@ -1401,7 +1401,7 @@ pub(crate) fn parse_array_index(
     let path = config.map(|c| c.path());
     let span = item.as_span();
     let mut inner_iter = item.into_inner();
-    let prefix_result = check!(
+    let prefix_result = recover!(
         parse_call_item(inner_iter.next().unwrap(), config),
         return err(warnings, errors),
         warnings,
@@ -1409,7 +1409,7 @@ pub(crate) fn parse_array_index(
     );
     let mut index_result_buf = vec![];
     for index in inner_iter {
-        index_result_buf.push(check!(
+        index_result_buf.push(recover!(
             Expression::parse_from_pair(index, config),
             return err(warnings, errors),
             warnings,
@@ -1468,7 +1468,7 @@ pub(crate) fn parse_built_in_expr(
             let mut inner_iter = size_of.into_inner();
             let _keyword = inner_iter.next();
             let elem = inner_iter.next().expect("guarenteed by grammar");
-            let expr_result = check!(
+            let expr_result = recover!(
                 Expression::parse_from_pair(elem, config),
                 return err(warnings, errors),
                 warnings,
@@ -1493,7 +1493,7 @@ pub(crate) fn parse_built_in_expr(
                 span: elem.as_span(),
                 path: config.map(|c| c.path()),
             };
-            let type_name = check!(
+            let type_name = recover!(
                 TypeInfo::parse_from_pair(elem, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
@@ -1565,7 +1565,7 @@ fn parse_call_item(
     let exp_result = match item.as_rule() {
         Rule::ident => {
             let exp = Expression::VariableExpression {
-                name: check!(
+                name: recover!(
                     ident::parse_from_pair(item.clone(), config),
                     return err(warnings, errors),
                     warnings,
@@ -1578,7 +1578,7 @@ fn parse_call_item(
             };
             ParserLifter::empty(exp)
         }
-        Rule::expr => check!(
+        Rule::expr => recover!(
             Expression::parse_from_pair(item, config),
             return err(warnings, errors),
             warnings,
@@ -1631,7 +1631,7 @@ fn parse_array_elems(
         _otherwise => {
             // The simple form [elem0, elem1, ..., elemN].
             let span = first_elem.as_span();
-            let first_elem_expr_result = check!(
+            let first_elem_expr_result = recover!(
                 Expression::parse_from_pair(first_elem, config),
                 ParserLifter::empty(error_recovery_exp(Span {
                     span,
@@ -1642,7 +1642,7 @@ fn parse_array_elems(
             );
             elem_iter.fold(vec![first_elem_expr_result], |mut elems, pair| {
                 let span = pair.as_span();
-                elems.push(check!(
+                elems.push(recover!(
                     Expression::parse_from_pair(pair, config),
                     ParserLifter::empty(error_recovery_exp(Span {
                         span,
@@ -2002,7 +2002,7 @@ pub(crate) fn desugar_match_expression(
     {
         let matches = match condition {
             MatchCondition::CatchAll(_) => Some((vec![], vec![])),
-            MatchCondition::Scrutinee(scrutinee) => check!(
+            MatchCondition::Scrutinee(scrutinee) => recover!(
                 matcher(&var_decl_exp, scrutinee),
                 return err(warnings, errors),
                 warnings,
@@ -2230,7 +2230,7 @@ fn parse_if_let(
     let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
     let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
 
-    let scrutinee = check!(
+    let scrutinee = recover!(
         Scrutinee::parse_from_pair(scrutinee_pair, config),
         return err(warnings, errors),
         warnings,
@@ -2240,7 +2240,7 @@ fn parse_if_let(
     let ParserLifter {
         mut var_decls,
         value: expr,
-    } = check!(
+    } = recover!(
         Expression::parse_from_pair(expr_pair, config),
         return err(warnings, errors),
         warnings,
@@ -2252,7 +2252,7 @@ fn parse_if_let(
         path: path.clone(),
     };
 
-    let then = check!(
+    let then = recover!(
         CodeBlock::parse_from_pair(then_branch_pair, config),
         crate::CodeBlock {
             contents: Vec::new(),
@@ -2269,7 +2269,7 @@ fn parse_if_let(
         };
         match else_branch.as_rule() {
             Rule::code_block => {
-                let block = check!(
+                let block = recover!(
                     CodeBlock::parse_from_pair(else_branch.clone(), config),
                     CodeBlock {
                         contents: Vec::new(),
@@ -2288,7 +2288,7 @@ fn parse_if_let(
                 let ParserLifter {
                     var_decls: mut var_decls2,
                     value: r#else,
-                } = check!(
+                } = recover!(
                     parse_if_let(else_branch.clone(), config),
                     return err(warnings, errors),
                     warnings,

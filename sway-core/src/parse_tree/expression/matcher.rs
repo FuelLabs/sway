@@ -136,7 +136,7 @@ fn match_struct(
             }
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
-                let new_matches = check!(
+                let new_matches = recover!(
                     matcher(&delayed_resolution_exp, &scrutinee),
                     return err(warnings, errors),
                     warnings,
@@ -184,7 +184,7 @@ fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileRes
             }),
             span: span.clone(),
         };
-        let new_matches = check!(
+        let new_matches = recover!(
             matcher(&delayed_resolution_exp, elem),
             return err(warnings, errors),
             warnings,

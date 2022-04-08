@@ -38,7 +38,7 @@ impl UseStatement {
             stmt.clone().next().expect("Guaranteed by grammar")
         };
 
-        let use_statements_buf = check!(
+        let use_statements_buf = recover!(
             handle_import_path(import_path, config, is_absolute),
             return err(warnings, errors),
             warnings,
@@ -65,7 +65,7 @@ fn handle_import_path(
     let mut top_level_alias = None;
     if last_item.as_rule() == Rule::alias {
         let item = last_item.into_inner().nth(1).unwrap();
-        let alias_parsed = check!(
+        let alias_parsed = recover!(
             ident::parse_from_pair(item, config),
             return err(warnings, errors),
             warnings,
@@ -77,7 +77,7 @@ fn handle_import_path(
 
     for item in import_path_vec.into_iter() {
         if item.as_rule() == Rule::ident {
-            import_path_buf.push(check!(
+            import_path_buf.push(recover!(
                 ident::parse_from_pair(item, config),
                 return err(warnings, errors),
                 warnings,
@@ -97,7 +97,7 @@ fn handle_import_path(
         while let Some(item) = it.next() {
             // kind of a base case here
             if item.as_rule() == Rule::ident {
-                let import_type = ImportType::Item(check!(
+                let import_type = ImportType::Item(recover!(
                     ident::parse_from_pair(item.clone(), config),
                     return err(warnings, errors),
                     warnings,
@@ -110,7 +110,7 @@ fn handle_import_path(
                 if next_is_alias {
                     let next_item = next.clone().unwrap();
                     let alias_item = next_item.into_inner().nth(1).unwrap();
-                    let alias_parsed = check!(
+                    let alias_parsed = recover!(
                         ident::parse_from_pair(alias_item, config),
                         continue,
                         warnings,
@@ -128,7 +128,7 @@ fn handle_import_path(
                 });
             } else if item.as_rule() == Rule::import_path {
                 // recurse - get the statement buffers and append
-                let use_statements_buf_local = check!(
+                let use_statements_buf_local = recover!(
                     handle_import_path(item, config, is_absolute),
                     return err(warnings, errors),
                     warnings,
@@ -163,7 +163,7 @@ fn handle_import_path(
                 ImportType::Star
             }
             Rule::self_keyword => ImportType::SelfImport,
-            Rule::ident => ImportType::Item(check!(
+            Rule::ident => ImportType::Item(recover!(
                 ident::parse_from_pair(last_item, config),
                 return err(warnings, errors),
                 warnings,

@@ -38,9 +38,8 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     // of libraries and link against them, rather than recompile everything each time.
     assert!(ir.module_iter().count() == 1);
     let module = ir.module_iter().next().unwrap();
-    let (data_section, mut ops, mut reg_seqr) = check!(
+    let (data_section, mut ops, mut reg_seqr) = unrecoverable!(
         compile_module_to_asm(reg_seqr, ir, module),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -71,9 +70,8 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         println!("{}", finalized_asm);
     }
 
-    check!(
+    unrecoverable!(
         crate::checks::check_invalid_opcodes(&finalized_asm),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -109,18 +107,16 @@ fn compile_module_to_asm(
                 if function.has_selector(context) {
                     let selector = function.get_selector(context).unwrap();
                     let label = builder.add_label();
-                    check!(
+                    unrecoverable!(
                         builder.compile_function(function),
-                        return err(warnings, errors),
                         warnings,
                         errors
                     );
                     selectors_and_labels.push((selector, label));
                 }
             }
-            let (mut data_section, mut funcs_bytecode, mut reg_seqr) = check!(
+            let (mut data_section, mut funcs_bytecode, mut reg_seqr) = unrecoverable!(
                 builder.finalize(),
-                return err(warnings, errors),
                 warnings,
                 errors
             );
@@ -415,7 +411,7 @@ impl<'ir> AsmBuilder<'ir> {
         for block in function.block_iter(self.context) {
             self.add_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
-                check!(
+                recover!(
                     self.compile_instruction(&block, &instr_val),
                     return err(warnings, errors),
                     warnings,
@@ -432,7 +428,7 @@ impl<'ir> AsmBuilder<'ir> {
         if let ValueDatum::Instruction(instruction) = &self.context.values[instr_val.0].value {
             match instruction {
                 Instruction::AsmBlock(asm, args) => {
-                    check!(
+                    recover!(
                         self.compile_asm_block(instr_val, asm, args),
                         return err(warnings, errors),
                         warnings,
@@ -489,7 +485,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                     ..
                 } => self.compile_insert_value(instr_val, aggregate, value, indices),
-                Instruction::Load(src_val) => check!(
+                Instruction::Load(src_val) => recover!(
                     self.compile_load(instr_val, src_val),
                     return err(warnings, errors),
                     warnings,
@@ -499,7 +495,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
-                Instruction::StateLoadQuadWord { load_val, key } => check!(
+                Instruction::StateLoadQuadWord { load_val, key } => recover!(
                     self.compile_state_access_quad_word(
                         instr_val,
                         load_val,
@@ -510,13 +506,13 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::StateLoadWord(key) => check!(
+                Instruction::StateLoadWord(key) => recover!(
                     self.compile_state_load_word(instr_val, key),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
-                Instruction::StateStoreQuadWord { stored_val, key } => check!(
+                Instruction::StateStoreQuadWord { stored_val, key } => recover!(
                     self.compile_state_access_quad_word(
                         instr_val,
                         stored_val,
@@ -527,7 +523,7 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::StateStoreWord { stored_val, key } => check!(
+                Instruction::StateStoreWord { stored_val, key } => recover!(
                     self.compile_state_store_word(instr_val, stored_val, key),
                     return err(warnings, errors),
                     warnings,
@@ -536,7 +532,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::Store {
                     dst_val,
                     stored_val,
-                } => check!(
+                } => recover!(
                     self.compile_store(instr_val, dst_val, stored_val),
                     return err(warnings, errors),
                     warnings,
@@ -642,7 +638,7 @@ impl<'ir> AsmBuilder<'ir> {
                     }
                 },
             };
-            let opcode = check!(
+            let opcode = recover!(
                 Op::parse_opcode(
                     &op.name,
                     &replaced_registers,

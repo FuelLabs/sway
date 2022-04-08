@@ -66,20 +66,20 @@ impl TypeParameter {
                 }));
                 return err(warnings, errors);
             }
-            (Some(type_params_pair), None) => check!(
+            (Some(type_params_pair), None) => recover!(
                 Self::parse_from_type_params(type_params_pair, config),
                 vec!(),
                 warnings,
                 errors
             ),
             (Some(type_params_pair), Some(where_clause_pair)) => {
-                let mut params = check!(
+                let mut params = recover!(
                     Self::parse_from_type_params(type_params_pair, config),
                     vec!(),
                     warnings,
                     errors
                 );
-                let where_clauses = check!(
+                let where_clauses = recover!(
                     WhereClause::parse_from_trait_bounds(where_clause_pair, config),
                     return err(warnings, errors),
                     warnings,
@@ -119,13 +119,13 @@ impl TypeParameter {
         let mut errors = vec![];
         let mut buf = vec![];
         for pair in type_params_pair.into_inner() {
-            let name_ident = check!(
+            let name_ident = recover!(
                 ident::parse_from_pair(pair.clone(), config),
                 continue,
                 warnings,
                 errors
             );
-            let type_id = insert_type(check!(
+            let type_id = insert_type(recover!(
                 TypeInfo::parse_from_type_param_pair(pair.clone(), config),
                 continue,
                 warnings,
@@ -168,13 +168,13 @@ impl WhereClause {
         let mut iter = pair.into_inner().peekable();
         let mut clauses = vec![];
         while iter.peek().is_some() {
-            let type_param = check!(
+            let type_param = recover!(
                 ident::parse_from_pair(iter.next().unwrap(), config),
                 continue,
                 warnings,
                 errors
             );
-            let trait_constraint = check!(
+            let trait_constraint = recover!(
                 ident::parse_from_pair(iter.next().unwrap(), config),
                 continue,
                 warnings,

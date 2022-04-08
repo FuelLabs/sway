@@ -34,7 +34,7 @@ impl WhileLoop {
             path: path.clone(),
         };
 
-        let condition_result = check!(
+        let condition_result = recover!(
             Expression::parse_from_pair(condition.clone(), config),
             ParserLifter::empty(error_recovery_exp(Span {
                 span: condition.as_span(),
@@ -44,7 +44,7 @@ impl WhileLoop {
             errors
         );
 
-        let body = check!(
+        let body = recover!(
             CodeBlock::parse_from_pair(body, config),
             CodeBlock {
                 contents: Default::default(),

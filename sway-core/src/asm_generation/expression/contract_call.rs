@@ -61,7 +61,7 @@ pub(crate) fn convert_contract_call_to_asm(
 
     // evaluate the bundle of arguments
     if let Some(bundled_arguments) = &bundled_arguments {
-        asm_buf.append(&mut check!(
+        asm_buf.append(&mut recover!(
             convert_expression_to_asm(
                 bundled_arguments,
                 namespace,
@@ -77,7 +77,7 @@ pub(crate) fn convert_contract_call_to_asm(
     // evaluate the gas to forward to the contract. If no user-specified gas parameter is found,
     // simply load $cgas.
     match contract_call_parameters.get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string()) {
-        Some(exp) => asm_buf.append(&mut check!(
+        Some(exp) => asm_buf.append(&mut recover!(
             convert_expression_to_asm(exp, namespace, &gas_register, register_sequencer),
             vec![],
             warnings,
@@ -89,7 +89,7 @@ pub(crate) fn convert_contract_call_to_asm(
     // evaluate the coins balance to forward to the contract. If no user-specified coins parameter
     // is found, simply load $bal.
     match contract_call_parameters.get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string()) {
-        Some(exp) => asm_buf.append(&mut check!(
+        Some(exp) => asm_buf.append(&mut recover!(
             convert_expression_to_asm(exp, namespace, &coins_register, register_sequencer),
             vec![],
             warnings,
@@ -112,7 +112,7 @@ pub(crate) fn convert_contract_call_to_asm(
     match contract_call_parameters
         .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
     {
-        Some(exp) => asm_buf.append(&mut check!(
+        Some(exp) => asm_buf.append(&mut recover!(
             convert_expression_to_asm(exp, namespace, &asset_id_register, register_sequencer),
             vec![],
             warnings,
@@ -134,7 +134,7 @@ pub(crate) fn convert_contract_call_to_asm(
     }
 
     // evaluate the contract address for the contract
-    asm_buf.append(&mut check!(
+    asm_buf.append(&mut recover!(
         convert_expression_to_asm(
             // investigation: changing the value in the contract_address register
             // impacts the asset_id that the VM sees

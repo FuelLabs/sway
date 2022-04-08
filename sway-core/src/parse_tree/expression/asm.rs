@@ -36,7 +36,7 @@ impl AsmExpression {
         let mut iter = pair.into_inner();
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
-        let asm_register_result = check!(
+        let asm_register_result = recover!(
             AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
@@ -48,7 +48,7 @@ impl AsmExpression {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_op => {
-                    let op = check!(
+                    let op = recover!(
                         AsmOp::parse_from_pair(pair, config),
                         continue,
                         warnings,
@@ -58,7 +58,7 @@ impl AsmExpression {
                 }
                 Rule::asm_register => {
                     implicit_op_return = Some((
-                        check!(
+                        recover!(
                             AsmRegister::parse_from_pair(pair.clone()),
                             continue,
                             warnings,
@@ -71,7 +71,7 @@ impl AsmExpression {
                     ));
                 }
                 Rule::type_name => {
-                    implicit_op_type = Some(check!(
+                    implicit_op_type = Some(recover!(
                         TypeInfo::parse_from_pair(pair, config),
                         continue,
                         warnings,
@@ -174,7 +174,7 @@ impl AsmOp {
             path: path.clone(),
         };
         let mut iter = pair.into_inner();
-        let opcode = check!(
+        let opcode = recover!(
             ident::parse_from_pair(iter.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
@@ -232,7 +232,7 @@ impl AsmRegisterDeclaration {
         for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
-            let reg_name = check!(
+            let reg_name = recover!(
                 ident::parse_from_pair(iter.next().unwrap(), config),
                 return err(warnings, errors),
                 warnings,
@@ -241,7 +241,7 @@ impl AsmRegisterDeclaration {
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
             let initializer_result = if let Some(pair) = iter.next() {
-                Some(check!(
+                Some(recover!(
                     Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
                     warnings,

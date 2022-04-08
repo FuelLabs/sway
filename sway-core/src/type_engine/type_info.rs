@@ -279,7 +279,7 @@ impl TypeInfo {
         };
         let type_info = match input.as_rule() {
             Rule::str_type => {
-                let type_info = check!(
+                let type_info = recover!(
                     parse_str_type(input.as_str(), span),
                     return err(warnings, errors),
                     warnings,
@@ -288,7 +288,7 @@ impl TypeInfo {
                 type_info
             }
             Rule::ident => {
-                let type_info = check!(
+                let type_info = recover!(
                     TypeInfo::pair_as_str_to_type_info(input, config),
                     return err(warnings, errors),
                     warnings,
@@ -297,7 +297,7 @@ impl TypeInfo {
                 match iter.next() {
                     Some(types) => match type_info {
                         TypeInfo::Custom { name, .. } => {
-                            let type_arguments = check!(
+                            let type_arguments = recover!(
                                 TypeArgument::parse_arguments_from_pair(types, config),
                                 vec!(),
                                 warnings,
@@ -313,7 +313,7 @@ impl TypeInfo {
                     None => type_info,
                 }
             }
-            Rule::contract_caller_type => check!(
+            Rule::contract_caller_type => recover!(
                 parse_contract_caller_type(input, config),
                 return err(warnings, errors),
                 warnings,
@@ -330,7 +330,7 @@ impl TypeInfo {
                         return err(warnings, errors);
                     }
                     Some(array_elem_type_pair) => {
-                        check!(
+                        recover!(
                             Self::parse_from_pair(array_elem_type_pair, config),
                             TypeInfo::ErrorRecovery,
                             warnings,
@@ -350,7 +350,7 @@ impl TypeInfo {
                         match array_elem_count_pair.as_rule() {
                             Rule::basic_integer => {
                                 // Parse the count directly to a usize.
-                                check!(
+                                recover!(
                                     array_elem_count_pair
                                         .as_str()
                                         .trim()
@@ -389,7 +389,7 @@ impl TypeInfo {
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
             Rule::tuple_type => {
-                let fields = check!(
+                let fields = recover!(
                     TypeArgument::parse_arguments_from_pair(input, config),
                     return err(warnings, errors),
                     warnings,
@@ -415,7 +415,7 @@ impl TypeInfo {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_info = match input.as_rule() {
-            Rule::type_param => check!(
+            Rule::type_param => recover!(
                 Self::pair_as_str_to_type_info(input, config),
                 return err(warnings, errors),
                 warnings,
@@ -958,7 +958,7 @@ fn parse_contract_caller_type(
             )
         }
     };
-    let abi_path = check!(
+    let abi_path = recover!(
         CallPath::parse_from_pair(abi_path, config),
         return err(warnings, errors),
         warnings,

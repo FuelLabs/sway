@@ -174,7 +174,7 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
         .collect::<Vec<_>>();
 
     // step 0
-    let descriptor = check!(
+    let descriptor = recover!(
         get_contiguous_memory_layout(&fields_for_layout),
         return err(warnings, errors),
         warnings,
@@ -242,7 +242,7 @@ pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
                 return err(warnings, errors);
             }
         };
-        let mut field_instantiation = check!(
+        let mut field_instantiation = recover!(
             convert_expression_to_asm(value, namespace, &return_register, register_sequencer),
             vec![],
             warnings,

@@ -40,7 +40,7 @@ impl CodeBlock {
                 path: path.clone(),
             };
             let mut ast_nodes = match pair.as_rule() {
-                Rule::declaration => check!(
+                Rule::declaration => recover!(
                     Declaration::parse_from_pair(pair.clone(), config),
                     continue,
                     warnings,
@@ -56,7 +56,7 @@ impl CodeBlock {
                 })
                 .collect::<Vec<_>>(),
                 Rule::expr_statement => {
-                    let ParserLifter { value, var_decls } = check!(
+                    let ParserLifter { value, var_decls } = recover!(
                         Expression::parse_from_pair(
                             pair.clone().into_inner().next().unwrap().clone(),
                             config
@@ -73,7 +73,7 @@ impl CodeBlock {
                     ast_node_contents
                 }
                 Rule::return_statement => {
-                    let ParserLifter { value, var_decls } = check!(
+                    let ParserLifter { value, var_decls } = recover!(
                         ReturnStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
@@ -87,7 +87,7 @@ impl CodeBlock {
                     ast_node_contents
                 }
                 Rule::expr => {
-                    let ParserLifter { value, var_decls } = check!(
+                    let ParserLifter { value, var_decls } = recover!(
                         Expression::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
@@ -102,7 +102,7 @@ impl CodeBlock {
                     ast_node_contents
                 }
                 Rule::while_loop => {
-                    let ParserLifter { value, var_decls } = check!(
+                    let ParserLifter { value, var_decls } = recover!(
                         WhileLoop::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,

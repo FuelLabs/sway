@@ -47,7 +47,7 @@ impl MatchBranch {
                         },
                     }),
                     Rule::scrutinee => {
-                        let scrutinee = check!(
+                        let scrutinee = recover!(
                             Scrutinee::parse_from_pair(e, config),
                             return err(warnings, errors),
                             warnings,
@@ -110,7 +110,7 @@ impl MatchBranch {
                     path,
                 };
                 Expression::CodeBlock {
-                    contents: check!(
+                    contents: recover!(
                         CodeBlock::parse_from_pair(result, config),
                         CodeBlock {
                             contents: Vec::new(),

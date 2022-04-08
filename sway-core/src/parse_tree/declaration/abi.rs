@@ -31,7 +31,7 @@ impl AbiDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),
             return err(warnings, errors),
             warnings,
@@ -43,7 +43,7 @@ impl AbiDeclaration {
         for func in trait_methods.into_inner() {
             match func.as_rule() {
                 Rule::fn_signature => {
-                    let fn_sig = check!(
+                    let fn_sig = recover!(
                         TraitFn::parse_from_pair(func, config),
                         continue,
                         warnings,
@@ -51,7 +51,7 @@ impl AbiDeclaration {
                     );
                     interface_surface.push(fn_sig);
                 }
-                Rule::fn_decl => methods.push(check!(
+                Rule::fn_decl => methods.push(recover!(
                     FunctionDeclaration::parse_from_pair(func, config),
                     continue,
                     warnings,

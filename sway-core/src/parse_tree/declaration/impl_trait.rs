@@ -57,7 +57,7 @@ impl ImplTrait {
 
         // get the trait name
         let trait_name = iter.next().unwrap();
-        let trait_name = check!(
+        let trait_name = recover!(
             CallPath::parse_from_pair(trait_name, config),
             return err(warnings, errors),
             warnings,
@@ -70,7 +70,7 @@ impl ImplTrait {
             span: type_name.as_span(),
             path,
         };
-        let type_implementing_for = check!(
+        let type_implementing_for = recover!(
             TypeInfo::parse_from_pair(type_name, config),
             return err(warnings, errors),
             warnings,
@@ -84,7 +84,7 @@ impl ImplTrait {
         };
 
         // construct the type arguments
-        let type_arguments = check!(
+        let type_arguments = recover!(
             TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
@@ -98,7 +98,7 @@ impl ImplTrait {
         // collect the methods in the impl
         let mut fn_decls_buf = vec![];
         for pair in iter {
-            fn_decls_buf.push(check!(
+            fn_decls_buf.push(recover!(
                 FunctionDeclaration::parse_from_pair(pair, config),
                 continue,
                 warnings,
@@ -152,7 +152,7 @@ impl ImplSelf {
             span: type_name.as_span(),
             path,
         };
-        let type_implementing_for = check!(
+        let type_implementing_for = recover!(
             TypeInfo::parse_from_pair(type_name, config),
             return err(warnings, errors),
             warnings,
@@ -166,7 +166,7 @@ impl ImplSelf {
         };
 
         // construct the type arguments
-        let type_arguments = check!(
+        let type_arguments = recover!(
             TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
@@ -180,7 +180,7 @@ impl ImplSelf {
         // collect the methods in the impl
         let mut fn_decls_buf = vec![];
         for pair in iter {
-            fn_decls_buf.push(check!(
+            fn_decls_buf.push(recover!(
                 FunctionDeclaration::parse_from_pair(pair, config),
                 continue,
                 warnings,

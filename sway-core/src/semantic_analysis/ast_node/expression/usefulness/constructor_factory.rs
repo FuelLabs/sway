@@ -62,7 +62,7 @@ impl ConstructorFactory {
     ) -> CompileResult<Pattern> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (first, rest) = check!(
+        let (first, rest) = recover!(
             sigma.flatten().filter_out_wildcards().split_first(span),
             return err(warnings, errors),
             warnings,
@@ -80,7 +80,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u8(), span),
                     return err(warnings, errors),
                     warnings,
@@ -90,7 +90,7 @@ impl ConstructorFactory {
                 .map(Pattern::U8)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,
@@ -108,7 +108,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u16(), span),
                     return err(warnings, errors),
                     warnings,
@@ -118,7 +118,7 @@ impl ConstructorFactory {
                 .map(Pattern::U16)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,
@@ -136,7 +136,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u32(), span),
                     return err(warnings, errors),
                     warnings,
@@ -146,7 +146,7 @@ impl ConstructorFactory {
                 .map(Pattern::U32)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,
@@ -164,7 +164,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u64(), span),
                     return err(warnings, errors),
                     warnings,
@@ -174,7 +174,7 @@ impl ConstructorFactory {
                 .map(Pattern::U64)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,
@@ -192,7 +192,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u64(), span),
                     return err(warnings, errors),
                     warnings,
@@ -202,7 +202,7 @@ impl ConstructorFactory {
                 .map(Pattern::Numeric)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,
@@ -250,7 +250,7 @@ impl ConstructorFactory {
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
+                let unincluded: PatStack = recover!(
                     Range::find_exclusionary_ranges(ranges, Range::u8(), span),
                     return err(warnings, errors),
                     warnings,
@@ -260,7 +260,7 @@ impl ConstructorFactory {
                 .map(Pattern::Byte)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(unincluded, span),
                     return err(warnings, errors),
                     warnings,

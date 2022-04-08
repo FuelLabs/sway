@@ -28,7 +28,7 @@ pub(crate) fn instantiate_enum(
 
     let mut type_arguments = type_arguments;
     for type_argument in type_arguments.iter_mut() {
-        type_argument.type_id = check!(
+        type_argument.type_id = recover!(
             namespace.resolve_type_with_self(
                 look_up_type_id(type_argument.type_id),
                 self_type,
@@ -58,7 +58,7 @@ pub(crate) fn instantiate_enum(
             return err(warnings, errors);
         }
         (false, false) => {
-            check!(
+            recover!(
                 enum_decl.monomorphize_with_type_arguments(
                     &module,
                     &type_arguments,
@@ -108,7 +108,7 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
-            let typed_expr = check!(
+            let typed_expr = recover!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
                     namespace,

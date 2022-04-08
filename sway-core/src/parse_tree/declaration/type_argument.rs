@@ -52,7 +52,7 @@ impl TypeArgument {
         let iter = pair.into_inner();
         let mut type_arguments = vec![];
         for type_arg in iter {
-            type_arguments.push(check!(
+            type_arguments.push(recover!(
                 Self::parse_from_pair(type_arg, config),
                 continue,
                 warnings,
@@ -72,7 +72,7 @@ impl TypeArgument {
             span: pair.as_span(),
             path: config.map(|c| c.path()),
         };
-        let type_id = insert_type(check!(
+        let type_id = insert_type(recover!(
             TypeInfo::parse_from_pair(pair, config),
             TypeInfo::ErrorRecovery,
             warnings,

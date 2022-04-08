@@ -85,7 +85,7 @@ fn initialize_small_array_instantiation(
 
     let elem_init_reg = register_sequencer.next();
     for (idx, elem) in contents.iter().enumerate() {
-        bytecode.append(&mut check!(
+        bytecode.append(&mut recover!(
             convert_expression_to_asm(elem, namespace, &elem_init_reg.clone(), register_sequencer),
             Vec::new(),
             warnings,
@@ -122,7 +122,7 @@ fn initialize_large_array_instantiation(
 
     let elem_init_reg = register_sequencer.next();
     for elem in contents {
-        bytecode.append(&mut check!(
+        bytecode.append(&mut recover!(
             convert_expression_to_asm(elem, namespace, &elem_init_reg.clone(), register_sequencer),
             Vec::new(),
             warnings,
@@ -244,7 +244,7 @@ pub(super) fn convert_array_index_to_asm(
     }
 
     let prefix_reg = register_sequencer.next();
-    bytecode.append(&mut check!(
+    bytecode.append(&mut recover!(
         convert_expression_to_asm(prefix, namespace, &prefix_reg, register_sequencer),
         return err(warnings, errors),
         warnings,
@@ -252,7 +252,7 @@ pub(super) fn convert_array_index_to_asm(
     ));
 
     let index_reg = register_sequencer.next();
-    bytecode.append(&mut check!(
+    bytecode.append(&mut recover!(
         convert_expression_to_asm(index, namespace, &index_reg.clone(), register_sequencer),
         return err(warnings, errors),
         warnings,

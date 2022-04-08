@@ -111,7 +111,7 @@ impl Matrix {
         let mut errors = vec![];
         let mut pat_stack = PatStack::empty();
         for row in self.rows.iter() {
-            let first = check!(
+            let first = recover!(
                 row.first(span),
                 return err(warnings, errors),
                 warnings,

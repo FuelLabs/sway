@@ -55,7 +55,7 @@ impl FunctionDeclaration {
         };
         let _fn_keyword = signature.next().unwrap();
 
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(signature.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
@@ -99,7 +99,7 @@ impl FunctionDeclaration {
             }
         }
 
-        let type_parameters = check!(
+        let type_parameters = recover!(
             TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
@@ -122,7 +122,7 @@ impl FunctionDeclaration {
 
         let parameters_pair = parameters_pair.unwrap();
         let parameters_span = parameters_pair.as_span();
-        let parameters = check!(
+        let parameters = recover!(
             FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
@@ -139,7 +139,7 @@ impl FunctionDeclaration {
             path: path.clone(),
         };
         let return_type = match return_type_pair {
-            Some(ref pair) => check!(
+            Some(ref pair) => recover!(
                 TypeInfo::parse_from_pair(pair.clone(), config),
                 TypeInfo::Tuple(Vec::new()),
                 warnings,
@@ -153,7 +153,7 @@ impl FunctionDeclaration {
             span: body.as_span(),
             path: path.clone(),
         };
-        let body = check!(
+        let body = recover!(
             CodeBlock::parse_from_pair(body, config),
             crate::CodeBlock {
                 contents: Vec::new(),
@@ -244,7 +244,7 @@ impl FunctionParameter {
             }
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
-            let name = check!(
+            let name = recover!(
                 ident::parse_from_pair(name_pair, config),
                 return err(warnings, errors),
                 warnings,
@@ -255,7 +255,7 @@ impl FunctionParameter {
                 span: type_pair.as_span(),
                 path: path.clone(),
             };
-            let type_id = insert_type(check!(
+            let type_id = insert_type(recover!(
                 TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,

@@ -93,7 +93,7 @@ impl CallPath {
         };
         for pair in it {
             if pair.as_rule() != Rule::path_separator {
-                pairs_buf.push(check!(
+                pairs_buf.push(recover!(
                     ident::parse_from_pair(pair, config),
                     continue,
                     warnings,

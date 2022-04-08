@@ -263,7 +263,7 @@ impl Op {
         ok(
             match name.as_str() {
                 "add" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -272,7 +272,7 @@ impl Op {
                     VirtualOp::ADD(r1, r2, r3)
                 }
                 "addi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -281,7 +281,7 @@ impl Op {
                     VirtualOp::ADDI(r1, r2, imm)
                 }
                 "and" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -290,7 +290,7 @@ impl Op {
                     VirtualOp::AND(r1, r2, r3)
                 }
                 "andi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -299,7 +299,7 @@ impl Op {
                     VirtualOp::ANDI(r1, r2, imm)
                 }
                 "div" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -308,7 +308,7 @@ impl Op {
                     VirtualOp::DIV(r1, r2, r3)
                 }
                 "divi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -317,7 +317,7 @@ impl Op {
                     VirtualOp::DIVI(r1, r2, imm)
                 }
                 "eq" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -326,7 +326,7 @@ impl Op {
                     VirtualOp::EQ(r1, r2, r3)
                 }
                 "exp" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -335,7 +335,7 @@ impl Op {
                     VirtualOp::EXP(r1, r2, r3)
                 }
                 "expi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -344,7 +344,7 @@ impl Op {
                     VirtualOp::EXPI(r1, r2, imm)
                 }
                 "gt" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -353,7 +353,7 @@ impl Op {
                     VirtualOp::GT(r1, r2, r3)
                 }
                 "lt" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -362,7 +362,7 @@ impl Op {
                     VirtualOp::LT(r1, r2, r3)
                 }
                 "mlog" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -371,7 +371,7 @@ impl Op {
                     VirtualOp::MLOG(r1, r2, r3)
                 }
                 "mroo" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -380,7 +380,7 @@ impl Op {
                     VirtualOp::MROO(r1, r2, r3)
                 }
                 "mod" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -389,7 +389,7 @@ impl Op {
                     VirtualOp::MOD(r1, r2, r3)
                 }
                 "modi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -398,7 +398,7 @@ impl Op {
                     VirtualOp::MODI(r1, r2, imm)
                 }
                 "move" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -407,7 +407,7 @@ impl Op {
                     VirtualOp::MOVE(r1, r2)
                 }
                 "movi" => {
-                    let (r1, imm) = check!(
+                    let (r1, imm) = recover!(
                         single_reg_imm_18(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -416,7 +416,7 @@ impl Op {
                     VirtualOp::MOVI(r1, imm)
                 }
                 "mul" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -425,7 +425,7 @@ impl Op {
                     VirtualOp::MUL(r1, r2, r3)
                 }
                 "muli" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -434,7 +434,7 @@ impl Op {
                     VirtualOp::MULI(r1, r2, imm)
                 }
                 "not" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -443,7 +443,7 @@ impl Op {
                     VirtualOp::NOT(r1, r2)
                 }
                 "or" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -452,7 +452,7 @@ impl Op {
                     VirtualOp::OR(r1, r2, r3)
                 }
                 "ori" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -461,7 +461,7 @@ impl Op {
                     VirtualOp::ORI(r1, r2, imm)
                 }
                 "sll" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -470,7 +470,7 @@ impl Op {
                     VirtualOp::SLL(r1, r2, r3)
                 }
                 "slli" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -479,7 +479,7 @@ impl Op {
                     VirtualOp::SLLI(r1, r2, imm)
                 }
                 "srl" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -488,7 +488,7 @@ impl Op {
                     VirtualOp::SRL(r1, r2, r3)
                 }
                 "srli" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -497,7 +497,7 @@ impl Op {
                     VirtualOp::SRLI(r1, r2, imm)
                 }
                 "sub" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -506,7 +506,7 @@ impl Op {
                     VirtualOp::SUB(r1, r2, r3)
                 }
                 "subi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -515,7 +515,7 @@ impl Op {
                     VirtualOp::SUBI(r1, r2, imm)
                 }
                 "xor" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -524,7 +524,7 @@ impl Op {
                     VirtualOp::XOR(r1, r2, r3)
                 }
                 "xori" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -533,7 +533,7 @@ impl Op {
                     VirtualOp::XORI(r1, r2, imm)
                 }
                 "cimv" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -542,7 +542,7 @@ impl Op {
                     VirtualOp::CIMV(r1, r2, r3)
                 }
                 "ctmv" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -551,7 +551,7 @@ impl Op {
                     VirtualOp::CTMV(r1, r2)
                 }
                 "ji" => {
-                    let imm = check!(
+                    let imm = recover!(
                         single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -560,7 +560,7 @@ impl Op {
                     VirtualOp::JI(imm)
                 }
                 "jnei" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -569,7 +569,7 @@ impl Op {
                     VirtualOp::JNEI(r1, r2, imm)
                 }
                 "ret" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -578,7 +578,7 @@ impl Op {
                     VirtualOp::RET(r1)
                 }
                 "retd" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -587,7 +587,7 @@ impl Op {
                     VirtualOp::RETD(r1, r2)
                 }
                 "cfei" => {
-                    let imm = check!(
+                    let imm = recover!(
                         single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -596,7 +596,7 @@ impl Op {
                     VirtualOp::CFEI(imm)
                 }
                 "cfsi" => {
-                    let imm = check!(
+                    let imm = recover!(
                         single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -605,7 +605,7 @@ impl Op {
                     VirtualOp::CFSI(imm)
                 }
                 "lb" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -614,7 +614,7 @@ impl Op {
                     VirtualOp::LB(r1, r2, imm)
                 }
                 "lw" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -623,7 +623,7 @@ impl Op {
                     VirtualOp::LW(r1, r2, imm)
                 }
                 "aloc" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -632,7 +632,7 @@ impl Op {
                     VirtualOp::ALOC(r1)
                 }
                 "mcl" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -641,7 +641,7 @@ impl Op {
                     VirtualOp::MCL(r1, r2)
                 }
                 "mcli" => {
-                    let (r1, imm) = check!(
+                    let (r1, imm) = recover!(
                         single_reg_imm_18(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -650,7 +650,7 @@ impl Op {
                     VirtualOp::MCLI(r1, imm)
                 }
                 "mcp" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -659,7 +659,7 @@ impl Op {
                     VirtualOp::MCP(r1, r2, r3)
                 }
                 "mcpi" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -668,7 +668,7 @@ impl Op {
                     VirtualOp::MCPI(r1, r2, imm)
                 }
                 "meq" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -677,7 +677,7 @@ impl Op {
                     VirtualOp::MEQ(r1, r2, r3, r4)
                 }
                 "sb" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -686,7 +686,7 @@ impl Op {
                     VirtualOp::SB(r1, r2, imm)
                 }
                 "sw" => {
-                    let (r1, r2, imm) = check!(
+                    let (r1, r2, imm) = recover!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -695,7 +695,7 @@ impl Op {
                     VirtualOp::SW(r1, r2, imm)
                 }
                 "bal" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -704,7 +704,7 @@ impl Op {
                     VirtualOp::BAL(r1, r2, r3)
                 }
                 "bhsh" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -713,7 +713,7 @@ impl Op {
                     VirtualOp::BHSH(r1, r2)
                 }
                 "bhei" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -722,7 +722,7 @@ impl Op {
                     VirtualOp::BHEI(r1)
                 }
                 "burn" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -731,7 +731,7 @@ impl Op {
                     VirtualOp::BURN(r1)
                 }
                 "call" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -740,7 +740,7 @@ impl Op {
                     VirtualOp::CALL(r1, r2, r3, r4)
                 }
                 "ccp" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -749,7 +749,7 @@ impl Op {
                     VirtualOp::CCP(r1, r2, r3, r4)
                 }
                 "croo" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -758,7 +758,7 @@ impl Op {
                     VirtualOp::CROO(r1, r2)
                 }
                 "csiz" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -767,7 +767,7 @@ impl Op {
                     VirtualOp::CSIZ(r1, r2)
                 }
                 "cb" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -776,7 +776,7 @@ impl Op {
                     VirtualOp::CB(r1)
                 }
                 "ldc" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -785,7 +785,7 @@ impl Op {
                     VirtualOp::LDC(r1, r2, r3)
                 }
                 "log" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -794,7 +794,7 @@ impl Op {
                     VirtualOp::LOG(r1, r2, r3, r4)
                 }
                 "logd" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -803,7 +803,7 @@ impl Op {
                     VirtualOp::LOGD(r1, r2, r3, r4)
                 }
                 "mint" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -812,7 +812,7 @@ impl Op {
                     VirtualOp::MINT(r1)
                 }
                 "rvrt" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -821,7 +821,7 @@ impl Op {
                     VirtualOp::RVRT(r1)
                 }
                 "sldc" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -830,7 +830,7 @@ impl Op {
                     VirtualOp::SLDC(r1, r2, r3)
                 }
                 "srw" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -839,7 +839,7 @@ impl Op {
                     VirtualOp::SRW(r1, r2)
                 }
                 "srwq" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -848,7 +848,7 @@ impl Op {
                     VirtualOp::SRWQ(r1, r2)
                 }
                 "sww" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -857,7 +857,7 @@ impl Op {
                     VirtualOp::SWW(r1, r2)
                 }
                 "swwq" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -866,7 +866,7 @@ impl Op {
                     VirtualOp::SWWQ(r1, r2)
                 }
                 "tr" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -875,7 +875,7 @@ impl Op {
                     VirtualOp::TR(r1, r2, r3)
                 }
                 "tro" => {
-                    let (r1, r2, r3, r4) = check!(
+                    let (r1, r2, r3, r4) = recover!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -884,7 +884,7 @@ impl Op {
                     VirtualOp::TRO(r1, r2, r3, r4)
                 }
                 "ecr" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -893,7 +893,7 @@ impl Op {
                     VirtualOp::ECR(r1, r2, r3)
                 }
                 "k256" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -902,7 +902,7 @@ impl Op {
                     VirtualOp::K256(r1, r2, r3)
                 }
                 "s256" => {
-                    let (r1, r2, r3) = check!(
+                    let (r1, r2, r3) = recover!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -911,7 +911,7 @@ impl Op {
                     VirtualOp::S256(r1, r2, r3)
                 }
                 "xil" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -920,7 +920,7 @@ impl Op {
                     VirtualOp::XIL(r1, r2)
                 }
                 "xis" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -929,7 +929,7 @@ impl Op {
                     VirtualOp::XIS(r1, r2)
                 }
                 "xol" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -938,7 +938,7 @@ impl Op {
                     VirtualOp::XOL(r1, r2)
                 }
                 "xos" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -947,7 +947,7 @@ impl Op {
                     VirtualOp::XOS(r1, r2)
                 }
                 "xwl" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -956,7 +956,7 @@ impl Op {
                     VirtualOp::XWL(r1, r2)
                 }
                 "xws" => {
-                    let (r1, r2) = check!(
+                    let (r1, r2) = recover!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -966,7 +966,7 @@ impl Op {
                 }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
-                    let r1 = check!(
+                    let r1 = recover!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -975,7 +975,7 @@ impl Op {
                     VirtualOp::FLAG(r1)
                 }
                 "gm" => {
-                    let (r1, imm) = check!(
+                    let (r1, imm) = recover!(
                         single_reg_imm_18(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,

@@ -145,9 +145,8 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
             )
         }
     };
-    let parsed_root = check!(
+    let parsed_root = unrecoverable!(
         parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -247,9 +246,8 @@ pub(crate) fn compile_inner_dependency(
 ) -> CompileResult<InnerDependencyCompileResult> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = check!(
+    let parse_tree = unrecoverable!(
         parse(input.clone(), Some(&build_config)),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -265,7 +263,7 @@ pub(crate) fn compile_inner_dependency(
             return err(warnings, errors);
         }
     };
-    let typed_parse_tree = check!(
+    let typed_parse_tree = unrecoverable!(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace,
@@ -274,7 +272,6 @@ pub(crate) fn compile_inner_dependency(
             &build_config,
             dead_code_graph,
         ),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -403,7 +400,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             let mut errors = vec![];
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-                    let asm = check!(
+                    let asm = recover!(
                         if build_config.use_orig_asm {
                             compile_ast_to_asm(*parse_tree, build_config)
                         } else {
@@ -438,13 +435,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let mut ir = match optimize::compile_ast(ast) {
-        Ok(ir) => ir,
-        Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
-        }
-    };
+    let mut ir = check_std_result!(optimize::compile_ast(ast), warnings, errors);
 
     // Inline function calls since we don't support them yet.  For scripts and predicates we inline
     // into main(), and for contracts we inline into ABI impls, which are found due to them having
@@ -457,9 +448,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             functions_to_inline_to.push(::sway_ir::function::Function(idx));
         }
     }
-    check!(
+    unrecoverable!(
         inline_function_calls(&mut ir, &functions_to_inline_to),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -467,9 +457,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // The only other optimisation we have at the moment is constant combining.  In lieu of a
     // forthcoming pass manager we can just call it here now.  We can re-use the inline functions
     // list.
-    check!(
+    unrecoverable!(
         combine_constants(&mut ir, &functions_to_inline_to),
-        return err(warnings, errors),
         warnings,
         errors
     );
@@ -608,7 +597,7 @@ fn parse_root_from_pairs(
                         span: pair.as_span(),
                         path: path.clone(),
                     };
-                    let decls = check!(
+                    let decls = recover!(
                         Declaration::parse_non_var_from_pair(pair.clone(), config),
                         continue,
                         warnings,
@@ -622,7 +611,7 @@ fn parse_root_from_pairs(
                     }
                 }
                 Rule::use_statement => {
-                    let stmt = check!(
+                    let stmt = recover!(
                         UseStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
@@ -640,7 +629,7 @@ fn parse_root_from_pairs(
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
-                    library_name = Some(check!(
+                    library_name = Some(recover!(
                         parse_tree::ident::parse_from_pair(lib_pair, config),
                         continue,
                         warnings,
@@ -649,7 +638,7 @@ fn parse_root_from_pairs(
                 }
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
-                    let include_statement = check!(
+                    let include_statement = recover!(
                         IncludeStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,

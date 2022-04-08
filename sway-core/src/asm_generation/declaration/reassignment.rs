@@ -26,7 +26,7 @@ pub(crate) fn convert_reassignment_to_asm(
     let mut errors = vec![];
     // step 0
     let return_register = register_sequencer.next();
-    let mut rhs = check!(
+    let mut rhs = recover!(
         convert_expression_to_asm(
             &reassignment.rhs,
             namespace,
@@ -44,7 +44,7 @@ pub(crate) fn convert_reassignment_to_asm(
         0 => unreachable!(),
         1 => {
             // step 1
-            let var_register = check!(
+            let var_register = recover!(
                 namespace.look_up_variable(&reassignment.lhs[0].name),
                 return err(warnings, errors),
                 warnings,
@@ -128,13 +128,13 @@ pub(crate) fn convert_reassignment_to_asm(
                         (*r#type, span.clone(), name.clone())
                     })
                     .collect::<Vec<_>>();
-                let field_layout = check!(
+                let field_layout = recover!(
                     get_contiguous_memory_layout(&fields_for_layout[..]),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let offset_of_this_field = check!(
+                let offset_of_this_field = recover!(
                     field_layout.offset_to_field_name(name.as_str(), name.span().clone()),
                     return err(warnings, errors),
                     warnings,
@@ -153,7 +153,7 @@ pub(crate) fn convert_reassignment_to_asm(
                     }
                 };
             }
-            let ptr = check!(
+            let ptr = recover!(
                 namespace.look_up_variable(top_level_decl),
                 return err(warnings, errors),
                 warnings,

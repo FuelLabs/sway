@@ -31,7 +31,7 @@ pub(crate) fn implementation_of_trait(
         block_span,
         ..
     } = impl_trait;
-    let type_implementing_for = check!(
+    let type_implementing_for = recover!(
         namespace.resolve_type_without_self(&type_implementing_for),
         return err(warnings, errors),
         warnings,
@@ -53,7 +53,7 @@ pub(crate) fn implementation_of_trait(
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
-            let functions_buf = check!(
+            let functions_buf = recover!(
                 type_check_trait_implementation(
                     &tr.interface_surface,
                     &functions,
@@ -111,7 +111,7 @@ pub(crate) fn implementation_of_trait(
                 });
             }
 
-            let functions_buf = check!(
+            let functions_buf = recover!(
                 type_check_trait_implementation(
                     &abi.interface_surface,
                     &functions,
@@ -206,7 +206,7 @@ fn type_check_trait_implementation(
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
 
-        let fn_decl = check!(
+        let fn_decl = recover!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: fn_decl.clone(),
                 namespace,
@@ -350,7 +350,7 @@ fn type_check_trait_implementation(
 
         // use a local namespace which has the above interface inserted
         // into it as a trait implementation for this
-        let method = check!(
+        let method = recover!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
                 namespace: local_namespace,

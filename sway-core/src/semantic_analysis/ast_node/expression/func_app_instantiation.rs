@@ -40,7 +40,7 @@ pub(crate) fn instantiate_function_application(
         _ => {
             let mut type_arguments = type_arguments;
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = check!(
+                type_argument.type_id = recover!(
                     namespace.resolve_type_with_self(
                         look_up_type_id(type_argument.type_id),
                         self_type,
@@ -52,7 +52,7 @@ pub(crate) fn instantiate_function_application(
                     errors
                 );
             }
-            check!(
+            recover!(
                 decl.monomorphize(type_arguments, self_type),
                 return err(warnings, errors),
                 warnings,
@@ -129,7 +129,7 @@ pub(crate) fn instantiate_function_application(
                 mode: Mode::NonAbi,
                 opts,
             };
-            let exp = check!(
+            let exp = recover!(
                 TypedExpression::type_check(args),
                 error_recovery_expr(arg.span()),
                 warnings,

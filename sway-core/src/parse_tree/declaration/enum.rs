@@ -46,7 +46,7 @@ impl EnumDeclaration {
         let mut variants_buf = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         for variant in &self.variants {
-            variants_buf.push(check!(
+            variants_buf.push(recover!(
                 variant.to_typed_decl(namespace, self_type, variant.span.clone(), &type_mapping),
                 continue,
                 warnings,
@@ -101,7 +101,7 @@ impl EnumDeclaration {
             }
         }
 
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(enum_name.unwrap(), config),
             return err(warnings, errors),
             warnings,
@@ -116,7 +116,7 @@ impl EnumDeclaration {
             }
         );
 
-        let type_parameters = check!(
+        let type_parameters = recover!(
             TypeParameter::parse_from_type_params_and_where_clause(
                 type_params,
                 where_clause,
@@ -137,7 +137,7 @@ impl EnumDeclaration {
             );
         }
 
-        let variants = check!(
+        let variants = recover!(
             EnumVariant::parse_from_pairs(variants, config),
             Vec::new(),
             warnings,
@@ -172,7 +172,7 @@ impl EnumVariant {
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                check!(
+                recover!(
                     namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, false),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -206,7 +206,7 @@ impl EnumVariant {
                     span: fields[i].as_span(),
                     path: config.map(|c| c.path()),
                 };
-                let name = check!(
+                let name = recover!(
                     ident::parse_from_pair(fields[i].clone(), config),
                     return err(warnings, errors),
                     warnings,
@@ -220,7 +220,7 @@ impl EnumVariant {
                         variant_name: name.clone()
                     }
                 );
-                let r#type = check!(
+                let r#type = recover!(
                     TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                     TypeInfo::Tuple(Vec::new()),
                     warnings,

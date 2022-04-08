@@ -28,7 +28,7 @@ pub(crate) fn type_check_method_application(
     let mut args_buf = VecDeque::new();
     let mut contract_call_params_map = HashMap::new();
     for arg in arguments {
-        args_buf.push_back(check!(
+        args_buf.push_back(recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: arg,
                 namespace,
@@ -101,7 +101,7 @@ pub(crate) fn type_check_method_application(
             } else {
                 None
             };
-            check!(
+            recover!(
                 namespace.find_method_for_type(
                     insert_type(ty),
                     &call_path.suffix,
@@ -120,7 +120,7 @@ pub(crate) fn type_check_method_application(
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            check!(
+            recover!(
                 namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
@@ -166,7 +166,7 @@ pub(crate) fn type_check_method_application(
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
                     contract_call_params_map.insert(
                         param.name.to_string(),
-                        check!(
+                        recover!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: param.value,
                                 namespace,
@@ -266,7 +266,7 @@ pub(crate) fn type_check_method_application(
                 };
                 // TODO(static span): this can be a normal address expression,
                 // so we don't need to re-parse and re-compile
-                let contract_address = check!(
+                let contract_address = recover!(
                     re_parse_expression(
                         contract_address.into(),
                         build_config,
@@ -281,7 +281,7 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+                let func_selector = recover!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
                     contract_address: Box::new(contract_address),
@@ -350,7 +350,7 @@ pub(crate) fn type_check_method_application(
                         String::new()
                     }
                 };
-                let contract_address = check!(
+                let contract_address = recover!(
                     re_parse_expression(
                         contract_address.into(),
                         build_config,
@@ -365,7 +365,7 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+                let func_selector = recover!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
                     contract_address: Box::new(contract_address),
@@ -446,14 +446,14 @@ fn re_parse_expression(
     };
 
     // purposefully ignore var_decls as those have already been lifted during parsing
-    let ParserLifter { value, .. } = check!(
+    let ParserLifter { value, .. } = recover!(
         Expression::parse_from_pair(contract_pair, Some(build_config)),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let contract_address = check!(
+    let contract_address = recover!(
         TypedExpression::type_check(TypeCheckArguments {
             checkee: value,
             namespace,

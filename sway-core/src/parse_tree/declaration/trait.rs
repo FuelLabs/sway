@@ -41,7 +41,7 @@ impl TraitDeclaration {
                 (Visibility::Private, trait_keyword_or_visibility)
             };
 
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(trait_parts.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
@@ -59,7 +59,7 @@ impl TraitDeclaration {
                 Rule::supertraits => {
                     let mut supertraits = vec![];
                     for x in trait_parts.next().unwrap().into_inner() {
-                        supertraits.push(check!(
+                        supertraits.push(recover!(
                             Supertrait::parse_from_pair(x, config),
                             continue,
                             warnings,
@@ -79,7 +79,7 @@ impl TraitDeclaration {
             for fn_sig_or_decl in methods_and_interface.into_inner() {
                 match fn_sig_or_decl.as_rule() {
                     Rule::fn_signature => {
-                        interface.push(check!(
+                        interface.push(recover!(
                             TraitFn::parse_from_pair(fn_sig_or_decl, config),
                             continue,
                             warnings,
@@ -87,7 +87,7 @@ impl TraitDeclaration {
                         ));
                     }
                     Rule::fn_decl => {
-                        methods.push(check!(
+                        methods.push(recover!(
                             FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config),
                             continue,
                             warnings,
@@ -127,7 +127,7 @@ impl Supertrait {
         let mut errors = Vec::new();
         let mut supertrait_parts = pair.into_inner();
         let name = supertrait_parts.next().unwrap();
-        let name = check!(
+        let name = recover!(
             CallPath::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
@@ -160,7 +160,7 @@ impl TraitFn {
             span: name.as_span(),
             path: path.clone(),
         };
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
@@ -206,7 +206,7 @@ impl TraitFn {
         let parameters_pair = parameters_pair.unwrap();
         let parameters_span = parameters_pair.as_span();
 
-        let parameters = check!(
+        let parameters = recover!(
             FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
@@ -222,7 +222,7 @@ impl TraitFn {
             path: path.clone(),
         };
         let return_type = match return_type_pair {
-            Some(ref pair) => check!(
+            Some(ref pair) => recover!(
                 TypeInfo::parse_from_pair(pair.clone(), config),
                 TypeInfo::Tuple(Vec::new()),
                 warnings,

@@ -55,7 +55,7 @@ impl VariableDeclaration {
         let mut errors = vec![];
         let mut var_decl_parts = pair.into_inner();
         let _let_keyword = var_decl_parts.next();
-        let lhs = check!(
+        let lhs = recover!(
             VariableDeclarationLHS::parse_from_pair(
                 var_decl_parts.next().expect("gaurenteed by grammar"),
                 config
@@ -80,7 +80,7 @@ impl VariableDeclaration {
         let type_ascription = match type_ascription {
             Some(ascription) => {
                 let type_name = ascription.into_inner().next().unwrap();
-                check!(
+                recover!(
                     TypeInfo::parse_from_pair(type_name, config),
                     TypeInfo::Tuple(Vec::new()),
                     warnings,
@@ -89,14 +89,14 @@ impl VariableDeclaration {
             }
             _ => TypeInfo::Unknown,
         };
-        let body_result = check!(
+        let body_result = recover!(
             Expression::parse_from_pair(maybe_body, config),
             return err(warnings, errors),
             warnings,
             errors
         );
         let mut var_decls = body_result.var_decls;
-        var_decls.append(&mut check!(
+        var_decls.append(&mut recover!(
             VariableDeclaration::desugar_to_decls(
                 lhs,
                 type_ascription,
@@ -146,7 +146,7 @@ impl VariableDeclaration {
                     span: body.span(),
                 };
                 let mut decls = vec![save_body_first];
-                decls.append(&mut check!(
+                decls.append(&mut recover!(
                     VariableDeclaration::desugar_to_decls_inner(
                         VariableDeclarationLHS::Tuple(lhs_tuple),
                         new_body
@@ -188,7 +188,7 @@ impl VariableDeclaration {
                         index_span: elem.span(),
                         span: span.clone(),
                     };
-                    decls.append(&mut check!(
+                    decls.append(&mut recover!(
                         VariableDeclaration::desugar_to_decls_inner(elem, new_body),
                         return err(warnings, errors),
                         warnings,
@@ -225,7 +225,7 @@ impl VariableDeclarationLHS {
                 } else {
                     maybe_mut_keyword
                 };
-                let name = check!(
+                let name = recover!(
                     ident::parse_from_pair(name_pair, config),
                     return err(warnings, errors),
                     warnings,
@@ -241,7 +241,7 @@ impl VariableDeclarationLHS {
                 let fields = inner.into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for field in fields.into_iter() {
-                    fields_buf.push(check!(
+                    fields_buf.push(recover!(
                         VariableDeclarationLHS::parse_from_pair(field, config),
                         return err(warnings, errors),
                         warnings,

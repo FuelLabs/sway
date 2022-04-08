@@ -63,7 +63,7 @@ impl Reassignment {
         let variable_or_struct_reassignment = iter.next().expect("guaranteed by grammar");
         match variable_or_struct_reassignment.as_rule() {
             Rule::variable_reassignment => {
-                let (name_result, mut body_result) = check!(
+                let (name_result, mut body_result) = recover!(
                     parse_simple_variable_reassignment(
                         variable_or_struct_reassignment,
                         config,
@@ -92,7 +92,7 @@ impl Reassignment {
                 )
             }
             Rule::struct_field_reassignment => {
-                let (mut expr_result, body_result) = check!(
+                let (mut expr_result, body_result) = recover!(
                     parse_subfield_reassignment(variable_or_struct_reassignment, config, path),
                     return err(warnings, errors),
                     warnings,
@@ -127,7 +127,7 @@ impl Reassignment {
                 let rhs = parts.pop();
                 assert_eq!(rhs.as_ref().map(|x| x.as_rule()), Some(Rule::expr));
                 let rhs = rhs.expect("guaranteed by grammar");
-                let rhs = check!(
+                let rhs = recover!(
                     Expression::parse_from_pair(rhs, config),
                     return err(warnings, errors),
                     warnings,
@@ -135,7 +135,7 @@ impl Reassignment {
                 );
                 let mut lhs = Vec::new();
                 for item in parts {
-                    lhs.push(check!(
+                    lhs.push(recover!(
                         ident::parse_from_pair(item, config),
                         continue,
                         warnings,
@@ -170,14 +170,14 @@ fn parse_simple_variable_reassignment(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut iter = pair.into_inner();
-    let name_result = check!(
+    let name_result = recover!(
         Expression::parse_from_pair(iter.next().unwrap(), config),
         return err(warnings, errors),
         warnings,
         errors
     );
     let body = iter.next().unwrap();
-    let body_result = check!(
+    let body_result = recover!(
         Expression::parse_from_pair(body.clone(), config),
         ParserLifter::empty(error_recovery_exp(Span {
             span: body.as_span(),
@@ -204,7 +204,7 @@ fn parse_subfield_reassignment(
         span: rhs.as_span(),
         path: path.clone(),
     };
-    let body_result = check!(
+    let body_result = recover!(
         Expression::parse_from_pair(rhs, config),
         ParserLifter::empty(error_recovery_exp(rhs_span)),
         warnings,
@@ -219,7 +219,7 @@ fn parse_subfield_reassignment(
     // the first thing is either an exp or a var, everything subsequent must be
     // a field
     let mut name_parts = inner.into_inner();
-    let mut expr_result = check!(
+    let mut expr_result = recover!(
         parse_subfield_path_ensure_only_var(
             name_parts.next().expect("guaranteed by grammar"),
             config
@@ -236,7 +236,7 @@ fn parse_subfield_reassignment(
                 span: name_part.as_span(),
                 path: path.clone(),
             },
-            field_to_access: check!(
+            field_to_access: recover!(
                 ident::parse_from_pair(name_part, config),
                 continue,
                 warnings,
@@ -309,7 +309,7 @@ fn parse_call_item_ensure_only_var(
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
-            name: check!(
+            name: recover!(
                 ident::parse_from_pair(item.clone(), config),
                 return err(warnings, errors),
                 warnings,

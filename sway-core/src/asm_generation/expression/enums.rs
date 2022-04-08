@@ -99,7 +99,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
     // // if there are any enum contents, instantiate them
     if let Some(instantiation) = contents {
         let return_register = register_sequencer.next();
-        let mut asm = check!(
+        let mut asm = recover!(
             convert_expression_to_asm(
                 &*instantiation,
                 namespace,

@@ -151,7 +151,7 @@ impl Pattern {
                 } in fields.into_iter()
                 {
                     let f = match scrutinee {
-                        Some(scrutinee) => check!(
+                        Some(scrutinee) => recover!(
                             Pattern::from_scrutinee(scrutinee),
                             return err(warnings, errors),
                             warnings,
@@ -170,7 +170,7 @@ impl Pattern {
             Scrutinee::Tuple { elems, .. } => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
-                    new_elems.push(check!(
+                    new_elems.push(recover!(
                         Pattern::from_scrutinee(elem),
                         return err(warnings, errors),
                         warnings,
@@ -416,7 +416,7 @@ impl Pattern {
                     ));
                     return err(warnings, errors);
                 }
-                let pats: PatStack = check!(
+                let pats: PatStack = recover!(
                     args.serialize_multi_patterns(span),
                     return err(warnings, errors),
                     warnings,
@@ -436,7 +436,7 @@ impl Pattern {
                 })
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(pats, span),
                     return err(warnings, errors),
                     warnings,
@@ -451,7 +451,7 @@ impl Pattern {
                     ));
                     return err(warnings, errors);
                 }
-                let pats: PatStack = check!(
+                let pats: PatStack = recover!(
                     args.serialize_multi_patterns(span),
                     return err(warnings, errors),
                     warnings,
@@ -461,7 +461,7 @@ impl Pattern {
                 .map(Pattern::Tuple)
                 .collect::<Vec<_>>()
                 .into();
-                check!(
+                recover!(
                     Pattern::from_pat_stack(pats, span),
                     return err(warnings, errors),
                     warnings,

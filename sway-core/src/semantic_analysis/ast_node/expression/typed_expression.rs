@@ -545,7 +545,7 @@ impl TypedExpression {
         }
 
         // The annotation may result in a cast, which is handled in the type engine.
-        typed_expression.return_type = check!(
+        typed_expression.return_type = recover!(
             namespace.resolve_type_with_self(
                 look_up_type_id(typed_expression.return_type),
                 self_type,
@@ -563,7 +563,7 @@ impl TypedExpression {
             if let Literal::Numeric(_) = lit {
                 match look_up_type_id(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
-                        typed_expression = check!(
+                        typed_expression = recover!(
                             Self::resolve_numeric_literal(
                                 lit,
                                 expr_span,
@@ -682,7 +682,7 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let function_declaration = check!(
+        let function_declaration = recover!(
             namespace.get_call_path(&name),
             return err(warnings, errors),
             warnings,
@@ -731,7 +731,7 @@ impl TypedExpression {
 
         let mut warnings = vec![];
         let mut errors = vec![];
-        let typed_lhs = check!(
+        let typed_lhs = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: lhs.clone(),
                 help_text: Default::default(),
@@ -749,7 +749,7 @@ impl TypedExpression {
             errors
         );
 
-        let typed_rhs = check!(
+        let typed_rhs = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: rhs.clone(),
                 namespace,
@@ -797,7 +797,7 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (typed_block, block_return_type) = check!(
+        let (typed_block, block_return_type) = recover!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: contents,
                 namespace,
@@ -870,19 +870,19 @@ impl TypedExpression {
         } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (enum_type, variant) = check!(
+        let (enum_type, variant) = recover!(
             check_scrutinee_type(&scrutinee, namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let variable_to_assign = check!(
+        let variable_to_assign = recover!(
             scrutinee.enum_variable_to_assign(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let expr = Box::new(check!(
+        let expr = Box::new(recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *expr.clone(),
                 namespace,
@@ -923,7 +923,7 @@ impl TypedExpression {
         let then_branch_span = then.span().clone();
 
         // type check the then branch
-        let (then, then_branch_code_block_return_type) = check!(
+        let (then, then_branch_code_block_return_type) = recover!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: then,
                 namespace: then_branch_scope,
@@ -969,7 +969,7 @@ impl TypedExpression {
         let r#else = match r#else {
             Some(expr) => {
                 let expr_span = expr.span();
-                let r#else = check!(
+                let r#else = recover!(
                     TypedExpression::type_check(TypeCheckArguments {
                         checkee: *expr,
                         namespace,
@@ -1057,7 +1057,7 @@ impl TypedExpression {
         } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let condition = Box::new(check!(
+        let condition = Box::new(recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *condition.clone(),
                 namespace,
@@ -1074,7 +1074,7 @@ impl TypedExpression {
             warnings,
             errors
         ));
-        let then = Box::new(check!(
+        let then = Box::new(recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
                 namespace,
@@ -1112,7 +1112,7 @@ impl TypedExpression {
         }
         let mut else_deterministically_aborts = false;
         let r#else = r#else.map(|expr| {
-            let r#else = check!(
+            let r#else = recover!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: *expr.clone(),
                     namespace,
@@ -1214,13 +1214,13 @@ impl TypedExpression {
             mode: Mode::NonAbi,
             opts,
         };
-        let typed_if_exp = check!(
+        let typed_if_exp = recover!(
             TypedExpression::type_check(args),
             error_recovery_expr(if_exp.span()),
             warnings,
             errors
         );
-        let (witness_report, arms_reachability) = check!(
+        let (witness_report, arms_reachability) = recover!(
             check_match_expression_usefulness(cases_covered, span.clone()),
             return err(warnings, errors),
             warnings,
@@ -1262,7 +1262,7 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let return_type = check!(
+        let return_type = recover!(
             namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span, false),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -1276,7 +1276,7 @@ impl TypedExpression {
                 |AsmRegisterDeclaration { name, initializer }| TypedAsmRegisterDeclaration {
                     name,
                     initializer: initializer.map(|initializer| {
-                        check!(
+                        recover!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: initializer.clone(),
                                 namespace,
@@ -1327,7 +1327,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
-        let module = check!(
+        let module = recover!(
             namespace.find_module_relative(&call_path.prefixes),
             return err(warnings, errors),
             warnings,
@@ -1372,7 +1372,7 @@ impl TypedExpression {
             _ => {
                 let mut type_arguments = type_arguments;
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
+                    type_argument.type_id = recover!(
                         namespace.resolve_type_with_self(
                             look_up_type_id(type_argument.type_id),
                             self_type,
@@ -1384,7 +1384,7 @@ impl TypedExpression {
                         errors
                     );
                 }
-                check!(
+                recover!(
                     decl.monomorphize(&module, &type_arguments, Some(self_type)),
                     return err(warnings, errors),
                     warnings,
@@ -1417,7 +1417,7 @@ impl TypedExpression {
                     }
                 };
 
-            let typed_field = check!(
+            let typed_field = recover!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: expr_field.value,
                     namespace,
@@ -1480,7 +1480,7 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let parent = check!(
+        let parent = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *prefix,
                 namespace,
@@ -1497,7 +1497,7 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let (fields, struct_name) = check!(
+        let (fields, struct_name) = recover!(
             namespace.get_struct_type_fields(
                 parent.return_type,
                 parent.span.as_str(),
@@ -1567,7 +1567,7 @@ impl TypedExpression {
                 .map(|field_type_ids| field_type_ids[i].clone())
                 .unwrap_or_default();
             let field_span = field.span();
-            let typed_field = check!(
+            let typed_field = recover!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: field,
                     namespace,
@@ -1618,7 +1618,7 @@ impl TypedExpression {
             return err(warnings, errors);
         }
 
-        let storage_fields = check!(
+        let storage_fields = recover!(
             arguments.namespace.get_storage_field_descriptors(),
             return err(warnings, errors),
             warnings,
@@ -1626,7 +1626,7 @@ impl TypedExpression {
         );
 
         // Do all namespace checking here!
-        let (storage_access, return_type) = check!(
+        let (storage_access, return_type) = recover!(
             arguments
                 .namespace
                 .apply_storage_load(arguments.checkee, &storage_fields),
@@ -1660,7 +1660,7 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let parent = check!(
+        let parent = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix,
                 namespace,
@@ -1678,7 +1678,7 @@ impl TypedExpression {
             errors
         );
         let mut tuple_elem_to_access = None;
-        let tuple_elems = check!(
+        let tuple_elems = recover!(
             namespace.get_tuple_elems(parent.return_type, parent.span.as_str(), &parent.span),
             return err(warnings, errors),
             warnings,
@@ -1762,7 +1762,7 @@ impl TypedExpression {
             (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
                 Some(decl) => match decl {
                     TypedDeclaration::EnumDeclaration(enum_decl) => {
-                        check!(
+                        recover!(
                             instantiate_enum(
                                 module,
                                 enum_decl,
@@ -1781,7 +1781,7 @@ impl TypedExpression {
                             errors
                         )
                     }
-                    TypedDeclaration::FunctionDeclaration(func_decl) => check!(
+                    TypedDeclaration::FunctionDeclaration(func_decl) => recover!(
                         instantiate_function_application(
                             func_decl,
                             call_path,
@@ -1815,7 +1815,7 @@ impl TypedExpression {
                     return err(warnings, errors);
                 }
             },
-            (None, Some(enum_decl)) => check!(
+            (None, Some(enum_decl)) => recover!(
                 instantiate_enum(
                     enum_module_combined_result_module.unwrap(),
                     enum_decl,
@@ -1865,7 +1865,7 @@ impl TypedExpression {
         // TODO(static span): the below String address should just be address_expr
         // basically delete the bottom line and replace references to it with address_expr
         let address_str = address.span().as_str().to_string();
-        let address_expr = check!(
+        let address_expr = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *address,
                 namespace,
@@ -1883,7 +1883,7 @@ impl TypedExpression {
             errors
         );
         // look up the call path and get the declaration it references
-        let abi = check!(
+        let abi = recover!(
             namespace.get_call_path(&abi_name),
             return err(warnings, errors),
             warnings,
@@ -1909,7 +1909,7 @@ impl TypedExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let decl = check!(
+                        let decl = recover!(
                             namespace.get_call_path(&abi_name),
                             return err(warnings, errors),
                             warnings,
@@ -1965,7 +1965,7 @@ impl TypedExpression {
         // they instead just use the CALL opcode and the return type
         let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
         for method in &abi.methods {
-            type_checked_fn_buf.push(check!(
+            type_checked_fn_buf.push(recover!(
                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                     checkee: method.clone(),
                     namespace,
@@ -2035,7 +2035,7 @@ impl TypedExpression {
             .into_iter()
             .map(|expr| {
                 let span = expr.span();
-                check!(
+                recover!(
                     Self::type_check(TypeCheckArguments {
                         checkee: expr,
                         namespace,
@@ -2107,7 +2107,7 @@ impl TypedExpression {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let prefix_te = check!(
+        let prefix_te = recover!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix.clone(),
                 namespace,
@@ -2127,7 +2127,7 @@ impl TypedExpression {
 
         // If the return type is a static array then create a TypedArrayIndex.
         if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
-            let index_te = check!(
+            let index_te = recover!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: index,
                     namespace,
@@ -2228,13 +2228,13 @@ impl TypedExpression {
                     mode: Mode::NonAbi,
                     opts,
                 };
-                let parent = check!(
+                let parent = recover!(
                     TypedExpression::type_check(args),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let tuple_elems = check!(
+                let tuple_elems = recover!(
                     namespace.get_tuple_elems(
                         parent.return_type,
                         parent.span.as_str(),
@@ -2301,13 +2301,13 @@ impl TypedExpression {
                     mode: Mode::NonAbi,
                     opts,
                 };
-                let parent = check!(
+                let parent = recover!(
                     TypedExpression::type_check(args),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let (struct_fields, other_struct_name) = check!(
+                let (struct_fields, other_struct_name) = recover!(
                     namespace.get_struct_type_fields(
                         parent.return_type,
                         parent.span.as_str(),
@@ -2363,7 +2363,7 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let exp = check!(
+        let exp = recover!(
             TypedExpression::type_check(arguments),
             return err(warnings, errors),
             warnings,
@@ -2395,7 +2395,7 @@ impl TypedExpression {
             namespace,
             ..
         } = arguments;
-        let type_id = check!(
+        let type_id = recover!(
             namespace.resolve_type_with_self(type_name, self_type, type_span, true),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -2527,7 +2527,7 @@ fn check_scrutinee_type(
     let mut warnings = vec![];
     let mut errors = vec![];
     let (ty, enum_variant) = match scrutinee {
-        Scrutinee::EnumScrutinee { ref call_path, .. } => check!(
+        Scrutinee::EnumScrutinee { ref call_path, .. } => recover!(
             check_enum_scrutinee_type(call_path, namespace),
             return err(warnings, errors),
             warnings,
@@ -2553,7 +2553,7 @@ fn check_enum_scrutinee_type(
     let mut errors = vec![];
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
-    let decl: TypedDeclaration = check!(
+    let decl: TypedDeclaration = recover!(
         namespace.get_call_path(&call_path),
         return err(warnings, errors),
         warnings,

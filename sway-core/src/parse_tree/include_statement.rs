@@ -41,7 +41,7 @@ impl IncludeStatement {
                     .trim(),
                 );
             } else if item.as_rule() == Rule::alias {
-                let alias_parsed = check!(
+                let alias_parsed = recover!(
                     ident::parse_from_pair(item.into_inner().next().unwrap(), config),
                     continue,
                     warnings,

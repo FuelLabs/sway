@@ -58,13 +58,13 @@ impl WitnessReport {
                 err(warnings, errors)
             }
             WitnessReport::Witnesses(witnesses) => {
-                let (rs, ps) = check!(
+                let (rs, ps) = recover!(
                     witnesses.split_at(c.a(), span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let pat = check!(
+                let pat = recover!(
                     Pattern::from_constructor_and_arguments(c, rs, span),
                     return err(warnings, errors),
                     warnings,

@@ -127,7 +127,7 @@ impl Namespace {
             prefixes: new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
-        check!(
+        recover!(
             self.implemented_traits
                 .insert(trait_name, type_implementing_for, functions_buf),
             (),
@@ -254,7 +254,7 @@ impl TraitMap {
         let mut warnings = vec![];
         let mut errors = vec![];
         for ((trait_name, type_implementing_for), methods) in other.trait_map.into_iter() {
-            check!(
+            recover!(
                 self.insert(
                     trait_name,
                     type_implementing_for,

@@ -11,7 +11,14 @@ use sway_types::{ident::Ident, span::Span};
 use std::fmt;
 use thiserror::Error;
 
-macro_rules! check {
+macro_rules! unrecoverable {
+    ($fn_expr: expr, $warnings: ident, $errors: ident $(,)?) => {{
+        use crate::error::err;
+        recover!($fn_expr, return err($warnings, $errors), $warnings, $errors)
+    }};
+}
+
+macro_rules! recover {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident $(,)?) => {{
         let mut res = $fn_expr;
         $warnings.append(&mut res.warnings);

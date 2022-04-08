@@ -66,7 +66,7 @@ impl StructDeclaration {
                 a => unreachable!("{:?}", a),
             }
         }
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(name.expect("guaranteed to exist by grammar"), config),
             return err(warnings, errors),
             warnings,
@@ -80,7 +80,7 @@ impl StructDeclaration {
                 struct_name: name.clone()
             }
         );
-        let type_parameters = check!(
+        let type_parameters = recover!(
             TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
@@ -101,7 +101,7 @@ impl StructDeclaration {
             );
         }
         let fields = if let Some(fields) = fields_pair {
-            check!(
+            recover!(
                 StructField::parse_from_pairs(fields, config),
                 Vec::new(),
                 warnings,
@@ -139,7 +139,7 @@ impl StructField {
                 span: fields[i].as_span(),
                 path: path.clone(),
             };
-            let name = check!(
+            let name = recover!(
                 ident::parse_from_pair(fields[i].clone(), config),
                 return err(warnings, errors),
                 warnings,
@@ -158,7 +158,7 @@ impl StructField {
                 span: type_pair.as_span(),
                 path: path.clone(),
             };
-            let r#type = check!(
+            let r#type = recover!(
                 TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                 TypeInfo::Tuple(Vec::new()),
                 warnings,

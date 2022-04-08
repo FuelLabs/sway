@@ -168,7 +168,7 @@ impl NamespaceWrapper for NamespaceRef {
             }
         };
         if ident_iter.peek().is_none() {
-            let ty = check!(
+            let ty = recover!(
                 symbol.return_type(),
                 return err(warnings, errors),
                 warnings,
@@ -176,7 +176,7 @@ impl NamespaceWrapper for NamespaceRef {
             );
             return ok((ty, ty), warnings, errors);
         }
-        let mut symbol = check!(
+        let mut symbol = recover!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
@@ -316,7 +316,7 @@ impl NamespaceWrapper for NamespaceRef {
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module = check!(
+        let module = recover!(
             self.find_module_relative(path),
             return err(warnings, errors),
             warnings,
@@ -362,7 +362,7 @@ impl NamespaceWrapper for NamespaceRef {
                 Some(base_namespace) => base_namespace,
                 None => *self,
             };
-            check!(
+            recover!(
                 base_namespace.find_module_relative(&path),
                 return err(warnings, errors),
                 warnings,
@@ -388,7 +388,7 @@ impl NamespaceWrapper for NamespaceRef {
         );
         write_module(
             |m| {
-                check!(
+                recover!(
                     m.implemented_traits.extend(implemented_traits),
                     (),
                     warnings,
@@ -424,7 +424,7 @@ impl NamespaceWrapper for NamespaceRef {
             Some(base_module) => base_module,
             None => *self,
         };
-        let namespace = check!(
+        let namespace = recover!(
             base_module.find_module_relative(method_path),
             return err(warnings, errors),
             warnings,
@@ -433,7 +433,7 @@ impl NamespaceWrapper for NamespaceRef {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = check!(
+        let r#type = recover!(
             namespace.resolve_type_with_self(
                 look_up_type_id(r#type),
                 self_type,
@@ -537,7 +537,7 @@ impl NamespaceWrapper for NamespaceRef {
             Some(base_namespace) => base_namespace,
             None => *self,
         };
-        let namespace = check!(
+        let namespace = recover!(
             base_namespace.find_module_relative(&path),
             return err(warnings, errors),
             warnings,
@@ -683,7 +683,7 @@ impl NamespaceWrapper for NamespaceRef {
             } => {
                 let mut new_type_arguments = vec![];
                 for type_argument in type_arguments.into_iter() {
-                    let new_type_id = check!(
+                    let new_type_id = recover!(
                         Self::resolve_type_with_self(
                             self,
                             look_up_type_id(type_argument.type_id),
@@ -714,7 +714,7 @@ impl NamespaceWrapper for NamespaceRef {
                             return err(warnings, errors);
                         }
                         if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
+                            let new_decl = recover!(
                                 decl.monomorphize(self, &new_type_arguments, Some(self_type)),
                                 return err(warnings, errors),
                                 warnings,
@@ -737,7 +737,7 @@ impl NamespaceWrapper for NamespaceRef {
                             return err(warnings, errors);
                         }
                         if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
+                            let new_decl = recover!(
                                 decl.monomorphize_with_type_arguments(
                                     self,
                                     &new_type_arguments,
@@ -780,7 +780,7 @@ impl NamespaceWrapper for NamespaceRef {
                 Some(TypedDeclaration::StructDeclaration(decl)) => {
                     let mut new_type_arguments = vec![];
                     for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
+                        let new_type_id = recover!(
                             Self::resolve_type_without_self(
                                 self,
                                 &look_up_type_id(type_argument.type_id),
@@ -796,7 +796,7 @@ impl NamespaceWrapper for NamespaceRef {
                         new_type_arguments.push(type_argument);
                     }
                     if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
+                        let new_decl = recover!(
                             decl.monomorphize(self, &new_type_arguments, None),
                             return err(warnings, errors),
                             warnings,
@@ -810,7 +810,7 @@ impl NamespaceWrapper for NamespaceRef {
                 Some(TypedDeclaration::EnumDeclaration(decl)) => {
                     let mut new_type_arguments = vec![];
                     for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
+                        let new_type_id = recover!(
                             Self::resolve_type_without_self(
                                 self,
                                 &look_up_type_id(type_argument.type_id),
@@ -826,7 +826,7 @@ impl NamespaceWrapper for NamespaceRef {
                         new_type_arguments.push(type_argument);
                     }
                     if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
+                        let new_decl = recover!(
                             decl.monomorphize_with_type_arguments(self, &new_type_arguments, None),
                             return err(warnings, errors),
                             warnings,

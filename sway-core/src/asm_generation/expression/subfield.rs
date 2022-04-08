@@ -36,7 +36,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
     let mut warnings = vec![];
     let mut errors = vec![];
     let prefix_reg = register_sequencer.next();
-    let mut prefix_ops = check!(
+    let mut prefix_ops = recover!(
         convert_expression_to_asm(parent, namespace, &prefix_reg, register_sequencer),
         vec![],
         warnings,
@@ -50,14 +50,14 @@ pub(crate) fn convert_subfield_expression_to_asm(
     // step 1
     let fields_for_layout = get_subfields_for_layout(resolved_type_of_parent);
 
-    let descriptor = check!(
+    let descriptor = recover!(
         get_contiguous_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    asm_buf.append(&mut check!(
+    asm_buf.append(&mut recover!(
         convert_subfield_to_asm(
             prefix_reg,
             &field_to_access,
@@ -124,7 +124,7 @@ pub(crate) fn convert_subfield_to_asm(
     let field_to_access_span = field_to_access.span().clone();
     let field_to_access_name = field_to_access.to_string();
     // step 2
-    let offset_in_words = check!(
+    let offset_in_words = recover!(
         descriptor.offset_to_field_name(field_to_access.as_str(), field_to_access.span().clone()),
         0,
         warnings,

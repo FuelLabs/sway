@@ -40,7 +40,7 @@ impl ReturnStatement {
                 ParserLifter::empty(stmt)
             }
             Some(expr_pair) => {
-                let expr_result = check!(
+                let expr_result = recover!(
                     Expression::parse_from_pair(expr_pair, config),
                     ParserLifter::empty(error_recovery_exp(span)),
                     warnings,

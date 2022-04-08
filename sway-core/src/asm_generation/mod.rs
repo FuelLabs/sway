@@ -644,7 +644,7 @@ pub(crate) fn compile_ast_to_asm(
                     });
                     for (body, name) in const_decls {
                         let return_register = register_sequencer.next();
-                        let mut buf = check!(
+                        let mut buf = recover!(
                             convert_expression_to_asm(
                                 body,
                                 &mut namespace,
@@ -664,7 +664,7 @@ pub(crate) fn compile_ast_to_asm(
             );
             // start generating from the main function
             let return_register = register_sequencer.next();
-            let mut body = check!(
+            let mut body = recover!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -677,7 +677,7 @@ pub(crate) fn compile_ast_to_asm(
                 errors
             );
             asm_buf.append(&mut body);
-            asm_buf.append(&mut check!(
+            asm_buf.append(&mut recover!(
                 ret_or_retd_value(
                     &main_function,
                     return_register,
@@ -724,7 +724,7 @@ pub(crate) fn compile_ast_to_asm(
                     });
                     for (body, name) in const_decls {
                         let return_register = register_sequencer.next();
-                        let mut buf = check!(
+                        let mut buf = recover!(
                             convert_expression_to_asm(
                                 body,
                                 &mut namespace,
@@ -743,7 +743,7 @@ pub(crate) fn compile_ast_to_asm(
                 ast_namespace,
             );
             // start generating from the main function
-            let mut body = check!(
+            let mut body = recover!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -791,7 +791,7 @@ pub(crate) fn compile_ast_to_asm(
                     });
                     for (body, name) in const_decls {
                         let return_register = register_sequencer.next();
-                        let mut buf = check!(
+                        let mut buf = recover!(
                             convert_expression_to_asm(
                                 body,
                                 &mut namespace,
@@ -809,7 +809,7 @@ pub(crate) fn compile_ast_to_asm(
                 },
                 ast_namespace,
             );
-            let (selectors_and_labels, mut contract_asm) = check!(
+            let (selectors_and_labels, mut contract_asm) = recover!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -846,7 +846,7 @@ pub(crate) fn compile_ast_to_asm(
         println!("{}", finalized_asm);
     }
 
-    check!(
+    recover!(
         crate::checks::check_invalid_opcodes(&finalized_asm),
         return err(warnings, errors),
         warnings,
@@ -1045,7 +1045,7 @@ fn convert_node_to_asm(
     let mut errors = vec![];
     match &node.content {
         TypedAstNodeContent::WhileLoop(r#loop) => {
-            let res = check!(
+            let res = recover!(
                 convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -1054,7 +1054,7 @@ fn convert_node_to_asm(
             ok(NodeAsmResult::JustAsm(res), warnings, errors)
         }
         TypedAstNodeContent::Declaration(typed_decl) => {
-            let res = check!(
+            let res = recover!(
                 convert_decl_to_asm(typed_decl, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -1070,7 +1070,7 @@ fn convert_node_to_asm(
             } else {
                 register_sequencer.next()
             };
-            let ops = check!(
+            let ops = recover!(
                 convert_expression_to_asm(exp, namespace, &return_register, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -1090,7 +1090,7 @@ fn convert_node_to_asm(
             } else {
                 register_sequencer.next()
             };
-            let ops = check!(
+            let ops = recover!(
                 convert_expression_to_asm(
                     &exp.expr,
                     namespace,
@@ -1113,7 +1113,7 @@ fn convert_node_to_asm(
             } else {
                 register_sequencer.next()
             };
-            let asm = check!(
+            let asm = recover!(
                 convert_expression_to_asm(
                     typed_expr,
                     namespace,
@@ -1289,7 +1289,7 @@ fn compile_contract_to_selectors(
     let mut selectors_labels_buf = vec![];
     let mut asm_buf = vec![];
     for decl in abi_entries {
-        let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
+        let selector = recover!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
 
@@ -1328,7 +1328,7 @@ fn compile_contract_to_selectors(
 
                 let subfields_for_layout = get_subfields_for_layout(bundled_arguments_type);
 
-                let descriptor = check!(
+                let descriptor = recover!(
                     get_contiguous_memory_layout(&subfields_for_layout.clone()[..]),
                     return err(warnings, errors),
                     warnings,
@@ -1340,7 +1340,7 @@ fn compile_contract_to_selectors(
                 for param in &decl.parameters {
                     let arg_register = register_sequencer.next();
 
-                    asm_buf.append(&mut check!(
+                    asm_buf.append(&mut recover!(
                         convert_subfield_to_asm(
                             bundled_arguments_register.clone(),
                             &param.name,
@@ -1358,7 +1358,7 @@ fn compile_contract_to_selectors(
             }
         }
 
-        asm_buf.append(&mut check!(
+        asm_buf.append(&mut recover!(
             convert_abi_fn_to_asm(&decl, &arguments, namespace, register_sequencer),
             vec![],
             warnings,

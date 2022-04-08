@@ -97,13 +97,13 @@ impl TypedParseTree {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let ordered_nodes = check!(
+        let ordered_nodes = recover!(
             node_dependencies::order_ast_nodes_by_dependency(parsed.root_nodes),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_nodes = check!(
+        let typed_nodes = recover!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
                 new_namespace,

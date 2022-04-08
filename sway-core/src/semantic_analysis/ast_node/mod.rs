@@ -203,7 +203,7 @@ impl TypedAstNode {
                                             crate_namespace: NamespaceRef,
                                             type_ascription: TypeInfo,
                                             value| {
-            let type_id = check!(
+            let type_id = recover!(
                 namespace.resolve_type_with_self(
                     type_ascription,
                     self_type,
@@ -253,7 +253,7 @@ impl TypedAstNode {
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = check!(
+                    let _ = recover!(
                         import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
@@ -307,7 +307,7 @@ impl TypedAstNode {
                                     opts,
                                 })
                             };
-                            let body = check!(
+                            let body = recover!(
                                 result,
                                 error_recovery_expr(name.span().clone()),
                                 warnings,
@@ -336,7 +336,7 @@ impl TypedAstNode {
                                 type_ascription.clone(),
                                 value,
                             );
-                            let value = check!(
+                            let value = recover!(
                                 result,
                                 error_recovery_expr(name.span().clone()),
                                 warnings,
@@ -362,7 +362,7 @@ impl TypedAstNode {
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            let _ = check!(
+                            let _ = recover!(
                                 namespace.insert(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -371,7 +371,7 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            let decl = check!(
+                            let decl = recover!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
                                     namespace,
@@ -402,7 +402,7 @@ impl TypedAstNode {
                             visibility,
                         }) => {
                             // type check the interface surface
-                            let interface_surface = check!(
+                            let interface_surface = recover!(
                                 type_check_interface_surface(interface_surface, namespace),
                                 return err(warnings, errors),
                                 warnings,
@@ -463,7 +463,7 @@ impl TypedAstNode {
                                     .collect(),
                             );
                             // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-                            let _methods = check!(
+                            let _methods = recover!(
                                 type_check_trait_methods(
                                     methods.clone(),
                                     trait_namespace,
@@ -488,7 +488,7 @@ impl TypedAstNode {
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            check!(
+                            recover!(
                                 reassignment(
                                     TypeCheckArguments {
                                         checkee: (lhs, rhs),
@@ -510,7 +510,7 @@ impl TypedAstNode {
                                 errors
                             )
                         }
-                        Declaration::ImplTrait(impl_trait) => check!(
+                        Declaration::ImplTrait(impl_trait) => recover!(
                             implementation_of_trait(
                                 impl_trait,
                                 namespace,
@@ -549,7 +549,7 @@ impl TypedAstNode {
                             }
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
-                            let implementing_for_type_id = check!(
+                            let implementing_for_type_id = recover!(
                                 impl_namespace.resolve_type_without_self(&type_implementing_for),
                                 return err(warnings, errors),
                                 warnings,
@@ -588,7 +588,7 @@ impl TypedAstNode {
                                     mode: Mode::NonAbi,
                                     opts,
                                 };
-                                functions_buf.push(check!(
+                                functions_buf.push(recover!(
                                     TypedFunctionDeclaration::type_check(args),
                                     continue,
                                     warnings,
@@ -631,7 +631,7 @@ impl TypedAstNode {
                                         Some(matching_id) => {
                                             insert_type(TypeInfo::Ref(matching_id))
                                         }
-                                        None => check!(
+                                        None => recover!(
                                             namespace.resolve_type_with_self(
                                                 r#type, self_type, type_span, false
                                             ),
@@ -652,7 +652,7 @@ impl TypedAstNode {
                             };
 
                             // insert struct into namespace
-                            let _ = check!(
+                            let _ = recover!(
                                 namespace.insert(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
@@ -675,7 +675,7 @@ impl TypedAstNode {
                             // themselves, and we don't want to do more work in the compiler,
                             // so we don't support the case of calling a contract's own interface
                             // from itself. This is by design.
-                            let interface_surface = check!(
+                            let interface_surface = recover!(
                                 type_check_interface_surface(interface_surface, namespace),
                                 return err(warnings, errors),
                                 warnings,
@@ -683,7 +683,7 @@ impl TypedAstNode {
                             );
                             // type check these for errors but don't actually use them yet -- the real
                             // ones will be type checked with proper symbols when the ABI is implemented
-                            let _methods = check!(
+                            let _methods = recover!(
                                 type_check_trait_methods(
                                     methods.clone(),
                                     namespace,
@@ -709,7 +709,7 @@ impl TypedAstNode {
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, r#type } in fields {
-                                let r#type = check!(
+                                let r#type = recover!(
                                     namespace.resolve_type_without_self(&r#type),
                                     return err(warnings, errors),
                                     warnings,
@@ -723,7 +723,7 @@ impl TypedAstNode {
                             // if there already was one, return an error that duplicate storage
 
                             // declarations are not allowed
-                            check!(
+                            recover!(
                                 namespace.set_storage_declaration(decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -734,7 +734,7 @@ impl TypedAstNode {
                     })
                 }
                 AstNodeContent::Expression(a) => {
-                    let inner = check!(
+                    let inner = recover!(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: a.clone(),
                             namespace,
@@ -755,7 +755,7 @@ impl TypedAstNode {
                 }
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                     TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
-                        expr: check!(
+                        expr: recover!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: expr.clone(),
                                 namespace,
@@ -785,7 +785,7 @@ impl TypedAstNode {
                     })
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let typed_expr = check!(
+                    let typed_expr = recover!(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: expr.clone(),
                             namespace,
@@ -805,7 +805,7 @@ impl TypedAstNode {
                     TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
                 AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                    let typed_condition = check!(
+                    let typed_condition = recover!(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: condition,
                             namespace,
@@ -823,7 +823,7 @@ impl TypedAstNode {
                         warnings,
                         errors
                     );
-                    let (typed_body, _block_implicit_return) = check!(
+                    let (typed_body, _block_implicit_return) = recover!(
                         TypedCodeBlock::type_check(TypeCheckArguments {
                             checkee: body.clone(),
                             namespace,
@@ -933,7 +933,7 @@ fn import_new_file(
         name,
         namespace: module,
         ..
-    } = check!(
+    } = recover!(
         crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph),
         return err(warnings, errors),
         warnings,
@@ -1006,7 +1006,7 @@ fn reassignment(
                     // the RHS is a ref type to the LHS
                     let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
                     // type check the reassignment
-                    let rhs = check!(
+                    let rhs = recover!(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: rhs,
                             namespace,
@@ -1045,7 +1045,7 @@ fn reassignment(
                     let mut expr = *prefix;
                     let mut names_vec = vec![];
                     let final_return_type = loop {
-                        let type_checked = check!(
+                        let type_checked = recover!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: expr.clone(),
                                 namespace,
@@ -1095,7 +1095,7 @@ fn reassignment(
                         r#type: final_return_type,
                     });
 
-                    let (ty_of_field, _ty_of_parent) = check!(
+                    let (ty_of_field, _ty_of_parent) = recover!(
                         namespace.find_subfield_type(
                             names_vec
                                 .iter()
@@ -1108,7 +1108,7 @@ fn reassignment(
                         errors
                     );
                     // type check the reassignment
-                    let rhs = check!(
+                    let rhs = recover!(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: rhs,
                             namespace,
@@ -1183,7 +1183,7 @@ fn type_check_interface_surface(
                              type_span,
                          }| TypedFunctionParameter {
                             name,
-                            r#type: check!(
+                            r#type: recover!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
                                     crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1198,7 +1198,7 @@ fn type_check_interface_surface(
                         },
                     )
                     .collect(),
-                return_type: check!(
+                return_type: recover!(
                     namespace.resolve_type_with_self(
                         return_type,
                         crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1245,7 +1245,7 @@ fn type_check_trait_methods(
                  type_id: ref r#type,
                  ..
              }| {
-                let r#type = check!(
+                let r#type = recover!(
                     function_namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1323,7 +1323,7 @@ fn type_check_trait_methods(
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: check!(
+                        r#type: recover!(
                             function_namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1341,7 +1341,7 @@ fn type_check_trait_methods(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let return_type = check!(
+        let return_type = recover!(
             function_namespace.resolve_type_with_self(
                 return_type,
                 self_type,
@@ -1352,7 +1352,7 @@ fn type_check_trait_methods(
             warnings,
             errors,
         );
-        let (body, _code_block_implicit_return) = check!(
+        let (body, _code_block_implicit_return) = recover!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
                 namespace: function_namespace,
@@ -1482,7 +1482,7 @@ fn reassign_storage_subfield(
         return err(warnings, errors);
     }
 
-    let storage_fields = check!(
+    let storage_fields = recover!(
         namespace.get_storage_field_descriptors(),
         return err(warnings, errors),
         warnings,
@@ -1556,7 +1556,7 @@ fn reassign_storage_subfield(
             }
         }
     }
-    let rhs = check!(
+    let rhs = recover!(
         TypedExpression::type_check(TypeCheckArguments {
             checkee: rhs,
             namespace,

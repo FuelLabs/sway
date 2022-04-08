@@ -211,7 +211,7 @@ impl PatStack {
         if preprocessed.pats.is_empty() {
             return ok(false, warnings, errors);
         }
-        let (first, rest) = check!(
+        let (first, rest) = recover!(
             preprocessed.split_first(span),
             return err(warnings, errors),
             warnings,
@@ -467,7 +467,7 @@ impl PatStack {
                     if let Pattern::Or(elems) = pat {
                         for elem in elems.into_iter() {
                             let mut top = top.clone();
-                            let r = check!(
+                            let r = recover!(
                                 top.get_mut(i, span),
                                 return err(warnings, errors),
                                 warnings,

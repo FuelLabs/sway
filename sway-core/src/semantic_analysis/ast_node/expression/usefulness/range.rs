@@ -265,7 +265,7 @@ where
             } else {
                 b.last.clone()
             };
-            let range = check!(
+            let range = recover!(
                 Range::from_double(first, last, span),
                 return err(warnings, errors),
                 warnings,
@@ -320,7 +320,7 @@ where
                 // 3b. If the current interval overlaps with stack top (or is within ± 1)
                 //     and ending time of current interval is more than that of stack top,
                 //     update stack top with the ending time of current interval.
-                stack.push(check!(
+                stack.push(recover!(
                     Range::join_ranges(range, &top, span),
                     return err(warnings, errors),
                     warnings,
@@ -377,7 +377,7 @@ where
 
         // 1. Convert *guides* to a vec of ordered, distinct, non-overlapping
         //    ranges *guides*'
-        let condensed = check!(
+        let condensed = recover!(
             Range::condense_ranges(guides, span),
             return err(warnings, errors),
             warnings,
@@ -405,7 +405,7 @@ where
             }
         };
         if oracle.first != first.first {
-            exclusionary.push(check!(
+            exclusionary.push(recover!(
                 Range::from_double(oracle.first.clone(), first.first.decr(), span),
                 return err(warnings, errors),
                 warnings,
@@ -418,7 +418,7 @@ where
         //    construct a range of `[b, c]`. You can assume that `b != d` because
         //    of step (1)
         for (left, right) in condensed.iter().tuple_windows() {
-            exclusionary.push(check!(
+            exclusionary.push(recover!(
                 Range::from_double(left.last.incr(), right.first.decr(), span),
                 return err(warnings, errors),
                 warnings,
@@ -430,7 +430,7 @@ where
         //    the *guides*'ₙ range of `[c, d]`, and `b != d`, construct a range of
         //    `[b, d]`.
         if oracle.last != last.last {
-            exclusionary.push(check!(
+            exclusionary.push(recover!(
                 Range::from_double(last.last.incr(), oracle.last, span),
                 return err(warnings, errors),
                 warnings,
@@ -452,7 +452,7 @@ where
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let condensed_ranges = check!(
+        let condensed_ranges = recover!(
             Range::condense_ranges(ranges, span),
             return err(warnings, errors),
             warnings,

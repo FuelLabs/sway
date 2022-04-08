@@ -88,7 +88,7 @@ pub(crate) fn convert_expression_to_asm(
             )
         }
         TypedExpressionVariant::VariableExpression { name } => {
-            let var = check!(
+            let var = recover!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
                 warnings,
@@ -131,7 +131,7 @@ pub(crate) fn convert_expression_to_asm(
                 mapping_of_real_registers_to_declared_names.insert(name.as_str(), register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {
-                    asm_buf.append(&mut check!(
+                    asm_buf.append(&mut recover!(
                         convert_expression_to_asm(
                             initializer,
                             namespace,
@@ -175,7 +175,7 @@ pub(crate) fn convert_expression_to_asm(
                     .collect::<Vec<VirtualRegister>>();
 
                 // parse the actual op and registers
-                let opcode = check!(
+                let opcode = recover!(
                     Op::parse_opcode(
                         &op.op_name,
                         replaced_registers.as_slice(),
@@ -401,7 +401,7 @@ pub(crate) fn convert_code_block_to_asm(
     for node in &block.contents {
         // If this is a return, then we jump to the end of the function and put the
         // value in the return register
-        let res = check!(
+        let res = recover!(
             convert_node_to_asm(node, namespace, register_sequencer, return_register),
             continue,
             warnings,
@@ -486,7 +486,7 @@ fn convert_size_of_to_asm(
     let mut errors = vec![];
     let mut asm_buf = vec![Op::new_comment("size_of_val".to_string())];
     if let Some(expr) = expr {
-        let mut ops = check!(
+        let mut ops = recover!(
             convert_expression_to_asm(expr, namespace, return_register, register_sequencer),
             vec![],
             warnings,
@@ -538,7 +538,7 @@ fn convert_fn_app_to_asm(
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
-        let mut ops = check!(
+        let mut ops = recover!(
             convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
             vec![],
             warnings,
@@ -554,7 +554,7 @@ fn convert_fn_app_to_asm(
     }
 
     // evaluate the function body
-    let mut body = check!(
+    let mut body = recover!(
         convert_code_block_to_asm(
             function_body,
             &mut namespace,
@@ -599,7 +599,7 @@ pub(crate) fn convert_abi_fn_to_asm(
         namespace.insert_variable(arg.clone().0, arg.clone().1);
     }
     // evaluate the function body
-    let mut body = check!(
+    let mut body = recover!(
         convert_code_block_to_asm(
             &decl.body,
             &mut namespace,
@@ -613,7 +613,7 @@ pub(crate) fn convert_abi_fn_to_asm(
 
     asm_buf.append(&mut body);
     // return the value from the abi function
-    asm_buf.append(&mut check!(
+    asm_buf.append(&mut recover!(
         ret_or_retd_value(decl, return_register, register_sequencer, &mut namespace),
         return err(warnings, errors),
         warnings,
@@ -653,7 +653,7 @@ fn convert_if_let_to_asm(
     let mut buf = vec![];
     // 1.
     let expr_return_register = register_sequencer.next();
-    let mut expr_buf = check!(
+    let mut expr_buf = recover!(
         convert_expression_to_asm(&*expr, namespace, &expr_return_register, register_sequencer),
         vec![],
         warnings,
@@ -716,7 +716,7 @@ fn convert_if_let_to_asm(
     });
 
     // 6
-    buf.append(&mut check!(
+    buf.append(&mut recover!(
         convert_code_block_to_asm(
             then,
             &mut then_branch_asm_namespace,
@@ -741,7 +741,7 @@ fn convert_if_let_to_asm(
 
         buf.push(Op::unowned_jump_label(label_for_else_branch));
 
-        buf.append(&mut check!(
+        buf.append(&mut recover!(
             convert_expression_to_asm(r#else, namespace, return_register, register_sequencer),
             return err(warnings, errors),
             warnings,

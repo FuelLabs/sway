@@ -92,7 +92,7 @@ impl TypedFunctionDeclaration {
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
-            check!(
+            recover!(
                 namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
@@ -104,7 +104,7 @@ impl TypedFunctionDeclaration {
             parameter.type_id =
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                    None => check!(
+                    None => recover!(
                         namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
                             self_type,
@@ -138,7 +138,7 @@ impl TypedFunctionDeclaration {
 
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => check!(
+            None => recover!(
                 namespace.resolve_type_with_self(
                     return_type,
                     self_type,
@@ -153,7 +153,7 @@ impl TypedFunctionDeclaration {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (mut body, _implicit_block_return) = check!(
+        let (mut body, _implicit_block_return) = recover!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
                 namespace,
@@ -343,7 +343,7 @@ impl TypedFunctionDeclaration {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
-        let data = check!(
+        let data = recover!(
             self.to_selector_name(),
             return err(warnings, errors),
             warnings,
@@ -360,7 +360,7 @@ impl TypedFunctionDeclaration {
     pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let hash = check!(
+        let hash = recover!(
             self.to_fn_selector_value_untruncated(),
             return err(warnings, errors),
             warnings,

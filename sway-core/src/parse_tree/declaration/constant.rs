@@ -49,7 +49,7 @@ impl ConstantDeclaration {
         let type_ascription = type_ascription
             .map(|ascription| {
                 let type_name = ascription.into_inner().next().unwrap();
-                check!(
+                recover!(
                     TypeInfo::parse_from_pair(type_name, config),
                     TypeInfo::Tuple(Vec::new()),
                     warnings,
@@ -57,13 +57,13 @@ impl ConstantDeclaration {
                 )
             })
             .unwrap_or(TypeInfo::Unknown);
-        let value = check!(
+        let value = recover!(
             Expression::parse_from_pair_inner(maybe_value, config),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(name_pair.clone(), config),
             return err(warnings, errors),
             warnings,

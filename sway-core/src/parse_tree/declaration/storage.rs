@@ -33,13 +33,13 @@ impl StorageField {
         let name = iter.next().expect("guaranteed by grammar");
         let r#type = iter.next().expect("guaranteed by grammar");
 
-        let name = check!(
+        let name = recover!(
             ident::parse_from_pair(name, conf),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let r#type = check!(
+        let r#type = recover!(
             TypeInfo::parse_from_pair(r#type, conf),
             return err(warnings, errors),
             warnings,
@@ -85,7 +85,7 @@ impl StorageDeclaration {
         let mut fields: Vec<StorageField> = Vec::with_capacity(fields_results.len());
         let mut var_decls = vec![];
         for res in fields_results {
-            let mut ok = check!(res, continue, warnings, errors);
+            let mut ok = recover!(res, continue, warnings, errors);
             fields.push(ok.value);
             var_decls.append(&mut ok.var_decls);
         }
