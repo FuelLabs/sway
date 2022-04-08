@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, explorer, format, init, json_abi, lsp,
-    parse_bytecode, run, test, update,
+    addr2line, build, clean, completions, deploy, explorer, format, init, json_abi, parse_bytecode,
+    run, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -13,7 +13,6 @@ pub use explorer::Command as ExplorerCommand;
 pub use format::Command as FormatCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
-pub use lsp::Command as LspCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
@@ -48,7 +47,6 @@ enum Forc {
     Test(TestCommand),
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
-    Lsp(LspCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -77,7 +75,6 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
-        Forc::Lsp(command) => lsp::exec(command).await,
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
             let code = output
