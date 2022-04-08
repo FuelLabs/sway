@@ -63,20 +63,26 @@ pub(crate) fn default_program() -> String {
 }
 
 pub(crate) fn default_test_program(project_name: &str) -> String {
-    format!("{}{}{}{}{}", r#"
+    format!(
+        "{}{}{}{}{}",
+        r#"
     use fuel_tx::{ContractId, Salt};
     use fuels_abigen_macro::abigen;
     use fuels_contract::{contract::Contract, parameters::TxParameters};
     use fuels_signers::util::test_helpers;
     
     // Load abi from json
-    abigen!(MyContract, "./"#,  project_name, r#".json");
+    abigen!(MyContract, "./"#,
+        project_name,
+        r#".json");
     
     async fn get_contract_instance() -> (MyContract, ContractId) {
     
         // Build the contract
         let salt = Salt::from([0u8; 32]);
-        let compiled = Contract::load_sway_contract("./out/debug/"#, project_name, r#".bin", salt).unwrap();
+        let compiled = Contract::load_sway_contract("./out/debug/"#,
+        project_name,
+        r#".bin", salt).unwrap();
     
         // Launch a local network and deploy the contract
         let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
@@ -97,7 +103,8 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
         let (_instance, _id) = get_contract_instance().await;
     
         // Now you have an instance of your contract you can use to test each functioncarg
-    }"#)
+    }"#
+    )
 }
 
 pub(crate) fn default_gitignore() -> String {
