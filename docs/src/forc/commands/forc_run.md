@@ -17,6 +17,12 @@ URL of the Fuel Client Node
 
 ## OPTIONS:
 
+`--byte-price` <_BYTE_PRICE_>
+
+
+Set the transaction byte price. Defaults to 0
+
+
 `--contract` <_CONTRACT_>
 
 
@@ -39,6 +45,18 @@ Only craft transaction and print it out
 
 
 If set, outputs source file mapping in JSON format
+
+
+`--gas-limit` <_GAS_LIMIT_>
+
+
+Set the transaction gas limit. Defaults to the maximum gas limit
+
+
+`--gas-price` <_GAS_PRICE_>
+
+
+Set the transaction gas price. Defaults to 0
 
 
 `-h`, `--help` 
@@ -111,7 +129,7 @@ Pretty-print the outputs from the node
 Silent mode. Don't output any warnings or errors to the command line
 
 
-`--use-ir` 
+`--use-orig-asm` 
 
 
-Whether to compile using the IR pipeline
+Whether to compile using the original (pre- IR) pipeline
