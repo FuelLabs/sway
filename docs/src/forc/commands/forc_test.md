@@ -1,4 +1,3 @@
-
 # forc-test
 Run Rust-based tests on current project. As of now, `forc test` is a simple wrapper on `cargo test`;
 `forc init` also creates a rust package under your project, named `tests`. You can opt to either run

@@ -1,4 +1,3 @@
-
 # forc-lsp
 Run the LSP server
 

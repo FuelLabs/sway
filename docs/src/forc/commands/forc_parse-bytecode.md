@@ -1,4 +1,3 @@
-
 # forc-parse-bytecode
 Parse bytecode file into a debug format
 

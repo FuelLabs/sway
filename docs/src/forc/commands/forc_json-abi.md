@@ -1,4 +1,3 @@
-
 # forc-json-abi
 Output the JSON associated with the ABI
 

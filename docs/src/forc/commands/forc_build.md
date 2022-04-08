@@ -1,4 +1,3 @@
-
 # forc-build
 Compile the current or target project.
 

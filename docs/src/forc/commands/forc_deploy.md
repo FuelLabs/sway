@@ -1,4 +1,3 @@
-
 # forc-deploy
 Deploy contract project. Crafts a contract deployment transaction then sends it to a running node
 

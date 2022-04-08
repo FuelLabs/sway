@@ -1,4 +1,3 @@
-
 # forc-update
 Update dependencies in the Forc dependencies directory
 

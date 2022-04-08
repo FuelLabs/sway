@@ -1,4 +1,3 @@
-
 # forc-run
 Run script project. Crafts a script transaction then sends it to a running node
 

@@ -1,4 +1,3 @@
-
 # forc-fmt
 Format all Sway files of the current project
 

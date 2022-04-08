@@ -1,4 +1,3 @@
-
 # forc-completions
 Generate tab-completion scripts for your shell
 

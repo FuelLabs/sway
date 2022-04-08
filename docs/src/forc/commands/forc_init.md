@@ -1,4 +1,3 @@
-
 # forc-init
 Create a new Forc project
 
