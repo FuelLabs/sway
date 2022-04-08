@@ -58,17 +58,12 @@ fn main() -> bool {
     let bad_signature: B512 = ~B512::from(bad_sig_hi, bad_sig_lo);
 
     // this should return a Result::Err, so if it returns Result::Ok, we panic.
-    let pubkey_result: Result<B512, EcRecoverError> = ec_recover(bad_signature, msg_hash);
-    if let Result::Ok(v) = pubkey_result {
-        panic(0)
-    };
+    let pubkey_result1: Result<B512, EcRecoverError> = ec_recover(bad_signature, msg_hash);
+    assert(pubkey_result1.is_err());
 
     // this should return a Result::Err, so if it returns Result::Ok, we panic.
-    let pubkey_result: Result<Address, EcRecoverError> = ec_recover_address(bad_signature, msg_hash);
-    if let Result::Ok(v) = pubkey_result {
-        panic(0)
-    };
-
+    let pubkey_result2: Result<Address, EcRecoverError> = ec_recover_address(bad_signature, msg_hash);
+    assert(pubkey_result2.is_err());
 
     true
 }
