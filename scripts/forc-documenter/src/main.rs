@@ -39,6 +39,11 @@ pub enum LineKind {
 
 fn get_sway_path() -> PathBuf {
     let curr_dir = std::env::current_dir().unwrap();
+
+    if curr_dir.ends_with("sway") {
+        return curr_dir;
+    }
+
     let sway_dir = curr_dir
         .parent()
         .unwrap()
