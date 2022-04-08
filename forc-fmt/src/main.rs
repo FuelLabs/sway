@@ -1,29 +1,39 @@
-use crate::cli::{BuildCommand, FormatCommand};
-use crate::ops::forc_build;
+//! A `forc` plugin for running the Sway code formatter.
+
+use anyhow::{bail, Result};
+use clap::Parser;
 use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
-use std::{fmt, fs, io, path::Path, sync::Arc};
+use std::{fs, path::Path, sync::Arc};
 use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
-pub fn format(command: FormatCommand) -> Result<(), FormatError> {
-    let build_command = BuildCommand::default();
-
-    match forc_build::build(build_command) {
-        // build is successful, continue to formatting
-        Ok(_) => format_after_build(command),
-
-        // forc_build will print all the errors/warnings
-        Err(err) => Err(err.into()),
-    }
+#[derive(Debug, Parser)]
+#[clap(
+    name = "forc-fmt",
+    about = "Forc plugin for running the Sway code formatter.",
+    version
+)]
+pub struct App {
+    /// Run in 'check' mode.
+    ///
+    /// - Exits with `0` if input is formatted correctly.
+    /// - Exits with `1` and prints a diff if formatting is required.
+    #[clap(short, long)]
+    pub check: bool,
 }
 
-fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
-    let curr_dir = std::env::current_dir()?;
+fn main() -> Result<()> {
+    let app = App::parse();
+    let dir = std::env::current_dir()?;
+    format_pkg_at_dir(app, &dir)
+}
 
-    match find_manifest_dir(&curr_dir) {
+/// Format the package at the given directory.
+fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
+    match find_manifest_dir(dir) {
         Some(path) => {
             let mut manifest_file = path.clone();
             manifest_file.push(constants::MANIFEST_FILE_NAME);
@@ -37,7 +47,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     let file_content: Arc<str> = Arc::from(file_content);
                     match get_formatted_data(file_content.clone(), formatting_options) {
                         Ok((_, formatted_content)) => {
-                            if command.check {
+                            if app.check {
                                 if *file_content != *formatted_content {
                                     contains_edits = true;
                                     println!("\n{:?}\n", file);
@@ -62,7 +72,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                     ..Default::default()
                 };
                 let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
-                if !command.check {
+                if !app.check {
                     format_file(&manifest_file, &formatted_content)?;
                 } else if formatted_content != file_content {
                     contains_edits = true;
@@ -73,10 +83,10 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                 }
             }
 
-            if command.check {
+            if app.check {
                 if contains_edits {
                     // One or more files are not formatted, exit with error
-                    Err("Files contain formatting violations.".into())
+                    bail!("Files contain formatting violations.");
                 } else {
                     // All files are formatted, exit cleanly
                     Ok(())
@@ -85,11 +95,11 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                 Ok(())
             }
         }
-        _ => Err("Manifest file does not exist".into()),
+        _ => bail!("Manifest file does not exist"),
     }
 }
 
-fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<(), FormatError> {
+fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> {
     let changeset = diff_lines(file_content, formatted_content);
     let mut count_of_updates = 0;
     for diff in changeset.diff() {
@@ -129,50 +139,10 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<(), 
     Result::Ok(())
 }
 
-fn format_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
+fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
     fs::write(file, formatted_content)?;
 
     Ok(())
-}
-
-pub struct FormatError {
-    pub message: String,
-}
-
-impl fmt::Display for FormatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self)
-    }
-}
-
-impl From<&str> for FormatError {
-    fn from(s: &str) -> Self {
-        FormatError {
-            message: s.to_string(),
-        }
-    }
-}
-
-impl From<String> for FormatError {
-    fn from(s: String) -> Self {
-        FormatError { message: s }
-    }
-}
-
-impl From<io::Error> for FormatError {
-    fn from(e: io::Error) -> Self {
-        FormatError {
-            message: e.to_string(),
-        }
-    }
-}
-
-impl From<anyhow::Error> for FormatError {
-    fn from(e: anyhow::Error) -> Self {
-        FormatError {
-            message: e.to_string(),
-        }
-    }
 }
 
 #[cfg(test)]
