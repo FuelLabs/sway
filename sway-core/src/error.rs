@@ -917,8 +917,6 @@ pub enum CompileError {
         Please file an issue on the repository and include the code that triggered this error."
     )]
     UnexpectedDeclaration { decl_type: &'static str, span: Span },
-    #[error("This contract caller does not have an ABI associated with it, so its methods cannot be known. Try instantiating a contract caller with a known ABI format instead.")]
-    AbiTypeUnknown { span: Span },
     #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
     ContractAddressMustBeKnown { span: Span },
 }
@@ -1138,7 +1136,6 @@ impl CompileError {
             MultipleStorageDeclarations { span, .. } => span,
             InvalidVariableName { span, .. } => span,
             UnexpectedDeclaration { span, .. } => span,
-            AbiTypeUnknown { span, .. } => span,
             ContractAddressMustBeKnown { span, .. } => span,
         }
     }

@@ -1907,6 +1907,7 @@ impl TypedExpression {
                     }
                 };
                 match abi_name {
+                    // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
                         let decl = check!(
                             namespace.get_call_path(&abi_name),
@@ -1942,7 +1943,6 @@ impl TypedExpression {
                         )
                     }
                 }
-                // look up the call path and get the declaration it references
             }
             a => {
                 errors.push(CompileError::NotAnAbi {
