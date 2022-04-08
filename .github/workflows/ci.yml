@@ -215,6 +215,7 @@ jobs:
         with:
           # `cargo-udeps` requires nightly to run
           toolchain: nightly
+          default: true
       - uses: Swatinem/rust-cache@v1
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
