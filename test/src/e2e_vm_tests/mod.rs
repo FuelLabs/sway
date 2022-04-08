@@ -462,7 +462,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         contract_ids.push(contract_id);
     }
     for name in projects {
-        harness::runs_on_node(name, &contract_ids);
+        assert!(!harness::runs_on_node(name, &contract_ids)
+            .iter()
+            .any(|r| matches!(
+                r,
+                fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+            )));
     }
 
     if number_of_tests_run == 0 {
