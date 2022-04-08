@@ -1,6 +1,5 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, format, init, json_abi, parse_bytecode, run,
-    test, update,
+    addr2line, build, clean, completions, deploy, init, json_abi, parse_bytecode, run, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -9,7 +8,6 @@ use clap::Parser;
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
 pub use deploy::Command as DeployCommand;
-pub use format::Command as FormatCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
@@ -37,8 +35,6 @@ enum Forc {
     #[clap(after_help = completions::COMPLETIONS_HELP)]
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
-    #[clap(name = "fmt")]
-    Format(FormatCommand),
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
@@ -65,7 +61,6 @@ pub async fn run_cli() -> Result<()> {
         Forc::Clean(command) => clean::exec(command),
         Forc::Completions(command) => completions::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
-        Forc::Format(command) => format::exec(command),
         Forc::Init(command) => init::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Run(command) => run::exec(command).await,
