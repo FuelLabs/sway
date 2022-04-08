@@ -2,7 +2,6 @@ library ecr;
 
 use ::address::Address;
 use ::b512::B512;
-use ::constants::ZERO;
 use ::context::registers::error;
 use ::hash::{HashMethod, hash_pair};
 use ::result::*;
