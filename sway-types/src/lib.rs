@@ -362,3 +362,9 @@ pub struct Property {
     pub type_field: String,
     pub components: Option<Vec<Property>>, // Used for custom types
 }
+
+impl Property {
+    pub fn is_custom_type(self) -> bool {
+        self.type_field.contains("struct") || self.type_field.contains("enum")
+    }
+}
