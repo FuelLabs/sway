@@ -98,7 +98,6 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
     
         // Now you have an instance of your contract you can use to test each functioncarg
     }"#)
-    .into()
 }
 
 pub(crate) fn default_gitignore() -> String {
