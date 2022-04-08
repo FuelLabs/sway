@@ -1119,11 +1119,12 @@ impl<'ir> AsmBuilder<'ir> {
         value: &Value,
         indices: &[u64],
     ) {
+        println!("Compiling insert value");
         // Base register should point to some stack allocated memory.
         let base_reg = self.value_to_register(aggregate_val);
 
         let insert_reg = self.value_to_register(value);
-        let ((insert_offs, value_size), field_type) = aggregate_idcs_to_field_layout(
+        let ((insert_offs, value_size), _) = aggregate_idcs_to_field_layout(
             self.context,
             &aggregate_val.get_type(self.context).unwrap(),
             indices,
@@ -1134,7 +1135,7 @@ impl<'ir> AsmBuilder<'ir> {
             .map(|idx| format!("{}", idx))
             .collect::<Vec<String>>()
             .join(",");
-        if field_type.is_copy_type() {
+        if value.get_type(self.context).unwrap().is_copy_type() {
             if insert_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(
