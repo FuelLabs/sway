@@ -7,29 +7,29 @@ lw   $ds $is 1
 add  $$ds $$ds $is
 move $r3 $sp                  ; save locals base register
 cfei i24                      ; allocate 24 bytes for all locals
-move $r2 $sp                  ; save register for temporary stack value
+move $r1 $sp                  ; save register for temporary stack value
 cfei i16                      ; allocate 16 bytes for temporary struct
 lw   $r0 data_0               ; literal instantiation
-sw   $r2 $r0 i0               ; insert_value @ 0
-lw   $r1 data_1               ; literal instantiation
-addi $r0 $r2 i8               ; get struct field(s) 1 offset
-mcpi $r0 $r1 i8               ; store struct field value
+sw   $r1 $r0 i0               ; insert_value @ 0
+lw   $r0 data_1               ; literal instantiation
+sw   $r1 $r0 i1               ; insert_value @ 1
 addi $r0 $r3 i8               ; get_ptr
 addi $r0 $r3 i8               ; get store offset
-mcpi $r0 $r2 i16              ; store value
+mcpi $r0 $r1 i16              ; store value
 addi $r2 $r3 i8               ; get_ptr
 lw   $r1 $r2 i0               ; extract_value @ 0
 lw   $r0 data_2               ; literal instantiation
 eq   $r0 $r1 $r0
-jnei $r0 $one i29
+jnei $r0 $one i28
 lw   $r1 $r2 i1               ; extract_value @ 1,1
 addi $r0 $r3 i0               ; get_ptr
 sw   $r3 $r1 i0               ; store value
 addi $r0 $r3 i0               ; get_ptr
 lw   $r0 $r3 i0               ; load value
-ji   i30
+ji   i29
 lw   $r0 data_0               ; literal instantiation
 ret  $r0
+noop                          ; word-alignment of data section
 .data:
 data_0 .u64 0x00
 data_1 .bool 0x01
