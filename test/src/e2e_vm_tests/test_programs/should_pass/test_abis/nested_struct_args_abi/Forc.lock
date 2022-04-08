@@ -3,9 +3,5 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'enum_init_fn_call'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
+name = 'nested_struct_args_abi'
 dependencies = ['core']
