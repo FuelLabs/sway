@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_engine::look_up_type_id;
 use crate::{
-    error::*, parse_tree::*, type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock,
-    Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*,
+    parse_tree::*,
+    type_engine::{look_up_type_id, AbiName, IntegerBits},
+    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
+    WhileLoop,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -176,7 +178,9 @@ fn depends_on(
             match (decl_name(dependant), decl_name(dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
                     .get(&dependant_name)
-                    .map(|deps_set| deps_set.deps.contains(&dependee_name))
+                    .map(|deps_set| {
+                        recursively_depends_on(&deps_set.deps, &dependee_name, decl_dependencies)
+                    })
                     .unwrap_or(false),
                 _ => false,
             }
@@ -327,7 +331,11 @@ impl Dependencies {
 
     fn gather_from_expr(mut self, expr: &Expression) -> Self {
         match expr {
-            Expression::VariableExpression { .. } => self,
+            Expression::VariableExpression { name, .. } => {
+                // in the case of ABI variables, we actually want to check if the ABI needs to be
+                // ordered
+                self.gather_from_call_path(&(name.clone()).into(), false, false)
+            }
             Expression::FunctionApplication {
                 name, arguments, ..
             } => self
@@ -387,8 +395,11 @@ impl Dependencies {
                 })
                 .gather_from_typeinfo(&asm.return_type),
 
-            // Not sure about AbiCast, could add the abi_name and address.
-            Expression::AbiCast { .. } => self,
+            // we should do address someday, but due to the whole `re_parse_expression` thing
+            // it isn't possible right now
+            Expression::AbiCast { abi_name, .. } => {
+                self.gather_from_call_path(abi_name, false, false)
+            }
 
             Expression::Literal { .. } => self,
             Expression::Tuple { fields, .. } => {
@@ -476,6 +487,10 @@ impl Dependencies {
 
     fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         match type_info {
+            TypeInfo::ContractCaller {
+                abi_name: AbiName::Known(abi_name),
+                ..
+            } => self.gather_from_call_path(abi_name, false, false),
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -602,7 +617,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Ref(x) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
-        TypeInfo::ContractCaller { .. } => "contract caller",
+        TypeInfo::ContractCaller { abi_name, .. } => {
+            return format!("contract caller {}", abi_name);
+        }
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
@@ -611,4 +628,21 @@ fn type_info_name(type_info: &TypeInfo) -> String {
     .to_string()
 }
 
+/// Checks if any dependant depends on a dependee via a chain of dependencies.
+fn recursively_depends_on(
+    set: &HashSet<DependentSymbol>,
+    dependee: &DependentSymbol,
+    decl_dependencies: &DependencyMap,
+) -> bool {
+    set.contains(dependee)
+        || set.iter().any(|dep| {
+            decl_dependencies
+                .get(dep)
+                .map(|dep| recursively_depends_on(&dep.deps, dependee, decl_dependencies))
+                .unwrap_or(false)
+        })
+}
+
 // -------------------------------------------------------------------------------------------------
+//
+//

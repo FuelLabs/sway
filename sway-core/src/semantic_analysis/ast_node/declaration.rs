@@ -236,6 +236,16 @@ pub struct TypedAbiDeclaration {
     pub(crate) span: Span,
 }
 
+impl TypedAbiDeclaration {
+    pub(crate) fn as_type(&self) -> TypeId {
+        let ty = TypeInfo::ContractCaller {
+            abi_name: AbiName::Known(self.name.clone().into()),
+            address: String::new(),
+        };
+        insert_type(ty)
+    }
+}
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,

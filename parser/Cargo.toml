@@ -5,7 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ariadne = "0.1"
 chumsky = "0.5"
 generational-arena = "0.2"
 lazy_static = "1.4"

@@ -2,7 +2,6 @@ pub mod forc_abi_json;
 pub mod forc_build;
 pub mod forc_clean;
 pub mod forc_deploy;
-pub mod forc_explorer;
 pub mod forc_fmt;
 pub mod forc_init;
 pub mod forc_run;

@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     semantic_analysis::ast_node::*,
-    type_engine::{insert_type, IntegerBits},
+    type_engine::{insert_type, AbiName, IntegerBits},
 };
 
 mod method_application;
@@ -117,6 +117,7 @@ impl TypedExpression {
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
+            AbiName(_) => false,
         }
     }
     /// recurse into `self` and get any return statements -- used to validate that all returns
@@ -173,6 +174,7 @@ impl TypedExpression {
             | TypedExpressionVariant::TypeProperty { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
@@ -636,6 +638,12 @@ impl TypedExpression {
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
                 expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                span,
+            },
+            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
+                return_type: decl.as_type(),
+                is_constant: IsConstant::Yes,
+                expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                 span,
             },
             Some(a) => {
@@ -1881,9 +1889,61 @@ impl TypedExpression {
             warnings,
             errors
         );
-        // make sure the declaration is actually an abi
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: ref expr,
+                ..
+            }) => {
+                let ret_ty = look_up_type_id(expr.return_type);
+                let abi_name = match ret_ty {
+                    TypeInfo::ContractCaller { abi_name, .. } => abi_name,
+                    _ => {
+                        errors.push(CompileError::NotAnAbi {
+                            span: abi_name.span(),
+                            actually_is: abi.friendly_name(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                match abi_name {
+                    // look up the call path and get the declaration it references
+                    AbiName::Known(abi_name) => {
+                        let decl = check!(
+                            namespace.get_call_path(&abi_name),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let abi = match decl {
+                            TypedDeclaration::AbiDeclaration(abi) => abi,
+                            _ => {
+                                errors.push(CompileError::NotAnAbi {
+                                    span: abi_name.span(),
+                                    actually_is: abi.friendly_name(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        };
+                        abi
+                    }
+                    AbiName::Deferred => {
+                        return ok(
+                            TypedExpression {
+                                return_type: insert_type(TypeInfo::ContractCaller {
+                                    abi_name: AbiName::Deferred,
+                                    address: String::new(),
+                                }),
+                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
+                                is_constant: IsConstant::Yes,
+                                span,
+                            },
+                            warnings,
+                            errors,
+                        )
+                    }
+                }
+            }
             a => {
                 errors.push(CompileError::NotAnAbi {
                     span: abi_name.span(),
@@ -1893,7 +1953,7 @@ impl TypedExpression {
             }
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
-            abi_name: abi_name.to_owned_call_path(),
+            abi_name: AbiName::Known(abi_name.clone()),
             address: address_str,
         });
         let mut functions_buf = abi

@@ -15,18 +15,18 @@ script {
 
         while_body:
         v4 = get_ptr mut ptr bool a, ptr bool, 0, !4
-        v5 = load ptr v4, !4
-        cbr v5, block0, block1, !5
+        v5 = get_ptr mut ptr bool a, ptr bool, 0, !5
+        v6 = load ptr v5, !5
+        cbr v6, block0, block1, !6
 
         block0:
-        v6 = phi(while_body: v5)
-        v7 = const bool false, !6
-        br block1, !5
+        v7 = phi(while_body: v6)
+        v8 = const bool false, !7
+        br block1, !6
 
         block1:
-        v8 = phi(while_body: v5, block0: v7)
-        v9 = get_ptr mut ptr bool a, ptr bool, 0, !7
-        store v8, ptr v9, !7
+        v9 = phi(while_body: v6, block0: v8)
+        store v9, ptr v4, !4
         br while
 
         end_while:
@@ -40,8 +40,8 @@ script {
 !1 = span !0 33 50
 !2 = span !0 45 49
 !3 = span !0 61 62
-!4 = span !0 77 78
-!5 = span !0 77 87
-!6 = span !0 82 87
-!7 = span !0 73 88
+!4 = span !0 73 88
+!5 = span !0 77 78
+!6 = span !0 77 87
+!7 = span !0 82 87
 !8 = span !0 99 100

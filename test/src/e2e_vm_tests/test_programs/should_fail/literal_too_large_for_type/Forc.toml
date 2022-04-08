@@ -4,3 +4,5 @@ license = "Apache-2.0"
 name = "literal_too_large_for_type"
 entry = "main.sw"
 
+[dependencies]
+core = { path = "../../../../../../sway-lib-core" }
