@@ -115,6 +115,8 @@ fn main() -> Result<()> {
 
             let mut index_contents = String::new();
 
+            index_contents.push_str(constants::INDEX_HEADER);
+
             for command in possible_commands.iter() {
                 let mut result = match generate_doc_output(command) {
                     Ok(output) => output,
@@ -126,6 +128,7 @@ fn main() -> Result<()> {
                     result.push_str(constants::EXAMPLES_HEADER);
                     result.push_str(example);
                 }
+                result = result.trim().to_string();
 
                 let document_name = format_command_doc_name(command);
                 let index_entry_name = format_index_entry_name(command);
@@ -154,7 +157,7 @@ fn main() -> Result<()> {
                     let mut command_file = File::create(&forc_command_file_path)
                         .expect("Failed to create documentation");
                     command_file
-                        .write_all(result.trim().as_bytes())
+                        .write_all(result.as_bytes())
                         .expect("Failed to write to file");
                 }
             }
@@ -169,10 +172,6 @@ fn main() -> Result<()> {
                     return Err(anyhow!("index.md inconsistent - please run `cargo run write-docs` within scripts/forc-documenter."));
                 }
             } else {
-                index_file
-                    .write_all(constants::INDEX_HEADER.as_bytes())
-                    .expect("Failed to write to forc/commands/index.md");
-
                 index_file
                     .write_all(index_contents.as_bytes())
                     .expect("Failed to write to forc/commands/index.md");
