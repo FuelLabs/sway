@@ -13,5 +13,4 @@ fuel-asm = "0.3"
 fuel-crypto = "0.4"
 fuel-tx = "0.7"
 pest = { version = "3.0.4", package = "fuel-pest" }
-pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
 serde = { version = "1.0", features = ["derive"] }
