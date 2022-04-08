@@ -331,7 +331,11 @@ impl Dependencies {
 
     fn gather_from_expr(mut self, expr: &Expression) -> Self {
         match expr {
-            Expression::VariableExpression { .. } => self,
+            Expression::VariableExpression { name, .. } => {
+                // in the case of ABI variables, we actually want to check if the ABI needs to be
+                // ordered
+                self.gather_from_call_path(&(name.clone()).into(), false, false)
+            }
             Expression::FunctionApplication {
                 name, arguments, ..
             } => self

@@ -16,7 +16,6 @@ pub(crate) struct ContractCallMetadata {
 #[derivative(Eq)]
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
-    /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     FunctionApplication {
         name: CallPath,
         #[derivative(Eq(bound = ""))]
@@ -113,6 +112,7 @@ pub(crate) enum TypedExpressionVariant {
     SizeOfValue {
         expr: Box<TypedExpression>,
     },
+    /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
 }
 

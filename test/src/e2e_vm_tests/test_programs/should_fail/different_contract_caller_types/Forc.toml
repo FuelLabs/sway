@@ -1,5 +1,8 @@
 [project]
-authors = ["Alexander Hansen"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "different_contract_caller_types"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
