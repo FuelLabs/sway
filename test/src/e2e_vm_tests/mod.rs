@@ -282,6 +282,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ),
         (
+            "should_pass/language/contract_caller_as_type",
+            ProgramState::Return(42),
+        ),
+        (
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
@@ -394,6 +398,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/disallow_turbofish",
         "should_fail/generics_unhelpful_error",
         "should_fail/generic_shadows_generic",
+        "should_fail/different_contract_caller_types",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

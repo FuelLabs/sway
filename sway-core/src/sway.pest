@@ -198,17 +198,18 @@ enum_field_name   =  {ident}
 impl_self =  {impl_keyword ~ type_params? ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
-fn_decl_params      =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
-fn_decl_param       =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
-fn_decl_param_name  =  {ident}
-fn_decl_name        =  {ident}
-type_params         =  {"<" ~ type_param ~ (", " ~ type_param)* ~ ">"}
-type_param          =  {ident}
-type_args_with_path =  {path_separator ~ type_args}
-type_args           =  {"<" ~ type_name ~ (", " ~ type_name)* ~ ">"}
-type_name           =  {str_type|ident ~ type_args?|tuple_type|array_type}
-str_type            =  { "str" ~ "[" ~ basic_integer ~ "]" }
-trait_bounds        =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
+fn_decl_params       =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
+fn_decl_param        =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
+fn_decl_param_name   =  {ident}
+fn_decl_name         =  {ident}
+type_params          =  {"<" ~ type_param ~ (", " ~ type_param)* ~ ">"}
+type_param           =  {ident}
+type_args_with_path  =  {path_separator ~ type_args}
+type_args            =  {"<" ~ type_name ~ (", " ~ type_name)* ~ ">"}
+type_name            =  {str_type|contract_caller_type|ident ~ type_args?|tuple_type|array_type}
+contract_caller_type =  {"ContractCaller" ~ "<" ~ (call_path|"_") ~ ">" }
+str_type             =  { "str" ~ "[" ~ basic_integer ~ "]" }
+trait_bounds         =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
 // Array size can be any constant u64 expression, but we don't properly support constant expressions.  See `array_elems rule above.
 array_type          =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
 
