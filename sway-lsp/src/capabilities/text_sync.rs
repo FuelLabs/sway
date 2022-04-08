@@ -29,7 +29,7 @@ pub fn handle_change_file(
     params: DidChangeTextDocumentParams,
 ) -> Vec<Diagnostic> {
     let path = params.text_document.uri.path();
-    let _ = session.update_text_document(&params.text_document.uri, params.content_changes);
+    session.update_text_document(&params.text_document.uri, params.content_changes);
     parse_document(session, path)
 }
 
