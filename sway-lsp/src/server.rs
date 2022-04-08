@@ -138,25 +138,19 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
-        if !diagnostics.is_empty() {
-            self.publish_diagnostics(uri, diagnostics).await;
-        }
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         let diagnostics = capabilities::text_sync::handle_change_file(self.session.clone(), params);
-        if !diagnostics.is_empty() {
-            self.publish_diagnostics(uri, diagnostics).await;
-        }
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         let diagnostics = capabilities::text_sync::handle_save_file(self.session.clone(), &params);
-        if !diagnostics.is_empty() {
-            self.publish_diagnostics(uri, diagnostics).await;
-        }
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
