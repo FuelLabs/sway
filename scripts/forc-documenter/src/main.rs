@@ -114,7 +114,6 @@ fn main() -> Result<()> {
             }
 
             let mut index_contents = String::new();
-            index_contents.push_str(constants::INDEX_HEADER);
 
             for command in possible_commands.iter() {
                 let mut result = match generate_doc_output(command) {
@@ -155,7 +154,7 @@ fn main() -> Result<()> {
                     let mut command_file = File::create(&forc_command_file_path)
                         .expect("Failed to create documentation");
                     command_file
-                        .write_all(result.as_bytes())
+                        .write_all(result.trim().as_bytes())
                         .expect("Failed to write to file");
                 }
             }
