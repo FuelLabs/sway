@@ -61,7 +61,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
             Some(network) => &network.url,
             _ => &command.node_url,
         };
-        Ok(try_send_tx(node_url, &tx, command.pretty_print).await?)
+        try_send_tx(node_url, &tx, command.pretty_print).await
     }
 }
 
