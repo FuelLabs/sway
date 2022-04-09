@@ -167,6 +167,16 @@ fn main() -> Result<()> {
             let mut existing_summary_contents = String::new();
             summary_file.read_to_string(&mut existing_summary_contents)?;
 
+            let version = process::Command::new("forc")
+                .arg("--version")
+                .output()
+                .expect("Failed running forc --version")
+                .stdout;
+
+            let version_message =
+                "Running forc --help using ".to_owned() + &String::from_utf8_lossy(&version);
+            println!("{}", version_message);
+
             let output = process::Command::new("forc")
                 .arg("--help")
                 .output()
