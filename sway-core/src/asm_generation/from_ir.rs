@@ -250,9 +250,9 @@ impl<'ir> AsmBuilder<'ir> {
         let mut arg_word_offset = 0;
         for (name, val) in function.args_iter(self.context) {
             let current_arg_reg = self.value_to_register(val);
-            let arg_type_size_bytes =
-                ir_type_size_in_bytes(self.context, &val.get_type(self.context).unwrap());
-            if arg_type_size_bytes <= 8 {
+            let arg_type = val.get_type(self.context).unwrap();
+            let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
+            if arg_type.is_copy_type() {
                 if arg_word_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
                     let offs_reg = self.reg_seqr.next();
                     self.bytecode.push(Op {
@@ -880,14 +880,14 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
         // Base register should pointer to some stack allocated memory.
         let base_reg = self.value_to_register(aggregate_val);
-        let (extract_offset, value_size) = aggregate_idcs_to_field_layout(
+        let ((extract_offset, _), field_type) = aggregate_idcs_to_field_layout(
             self.context,
             &aggregate_val.get_type(self.context).unwrap(),
             indices,
         );
 
         let instr_reg = self.reg_seqr.next();
-        if value_size <= 8 {
+        if field_type.is_copy_type() {
             if extract_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(
@@ -1119,11 +1119,12 @@ impl<'ir> AsmBuilder<'ir> {
         value: &Value,
         indices: &[u64],
     ) {
+        println!("Compiling insert value");
         // Base register should point to some stack allocated memory.
         let base_reg = self.value_to_register(aggregate_val);
 
         let insert_reg = self.value_to_register(value);
-        let (insert_offs, value_size) = aggregate_idcs_to_field_layout(
+        let ((insert_offs, value_size), _) = aggregate_idcs_to_field_layout(
             self.context,
             &aggregate_val.get_type(self.context).unwrap(),
             indices,
@@ -1134,7 +1135,7 @@ impl<'ir> AsmBuilder<'ir> {
             .map(|idx| format!("{}", idx))
             .collect::<Vec<String>>()
             .join(",");
-        if value_size <= 8 {
+        if value.get_type(self.context).unwrap().is_copy_type() {
             if insert_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(
@@ -2135,7 +2136,11 @@ pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
 }
 
 // Aggregate (nested) field offset in words and size in bytes.
-pub fn aggregate_idcs_to_field_layout(context: &Context, ty: &Type, idcs: &[u64]) -> (u64, u64) {
+pub fn aggregate_idcs_to_field_layout(
+    context: &Context,
+    ty: &Type,
+    idcs: &[u64],
+) -> ((u64, u64), Type) {
     idcs.iter()
         .fold(((0, 0), *ty), |((offs, _), ty), idx| match ty {
             Type::Struct(aggregate) => {
@@ -2169,7 +2174,6 @@ pub fn aggregate_idcs_to_field_layout(context: &Context, ty: &Type, idcs: &[u64]
 
             _otherwise => panic!("Attempt to access field in non-aggregate."),
         })
-        .0
 }
 
 // -------------------------------------------------------------------------------------------------
