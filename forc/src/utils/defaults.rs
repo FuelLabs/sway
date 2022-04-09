@@ -49,15 +49,15 @@ path = "tests/harness.rs"
 }
 
 pub(crate) fn default_program() -> String {
-    r#"contract ;
+    r#"contract;
 
-    abi MyContract {
+abi MyContract {
 
-    }
+}
 
-    impl MyContract for Contract {
+impl MyContract for Contract {
 
-    }
+}
 "#
     .into()
 }
@@ -71,9 +71,9 @@ use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::util::test_helpers;
 
 // Load abi from json
-abigen!(MyContract, "./"#,
+abigen!(MyContract, "out/debug/"#,
         project_name,
-        r#".json");
+        r#"-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Deploy the compiled contract
