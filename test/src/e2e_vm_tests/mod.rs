@@ -340,6 +340,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/nested_struct_args_contract",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -439,6 +443,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "should_pass/test_contracts/storage_access_contract",
             "should_pass/require_contract_deployment/storage_access_caller",
+        ),
+        (
+            "should_pass/test_contracts/nested_struct_args_contract",
+            "should_pass/require_contract_deployment/nested_struct_args_caller",
         ),
     ];
 
