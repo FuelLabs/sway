@@ -129,7 +129,7 @@ Pretty-print the outputs from the node
 Silent mode. Don't output any warnings or errors to the command line
 
 
-`--use-orig-asm` 
+`--use-ir` 
 
 
-Whether to compile using the original (pre- IR) pipeline
+Whether to compile using the IR pipeline

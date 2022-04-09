@@ -5,47 +5,19 @@ these Rust tests by using `forc test` or going inside the package and using `car
 
 
 ## USAGE:
-forc test [OPTIONS] [TEST_NAME] [-- <CARGO_TEST_ARGS>...]
+forc test [TEST_NAME]
 
 
 ## ARGS:
 
 <_TEST_NAME_>
-If specified, only run tests containing this string in their names
 
-
-<_CARGO_TEST_ARGS_>
-
-..
-All trailing arguments following `--` are collected within this argument.
-
-E.g. Given the following:
-
-`forc test -- foo bar baz`
-
-The arguments `foo`, `bar` and `baz` are forwarded on to `cargo test` like so:
-
-`cargo test -- foo bar baz`
+   If specified, only run tests containing this string in their names
 
 
 ## OPTIONS:
 
-`--cargo-test-opts` <_CARGO_TEST_OPTS_>
-
-
-Options passed through to the `cargo test` invocation.
-
-E.g. Given the following:
-
-`forc test --cargo-test-opts="--color always"`
-
-The `--color always` option is forwarded to `cargo test` like so:
-
-`cargo test --color always`
-
-
 `-h`, `--help` 
-
 
 Print help information
 
