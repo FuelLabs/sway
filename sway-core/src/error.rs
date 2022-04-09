@@ -917,6 +917,8 @@ pub enum CompileError {
         Please file an issue on the repository and include the code that triggered this error."
     )]
     UnexpectedDeclaration { decl_type: &'static str, span: Span },
+    #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
+    ContractAddressMustBeKnown { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1134,6 +1136,7 @@ impl CompileError {
             MultipleStorageDeclarations { span, .. } => span,
             InvalidVariableName { span, .. } => span,
             UnexpectedDeclaration { span, .. } => span,
+            ContractAddressMustBeKnown { span, .. } => span,
         }
     }
 

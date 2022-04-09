@@ -44,5 +44,14 @@ fn main() -> bool {
     c.bytes = [hi_bits, lo_bits];
     assert(are_fields_contiguous(c));
 
+    // it allows direct comparison of equality:
+    let one = ~B512::from(hi_bits, modified);
+    let two = ~B512::from(hi_bits, modified);
+    let three = ~B512::from(modified, hi_bits);
+    let four = ~B512::from(lo_bits, modified);
+    assert(one == two);
+    assert(one != three);
+    assert(one != four);
+
     true
 }

@@ -1,3 +1,7 @@
 [[package]]
-name = 'shadow_import'
+name = 'core'
 dependencies = []
+
+[[package]]
+name = 'shadow_import'
+dependencies = ['core']

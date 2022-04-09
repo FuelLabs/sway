@@ -1,22 +1,28 @@
-use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::CliError;
-use anyhow::Result;
-use forc_pkg::Manifest;
+use crate::{
+    cli::{BuildCommand, DeployCommand},
+    utils::SWAY_GIT_TAG,
+};
+use anyhow::{bail, Result};
+use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
 use std::path::PathBuf;
-use sway_core::{parse, TreeType};
-use sway_utils::constants::*;
+use sway_core::TreeType;
+use sway_utils::constants::DEFAULT_NODE_URL;
 
-pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliError> {
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
+    let manifest_dir =
+        find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
+    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
+    check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
 
     let DeployCommand {
         path,
@@ -32,73 +38,40 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId, CliEr
         minify_json_abi,
     } = command;
 
-    match find_manifest_dir(&curr_dir) {
-        Some(manifest_dir) => {
-            let manifest = Manifest::from_dir(&manifest_dir)?;
-            let project_name = &manifest.project.name;
-            let entry_string = manifest.entry_string(&manifest_dir)?;
+    let build_command = BuildCommand {
+        path,
+        use_orig_asm,
+        print_finalized_asm,
+        print_intermediate_asm,
+        print_ir,
+        binary_outfile,
+        offline_mode,
+        debug_outfile,
+        silent_mode,
+        output_directory,
+        minify_json_abi,
+    };
 
-            // Parse the main file and check is it a contract.
-            let parsed_result = parse(entry_string, None);
-            match parsed_result.value {
-                Some(parse_tree) => match parse_tree.tree_type {
-                    TreeType::Contract => {
-                        let build_command = BuildCommand {
-                            path,
-                            use_orig_asm,
-                            print_finalized_asm,
-                            print_intermediate_asm,
-                            print_ir,
-                            binary_outfile,
-                            offline_mode,
-                            debug_outfile,
-                            silent_mode,
-                            output_directory,
-                            minify_json_abi,
-                        };
+    let compiled = forc_build::build(build_command)?;
+    let (tx, contract_id) = create_contract_tx(
+        compiled.bytecode,
+        Vec::<fuel_tx::Input>::new(),
+        Vec::<fuel_tx::Output>::new(),
+    );
 
-                        let compiled = forc_build::build(build_command)?;
-                        let (tx, contract_id) = create_contract_tx(
-                            compiled.bytecode,
-                            Vec::<fuel_tx::Input>::new(),
-                            Vec::<fuel_tx::Output>::new(),
-                        );
+    let node_url = match &manifest.network {
+        Some(network) => &network.url,
+        _ => DEFAULT_NODE_URL,
+    };
 
-                        let node_url = match &manifest.network {
-                            Some(network) => &network.url,
-                            _ => DEFAULT_NODE_URL,
-                        };
+    let client = FuelClient::new(node_url)?;
 
-                        let client = FuelClient::new(node_url)?;
-
-                        match client.submit(&tx).await {
-                            Ok(logs) => {
-                                println!("Logs:\n{:?}", logs);
-                                Ok(contract_id)
-                            }
-                            Err(e) => Err(e.to_string().into()),
-                        }
-                    }
-                    TreeType::Script => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_SCRIPT,
-                    )),
-                    TreeType::Predicate => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_PREDICATE,
-                    )),
-                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_CONTRACT,
-                        SWAY_LIBRARY,
-                    )),
-                },
-                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
-            }
+    match client.submit(&tx).await {
+        Ok(logs) => {
+            println!("Logs:\n{:?}", logs);
+            Ok(contract_id)
         }
-        None => Err(CliError::manifest_file_missing(curr_dir)),
+        Err(e) => bail!("{e}"),
     }
 }
 

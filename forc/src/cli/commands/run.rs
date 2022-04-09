@@ -89,7 +89,7 @@ pub struct Command {
 
 pub(crate) async fn exec(command: Command) -> Result<()> {
     match forc_run::run(command).await {
-        Err(e) => bail!(e.message),
+        Err(e) => bail!("{}", e),
         _ => Ok(()),
     }
 }

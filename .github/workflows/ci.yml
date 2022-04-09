@@ -111,6 +111,22 @@ jobs:
           command: clippy
           args: --all-features --all-targets -- -D warnings
 
+  cargo-toml-fmt-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Cargo.toml linter
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-toml-lint
+          version: "0.1"
+      - name: Run Cargo.toml linter
+        run:  git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+
   cargo-fmt-check:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -190,6 +206,28 @@ jobs:
         with:
           command: test
 
+  cargo-unused-deps-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          # `cargo-udeps` requires nightly to run
+          toolchain: nightly
+          default: true
+      - uses: Swatinem/rust-cache@v1
+      - name: Install cargo-udeps
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-udeps
+      - name: Check Unused Deps
+        uses: actions-rs/cargo@v1
+        with:
+          command: udeps
+          args: --all-targets
+
   notify-slack-on-failure:
     needs:
       [
@@ -200,7 +238,9 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-unused-deps-check,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -228,8 +268,9 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-test-lib-std,
         cargo-test-workspace,
-        build-sway-lib-std,
+        cargo-unused-deps-check,
       ]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
@@ -248,6 +289,9 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-explore/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-fmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
@@ -285,8 +329,9 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-test-lib-std,
         cargo-test-workspace,
-        build-sway-lib-std,
+        cargo-unused-deps-check,
       ]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest

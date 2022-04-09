@@ -116,15 +116,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
 
 [[package]]
-name = "ariadne"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1cb2a2046bea8ce5e875551f5772024882de0b540c7f93dfc5d6cf1ca8b030c"
-dependencies = [
- "yansi",
-]
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -997,9 +988,6 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 [[package]]
 name = "docstrings"
 version = "0.0.0"
-dependencies = [
- "thiserror",
-]
 
 [[package]]
 name = "either"
@@ -1089,17 +1077,11 @@ dependencies = [
  "fuel-vm",
  "futures",
  "hex",
- "prettydiff",
- "reqwest",
  "serde",
  "serde_json",
  "sway-core",
- "sway-fmt",
- "sway-lsp",
  "sway-types",
  "sway-utils",
- "taplo",
- "tar",
  "term-table",
  "tokio",
  "toml",
@@ -1107,8 +1089,44 @@ dependencies = [
  "ureq",
  "url",
  "uwuify",
- "warp",
  "whoami",
+]
+
+[[package]]
+name = "forc-explore"
+version = "0.9.2"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+ "forc-util",
+ "reqwest",
+ "serde",
+ "tar",
+ "tokio",
+ "warp",
+]
+
+[[package]]
+name = "forc-fmt"
+version = "0.9.2"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+ "forc-util",
+ "prettydiff",
+ "sway-fmt",
+ "sway-utils",
+ "taplo",
+]
+
+[[package]]
+name = "forc-lsp"
+version = "0.9.2"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+ "sway-lsp",
+ "tokio",
 ]
 
 [[package]]
@@ -1966,9 +1984,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.92.0"
+version = "0.92.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a69d4142d51b208c9fc3cea68b1a7fcef30354e7aa6ccad07250fd8430fc76"
+checksum = "c79d4897790e8fd2550afa6d6125821edb5716e60e0e285046e070f0f6a06e0e"
 dependencies = [
  "bitflags",
  "serde",
@@ -2233,7 +2251,6 @@ dependencies = [
 name = "parser"
 version = "0.9.2"
 dependencies = [
- "ariadne",
  "chumsky",
  "generational-arena",
  "lazy_static",
@@ -3242,7 +3259,6 @@ dependencies = [
  "fuel-asm",
  "fuel-crypto 0.4.0",
  "fuel-pest",
- "fuel-pest_derive",
  "fuel-tx",
  "serde",
 ]
@@ -4186,12 +4202,6 @@ checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "yansi"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"
 
 [[package]]
 name = "yansi-term"

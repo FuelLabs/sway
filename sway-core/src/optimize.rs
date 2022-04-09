@@ -724,6 +724,9 @@ impl FnCompiler {
                     None,
                 ))
             }
+            TypedExpressionVariant::AbiName(_) => {
+                Ok(Value::new_constant(context, Constant::new_unit(), None))
+            }
         }
     }
 
@@ -1428,31 +1431,46 @@ impl FnCompiler {
             .lexical_map
             .get(ast_reassignment.lhs[0].name.as_str())
             .expect("All local symbols must be in the lexical symbol map.");
-        let ptr = self.function.get_local_ptr(context, name).ok_or_else(|| {
-            CompileError::InternalOwned(format!("variable not found: {name}"), Span::empty())
-        })?;
+
+        // First look for a local ptr with the required name
+        let val = match self.function.get_local_ptr(context, name) {
+            Some(ptr) => {
+                let ptr_ty = *ptr.get_type(context);
+                self.current_block
+                    .ins(context)
+                    .get_ptr(ptr, ptr_ty, 0, span_md_idx)
+            }
+            None => {
+                // Now look for an argument with the required name
+                self.function
+                    .args_iter(context)
+                    .find(|arg| &arg.0 == name)
+                    .ok_or_else(|| {
+                        CompileError::InternalOwned(
+                            format!("variable not found: {name}"),
+                            ast_reassignment.lhs[0].name.span().clone(),
+                        )
+                    })?
+                    .1
+            }
+        };
 
         let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
 
         assert!(!ast_reassignment.lhs.is_empty());
         if ast_reassignment.lhs.len() == 1 {
             // A non-aggregate; use a `store`.
-            let ptr_ty = *ptr.get_type(context);
-            let ptr_val = self
-                .current_block
-                .ins(context)
-                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block
                 .ins(context)
-                .store(ptr_val, reassign_val, span_md_idx);
+                .store(val, reassign_val, span_md_idx);
         } else {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
             let field_idcs = get_indices_for_struct_access(&ast_reassignment.lhs)?;
 
-            let ty = match ptr.get_type(context) {
-                Type::Struct(aggregate) => *aggregate,
+            let ty = match val.get_type(context).unwrap() {
+                Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
                         .lhs
@@ -1467,13 +1485,8 @@ impl FnCompiler {
                 }
             };
 
-            let ptr_ty = *ptr.get_type(context);
-            let ptr_val = self
-                .current_block
-                .ins(context)
-                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
             self.current_block.ins(context).insert_value(
-                ptr_val,
+                val,
                 ty,
                 reassign_val,
                 field_idcs,

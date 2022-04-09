@@ -2,7 +2,7 @@ use crate::{
     lock::Lock,
     manifest::{Dependency, Manifest},
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
@@ -16,7 +16,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, NamespaceRef,
+    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, NamespaceRef,
     NamespaceWrapper, TreeType, TypedParseTree,
 };
 use sway_types::JsonABI;
@@ -180,9 +180,10 @@ pub type DependencyName = String;
 
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
-    pub fn new(manifest_dir: &Path, offline: bool) -> Result<Self> {
-        let manifest = Manifest::from_dir(manifest_dir)?;
-        let (graph, path_map) = fetch_deps(manifest_dir.to_path_buf(), &manifest, offline)?;
+    pub fn new(manifest_dir: &Path, sway_git_tag: &str, offline: bool) -> Result<Self> {
+        let manifest = Manifest::from_dir(manifest_dir, sway_git_tag)?;
+        let (graph, path_map) =
+            fetch_deps(manifest_dir.to_path_buf(), &manifest, sway_git_tag, offline)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -192,10 +193,10 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Lock`.
-    pub fn from_lock(proj_path: &Path, lock: &Lock) -> Result<Self> {
+    pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
         let graph = lock.to_graph()?;
         let compilation_order = compilation_order(&graph)?;
-        let path_map = graph_to_path_map(proj_path, &graph, &compilation_order)?;
+        let path_map = graph_to_path_map(proj_path, &graph, &compilation_order, sway_git_tag)?;
         Ok(Self {
             graph,
             path_map,
@@ -204,14 +205,14 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path) -> Result<Self> {
+    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<Self> {
         let proj_path = lock_path.parent().unwrap();
         let lock = Lock::from_path(lock_path)?;
-        Self::from_lock(proj_path, &lock)
+        Self::from_lock(proj_path, &lock, sway_git_tag)
     }
 
     /// Ensure that the build plan is valid for the given manifest.
-    pub fn validate(&self, manifest: &Manifest) -> Result<()> {
+    pub fn validate(&self, manifest: &Manifest, sway_git_tag: &str) -> Result<()> {
         // Retrieve project's graph node.
         let proj_node = *self
             .compilation_order
@@ -233,10 +234,7 @@ impl BuildPlan {
         let proj_id = self.graph[proj_node].id();
         let proj_path = &self.path_map[&proj_id];
         let manifest_dep_pkgs = manifest
-            .dependencies
-            .as_ref()
-            .into_iter()
-            .flat_map(|deps| deps.iter())
+            .deps()
             .map(|(dep_name, dep)| {
                 // NOTE: Temporarily warn about `version` until we have support for registries.
                 if let Dependency::Detailed(det) = dep {
@@ -266,7 +264,7 @@ impl BuildPlan {
             let pkg = &self.graph[node];
             let id = pkg.id();
             let path = &self.path_map[&id];
-            let manifest = Manifest::from_dir(path)?;
+            let manifest = Manifest::from_dir(path, sway_git_tag)?;
             if pkg.name != manifest.project.name {
                 bail!(
                     "package name {:?} does not match the associated manifest project name {:?}",
@@ -490,6 +488,7 @@ pub fn graph_to_path_map(
     proj_manifest_dir: &Path,
     graph: &Graph,
     compilation_order: &[NodeIx],
+    sway_git_tag: &str,
 ) -> Result<PathMap> {
     let mut path_map = PathMap::new();
 
@@ -518,7 +517,7 @@ pub fn graph_to_path_map(
                     println!("  Fetching {}", git.to_string());
                     fetch_git(fetch_id, &dep.name, git)?;
                 }
-                find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
+                find_dir_within(&repo_path, &dep.name, sway_git_tag).ok_or_else(|| {
                     anyhow!(
                         "failed to find package `{}` in {}",
                         dep.name,
@@ -534,7 +533,7 @@ pub fn graph_to_path_map(
                     .source();
                 let parent = &graph[parent_node];
                 let parent_path = &path_map[&parent.id()];
-                let parent_manifest = Manifest::from_dir(parent_path)?;
+                let parent_manifest = Manifest::from_dir(parent_path, sway_git_tag)?;
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
@@ -570,6 +569,7 @@ pub fn graph_to_path_map(
 pub(crate) fn fetch_deps(
     proj_manifest_dir: PathBuf,
     proj_manifest: &Manifest,
+    sway_git_tag: &str,
     offline_mode: bool,
 ) -> Result<(Graph, PathMap)> {
     let mut graph = Graph::new();
@@ -592,12 +592,13 @@ pub(crate) fn fetch_deps(
     // TODO: Convert this recursion to use loop & stack to ensure deps can't cause stack overflow.
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
-    let manifest = Manifest::from_dir(&path_map[&pkg_id])?;
+    let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
     fetch_children(
         fetch_id,
         offline_mode,
         root,
         &manifest,
+        sway_git_tag,
         &mut graph,
         &mut path_map,
         &mut visited,
@@ -617,11 +618,13 @@ fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 }
 
 /// Fetch children nodes of the given node and add unvisited nodes to the graph.
+#[allow(clippy::too_many_arguments)]
 fn fetch_children(
     fetch_id: u64,
     offline_mode: bool,
     node: NodeIx,
     manifest: &Manifest,
+    sway_git_tag: &str,
     graph: &mut Graph,
     path_map: &mut PathMap,
     visited: &mut HashMap<Pinned, NodeIx>,
@@ -635,9 +638,9 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(fetch_id, &pkg, path_map)?;
+        let pinned = pin_pkg(fetch_id, &pkg, path_map, sway_git_tag)?;
         let pkg_id = pinned.id();
-        let manifest = Manifest::from_dir(&path_map[&pkg_id])?;
+        let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
         if pinned.name != manifest.project.name {
             bail!(
                 "dependency name {:?} must match the manifest project name {:?} \
@@ -655,6 +658,7 @@ fn fetch_children(
                 offline_mode,
                 node,
                 &manifest,
+                sway_git_tag,
                 graph,
                 path_map,
                 visited,
@@ -786,7 +790,7 @@ fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinn
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
 /// Also updates the `path_map` with a path to the local copy of the source.
-fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
+fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
         Source::Path(path) => {
@@ -813,13 +817,14 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap) -> Result<Pinned> {
                     println!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
-                let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
-                    anyhow!(
-                        "failed to find package `{}` in {}",
-                        pinned.name,
-                        pinned_git.to_string()
-                    )
-                })?;
+                let path =
+                    find_dir_within(&repo_path, &pinned.name, sway_git_tag).ok_or_else(|| {
+                        anyhow!(
+                            "failed to find package `{}` in {}",
+                            pinned.name,
+                            pinned_git.to_string()
+                        )
+                    })?;
                 entry.insert(path);
             }
             pinned
@@ -919,16 +924,15 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
 /// Given a `forc_pkg::BuildConfig`, produce the necessary `sway_core::BuildConfig` required for
 /// compilation.
 pub fn sway_build_config(
-    path: PathBuf,
-    manifest: &Manifest,
+    manifest_dir: &Path,
+    entry_path: &Path,
     build_conf: &BuildConfig,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
-    let entry_path = manifest.entry_path(&path);
-    let file_name = find_file_name(&path, &entry_path)?;
+    let file_name = find_file_name(manifest_dir, entry_path)?;
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
-        path.to_path_buf(),
+        manifest_dir.to_path_buf(),
     )
     .use_orig_asm(build_conf.use_orig_asm)
     .print_finalized_asm(build_conf.print_finalized_asm)
@@ -993,13 +997,14 @@ pub fn dependency_namespace(
 pub fn compile(
     pkg: &Pinned,
     pkg_path: &Path,
+    manifest: &Manifest,
     build_config: &BuildConfig,
     namespace: NamespaceRef,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<NamespaceRef>)> {
-    let manifest = Manifest::from_dir(pkg_path)?;
+    let entry_path = manifest.entry_path(pkg_path);
     let source = manifest.entry_string(pkg_path)?;
-    let sway_build_config = sway_build_config(pkg_path.to_path_buf(), &manifest, build_config)?;
+    let sway_build_config = sway_build_config(pkg_path, &entry_path, build_config)?;
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
@@ -1057,7 +1062,11 @@ pub fn compile(
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
-pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, SourceMap)> {
+pub fn build(
+    plan: &BuildPlan,
+    conf: &BuildConfig,
+    sway_git_tag: &str,
+) -> anyhow::Result<(Compiled, SourceMap)> {
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
@@ -1067,7 +1076,8 @@ pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, 
             dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
-        let res = compile(pkg, path, conf, dep_namespace, &mut source_map)?;
+        let manifest = Manifest::from_dir(path, sway_git_tag)?;
+        let res = compile(pkg, path, &manifest, conf, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace);
@@ -1083,14 +1093,14 @@ pub fn build(plan: &BuildPlan, conf: &BuildConfig) -> anyhow::Result<(Compiled, 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
         .find_map(|entry| {
             let path = entry.path();
-            let manifest = Manifest::from_file(path).ok()?;
+            let manifest = Manifest::from_file(path, sway_git_tag).ok()?;
             if manifest.project.name == pkg_name {
                 Some(path.to_path_buf())
             } else {
@@ -1100,8 +1110,8 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 }
 
 /// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
-    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
+pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
+    find_within(dir, pkg_name, sway_git_tag).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
 // TODO: Update this to match behaviour described in the `compile` doc comment above.
@@ -1169,5 +1179,63 @@ fn test_source_git_pinned_parsing() {
         assert_eq!(&parsed, expected);
         let serialized = expected.to_string();
         assert_eq!(&serialized, string);
+    }
+}
+
+/// Format an error message for an absent `Forc.toml`.
+pub fn manifest_file_missing(curr_dir: PathBuf) -> anyhow::Error {
+    let message = format!(
+        "could not find `{}` in `{}` or any parent directory",
+        constants::MANIFEST_FILE_NAME,
+        curr_dir.display()
+    );
+    Error::msg(message)
+}
+
+/// Format an error message for failed parsing of a manifest.
+pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
+    let error = errors
+        .iter()
+        .map(|e| e.to_friendly_error_string())
+        .collect::<Vec<String>>()
+        .join("\n");
+    let message = format!("Parsing {} failed: \n{}", project_name, error);
+    Error::msg(message)
+}
+
+/// Format an error message if an incorrect program type is present.
+pub fn wrong_program_type(
+    project_name: &str,
+    expected_type: TreeType,
+    parse_type: TreeType,
+) -> anyhow::Error {
+    let message = format!(
+        "{} is not a '{:?}' it is a '{:?}'",
+        project_name, expected_type, parse_type
+    );
+    Error::msg(message)
+}
+
+/// Format an error message if a given URL fails to produce a working node.
+pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
+    let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
+    Error::msg(message)
+}
+
+/// Given the current directory and expected program type, determines whether the correct program type is present.
+pub fn check_program_type(
+    manifest: &Manifest,
+    manifest_dir: PathBuf,
+    expected_type: TreeType,
+) -> Result<()> {
+    let parsed_type = manifest.program_type(manifest_dir)?;
+    if parsed_type != expected_type {
+        bail!(wrong_program_type(
+            &manifest.project.name,
+            expected_type,
+            parsed_type
+        ));
+    } else {
+        Ok(())
     }
 }

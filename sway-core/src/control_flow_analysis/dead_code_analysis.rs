@@ -632,7 +632,7 @@ fn connect_expression(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: &TreeType,
-    expression_span: Span,
+    _expression_span: Span,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedExpressionVariant::*;
     match expr_variant {
@@ -1019,13 +1019,19 @@ fn connect_expression(
             )?;
             Ok(expr)
         }
-        a => {
-            println!("Unimplemented: {:?}", a);
-            Err(CompileError::Unimplemented(
-                "Unimplemented dead code analysis for this.",
-                expression_span,
-            ))
+        AbiName(abi_name) => {
+            if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
+                // abis are treated as traits here
+                let decl = graph.namespace.find_trait(abi_name).cloned();
+                if let Some(decl_node) = decl {
+                    for leaf in leaves {
+                        graph.add_edge(*leaf, decl_node, "".into());
+                    }
+                }
+            }
+            Ok(leaves.to_vec())
         }
+        FunctionParameter => Ok(leaves.to_vec()),
     }
 }
 

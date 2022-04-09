@@ -4,10 +4,7 @@ use tower_lsp::lsp_types::{
     PrepareRenameResponse, RenameParams, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 
-use crate::{
-    core::{session::Session, token::Token, token_type::TokenType},
-    utils::lsp_helpers::make_range_end_inclusive,
-};
+use crate::core::{session::Session, token::Token, token_type::TokenType};
 
 pub fn rename(session: Arc<Session>, params: RenameParams) -> Option<WorkspaceEdit> {
     let new_name = params.new_name;
@@ -62,6 +59,6 @@ pub fn prepare_rename(
 fn prepare_token_rename(tokens: &[&Token], new_name: String) -> Vec<TextEdit> {
     tokens
         .iter()
-        .map(|token| TextEdit::new(make_range_end_inclusive(token.range), new_name.clone()))
+        .map(|token| TextEdit::new(token.range, new_name.clone()))
         .collect()
 }

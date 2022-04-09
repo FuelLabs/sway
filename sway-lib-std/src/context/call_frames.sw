@@ -64,9 +64,7 @@ pub fn second_param() -> u64 {
 
 /// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
 pub fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
-    // TODO use const values as soon as IR is turned on, tracked here: https://github.com/FuelLabs/sway/issues/1127
-    // let offset = frame_pointer + SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET;
-    let offset = frame_pointer + 64 + 48;
+    let offset = frame_pointer + SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET;
     asm(res, ptr: offset) {
         lw res ptr i0;
         res: u64

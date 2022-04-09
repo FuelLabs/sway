@@ -1,6 +1,5 @@
 contract;
 
-use std::context::*;
 use balance_test_abi::BalanceTest;
 
 impl BalanceTest for Contract {

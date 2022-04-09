@@ -19,6 +19,7 @@ either = "1.6"
 fuel-asm = "0.3"
 fuel-crypto = "0.4"
 fuel-vm = "0.6"
+generational-arena = "0.2"
 hex = { version = "0.4", optional = true }
 itertools = "0.10"
 lazy_static = "1.4"
@@ -34,7 +35,6 @@ smallvec = "1.7"
 sway-ir = { version = "0.9.2", path = "../sway-ir" }
 sway-types = { version = "0.9.2", path = "../sway-types" }
 sway-utils = { version = "0.9.2", path = "../sway-utils" }
-generational-arena = "0.2"
 thiserror = "1.0"
 
 [[bin]]

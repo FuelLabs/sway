@@ -1,1 +1,14 @@
-[{"inputs":[{"components":null,"name":"gas","type":"u64"},{"components":null,"name":"coins","type":"u64"},{"components":null,"name":"color","type":"b256"},{"components":null,"name":"input","type":"()"}],"name":"returns_gm_one","outputs":[{"components":null,"name":"","type":"bool"}],"type":"function"}]
+[
+  {
+    "inputs": [],
+    "name": "returns_gm_one",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  }
+]
