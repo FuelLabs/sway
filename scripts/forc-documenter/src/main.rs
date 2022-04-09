@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
+use std::fs::{create_dir_all, read_to_string, remove_dir_all, remove_file, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -68,6 +68,76 @@ fn get_example_for_command(command: &str) -> &str {
     }
 }
 
+fn format_index_line_for_summary(index_line: &str) -> String {
+    let mut formatted_index_line = String::new();
+    let mut pushed = false;
+    for c in index_line.chars() {
+        formatted_index_line.push(c);
+        if c == '.' && !pushed {
+            pushed = true;
+            formatted_index_line.push_str("/forc/commands");
+        }
+    }
+
+    formatted_index_line
+}
+
+fn write_new_summary_contents(
+    existing_summary_contents: String,
+    new_index_contents: String,
+) -> String {
+    let mut new_summary_contents = String::new();
+    let mut lines_iter = existing_summary_contents.lines().map(|l| l);
+    while let Some(line) = lines_iter.next() {
+        if line.contains("[Commands](./forc/commands/index.md)") {
+            new_summary_contents.push_str(line);
+            new_summary_contents.push('\n');
+            for index_line in new_index_contents.lines().skip(2) {
+                let summary_index_line = format_index_line_for_summary(index_line);
+                new_summary_contents.push_str(&("    ".to_owned() + &summary_index_line));
+                new_summary_contents.push('\n');
+            }
+        } else if line.contains("/forc/commands/") {
+            continue;
+        } else {
+            new_summary_contents.push_str(line);
+            new_summary_contents.push('\n');
+        }
+    }
+    new_summary_contents
+}
+
+fn check_summary_diffs(
+    existing_summary_contents: String,
+    new_summary_contents: String,
+) -> Result<()> {
+    if existing_summary_contents == new_summary_contents {
+        println!("SUMMARY.md ok.");
+    } else {
+        return Err(anyhow!(
+            "SUMMARY.md inconsistent - {}",
+            constants::RUN_WRITE_DOCS_MESSAGE
+        ));
+    }
+
+    Ok(())
+}
+
+fn check_index_diffs(mut index_file: File, new_index_contents: String) -> Result<()> {
+    let mut existing_index_contents = String::new();
+    index_file.read_to_string(&mut existing_index_contents)?;
+    if existing_index_contents == new_index_contents {
+        println!("index.md ok.");
+    } else {
+        return Err(anyhow!(
+            "index.md inconsistent - {}",
+            constants::RUN_WRITE_DOCS_MESSAGE
+        ));
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -76,6 +146,7 @@ fn main() -> Result<()> {
             let WriteDocsCommand { dry_run } = _command;
 
             let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
+            let summary_file_path = get_sway_path().join("docs/src/SUMMARY.md");
             let index_file_path = forc_commands_docs_path.join("index.md");
 
             if !dry_run {
@@ -90,6 +161,12 @@ fn main() -> Result<()> {
                 .write(!dry_run)
                 .open(index_file_path)
                 .expect("Problem reading, opening or creating forc/commands/index.md");
+
+            let mut summary_file = File::open(&summary_file_path)
+                .expect("Problem reading, opening or creating SUMMARY.md");
+
+            let mut existing_summary_contents = String::new();
+            summary_file.read_to_string(&mut existing_summary_contents)?;
 
             let output = process::Command::new("forc")
                 .arg("--help")
@@ -112,9 +189,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            let mut index_contents = String::new();
-
-            index_contents.push_str(constants::INDEX_HEADER);
+            let mut new_index_contents = String::new();
+            new_index_contents.push_str(constants::INDEX_HEADER);
 
             for command in possible_commands.iter() {
                 let mut result = match generate_doc_output(command) {
@@ -135,7 +211,7 @@ fn main() -> Result<()> {
                     format_index_entry_string(&document_name, &index_entry_name);
 
                 let forc_command_file_path = forc_commands_docs_path.join(document_name);
-                index_contents.push_str(&index_entry_string);
+                new_index_contents.push_str(&index_entry_string);
 
                 if dry_run {
                     let existing_contents = read_to_string(&forc_command_file_path);
@@ -169,22 +245,24 @@ fn main() -> Result<()> {
                 }
             }
 
+            let new_summary_contents = write_new_summary_contents(
+                existing_summary_contents.clone(),
+                new_index_contents.clone(),
+            );
             if dry_run {
-                let mut existing_index_contents = String::new();
-                index_file.read_to_string(&mut existing_index_contents)?;
-
-                if index_contents == existing_index_contents {
-                    println!("index.md ok.");
-                } else {
-                    return Err(anyhow!(
-                        "index.md inconsistent - {}",
-                        constants::RUN_WRITE_DOCS_MESSAGE
-                    ));
-                }
+                check_index_diffs(index_file, new_index_contents)?;
+                check_summary_diffs(existing_summary_contents, new_summary_contents)?;
             } else {
+                println!("Updating forc commands in forc/commands/index.md...");
                 index_file
-                    .write_all(index_contents.as_bytes())
+                    .write_all(new_index_contents.as_bytes())
                     .expect("Failed to write to forc/commands/index.md");
+
+                let mut new_summary_file = File::create(&summary_file_path)?;
+                println!("Updating forc commands in SUMMARY.md...");
+                new_summary_file
+                    .write_all(new_summary_contents.as_bytes())
+                    .expect("Failed to write to SUMMARY.md");
             }
 
             println!("Done.");
