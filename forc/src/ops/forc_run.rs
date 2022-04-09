@@ -73,7 +73,7 @@ async fn try_send_tx(
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => Ok(send_tx(&client, tx, pretty_print).await?),
+        Ok(_) => send_tx(&client, tx, pretty_print).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
