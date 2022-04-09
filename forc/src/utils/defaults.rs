@@ -62,6 +62,8 @@ impl MyContract for Contract {
     .into()
 }
 
+// TODO Ideally after (instance, id) it should link to the The Fuels-rs Book
+// to provide further information for writing tests/working with sway
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
