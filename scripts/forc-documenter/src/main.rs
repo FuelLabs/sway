@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use std::fs::{create_dir_all, read_to_string, remove_dir_all, remove_file, File, OpenOptions};
+use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -87,8 +87,7 @@ fn write_new_summary_contents(
     new_index_contents: String,
 ) -> String {
     let mut new_summary_contents = String::new();
-    let mut lines_iter = existing_summary_contents.lines().map(|l| l);
-    while let Some(line) = lines_iter.next() {
+    for line in existing_summary_contents.lines() {
         if line.contains("[Commands](./forc/commands/index.md)") {
             new_summary_contents.push_str(line);
             new_summary_contents.push('\n');
