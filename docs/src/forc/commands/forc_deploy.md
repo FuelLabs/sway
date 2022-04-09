@@ -78,10 +78,10 @@ Whether to compile to bytecode (false) or to print out the IR (true)
 Silent mode. Don't output any warnings or errors to the command line
 
 
-`--use-ir` 
+`--use-orig-asm` 
 
 
-Whether to compile using the IR pipeline
+Whether to compile using the original (pre- IR) pipeline
 
 ## EXAMPLES:
 
