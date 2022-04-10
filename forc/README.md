@@ -54,26 +54,26 @@ For example, let's write tests against this contract, written in Sway:
 ```rust
 contract;
 
-use std::storage::store_u64;
-use std::storage::get_u64;
-
 abi TestContract {
-  fn initialize_counter(gas_: u64, amount_: u64, coin_: b256, value: u64) -> u64;
-  fn increment_counter(gas_: u64, amount_: u64, coin_: b256, amount: u64) -> u64;
+    fn initialize_counter(value: u64) -> u64;
+    fn increment_counter(amount: u64) -> u64;
 }
 
-const COUNTER_KEY = 0x0000000000000000000000000000000000000000000000000000000000000000;
+storage {
+    counter: u64
+}
 
 impl TestContract for Contract {
-  fn initialize_counter(gas_: u64, amount_: u64, color_: b256, value: u64) -> u64 {
-    store_u64(COUNTER_KEY, value);
-    value
-  }
-  fn increment_counter(gas_: u64, amount_: u64, color_: b256, amount: u64) -> u64 {
-    let value = get_u64(COUNTER_KEY) + amount;
-    store_u64(COUNTER_KEY, value);
-    value
-  }
+    fn initialize_counter(value: u64) -> u64 {
+        storage.counter = value;
+        value
+    }
+
+    fn increment_counter(amount: u64) -> u64 {
+        let incremented = storage.counter + amount;
+        storage.counter = incremented;
+        incremented
+    }
 }
 ```
 
@@ -82,46 +82,43 @@ Our `tests/harness.rs` file could look like:
 ```rust
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
-use fuels_contract::contract::Contract;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuels_contract::{contract::Contract, parameters::TxParameters};
+use fuels_signers::util::test_helpers;
 
-// Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, "./my-contract-abi.json");
+abigen!(
+    MyContract,
+    "out/debug/my_contract-abi.json"
+);
 
 #[tokio::test]
 async fn harness() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let salt = Salt::from([0u8; 32]);
+    let compiled =
+        Contract::load_sway_contract("out/debug/my_contract.bin", salt)
+            .unwrap();
 
-    // Build the contract
-    let salt: [u8; 32] = rng.gen();
-    let salt = Salt::from(salt);
+    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+        .await
+        .unwrap();
 
-    let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-    let client = Provider::launch(Config::local_node()).await.unwrap();
-    let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
-    println!("Contract deployed @ {:x}", contract_id);
-
-    let contract_instance = MyContract::new(contract_id.to_string(), client);
+    let instance = MyContract::new(id.to_string(), provider, wallet);
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
-    let result = contract_instance
-        .initialize_counter(42)
-        .call()
-        .await
-        .unwrap();
-
-    assert_eq!(42, result.unwrap());
+    let result = instance.initialize_counter(42)
+            .call()
+            .await
+            .unwrap();
+    assert_eq!(42, result.value);
 
     // Call `increment_counter()` method in our deployed contract.
-    let result = contract_instance
-        .increment_counter(10)
-        .call()
-        .await
-        .unwrap();
+    let result = instance.increment_counter(10)
+            .call()
+            .await
+            .unwrap();
 
-    assert_eq!(52, result.unwrap());
+    assert_eq!(52, result.value);
 }
 ```
 
@@ -149,15 +146,15 @@ Deploy contract project. Crafts a contract deployment transaction then sends it 
 Alternatively, you could deploy your contract programmatically using our SDK:
 
 ```rust
-// Build the contract
-let salt: [u8; 32] = rng.gen();
-let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+// Load the contract
+let salt = Salt::from([0u8; 32]);
+let compiled = Contract::load_sway_contract("out/debug/my_contract.bin", salt).unwrap();
 
 // Launch a local network and deploy the contract
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-let client = Provider::launch(Config::local_node()).await.unwrap();
-let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
+let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+    .await
+    .unwrap();
 ```
 
 ## Format (`forc fmt`)
