@@ -4,8 +4,9 @@ dependencies = []
 
 [[package]]
 name = 'fizzbuzz'
-dependencies = ['std']
+dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.9.2#4905aa0b2b6cb7178d6229e7bed94c241a418c26']
 
 [[package]]
 name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.9.2#4905aa0b2b6cb7178d6229e7bed94c241a418c26'
 dependencies = ['core']
