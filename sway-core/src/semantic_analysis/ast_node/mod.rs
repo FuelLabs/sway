@@ -225,8 +225,8 @@ impl TypedAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |namespace: crate::semantic_analysis::NamespaceRef,
-                                            crate_namespace: NamespaceRef,
+        let mut type_check_ascribed_expr = |namespace: &mut Namespace,
+                                            crate_namespace: &Namespace,
                                             type_ascription: TypeInfo,
                                             value| {
             let type_id = check!(
@@ -493,7 +493,7 @@ impl TypedAstNode {
                                     break;
                                 }
                             }
-                            let impl_namespace = create_new_scope(namespace);
+                            let mut impl_namespace = namespace.clone();
                             for type_parameter in type_parameters.iter() {
                                 impl_namespace.insert(
                                     type_parameter.name_ident.clone(),
@@ -531,7 +531,7 @@ impl TypedAstNode {
                                 }
                                 let args = TypeCheckArguments {
                                     checkee: fn_decl,
-                                    namespace: impl_namespace,
+                                    namespace: &mut impl_namespace,
                                     crate_namespace,
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: "",
@@ -835,7 +835,7 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
@@ -881,7 +881,7 @@ fn import_new_file(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
-    let dep_namespace = create_new_scope(namespace);
+    let dep_namespace = namespace.clone();
     let crate::InnerDependencyCompileResult {
         name,
         namespace: module,
@@ -1110,8 +1110,8 @@ fn reassignment(
 /// which is meant to be the namespace of the subtrait in question
 fn handle_supertraits(
     supertraits: &[Supertrait],
-    trait_namespace: NamespaceRef,
-    namespace: NamespaceRef,
+    trait_namespace: &mut Namespace,
+    namespace: &mut Namespace,
 ) -> CompileResult<()> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -1197,11 +1197,11 @@ fn type_check_trait_decl(
         errors
     );
 
-    let trait_namespace = create_new_scope(namespace);
+    let mut trait_namespace = namespace.clone();
 
     // Recursively handle supertraits: make their interfaces and methods available to this trait
     check!(
-        handle_supertraits(&trait_decl.supertraits, trait_namespace, namespace),
+        handle_supertraits(&trait_decl.supertraits, &mut trait_namespace, namespace),
         return err(warnings, errors),
         warnings,
         errors
@@ -1225,7 +1225,7 @@ fn type_check_trait_decl(
     let _methods = check!(
         type_check_trait_methods(
             trait_decl.methods.clone(),
-            trait_namespace,
+            &mut trait_namespace,
             crate_namespace,
             insert_type(TypeInfo::SelfType),
             build_config,
@@ -1248,7 +1248,7 @@ fn type_check_trait_decl(
 
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1306,8 +1306,8 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
+    crate_namespace: &Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -1327,7 +1327,7 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let function_namespace = namespace;
+        let mut function_namespace = namespace.clone();
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name,
@@ -1444,7 +1444,7 @@ fn type_check_trait_methods(
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
-                namespace: function_namespace,
+                namespace: &mut function_namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text: "Trait method body's return type does not match up with \
@@ -1482,7 +1482,7 @@ fn type_check_trait_methods(
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];

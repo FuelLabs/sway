@@ -5,7 +5,7 @@ use crate::{
     parser::Rule,
     semantic_analysis::{
         ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
-        NamespaceRef, NamespaceWrapper,
+        Namespace,
     },
     style::is_upper_camel_case,
     type_engine::*,
@@ -37,7 +37,7 @@ impl EnumDeclaration {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: crate::semantic_analysis::NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
         let mut errors = vec![];
@@ -158,7 +158,7 @@ impl EnumDeclaration {
 impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],

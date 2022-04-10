@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
+use crate::semantic_analysis::{ast_node::*, Namespace, TCOpts, TypeCheckArguments};
 use crate::type_engine::TypeId;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -12,8 +12,8 @@ pub(crate) fn instantiate_function_application(
     name: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
+    crate_namespace: &Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,

@@ -7,7 +7,7 @@ use crate::{
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
         },
-        create_new_scope, NamespaceWrapper, TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
+        TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
     },
     type_engine::*,
     Ident, TypeParameter,
@@ -99,7 +99,7 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // insert parameters and generic type declarations into namespace
-        let namespace = create_new_scope(namespace);
+        let mut namespace = namespace.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
@@ -167,7 +167,7 @@ impl TypedFunctionDeclaration {
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace,
+                namespace: &mut namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text:

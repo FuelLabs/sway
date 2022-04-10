@@ -33,8 +33,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
-    create_module, retrieve_module, Namespace, NamespaceRef, NamespaceWrapper, TreeType,
-    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    Namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
@@ -192,7 +191,7 @@ pub enum CompilationResult {
     },
     Library {
         name: Ident,
-        namespace: NamespaceRef,
+        namespace: Namespace,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -271,7 +270,7 @@ pub(crate) struct InnerDependencyCompileResult {
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency(
     input: Arc<str>,
-    initial_namespace: NamespaceRef,
+    initial_namespace: Namespace,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<InnerDependencyCompileResult> {
@@ -295,8 +294,8 @@ pub(crate) fn compile_inner_dependency(
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
             parse_tree.tree,
-            initial_namespace,
-            initial_namespace,
+            initial_namespace.clone(),
+            &initial_namespace,
             &parse_tree.tree_type,
             &build_config,
             dead_code_graph,
@@ -332,7 +331,7 @@ pub(crate) fn compile_inner_dependency(
 
 pub fn compile_to_ast(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: Namespace,
     build_config: &BuildConfig,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -366,8 +365,8 @@ pub fn compile_to_ast(
         errors: new_errors,
     } = TypedParseTree::type_check(
         parse_tree.tree,
-        initial_namespace,
-        initial_namespace,
+        initial_namespace.clone(),
+        &initial_namespace,
         &parse_tree.tree_type,
         &build_config.clone(),
         &mut dead_code_graph,
@@ -408,7 +407,7 @@ pub fn compile_to_ast(
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: Namespace,
     build_config: BuildConfig,
 ) -> CompilationResult {
     let ast_res = compile_to_ast(input, initial_namespace, &build_config);
@@ -448,7 +447,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: parse_tree.get_namespace_ref(),
+                    namespace: parse_tree.namespace().clone(),
                 },
             }
         }
@@ -561,7 +560,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
 /// bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: Namespace,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {

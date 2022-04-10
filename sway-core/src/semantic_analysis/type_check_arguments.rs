@@ -6,8 +6,8 @@ use crate::type_engine::*;
 
 pub struct TypeCheckArguments<'a, T> {
     pub checkee: T,
-    pub namespace: NamespaceRef,
-    pub crate_namespace: NamespaceRef,
+    pub namespace: &'a mut Namespace,
+    pub crate_namespace: &'a Namespace,
     pub return_type_annotation: TypeId,
     pub help_text: &'static str,
     pub self_type: TypeId,

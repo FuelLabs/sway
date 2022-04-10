@@ -17,8 +17,8 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, NamespaceRef,
-    NamespaceWrapper, TreeType, TypedParseTree,
+    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, Namespace,
+    TreeType, TypedParseTree,
 };
 use sway_utils::constants;
 use url::Url;
@@ -954,31 +954,31 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, NamespaceRef>,
+    namespace_map: &HashMap<NodeIx, Namespace>,
     graph: &Graph,
     compilation_order: &[NodeIx],
     node: NodeIx,
-) -> NamespaceRef {
+) -> Namespace {
     use petgraph::visit::{Dfs, Walker};
 
     // Find all nodes that are a dependency of this one with a depth-first search.
     let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
 
     // In order of compilation, accumulate dependency namespace refs.
-    let namespace = sway_core::create_module();
+    let mut namespace = Namespace::default();
     for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
         if dep_node == node {
             break;
         }
         // Add the namespace once for each of its names.
-        let namespace_ref = namespace_map[&dep_node];
+        let dep_namespace = &namespace_map[&dep_node];
         let dep_names: BTreeSet<_> = graph
             .edges_directed(dep_node, Direction::Incoming)
             .map(|e| e.weight())
             .collect();
         for dep_name in dep_names {
             let dep_name = kebab_to_snake_case(dep_name);
-            namespace.insert_module_ref(dep_name.to_string(), namespace_ref);
+            namespace.insert_module(dep_name.to_string(), dep_namespace.clone());
         }
     }
 
@@ -1007,9 +1007,9 @@ pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
-    namespace: NamespaceRef,
+    namespace: Namespace,
     source_map: &mut SourceMap,
-) -> Result<(Compiled, Option<NamespaceRef>)> {
+) -> Result<(Compiled, Option<Namespace>)> {
     let entry_path = manifest.entry_path();
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
@@ -1034,7 +1034,7 @@ pub fn compile(
                 TreeType::Library { .. } => {
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
-                    let lib_namespace = parse_tree.clone().get_namespace_ref();
+                    let lib_namespace = parse_tree.namespace().clone();
                     let compiled = Compiled { json_abi, bytecode };
                     Ok((compiled, Some(lib_namespace)))
                 }

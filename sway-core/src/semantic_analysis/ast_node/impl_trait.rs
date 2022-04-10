@@ -14,8 +14,8 @@ use sway_types::span::Span;
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
+    crate_namespace: &Namespace,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
@@ -179,8 +179,8 @@ fn type_check_trait_implementation(
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
     trait_name: &CallPath,
-    namespace: NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
+    crate_namespace: &Namespace,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -328,7 +328,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let local_namespace: NamespaceRef = create_new_scope(namespace);
+    let mut local_namespace = Namespace::default();
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
@@ -338,7 +338,7 @@ fn type_check_trait_implementation(
         Some(crate_namespace),
         [
             &trait_name.prefixes[..],
-            &local_namespace.get_canonical_path(&trait_name.suffix)[..],
+            local_namespace.get_canonical_path(&trait_name.suffix),
         ]
         .concat(),
     );
@@ -367,7 +367,7 @@ fn type_check_trait_implementation(
         let method = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
-                namespace: local_namespace,
+                namespace: &mut local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
