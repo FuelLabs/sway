@@ -4,11 +4,10 @@ use clap::Parser as ClapParser;
 use pest::Parser;
 use std::sync::Arc;
 use sway_core::{
-    create_module,
     parse_tree::declaration::FunctionDeclaration,
     semantic_analysis::{
         ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},
-        TypeCheckArguments,
+        Namespace, TypeCheckArguments,
     },
     type_engine::*,
     BuildConfig, Rule, SwayParser,
@@ -35,11 +34,12 @@ fn main() {
         FunctionDeclaration::parse_from_pair(parsed_fn_decl.next().unwrap(), Default::default())
             .unwrap(&mut warnings, &mut errors);
 
-    let namespace = create_module();
+    let root_namespace = Namespace::default();
+    let mut namespace = root_namespace.clone();
     let res = TypedFunctionDeclaration::type_check(TypeCheckArguments {
         checkee: parsed_fn_decl,
-        namespace,
-        crate_namespace: namespace,
+        namespace: &mut namespace,
+        crate_namespace: &root_namespace,
         help_text: Default::default(),
         return_type_annotation: insert_type(TypeInfo::Unknown),
         self_type: insert_type(TypeInfo::Unknown),
