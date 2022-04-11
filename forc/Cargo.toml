@@ -41,7 +41,7 @@ toml_edit = "0.13"
 ureq = { version = "2.4", features = ["json"] }
 url = "2.2"
 uwuify = { version = "^0.2", optional = true }
-walkdir = "2"
+walkdir = "2.3"
 whoami = "1.1"
 
 [features]
