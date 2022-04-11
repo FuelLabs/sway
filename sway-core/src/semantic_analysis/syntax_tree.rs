@@ -8,9 +8,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::Purity,
-    semantic_analysis::{
-        ast_node::Mode, Namespace, TypeCheckArguments,
-    },
+    semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments},
     type_engine::*,
     AstNode, ParseTree,
 };

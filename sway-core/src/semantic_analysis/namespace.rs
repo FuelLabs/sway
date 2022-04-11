@@ -4,7 +4,10 @@ use crate::{
 };
 
 use crate::semantic_analysis::{
-    ast_node::{TypedEnumDeclaration, TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration},
+    ast_node::{
+        TypedEnumDeclaration, TypedExpression, TypedStorageDeclaration, TypedStructField,
+        TypedVariableDeclaration,
+    },
     declaration::{TypedStorageField, VariableMutability},
     TypeCheckedStorageAccess,
 };
@@ -492,7 +495,9 @@ impl Namespace {
         let mut errors = vec![];
         let base_module = from_module.unwrap_or(self);
         let mut namespace = check!(
-            base_module.find_module_relative(method_path).map(|ns| ns.clone()),
+            base_module
+                .find_module_relative(method_path)
+                .map(|ns| ns.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -797,7 +802,8 @@ impl Namespace {
                             });
                         }
                         self.use_synonyms.insert(alias.clone(), path.clone());
-                        self.use_aliases.insert(alias.as_str().to_string(), item.clone());
+                        self.use_aliases
+                            .insert(alias.as_str().to_string(), item.clone());
                     }
                     None => {
                         if self.use_synonyms.contains_key(item) {
@@ -822,7 +828,8 @@ impl Namespace {
         impls_to_insert
             .into_iter()
             .for_each(|((call_path, type_info), methods)| {
-                self.implemented_traits.insert(call_path, type_info, methods);
+                self.implemented_traits
+                    .insert(call_path, type_info, methods);
             });
 
         ok((), warnings, errors)

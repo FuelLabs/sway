@@ -1,6 +1,9 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::{Namespace, TypeCheckedStorageReassignment}, type_engine::*,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{Namespace, TypeCheckedStorageReassignment},
+    type_engine::*,
     Ident,
 };
 use derivative::Derivative;
