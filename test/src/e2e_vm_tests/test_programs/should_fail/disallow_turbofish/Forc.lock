@@ -1,0 +1,7 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'disallow_turbofish'
+dependencies = ['core']

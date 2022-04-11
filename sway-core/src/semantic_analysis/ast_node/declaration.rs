@@ -236,6 +236,16 @@ pub struct TypedAbiDeclaration {
     pub(crate) span: Span,
 }
 
+impl TypedAbiDeclaration {
+    pub(crate) fn as_type(&self) -> TypeId {
+        let ty = TypeInfo::ContractCaller {
+            abi_name: AbiName::Known(self.name.clone().into()),
+            address: String::new(),
+        };
+        insert_type(ty)
+    }
+}
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
@@ -258,12 +268,7 @@ impl PartialEq for TypedStructDeclaration {
 }
 
 impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &NamespaceRef) -> Self {
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        Self::monomorphize_inner(self, namespace, &type_mapping)
-    }
-
-    pub(crate) fn monomorphize_with_type_arguments(
+    pub(crate) fn monomorphize(
         &self,
         namespace: &NamespaceRef,
         type_arguments: &[TypeArgument],
@@ -278,36 +283,39 @@ impl TypedStructDeclaration {
             .map(|x| x.span.clone())
             .reduce(join_spans)
             .unwrap_or_else(|| self.span.clone());
-        if type_mapping.len() != type_arguments.len() {
-            errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                given: type_arguments.len(),
-                expected: type_mapping.len(),
-                span: type_arguments_span,
-            });
-            return err(warnings, errors);
-        }
-        for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-            match self_type {
-                Some(self_type) => {
-                    let (mut new_warnings, new_errors) = unify_with_self(
-                        *interim_type,
-                        type_argument.type_id,
-                        self_type,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
-                None => {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        if !type_arguments.is_empty() {
+            if type_mapping.len() != type_arguments.len() {
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: type_mapping.len(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter())
+            {
+                match self_type {
+                    Some(self_type) => {
+                        let (mut new_warnings, new_errors) = unify_with_self(
+                            *interim_type,
+                            type_argument.type_id,
+                            self_type,
+                            &type_argument.span,
+                            "Type argument is not assignable to generic type parameter.",
+                        );
+                        warnings.append(&mut new_warnings);
+                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    }
+                    None => {
+                        let (mut new_warnings, new_errors) = unify(
+                            *interim_type,
+                            type_argument.type_id,
+                            &type_argument.span,
+                            "Type argument is not assignable to generic type parameter.",
+                        );
+                        warnings.append(&mut new_warnings);
+                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                    }
                 }
             }
         }

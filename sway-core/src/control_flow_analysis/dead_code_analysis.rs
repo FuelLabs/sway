@@ -4,8 +4,8 @@ use crate::{
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            SizeOfVariant, TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration,
-            TypedDeclaration, TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
+            TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
+            TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop,
@@ -632,7 +632,7 @@ fn connect_expression(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: &TreeType,
-    expression_span: Span,
+    _expression_span: Span,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedExpressionVariant::*;
     match expr_variant {
@@ -1006,28 +1006,32 @@ fn connect_expression(
             }
             Ok(vec![this_ix])
         }
-        SizeOf { variant } => match variant {
-            SizeOfVariant::Type(_) => Ok(vec![]),
-            SizeOfVariant::Val(exp) => {
-                let exp = connect_expression(
-                    &(*exp).expression,
-                    graph,
-                    leaves,
-                    exit_node,
-                    "size_of",
-                    tree_type,
-                    exp.span.clone(),
-                )?;
-                Ok(exp)
-            }
-        },
-        a => {
-            println!("Unimplemented: {:?}", a);
-            Err(CompileError::Unimplemented(
-                "Unimplemented dead code analysis for this.",
-                expression_span,
-            ))
+        TypeProperty { .. } => Ok(Vec::new()),
+        SizeOfValue { expr } => {
+            let expr = connect_expression(
+                &(*expr).expression,
+                graph,
+                leaves,
+                exit_node,
+                "size_of",
+                tree_type,
+                expr.span.clone(),
+            )?;
+            Ok(expr)
         }
+        AbiName(abi_name) => {
+            if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
+                // abis are treated as traits here
+                let decl = graph.namespace.find_trait(abi_name).cloned();
+                if let Some(decl_node) = decl {
+                    for leaf in leaves {
+                        graph.add_edge(*leaf, decl_node, "".into());
+                    }
+                }
+            }
+            Ok(leaves.to_vec())
+        }
+        FunctionParameter => Ok(leaves.to_vec()),
     }
 }
 

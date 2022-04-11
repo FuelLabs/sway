@@ -9,9 +9,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             .unwrap_or(true)
     };
 
-    // programs that should successfully compile and terminate
-    // with some known state
-    let positive_project_names = vec![
+    // Non-contract programs that should successfully compile and terminate
+    // with some known state. Note that if you are adding a contract, it may pass by mistake.
+    // Please add contracts to `positive_project_names_with_abi`.
+    let positive_project_names_no_abi = vec![
         (
             "should_pass/forc/dependency_package_field",
             ProgramState::Return(0),
@@ -22,13 +23,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/basic_func_decl",
-            ProgramState::Return(1),
-        ), // 1 == true
-        // contracts revert because this test runs them against the VM
-        // and no selectors will match
-        (
-            "should_pass/test_contracts/contract_abi_impl",
-            ProgramState::Revert(0),
+            ProgramState::Return(1), // 1 == true
         ),
         ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
         (
@@ -57,12 +52,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/unary_not_basic",
-            ProgramState::Return(1),
-        ), // 1 == true
+            ProgramState::Return(1), // 1 == true
+        ),
         (
             "should_pass/language/unary_not_basic_2",
-            ProgramState::Return(1),
-        ), // 1 == true
+            ProgramState::Return(1), // 1 == true
+        ),
         (
             "should_pass/language/fix_opcode_bug",
             ProgramState::Return(30),
@@ -103,52 +98,53 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("should_pass/language/eq_4_test", ProgramState::Return(1)),
         (
             "should_pass/language/local_impl_for_ord",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         ("should_pass/language/const_decl", ProgramState::Return(100)),
         (
             "should_pass/language/const_decl_in_library",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/aliased_imports",
             ProgramState::Return(42),
         ),
         (
             "should_pass/language/empty_method_initializer",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/stdlib/b512_struct_alignment",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
+        ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_structs",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/generic_functions",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
         (
             "should_pass/language/import_method_from_other_file",
-            ProgramState::Return(10),
-        ), // true
+            ProgramState::Return(10), // true
+        ),
         (
             "should_pass/stdlib/ec_recover_test",
-            ProgramState::Return(1),
-        ), // true
-        ("should_pass/stdlib/address_test", ProgramState::Return(1)),   // true
+            ProgramState::Return(1), // true
+        ),
+        ("should_pass/stdlib/address_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_struct",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/zero_field_types",
-            ProgramState::Return(10),
-        ), // true
-        ("should_pass/stdlib/assert_test", ProgramState::Return(1)),    // true
+            ProgramState::Return(10), // true
+        ),
+        ("should_pass/stdlib/assert_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/match_expressions",
             ProgramState::Return(42),
@@ -161,18 +157,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/array_generics",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/match_expressions_structs",
             ProgramState::Return(4),
         ),
         ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/valid_impurity",
-            ProgramState::Revert(0),
-        ), // false
         (
             "should_pass/language/trait_override_bug",
             ProgramState::Return(7),
@@ -183,8 +175,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/modulo_uint_test",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/trait_import_with_star",
             ProgramState::Return(0),
@@ -195,8 +187,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/multi_item_import",
-            ProgramState::Return(0),
-        ), // false
+            ProgramState::Return(0), // false
+        ),
         (
             "should_pass/language/use_full_path_names",
             ProgramState::Return(1),
@@ -211,8 +203,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/language/funcs_with_generic_types",
-            ProgramState::Return(1),
-        ), // true
+            ProgramState::Return(1), // true
+        ),
         (
             "should_pass/language/enum_if_let",
             ProgramState::Return(143),
@@ -233,12 +225,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("should_pass/language/supertraits", ProgramState::Return(1)),
         (
             "should_pass/language/new_allocator_test",
-            ProgramState::Return(42),
-        ), // true
+            ProgramState::Return(42), // true
+        ),
         (
             "should_pass/language/chained_if_let",
-            ProgramState::Return(5),
-        ), // true
+            ProgramState::Return(5), // true
+        ),
         (
             "should_pass/language/inline_if_expr_const",
             ProgramState::Return(0),
@@ -285,22 +277,88 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/nested_while_and_if",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/is_reference_type",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/contract_caller_as_type",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/self_impl_reassignment",
+            ProgramState::Return(1),
+        ),
     ];
 
-    let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
-        if filter(name) {
-            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-            // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
-            // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
-            assert!(matches!(
-                crate::e2e_vm_tests::harness::test_json_abi(name),
-                Ok(())
-            ));
-            acc + 1
-        } else {
-            acc
-        }
-    });
+    let mut number_of_tests_run =
+        positive_project_names_no_abi
+            .iter()
+            .fold(0, |acc, (name, res)| {
+                if filter(name) {
+                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                    acc + 1
+                } else {
+                    acc
+                }
+            });
+
+    // Programs that should successfully compile, include abi and terminate
+    // with some known state. Note that if a non-contract is included
+    // it will be rejected during assertion. Please move it to
+    // `positive_project_names_no_abi` above.
+    let positive_project_names_with_abi = vec![
+        (
+            "should_pass/language/valid_impurity",
+            ProgramState::Revert(0), // false
+        ),
+        (
+            "should_pass/test_contracts/auth_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/balance_test_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/basic_storage",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/context_testing_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/increment_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/storage_access_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/test_fuel_coin_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/nested_struct_args_contract",
+            ProgramState::Revert(0),
+        ),
+    ];
+
+    number_of_tests_run += positive_project_names_with_abi
+        .iter()
+        .fold(0, |acc, (name, res)| {
+            if filter(name) {
+                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
+                // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
+                assert!(crate::e2e_vm_tests::harness::test_json_abi(name).is_ok());
+                acc + 1
+            } else {
+                acc
+            }
+        });
 
     // source code that should _not_ compile
     let negative_project_names = vec![
@@ -341,7 +399,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/abort_control_flow",
         "should_fail/match_expressions_non_exhaustive",
         "should_fail/empty_impl",
+        "should_fail/disallow_turbofish",
         "should_fail/generics_unhelpful_error",
+        "should_fail/generic_shadows_generic",
+        "should_fail/different_contract_caller_types",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -372,10 +433,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/require_contract_deployment/caller_context_test",
         ),
         (
-            "should_pass/test_contracts/contract_abi_impl",
-            "should_pass/require_contract_deployment/contract_call",
-        ),
-        (
             "should_pass/test_contracts/balance_test_contract",
             "should_pass/require_contract_deployment/bal_opcode",
         ),
@@ -383,15 +440,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/test_fuel_coin_contract",
             "should_pass/require_contract_deployment/token_ops_test",
         ),
-        /* Requires IR - TODO:enable when the IR pipeline is enabled by default
-         * https://github.com/FuelLabs/sway/issues/981
         (
             "should_pass/test_contracts/storage_access_contract",
             "should_pass/require_contract_deployment/storage_access_caller",
-        ),*/
+        ),
+        (
+            "should_pass/test_contracts/nested_struct_args_contract",
+            "should_pass/require_contract_deployment/nested_struct_args_caller",
+        ),
     ];
 
-    let total_number_of_tests = positive_project_names.len()
+    let total_number_of_tests = positive_project_names_no_abi.len()
+        + positive_project_names_with_abi.len()
         + negative_project_names.len()
         + contract_and_project_names.len();
 

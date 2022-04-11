@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'is_reference_type'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

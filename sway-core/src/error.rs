@@ -843,6 +843,8 @@ pub enum CompileError {
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
+    GenericShadowsGeneric { name: String, span: Span },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
     StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
@@ -910,6 +912,13 @@ pub enum CompileError {
     MultipleStorageDeclarations { span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
     InvalidVariableName { name: String, span: Span },
+    #[error(
+        "Internal compiler error: Unexpected {decl_type} declaration found.\n\
+        Please file an issue on the repository and include the code that triggered this error."
+    )]
+    UnexpectedDeclaration { decl_type: &'static str, span: Span },
+    #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
+    ContractAddressMustBeKnown { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1103,6 +1112,7 @@ impl CompileError {
             ArrayOutOfBounds { span, .. } => span,
             TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            GenericShadowsGeneric { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             MatchExpressionNonExhaustive { span, .. } => span,
@@ -1125,6 +1135,8 @@ impl CompileError {
             NoDeclaredStorage { span, .. } => span,
             MultipleStorageDeclarations { span, .. } => span,
             InvalidVariableName { span, .. } => span,
+            UnexpectedDeclaration { span, .. } => span,
+            ContractAddressMustBeKnown { span, .. } => span,
         }
     }
 

@@ -5,6 +5,21 @@ use ::address::Address;
 use ::contract_id::ContractId;
 use ::panic::panic;
 use ::tx::*;
+use ::context::call_frames::contract_id;
+
+/// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
+/// This will allow the transfer of coins even if there is no way to retrieve them !!!
+/// Use of this function can lead to irretrievable loss of coins if not used with caution.
+pub fn mint_to_contract(amount: u64, destination: ContractId) {
+    mint(amount);
+    force_transfer(amount, contract_id(), destination);
+}
+
+/// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `recipient`.
+pub fn mint_to_address(amount: u64, recipient: Address) {
+    mint(amount);
+    transfer_to_output(amount, contract_id(), recipient);
+}
 
 /// Mint `amount` coins of the current contract's `asset_id`.
 pub fn mint(amount: u64) {
@@ -20,15 +35,16 @@ pub fn burn(amount: u64) {
     }
 }
 
-/// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `contract_id`.
+/// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn force_transfer(amount: u64, asset_id: ContractId, contract_id: ContractId) {
-    asm(r1: amount, r2: asset_id.value, r3: contract_id.value) {
+pub fn force_transfer(amount: u64, asset_id: ContractId, destination: ContractId) {
+    asm(r1: amount, r2: asset_id.value, r3: destination.value) {
         tr r3 r1 r2;
     }
 }
 
+/// Transfer `amount` coins of tof type `asset_id` and send them to the address `recipient`.
 pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address) {
     const OUTPUT_VARIABLE_TYPE: u8 = 4;
 

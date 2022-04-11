@@ -69,6 +69,7 @@ pub enum Expression {
     },
     StructExpression {
         struct_name: CallPath,
+        type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
     },
@@ -172,11 +173,18 @@ pub enum Expression {
         exp: Box<Expression>,
         span: Span,
     },
-    SizeOfType {
+    BuiltinGetTypeProperty {
+        builtin: BuiltinProperty,
         type_name: TypeInfo,
         type_span: Span,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BuiltinProperty {
+    SizeOfType,
+    IsRefType,
 }
 
 #[derive(Debug, Clone)]
@@ -311,7 +319,7 @@ impl Expression {
             StorageAccess { span, .. } => span,
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
-            SizeOfType { span, .. } => span,
+            BuiltinGetTypeProperty { span, .. } => span,
         })
         .clone()
     }
@@ -592,7 +600,7 @@ impl Expression {
                 }
             }
             Rule::struct_expression => {
-                let mut expr_iter = expr.into_inner();
+                let mut expr_iter = expr.into_inner().peekable();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = check!(
                     CallPath::parse_from_pair(struct_name, config),
@@ -600,6 +608,23 @@ impl Expression {
                     warnings,
                     errors
                 );
+                let type_arguments = match expr_iter.peek() {
+                    Some(pair) if pair.as_rule() == Rule::type_args_with_path => check!(
+                        TypeArgument::parse_arguments_from_pair(
+                            expr_iter
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .nth(1)
+                                .expect("guaranteed by grammar"),
+                            config
+                        ),
+                        vec!(),
+                        warnings,
+                        errors
+                    ),
+                    _ => vec![],
+                };
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::new();
                 let mut var_decls = vec![];
@@ -630,6 +655,7 @@ impl Expression {
 
                 let exp = Expression::StructExpression {
                     struct_name,
+                    type_arguments,
                     fields: fields_buf,
                     span,
                 };
@@ -958,7 +984,12 @@ impl Expression {
                                 ),
                                 is_absolute,
                             },
-                            type_name: Some(type_name),
+                            type_name: Some(check!(
+                                type_name,
+                                TypeInfo::ErrorRecovery,
+                                warnings,
+                                errors
+                            )),
                             type_name_span: Some(type_name_span),
                         };
 
@@ -1247,8 +1278,8 @@ impl Expression {
                 warnings,
                 errors
             ),
-            Rule::size_of_expr => check!(
-                parse_size_of_expr(expr, config),
+            Rule::built_in_expr => check!(
+                parse_built_in_expr(expr, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1420,7 +1451,7 @@ pub(crate) fn parse_array_index(
     )
 }
 
-pub(crate) fn parse_size_of_expr(
+pub(crate) fn parse_built_in_expr(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<ParserLifter<Expression>> {
@@ -1452,10 +1483,12 @@ pub(crate) fn parse_size_of_expr(
                 value: exp,
             }
         }
-        Rule::size_of_type_expr => {
+        // The size_of_type and is_ref_type_expr rules have identical grammar apart from the
+        // keyword.
+        Rule::size_of_type_expr | Rule::is_ref_type_expr => {
             let mut inner_iter = size_of.into_inner();
-            let _keyword = inner_iter.next();
-            let elem = inner_iter.next().expect("guarenteed by grammar");
+            let keyword = inner_iter.next().expect("guaranteed by grammar");
+            let elem = inner_iter.next().expect("guaranteed by grammar");
             let type_span = Span {
                 span: elem.as_span(),
                 path: config.map(|c| c.path()),
@@ -1466,7 +1499,12 @@ pub(crate) fn parse_size_of_expr(
                 warnings,
                 errors
             );
-            let exp = Expression::SizeOfType {
+            let exp = Expression::BuiltinGetTypeProperty {
+                builtin: match keyword.as_str() {
+                    "size_of" => BuiltinProperty::SizeOfType,
+                    "is_reference_type" => BuiltinProperty::IsRefType,
+                    _otherwise => unreachable!("unexpected built in keyword: {keyword}"),
+                },
                 type_name,
                 type_span,
                 span,

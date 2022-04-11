@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     semantic_analysis::ast_node::*,
-    type_engine::{insert_type, IntegerBits},
+    type_engine::{insert_type, AbiName, IntegerBits},
 };
 
 mod method_application;
@@ -66,13 +66,11 @@ impl TypedExpression {
                 .map(|x| x.deterministically_aborts())
                 .unwrap_or(false),
             AbiCast { address, .. } => address.deterministically_aborts(),
-            SizeOf {
-                variant: SizeOfVariant::Val(v),
-            } => v.deterministically_aborts(),
+            SizeOfValue { expr } => expr.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
-            | SizeOf { .. }
+            | TypeProperty { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -119,6 +117,7 @@ impl TypedExpression {
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
+            AbiName(_) => false,
         }
     }
     /// recurse into `self` and get any return statements -- used to validate that all returns
@@ -171,9 +170,11 @@ impl TypedExpression {
             | TypedExpressionVariant::TupleElemAccess { .. }
             | TypedExpressionVariant::EnumInstantiation { .. }
             | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::SizeOf { .. }
+            | TypedExpressionVariant::SizeOfValue { .. }
+            | TypedExpressionVariant::TypeProperty { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
+            | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
@@ -299,11 +300,13 @@ impl TypedExpression {
             ),
             Expression::StructExpression {
                 span,
+                type_arguments,
                 struct_name,
                 fields,
             } => Self::type_check_struct_expression(
                 span,
                 struct_name,
+                type_arguments,
                 fields,
                 namespace,
                 crate_namespace,
@@ -498,11 +501,13 @@ impl TypedExpression {
                 },
                 span,
             ),
-            Expression::SizeOfType {
+            Expression::BuiltinGetTypeProperty {
+                builtin,
                 type_name,
                 type_span,
                 span,
-            } => Self::type_check_size_of_type(
+            } => Self::type_check_get_type_property(
+                builtin,
                 TypeCheckArguments {
                     checkee: (type_name, type_span),
                     namespace,
@@ -517,17 +522,6 @@ impl TypedExpression {
                 },
                 span,
             ),
-            /*
-            a => {
-                let errors = vec![CompileError::Unimplemented(
-                    "Unimplemented type checking for expression",
-                    a.span(),
-                )];
-
-                let exp = error_recovery_expr(a.span());
-                ok(exp, vec![], errors)
-            }
-            */
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -644,6 +638,12 @@ impl TypedExpression {
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
                 expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                span,
+            },
+            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
+                return_type: decl.as_type(),
+                is_constant: IsConstant::Yes,
+                expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                 span,
             },
             Some(a) => {
@@ -1315,6 +1315,7 @@ impl TypedExpression {
     fn type_check_struct_expression(
         span: Span,
         call_path: CallPath,
+        type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         namespace: crate::semantic_analysis::NamespaceRef,
         crate_namespace: NamespaceRef,
@@ -1332,6 +1333,7 @@ impl TypedExpression {
             warnings,
             errors
         );
+
         let decl = match module.clone().get_symbol(&call_path.suffix).value {
             Some(TypedDeclaration::StructDeclaration(decl)) => decl,
             Some(_) => {
@@ -1353,10 +1355,42 @@ impl TypedExpression {
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let mut new_decl = if decl.type_parameters.is_empty() {
-            decl
-        } else {
-            decl.monomorphize(&module)
+        let mut new_decl = match (decl.type_parameters.is_empty(), type_arguments.is_empty()) {
+            (true, true) => decl,
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(join_spans)
+                    .unwrap_or_else(|| call_path.suffix.span().clone());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: call_path.suffix,
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            _ => {
+                let mut type_arguments = type_arguments;
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        namespace.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            type_argument.span.clone(),
+                            true,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
+                check!(
+                    decl.monomorphize(&module, &type_arguments, Some(self_type)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
         };
 
         // match up the names with their type annotations from the declaration
@@ -1855,9 +1889,61 @@ impl TypedExpression {
             warnings,
             errors
         );
-        // make sure the declaration is actually an abi
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: ref expr,
+                ..
+            }) => {
+                let ret_ty = look_up_type_id(expr.return_type);
+                let abi_name = match ret_ty {
+                    TypeInfo::ContractCaller { abi_name, .. } => abi_name,
+                    _ => {
+                        errors.push(CompileError::NotAnAbi {
+                            span: abi_name.span(),
+                            actually_is: abi.friendly_name(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                match abi_name {
+                    // look up the call path and get the declaration it references
+                    AbiName::Known(abi_name) => {
+                        let decl = check!(
+                            namespace.get_call_path(&abi_name),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let abi = match decl {
+                            TypedDeclaration::AbiDeclaration(abi) => abi,
+                            _ => {
+                                errors.push(CompileError::NotAnAbi {
+                                    span: abi_name.span(),
+                                    actually_is: abi.friendly_name(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        };
+                        abi
+                    }
+                    AbiName::Deferred => {
+                        return ok(
+                            TypedExpression {
+                                return_type: insert_type(TypeInfo::ContractCaller {
+                                    abi_name: AbiName::Deferred,
+                                    address: String::new(),
+                                }),
+                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
+                                is_constant: IsConstant::Yes,
+                                span,
+                            },
+                            warnings,
+                            errors,
+                        )
+                    }
+                }
+            }
             a => {
                 errors.push(CompileError::NotAnAbi {
                     span: abi_name.span(),
@@ -1867,7 +1953,7 @@ impl TypedExpression {
             }
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
-            abi_name: abi_name.to_owned_call_path(),
+            abi_name: AbiName::Known(abi_name.clone()),
             address: address_str,
         });
         let mut functions_buf = abi
@@ -2284,8 +2370,8 @@ impl TypedExpression {
             errors
         );
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOf {
-                variant: SizeOfVariant::Val(Box::new(exp)),
+            expression: TypedExpressionVariant::SizeOfValue {
+                expr: Box::new(exp),
             },
             return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
                 IntegerBits::SixtyFour,
@@ -2296,7 +2382,8 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_size_of_type(
+    fn type_check_get_type_property(
+        builtin: BuiltinProperty,
         arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -2314,13 +2401,18 @@ impl TypedExpression {
             warnings,
             errors,
         );
+        let return_type = match builtin {
+            BuiltinProperty::SizeOfType => {
+                crate::type_engine::insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+            }
+            BuiltinProperty::IsRefType => crate::type_engine::insert_type(TypeInfo::Boolean),
+        };
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOf {
-                variant: SizeOfVariant::Type(type_id),
+            expression: TypedExpressionVariant::TypeProperty {
+                property: builtin,
+                type_id,
             },
-            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
+            return_type,
             is_constant: IsConstant::No,
             span,
         };
@@ -2513,7 +2605,7 @@ mod tests {
             file_name: Arc::new("test.sw".into()),
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
-            use_ir: false,
+            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

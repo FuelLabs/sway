@@ -1,11 +1,10 @@
 use super::*;
 use crate::{
     asm_lang::*,
-    parse_tree::{CallPath, Literal},
+    parse_tree::{BuiltinProperty, CallPath, Literal},
     semantic_analysis::{
         ast_node::{
-            SizeOfVariant, TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant,
-            TypedExpressionVariant,
+            TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant,
         },
         TypedExpression,
     },
@@ -340,8 +339,26 @@ pub(crate) fn convert_expression_to_asm(
             namespace,
             register_sequencer,
         ),
-        TypedExpressionVariant::SizeOf { variant } => convert_size_of_expression_to_asm(
-            variant,
+        TypedExpressionVariant::TypeProperty { property, type_id } => match property {
+            BuiltinProperty::SizeOfType => convert_size_of_to_asm(
+                None,
+                type_id,
+                namespace,
+                return_register,
+                register_sequencer,
+                exp.span.clone(),
+            ),
+            BuiltinProperty::IsRefType => convert_is_ref_type_to_asm(
+                type_id,
+                namespace,
+                return_register,
+                register_sequencer,
+                exp.span.clone(),
+            ),
+        },
+        TypedExpressionVariant::SizeOfValue { expr } => convert_size_of_to_asm(
+            Some(expr),
+            &expr.return_type,
             namespace,
             return_register,
             register_sequencer,
@@ -422,8 +439,44 @@ fn convert_literal_to_asm(
     }]
 }
 
-fn convert_size_of_expression_to_asm(
-    variant: &SizeOfVariant,
+fn convert_is_ref_type_to_asm(
+    type_id: &TypeId,
+    namespace: &mut AsmNamespace,
+    return_register: &VirtualRegister,
+    register_sequencer: &mut RegisterSequencer,
+    span: Span,
+) -> CompileResult<Vec<Op>> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    let mut asm_buf = vec![Op::new_comment("is_ref_type".to_string())];
+    let ty = match resolve_type(*type_id, &span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let is_ref_type = match ty.is_copy_type(&span) {
+        Ok(is_copy) => !is_copy,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    let mut ops = convert_literal_to_asm(
+        &Literal::Boolean(is_ref_type),
+        namespace,
+        return_register,
+        register_sequencer,
+        span,
+    );
+    asm_buf.append(&mut ops);
+    ok(asm_buf, warnings, errors)
+}
+
+fn convert_size_of_to_asm(
+    expr: Option<&TypedExpression>,
+    type_id: &TypeId,
     namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
@@ -431,25 +484,17 @@ fn convert_size_of_expression_to_asm(
 ) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![];
-    let type_id = match variant {
-        SizeOfVariant::Val(exp) => {
-            asm_buf.push(Op::new_comment("size_of_val".to_string()));
-            let mut ops = check!(
-                convert_expression_to_asm(exp, namespace, return_register, register_sequencer),
-                vec![],
-                warnings,
-                errors
-            );
-            asm_buf.append(&mut ops);
-            exp.return_type
-        }
-        SizeOfVariant::Type(ty) => {
-            asm_buf.push(Op::new_comment("size_of".to_string()));
-            *ty
-        }
-    };
-    let ty = match resolve_type(type_id, &span) {
+    let mut asm_buf = vec![Op::new_comment("size_of_val".to_string())];
+    if let Some(expr) = expr {
+        let mut ops = check!(
+            convert_expression_to_asm(expr, namespace, return_register, register_sequencer),
+            vec![],
+            warnings,
+            errors
+        );
+        asm_buf.append(&mut ops);
+    }
+    let ty = match resolve_type(*type_id, &span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());

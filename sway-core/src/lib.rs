@@ -310,31 +310,51 @@ pub fn compile_to_ast(
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = check!(
-        parse(input, Some(build_config)),
-        return CompileAstResult::Failure { errors, warnings },
-        warnings,
-        errors
-    );
+
+    let CompileResult {
+        value: parse_tree_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = parse(input, Some(build_config));
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let parse_tree = match parse_tree_result {
+        Some(parse_tree) => parse_tree,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
     let mut dead_code_graph = ControlFlowGraph {
         graph: Graph::new(),
         entry_points: vec![],
         namespace: Default::default(),
     };
 
-    let typed_parse_tree = check!(
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            initial_namespace,
-            initial_namespace,
-            &parse_tree.tree_type,
-            &build_config.clone(),
-            &mut dead_code_graph,
-        ),
-        return CompileAstResult::Failure { errors, warnings },
-        warnings,
-        errors
+    let CompileResult {
+        value: typed_parse_tree_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = TypedParseTree::type_check(
+        parse_tree.tree,
+        initial_namespace,
+        initial_namespace,
+        &parse_tree.tree_type,
+        &build_config.clone(),
+        &mut dead_code_graph,
     );
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let typed_parse_tree = match typed_parse_tree_result {
+        Some(typed_parse_tree) => typed_parse_tree,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
 
     let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
         &typed_parse_tree,
@@ -384,10 +404,10 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        if build_config.use_ir {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
-                        } else {
+                        if build_config.use_orig_asm {
                             compile_ast_to_asm(*parse_tree, build_config)
+                        } else {
+                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
@@ -420,14 +440,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match optimize::compile_ast(ast) {
         Ok(ir) => ir,
-        Err(msg) => {
-            errors.push(CompileError::InternalOwned(
-                msg,
-                span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
-            ));
+        Err(e) => {
+            errors.push(e);
             return err(warnings, errors);
         }
     };

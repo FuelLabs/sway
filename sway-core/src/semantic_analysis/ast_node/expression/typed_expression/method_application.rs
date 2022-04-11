@@ -275,6 +275,7 @@ pub(crate) fn type_check_method_application(
                         self_type,
                         dead_code_graph,
                         opts,
+                        span.clone(),
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -358,6 +359,7 @@ pub(crate) fn type_check_method_application(
                         self_type,
                         dead_code_graph,
                         opts,
+                        span.clone(),
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -402,7 +404,14 @@ fn re_parse_expression(
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
+    span: Span,
 ) -> CompileResult<TypedExpression> {
+    if contract_string.is_empty() {
+        return err(
+            vec![],
+            vec![CompileError::ContractAddressMustBeKnown { span }],
+        );
+    }
     let mut warnings = vec![];
     let mut errors = vec![];
     let span = sway_types::span::Span {

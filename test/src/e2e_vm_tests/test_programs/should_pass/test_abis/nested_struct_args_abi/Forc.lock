@@ -1,0 +1,7 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'nested_struct_args_abi'
+dependencies = ['core']

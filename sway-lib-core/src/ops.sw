@@ -267,6 +267,22 @@ impl Shiftable for u8 {
 
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
+} {
+    fn neq(self, other: Self) -> bool {
+      asm(r1: self.eq(other), r2) {
+        eq r2 r1 zero;
+        r2: bool
+      }
+    }
+}
+
+trait OrdEq: Ord + Eq { } {
+    fn ge(self, other: Self) -> bool {
+      self.gt(other) || self.eq(other)
+    }
+    fn le(self, other: Self) -> bool {
+      self.lt(other) || self.eq(other)
+    }
 }
 
 impl Eq for bool {
@@ -328,40 +344,6 @@ impl Eq for b256 {
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
-} {
-    fn le(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3, r4) {
-            gt r3 r1 r2;
-            not r4 r3;
-
-            r4: bool
-        }
-    }
-    fn ge(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3, r4) {
-            lt r3 r1 r2;
-            not r4 r3;
-
-            r4: bool
-        }
-    }
-    fn neq(self, other: Self) -> bool {
-        // TODO unary operator negation
-
-        // Fix this ugly block which uses assembly rather than
-        // importing and utilizing an eq method
-        let is_equal: bool = asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-
-            r3: bool
-        };
-
-        if is_equal {
-            false
-        } else {
-            true
-        }
-    }
 }
 
 impl Ord for u64 {
@@ -460,3 +442,8 @@ impl u64 {
         }
     }
 }
+
+impl OrdEq for u64 {}
+impl OrdEq for u32 {}
+impl OrdEq for u16 {}
+impl OrdEq for u8  {}

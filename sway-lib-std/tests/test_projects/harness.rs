@@ -5,6 +5,7 @@ mod call_frames;
 mod context;
 mod contract_id_type;
 mod option;
+mod reentrancy;
 mod registers;
 mod result;
 mod token_ops;

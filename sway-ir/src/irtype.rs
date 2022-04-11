@@ -52,7 +52,7 @@ impl Type {
             }
             Type::Union(agg) => {
                 let agg_content = &context.aggregates[agg.0];
-                format!("{{ {} }}", sep_types_str(agg_content, " | "))
+                format!("( {} )", sep_types_str(agg_content, " | "))
             }
             Type::Struct(agg) => {
                 let agg_content = &context.aggregates[agg.0];

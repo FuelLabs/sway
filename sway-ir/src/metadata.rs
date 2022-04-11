@@ -29,25 +29,21 @@ impl MetadataIndex {
     pub fn from_span(context: &mut Context, span: &Span) -> Option<MetadataIndex> {
         // Search for an existing matching path, otherwise insert it.
         span.path.as_ref().map(|path_buf| {
-            let loc_idx = context
-                .metadata
-                .iter()
-                .find_map(|(idx, md)| match md {
-                    Metadatum::FileLocation(file_loc_path_buf, _)
-                        if Arc::ptr_eq(path_buf, file_loc_path_buf) =>
-                    {
-                        Some(MetadataIndex(idx))
-                    }
-                    _otherwise => None,
-                })
-                .unwrap_or_else(|| {
+            let loc_idx = match context.metadata_reverse_map.get(&Arc::as_ptr(path_buf)) {
+                Some(idx) => *idx,
+                None => {
                     // This is assuming that the string in this span represents the entire file
                     // found at `path_buf`.
-                    MetadataIndex(context.metadata.insert(Metadatum::FileLocation(
+                    let new_idx = MetadataIndex(context.metadata.insert(Metadatum::FileLocation(
                         path_buf.clone(),
                         span.span.input().clone(),
-                    )))
-                });
+                    )));
+                    context
+                        .metadata_reverse_map
+                        .insert(Arc::as_ptr(path_buf), new_idx);
+                    new_idx
+                }
+            };
 
             MetadataIndex(context.metadata.insert(Metadatum::Span {
                 loc_idx,

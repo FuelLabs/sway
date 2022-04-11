@@ -3,6 +3,7 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
+use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
@@ -13,12 +14,17 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 pub struct Backend {
     pub client: Client,
     session: Arc<Session>,
+    config: DebugFlags,
 }
 
 impl Backend {
-    pub fn new(client: Client) -> Self {
+    pub fn new(client: Client, config: DebugFlags) -> Self {
         let session = Arc::new(Session::new());
-        Backend { client, session }
+        Backend {
+            client,
+            session,
+            config,
+        }
     }
 
     async fn log_info_message(&self, message: &str) {
@@ -76,6 +82,26 @@ fn capabilities() -> ServerCapabilities {
     }
 }
 
+impl Backend {
+    async fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
+        // and instead show the parsed tokens as warnings.
+        // This is useful for debugging the lsp parser.
+        if self.config.parsed_tokens_as_warnings {
+            if let Some(document) = self.session.documents.get(uri.path()) {
+                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
+                self.client
+                    .publish_diagnostics(uri, diagnostics, None)
+                    .await;
+            }
+        } else if !diagnostics.is_empty() {
+            self.client
+                .publish_diagnostics(uri, diagnostics, None)
+                .await;
+        }
+    }
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
@@ -110,30 +136,21 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        let uri = params.text_document.uri.clone();
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
-
-        if !diagnostics.is_empty() {
-            self.client
-                .publish_diagnostics(params.text_document.uri, diagnostics, None)
-                .await;
-        }
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let _ = capabilities::text_sync::handle_change_file(self.session.clone(), params);
+        let uri = params.text_document.uri.clone();
+        let diagnostics = capabilities::text_sync::handle_change_file(self.session.clone(), params);
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let url = params.text_document.uri.clone();
-        self.client.publish_diagnostics(url, vec![], None).await;
-
-        if let Some(diagnostics) =
-            capabilities::text_sync::handle_save_file(self.session.clone(), &params)
-        {
-            self.client
-                .publish_diagnostics(params.text_document.uri, diagnostics, None)
-                .await;
-        }
+        let uri = params.text_document.uri.clone();
+        let diagnostics = capabilities::text_sync::handle_save_file(self.session.clone(), &params);
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
@@ -337,9 +354,13 @@ fn main() {
         assert_eq!(response, Ok(None));
     }
 
+    fn config() -> DebugFlags {
+        Default::default()
+    }
+
     #[tokio::test]
     async fn initialize() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -347,7 +368,7 @@ fn main() {
 
     #[tokio::test]
     async fn initialized() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -358,7 +379,7 @@ fn main() {
 
     #[tokio::test]
     async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let initialize = initialize_request(&mut service).await;
@@ -374,7 +395,7 @@ fn main() {
 
     #[tokio::test]
     async fn shutdown() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -396,7 +417,7 @@ fn main() {
 
     #[tokio::test]
     async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -411,7 +432,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_open() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -436,7 +457,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_close() {
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
@@ -461,7 +482,7 @@ fn main() {
 
     #[tokio::test]
     async fn did_change() {
-        let (mut service, mut messages) = LspService::new(Backend::new);
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;

@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'self_impl_reassignment'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']
