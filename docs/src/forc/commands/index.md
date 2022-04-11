@@ -8,6 +8,7 @@ Here are a list of commands available to forc:
 - [forc init](./forc_init.md)
 - [forc json-abi](./forc_json-abi.md)
 - [forc parse-bytecode](./forc_parse-bytecode.md)
+- [forc plugins](./forc_plugins.md)
 - [forc run](./forc_run.md)
 - [forc test](./forc_test.md)
 - [forc update](./forc_update.md)

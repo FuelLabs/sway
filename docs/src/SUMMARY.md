@@ -42,6 +42,7 @@
     - [forc init](./forc/commands/forc_init.md)
     - [forc json-abi](./forc/commands/forc_json-abi.md)
     - [forc parse-bytecode](./forc/commands/forc_parse-bytecode.md)
+    - [forc plugins](./forc/commands/forc_plugins.md)
     - [forc run](./forc/commands/forc_run.md)
     - [forc test](./forc/commands/forc_test.md)
     - [forc update](./forc/commands/forc_update.md)
