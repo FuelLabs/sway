@@ -1,3 +1,4 @@
+use crate::checkers;
 use crate::constants;
 
 #[derive(PartialEq)]
@@ -8,6 +9,17 @@ pub enum LineKind {
     Text,
 }
 
+fn get_line_kind(line: &str) -> LineKind {
+    if constants::SUBHEADERS.contains(&line) {
+        LineKind::SubHeader
+    } else if checkers::is_args_line(line) {
+        LineKind::Arg
+    } else if checkers::is_options_line(line) {
+        LineKind::Option
+    } else {
+        LineKind::Text
+    }
+}
 pub fn format_command_doc_name(command: &str) -> String {
     "forc_".to_owned() + command + ".md"
 }
@@ -26,26 +38,6 @@ pub fn format_line(line: &str) -> String {
         LineKind::Arg => format_arg_line(line),
         LineKind::Text => line.to_string(),
     }
-}
-
-fn get_line_kind(line: &str) -> LineKind {
-    if constants::SUBHEADERS.contains(&line) {
-        LineKind::SubHeader
-    } else if is_args_line(line) {
-        LineKind::Arg
-    } else if is_options_line(line) {
-        LineKind::Option
-    } else {
-        LineKind::Text
-    }
-}
-
-fn is_args_line(line: &str) -> bool {
-    line.trim().starts_with('<')
-}
-
-fn is_options_line(line: &str) -> bool {
-    line.trim().starts_with('-') && line.trim().chars().nth(1).unwrap() != ' '
 }
 
 pub fn format_header_line(header_line: &str) -> String {
@@ -129,14 +121,6 @@ fn format_option_line(option_line: &str) -> String {
     "\n".to_owned() + &result
 }
 
-fn is_option(token: &str) -> bool {
-    token.starts_with('-')
-}
-
-fn is_arg(token: &str) -> bool {
-    token.starts_with('<')
-}
-
 fn format_option(option: &str) -> String {
     match option.ends_with(',') {
         true => {
@@ -150,10 +134,7 @@ fn format_option(option: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        format_arg_line, format_header_line, format_option_line, format_subheader_line,
-        is_options_line,
-    };
+    use super::{format_arg_line, format_header_line, format_option_line, format_subheader_line};
 
     #[test]
     fn test_format_header_line() {
@@ -198,16 +179,5 @@ mod tests {
             expected_option_line_2,
             format_option_line(example_option_line_2)
         );
-    }
-
-    #[test]
-    fn test_is_options_line() {
-        let example_option_line_1= "    -s, --silent             Silent mode. Don't output any warnings or errors to the command line";
-        let example_option_line_2 = "    -o <JSON_OUTFILE>        If set, outputs a json file representing the output json abi";
-        let example_option_line_3 = " - counter";
-
-        assert!(is_options_line(example_option_line_1));
-        assert!(is_options_line(example_option_line_2));
-        assert!(!is_options_line(example_option_line_3));
     }
 }
