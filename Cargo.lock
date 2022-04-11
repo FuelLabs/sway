@@ -1089,6 +1089,7 @@ dependencies = [
  "ureq",
  "url",
  "uwuify",
+ "walkdir",
  "whoami",
 ]
 
