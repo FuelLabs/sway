@@ -1,4 +1,4 @@
-use crate::checkers;
+use crate::checkers::{is_arg, is_args_line, is_option, is_options_line};
 use crate::constants;
 
 #[derive(PartialEq)]
@@ -12,9 +12,9 @@ pub enum LineKind {
 fn get_line_kind(line: &str) -> LineKind {
     if constants::SUBHEADERS.contains(&line) {
         LineKind::SubHeader
-    } else if checkers::is_args_line(line) {
+    } else if is_args_line(line) {
         LineKind::Arg
-    } else if checkers::is_options_line(line) {
+    } else if is_options_line(line) {
         LineKind::Option
     } else {
         LineKind::Text
@@ -130,6 +130,20 @@ fn format_option(option: &str) -> String {
         }
         false => "`".to_owned() + option + "` ",
     }
+}
+
+pub fn format_index_line_for_summary(index_line: &str) -> String {
+    let mut formatted_index_line = String::new();
+    let mut pushed = false;
+    for c in index_line.chars() {
+        formatted_index_line.push(c);
+        if c == '.' && !pushed {
+            pushed = true;
+            formatted_index_line.push_str("/forc/commands");
+        }
+    }
+
+    formatted_index_line
 }
 
 #[cfg(test)]

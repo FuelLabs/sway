@@ -11,9 +11,10 @@ mod checkers;
 mod constants;
 mod helpers;
 
+use crate::checkers::{check_index_diffs, check_summary_diffs};
 use crate::helpers::{
     format_command_doc_name, format_header_line, format_index_entry_name,
-    format_index_entry_string, format_line,
+    format_index_entry_string, format_index_line_for_summary, format_line,
 };
 
 #[derive(Parser)]
@@ -64,20 +65,6 @@ fn get_example_for_command(command: &str) -> &str {
     }
 }
 
-fn format_index_line_for_summary(index_line: &str) -> String {
-    let mut formatted_index_line = String::new();
-    let mut pushed = false;
-    for c in index_line.chars() {
-        formatted_index_line.push(c);
-        if c == '.' && !pushed {
-            pushed = true;
-            formatted_index_line.push_str("/forc/commands");
-        }
-    }
-
-    formatted_index_line
-}
-
 fn write_new_summary_contents(
     existing_summary_contents: String,
     new_index_contents: String,
@@ -100,37 +87,6 @@ fn write_new_summary_contents(
         }
     }
     new_summary_contents
-}
-
-fn check_summary_diffs(
-    existing_summary_contents: String,
-    new_summary_contents: String,
-) -> Result<()> {
-    if existing_summary_contents == new_summary_contents {
-        println!("SUMMARY.md ok.");
-    } else {
-        return Err(anyhow!(
-            "SUMMARY.md inconsistent - {}",
-            constants::RUN_WRITE_DOCS_MESSAGE
-        ));
-    }
-
-    Ok(())
-}
-
-fn check_index_diffs(mut index_file: File, new_index_contents: String) -> Result<()> {
-    let mut existing_index_contents = String::new();
-    index_file.read_to_string(&mut existing_index_contents)?;
-    if existing_index_contents == new_index_contents {
-        println!("index.md ok.");
-    } else {
-        return Err(anyhow!(
-            "index.md inconsistent - {}",
-            constants::RUN_WRITE_DOCS_MESSAGE
-        ));
-    }
-
-    Ok(())
 }
 
 fn write_docs(command: WriteDocsCommand) -> Result<()> {
