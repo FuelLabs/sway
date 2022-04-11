@@ -125,6 +125,7 @@ impl CodeBuilder {
 
                         '[' => {
                             if !code_line.is_collection() {
+                                code_line.append_with_whitespace("[");
                                 code_line.become_collection();
                             }
                         }

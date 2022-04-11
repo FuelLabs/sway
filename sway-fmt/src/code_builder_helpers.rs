@@ -177,6 +177,7 @@ pub fn handle_collection_case(
             code_line.push_char(next_char);
         } else {
             code_line.push_char(']');
+            code_line.become_default();
         }
     }
 }
