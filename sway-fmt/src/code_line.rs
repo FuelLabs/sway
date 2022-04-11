@@ -46,6 +46,14 @@ impl CodeLine {
         self.code_type == CodeType::String
     }
 
+    pub fn is_collection(&self) -> bool {
+        self.code_type == CodeType::Collection
+    }
+
+    pub fn become_collection(&mut self) {
+        self.code_type = CodeType::Collection
+    }
+
     pub fn is_multiline_comment(&self) -> bool {
         self.code_type == CodeType::MultilineComment
     }
@@ -122,4 +130,5 @@ pub enum CodeType {
     String,
     Default,
     MultilineComment,
+    Collection,
 }
