@@ -1,7 +1,5 @@
 contract;
 
-use std::contract_id::ContractId;
-
 enum FizzBuzzResult {
     Fizz: (),
     Buzz: (),
@@ -10,11 +8,11 @@ enum FizzBuzzResult {
 }
 
 abi FizzBuzz {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -> FizzBuzzResult;
+    fn fizzbuzz(input: u64) -> FizzBuzzResult;
 }
 
 impl FizzBuzz for Contract {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -> FizzBuzzResult {
+    fn fizzbuzz(input: u64) -> FizzBuzzResult {
         if input % 15 == 0 {
             FizzBuzzResult::FizzBuzz
         } else if input % 3 == 0 {
