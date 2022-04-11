@@ -17,7 +17,7 @@ cargo install forc
 
 ## Usage
 
-You can run the script in `--dry-run` mode for it tell you if there were changes within commands that were not updated, without writing any files:
+You can run the script in `--dry-run` mode for it to tell you if there were changes within commands that were not updated, without writing any files:
 
 ```rust
 cargo run --bin forc-documenter write-docs --dry-run
