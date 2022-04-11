@@ -15,12 +15,16 @@ use crate::semantic_analysis::{
 use sway_types::span::Span;
 
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     sync::Arc,
 };
 
 type ModuleName = String;
 type TraitName = CallPath;
+type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
+type ModuleMap = im::OrdMap<ModuleName, Namespace>;
+type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
+type UseAliases = im::HashMap<String, Ident>;
 
 /// A namespace represents all items that exist either within some lexical scope via declaration or
 /// importing.
@@ -31,16 +35,16 @@ pub struct Namespace {
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
     // order.
-    symbols: BTreeMap<Ident, TypedDeclaration>,
+    symbols: SymbolMap,
     implemented_traits: TraitMap,
     // Any other modules within this scope, where a module is a namespace associated with an identifier.
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
-    modules: BTreeMap<ModuleName, Namespace>,
-    use_synonyms: HashMap<Ident, Vec<Ident>>,
+    modules: ModuleMap,
+    use_synonyms: UseSynonyms,
     /// Represents an alternative name for a symbol.
-    use_aliases: HashMap<String, Ident>,
+    use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     declared_storage: Option<TypedStorageDeclaration>,
 }
@@ -836,34 +840,34 @@ impl Namespace {
     }
 }
 
+// This cannot be a HashMap because of how TypeInfo's are handled.
+//
+// In Rust, in general, a custom type should uphold the invariant
+// that PartialEq and Hash produce consistent results. i.e. for
+// two objects, their hash value is equal if and only if they are
+// equal under the PartialEq trait.
+//
+// For TypeInfo, this means that if you have:
+//
+// ```ignore
+// 1: u64
+// 2: u64
+// 3: Ref(1)
+// 4: Ref(2)
+// ```
+//
+// 1, 2, 3, 4 are equal under PartialEq and their hashes are the same
+// value.
+//
+// However, we need this structure to be able to maintain the
+// difference between 3 and 4, as in practice, 1 and 2 might not yet
+// be resolved.
+type TraitMapInner = im::Vector<((TraitName, TypeInfo), TraitMethods)>;
+type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
-    // This cannot be a HashMap because of how TypeInfo's are handled.
-    //
-    // In Rust, in general, a custom type should uphold the invariant
-    // that PartialEq and Hash produce consistent results. i.e. for
-    // two objects, their hash value is equal if and only if they are
-    // equal under the PartialEq trait.
-    //
-    // For TypeInfo, this means that if you have:
-    //
-    // ```ignore
-    // 1: u64
-    // 2: u64
-    // 3: Ref(1)
-    // 4: Ref(2)
-    // ```
-    //
-    // 1, 2, 3, 4 are equal under PartialEq and their hashes are the same
-    // value.
-    //
-    // However, we need this structure to be able to maintain the
-    // difference between 3 and 4, as in practice, 1 and 2 might not yet
-    // be resolved.
-    trait_map: Vec<(
-        (TraitName, TypeInfo),
-        HashMap<String, TypedFunctionDeclaration>,
-    )>,
+    trait_map: TraitMapInner,
 }
 
 impl TraitMap {
@@ -875,13 +879,13 @@ impl TraitMap {
     ) -> CompileResult<()> {
         let warnings = vec![];
         let errors = vec![];
-        let mut methods_map = HashMap::new();
+        let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
             let method_name = method.name.as_str().to_string();
             methods_map.insert(method_name, method);
         }
         self.trait_map
-            .push(((trait_name, type_implementing_for), methods_map));
+            .push_back(((trait_name, type_implementing_for), methods_map));
         ok((), warnings, errors)
     }
 
