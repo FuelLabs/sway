@@ -2,9 +2,8 @@ use super::*;
 
 use crate::{
     build_config::BuildConfig,
-    parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
-    Ident, Rule, TypeArgument, TypeParameter,
+    CallPath, Ident, Rule, TypeArgument, TypeParameter,
 };
 
 use sway_types::span::Span;
@@ -13,6 +12,22 @@ use derivative::Derivative;
 use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub enum AbiName {
+    Deferred,
+    Known(CallPath),
+}
+
+impl std::fmt::Display for AbiName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            &(match self {
+                AbiName::Deferred => "for unspecified ABI".to_string(),
+                AbiName::Known(cp) => cp.to_string(),
+            }),
+        )
+    }
+}
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
@@ -40,12 +55,12 @@ pub enum TypeInfo {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: OwnedCallPath,
+        abi_name: AbiName,
         // this is raw source code to be evaluated later.
+        // TODO(static span): we can just use `TypedExpression` here or something more elegant
+        // `TypedExpression` requires implementing a lot of `Hash` all over the place, not the
+        // best...
         address: String,
-        // TODO(static span): the above String should be a TypedExpression
-        //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        //        address: Box<TypedExpression>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -273,7 +288,12 @@ impl TypeInfo {
                 type_info
             }
             Rule::ident => {
-                let type_info = TypeInfo::pair_as_str_to_type_info(input, config);
+                let type_info = check!(
+                    TypeInfo::pair_as_str_to_type_info(input, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 match iter.next() {
                     Some(types) => match type_info {
                         TypeInfo::Custom { name, .. } => {
@@ -293,6 +313,12 @@ impl TypeInfo {
                     None => type_info,
                 }
             }
+            Rule::contract_caller_type => check!(
+                parse_contract_caller_type(input, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             Rule::array_type => {
                 let mut array_inner_iter = input.into_inner();
                 let elem_type_info = match array_inner_iter.next() {
@@ -386,10 +412,15 @@ impl TypeInfo {
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let warnings = vec![];
+        let mut warnings = vec![];
         let mut errors = vec![];
         let type_info = match input.as_rule() {
-            Rule::type_param => Self::pair_as_str_to_type_info(input, config),
+            Rule::type_param => check!(
+                Self::pair_as_str_to_type_info(input, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             _ => {
                 let span = Span {
                     span: input.as_span(),
@@ -405,27 +436,36 @@ impl TypeInfo {
         ok(type_info, warnings, errors)
     }
 
-    pub fn pair_as_str_to_type_info(input: Pair<Rule>, config: Option<&BuildConfig>) -> Self {
+    pub fn pair_as_str_to_type_info(
+        input: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<Self> {
+        let warnings = vec![];
+        let errors = vec![];
         let span = Span {
             span: input.as_span(),
             path: config.map(|config| config.dir_of_code.clone()),
         };
-        match input.as_str().trim() {
-            "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-            "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-            "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-            "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            "bool" => TypeInfo::Boolean,
-            "unit" => TypeInfo::Tuple(Vec::new()),
-            "byte" => TypeInfo::Byte,
-            "b256" => TypeInfo::B256,
-            "Self" | "self" => TypeInfo::SelfType,
-            "Contract" => TypeInfo::Contract,
-            _other => TypeInfo::Custom {
-                name: Ident::new(span),
-                type_arguments: vec![],
+        ok(
+            match input.as_str().trim() {
+                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                "bool" => TypeInfo::Boolean,
+                "unit" => TypeInfo::Tuple(Vec::new()),
+                "byte" => TypeInfo::Byte,
+                "b256" => TypeInfo::B256,
+                "Self" | "self" => TypeInfo::SelfType,
+                "Contract" => TypeInfo::Contract,
+                _other => TypeInfo::Custom {
+                    name: Ident::new(span),
+                    type_arguments: vec![],
+                },
             },
-        }
+            warnings,
+            errors,
+        )
     }
 
     pub(crate) fn friendly_type_str(&self) -> String {
@@ -470,7 +510,7 @@ impl TypeInfo {
                 fields.iter().map(|field| field.r#type),
             ),
             ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name.suffix)
+                format!("contract caller {}", abi_name)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
             Storage { .. } => "contract storage".into(),
@@ -513,7 +553,7 @@ impl TypeInfo {
                 format!("struct {}", name)
             }
             ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name.suffix)
+                format!("contract caller {}", abi_name)
             }
             Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
@@ -896,5 +936,41 @@ fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) ->
             .map(|x| x.friendly_type_str())
             .collect::<Vec<_>>()
             .join(", ")
+    )
+}
+
+fn parse_contract_caller_type(
+    raw: Pair<Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<TypeInfo> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let abi_path = match raw.into_inner().next() {
+        Some(x) => x,
+        None => {
+            return ok(
+                TypeInfo::ContractCaller {
+                    address: Default::default(),
+                    abi_name: AbiName::Deferred,
+                },
+                warnings,
+                errors,
+            )
+        }
+    };
+    let abi_path = check!(
+        CallPath::parse_from_pair(abi_path, config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ok(
+        TypeInfo::ContractCaller {
+            address: Default::default(),
+            abi_name: AbiName::Known(abi_path),
+        },
+        warnings,
+        errors,
     )
 }

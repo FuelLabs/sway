@@ -190,9 +190,6 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
         errors.iter().for_each(format_err);
     }
 
-    warnings.iter().for_each(format_warning);
-    errors.iter().for_each(format_err);
-
     println_red_err(&format!(
         "  Aborting due to {} {}.",
         e_len,

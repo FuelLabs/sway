@@ -14,9 +14,8 @@ use crate::{
     },
     type_engine::{resolve_type, TypeInfo},
 };
-use sway_types::{ident::Ident, span::Span};
-
 use petgraph::prelude::NodeIndex;
+use sway_types::{ident::Ident, span::Span};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(ast: &TypedParseTree) -> Self {

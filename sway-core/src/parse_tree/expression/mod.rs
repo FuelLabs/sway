@@ -984,7 +984,12 @@ impl Expression {
                                 ),
                                 is_absolute,
                             },
-                            type_name: Some(type_name),
+                            type_name: Some(check!(
+                                type_name,
+                                TypeInfo::ErrorRecovery,
+                                warnings,
+                                errors
+                            )),
                             type_name_span: Some(type_name_span),
                         };
 
