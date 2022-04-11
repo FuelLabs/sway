@@ -141,8 +141,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::WriteDocs(_command) => {
-            let WriteDocsCommand { dry_run } = _command;
+        Commands::WriteDocs(command) => {
+            let WriteDocsCommand { dry_run } = command;
 
             let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
             let summary_file_path = get_sway_path().join("docs/src/SUMMARY.md");
