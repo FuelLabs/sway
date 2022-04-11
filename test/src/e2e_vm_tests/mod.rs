@@ -465,8 +465,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             1, // true
         ),
         (
-            "should_pass/test_contracts/nested_struct_args_contract",
-            "should_pass/require_contract_deployment/nested_struct_args_caller",
+            (
+                "should_pass/test_contracts/nested_struct_args_contract",
+                "should_pass/require_contract_deployment/nested_struct_args_caller",
+            ),
+            1,
         ),
     ];
 
