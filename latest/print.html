@@ -438,24 +438,25 @@ Bytecode size is 28 bytes.
 <p>The following is a simple example of a contract which implements a counter. Both the <code>initialize()</code> and <code>increment()</code> functions return the currently set value.</p>
 <pre><code class="language-sway">contract;
 
-use std::storage::{get, store};
-
-const KEY = 0x0000000000000000000000000000000000000000000000000000000000000000;
-
-abi Incrementor {
-    fn initialize(initial_value: u64) -&gt; u64;
-    fn increment(initial_value: u64) -&gt; u64;
+abi TestContract {
+    fn initialize_counter(value: u64) -&gt; u64;
+    fn increment_counter(amount: u64) -&gt; u64;
 }
 
-impl Incrementor for Contract {
-    fn initialize(initial_value: u64) -&gt; u64 {
-        store(KEY, initial_value);
-        initial_value
+storage {
+    counter: u64
+}
+
+impl TestContract for Contract {
+    fn initialize_counter(value: u64) -&gt; u64 {
+        storage.counter = value;
+        value
     }
-    fn increment(increment_by: u64) -&gt; u64 {
-        let new_val = get::&lt;u64&gt;(KEY) + increment_by;
-        store(KEY, new_val);
-        new_val
+
+    fn increment_counter(amount: u64) -&gt; u64 {
+        let incremented = storage.counter + amount;
+        storage.counter = incremented;
+        incremented
     }
 }
 </code></pre>
@@ -463,11 +464,15 @@ impl Incrementor for Contract {
 <p>The following is a simple example of a subcurrency which implements a <code>mint</code> and <code>send</code> function for a token. This example does not use Fuel's native asset system (see: <a href="examples/../blockchain-development/native_assets.html">Native Assets</a>).</p>
 <pre><code class="language-sway">contract;
 
-use std::chain::*;
-use std::hash::*;
-use std::panic::panic;
-use std::storage::*;
-use std::address::Address;
+use std::{
+    address::Address, 
+    assert::assert, 
+    chain::auth::{AuthError, Sender, msg_sender}, 
+    hash::*, 
+    panic::panic, 
+    result::*, 
+    storage::{get, store}
+};
 
 ////////////////////////////////////////
 // Event declarations
@@ -498,7 +503,7 @@ abi Token {
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(sender: Address, receiver: Address, amount: u64);
+    fn send(receiver: Address, amount: u64);
 }
 
 ////////////////////////////////////////
@@ -513,8 +518,7 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 ////////////////////////////////////////
 
 // Contract storage persists across transactions.
-// Note: Contract storage variables are not implemented yet.
-
+// Note: Contract storage mappings are not implemented yet.
 const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 ////////////////////////////////////////
@@ -524,32 +528,37 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
-        // Note: authentication is not yet implemented, for now just trust params
-        // See https://github.com/FuelLabs/sway/issues/195
-        if receiver.into() == MINTER {
-            let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
-
-            let mut receiver_amount = get::&lt;u64&gt;(storage_slot);
-            receiver_amount = receiver_amount + amount;
-            store(storage_slot, receiver_amount);
+        let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
+        let sender = if let Sender::Address(addr) = sender.unwrap() {
+            assert(addr.into() == MINTER);
         } else {
-            // Revert with error `69`, chosen arbitrarily
-            panic(69);
-        }
+            panic(0);
+        };
+
+        // Increase the balance of receiver
+        let storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
+        let mut receiver_amount = get::&lt;u64&gt;(storage_slot);
+        store(storage_slot, receiver_amount + amount);
     }
 
-    fn send(sender: Address, receiver: Address, amount: u64) {
+    fn send(receiver: Address, amount: u64) {
+        let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
+        let sender = if let Sender::Address(addr) = sender.unwrap() {
+            addr
+        } else {
+            panic(0);
+        };
+
+        // Reduce the balance of sender
         let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender.into(), HashMethod::Sha256);
-
         let mut sender_amount = get::&lt;u64&gt;(sender_storage_slot);
-        sender_amount = sender_amount - amount;
-        store(sender_storage_slot, sender_amount);
+        assert(sender_amount &gt; amount);
+        store(sender_storage_slot, sender_amount - amount);
 
+        // Increase the balance of receiver
         let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
-
         let mut receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
-        receiver_amount = receiver_amount + amount;
-        store(receiver_storage_slot, receiver_amount);
+        store(receiver_storage_slot, receiver_amount + amount);
     }
 }
 </code></pre>
@@ -559,8 +568,6 @@ and receive back its fizzbuzzability as an enum. Note that the deserialization s
 so the caller knows what to do with the bytes.</p>
 <pre><code class="language-sway">contract;
 
-use std::contract_id::ContractId;
-
 enum FizzBuzzResult {
     Fizz: (),
     Buzz: (),
@@ -569,11 +576,11 @@ enum FizzBuzzResult {
 }
 
 abi FizzBuzz {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -&gt; FizzBuzzResult;
+    fn fizzbuzz(input: u64) -&gt; FizzBuzzResult;
 }
 
 impl FizzBuzz for Contract {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -&gt; FizzBuzzResult {
+    fn fizzbuzz(input: u64) -&gt; FizzBuzzResult {
         if input % 15 == 0 {
             FizzBuzzResult::FizzBuzz
         } else if input % 3 == 0 {
@@ -588,22 +595,25 @@ impl FizzBuzz for Contract {
 </code></pre>
 <h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
 <p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
-<pre><code class="language-sway">// NOTE: Storage is a work in progress (see
-// https://github.com/FuelLabs/sway/pull/646), but once it is implemented,
-// declaring storage should look like this.
+<pre><code class="language-sway">contract;
 
-contract;
-
-use std::*;
-use std::address::Address;
-use std::assert::assert;
+use std::{
+    address::Address, 
+    assert::assert, 
+    chain::auth::{AuthError, Sender, msg_sender}, 
+    constants::NATIVE_ASSET_ID, 
+    context::{call_frames::msg_asset_id, msg_amount}, 
+    contract_id::ContractId, 
+    panic::panic, 
+    result::*, 
+    token::transfer_to_output
+};
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-const NATIVE_ASSET_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
-// storage {
-//     balance: u64,
-// }
+storage {
+    balance: u64,
+}
 
 abi Wallet {
     fn receive_funds();
@@ -612,17 +622,23 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        // if asset_id.into() == NATIVE_ASSET_ID {
-        //     let balance = storage.balance.write();
-        //     deref balance = balance + coins_to_forward;
-        // };
+        if (msg_asset_id()).into() == NATIVE_ASSET_ID {
+            storage.balance = storage.balance + msg_amount();
+        };
     }
 
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // assert(sender().into() == OWNER_ADDRESS);
-        // assert(storage.balance &gt; req.amount_to_send);
-        // storage.balance = storage.balance - req.amount_to_send;
-        // transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
+        let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
+        if let Sender::Address(addr) = sender.unwrap() {
+            assert(addr.into() == OWNER_ADDRESS);
+        } else {
+            panic(0);
+        };
+
+        let current_balance = storage.balance;
+        assert(current_balance &gt; amount_to_send);
+        storage.balance = current_balance - amount_to_send;
+        transfer_to_output(amount_to_send, ~ContractId::from(NATIVE_ASSET_ID), recipient_address);
     }
 }
 </code></pre>
@@ -1407,27 +1423,25 @@ $ tree .
 <p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
 <pre><code class="language-sway">contract;
 
-use std::constants::*;
-use std::storage::*;
-
 abi TestContract {
     fn initialize_counter(value: u64) -&gt; u64;
     fn increment_counter(amount: u64) -&gt; u64;
 }
 
-const SLOT = 0x0000000000000000000000000000000000000000000000000000000000000000;
+storage {
+    counter: u64
+}
 
 impl TestContract for Contract {
     fn initialize_counter(value: u64) -&gt; u64 {
-        store(SLOT, value);
+        storage.counter = value;
         value
     }
 
     fn increment_counter(amount: u64) -&gt; u64 {
-        let storedVal: u64 = get(SLOT);
-        let value = storedVal + amount;
-        store(SLOT, value);
-        value
+        let incremented = storage.counter + amount;
+        storage.counter = incremented;
+        incremented
     }
 }
 </code></pre>

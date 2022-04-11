@@ -173,8 +173,6 @@ and receive back its fizzbuzzability as an enum. Note that the deserialization s
 so the caller knows what to do with the bytes.</p>
 <pre><code class="language-sway">contract;
 
-use std::contract_id::ContractId;
-
 enum FizzBuzzResult {
     Fizz: (),
     Buzz: (),
@@ -183,11 +181,11 @@ enum FizzBuzzResult {
 }
 
 abi FizzBuzz {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -&gt; FizzBuzzResult;
+    fn fizzbuzz(input: u64) -&gt; FizzBuzzResult;
 }
 
 impl FizzBuzz for Contract {
-    fn fizzbuzz(gas: u64, coins: u64, asset_id: ContractId, input: u64) -&gt; FizzBuzzResult {
+    fn fizzbuzz(input: u64) -&gt; FizzBuzzResult {
         if input % 15 == 0 {
             FizzBuzzResult::FizzBuzz
         } else if input % 3 == 0 {
