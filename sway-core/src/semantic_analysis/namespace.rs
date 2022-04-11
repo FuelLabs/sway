@@ -474,7 +474,7 @@ impl Namespace {
             .use_aliases
             .get(&symbol.as_str().to_string())
             .unwrap_or(symbol);
-        self.get_name_from_path(&path, &true_symbol)
+        self.get_name_from_path(path, true_symbol)
     }
 
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
@@ -793,7 +793,7 @@ impl Namespace {
                 };
                 impls_to_insert.append(&mut res);
                 // no matter what, import it this way though.
-                match alias.clone() {
+                match alias {
                     Some(alias) => {
                         if self.use_synonyms.contains_key(&alias) {
                             errors.push(CompileError::ShadowsOtherSymbol {
