@@ -224,15 +224,6 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Commands::WriteDocs(command) => write_docs(command)?,
-    }
-    Ok(())
-}
-
 fn generate_doc_output(subcommand: &str) -> Result<String> {
     let mut result = String::new();
 
@@ -266,4 +257,12 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         }
     }
     Ok(result)
+}
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::WriteDocs(command) => write_docs(command)?,
+    }
+    Ok(())
 }
