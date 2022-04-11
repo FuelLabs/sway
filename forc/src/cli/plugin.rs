@@ -60,3 +60,23 @@ fn is_executable(path: &Path) -> bool {
 fn is_executable(path: &Path) -> bool {
     path.is_file()
 }
+
+/// Whether or not the given path points to a valid forc plugin.
+fn is_plugin(path: &Path) -> bool {
+    if let Some(stem) = path.file_name().and_then(|os_str| os_str.to_str()) {
+        if stem.starts_with("forc-") && is_executable(path) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Find all forc plugins available via `PATH`.
+pub(crate) fn find_all() -> impl Iterator<Item = PathBuf> {
+    search_directories()
+        .into_iter()
+        .flat_map(walkdir::WalkDir::new)
+        .filter_map(Result::ok)
+        .map(|entry| entry.path().to_path_buf())
+        .filter(|p| is_plugin(p))
+}
