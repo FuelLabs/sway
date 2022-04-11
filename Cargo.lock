@@ -3266,7 +3266,6 @@ dependencies = [
  "fuel-pest_derive",
  "fuel-vm",
  "fuels-types",
- "generational-arena",
  "hex",
  "im",
  "itertools",
