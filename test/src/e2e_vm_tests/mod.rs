@@ -414,39 +414,62 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     });
 
     // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
-    // TODO validate that call output is correct
     let contract_and_project_names = &[
         (
-            "should_pass/test_contracts/basic_storage",
-            "should_pass/require_contract_deployment/call_basic_storage",
+            (
+                "should_pass/test_contracts/basic_storage",
+                "should_pass/require_contract_deployment/call_basic_storage",
+            ),
+            4242,
         ),
         (
-            "should_pass/test_contracts/increment_contract",
-            "should_pass/require_contract_deployment/call_increment_contract",
+            (
+                "should_pass/test_contracts/increment_contract",
+                "should_pass/require_contract_deployment/call_increment_contract",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/auth_testing_contract",
-            "should_pass/require_contract_deployment/caller_auth_test",
+            (
+                "should_pass/test_contracts/auth_testing_contract",
+                "should_pass/require_contract_deployment/caller_auth_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/context_testing_contract",
-            "should_pass/require_contract_deployment/caller_context_test",
+            (
+                "should_pass/test_contracts/context_testing_contract",
+                "should_pass/require_contract_deployment/caller_context_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/balance_test_contract",
-            "should_pass/require_contract_deployment/bal_opcode",
+            (
+                "should_pass/test_contracts/balance_test_contract",
+                "should_pass/require_contract_deployment/bal_opcode",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/test_fuel_coin_contract",
-            "should_pass/require_contract_deployment/token_ops_test",
+            (
+                "should_pass/test_contracts/test_fuel_coin_contract",
+                "should_pass/require_contract_deployment/token_ops_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/storage_access_contract",
-            "should_pass/require_contract_deployment/storage_access_caller",
+            (
+                "should_pass/test_contracts/storage_access_contract",
+                "should_pass/require_contract_deployment/storage_access_caller",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/nested_struct_args_contract",
-            "should_pass/require_contract_deployment/nested_struct_args_caller",
+            (
+                "should_pass/test_contracts/nested_struct_args_contract",
+                "should_pass/require_contract_deployment/nested_struct_args_caller",
+            ),
+            1,
         ),
     ];
 
@@ -456,11 +479,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         + contract_and_project_names.len();
 
     // Filter them first.
-    let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
+    let (contracts_and_projects, vals): (Vec<_>, Vec<_>) = contract_and_project_names
         .iter()
-        .filter(|names| filter(names.1))
+        .filter(|names| filter(names.0 .1))
         .cloned()
         .unzip();
+
+    let (contracts, projects): (Vec<_>, Vec<_>) = contracts_and_projects.iter().cloned().unzip();
 
     // Deploy and then test.
     number_of_tests_run += projects.len();
@@ -469,8 +494,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         let contract_id = harness::deploy_contract(name);
         contract_ids.push(contract_id);
     }
-    for name in projects {
-        harness::runs_on_node(name, &contract_ids);
+
+    for (name, val) in projects.iter().zip(vals.iter()) {
+        let result = harness::runs_on_node(name, &contract_ids);
+        assert!(result.iter().all(|r| !matches!(
+            r,
+            fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+        )));
+        assert!(
+            result.len() >= 2
+                && matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. })
+                && result[result.len() - 2].val().unwrap() == *val
+        );
     }
 
     if number_of_tests_run == 0 {
