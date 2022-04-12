@@ -6,6 +6,60 @@ Put in conventional programming terms, contract storage is like saving data to a
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
+## Storage By-Hand
+
+Outside of the newer experimental `storage` syntax which is on the way. Developers can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard (`std`) library.
+
+With this approach you will have to design the internal key and value design manually.
+
+An example is as follows:
+
+```sway
+contract;
+
+use std::{
+    storage::{get, store}
+};
+
+abi StorageExample {
+    fn store_something(amount: u64);
+    fn get_something() -> u64;
+}
+
+const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+impl StorageExample for Contract {
+    fn store_something(amount: u64) {
+        store(STORAGE_KEY, amount);
+    }
+
+    fn get_something() -> u64 {
+        let value = get::<u64>(STORAGE_KEY);
+        value
+    }
+}
+```
+
+If your looking to store b256 values by-hand, you will likely need the methods below as a temporary work around. 
+
+As the new `storage` syntax is stabalized, these can be replace by a more standardized approach.
+
+```sway
+fn store_b256(key: b256, value: b256) {
+    asm(r1: key, r2: value) {
+        swwq r1 r2;
+    };
+}
+
+fn get_b256(key: b256) -> b256 {
+    asm(r1: key, r2) {
+        srwq r2 r1;
+        r2: T
+    }
+}
+```
+
+
 <!--
 ## Syntax
 
