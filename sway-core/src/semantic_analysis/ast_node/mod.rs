@@ -413,16 +413,6 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             )
-                            /*let trait_decl =
-                                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                                    name: name.clone(),
-                                    interface_surface,
-                                    methods,
-                                    supertraits,
-                                    visibility,
-                                });
-                            namespace.insert(name, trait_decl.clone());
-                            trait_decl*/
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
@@ -1094,6 +1084,8 @@ fn reassignment(
     }
 }
 
+/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
+/// which is meant to be the namespace of the subtrait in question
 fn handle_supertraits(
     supertraits: &[Supertrait],
     trait_namespace: NamespaceRef,
@@ -1186,6 +1178,7 @@ fn type_check_trait_decl(
 
     let trait_namespace = create_new_scope(namespace);
 
+    // Recursively handle supertraits: make their interfaces and methods available to this trait
     check!(
         handle_supertraits(&trait_decl.supertraits, trait_namespace, namespace),
         return err(warnings, errors),
