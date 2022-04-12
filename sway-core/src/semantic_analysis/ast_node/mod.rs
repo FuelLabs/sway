@@ -420,6 +420,7 @@ impl TypedAstNode {
                                     Some(TypedDeclaration::TraitDeclaration(
                                         TypedTraitDeclaration {
                                             ref interface_surface,
+                                            ref methods,
                                             ..
                                         },
                                     )) => {
@@ -432,10 +433,18 @@ impl TypedAstNode {
                                                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                                                 .collect(),
                                         );
-                                        // TODO: use `_methods` to insert dummy funcs for those
-                                        // methods into the namespace here
-                                        // will need to implement something for converting
-                                        // non-type-checked functions into dummy functions
+
+                                        // insert dummy versions of the methods of all of the supertraits
+                                        trait_namespace.insert_trait_implementation(
+                                            supertrait.name.clone(),
+                                            TypeInfo::SelfType,
+                                            check!(
+                                                convert_methods_to_dummy_funcs(methods, namespace),
+                                                return err(warnings, errors),
+                                                warnings,
+                                                errors
+                                            ),
+                                        );
                                     }
                                     Some(TypedDeclaration::AbiDeclaration(_)) => {
                                         errors.push(CompileError::AbiAsSupertrait {
@@ -1155,6 +1164,75 @@ fn reassignment(
         })
         .map(TypedDeclaration::StorageReassignment),
     }
+}
+
+fn convert_methods_to_dummy_funcs(
+    methods: &[FunctionDeclaration],
+    namespace: crate::semantic_analysis::NamespaceRef,
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let dummy_funcs = methods
+        .into_iter()
+        .map(
+            |FunctionDeclaration {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+                 ..
+             }| TypedFunctionDeclaration {
+                purity: Default::default(),
+                name: name.clone(),
+                body: TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: name.span().clone(),
+                },
+                parameters: parameters
+                    .into_iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             type_id,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name: name.clone(),
+                            r#type: check!(
+                                namespace.resolve_type_with_self(
+                                    look_up_type_id(*type_id),
+                                    crate::type_engine::insert_type(TypeInfo::SelfType),
+                                    type_span.clone(),
+                                    true
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            ),
+                            type_span: type_span.clone(),
+                        },
+                    )
+                    .collect(),
+                span: name.span().clone(),
+                return_type: check!(
+                    namespace.resolve_type_with_self(
+                        return_type.clone(),
+                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                        return_type_span.clone(),
+                        true
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                ),
+                return_type_span: return_type_span.clone(),
+                visibility: Visibility::Public,
+                type_parameters: vec![],
+                is_contract_call: false,
+            },
+        )
+        .collect::<Vec<_>>();
+
+    ok(dummy_funcs, warnings, errors)
 }
 
 fn type_check_interface_surface(
