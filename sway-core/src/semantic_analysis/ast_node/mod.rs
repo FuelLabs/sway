@@ -1094,7 +1094,7 @@ fn reassignment(
     }
 }
 
-fn recursive_function(
+fn handle_supertraits(
     supertraits: &[Supertrait],
     trait_namespace: NamespaceRef,
     namespace: NamespaceRef,
@@ -1138,7 +1138,7 @@ fn recursive_function(
                 // Recurse to insert dummy versions of interfaces and methods of the *super*
                 // supertraits
                 check!(
-                    recursive_function(supertraits, trait_namespace, namespace),
+                    handle_supertraits(supertraits, trait_namespace, namespace),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1186,7 +1186,12 @@ fn type_check_trait_decl(
 
     let trait_namespace = create_new_scope(namespace);
 
-    recursive_function(&trait_decl.supertraits, trait_namespace, namespace);
+    check!(
+        handle_supertraits(&trait_decl.supertraits, trait_namespace, namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // insert placeholder functions representing the interface surface
     // to allow methods to use those functions
