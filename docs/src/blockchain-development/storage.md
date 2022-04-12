@@ -8,7 +8,7 @@ Some basic use cases of storage include declaring an owner address for a contrac
 
 ## Storage By-Hand
 
-Outside of the newer experimental `storage` syntax which is on the way. Developers can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard (`std`) library.
+Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard (`std`) library.
 
 With this approach you will have to design the internal key and value design manually.
 
