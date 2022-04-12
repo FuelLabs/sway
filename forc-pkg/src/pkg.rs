@@ -1221,21 +1221,3 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
     Error::msg(message)
 }
-
-/// Given the current directory and expected program type, determines whether the correct program type is present.
-pub fn check_program_type(
-    manifest: &Manifest,
-    manifest_dir: PathBuf,
-    expected_type: TreeType,
-) -> Result<()> {
-    let parsed_type = manifest.program_type(manifest_dir)?;
-    if parsed_type != expected_type {
-        bail!(wrong_program_type(
-            &manifest.project.name,
-            expected_type,
-            parsed_type
-        ));
-    } else {
-        Ok(())
-    }
-}

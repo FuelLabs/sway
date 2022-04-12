@@ -1,4 +1,4 @@
-use crate::pkg::parsing_failed;
+use crate::pkg::{parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
 use forc_util::{println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
@@ -167,6 +167,20 @@ impl Manifest {
         match program_type.value {
             Some(parse_tree) => Ok(parse_tree.tree_type),
             None => bail!(parsing_failed(&self.project.name, program_type.errors)),
+        }
+    }
+
+    /// Given the current directory and expected program type, determines whether the correct program type is present.
+    pub fn check_program_type(&self, manifest_dir: PathBuf, expected_type: TreeType) -> Result<()> {
+        let parsed_type = self.program_type(manifest_dir)?;
+        if parsed_type != expected_type {
+            bail!(wrong_program_type(
+                &self.project.name,
+                expected_type,
+                parsed_type
+            ));
+        } else {
+            Ok(())
         }
     }
 
