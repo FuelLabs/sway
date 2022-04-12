@@ -1,0 +1,21 @@
+[project]
+authors = ["Alexander Hansen"]
+edition = "2021"
+license = "Apache-2.0"
+name = "phantom_generic"
+version = "0.1.0"
+
+[dependencies]
+fuel-gql-client = { version = "0.5", default-features = false }
+fuel-tx = "0.7"
+fuels-abigen-macro = "0.8"
+fuels-contract = "0.8"
+fuels-core = "0.8"
+fuels-signers = "0.8"
+rand = "0.8"
+tokio = { version = "1.12", features = ["rt", "macros"] }
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/harness.rs"

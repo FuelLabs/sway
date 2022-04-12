@@ -344,6 +344,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/nested_struct_args_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/language/phantom_generic",
+            ProgramState::Return(42),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
