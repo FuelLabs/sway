@@ -1094,6 +1094,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-documenter"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.1.6",
+]
+
+[[package]]
 name = "forc-explore"
 version = "0.10.1"
 dependencies = [

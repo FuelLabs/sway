@@ -78,6 +78,25 @@ jobs:
           command: run
           args: --bin build-all-examples
 
+  build-mdbook:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run mdbook build
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: '0.4.7'
+      - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
+        run: |
+          mdbook build docs &> tmp.txt
+          if cat tmp.txt | grep 'ERROR'
+          then
+            rm tmp.txt && exit 1
+          else
+            rm tmp.txt && exit 0
+          fi
+
   cargo-build-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -205,6 +224,27 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+  forc-documenter-dry-run:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Run forc-documenter in dry run mode
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin forc-documenter write-docs --dry-run
 
   cargo-unused-deps-check:
     needs: cancel-previous-runs
