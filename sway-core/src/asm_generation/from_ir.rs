@@ -1119,7 +1119,6 @@ impl<'ir> AsmBuilder<'ir> {
         value: &Value,
         indices: &[u64],
     ) {
-        println!("Compiling insert value");
         // Base register should point to some stack allocated memory.
         let base_reg = self.value_to_register(aggregate_val);
 
