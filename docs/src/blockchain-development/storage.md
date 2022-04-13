@@ -10,7 +10,7 @@ Some basic use cases of storage include declaring an owner address for a contrac
 
 Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard (`std`) library.
 
-With this approach you will have to design the internal key and value design manually.
+With this approach you will have to manually assign the internal key used for storage.
 
 An example is as follows:
 
