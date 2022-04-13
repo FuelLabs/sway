@@ -4,12 +4,12 @@ use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::util::test_helpers;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/abi-abi.json");
+abigen!(MyContract, "out/debug/abi_wrapper_testing_contract-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Deploy the compiled contract
     let salt = Salt::from([0u8; 32]);
-    let compiled = Contract::load_sway_contract("./out/debug/abi.bin", salt).unwrap();
+    let compiled = Contract::load_sway_contract("./out/debug/abi_wrapper_testing_contract.bin", salt).unwrap();
 
     // Launch a local network and deploy the contract
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;

@@ -6,14 +6,14 @@ use std::abi::*;
 
 abi SomeAbi {
   fn foo() -> u64;
-  fn bar() -> u64;
 }
 
 
-fn main() -> bool {
-    let id = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+fn main() -> u64 {
+    let id = ~ContractId::from(0x49949f60837951e5b19685b5580e4ecf027db4f6fc465ee668751b20df4aeac5);
 
-    let caller : ContractCaller<SomeAbi> = abi::contract_at(SomeAbi, id);
-
-    true
+    // Get contract caller using wrapper and test a call
+    let caller : ContractCaller<SomeAbi> = contract_at(SomeAbi, id);
+    let result = caller.foo();
+    result
 }
