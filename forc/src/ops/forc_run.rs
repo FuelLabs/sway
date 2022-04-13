@@ -4,6 +4,7 @@ use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{fuel_core_not_running, Manifest};
+use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
@@ -18,7 +19,8 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let manifest = Manifest::from_dir(&path_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(path_dir, TreeType::Script)?;
+    let manifest_dir = find_manifest_dir(&path_dir).unwrap();
+    manifest.check_program_type(manifest_dir, TreeType::Script)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);

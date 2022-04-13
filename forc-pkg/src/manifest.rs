@@ -96,13 +96,13 @@ impl Manifest {
         Ok(manifest)
     }
 
-    /// Given a path to a forc project containing a `Forc.toml` in any parent directory, read the manifest.
+    /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or any of its parent directories.
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
-        find_manifest_dir(manifest_dir)
-            .ok_or_else(|| manifest_file_missing(manifest_dir.to_path_buf()))?;
+    pub fn from_dir(dir: &Path, sway_git_tag: &str) -> Result<Self> {
+        let manifest_dir =
+            find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir.to_path_buf()))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path, sway_git_tag)
     }
