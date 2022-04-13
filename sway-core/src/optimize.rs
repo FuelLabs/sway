@@ -822,46 +822,103 @@ impl FnCompiler {
             .map(|(_, expr)| self.compile_expression(context, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
-        // New struct type to hold the user arguments
-        let field_types = compiled_args
-            .iter()
-            .map(|val| val.get_type(context).unwrap())
-            .collect::<Vec<_>>();
-        let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+        let user_args_val = match compiled_args.len() {
+            0 => Constant::get_uint(context, 64, 0, None),
+            1 => {
+                // The single arg doesn't need to be put into a struct.
+                let arg0 = compiled_args[0];
 
-        // New local pointer for the struct to hold all user arguments
-        let alias_user_args_struct_local_name = self
-            .lexical_map
-            .insert(format!("{}{}", "args_struct_for_", ast_name));
-        let user_args_struct_ptr = self
-            .function
-            .new_local_ptr(
-                context,
-                alias_user_args_struct_local_name,
-                Type::Struct(user_args_struct_aggregate),
-                true,
-                None,
-            )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+                // We're still undecided as to whether this should be decided by type or size.
+                // Going with type for now.
+                let arg0_type = arg0.get_type(context).unwrap();
+                if arg0_type.is_copy_type() {
+                    arg0
+                } else {
+                    // Copy this value to a new location.  This is quite inefficient but we need to
+                    // pass by reference rather than by value.  Optimisation passes can remove all
+                    // the unnecessary copying eventually, though it feels like we're jumping
+                    // through a bunch of hoops here (employing the single arg optimisation) for
+                    // minimal returns.
+                    let by_reference_arg_name = self
+                        .lexical_map
+                        .insert(format!("{}{}", "arg_for_", ast_name));
+                    let by_reference_arg = self
+                        .function
+                        .new_local_ptr(context, by_reference_arg_name, arg0_type, false, None)
+                        .map_err(|ir_error| {
+                            CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                        })?;
 
-        // Initialise each of the fields in the user args struct.
-        compiled_args.into_iter().enumerate().fold(
-            self.current_block.ins(context).get_ptr(
-                user_args_struct_ptr,
-                Type::Struct(user_args_struct_aggregate),
-                0,
-                span_md_idx,
-            ),
-            |user_args_struct_ptr_val, (insert_idx, insert_val)| {
-                self.current_block.ins(context).insert_value(
-                    user_args_struct_ptr_val,
-                    user_args_struct_aggregate,
-                    insert_val,
-                    vec![insert_idx as u64],
+                    let arg0_ptr = self.current_block.ins(context).get_ptr(
+                        by_reference_arg,
+                        arg0_type,
+                        0,
+                        None,
+                    );
+                    self.current_block.ins(context).store(arg0_ptr, arg0, None);
+
+                    // NOTE: Here we're fetching the original stack pointer, cast to u64.
+                    self.current_block.ins(context).get_ptr(
+                        by_reference_arg,
+                        Type::Uint(64),
+                        0,
+                        span_md_idx,
+                    )
+                }
+            }
+            _ => {
+                // New struct type to hold the user arguments bundled together.
+                let field_types = compiled_args
+                    .iter()
+                    .map(|val| val.get_type(context).unwrap())
+                    .collect::<Vec<_>>();
+                let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+
+                // New local pointer for the struct to hold all user arguments
+                let user_args_struct_local_name = self
+                    .lexical_map
+                    .insert(format!("{}{}", "args_struct_for_", ast_name));
+                let user_args_struct_ptr = self
+                    .function
+                    .new_local_ptr(
+                        context,
+                        user_args_struct_local_name,
+                        Type::Struct(user_args_struct_aggregate),
+                        true,
+                        None,
+                    )
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                    })?;
+
+                // Initialise each of the fields in the user args struct.
+                compiled_args.into_iter().enumerate().fold(
+                    self.current_block.ins(context).get_ptr(
+                        user_args_struct_ptr,
+                        Type::Struct(user_args_struct_aggregate),
+                        0,
+                        span_md_idx,
+                    ),
+                    |user_args_struct_ptr_val, (insert_idx, insert_val)| {
+                        self.current_block.ins(context).insert_value(
+                            user_args_struct_ptr_val,
+                            user_args_struct_aggregate,
+                            insert_val,
+                            vec![insert_idx as u64],
+                            span_md_idx,
+                        )
+                    },
+                );
+
+                // NOTE: Here we're fetching the original stack pointer, cast to u64.
+                self.current_block.ins(context).get_ptr(
+                    user_args_struct_ptr,
+                    Type::Uint(64),
+                    0,
                     span_md_idx,
                 )
-            },
-        );
+            }
+        };
 
         // Now handle the contract address and the selector. The contract address is just
         // as B256 while the selector is a [u8; 4] which we have to convert to a U64.
@@ -900,19 +957,12 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        // Insert the pointer to the user args struct.
-        //
-        // NOTE: Here we're inserting the original stack pointer, cast to u64.
-        let user_args_struct_addr_val = self.current_block.ins(context).get_ptr(
-            user_args_struct_ptr,
-            Type::Uint(64),
-            0,
-            span_md_idx,
-        );
+        // Insert the user args value.
+
         ra_struct_val = self.current_block.ins(context).insert_value(
             ra_struct_val,
             ra_struct_aggregate,
-            user_args_struct_addr_val,
+            user_args_val,
             vec![2],
             span_md_idx,
         );
