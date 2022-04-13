@@ -6,7 +6,7 @@ Put in conventional programming terms, contract storage is like saving data to a
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
-## Storage By-Hand
+## Manual Storage Management
 
 Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard (`std`) library.
 
