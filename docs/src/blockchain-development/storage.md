@@ -40,24 +40,6 @@ impl StorageExample for Contract {
 }
 ```
 
-If your looking to store b256 values by-hand, you will likely need the methods below as a temporary work around. 
-
-As the new `storage` syntax is stabalized, these can be replace by a more standardized approach.
-
-```sway
-fn store_b256(key: b256, value: b256) {
-    asm(r1: key, r2: value) {
-        swwq r1 r2;
-    };
-}
-
-fn get_b256(key: b256) -> b256 {
-    asm(r1: key, r2) {
-        srwq r2 r1;
-        r2: T
-    }
-}
-```
 
 
 <!--
