@@ -11,7 +11,6 @@ license = "Apache-2.0"
 name = "{project_name}"
 
 [dependencies]
-std = {{ git = "https://github.com/FuelLabs/sway", branch = "master" }}
 "#
     )
 }

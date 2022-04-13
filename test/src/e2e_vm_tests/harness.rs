@@ -32,7 +32,10 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
-pub(crate) fn runs_on_node(file_name: &str, contract_ids: &[fuel_tx::ContractId]) {
+pub(crate) fn runs_on_node(
+    file_name: &str,
+    contract_ids: &[fuel_tx::ContractId],
+) -> Vec<fuel_tx::Receipt> {
     println!("Running on node: {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
