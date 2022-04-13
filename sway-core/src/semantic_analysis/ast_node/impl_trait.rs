@@ -330,9 +330,14 @@ fn type_check_trait_implementation(
     // can reference functions from the interface
     let local_namespace: NamespaceRef = create_new_scope(namespace);
 
-    // an trait impl needs access to everything that the trait methods have access to, which is
-    // basically everything in the path `trait_name.prefixes`
-    local_namespace.star_import(Some(crate_namespace), trait_name.prefixes.clone());
+    // A trait impl needs access to everything that the trait methods have access to, which is
+    // basically everything in the path where the trait is declared.
+    // First, get the path to where the trait is declared. This is a combination of the path
+    // store in the symbols map and the path stored in the CallPath.
+    let path_to_symbol = local_namespace.get_path_for_symbol(&trait_name.suffix);
+    let mut real_path = trait_name.prefixes.clone();
+    real_path.extend(path_to_symbol);
+    local_namespace.star_import(Some(crate_namespace), real_path);
 
     local_namespace.insert_trait_implementation(
         CallPath {
