@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'neq_4_test'
+name = 'eq_and_neq'
 dependencies = ['std']
 
 [[package]]
