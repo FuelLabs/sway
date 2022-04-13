@@ -26,6 +26,9 @@ pub enum Type {
 impl Type {
     /// Return whether this is a 'copy' type, one whose value will always fit in a register.
     pub fn is_copy_type(&self) -> bool {
+        if let Type::String(n) = self {
+            return *n <= 8;
+        }
         matches!(self, Type::Unit | Type::Bool | Type::Uint(_))
     }
 
