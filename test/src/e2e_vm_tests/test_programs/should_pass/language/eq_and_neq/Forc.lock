@@ -3,5 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'eq_4_test'
+name = 'neq_4_test'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
 dependencies = ['core']

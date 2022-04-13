@@ -269,19 +269,16 @@ pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-      asm(r1: self.eq(other), r2) {
-        eq r2 r1 zero;
-        r2: bool
-      }
+        not(self.eq(other))  
     }
 }
 
 trait OrdEq: Ord + Eq { } {
     fn ge(self, other: Self) -> bool {
-      self.gt(other) || self.eq(other)
+        self.gt(other) || self.eq(other)
     }
     fn le(self, other: Self) -> bool {
-      self.lt(other) || self.eq(other)
+        self.lt(other) || self.eq(other)
     }
 }
 
