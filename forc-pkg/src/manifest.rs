@@ -1,6 +1,6 @@
-use crate::pkg::{parsing_failed, wrong_program_type};
+use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
-use forc_util::{println_yellow_err, validate_name};
+use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -96,11 +96,13 @@ impl Manifest {
         Ok(manifest)
     }
 
-    /// Given a directory to a forc project containing a `Forc.toml`, read the manifest.
+    /// Given a path to a forc project containing a `Forc.toml` in any parent directory, read the manifest.
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
+        find_manifest_dir(manifest_dir)
+            .ok_or_else(|| manifest_file_missing(manifest_dir.to_path_buf()))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path, sway_git_tag)
     }
