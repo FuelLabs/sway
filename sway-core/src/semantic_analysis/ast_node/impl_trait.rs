@@ -332,8 +332,8 @@ fn type_check_trait_implementation(
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
-    // First, get the path to where the trait is declared. This is a combination of the path
-    // store in the symbols map and the path stored in the CallPath.
+    // First, get the path to where the trait is declared. This is a combination of the path stored
+    // in the symbols map and the path stored in the CallPath.
     let path_to_symbol = local_namespace.get_path_for_symbol(&trait_name.suffix);
     let mut real_path = trait_name.prefixes.clone();
     real_path.extend(path_to_symbol);
