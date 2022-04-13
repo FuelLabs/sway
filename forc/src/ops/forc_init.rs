@@ -149,8 +149,26 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
 
     // Change the project name and authors of the Forc.toml file
     edit_forc_toml(&out_dir, &project_name, &real_name)?;
-    // Change the project name and authors of the Cargo.toml file
-    edit_cargo_toml(&out_dir, &project_name, &real_name)?;
+
+    // If the example has a tests folder, edit the Cargo.toml
+    // Otherwise, create a basic tests template for the project
+    if out_dir.join("tests").exists() {
+        // Change the project name and authors of the Cargo.toml file
+        edit_cargo_toml(&out_dir, &project_name, &real_name)?;
+    } else {
+        // Create the tests directory, harness.rs and Cargo.toml file
+        fs::create_dir_all(out_dir.join("tests"))?;
+
+        fs::write(
+            out_dir.join("tests").join("harness.rs"),
+            defaults::basic_test_program(),
+        )?;
+
+        fs::write(
+            out_dir.join("Cargo.toml"),
+            defaults::default_tests_manifest(&project_name),
+        )?;
+    }
 
     Ok(())
 }
@@ -210,6 +228,14 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     let authors: toml_edit::Array = authors.iter().collect();
     manifest_toml["project"]["authors"] = toml_edit::value(authors);
     manifest_toml["project"]["name"] = toml_edit::value(project_name);
+
+    // Remove explicit std entry from copied template
+    if let Some(project) = manifest_toml.get_mut("dependencies") {
+        let _ = project
+            .as_table_mut()
+            .context("Unable to get forc manifest as table")?
+            .remove("std");
+    }
 
     let mut file = File::create(out_dir.join(constants::MANIFEST_FILE_NAME))?;
     file.write_all(manifest_toml.to_string().as_bytes())?;
@@ -272,6 +298,7 @@ fn download_contents(url: &str, out_dir: &Path, responses: &[ContentResponse]) -
             }
             FileType::Dir => {
                 match &response.name.as_str() {
+                    // Test directory no longer exists, make sure to create this from scratch!!
                     // Only download the directory and its contents if it matches src or tests
                     &constants::SRC_DIR | &constants::TEST_DIRECTORY => {
                         let dir = out_dir.join(&response.name);

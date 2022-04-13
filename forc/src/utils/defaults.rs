@@ -106,6 +106,16 @@ async fn can_get_contract_id() {
     )
 }
 
+pub(crate) fn basic_test_program() -> String {
+    r#"
+#[tokio::test]
+async fn harness() {
+    assert_eq!(true, true);
+}
+"#
+    .into()
+}
+
 pub(crate) fn default_gitignore() -> String {
     r#"out
 target
