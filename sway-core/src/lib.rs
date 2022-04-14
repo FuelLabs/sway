@@ -132,7 +132,6 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
     let use_new_parser = true;
     if use_new_parser {
         let path = config.map(|config| config.path());
-        let span = sway_types::Span::new(input.clone(), 0, input.len(), path.clone()).unwrap();
         let program = match new_parser_again::parse_file(input, path) {
             Ok(program) => program,
             Err(error) => {
@@ -145,20 +144,16 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
                 return err(vec![], errors);
             },
         };
-        //let sway_parse_tree = crate::convert_parse_tree::program_to_sway_parse_tree(program);
-        let sway_parse_tree_res = std::panic::catch_unwind(|| {
-            crate::convert_parse_tree::program_to_sway_parse_tree(program)
-        });
-        let sway_parse_tree = match sway_parse_tree_res {
-            Ok(sway_parse_tree) => sway_parse_tree,
-            Err(_err) => {
-                let errors = vec![
-                    CompileError::ParseError { span, err: String::from("oh no it failed!")},
-                ];
-                return err(vec![], errors);
-            },
-        };
-        ok(sway_parse_tree, vec![], vec![])
+        let mut errors = Vec::new();
+        let mut warnings = Vec::new();
+        let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
+        let sway_parse_tree = check!(
+            compile_result,
+            return err(warnings, errors),
+            warnings,
+            errors,
+        );
+        ok(sway_parse_tree, warnings, errors)
     } else {
         let mut warnings: Vec<CompileWarning> = Vec::new();
         let mut errors: Vec<CompileError> = Vec::new();
