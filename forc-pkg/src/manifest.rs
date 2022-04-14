@@ -101,12 +101,8 @@ impl ManifestFile {
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir).ok_or_else(|| {
-            anyhow!(
-                "could not find {} in this or any parent directory",
-                constants::MANIFEST_FILE_NAME
-            )
-        })?;
+        let dir = forc_util::find_manifest_dir(manifest_dir)
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path, sway_git_tag)
     }
@@ -225,8 +221,7 @@ impl Manifest {
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(dir: &Path, sway_git_tag: &str) -> Result<Self> {
-        let manifest_dir =
-            find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir.to_path_buf()))?;
+        let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path, sway_git_tag)
     }

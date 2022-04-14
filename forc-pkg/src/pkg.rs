@@ -1181,11 +1181,11 @@ fn test_source_git_pinned_parsing() {
 }
 
 /// Format an error message for an absent `Forc.toml`.
-pub fn manifest_file_missing(curr_dir: PathBuf) -> anyhow::Error {
+pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
     let message = format!(
         "could not find `{}` in `{}` or any parent directory",
         constants::MANIFEST_FILE_NAME,
-        curr_dir.display()
+        dir.display()
     );
     Error::msg(message)
 }
