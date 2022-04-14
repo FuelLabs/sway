@@ -8,7 +8,7 @@ Some basic use cases of storage include declaring an owner address for a contrac
 
 ## Manual Storage Management
 
-Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`).
+Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
 
 With this approach you will have to manually assign the internal key used for storage.
 
@@ -40,7 +40,7 @@ impl StorageExample for Contract {
 }
 ```
 
-Note, if you are looking to store b256 or similar complex types, please refer to [this issue](https://github.com/FuelLabs/sway/pull/1228#discussion_r849678269).
+Note, if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).
 
 <!--
 ## Syntax
