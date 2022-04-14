@@ -699,8 +699,12 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::TypeProperty { property, type_id } => {
-                let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
+            TypedExpressionVariant::TypeProperty {
+                property,
+                type_id,
+                span,
+            } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &span)?;
                 match property {
                     BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
                         context,
@@ -2343,6 +2347,7 @@ fn convert_resolved_typeid(
         context,
         &resolve_type(*ast_type, span)
             .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
+        span,
     )
 }
 
@@ -2358,7 +2363,11 @@ fn convert_resolved_typeid_no_span(
     convert_resolved_typeid(context, ast_type, &span)
 }
 
-fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<Type, CompileError> {
+fn convert_resolved_type(
+    context: &mut Context,
+    ast_type: &TypeInfo,
+    span: &Span,
+) -> Result<Type, CompileError> {
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
@@ -2380,7 +2389,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
             create_enum_aggregate(context, variant_types.clone()).map(&Type::Struct)?
         }
         TypeInfo::Array(elem_type_id, count) => {
-            let elem_type = convert_resolved_typeid_no_span(context, elem_type_id)?;
+            let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
             Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
         }
         TypeInfo::Tuple(fields) => {
@@ -2400,55 +2409,55 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::Custom { .. } => {
             return Err(CompileError::Internal(
                 "Custom type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::SelfType { .. } => {
             return Err(CompileError::Internal(
                 "Self type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Contract => {
             return Err(CompileError::Internal(
                 "Contract type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::ContractCaller { .. } => {
             return Err(CompileError::Internal(
                 "ContractCaller type cannot be reoslved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Unknown => {
             return Err(CompileError::Internal(
                 "Unknown type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::UnknownGeneric { .. } => {
             return Err(CompileError::Internal(
                 "Generic type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Ref(_) => {
             return Err(CompileError::Internal(
                 "Ref type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::ErrorRecovery => {
             return Err(CompileError::Internal(
                 "Error recovery type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Storage { .. } => {
             return Err(CompileError::Internal(
                 "Storage type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
     })
