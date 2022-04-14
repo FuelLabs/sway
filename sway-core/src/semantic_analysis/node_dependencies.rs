@@ -499,7 +499,8 @@ impl Dependencies {
                 type_arguments,
             } => {
                 if !for_impl_self {
-                    self.deps.insert(DependentSymbol::ImplSelf(name.to_string()));
+                    self.deps
+                        .insert(DependentSymbol::ImplSelf(name.to_string()));
                 }
                 self.deps.insert(DependentSymbol::Symbol(name.to_string()));
                 self.gather_from_type_arguments(type_arguments)
@@ -507,7 +508,6 @@ impl Dependencies {
             _ => self,
         }
     }
-
 
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
         iter.fold(self, f)
