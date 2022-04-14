@@ -95,7 +95,8 @@ impl ManifestFile {
         Ok(Self { manifest, path })
     }
 
-    /// Given a directory to a forc project containing a `Forc.toml`, read the manifest.
+    /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
+    /// any of its parent directories.
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
