@@ -90,13 +90,13 @@ Deploy contract project. Crafts a contract deployment transaction then sends it 
 Alternatively, you could deploy your contract programmatically using our SDK:
 
 ```rust
-// Build the contract
-let salt: [u8; 32] = rng.gen();
-let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+    // Build the contract
+    let salt: [u8; 32] = rng.gen();
+    let salt = Salt::from(salt);
+    let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 
-// Launch a local network and deploy the contract
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-let client = Provider::launch(Config::local_node()).await.unwrap();
-let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
+    // Launch a local network and deploy the contract
+    let compiled = Contract::compile_sway_contract("./", salt).unwrap();
+    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
 ```
