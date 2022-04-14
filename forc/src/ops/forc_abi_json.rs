@@ -3,8 +3,7 @@ use crate::{
     utils::SWAY_GIT_TAG,
 };
 use anyhow::Result;
-use forc_pkg::Manifest;
-use forc_util::find_manifest_dir;
+use forc_pkg::ManifestFile;
 use serde_json::{json, Value};
 use std::fs::File;
 use std::path::PathBuf;
@@ -16,9 +15,8 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = Manifest::from_dir(&curr_dir, SWAY_GIT_TAG)?;
-    let manifest_dir = find_manifest_dir(&curr_dir).unwrap();
-    manifest.check_program_type(manifest_dir, TreeType::Contract)?;
+    let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
+    manifest.check_program_type(TreeType::Contract)?;
 
     let build_command = BuildCommand {
         path: command.path,
