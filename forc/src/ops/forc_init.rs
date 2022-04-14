@@ -132,7 +132,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         Link::new("Sway Issues", "https://github.com/FuelLabs/sway/issues/new")
     );
 
-    let try_forc = format!("Now try `forc build` or `forc test`");
+    let try_forc = "Now try `forc build` or `forc test`".to_string();
 
     println!(
         "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
