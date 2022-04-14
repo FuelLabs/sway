@@ -108,6 +108,7 @@ pub(crate) enum TypedExpressionVariant {
     TypeProperty {
         property: BuiltinProperty,
         type_id: TypeId,
+        span: Span,
     },
     SizeOfValue {
         expr: Box<TypedExpression>,
@@ -331,10 +332,12 @@ impl PartialEq for TypedExpressionVariant {
                 Self::TypeProperty {
                     property: l_prop,
                     type_id: l_type_id,
+                    ..
                 },
                 Self::TypeProperty {
                     property: r_prop,
                     type_id: r_type_id,
+                    ..
                 },
             ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
             (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
@@ -499,7 +502,9 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TypedExpressionVariant::TypeProperty { property, type_id } => {
+            TypedExpressionVariant::TypeProperty {
+                property, type_id, ..
+            } => {
                 let type_str = look_up_type_id(*type_id).friendly_type_str();
                 match property {
                     BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
