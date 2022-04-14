@@ -8,8 +8,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use url::Url;
 use terminal_link::Link;
+use url::Url;
 
 #[derive(Debug)]
 struct GitPathInfo {
@@ -116,19 +116,28 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
 
     println_green(&format!("Successfully created: {}", project_name));
 
-    let read_the_docs = format!("Read the Docs:\n- {}\n- {}\n- {}",
+    let read_the_docs = format!(
+        "Read the Docs:\n- {}\n- {}\n- {}",
         Link::new("Sway Book", "https://fuellabs.github.io/sway/latest/"),
-        Link::new("Rust SDK Book", "https://fuellabs.github.io/fuels-rs/latest/index.html"),
-        Link::new("Typescript SDK Docs", "https://github.com/FuelLabs/fuels-ts")
+        Link::new(
+            "Rust SDK Book",
+            "https://fuellabs.github.io/fuels-rs/latest/index.html"
+        ),
+        Link::new(
+            "Typescript SDK Docs",
+            "https://github.com/FuelLabs/fuels-ts"
+        )
     );
 
-    let join_the_community = format!("Join the Community:\n- Follow us {}
+    let join_the_community = format!(
+        "Join the Community:\n- Follow us {}
 - Ask questions in dev-chat on {}",
         Link::new("@SwayLang", "https://twitter.com/SwayLang"),
         Link::new("Discord", "https://discord.com/invite/xfpK4Pe")
     );
 
-    let report_bugs = format!("Report Bugs:\n- {}",
+    let report_bugs = format!(
+        "Report Bugs:\n- {}",
         Link::new("Sway Issues", "https://github.com/FuelLabs/sway/issues/new")
     );
 
@@ -136,10 +145,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
 
     println!(
         "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
-        try_forc,
-        read_the_docs,
-        join_the_community,
-        report_bugs
+        try_forc, read_the_docs, join_the_community, report_bugs
     );
 
     Ok(())
