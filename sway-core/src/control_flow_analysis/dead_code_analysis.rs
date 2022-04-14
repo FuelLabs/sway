@@ -1012,7 +1012,7 @@ fn connect_expression(
                 graph.add_edge(*leaf, node, "".into());
             }
             Ok(vec![node])
-        },
+        }
         SizeOfValue { expr } => {
             let expr = connect_expression(
                 &(*expr).expression,
