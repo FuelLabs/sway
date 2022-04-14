@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
 use anyhow::{anyhow, Context, Result};
-use forc_util::validate_name;
+use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -113,6 +113,8 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         defaults::default_gitignore(),
     )?;
 
+    println_green(&format!("Successfully created: {}", project_name));
+
     Ok(())
 }
 
@@ -161,7 +163,7 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
 
         fs::write(
             out_dir.join("tests").join("harness.rs"),
-            defaults::basic_test_program(),
+            defaults::default_test_program(&project_name),
         )?;
 
         fs::write(
@@ -169,6 +171,9 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
             defaults::default_tests_manifest(&project_name),
         )?;
     }
+
+    println_green(&format!("Successfully created: {}", project_name));
+    println_green("Now try and run 'forc test'");
 
     Ok(())
 }

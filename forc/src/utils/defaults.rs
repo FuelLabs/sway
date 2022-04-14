@@ -32,10 +32,10 @@ version = "0.1.0"
 [dependencies]
 fuel-gql-client = {{ version = "0.5", default-features = false }}
 fuel-tx = "0.7"
-fuels-abigen-macro = "0.8"
-fuels-contract = "0.8"
-fuels-core = "0.8"
-fuels-signers = "0.8"
+fuels-abigen-macro = "0.9"
+fuels-contract = "0.9"
+fuels-core = "0.9"
+fuels-signers = "0.9"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
@@ -104,16 +104,6 @@ async fn can_get_contract_id() {
     // Now you have an instance of your contract you can use to test each function
 }"#
     )
-}
-
-pub(crate) fn basic_test_program() -> String {
-    r#"
-#[tokio::test]
-async fn harness() {
-    assert_eq!(true, true);
-}
-"#
-    .into()
 }
 
 pub(crate) fn default_gitignore() -> String {
