@@ -30,17 +30,9 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            return Err(anyhow!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
-            ))
-        }
-    };
 
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
+    let manifest = Manifest::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let manifest_dir = find_manifest_dir(&this_dir).unwrap();
     let lock_path = lock_path(&manifest_dir);
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;

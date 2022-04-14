@@ -1,6 +1,6 @@
-use crate::pkg::parsing_failed;
+use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
-use forc_util::{println_yellow_err, validate_name};
+use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -96,11 +96,13 @@ impl Manifest {
         Ok(manifest)
     }
 
-    /// Given a directory to a forc project containing a `Forc.toml`, read the manifest.
+    /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or any of its parent directories.
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_dir(dir: &Path, sway_git_tag: &str) -> Result<Self> {
+        let manifest_dir =
+            find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir.to_path_buf()))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path, sway_git_tag)
     }
@@ -167,6 +169,20 @@ impl Manifest {
         match program_type.value {
             Some(parse_tree) => Ok(parse_tree.tree_type),
             None => bail!(parsing_failed(&self.project.name, program_type.errors)),
+        }
+    }
+
+    /// Given the current directory and expected program type, determines whether the correct program type is present.
+    pub fn check_program_type(&self, manifest_dir: PathBuf, expected_type: TreeType) -> Result<()> {
+        let parsed_type = self.program_type(manifest_dir)?;
+        if parsed_type != expected_type {
+            bail!(wrong_program_type(
+                &self.project.name,
+                expected_type,
+                parsed_type
+            ));
+        } else {
+            Ok(())
         }
     }
 

@@ -4,7 +4,7 @@ use crate::{
     utils::SWAY_GIT_TAG,
 };
 use anyhow::{bail, Result};
-use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
+use forc_pkg::Manifest;
 use forc_util::find_manifest_dir;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
@@ -19,10 +19,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest_dir =
-        find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
-    check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
+    let manifest = Manifest::from_dir(&curr_dir, SWAY_GIT_TAG)?;
+    let manifest_dir = find_manifest_dir(&curr_dir).unwrap();
+    manifest.check_program_type(manifest_dir, TreeType::Contract)?;
 
     let DeployCommand {
         path,

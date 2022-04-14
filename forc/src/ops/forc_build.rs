@@ -1,12 +1,11 @@
 use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, Manifest};
 use forc_util::{default_output_directory, find_manifest_dir, lock_path};
 use std::{
     fs::{self, File},
     path::PathBuf,
 };
-use sway_utils::MANIFEST_FILE_NAME;
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
@@ -31,24 +30,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent: silent_mode,
     };
 
-    // find manifest directory, even if in subdirectory
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
-
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            bail!(
-                "could not find `{}` in `{}` or any parent directory",
-                MANIFEST_FILE_NAME,
-                this_dir.display(),
-            );
-        }
-    };
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
+    let manifest = Manifest::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let manifest_dir = find_manifest_dir(&this_dir).unwrap();
     let lock_path = lock_path(&manifest_dir);
 
     // Load the build plan from the lock file.
