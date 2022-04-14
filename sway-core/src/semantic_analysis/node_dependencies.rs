@@ -223,14 +223,14 @@ impl Dependencies {
                 body,
                 ..
             }) => self
-                .gather_from_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription, false)
                 .gather_from_expr(body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
                 type_ascription,
                 value,
                 ..
             }) => self
-                .gather_from_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription, false)
                 .gather_from_expr(value),
             Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
             Declaration::StructDeclaration(StructDeclaration {
@@ -239,7 +239,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&field.r#type)
+                    deps.gather_from_typeinfo(&field.r#type, false)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -248,7 +248,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&variant.r#type)
+                    deps.gather_from_typeinfo(&variant.r#type, false)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
@@ -263,9 +263,9 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id), false)
                     })
-                    .gather_from_typeinfo(&sig.return_type)
+                    .gather_from_typeinfo(&sig.return_type, false)
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
@@ -278,7 +278,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
-                .gather_from_typeinfo(type_implementing_for)
+                .gather_from_typeinfo(type_implementing_for, false)
                 .gather_from_type_parameters(type_arguments)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
@@ -288,7 +288,7 @@ impl Dependencies {
                 functions,
                 ..
             }) => self
-                .gather_from_typeinfo(type_implementing_for)
+                .gather_from_typeinfo(type_implementing_for, true)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -299,16 +299,16 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id), false)
                     })
-                    .gather_from_typeinfo(&sig.return_type)
+                    .gather_from_typeinfo(&sig.return_type, false)
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
                 .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
-                    deps.gather_from_typeinfo(r#type)
+                    deps.gather_from_typeinfo(r#type, false)
                 }),
         }
     }
@@ -322,9 +322,9 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+            deps.gather_from_typeinfo(&look_up_type_id(param.type_id), false)
         })
-        .gather_from_typeinfo(return_type)
+        .gather_from_typeinfo(return_type, false)
         .gather_from_block(body)
         .gather_from_type_parameters(type_parameters)
     }
@@ -369,6 +369,9 @@ impl Dependencies {
                 fields,
                 ..
             } => {
+                self.deps.insert(DependentSymbol::ImplSelf(
+                    struct_name.suffix.as_str().to_string(),
+                ));
                 self.deps.insert(DependentSymbol::Symbol(
                     struct_name.suffix.as_str().to_string(),
                 ));
@@ -393,7 +396,7 @@ impl Dependencies {
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
                     deps.gather_from_opt_expr(&register.initializer)
                 })
-                .gather_from_typeinfo(&asm.return_type),
+                .gather_from_typeinfo(&asm.return_type, false),
 
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
@@ -481,11 +484,11 @@ impl Dependencies {
 
     fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
-            deps.gather_from_typeinfo(&look_up_type_id(type_argument.type_id))
+            deps.gather_from_typeinfo(&look_up_type_id(type_argument.type_id), false)
         })
     }
 
-    fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
+    fn gather_from_typeinfo(mut self, type_info: &TypeInfo, for_impl_self: bool) -> Self {
         match type_info {
             TypeInfo::ContractCaller {
                 abi_name: AbiName::Known(abi_name),
@@ -495,12 +498,16 @@ impl Dependencies {
                 name,
                 type_arguments,
             } => {
+                if !for_impl_self {
+                    self.deps.insert(DependentSymbol::ImplSelf(name.to_string()));
+                }
                 self.deps.insert(DependentSymbol::Symbol(name.to_string()));
                 self.gather_from_type_arguments(type_arguments)
             }
             _ => self,
         }
     }
+
 
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
         iter.fold(self, f)
@@ -520,7 +527,8 @@ impl Dependencies {
 enum DependentSymbol {
     Symbol(String),
     Fn(Ident, Option<Span>),
-    Impl(Ident, String), // Trait or self, and type implementing for.
+    ImplSelf(String),
+    ImplTrait(Ident, String), // Trait name and type implementing for.
 }
 
 // We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
@@ -530,7 +538,8 @@ impl PartialEq for DependentSymbol {
         match (self, rhs) {
             (DependentSymbol::Symbol(l), DependentSymbol::Symbol(r)) => l.eq(r),
             (DependentSymbol::Fn(l, _), DependentSymbol::Fn(r, _)) => l.eq(r),
-            (DependentSymbol::Impl(lt, ls), DependentSymbol::Impl(rt, rs)) => {
+            (DependentSymbol::ImplSelf(ls), DependentSymbol::ImplSelf(rs)) => ls.eq(rs),
+            (DependentSymbol::ImplTrait(lt, ls), DependentSymbol::ImplTrait(rt, rs)) => {
                 lt.eq(rt) && ls.eq(rs)
             }
             _ => false,
@@ -545,7 +554,8 @@ impl Hash for DependentSymbol {
         match self {
             DependentSymbol::Symbol(s) => s.hash(state),
             DependentSymbol::Fn(s, _) => s.hash(state),
-            DependentSymbol::Impl(t, s) => {
+            DependentSymbol::ImplSelf(s) => s.hash(state),
+            DependentSymbol::ImplTrait(t, s) => {
                 t.hash(state);
                 s.hash(state)
             }
@@ -555,9 +565,6 @@ impl Hash for DependentSymbol {
 
 fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
-    let impl_sym = |trait_name, type_info: &TypeInfo| {
-        Some(DependentSymbol::Impl(trait_name, type_info_name(type_info)))
-    };
 
     match decl {
         // These declarations can depend upon other declarations.
@@ -572,14 +579,15 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::AbiDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
-        Declaration::ImplSelf(decl) => {
-            let trait_name =
-                Ident::new_with_override("self", decl.type_implementing_for_span.clone());
-            impl_sym(trait_name, &decl.type_implementing_for)
-        }
+        Declaration::ImplSelf(decl) => Some(DependentSymbol::ImplSelf(type_info_name(
+            &decl.type_implementing_for,
+        ))),
         Declaration::ImplTrait(decl) => {
             if decl.trait_name.prefixes.is_empty() {
-                impl_sym(decl.trait_name.suffix.clone(), &decl.type_implementing_for)
+                Some(DependentSymbol::ImplTrait(
+                    decl.trait_name.suffix.clone(),
+                    type_info_name(&decl.type_implementing_for),
+                ))
             } else {
                 None
             }
