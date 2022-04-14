@@ -181,7 +181,7 @@ pub type DependencyName = String;
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
     pub fn new(manifest: &ManifestFile, sway_git_tag: &str, offline: bool) -> Result<Self> {
-        let path = manifest.path().to_path_buf();
+        let path = manifest.dir().to_path_buf();
         let (graph, path_map) = fetch_deps(path, manifest, sway_git_tag, offline)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
