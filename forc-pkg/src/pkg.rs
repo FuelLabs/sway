@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, Manifest},
+    manifest::{Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -180,10 +180,9 @@ pub type DependencyName = String;
 
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
-    pub fn new(manifest_dir: &Path, sway_git_tag: &str, offline: bool) -> Result<Self> {
-        let manifest = Manifest::from_dir(manifest_dir, sway_git_tag)?;
-        let (graph, path_map) =
-            fetch_deps(manifest_dir.to_path_buf(), &manifest, sway_git_tag, offline)?;
+    pub fn new(manifest: &ManifestFile, sway_git_tag: &str, offline: bool) -> Result<Self> {
+        let path = manifest.path().to_path_buf();
+        let (graph, path_map) = fetch_deps(path, manifest, sway_git_tag, offline)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -264,7 +263,7 @@ impl BuildPlan {
             let pkg = &self.graph[node];
             let id = pkg.id();
             let path = &self.path_map[&id];
-            let manifest = Manifest::from_dir(path, sway_git_tag)?;
+            let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
             if pkg.name != manifest.project.name {
                 bail!(
                     "package name {:?} does not match the associated manifest project name {:?}",
@@ -533,7 +532,7 @@ pub fn graph_to_path_map(
                     .source();
                 let parent = &graph[parent_node];
                 let parent_path = &path_map[&parent.id()];
-                let parent_manifest = Manifest::from_dir(parent_path, sway_git_tag)?;
+                let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
@@ -996,15 +995,14 @@ pub fn dependency_namespace(
 /// Scripts and Predicates will be compiled to bytecode and will not emit any JSON ABI.
 pub fn compile(
     pkg: &Pinned,
-    pkg_path: &Path,
-    manifest: &Manifest,
+    manifest: &ManifestFile,
     build_config: &BuildConfig,
     namespace: NamespaceRef,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<NamespaceRef>)> {
-    let entry_path = manifest.entry_path(pkg_path);
-    let source = manifest.entry_string(pkg_path)?;
-    let sway_build_config = sway_build_config(pkg_path, &entry_path, build_config)?;
+    let entry_path = manifest.entry_path();
+    let source = manifest.entry_string()?;
+    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
@@ -1076,8 +1074,8 @@ pub fn build(
             dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
-        let manifest = Manifest::from_dir(path, sway_git_tag)?;
-        let res = compile(pkg, path, &manifest, conf, dep_namespace, &mut source_map)?;
+        let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
+        let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace);
