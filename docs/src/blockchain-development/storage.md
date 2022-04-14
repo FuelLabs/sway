@@ -40,7 +40,7 @@ impl StorageExample for Contract {
 }
 ```
 
-
+Note, if you are looking to store b256 or similar complex types, please refer to [this issue](https://github.com/FuelLabs/sway/pull/1228#discussion_r849678269).
 
 <!--
 ## Syntax
