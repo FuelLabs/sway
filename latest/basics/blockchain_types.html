@@ -169,7 +169,7 @@
                     <main>
                         <h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
-<p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
+<p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
 <h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
 <p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike Ethereum, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (effectively an <a href="https://ethereum.org/en/whitepaper/#ethereum-accounts">externally owned account</a> if you're coming from Ethereum) or the hash of a <a href="../sway-program-types/predicates.html">predicate</a>. Addresses own UTXOs.</p>
 <p>An <code>Address</code> is implemented as follows.</p>

@@ -168,12 +168,6 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
-<h2 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h2>
-<p>The standard library is currently not distributed with <code>forc</code> if <a href="../introduction/installation.html#installing-from-cargo">installed via <code>cargo</code></a>. It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's <code>Forc.toml</code> file:</p>
-<pre><code class="language-toml">[dependencies]
-std = { git = &quot;https://github.com/FuelLabs/sway&quot;, branch = &quot;master&quot; }
-</code></pre>
-<p>Note that the default <code>Forc.toml</code> generated with <code>forc init</code> already includes these lines, so no further action is necessary.</p>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
 <p>Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.</p>
 <pre><code class="language-sway">contract;

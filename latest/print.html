@@ -944,7 +944,7 @@ assert(x[0]);
 <p>Note that arrays are zero-indexed, just like tuples.</p>
 <h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
-<p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
+<p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
 <h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
 <p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike Ethereum, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (effectively an <a href="https://ethereum.org/en/whitepaper/#ethereum-accounts">externally owned account</a> if you're coming from Ethereum) or the hash of a <a href="basics/../sway-program-types/predicates.html">predicate</a>. Addresses own UTXOs.</p>
 <p>An <code>Address</code> is implemented as follows.</p>
@@ -2101,7 +2101,7 @@ Here's an example showing what this might look like:</p>
 <li>we return <code>r2</code> &amp; specify the return type as being u32 (the return type is u64 by default).</li>
 </ul>
 <h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
-<p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway-lib-std">Sway standard library</a>.</p>
+<p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">Sway standard library</a>.</p>
 <p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md">Instructions</a>.</p>
 <p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a>.</p>
 <h1 id="application-frontend-development"><a class="header" href="#application-frontend-development">Application Frontend Development</a></h1>
@@ -2129,12 +2129,6 @@ Here's an example showing what this might look like:</p>
 <h2 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h2>
 <p>In Sway, structs, traits, and enums are <code>CapitalCase</code>. Modules, variables, and functions are <code>snake_case</code>, constants are <code>SCREAMING_SNAKE_CASE</code>. The compiler will warn you if your capitalization is ever unidiomatic.</p>
 <h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
-<h2 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h2>
-<p>The standard library is currently not distributed with <code>forc</code> if <a href="reference/../introduction/installation.html#installing-from-cargo">installed via <code>cargo</code></a>. It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's <code>Forc.toml</code> file:</p>
-<pre><code class="language-toml">[dependencies]
-std = { git = &quot;https://github.com/FuelLabs/sway&quot;, branch = &quot;master&quot; }
-</code></pre>
-<p>Note that the default <code>Forc.toml</code> generated with <code>forc init</code> already includes these lines, so no further action is necessary.</p>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
 <p>Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.</p>
 <pre><code class="language-sway">contract;
