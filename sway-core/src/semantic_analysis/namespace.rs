@@ -238,8 +238,7 @@ impl Namespace {
             Some(decl) => ok(decl, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: name.as_str().to_string(),
-                    span: name.span().clone(),
+                    name: name.clone(),
                 });
                 err(warnings, errors)
             }
@@ -524,9 +523,8 @@ impl Namespace {
                     != Some(TypeInfo::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.as_str().to_string(),
+                        method_name: method_name.clone(),
                         type_name: r#type.friendly_type_str(),
-                        span: method_name.span().clone(),
                     });
                 }
                 err(warnings, errors)
@@ -592,8 +590,7 @@ impl Namespace {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: first_ident.as_str().to_string(),
-                    span: first_ident.span().clone(),
+                    var_name: first_ident.clone(),
                 });
                 return err(warnings, errors);
             }
@@ -638,9 +635,8 @@ impl Namespace {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name: struct_name.to_string(),
+                            struct_name: struct_name.clone(),
                             available_fields: available_fields.join(", "),
-                            span: ident.span().clone(),
                         });
                         return err(warnings, errors);
                     }
@@ -715,8 +711,7 @@ impl Namespace {
         for symbol in symbols {
             if self.use_synonyms.contains_key(&symbol) {
                 errors.push(CompileError::StarImportShadowsOtherSymbol {
-                    name: symbol.as_str().to_string(),
-                    span: symbol.span().clone(),
+                    name: symbol.clone(),
                 });
             }
             self.use_synonyms.insert(symbol, path.clone());
@@ -762,8 +757,7 @@ impl Namespace {
             Some(decl) => {
                 if decl.visibility() != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol {
-                        name: item.as_str().to_string(),
-                        span: item.span().clone(),
+                        name: item.clone(),
                     });
                 }
                 // if this is a const, insert it into the local namespace directly
@@ -790,8 +784,7 @@ impl Namespace {
                     Some(alias) => {
                         if self.use_synonyms.contains_key(&alias) {
                             errors.push(CompileError::ShadowsOtherSymbol {
-                                name: alias.as_str().to_string(),
-                                span: alias.span().clone(),
+                                name: alias.clone(),
                             });
                         }
                         self.use_synonyms.insert(alias.clone(), path.clone());
@@ -801,8 +794,7 @@ impl Namespace {
                     None => {
                         if self.use_synonyms.contains_key(item) {
                             errors.push(CompileError::ShadowsOtherSymbol {
-                                name: item.as_str().to_string(),
-                                span: item.span().clone(),
+                                name: item.clone(),
                             });
                         }
                         self.use_synonyms.insert(item.clone(), path.clone());
@@ -811,8 +803,7 @@ impl Namespace {
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: item.as_str().to_string(),
-                    span: item.span().clone(),
+                    name: item.clone(),
                 });
                 return err(warnings, errors);
             }

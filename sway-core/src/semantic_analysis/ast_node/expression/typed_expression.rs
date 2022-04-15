@@ -1746,59 +1746,78 @@ impl TypedExpression {
         // an ambiguous reference error.
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
-        let module_result = namespace
+
+        // Short-hand for the `SymbolNotFound` error.
+        fn symbol_not_found(call_path_suffix: &Ident) -> CompileError {
+            CompileError::SymbolNotFound {
+                name: call_path_suffix.clone(),
+            }
+        }
+
+        // First, check if this could be a module. We check first so that we can check for
+        // ambiguity in the following enum check.
+        let is_module = namespace
             .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors)
-            .cloned();
-        let (enum_module_combined_result, enum_module_combined_result_module) = {
-            // also, check if this is an enum _in_ another module.
-            let (module_path, enum_name) =
-                call_path.prefixes.split_at(call_path.prefixes.len() - 1);
-            let enum_name = enum_name[0].clone();
-            let namespace = namespace
-                .find_module_relative(module_path)
-                .ok(&mut warnings, &mut errors);
-            let enum_module_combined_result =
-                namespace.as_ref().and_then(|ns| ns.find_enum(&enum_name));
-            (enum_module_combined_result, namespace)
-        };
+            .is_some();
 
-        // now we can see if this thing is a symbol (typed declaration) or reference to an
-        // enum instantiation, and if it is not either of those things, then it might be a
-        // function application
-        let exp: TypedExpression = match (module_result, enum_module_combined_result) {
-            (Some(_module), Some(_enum_res)) => {
+        // Check if the call path refers to an enum in another module.
+        let (module_path, enum_path) = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+        let enum_name = &enum_path[0];
+        let exp = if let Some((enum_module, enum_decl)) = namespace
+            .find_module_relative_mut(module_path)
+            .ok(&mut warnings, &mut errors)
+            .and_then(|ns| ns.find_enum(enum_name).map(|decl| (ns, decl)))
+        {
+            // Check for ambiguity between this enum name and a module name.
+            if is_module {
                 errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
-            (Some(mut module), None) => match module.get_symbol(&call_path.suffix).value {
-                Some(decl) => match decl {
-                    TypedDeclaration::EnumDeclaration(enum_decl) => {
-                        check!(
-                            instantiate_enum(
-                                &mut module,
-                                enum_decl,
-                                call_path.suffix,
-                                args,
-                                type_arguments,
-                                namespace,
-                                crate_namespace,
-                                self_type,
-                                build_config,
-                                dead_code_graph,
-                                opts,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
-                    TypedDeclaration::FunctionDeclaration(func_decl) => check!(
-                        instantiate_function_application(
-                            func_decl,
-                            call_path,
-                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
+            check!(
+                instantiate_enum(
+                    // TODO: Remove this clone and pass `&mut enum_module` directly once we work
+                    // out how to avoid aliasing `namespace`.
+                    &mut enum_module.clone(),
+                    enum_decl,
+                    call_path.suffix,
+                    args,
+                    type_arguments,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+
+        // Otherwise, our prefix should point to some module ending with an enum or function.
+        } else if let Some(module) = namespace
+            .find_module_relative_mut(&call_path.prefixes)
+            .ok(&mut probe_warnings, &mut probe_errors)
+        {
+            let decl = match module.get_symbol(&call_path.suffix).value {
+                Some(decl) => decl,
+                None => {
+                    errors.push(symbol_not_found(&call_path.suffix));
+                    return err(warnings, errors);
+                }
+            };
+            match decl {
+                TypedDeclaration::EnumDeclaration(enum_decl) => {
+                    check!(
+                        instantiate_enum(
+                            // TODO: Remove this clone and pass `&mut module` directly once we work
+                            // out how to avoid aliasing `namespace`.
+                            &mut module.clone(),
+                            enum_decl,
+                            call_path.suffix,
                             args,
+                            type_arguments,
                             namespace,
                             crate_namespace,
                             self_type,
@@ -1809,32 +1828,14 @@ impl TypedExpression {
                         return err(warnings, errors),
                         warnings,
                         errors
-                    ),
-                    a => {
-                        errors.push(CompileError::NotAnEnum {
-                            name: call_path.friendly_name(),
-                            span,
-                            actually: a.friendly_name().to_string(),
-                        });
-                        return err(warnings, errors);
-                    }
-                },
-                None => {
-                    errors.push(CompileError::SymbolNotFound {
-                        name: call_path.suffix.clone(),
-                    });
-                    return err(warnings, errors);
+                    )
                 }
-            },
-            (None, Some(enum_decl)) => {
-                let mut module = enum_module_combined_result_module.unwrap().clone();
-                check!(
-                    instantiate_enum(
-                        &mut module,
-                        enum_decl,
-                        call_path.suffix,
+                TypedDeclaration::FunctionDeclaration(func_decl) => check!(
+                    instantiate_function_application(
+                        func_decl,
+                        call_path,
+                        vec!(), // the type args in this position are guarenteed to be empty due to parsing
                         args,
-                        type_arguments,
                         namespace,
                         crate_namespace,
                         self_type,
@@ -1845,14 +1846,22 @@ impl TypedExpression {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                ),
+                a => {
+                    // TODO: Should this be `NotAnEnumOrFunction`?
+                    errors.push(CompileError::NotAnEnum {
+                        name: call_path.friendly_name(),
+                        span,
+                        actually: a.friendly_name().to_string(),
+                    });
+                    return err(warnings, errors);
+                }
             }
-            (None, None) => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: call_path.suffix,
-                });
-                return err(warnings, errors);
-            }
+
+        // If prefix is neither a module or enum, there's nothing to be found.
+        } else {
+            errors.push(symbol_not_found(&call_path.suffix));
+            return err(warnings, errors);
         };
 
         ok(exp, warnings, errors)
