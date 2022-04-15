@@ -16,7 +16,9 @@ The Sway toolchain and Fuel Core full node can be installed with:
 cargo install forc fuel-core
 ```
 
-`forc` and `fuel-core` are built and tested against the `stable` Rust toolchain. There is no guarantee that they will work with the `nightly` Rust toolchain, so ensure you are using `stable` with:
+`forc` and `fuel-core` are built and tested against the `stable` Rust toolchain version 1.58 or later. If your install fails the first time, use `rustup update` and try again.
+
+There is no guarantee that either package will work with the `nightly` Rust toolchain, so ensure you are using `stable` with:
 
 ```sh
 rustup default stable
