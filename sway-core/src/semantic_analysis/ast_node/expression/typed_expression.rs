@@ -1762,12 +1762,12 @@ impl TypedExpression {
             .is_some();
 
         // Check if the call path refers to an enum in another module.
-        let (module_path, enum_path) = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+        let (enum_mod_path, enum_path) = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
         let enum_name = &enum_path[0];
-        let exp = if let Some((enum_module, enum_decl)) = namespace
-            .find_module_relative_mut(module_path)
+        let exp = if let Some(enum_decl) = namespace
+            .find_module_relative_mut(enum_mod_path)
             .ok(&mut warnings, &mut errors)
-            .and_then(|ns| ns.find_enum(enum_name).map(|decl| (ns, decl)))
+            .and_then(|ns| ns.find_enum(enum_name))
         {
             // Check for ambiguity between this enum name and a module name.
             if is_module {
@@ -1776,9 +1776,7 @@ impl TypedExpression {
             }
             check!(
                 instantiate_enum(
-                    // TODO: Remove this clone and pass `&mut enum_module` directly once we work
-                    // out how to avoid aliasing `namespace`.
-                    &mut enum_module.clone(),
+                    enum_mod_path,
                     enum_decl,
                     call_path.suffix,
                     args,
@@ -1811,9 +1809,7 @@ impl TypedExpression {
                 TypedDeclaration::EnumDeclaration(enum_decl) => {
                     check!(
                         instantiate_enum(
-                            // TODO: Remove this clone and pass `&mut module` directly once we work
-                            // out how to avoid aliasing `namespace`.
-                            &mut module.clone(),
+                            &call_path.prefixes,
                             enum_decl,
                             call_path.suffix,
                             args,

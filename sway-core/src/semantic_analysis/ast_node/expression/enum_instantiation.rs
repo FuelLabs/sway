@@ -8,7 +8,7 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    module: &mut Namespace,
+    module_path: &[Ident],
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
@@ -56,6 +56,12 @@ pub(crate) fn instantiate_enum(
             return err(warnings, errors);
         }
         (false, false) => {
+            let module = check!(
+                namespace.find_module_relative_mut(module_path),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             check!(
                 enum_decl.monomorphize_with_type_arguments(
                     module,
