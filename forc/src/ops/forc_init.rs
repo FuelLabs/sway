@@ -52,6 +52,33 @@ struct ContentResponse {
     url: String,
 }
 
+fn print_welcome_message() {
+    let read_the_docs = format!(
+        "Read the Docs:\n- {}\n- {}\n- {}",
+        "Sway Book: https://fuellabs.github.io/sway/latest",
+        "Rust SDK Book: https://fuellabs.github.io/fuels-rs/latest",
+        "TypeScript SDK: https://github.com/FuelLabs/fuels-ts"
+    );
+
+    let join_the_community = format!(
+        "Join the Community:\n- Follow us {}
+- Ask questions in dev-chat on {}",
+        "@SwayLang: https://twitter.com/SwayLang", "Discord: https://discord.com/invite/xfpK4Pe"
+    );
+
+    let report_bugs = format!(
+        "Report Bugs:\n- {}",
+        "Sway Issues: https://github.com/FuelLabs/sway/issues/new"
+    );
+
+    let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
+
+    println!(
+        "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
+        try_forc, read_the_docs, join_the_community, report_bugs
+    );
+}
+
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
@@ -115,6 +142,8 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
 
     println_green(&format!("Successfully created: {}", project_name));
 
+    print_welcome_message();
+
     Ok(())
 }
 
@@ -173,7 +202,8 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
     }
 
     println_green(&format!("Successfully created: {}", project_name));
-    println_green("Now try and run 'forc test'");
+
+    print_welcome_message();
 
     Ok(())
 }
