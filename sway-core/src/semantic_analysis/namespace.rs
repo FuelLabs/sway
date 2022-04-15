@@ -249,39 +249,31 @@ impl Namespace {
     pub(crate) fn find_module_relative(&self, path: &[Ident]) -> CompileResult<&Namespace> {
         let mut errors = vec![];
         let warnings = vec![];
-        if path.is_empty() {
-            return ok(self, warnings, errors);
-        }
-        let mut mod_ns = match self.modules.get(path[0].as_str()) {
-            Some(ns) => ns,
-            None => {
-                errors.push(CompileError::ModuleNotFound {
-                    span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                        Span::join(acc, this_one.span().clone())
-                    }),
-                    name: path
-                        .iter()
-                        .map(|x| x.as_str())
-                        .collect::<Vec<_>>()
-                        .join("::"),
-                });
-                return err(warnings, errors);
-            }
-        };
-        for ident in path.iter().skip(1) {
+        let mut mod_ns = self;
+        for ident in path.iter() {
             match mod_ns.modules.get(ident.as_str()) {
                 Some(ns) => mod_ns = ns,
                 None => {
-                    errors.push(CompileError::ModuleNotFound {
-                        span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                            Span::join(acc, this_one.span().clone())
-                        }),
-                        name: path
-                            .iter()
-                            .map(|x| x.as_str())
-                            .collect::<Vec<_>>()
-                            .join("::"),
-                    });
+                    errors.push(module_not_found(path));
+                    return err(warnings, errors);
+                }
+            }
+        }
+        ok(mod_ns, warnings, errors)
+    }
+
+    pub(crate) fn find_module_relative_mut(
+        &mut self,
+        path: &[Ident],
+    ) -> CompileResult<&mut Namespace> {
+        let mut errors = vec![];
+        let warnings = vec![];
+        let mut mod_ns = self;
+        for ident in path.iter() {
+            match mod_ns.modules.get_mut(ident.as_str()) {
+                Some(ns) => mod_ns = ns,
+                None => {
+                    errors.push(module_not_found(path));
                     return err(warnings, errors);
                 }
             }
@@ -474,10 +466,7 @@ impl Namespace {
     pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
-        let true_symbol = self
-            .use_aliases
-            .get(&symbol.as_str().to_string())
-            .unwrap_or(symbol);
+        let true_symbol = self.use_aliases.get(symbol.as_str()).unwrap_or(symbol);
         self.get_name_from_path(path, true_symbol)
     }
 
@@ -947,5 +936,18 @@ impl TraitMap {
             }
         }
         methods
+    }
+}
+
+fn module_not_found(path: &[Ident]) -> CompileError {
+    CompileError::ModuleNotFound {
+        span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
+            Span::join(acc, this_one.span().clone())
+        }),
+        name: path
+            .iter()
+            .map(|x| x.as_str())
+            .collect::<Vec<_>>()
+            .join("::"),
     }
 }
