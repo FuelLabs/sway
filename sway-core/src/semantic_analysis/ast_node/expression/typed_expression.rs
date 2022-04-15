@@ -1326,30 +1326,31 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
-        let mut module = check!(
-            namespace
-                .find_module_relative(&call_path.prefixes)
-                .map(|ns| ns.clone()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
 
-        let decl = match module.get_symbol(&call_path.suffix).value {
-            Some(TypedDeclaration::StructDeclaration(decl)) => decl,
-            Some(_) => {
-                errors.push(CompileError::DeclaredNonStructAsStruct {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
-            }
-            None => {
-                errors.push(CompileError::StructNotFound {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
+        let decl = {
+            let module = check!(
+                namespace.find_module_relative(&call_path.prefixes),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            match module.get_symbol(&call_path.suffix).value {
+                Some(TypedDeclaration::StructDeclaration(decl)) => decl,
+                Some(_) => {
+                    errors.push(CompileError::DeclaredNonStructAsStruct {
+                        name: call_path.suffix.clone(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                None => {
+                    errors.push(CompileError::StructNotFound {
+                        name: call_path.suffix.clone(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
             }
         };
 
@@ -1385,8 +1386,16 @@ impl TypedExpression {
                         errors
                     );
                 }
+
+                let module = check!(
+                    namespace.find_module_relative_mut(&call_path.prefixes),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 check!(
-                    decl.monomorphize(&mut module, &type_arguments, Some(self_type)),
+                    decl.monomorphize(module, &type_arguments, Some(self_type)),
                     return err(warnings, errors),
                     warnings,
                     errors
