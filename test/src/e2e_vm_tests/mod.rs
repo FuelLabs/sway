@@ -289,6 +289,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/import_trailing_comma",
+            ProgramState::Return(0),
+        ),
     ];
 
     let mut number_of_tests_run =
