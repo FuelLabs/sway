@@ -8,7 +8,6 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use terminal_link::Link;
 use url::Url;
 
 #[derive(Debug)]
@@ -56,30 +55,24 @@ struct ContentResponse {
 fn print_welcome_message() {
     let read_the_docs = format!(
         "Read the Docs:\n- {}\n- {}\n- {}",
-        Link::new("Sway Book", "https://fuellabs.github.io/sway/latest/"),
-        Link::new(
-            "Rust SDK Book",
-            "https://fuellabs.github.io/fuels-rs/latest/index.html"
-        ),
-        Link::new(
-            "Typescript SDK Docs",
-            "https://github.com/FuelLabs/fuels-ts"
-        )
+        "Sway Book: https://fuellabs.github.io/sway/latest",
+        "Rust SDK Book: https://fuellabs.github.io/fuels-rs/latest",
+        "TypeScript SDK: https://github.com/FuelLabs/fuels-ts"
     );
 
     let join_the_community = format!(
         "Join the Community:\n- Follow us {}
 - Ask questions in dev-chat on {}",
-        Link::new("@SwayLang", "https://twitter.com/SwayLang"),
-        Link::new("Discord", "https://discord.com/invite/xfpK4Pe")
+        "@SwayLang: https://twitter.com/SwayLang",
+        "Discord: https://discord.com/invite/xfpK4Pe"
     );
 
     let report_bugs = format!(
         "Report Bugs:\n- {}",
-        Link::new("Sway Issues", "https://github.com/FuelLabs/sway/issues/new")
+        "Sway Issues: https://github.com/FuelLabs/sway/issues/new"
     );
 
-    let try_forc = "Now try `forc build` or `forc test`".to_string();
+    let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
 
     println!(
         "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
