@@ -15,6 +15,7 @@ fuels-abigen-macro = "0.8"
 fuels-contract = "0.8"
 fuels-core = "0.8"
 fuels-signers = { version = "0.8", features=["test-helpers"] }
+hex = "0.4.3"
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 

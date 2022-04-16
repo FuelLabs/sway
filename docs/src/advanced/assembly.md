@@ -33,7 +33,7 @@ Note that in the above example:
 
 ## Helpful Links
 
-For examples of assembly in action, check out the [Sway standard library](https://github.com/FuelLabs/sway-lib-std).
+For examples of assembly in action, check out the [Sway standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std).
 
 For a complete list of all instructions supported in the FuelVM: [Instructions](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md).
 

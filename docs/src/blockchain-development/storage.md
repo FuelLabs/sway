@@ -6,69 +6,16 @@ Put in conventional programming terms, contract storage is like saving data to a
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
-<!--
-## Syntax
+## Manual Storage Management
 
-### Declaration
+Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
 
-The syntax of declaring storage space in Sway looks like this:
+With this approach you will have to manually assign the internal key used for storage.
 
-```sway
-storage {
-    owner: b256,
-}
-```
-
-It is very similar to a struct declaration, except with storage, you also have the option to specify an initial value:
+An example is as follows:
 
 ```sway
-storage {
-    owner: 0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd,
-}
+{{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-This value is passed as a part of the transaction, which initializes storage upon contract deployment.
-
-### Access
-
-Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: _reading_ and _writing_.
-
-#### Reading from Storage
-
-Reading from storage is less expensive than writing. To read a value from storage, use the `.read()` method:
-
-```sway
-storage {
-    owner: b256
-}
-
-impure fn get_owner() -> ref b256 {
-    storage.owner.read()
-}
-```
-
-This returns an immutable reference to a `b256` which is held in storage. The `read()` method itself copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. **This means that writing to a storage value will not update other variables that are holding references to that value acquired via `read()`**. If you'd like an actual `StorageRef` to the value itself, which does _not_ copy the value and instead incurs a storage read cost on every access, use `.direct_read()`.
-
-#### Writing to Storage
-
-Writing to storage is accomplished with the `.write()` method. The `.write()` method returns a special kind of mutable reference, called a `MutStorageRef`, which mutates storage directly upon every write. Writing to values of this type costs more gas than usual and should be minimized.
-
-```sway
-contract;
-
-storage {
-    owner: b256
-}
-
-impure fn main() {
-    let mutable_owner_ptr = write_owner();
-    deref mutable_owner_ptr = 0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f;
-}
-
-impure fn write_owner() -> MutStorageRef<b256> {
-    storage.owner.write()
-}
-```
-
-Note that to write to a mutable reference, you must dereference it first. See [the chapter on reference types](../basics/reference_types.md) for more information on reference types in general.
--->
+Note, if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).

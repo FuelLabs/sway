@@ -9,6 +9,6 @@ pub mod manifest;
 mod pkg;
 
 pub use lock::Lock;
-pub use manifest::Manifest;
+pub use manifest::{Manifest, ManifestFile};
 #[doc(inline)]
 pub use pkg::*;

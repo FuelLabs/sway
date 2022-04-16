@@ -339,7 +339,9 @@ pub(crate) fn convert_expression_to_asm(
             namespace,
             register_sequencer,
         ),
-        TypedExpressionVariant::TypeProperty { property, type_id } => match property {
+        TypedExpressionVariant::TypeProperty {
+            property, type_id, ..
+        } => match property {
             BuiltinProperty::SizeOfType => convert_size_of_to_asm(
                 None,
                 type_id,

@@ -1,7 +1,7 @@
 use crate::{cli::UpdateCommand, utils::SWAY_GIT_TAG};
 use anyhow::{anyhow, Result};
-use forc_pkg::{self as pkg, lock, Lock, Manifest};
-use forc_util::{find_manifest_dir, lock_path};
+use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
+use forc_util::lock_path;
 use std::{fs, path::PathBuf};
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
@@ -30,21 +30,12 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            return Err(anyhow!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
-            ))
-        }
-    };
 
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
-    let lock_path = lock_path(&manifest_dir);
+    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::new(&manifest_dir, SWAY_GIT_TAG, offline)?;
+    let new_plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     lock::print_diff(&manifest.project.name, &diff);

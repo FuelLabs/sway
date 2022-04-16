@@ -394,98 +394,25 @@ impl TypedAstNode {
                             );
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
-                        Declaration::TraitDeclaration(TraitDeclaration {
-                            name,
-                            interface_surface,
-                            methods,
-                            supertraits,
-                            visibility,
-                        }) => {
-                            // type check the interface surface
-                            let interface_surface = check!(
-                                type_check_interface_surface(interface_surface, namespace),
+                        Declaration::TraitDeclaration(trait_decl) => {
+                            check!(
+                                type_check_trait_decl(TypeCheckArguments {
+                                    checkee: trait_decl,
+                                    namespace,
+                                    crate_namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                    // this is unused by `type_check_trait`
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: Default::default(),
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                }),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
-                            );
-
-                            let trait_namespace = create_new_scope(namespace);
-                            // Error checking. Make sure that each supertrait exists and that none
-                            // of the supertraits are actually an ABI declaration
-                            for supertrait in &supertraits {
-                                match namespace
-                                    .get_call_path(&supertrait.name)
-                                    .ok(&mut warnings, &mut errors)
-                                {
-                                    Some(TypedDeclaration::TraitDeclaration(
-                                        TypedTraitDeclaration {
-                                            ref interface_surface,
-                                            ..
-                                        },
-                                    )) => {
-                                        // insert trait implementations for all of the supertraits
-                                        trait_namespace.insert_trait_implementation(
-                                            supertrait.name.clone(),
-                                            TypeInfo::SelfType,
-                                            interface_surface
-                                                .iter()
-                                                .map(|x| x.to_dummy_func(Mode::NonAbi))
-                                                .collect(),
-                                        );
-                                        // TODO: use `_methods` to insert dummy funcs for those
-                                        // methods into the namespace here
-                                        // will need to implement something for converting
-                                        // non-type-checked functions into dummy functions
-                                    }
-                                    Some(TypedDeclaration::AbiDeclaration(_)) => {
-                                        errors.push(CompileError::AbiAsSupertrait {
-                                            span: name.span().clone(),
-                                        })
-                                    }
-                                    _ => errors.push(CompileError::TraitNotFound {
-                                        name: supertrait.name.span().as_str().to_string(),
-                                        span: name.span().clone(),
-                                    }),
-                                }
-                            }
-                            // insert placeholder functions representing the interface surface
-                            // to allow methods to use those functions
-                            trait_namespace.insert_trait_implementation(
-                                CallPath {
-                                    prefixes: vec![],
-                                    suffix: name.clone(),
-                                    is_absolute: false,
-                                },
-                                TypeInfo::SelfType,
-                                interface_surface
-                                    .iter()
-                                    .map(|x| x.to_dummy_func(Mode::NonAbi))
-                                    .collect(),
-                            );
-                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-                            let _methods = check!(
-                                type_check_trait_methods(
-                                    methods.clone(),
-                                    trait_namespace,
-                                    crate_namespace,
-                                    insert_type(TypeInfo::SelfType),
-                                    build_config,
-                                    dead_code_graph,
-                                ),
-                                vec![],
-                                warnings,
-                                errors
-                            );
-                            let trait_decl =
-                                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                                    name: name.clone(),
-                                    interface_surface,
-                                    methods,
-                                    supertraits,
-                                    visibility,
-                                });
-                            namespace.insert(name, trait_decl.clone());
-                            trait_decl
+                            )
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
@@ -1157,6 +1084,147 @@ fn reassignment(
     }
 }
 
+/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
+/// which is meant to be the namespace of the subtrait in question
+fn handle_supertraits(
+    supertraits: &[Supertrait],
+    trait_namespace: NamespaceRef,
+    namespace: NamespaceRef,
+) -> CompileResult<()> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    for supertrait in supertraits.iter() {
+        match namespace
+            .get_call_path(&supertrait.name)
+            .ok(&mut warnings, &mut errors)
+        {
+            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                ref interface_surface,
+                ref methods,
+                ref supertraits,
+                ..
+            })) => {
+                // insert dummy versions of the interfaces for all of the supertraits
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    interface_surface
+                        .iter()
+                        .map(|x| x.to_dummy_func(Mode::NonAbi))
+                        .collect(),
+                );
+
+                // insert dummy versions of the methods of all of the supertraits
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    check!(
+                        convert_trait_methods_to_dummy_funcs(methods, namespace),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                );
+
+                // Recurse to insert dummy versions of interfaces and methods of the *super*
+                // supertraits
+                check!(
+                    handle_supertraits(supertraits, trait_namespace, namespace),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            Some(TypedDeclaration::AbiDeclaration(_)) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
+            _ => errors.push(CompileError::TraitNotFound {
+                name: supertrait.name.span().as_str().to_string(),
+                span: supertrait.name.span().clone(),
+            }),
+        }
+    }
+
+    ok((), warnings, errors)
+}
+
+fn type_check_trait_decl(
+    arguments: TypeCheckArguments<'_, TraitDeclaration>,
+) -> CompileResult<TypedDeclaration> {
+    let TypeCheckArguments {
+        checkee: trait_decl,
+        namespace,
+        crate_namespace,
+        return_type_annotation: _return_type_annotation,
+        help_text: _help_text,
+        build_config,
+        dead_code_graph,
+        ..
+    } = arguments;
+
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    // type check the interface surface
+    let interface_surface = check!(
+        type_check_interface_surface(trait_decl.interface_surface.to_vec(), namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let trait_namespace = create_new_scope(namespace);
+
+    // Recursively handle supertraits: make their interfaces and methods available to this trait
+    check!(
+        handle_supertraits(&trait_decl.supertraits, trait_namespace, namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // insert placeholder functions representing the interface surface
+    // to allow methods to use those functions
+    trait_namespace.insert_trait_implementation(
+        CallPath {
+            prefixes: vec![],
+            suffix: trait_decl.name.clone(),
+            is_absolute: false,
+        },
+        TypeInfo::SelfType,
+        interface_surface
+            .iter()
+            .map(|x| x.to_dummy_func(Mode::NonAbi))
+            .collect(),
+    );
+    // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+    let _methods = check!(
+        type_check_trait_methods(
+            trait_decl.methods.clone(),
+            trait_namespace,
+            crate_namespace,
+            insert_type(TypeInfo::SelfType),
+            build_config,
+            dead_code_graph,
+        ),
+        vec![],
+        warnings,
+        errors
+    );
+    let typed_trait_decl = TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+        name: trait_decl.name.clone(),
+        interface_surface,
+        methods: trait_decl.methods.to_vec(),
+        supertraits: trait_decl.supertraits.to_vec(),
+        visibility: trait_decl.visibility,
+    });
+    namespace.insert(trait_decl.name, typed_trait_decl.clone());
+    ok(typed_trait_decl, warnings, errors)
+}
+
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: crate::semantic_analysis::NamespaceRef,
@@ -1387,6 +1455,77 @@ fn type_check_trait_methods(
         });
     }
     ok(methods_buf, warnings, errors)
+}
+
+/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
+/// the parameters and the return types are type checked.
+fn convert_trait_methods_to_dummy_funcs(
+    methods: &[FunctionDeclaration],
+    namespace: crate::semantic_analysis::NamespaceRef,
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let dummy_funcs = methods
+        .iter()
+        .map(
+            |FunctionDeclaration {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+                 ..
+             }| TypedFunctionDeclaration {
+                purity: Default::default(),
+                name: name.clone(),
+                body: TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: name.span().clone(),
+                },
+                parameters: parameters
+                    .iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             type_id,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name: name.clone(),
+                            r#type: check!(
+                                namespace.resolve_type_with_self(
+                                    look_up_type_id(*type_id),
+                                    crate::type_engine::insert_type(TypeInfo::SelfType),
+                                    type_span.clone(),
+                                    true
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            ),
+                            type_span: type_span.clone(),
+                        },
+                    )
+                    .collect(),
+                span: name.span().clone(),
+                return_type: check!(
+                    namespace.resolve_type_with_self(
+                        return_type.clone(),
+                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                        return_type_span.clone(),
+                        true
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                ),
+                return_type_span: return_type_span.clone(),
+                visibility: Visibility::Public,
+                type_parameters: vec![],
+                is_contract_call: false,
+            },
+        )
+        .collect::<Vec<_>>();
+
+    ok(dummy_funcs, warnings, errors)
 }
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading

@@ -3,26 +3,22 @@ use crate::ops::forc_build;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{check_program_type, fuel_core_not_running, manifest_file_missing, Manifest};
-use forc_util::find_manifest_dir;
+use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
-use tokio::process::Child;
 
-pub async fn run(command: RunCommand) -> Result<()> {
+pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest_dir =
-        find_manifest_dir(&path_dir).ok_or_else(|| manifest_file_missing(path_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
-    check_program_type(&manifest, manifest_dir, TreeType::Script)?;
+    let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
+    manifest.check_program_type(TreeType::Script)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
@@ -56,19 +52,13 @@ pub async fn run(command: RunCommand) -> Result<()> {
 
     if command.dry_run {
         println!("{:?}", tx);
-        Ok(())
+        Ok(vec![])
     } else {
         let node_url = match &manifest.network {
             Some(network) => &network.url,
             _ => &command.node_url,
         };
-        let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
-        if command.kill_node {
-            if let Some(mut child) = child {
-                child.kill().await.expect("Node should be killed");
-            }
-        }
-        Ok(())
+        try_send_tx(node_url, &tx, command.pretty_print).await
     }
 }
 
@@ -76,19 +66,20 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
-) -> Result<Option<Child>> {
+) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => {
-            send_tx(&client, tx, pretty_print).await?;
-            Ok(None)
-        }
+        Ok(_) => send_tx(&client, tx, pretty_print).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
 
-async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> Result<()> {
+async fn send_tx(
+    client: &FuelClient,
+    tx: &Transaction,
+    pretty_print: bool,
+) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
     match client
         .submit(tx)
@@ -101,7 +92,7 @@ async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> R
             } else {
                 println!("{:?}", logs);
             }
-            Ok(())
+            Ok(logs)
         }
         Err(e) => bail!("{e}"),
     }
