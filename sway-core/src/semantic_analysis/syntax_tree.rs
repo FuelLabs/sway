@@ -120,8 +120,7 @@ impl TypedParseTree {
 
     pub(crate) fn type_check(
         parsed: ParseTree,
-        mut new_namespace: Namespace,
-        crate_namespace: &Namespace,
+        crate_namespace: Namespace,
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -135,11 +134,17 @@ impl TypedParseTree {
             warnings,
             errors
         );
+
+        // We'll build the new namespace as we traverse the tree. We initialise the new namespace
+        // with the root namespace. This root namespace consists of dependency packages, and should
+        // possibly also include prelude items in the future.
+        let mut new_namespace = crate_namespace.clone();
+
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
                 &mut new_namespace,
-                crate_namespace,
+                &crate_namespace,
                 build_config,
                 dead_code_graph,
             ),

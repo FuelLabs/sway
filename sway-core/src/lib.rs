@@ -294,8 +294,7 @@ pub(crate) fn compile_inner_dependency(
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
             parse_tree.tree,
-            initial_namespace.clone(),
-            &initial_namespace,
+            initial_namespace,
             &parse_tree.tree_type,
             &build_config,
             dead_code_graph,
@@ -365,8 +364,7 @@ pub fn compile_to_ast(
         errors: new_errors,
     } = TypedParseTree::type_check(
         parse_tree.tree,
-        initial_namespace.clone(),
-        &initial_namespace,
+        initial_namespace,
         &parse_tree.tree_type,
         &build_config.clone(),
         &mut dead_code_graph,
