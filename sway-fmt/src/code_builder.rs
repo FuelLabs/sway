@@ -9,10 +9,9 @@ use crate::code_builder_helpers::{
 
 use super::{
     code_builder_helpers::{
-        clean_all_whitespace, handle_ampersand_case, handle_assignment_case,
-        handle_collection_case, handle_colon_case, handle_dash_case, handle_logical_not_case,
-        handle_multiline_comment_case, handle_pipe_case, handle_string_case,
-        handle_whitespace_case, is_comment, is_multiline_comment,
+        clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
+        handle_dash_case, handle_logical_not_case, handle_multiline_comment_case, handle_pipe_case,
+        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
     code_line::{CodeLine, CodeType},
 };
@@ -80,9 +79,6 @@ impl CodeBuilder {
                     }
                 }
                 CodeType::String => handle_string_case(&mut code_line, current_char),
-                CodeType::Collection => {
-                    handle_collection_case(&mut code_line, current_char, &mut iter)
-                }
                 _ => {
                     match current_char {
                         ' ' => handle_whitespace_case(&mut code_line, &mut iter),
@@ -124,9 +120,28 @@ impl CodeBuilder {
                         }
 
                         '[' => {
-                            if !code_line.is_collection() {
+                            if code_line.is_collection() {
+                                code_line.push_char('[');
+                                code_line.become_nested_collection();
+                            } else if !code_line.is_collection() {
                                 code_line.append_with_whitespace("[");
                                 code_line.become_collection();
+                            }
+                        }
+
+                        ']' => {
+                            if code_line.is_nested_collection() {
+                                code_line.push_char(']');
+                                if let Some((_, c)) = iter.peek() {
+                                    if *c == ';' || *c == ']' {
+                                        code_line.become_collection();
+                                    }
+                                }
+                            } else if code_line.is_collection() {
+                                code_line.push_char(']');
+                                code_line.become_default();
+                            } else {
+                                code_line.push_char(']');
                             }
                         }
 
@@ -157,7 +172,13 @@ impl CodeBuilder {
                                 None => code_line.push_str(", "),
                             }
                         }
-                        ';' => return self.handle_semicolon_case(line, code_line, iter),
+                        ';' => {
+                            if code_line.is_collection() || code_line.is_nested_collection() {
+                                code_line.push_char(';');
+                            } else {
+                                return self.handle_semicolon_case(line, code_line, iter);
+                            }
+                        }
 
                         '{' => {
                             code_line.append_with_whitespace("{");

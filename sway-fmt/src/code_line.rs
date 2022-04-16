@@ -50,8 +50,16 @@ impl CodeLine {
         self.code_type == CodeType::Collection
     }
 
+    pub fn is_nested_collection(&self) -> bool {
+        self.code_type == CodeType::NestedCollection
+    }
+
     pub fn become_collection(&mut self) {
         self.code_type = CodeType::Collection
+    }
+
+    pub fn become_nested_collection(&mut self) {
+        self.code_type = CodeType::NestedCollection
     }
 
     pub fn is_multiline_comment(&self) -> bool {
@@ -131,4 +139,5 @@ pub enum CodeType {
     Default,
     MultilineComment,
     Collection,
+    NestedCollection,
 }
