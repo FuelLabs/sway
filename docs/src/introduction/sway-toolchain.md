@@ -10,7 +10,7 @@ The "Fuel Orchestrator" [Forc](https://github.com/FuelLabs/sway/tree/master/forc
 
 The Sway Language Server `forc-lsp` is provided to expose features to IDEs, which you can install with cargo:
 
-```console
+```sh
 cargo install forc-lsp
 ```
 
