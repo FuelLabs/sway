@@ -43,7 +43,7 @@ Structs have zero memory overhead. What that means is that in memory, each struc
 
 ## Tuples
 
-Tuples are static-length types which contain multiple different types within themselves. The type of a type is defined by the values within it, and a tuple can contain basic types as well as structs and enums. An example of a tuple declaration is provided below.
+Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which contain multiple different types within themselves. The type of a type is defined by the values within it, and a tuple can contain basic types as well as structs and enums. An example of a tuple declaration is provided below.
 
 ```sway
 let my_tuple: (u64, bool, u64) = (100, false, 10000);
@@ -56,7 +56,7 @@ let x: u64 = my_tuple.0;
 let y: bool = my_tuple.1;
 ```
 
-Tuples can also contain tuplees within themselves, and be used in destructing syntax to declare multiple values at once.
+Tuples can also contain tuples within themselves, and be used in destructing syntax to declare multiple values at once.
 
 Common usecases for tuples are returning multiple values from a function, packing parameters into a function, or storing a series of related values.
 ## Enums
