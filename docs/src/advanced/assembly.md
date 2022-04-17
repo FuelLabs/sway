@@ -31,7 +31,7 @@ Note that in the above example:
 - `one` is an example of a "reserved register", of which there are 16 in total. Further reading on this is linked below under "Semantics".
 - we return `r2` & specify the return type as being u32 (the return type is u64 by default).
 
-An important note is that the `ji` and `jnei` opcodes are not available with the `asm` block. For those looking to use control structure with assembly it is reccomended to use `if`, `else`, and `while` control structures in surrounding sway, to the combine multiple smaller `asm` blocks. 
+An important note is that the `ji` and `jnei` opcodes are not available within an `asm` block. For those looking to introduce control flow to `asm` blocks, it is recommended to surround smaller chunks of `asm` with control flow (`if`, `else`, and `while`).
 
 ## Helpful Links
 
