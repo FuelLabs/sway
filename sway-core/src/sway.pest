@@ -230,7 +230,7 @@ use_statement           =  {relative_use_statement | absolute_use_statement}
 relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
 absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
 import_path             =  {(star ~ alias?)|(self_keyword ~ alias?)|(ident ~ (path_separator ~ ident)* ~ ((path_separator ~ star ~ alias?)|import_items|alias)?)}
-import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ "}"}
+import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ ","? ~ "}"}
 star                    =  {"*"}
 self_keyword            =  {"self"}
 

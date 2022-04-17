@@ -2411,6 +2411,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::TypeProperty {
                 property: builtin,
                 type_id,
+                span: span.clone(),
             },
             return_type,
             is_constant: IsConstant::No,
