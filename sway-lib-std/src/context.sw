@@ -4,8 +4,8 @@ dep context/call_frames;
 dep context/registers;
 
 use ::contract_id::ContractId;
-use ::call_frames::*;
-use ::registers::balance;
+use call_frames::*;
+use registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
 pub fn this_balance(asset_id: ContractId) -> u64 {
