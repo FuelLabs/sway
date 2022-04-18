@@ -6,10 +6,11 @@ use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::{fs, path::Path, sync::Arc};
+use sway_core::BuildConfig;
 use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
-use sway_core::BuildConfig;
+
 
 #[derive(Debug, Parser)]
 #[clap(
@@ -50,7 +51,11 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                         file.clone(),
                         manifest_path.clone(),
                     );
-                    match get_formatted_data(file_content.clone(), formatting_options, Some(&build_config)) {
+                    match get_formatted_data(
+                        file_content.clone(),
+                        formatting_options,
+                        Some(&build_config),
+                    ) {
                         Ok((_, formatted_content)) => {
                             if app.check {
                                 if *file_content != *formatted_content {

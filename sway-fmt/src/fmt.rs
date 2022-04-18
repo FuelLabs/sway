@@ -13,7 +13,7 @@ use sway_core::BuildConfig;
 pub fn get_formatted_data(
     file: Arc<str>,
     formatting_options: FormattingOptions,
-    build_config: Option<&BuildConfig>
+    build_config: Option<&BuildConfig>,
 ) -> Result<(usize, String), Vec<String>> {
     let parsed_res = sway_core::parse(file.clone(), build_config);
 
