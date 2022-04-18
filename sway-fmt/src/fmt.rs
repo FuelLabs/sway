@@ -184,6 +184,7 @@ fn main() {
 
     storage {
         foo: u64,
+        bar: i32,
     }
     storage.foo;
 }
@@ -206,7 +207,7 @@ fn main(){
                ;
 
 storage {
-            foo: u64,
+            foo: u64, bar:i32,
             }
             storage.foo ;    
 }
