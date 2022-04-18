@@ -22,4 +22,4 @@ With forc installed running the command
 cargo run --bin forc-documenter write-docs
 ```
 
-will generate the proper docs for `forc` and it's commands based on `forc --help`. This behavior is further documented in [the Forc Documenter README](../scripts/forc-documenter/README.md).
+will generate the proper docs for `forc` and its commands based on `forc --help`. This behavior is further documented in [the Forc documenter README](../scripts/forc-documenter/README.md).
