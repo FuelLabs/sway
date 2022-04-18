@@ -22,7 +22,7 @@ use {
         parse_tree::desugar_match_expression,
     },
     sway_types::{Ident, Span},
-    new_parser_again::{
+    sway_parse::{
         Program, ProgramKind,
         Item, ItemStruct, ItemEnum, ItemFn, ItemTrait, ItemImpl, ItemAbi, ItemConst, ItemStorage,
         TypeField, GenericParams, GenericArgs, FnArgs, FnSignature, Traits,
@@ -1569,7 +1569,7 @@ fn binary_op_call(
 
 fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
-    storage_field: new_parser_again::StorageField,
+    storage_field: sway_parse::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
@@ -1607,7 +1607,7 @@ fn type_field_to_function_parameter(
 fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(new_parser_again::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -1640,7 +1640,7 @@ fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitte
 fn expr_to_u64(ec: &mut ErrorContext, expr: Expr) -> Result<u64, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(new_parser_again::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -1862,10 +1862,10 @@ fn path_root_opt_to_bool(
 
 fn literal_to_literal(
     ec: &mut ErrorContext,
-    literal: new_parser_again::Literal,
+    literal: sway_parse::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
-        new_parser_again::Literal::String(lit_string) => {
+        sway_parse::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
                 full_span.src().clone(),
@@ -1875,13 +1875,13 @@ fn literal_to_literal(
             ).unwrap();
             Literal::String(inner_span)
         },
-        new_parser_again::Literal::Char(lit_char) => {
+        sway_parse::Literal::Char(lit_char) => {
             let error = ConvertParseTreeError::CharLiteralsNotImplemented {
                 span: lit_char.span(),
             };
             return Err(ec.error(error));
         },
-        new_parser_again::Literal::Int(lit_int) => {
+        sway_parse::Literal::Int(lit_int) => {
             let LitInt { parsed, ty_opt, span } = lit_int;
             match ty_opt {
                 None => {
@@ -2104,7 +2104,7 @@ fn asm_block_to_asm_expression(
 
 fn match_branch_to_match_branch(
     ec: &mut ErrorContext,
-    match_branch: new_parser_again::MatchBranch,
+    match_branch: sway_parse::MatchBranch,
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
@@ -2276,7 +2276,7 @@ fn generic_args_to_type_parameters(generic_args: GenericArgs) -> Vec<TypeParamet
 
 fn asm_register_declaration_to_asm_register_declaration(
     ec: &mut ErrorContext,
-    asm_register_declaration: new_parser_again::AsmRegisterDeclaration,
+    asm_register_declaration: sway_parse::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,

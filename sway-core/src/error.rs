@@ -936,11 +936,11 @@ pub enum CompileError {
     },
     #[error("lex error: {}", error)]
     Lex {
-        error: new_parser_again::LexError,
+        error: sway_parse::LexError,
     },
     #[error("parse error: {}", error)]
     Parse {
-        error: new_parser_again::ParseError,
+        error: sway_parse::ParseError,
     },
 }
 

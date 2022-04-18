@@ -3,7 +3,7 @@ use {
         path::Path,
         sync::Arc,
     },
-    new_parser_again::Parser,
+    sway_parse::Parser,
 };
 
 static BAD: &[&str] = &[
@@ -96,7 +96,7 @@ fn parse_all_in_dir(dir: &Path) -> bool {
         };
         println!("lexing: {}", path.display());
         let path = Arc::new(path.to_owned());
-        let lex_res = new_parser_again::lex(&src, 0, src.len(), Some(path.clone()));
+        let lex_res = sway_parse::lex(&src, 0, src.len(), Some(path.clone()));
         let token_stream = match lex_res {
             Ok(token_stream) => token_stream,
             Err(error) => {
@@ -107,7 +107,7 @@ fn parse_all_in_dir(dir: &Path) -> bool {
         println!("parsing: {}", path.display());
         let mut errors = Vec::new();
         let parser = Parser::new(&token_stream, &mut errors);
-        let program_res = parser.parse_to_end::<new_parser_again::Program>();
+        let program_res = parser.parse_to_end::<sway_parse::Program>();
         let _program = match program_res {
             Ok(program) => program,
             Err(_error) => {

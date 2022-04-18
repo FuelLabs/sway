@@ -132,12 +132,12 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
     let use_new_parser = true;
     if use_new_parser {
         let path = config.map(|config| config.path());
-        let program = match new_parser_again::parse_file(input, path) {
+        let program = match sway_parse::parse_file(input, path) {
             Ok(program) => program,
             Err(error) => {
                 let errors = match error {
-                    new_parser_again::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-                    new_parser_again::ParseFileError::Parse(errors) => {
+                    sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
+                    sway_parse::ParseFileError::Parse(errors) => {
                         errors.into_iter().map(|error| CompileError::Parse { error }).collect()
                     },
                 };

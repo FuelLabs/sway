@@ -9,7 +9,6 @@ members = [
     "forc-lsp",
     "forc-pkg",
     "forc-util",
-    "parser",
     "sway-core",
     "sway-fmt",
     "sway-ir",
@@ -19,7 +18,7 @@ members = [
     "test",
     "test-sig-gen-util",
     "scripts/forc-documenter",
-    "new-parser-again",
+    "sway-parse",
 ]
 exclude = [
     "examples/fizzbuzz",
