@@ -23,23 +23,10 @@ pub fn add_1(num: u32) -> u32 {
 }
 ```
 
-An `asm` block can only return a single register. If you really need to return more than one value, you can return a tuple. Here's an example showing how you might return a tuple of `(u64, u64)`:
+An `asm` block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how can implement this `(u64, u64)`:
 
 ```sway
-pub fn adder(a: u64, b: u64, c: u64) -> (u64, u64) {
-    let empty_tuple = (0u64, 0u64);
-    asm(output: empty_tuple, r1: a, r2: b, r3: c, r4, r5) {
-        add r4 r1 r2;      // add a & b and put the result in r4
-        add r5 r2 r3;      // add b & c and put the result in r5
-        sw output r4 i0;   // store the word at r4 in output + 0 bytes
-        sw output r5 i1;   // store the word at r5 in output + 1 word
-        output: (u64, u64) // return both values
-    }
-}
-
-let (first, second) = adder(1, 2, 3);
-assert(first == 3);
-assert(second == 5);
+{{#include ../../../examples/asm_return_tuple_pointer/src/main.sw}}
 ```
 
 Note that this is contrived example meant to demonstrate the syntax; there's absolutely no need to use assembly to add integers!
