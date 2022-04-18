@@ -4,7 +4,6 @@ use core::ops::*;
 use std::assert::assert;
 
 fn main() -> bool {
-
     // 0b0000_1111 = 15
     // 0b0101_0101 = 85
     // 0b1010_1010 = 170
