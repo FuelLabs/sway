@@ -5,11 +5,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
-num-bigint = "*"
-num-traits = "*"
-unicode-xid = "*"
-extension-trait = "*"
-walkdir = "*"
+num-bigint = "0.4.3"
+num-traits = "0.2.14"
+unicode-xid = "0.2.2"
+extension-trait = "1.0.1"
 thiserror = "1.0"
-sway-types = { version = "*", path = "../sway-types" }
+sway-types = { version = "0.10.1", path = "../sway-types" }
 
