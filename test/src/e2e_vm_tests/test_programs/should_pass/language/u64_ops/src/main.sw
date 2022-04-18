@@ -1,6 +1,6 @@
 script;
 
-use core::ops::{binary_and, binary_or, binary_xor};
+use core::ops::*;
 use std::assert::assert;
 
 fn main() -> bool {
@@ -11,29 +11,29 @@ fn main() -> bool {
     // 0b1111_0000 = 240
     // 0b1111_1111 = 255
 
-    assert(0.binary_and(0) == 0);
-    assert(0.binary_and(1) == 0);
-    assert(1.binary_and(1) == 1);
-    assert(15.binary_and(255) == 15);
-    assert(15.binary_and(85) == 5);
-    assert(240.binary_and(255) == 240);
-    assert(85.binary_and(170) == 0);
+    assert(~u64::binary_and(0, 0) == 0);
+    assert(~u64::binary_and(0, 1) == 0);
+    assert(~u64::binary_and(1, 1) == 1);
+    assert(~u64::binary_and(15, 255) == 15);
+    assert(~u64::binary_and(15, 85) == 5);
+    assert(~u64::binary_and(240, 255) == 240);
+    assert(~u64::binary_and(85, 170) == 0);
 
-    assert(0.binary_or(0) == 0);
-    assert(0.binary_or(1) == 1);
-    assert(1.binary_or(1) == 1);
-    assert(15.binary_or(240) == 255);
-    assert(240.binary_or(170) == 250);
-    assert(15.binary_or(170) == 175);
-    assert(15.binary_or(255) == 255);
+    assert(~u64::binary_or(0, 0) == 0);
+    assert(~u64::binary_or(0, 1) == 1);
+    assert(~u64::binary_or(1, 1) == 1);
+    assert(~u64::binary_or(15, 240) == 255);
+    assert(~u64::binary_or(240, 170) == 250);
+    assert(~u64::binary_or(15, 170) == 175);
+    assert(~u64::binary_or(15, 255) == 255);
 
-    assert(0.binary_xor(0) == 0);
-    assert(0.binary_xor(1) == 1);
-    assert(1.binary_xor(1) == 0);
-    assert(15.binary_xor(240) == 255);
-    assert(85.binary_xor(170) == 255);
-    assert(85.binary_xor(85) == 0);
-    assert(240.binary_xor(255) == 15);
+    assert(~u64::binary_xor(0, 0) == 0);
+    assert(~u64::binary_xor(0, 1) == 1);
+    assert(~u64::binary_xor(1, 1) == 0);
+    assert(~u64::binary_xor(15, 240) == 255);
+    assert(~u64::binary_xor(85, 170) == 255);
+    assert(~u64::binary_xor(85, 85) == 0);
+    assert(~u64::binary_xor(240, 255) == 15);
 
     true
 }
