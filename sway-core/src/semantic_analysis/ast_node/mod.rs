@@ -924,7 +924,7 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
+                    let thing_to_reassign = match namespace.get_symbol(&name).value {
                         Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
                             is_mutable,
@@ -1315,6 +1315,7 @@ fn type_check_trait_methods(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut methods_buf = Vec::new();
+    let function_namespace = namespace;
     for FunctionDeclaration {
         body,
         name: fn_name,
@@ -1327,7 +1328,6 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let mut function_namespace = namespace.clone();
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name,
@@ -1444,7 +1444,7 @@ fn type_check_trait_methods(
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
-                namespace: &mut function_namespace,
+                namespace: function_namespace,
                 crate_namespace,
                 return_type_annotation: return_type,
                 help_text: "Trait method body's return type does not match up with \
