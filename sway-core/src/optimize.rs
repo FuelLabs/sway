@@ -119,7 +119,10 @@ fn compile_constants(
         }
     }
 
-    for ns in namespace.get_all_imported_modules() {
+    for ns in namespace
+        .get_all_imported_modules()
+        .filter(|&ns| ns == namespace)
+    {
         compile_constants(context, module, ns, true)?;
     }
 

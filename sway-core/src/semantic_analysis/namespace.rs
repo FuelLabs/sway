@@ -30,7 +30,7 @@ type UseAliases = im::HashMap<String, Ident>;
 /// importing.
 ///
 /// The namespace is constructed during type checking.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Namespace {
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
@@ -842,7 +842,7 @@ impl Namespace {
 type TraitMapInner = im::Vector<((TraitName, TypeInfo), TraitMethods)>;
 type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TraitMap {
     trait_map: TraitMapInner,
 }
