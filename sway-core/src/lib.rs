@@ -9,6 +9,7 @@ mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
+mod convert_parse_tree;
 mod optimize;
 pub mod parse_tree;
 mod parser;
@@ -16,7 +17,6 @@ pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
-mod convert_parse_tree;
 
 pub use crate::parser::{Rule, SwayParser};
 use crate::{
@@ -137,12 +137,13 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
             Err(error) => {
                 let errors = match error {
                     sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-                    sway_parse::ParseFileError::Parse(errors) => {
-                        errors.into_iter().map(|error| CompileError::Parse { error }).collect()
-                    },
+                    sway_parse::ParseFileError::Parse(errors) => errors
+                        .into_iter()
+                        .map(|error| CompileError::Parse { error })
+                        .collect(),
                 };
                 return err(vec![], errors);
-            },
+            }
         };
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -167,7 +168,7 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
                         span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
                         err: e,
                     }],
-                )
+                );
             }
         };
         let parsed_root = check!(
@@ -643,10 +644,7 @@ fn parse_root_from_pairs(
                     for entry in stmt {
                         parse_tree.push(AstNode {
                             content: AstNodeContent::UseStatement(entry.clone()),
-                            span: span::Span::from_pest(
-                                pair.as_span(),
-                                path.clone(),
-                            ),
+                            span: span::Span::from_pest(pair.as_span(), path.clone()),
                         });
                     }
                 }

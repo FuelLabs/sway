@@ -25,7 +25,11 @@ impl Parse for ItemAbi {
         let name = parser.parse()?;
         let abi_items = parser.parse()?;
         let abi_defs_opt = Braces::try_parse(parser)?;
-        Ok(ItemAbi { abi_token, name, abi_items, abi_defs_opt })
+        Ok(ItemAbi {
+            abi_token,
+            name,
+            abi_items,
+            abi_defs_opt,
+        })
     }
 }
-

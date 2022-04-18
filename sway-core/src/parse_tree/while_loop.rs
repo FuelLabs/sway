@@ -33,7 +33,10 @@ impl WhileLoop {
 
         let condition_result = check!(
             Expression::parse_from_pair(condition.clone(), config),
-            ParserLifter::empty(error_recovery_exp(Span::from_pest(condition.as_span(), path))),
+            ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                condition.as_span(),
+                path
+            ))),
             warnings,
             errors
         );

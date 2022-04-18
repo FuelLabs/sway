@@ -31,13 +31,20 @@ impl Parse for ItemConst {
             Some(colon_token) => {
                 let ty = parser.parse()?;
                 Some((colon_token, ty))
-            },
+            }
             None => None,
         };
         let eq_token = parser.parse()?;
         let expr = parser.parse()?;
         let semicolon_token = parser.parse()?;
-        Ok(ItemConst { visibility, const_token, name, ty_opt, eq_token, expr, semicolon_token })
+        Ok(ItemConst {
+            visibility,
+            const_token,
+            name,
+            ty_opt,
+            eq_token,
+            expr,
+            semicolon_token,
+        })
     }
 }
-

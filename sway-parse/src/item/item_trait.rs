@@ -39,12 +39,19 @@ impl Parse for ItemTrait {
             Some(colon_token) => {
                 let traits = parser.parse()?;
                 Some((colon_token, traits))
-            },
+            }
             None => None,
         };
         let trait_items = parser.parse()?;
         let trait_defs_opt = Braces::try_parse(parser)?;
-        Ok(ItemTrait { visibility, trait_token, name, super_traits, trait_items, trait_defs_opt })
+        Ok(ItemTrait {
+            visibility,
+            trait_token,
+            name,
+            super_traits,
+            trait_items,
+            trait_defs_opt,
+        })
     }
 }
 
@@ -69,4 +76,3 @@ impl Traits {
         }
     }
 }
-

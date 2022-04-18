@@ -1,23 +1,16 @@
 use fuel_crypto::Hasher;
-use std::{
-    sync::Arc,
-    collections::HashMap,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    constants,
     asm_generation::from_ir::ir_type_size_in_bytes,
+    constants,
     error::CompileError,
     parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
 
-use sway_types::{
-    ident::Ident,
-    span::Span,
-    state::StateIndex,
-};
+use sway_types::{ident::Ident, span::Span, state::StateIndex};
 
 use sway_ir::*;
 
@@ -1044,7 +1037,9 @@ impl FnCompiler {
             // Firstly create the single-use callee by fudging an AST declaration.
             let callee_name = context.get_unique_name();
             let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap());
+            let callee_ident = Ident::new(
+                crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
+            );
 
             let parameters = ast_args
                 .iter()

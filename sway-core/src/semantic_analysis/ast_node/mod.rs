@@ -10,10 +10,7 @@ use crate::{
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{
-    span::Span,
-    state::StateIndex,
-};
+use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
 use std::sync::Arc;

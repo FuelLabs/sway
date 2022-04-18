@@ -1,14 +1,14 @@
 use crate::priv_prelude::*;
 
-pub mod item_use;
-pub mod item_struct;
-pub mod item_enum;
-pub mod item_fn;
-pub mod item_trait;
-pub mod item_impl;
 pub mod item_abi;
 pub mod item_const;
+pub mod item_enum;
+pub mod item_fn;
+pub mod item_impl;
 pub mod item_storage;
+pub mod item_struct;
+pub mod item_trait;
+pub mod item_use;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
@@ -46,7 +46,9 @@ impl Parse for Item {
             let item_use = parser.parse()?;
             return Ok(Item::Use(item_use));
         }
-        if parser.peek::<StructToken>().is_some() || parser.peek2::<PubToken, StructToken>().is_some() {
+        if parser.peek::<StructToken>().is_some()
+            || parser.peek2::<PubToken, StructToken>().is_some()
+        {
             let item_struct = parser.parse()?;
             return Ok(Item::Struct(item_struct));
         }
@@ -54,16 +56,16 @@ impl Parse for Item {
             let item_enum = parser.parse()?;
             return Ok(Item::Enum(item_enum));
         }
-        if
-            parser.peek::<FnToken>().is_some() ||
-            parser.peek2::<PubToken, FnToken>().is_some() ||
-            parser.peek2::<ImpureToken, FnToken>().is_some() ||
-            parser.peek3::<PubToken, ImpureToken, FnToken>().is_some()
+        if parser.peek::<FnToken>().is_some()
+            || parser.peek2::<PubToken, FnToken>().is_some()
+            || parser.peek2::<ImpureToken, FnToken>().is_some()
+            || parser.peek3::<PubToken, ImpureToken, FnToken>().is_some()
         {
             let item_fn = parser.parse()?;
             return Ok(Item::Fn(item_fn));
         }
-        if parser.peek::<TraitToken>().is_some() || parser.peek2::<PubToken, TraitToken>().is_some() {
+        if parser.peek::<TraitToken>().is_some() || parser.peek2::<PubToken, TraitToken>().is_some()
+        {
             let item_trait = parser.parse()?;
             return Ok(Item::Trait(item_trait));
         }
@@ -75,7 +77,8 @@ impl Parse for Item {
             let item_abi = parser.parse()?;
             return Ok(Item::Abi(item_abi));
         }
-        if parser.peek::<ConstToken>().is_some() || parser.peek2::<PubToken, ConstToken>().is_some() {
+        if parser.peek::<ConstToken>().is_some() || parser.peek2::<PubToken, ConstToken>().is_some()
+        {
             let item_const = parser.parse()?;
             return Ok(Item::Const(item_const));
         }
@@ -105,7 +108,11 @@ impl Parse for TypeField {
         let name = parser.parse()?;
         let colon_token = parser.parse()?;
         let ty = parser.parse()?;
-        Ok(TypeField { name, colon_token, ty })
+        Ok(TypeField {
+            name,
+            colon_token,
+            ty,
+        })
     }
 }
 
@@ -119,7 +126,9 @@ pub enum FnArgs {
 }
 
 impl ParseToEnd for FnArgs {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -130,28 +139,25 @@ impl ParseToEnd for FnArgs {
                             args_opt: Some((comma_token, args)),
                         };
                         Ok((fn_args, consumed))
-                    },
+                    }
                     None => {
                         let fn_args = FnArgs::NonStatic {
                             self_token,
                             args_opt: None,
                         };
                         match parser.check_empty() {
-                            Some(consumed) => {
-                                Ok((fn_args, consumed))
-                            },
-                            None => {
-                                Err(parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInFnArgs))
-                            },
+                            Some(consumed) => Ok((fn_args, consumed)),
+                            None => Err(parser
+                                .emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInFnArgs)),
                         }
-                    },
+                    }
                 }
-            },
+            }
             None => {
                 let (args, consumed) = parser.parse_to_end()?;
                 let fn_args = FnArgs::Static(args);
                 Ok((fn_args, consumed))
-            },
+            }
         }
     }
 }
@@ -204,14 +210,14 @@ impl Parse for FnSignature {
             Some(right_arrow_token) => {
                 let ty = parser.parse()?;
                 Some((right_arrow_token, ty))
-            },
+            }
             None => None,
         };
         let where_clause_opt = match parser.peek::<WhereToken>() {
             Some(_where_token) => {
                 let where_clause = parser.parse()?;
                 Some(where_clause)
-            },
+            }
             None => None,
         };
         Ok(FnSignature {
@@ -226,4 +232,3 @@ impl Parse for FnSignature {
         })
     }
 }
-

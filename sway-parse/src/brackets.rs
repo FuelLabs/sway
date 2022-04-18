@@ -120,7 +120,9 @@ impl<T> AngleBrackets<T> {
     }
 
     pub fn span(&self) -> Span {
-        Span::join(self.open_angle_bracket_token.span(), self.close_angle_bracket_token.span())
+        Span::join(
+            self.open_angle_bracket_token.span(),
+            self.close_angle_bracket_token.span(),
+        )
     }
 }
-

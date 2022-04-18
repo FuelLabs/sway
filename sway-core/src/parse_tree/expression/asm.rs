@@ -180,7 +180,8 @@ impl AsmOp {
                     args.push(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
+                    immediate_value =
+                        Some(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 _ => unreachable!(),
             }

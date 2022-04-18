@@ -212,7 +212,8 @@ impl Literal {
                     lit_span.start() + 1,
                     lit_span.end() - 1,
                     path.clone(),
-                ).unwrap();
+                )
+                .unwrap();
                 let span = span::Span::from_pest(lit_span, path);
                 (Ok(Literal::String(lit)), span)
             }
@@ -326,10 +327,9 @@ impl Literal {
                 ty: ty.friendly_type_str(),
                 span,
             },
-            IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
-                "Called incorrect internal sway-core on literal type.",
-                span,
-            ),
+            IntErrorKind::Zero | IntErrorKind::Empty | _ => {
+                CompileError::Internal("Called incorrect internal sway-core on literal type.", span)
+            }
         }
     }
 }

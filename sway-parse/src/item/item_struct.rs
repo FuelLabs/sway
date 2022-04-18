@@ -35,11 +35,17 @@ impl Parse for ItemStruct {
             Some(..) => {
                 let where_clause = parser.parse()?;
                 Some(where_clause)
-            },
+            }
             None => None,
         };
         let fields = parser.parse()?;
-        Ok(ItemStruct { visibility, struct_token, name, generics, where_clause_opt, fields })
+        Ok(ItemStruct {
+            visibility,
+            struct_token,
+            name,
+            generics,
+            where_clause_opt,
+            fields,
+        })
     }
 }
-

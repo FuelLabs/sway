@@ -53,13 +53,9 @@ pub enum ParseErrorKind {
     #[error("expected a program kind (script, contract, predicate or library)")]
     ExpectedProgramKind,
     #[error("expected `{}`", kinds.iter().map(PunctKind::as_char).collect::<String>())]
-    ExpectedPunct {
-        kinds: Vec<PunctKind>,
-    },
+    ExpectedPunct { kinds: Vec<PunctKind> },
     #[error("expected `{}`", word)]
-    ExpectedKeyword {
-        word: &'static str,
-    },
+    ExpectedKeyword { word: &'static str },
     #[error("unexpected token after abi address")]
     UnexpectedTokenAfterAbiAddress,
 }
@@ -70,4 +66,3 @@ pub struct ParseError {
     pub span: Span,
     pub kind: ParseErrorKind,
 }
-

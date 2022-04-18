@@ -35,11 +35,17 @@ impl Parse for ItemEnum {
             Some(..) => {
                 let where_clause = parser.parse()?;
                 Some(where_clause)
-            },
+            }
             None => None,
         };
         let fields = parser.parse()?;
-        Ok(ItemEnum { visibility, enum_token, name, generics, where_clause_opt, fields })
+        Ok(ItemEnum {
+            visibility,
+            enum_token,
+            name,
+            generics,
+            where_clause_opt,
+            fields,
+        })
     }
 }
-

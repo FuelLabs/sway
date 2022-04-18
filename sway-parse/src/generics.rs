@@ -20,8 +20,15 @@ impl Parse for GenericParams {
             let comma_token = parser.parse()?;
             value_separator_pairs.push((ident, comma_token));
         };
-        let punctuated = Punctuated { value_separator_pairs, final_value_opt };
-        let parameters = AngleBrackets { open_angle_bracket_token, inner: punctuated, close_angle_bracket_token };
+        let punctuated = Punctuated {
+            value_separator_pairs,
+            final_value_opt,
+        };
+        let parameters = AngleBrackets {
+            open_angle_bracket_token,
+            inner: punctuated,
+            close_angle_bracket_token,
+        };
         Ok(GenericParams { parameters })
     }
 }
@@ -52,8 +59,15 @@ impl Parse for GenericArgs {
             let comma_token = parser.parse()?;
             value_separator_pairs.push((ty, comma_token));
         };
-        let punctuated = Punctuated { value_separator_pairs, final_value_opt };
-        let parameters = AngleBrackets { open_angle_bracket_token, inner: punctuated, close_angle_bracket_token };
+        let punctuated = Punctuated {
+            value_separator_pairs,
+            final_value_opt,
+        };
+        let parameters = AngleBrackets {
+            open_angle_bracket_token,
+            inner: punctuated,
+            close_angle_bracket_token,
+        };
         Ok(GenericArgs { parameters })
     }
 }

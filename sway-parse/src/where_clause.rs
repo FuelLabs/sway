@@ -24,14 +24,24 @@ impl Parse for WhereClause {
             };
             let colon_token = parser.parse()?;
             let bounds = parser.parse()?;
-            let where_bound = WhereBound { ty_name, colon_token, bounds };
+            let where_bound = WhereBound {
+                ty_name,
+                colon_token,
+                bounds,
+            };
             match parser.take() {
                 Some(comma_token) => value_separator_pairs.push((where_bound, comma_token)),
                 None => break Some(Box::new(where_bound)),
             }
         };
-        let bounds = Punctuated { value_separator_pairs, final_value_opt };
-        Ok(WhereClause { where_token, bounds })
+        let bounds = Punctuated {
+            value_separator_pairs,
+            final_value_opt,
+        };
+        Ok(WhereClause {
+            where_token,
+            bounds,
+        })
     }
 }
 
@@ -53,4 +63,3 @@ impl WhereBound {
         Span::join(self.ty_name.span().clone(), self.bounds.span())
     }
 }
-

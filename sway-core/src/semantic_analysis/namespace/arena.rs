@@ -12,7 +12,10 @@ use crate::{
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
-use std::{collections::VecDeque, sync::{Arc, RwLock}};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, RwLock},
+};
 use sway_types::{Ident, Span};
 pub type NamespaceRef = Index;
 

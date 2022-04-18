@@ -13,7 +13,7 @@ use crate::{
     Ident, TypeParameter,
 };
 
-use sway_types::{Span, Function, Property};
+use sway_types::{Function, Property, Span};
 
 use sha2::{Digest, Sha256};
 
@@ -447,10 +447,7 @@ fn test_function_selector_behavior() {
 
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new_with_override(
-            "bar",
-            Span::dummy(),
-        ),
+        name: Ident::new_with_override("bar", Span::dummy()),
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span::dummy(),

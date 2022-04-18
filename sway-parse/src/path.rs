@@ -31,11 +31,10 @@ impl PathExpr {
     }
 
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
-        if
-            self.root_opt.is_none() &&
-            self.suffix.is_empty() &&
-            self.prefix.fully_qualified.is_none() &&
-            self.prefix.generics_opt.is_none()
+        if self.root_opt.is_none()
+            && self.suffix.is_empty()
+            && self.prefix.fully_qualified.is_none()
+            && self.prefix.generics_opt.is_none()
         {
             return Ok(self.prefix.name);
         }
@@ -70,10 +69,10 @@ impl Parse for PathExpr {
                 };
                 let double_colon_token = parser.parse()?;
                 Some((Some(angle_brackets), double_colon_token))
-            },
-            None => {
-                parser.take().map(|double_colon_token| (None, double_colon_token))
-            },
+            }
+            None => parser
+                .take()
+                .map(|double_colon_token| (None, double_colon_token)),
         };
         let prefix = parser.parse()?;
         let mut suffix = Vec::new();
@@ -81,7 +80,11 @@ impl Parse for PathExpr {
             let segment = parser.parse()?;
             suffix.push((double_colon_token, segment));
         }
-        Ok(PathExpr { root_opt, prefix, suffix })
+        Ok(PathExpr {
+            root_opt,
+            prefix,
+            suffix,
+        })
     }
 }
 
@@ -89,14 +92,21 @@ impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
         let fully_qualified = parser.take();
         let name = parser.parse()?;
-        let generics_opt = if parser.peek2::<DoubleColonToken, OpenAngleBracketToken>().is_some() {
+        let generics_opt = if parser
+            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
+            .is_some()
+        {
             let double_colon_token = parser.parse()?;
             let generics = parser.parse()?;
             Some((double_colon_token, generics))
         } else {
             None
         };
-        Ok(PathExprSegment { fully_qualified, name, generics_opt })
+        Ok(PathExprSegment {
+            fully_qualified,
+            name,
+            generics_opt,
+        })
     }
 }
 
@@ -164,10 +174,10 @@ impl Parse for PathType {
                 };
                 let double_colon_token = parser.parse()?;
                 Some((Some(angle_brackets), double_colon_token))
-            },
-            None => {
-                parser.take().map(|double_colon_token| (None, double_colon_token))
-            },
+            }
+            None => parser
+                .take()
+                .map(|double_colon_token| (None, double_colon_token)),
         };
         let prefix = parser.parse()?;
         let mut suffix = Vec::new();
@@ -190,14 +200,21 @@ impl Parse for PathTypeSegment {
         let generics_opt = if parser.peek::<OpenAngleBracketToken>().is_some() {
             let generics = parser.parse()?;
             Some((None, generics))
-        } else if parser.peek2::<DoubleColonToken, OpenAngleBracketToken>().is_some() {
+        } else if parser
+            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
+            .is_some()
+        {
             let double_colon_token = parser.parse()?;
             let generics = parser.parse()?;
             Some((Some(double_colon_token), generics))
         } else {
             None
         };
-        Ok(PathTypeSegment { fully_qualified, name, generics_opt })
+        Ok(PathTypeSegment {
+            fully_qualified,
+            name,
+            generics_opt,
+        })
     }
 }
 
@@ -208,7 +225,7 @@ impl Parse for QualifiedPathRoot {
             Some(as_token) => {
                 let path_type = parser.parse()?;
                 Some((as_token, path_type))
-            },
+            }
             None => None,
         };
         Ok(QualifiedPathRoot { ty, as_trait })

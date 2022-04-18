@@ -82,7 +82,8 @@ pub(crate) fn get_subfields_for_layout(
         0,
         0,
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields
@@ -147,7 +148,8 @@ pub(crate) fn convert_subfield_to_asm(
         0,
         0,
         None,
-    ).unwrap();
+    )
+    .unwrap();
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register

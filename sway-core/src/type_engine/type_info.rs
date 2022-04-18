@@ -422,7 +422,10 @@ impl TypeInfo {
                 errors
             ),
             _ => {
-                let span = Span::from_pest(input.as_span(), config.map(|config| config.dir_of_code.clone()));
+                let span = Span::from_pest(
+                    input.as_span(),
+                    config.map(|config| config.dir_of_code.clone()),
+                );
                 errors.push(CompileError::Internal(
                     "Unexpected token while parsing type.",
                     span,
@@ -439,7 +442,10 @@ impl TypeInfo {
     ) -> CompileResult<Self> {
         let warnings = vec![];
         let errors = vec![];
-        let span = Span::from_pest(input.as_span(), config.map(|config| config.dir_of_code.clone()));
+        let span = Span::from_pest(
+            input.as_span(),
+            config.map(|config| config.dir_of_code.clone()),
+        );
         ok(
             match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),

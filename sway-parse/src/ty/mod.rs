@@ -21,12 +21,8 @@ impl Ty {
             Ty::Path(path_type) => path_type.span(),
             Ty::Tuple(tuple_type) => tuple_type.span(),
             Ty::Array(array_type) => array_type.span(),
-            Ty::Str { str_token, length } => {
-                Span::join(str_token.span(), length.span())
-            },
-            Ty::Infer { underscore_token } => {
-                underscore_token.span()
-            },
+            Ty::Str { str_token, length } => Span::join(str_token.span(), length.span()),
+            Ty::Infer { underscore_token } => underscore_token.span(),
         }
     }
 }
@@ -47,19 +43,17 @@ impl Parse for Ty {
             return Ok(Ty::Array(descriptor));
         };
         if let Some(str_token) = parser.take() {
-            let length = SquareBrackets::parse_all_inner(
-                parser,
-                |mut parser| parser.emit_error(ParseErrorKind::UnexpectedTokenAfterStrLength),
-            )?;
-            return Ok(Ty::Str { str_token, length })
+            let length = SquareBrackets::parse_all_inner(parser, |mut parser| {
+                parser.emit_error(ParseErrorKind::UnexpectedTokenAfterStrLength)
+            })?;
+            return Ok(Ty::Str { str_token, length });
         }
         if let Some(underscore_token) = parser.take() {
             return Ok(Ty::Infer { underscore_token });
         }
-        if
-            parser.peek::<OpenAngleBracketToken>().is_some() ||
-            parser.peek::<DoubleColonToken>().is_some() ||
-            parser.peek::<Ident>().is_some()
+        if parser.peek::<OpenAngleBracketToken>().is_some()
+            || parser.peek::<DoubleColonToken>().is_some()
+            || parser.peek::<Ident>().is_some()
         {
             let path_type = parser.parse()?;
             return Ok(Ty::Path(path_type));
@@ -69,16 +63,23 @@ impl Parse for Ty {
 }
 
 impl ParseToEnd for TyArrayDescriptor {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
         let ty = parser.parse()?;
         let semicolon_token = parser.parse()?;
         let length = parser.parse()?;
         let consumed = match parser.check_empty() {
             Some(consumed) => consumed,
-            None => return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayTypeLength)),
+            None => {
+                return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayTypeLength))
+            }
         };
-        let descriptor = TyArrayDescriptor { ty, semicolon_token, length };
+        let descriptor = TyArrayDescriptor {
+            ty,
+            semicolon_token,
+            length,
+        };
         Ok((descriptor, consumed))
     }
 }
-

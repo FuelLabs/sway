@@ -167,7 +167,12 @@ define_op_codes!(
     (Subi, SubiOpcode, "subi", (ret: reg, lhs: reg, rhs: imm)),
     (Xor, XorOpcode, "xor", (ret: reg, lhs: reg, rhs: reg)),
     (Xori, XoriOpcode, "xori", (ret: reg, lhs: reg, rhs: imm)),
-    (Cimv, CimvOpcode, "cimv", (ret: reg, input: reg, maturity: reg)),
+    (
+        Cimv,
+        CimvOpcode,
+        "cimv",
+        (ret: reg, input: reg, maturity: reg)
+    ),
     (Ctmv, CtmvOpcode, "ctmv", (ret: reg, maturity: reg)),
     (Ji, JiOpcode, "ji", (offset: imm)),
     (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
@@ -179,33 +184,78 @@ define_op_codes!(
     (Lw, LwOpcode, "lw", (ret: reg, addr: reg, offset: imm)),
     (Mcl, MclOpcode, "mcl", (addr: reg, size: reg)),
     (Mcli, McliOpcode, "mcli", (addr: reg, size: imm)),
-    (Mcp, McpOpcode, "mcp", (dst_addr: reg, src_addr: reg, size: reg)),
-    (Mcpi, McpiOpcode, "mcpi", (dst_addr: reg, src_addr: reg, size: imm)),
-    (Meq, MeqOpcode, "meq", (ret: reg, lhs_addr: reg, rhs_addr: reg, size: reg)),
+    (
+        Mcp,
+        McpOpcode,
+        "mcp",
+        (dst_addr: reg, src_addr: reg, size: reg)
+    ),
+    (
+        Mcpi,
+        McpiOpcode,
+        "mcpi",
+        (dst_addr: reg, src_addr: reg, size: imm)
+    ),
+    (
+        Meq,
+        MeqOpcode,
+        "meq",
+        (ret: reg, lhs_addr: reg, rhs_addr: reg, size: reg)
+    ),
     (Sb, SbOpcode, "sb", (addr: reg, value: reg, offset: imm)),
     (Sw, SwOpcode, "sw", (addr: reg, value: reg, offset: imm)),
     (Bal, BalOpcode, "bal", (ret: reg, asset: reg, contract: reg)),
     (Bhei, BheiOpcode, "bhei", (ret: reg)),
     (Bhsh, BhshOpcode, "bhsh", (addr: reg, height: reg)),
     (Burn, BurnOpcode, "burn", (coins: reg)),
-    (Call, CallOpcode, "call", (args_addr: reg, coins: reg, asset: reg, gas: reg)),
+    (
+        Call,
+        CallOpcode,
+        "call",
+        (args_addr: reg, coins: reg, asset: reg, gas: reg)
+    ),
     (Cb, CbOpcode, "cb", (addr: reg)),
-    (Ccp, CcpOpcode, "ccp", (dst_addr: reg, contract: reg, src_addr: reg, size: reg)),
+    (
+        Ccp,
+        CcpOpcode,
+        "ccp",
+        (dst_addr: reg, contract: reg, src_addr: reg, size: reg)
+    ),
     (Croo, CrooOpcode, "croo", (addr: reg, contract: reg)),
     (Csiz, CsizOpcode, "csiz", (ret: reg, contract: reg)),
     (Ldc, LdcOpcode, "ldc", (contract: reg, addr: reg, size: reg)),
-    (Log, LogOpcode, "log", (reg_a: reg, reg_b: reg, reg_c: reg, reg_d: reg)),
-    (Logd, LogdOpcode, "logd", (reg_a: reg, reg_b: reg, addr: reg, size: reg)),
+    (
+        Log,
+        LogOpcode,
+        "log",
+        (reg_a: reg, reg_b: reg, reg_c: reg, reg_d: reg)
+    ),
+    (
+        Logd,
+        LogdOpcode,
+        "logd",
+        (reg_a: reg, reg_b: reg, addr: reg, size: reg)
+    ),
     (Mint, MintOpcode, "mint", (coins: reg)),
     (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
     (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
-    (Sldc, SldcOpcode, "sldc", (contract: reg, addr: reg, size: reg)),
+    (
+        Sldc,
+        SldcOpcode,
+        "sldc",
+        (contract: reg, addr: reg, size: reg)
+    ),
     (Srw, SrwOpcode, "srw", (ret: reg, state_addr: reg)),
     (Srwq, SrwqOpcode, "srwq", (addr: reg, state_addr: reg)),
     (Sww, SwwOpcode, "sww", (state_addr: reg, value: reg)),
     (Swwq, SwwqOpcode, "swwq", (state_addr: reg, addr: reg)),
     (Tr, TrOpcode, "tr", (contract: reg, coins: reg, asset: reg)),
-    (Tro, TroOpcode, "tro", (addr: reg, output: reg, coins: reg, asset: reg)),
+    (
+        Tro,
+        TroOpcode,
+        "tro",
+        (addr: reg, output: reg, coins: reg, asset: reg)
+    ),
     (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
@@ -218,4 +268,3 @@ define_op_codes!(
     (Flag, FlagOpcode, "flag", (value: reg)),
     (Gm, GmOpcode, "gm", (ret: reg, op: imm)),
 );
-

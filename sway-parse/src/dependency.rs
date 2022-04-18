@@ -22,7 +22,7 @@ impl DependencyPath {
         match self.suffixes.last() {
             Some((_forward_slash_token, suffix)) => {
                 Span::join(self.prefix.span().clone(), suffix.span().clone())
-            },
+            }
             None => self.prefix.span().clone(),
         }
     }
@@ -36,10 +36,7 @@ impl Parse for DependencyPath {
             let suffix = parser.parse()?;
             suffixes.push((forward_slash_token, suffix));
         }
-        Ok(DependencyPath {
-            prefix,
-            suffixes,
-        })
+        Ok(DependencyPath { prefix, suffixes })
     }
 }
 
@@ -48,7 +45,10 @@ impl Parse for Dependency {
         let dep_token = parser.parse()?;
         let path = parser.parse()?;
         let semicolon_token = parser.parse()?;
-        Ok(Dependency { dep_token, path, semicolon_token })
+        Ok(Dependency {
+            dep_token,
+            path,
+            semicolon_token,
+        })
     }
 }
-

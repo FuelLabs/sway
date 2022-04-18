@@ -175,113 +175,66 @@ impl Expr {
         match self {
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
-            Expr::AbiCast { abi_token, args } => {
-                Span::join(abi_token.span(), args.span())
-            },
-            Expr::Struct { path, fields } => {
-                Span::join(path.span(), fields.span())
-            },
+            Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), args.span()),
+            Expr::Struct { path, fields } => Span::join(path.span(), fields.span()),
             Expr::Tuple(tuple_expr) => tuple_expr.span(),
             Expr::Parens(parens) => parens.span(),
             Expr::Block(block_expr) => block_expr.span(),
             Expr::Array(array_expr) => array_expr.span(),
             Expr::Asm(asm_block) => asm_block.span(),
-            Expr::Return { return_token, expr_opt } => {
+            Expr::Return {
+                return_token,
+                expr_opt,
+            } => {
                 let start = return_token.span();
                 let end = match expr_opt {
                     Some(expr) => expr.span(),
                     None => return_token.span(),
                 };
                 Span::join(start, end)
-            },
+            }
             Expr::If(if_expr) => if_expr.span(),
-            Expr::Match { match_token, branches, .. } => {
-                Span::join(match_token.span(), branches.span())
-            },
-            Expr::While { while_token, block, .. } => {
-                Span::join(while_token.span(), block.span())
-            },
-            Expr::FuncApp { func, args } => {
-                Span::join(func.span(), args.span())
-            },
-            Expr::Index { target, arg } => {
-                Span::join(target.span(), arg.span())
-            },
-            Expr::MethodCall { target, args, .. } => {
-                Span::join(target.span(), args.span())
-            },
+            Expr::Match {
+                match_token,
+                branches,
+                ..
+            } => Span::join(match_token.span(), branches.span()),
+            Expr::While {
+                while_token, block, ..
+            } => Span::join(while_token.span(), block.span()),
+            Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
+            Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
+            Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
             Expr::FieldProjection { target, name, .. } => {
                 Span::join(target.span(), name.span().clone())
-            },
-            Expr::TupleFieldProjection { target, field_span, .. } => {
-                Span::join(target.span(), field_span.clone())
-            },
-            Expr::Ref { ref_token, expr } => {
-                Span::join(ref_token.span(), expr.span())
-            },
-            Expr::Deref { deref_token, expr } => {
-                Span::join(deref_token.span(), expr.span())
-            },
-            Expr::Not { bang_token, expr } => {
-                Span::join(bang_token.span(), expr.span())
-            },
-            Expr::Mul { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Div { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Modulo { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Add { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Sub { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Shl { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Shr { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::BitAnd { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::BitXor { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::BitOr { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Equal { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::NotEqual { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::LessThan { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::GreaterThan { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::LessThanEq { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::GreaterThanEq { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::LogicalAnd { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::LogicalOr { lhs, rhs, .. } => {
-                Span::join(lhs.span(), rhs.span())
-            },
-            Expr::Reassignment { assignable, expr, .. } => {
-                Span::join(assignable.span(), expr.span())
-            },
+            }
+            Expr::TupleFieldProjection {
+                target, field_span, ..
+            } => Span::join(target.span(), field_span.clone()),
+            Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
+            Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
+            Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
+            Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Add { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Sub { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Shl { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Shr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::BitAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::BitXor { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::BitOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Equal { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::NotEqual { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::LessThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::GreaterThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::LessThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::GreaterThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::LogicalAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::LogicalOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            Expr::Reassignment {
+                assignable, expr, ..
+            } => Span::join(assignable.span(), expr.span()),
         }
     }
 }
@@ -294,18 +247,22 @@ pub struct AbiCastArgs {
 }
 
 impl ParseToEnd for AbiCastArgs {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(AbiCastArgs, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(AbiCastArgs, ParserConsumed<'a>)> {
         let name = parser.parse()?;
         let comma_token = parser.parse()?;
         let address = parser.parse()?;
         match parser.check_empty() {
             Some(consumed) => {
-                let abi_cast_args = AbiCastArgs { name, comma_token, address };
+                let abi_cast_args = AbiCastArgs {
+                    name,
+                    comma_token,
+                    address,
+                };
                 Ok((abi_cast_args, consumed))
-            },
-            None => {
-                Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAbiAddress))
-            },
+            }
+            None => Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAbiAddress)),
         }
     }
 }
@@ -316,7 +273,10 @@ pub struct IfExpr {
     pub if_token: IfToken,
     pub condition: IfCondition,
     pub then_block: Braces<CodeBlockContents>,
-    pub else_opt: Option<(ElseToken, ControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>)>,
+    pub else_opt: Option<(
+        ElseToken,
+        ControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
+    )>,
 }
 
 #[derive(Clone, Debug)]
@@ -355,17 +315,22 @@ impl Parse for IfExpr {
                     Some(..) => {
                         let if_expr = parser.parse()?;
                         ControlFlow::Continue(Box::new(if_expr))
-                    },
+                    }
                     None => {
                         let else_block = parser.parse()?;
                         ControlFlow::Break(else_block)
-                    },
+                    }
                 };
                 Some((else_token, else_body))
-            },
+            }
             None => None,
         };
-        Ok(IfExpr { if_token, condition, then_block, else_opt })
+        Ok(IfExpr {
+            if_token,
+            condition,
+            then_block,
+            else_opt,
+        })
     }
 }
 
@@ -375,7 +340,12 @@ impl Parse for IfCondition {
             let lhs = parser.parse()?;
             let eq_token = parser.parse()?;
             let rhs = Box::new(parse_condition(parser)?);
-            Ok(IfCondition::Let { let_token, lhs, eq_token, rhs })
+            Ok(IfCondition::Let {
+                let_token,
+                lhs,
+                eq_token,
+                rhs,
+            })
         } else {
             let expr = Box::new(parse_condition(parser)?);
             Ok(IfCondition::Expr(expr))
@@ -432,15 +402,16 @@ pub enum MatchBranchKind {
 impl MatchBranchKind {
     pub fn span(&self) -> Span {
         match self {
-            MatchBranchKind::Block { block, comma_token_opt } => {
-                match comma_token_opt {
-                    Some(comma_token) => Span::join(block.span(), comma_token.span()),
-                    None => block.span(),
-                }
+            MatchBranchKind::Block {
+                block,
+                comma_token_opt,
+            } => match comma_token_opt {
+                Some(comma_token) => Span::join(block.span(), comma_token.span()),
+                None => block.span(),
             },
             MatchBranchKind::Expr { expr, comma_token } => {
                 Span::join(expr.span(), comma_token.span())
-            },
+            }
         }
     }
 }
@@ -458,24 +429,28 @@ pub struct CodeBlockContents {
 }
 
 impl ParseToEnd for CodeBlockContents {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
         let mut statements = Vec::new();
         let (final_expr_opt, consumed) = loop {
             if let Some(consumed) = parser.check_empty() {
                 break (None, consumed);
             }
-            if
-                parser.peek::<UseToken>().is_some() ||
-                parser.peek::<StructToken>().is_some() ||
-                parser.peek::<EnumToken>().is_some() ||
-                parser.peek::<FnToken>().is_some() ||
-                parser.peek::<PubToken>().is_some() ||
-                parser.peek::<ImpureToken>().is_some() ||
-                parser.peek::<TraitToken>().is_some() ||
-                parser.peek::<ImplToken>().is_some() ||
-                parser.peek2::<AbiToken, Ident>().is_some() ||
-                parser.peek::<ConstToken>().is_some() ||
-                matches!(parser.peek2::<StorageToken, Delimiter>(), Some((_, Delimiter::Brace)))
+            if parser.peek::<UseToken>().is_some()
+                || parser.peek::<StructToken>().is_some()
+                || parser.peek::<EnumToken>().is_some()
+                || parser.peek::<FnToken>().is_some()
+                || parser.peek::<PubToken>().is_some()
+                || parser.peek::<ImpureToken>().is_some()
+                || parser.peek::<TraitToken>().is_some()
+                || parser.peek::<ImplToken>().is_some()
+                || parser.peek2::<AbiToken, Ident>().is_some()
+                || parser.peek::<ConstToken>().is_some()
+                || matches!(
+                    parser.peek2::<StorageToken, Delimiter>(),
+                    Some((_, Delimiter::Brace))
+                )
             {
                 let item = parser.parse()?;
                 let statement = Statement::Item(item);
@@ -488,20 +463,30 @@ impl ParseToEnd for CodeBlockContents {
                     Some(colon_token) => {
                         let ty = parser.parse()?;
                         Some((colon_token, ty))
-                    },
+                    }
                     None => None,
                 };
                 let eq_token = parser.parse()?;
                 let expr = parser.parse()?;
                 let semicolon_token = parser.parse()?;
-                let statement_let = StatementLet { let_token, pattern, ty_opt, eq_token, expr, semicolon_token };
+                let statement_let = StatementLet {
+                    let_token,
+                    pattern,
+                    ty_opt,
+                    eq_token,
+                    expr,
+                    semicolon_token,
+                };
                 let statement = Statement::Let(statement_let);
                 statements.push(statement);
                 continue;
             }
             let expr = parser.parse::<Expr>()?;
             if let Some(semicolon_token) = parser.take() {
-                let statement = Statement::Expr { expr, semicolon_token_opt: Some(semicolon_token) };
+                let statement = Statement::Expr {
+                    expr,
+                    semicolon_token_opt: Some(semicolon_token),
+                };
                 statements.push(statement);
                 continue;
             }
@@ -509,14 +494,20 @@ impl ParseToEnd for CodeBlockContents {
                 break (Some(Box::new(expr)), consumed);
             }
             if expr.is_control_flow() {
-                let statement = Statement::Expr { expr, semicolon_token_opt: None };
+                let statement = Statement::Expr {
+                    expr,
+                    semicolon_token_opt: None,
+                };
                 statements.push(statement);
                 continue;
             }
 
             return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenInStatement));
         };
-        let code_block_contents = CodeBlockContents { statements, final_expr_opt };
+        let code_block_contents = CodeBlockContents {
+            statements,
+            final_expr_opt,
+        };
         Ok((code_block_contents, consumed))
     }
 }
@@ -532,11 +523,17 @@ fn parse_reassignment(parser: &mut Parser, allow_struct_exprs: bool) -> ParseRes
             Ok(assignable) => assignable,
             Err(expr) => {
                 let span = expr.span();
-                return Err(parser.emit_error_with_span(ParseErrorKind::UnassignableExpression, span));
-            },
+                return Err(
+                    parser.emit_error_with_span(ParseErrorKind::UnassignableExpression, span)
+                );
+            }
         };
         let expr = Box::new(parse_reassignment(parser, allow_struct_exprs)?);
-        return Ok(Expr::Reassignment { assignable, eq_token, expr });
+        return Ok(Expr::Reassignment {
+            assignable,
+            eq_token,
+            expr,
+        });
     }
     Ok(expr)
 }
@@ -547,7 +544,11 @@ fn parse_logical_or(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResul
         if let Some(double_pipe_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_logical_and(parser, allow_struct_exprs)?);
-            expr = Expr::LogicalOr { lhs, double_pipe_token, rhs };
+            expr = Expr::LogicalOr {
+                lhs,
+                double_pipe_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -560,7 +561,11 @@ fn parse_logical_and(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResu
         if let Some(double_ampersand_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_comparison(parser, allow_struct_exprs)?);
-            expr = Expr::LogicalAnd { lhs, double_ampersand_token, rhs };
+            expr = Expr::LogicalAnd {
+                lhs,
+                double_ampersand_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -573,37 +578,61 @@ fn parse_comparison(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResul
         if let Some(double_eq_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::Equal { lhs, double_eq_token, rhs };
+            expr = Expr::Equal {
+                lhs,
+                double_eq_token,
+                rhs,
+            };
             continue;
         }
         if let Some(bang_eq_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::NotEqual { lhs, bang_eq_token, rhs };
+            expr = Expr::NotEqual {
+                lhs,
+                bang_eq_token,
+                rhs,
+            };
             continue;
         }
         if let Some(less_than_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::LessThan { lhs, less_than_token, rhs };
+            expr = Expr::LessThan {
+                lhs,
+                less_than_token,
+                rhs,
+            };
             continue;
         }
         if let Some(greater_than_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::GreaterThan { lhs, greater_than_token, rhs };
+            expr = Expr::GreaterThan {
+                lhs,
+                greater_than_token,
+                rhs,
+            };
             continue;
         }
         if let Some(less_than_eq_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::LessThanEq { lhs, less_than_eq_token, rhs };
+            expr = Expr::LessThanEq {
+                lhs,
+                less_than_eq_token,
+                rhs,
+            };
             continue;
         }
         if let Some(greater_than_eq_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_or(parser, allow_struct_exprs)?);
-            expr = Expr::GreaterThanEq { lhs, greater_than_eq_token, rhs };
+            expr = Expr::GreaterThanEq {
+                lhs,
+                greater_than_eq_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -616,7 +645,11 @@ fn parse_bit_or(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Ex
         if let Some(pipe_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_xor(parser, allow_struct_exprs)?);
-            expr = Expr::BitOr { lhs, pipe_token, rhs };
+            expr = Expr::BitOr {
+                lhs,
+                pipe_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -629,7 +662,11 @@ fn parse_bit_xor(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<E
         if let Some(caret_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_bit_and(parser, allow_struct_exprs)?);
-            expr = Expr::BitXor { lhs, caret_token, rhs };
+            expr = Expr::BitXor {
+                lhs,
+                caret_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -642,7 +679,11 @@ fn parse_bit_and(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<E
         if let Some(ampersand_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_shift(parser, allow_struct_exprs)?);
-            expr = Expr::BitAnd { lhs, ampersand_token, rhs };
+            expr = Expr::BitAnd {
+                lhs,
+                ampersand_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -655,13 +696,21 @@ fn parse_shift(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Exp
         if let Some(shl_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_add(parser, allow_struct_exprs)?);
-            expr = Expr::Shl { lhs, shl_token, rhs };
+            expr = Expr::Shl {
+                lhs,
+                shl_token,
+                rhs,
+            };
             continue;
         }
         if let Some(shr_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_add(parser, allow_struct_exprs)?);
-            expr = Expr::Shr { lhs, shr_token, rhs };
+            expr = Expr::Shr {
+                lhs,
+                shr_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -674,13 +723,21 @@ fn parse_add(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr>
         if let Some(add_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_mul(parser, allow_struct_exprs)?);
-            expr = Expr::Add { lhs, add_token, rhs };
+            expr = Expr::Add {
+                lhs,
+                add_token,
+                rhs,
+            };
             continue;
         }
         if let Some(sub_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_mul(parser, allow_struct_exprs)?);
-            expr = Expr::Sub { lhs, sub_token, rhs };
+            expr = Expr::Sub {
+                lhs,
+                sub_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -693,19 +750,31 @@ fn parse_mul(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr>
         if let Some(star_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_unary_op(parser, allow_struct_exprs)?);
-            expr = Expr::Mul { lhs, star_token, rhs };
+            expr = Expr::Mul {
+                lhs,
+                star_token,
+                rhs,
+            };
             continue;
         }
         if let Some(forward_slash_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_unary_op(parser, allow_struct_exprs)?);
-            expr = Expr::Div { lhs, forward_slash_token, rhs };
+            expr = Expr::Div {
+                lhs,
+                forward_slash_token,
+                rhs,
+            };
             continue;
         }
         if let Some(percent_token) = parser.take() {
             let lhs = Box::new(expr);
             let rhs = Box::new(parse_unary_op(parser, allow_struct_exprs)?);
-            expr = Expr::Modulo { lhs, percent_token, rhs };
+            expr = Expr::Modulo {
+                lhs,
+                percent_token,
+                rhs,
+            };
             continue;
         }
         return Ok(expr);
@@ -731,10 +800,9 @@ fn parse_unary_op(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<
 fn parse_projection(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr> {
     let mut expr = parse_func_app(parser, allow_struct_exprs)?;
     loop {
-        if let Some(arg) = SquareBrackets::try_parse_all_inner(
-            parser,
-            |mut parser| parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayIndex),
-        )? {
+        if let Some(arg) = SquareBrackets::try_parse_all_inner(parser, |mut parser| {
+            parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayIndex)
+        })? {
             let target = Box::new(expr);
             expr = Expr::Index { target, arg };
             continue;
@@ -746,16 +814,32 @@ fn parse_projection(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResul
                     if let Some(contract_args) = Braces::try_parse(parser)? {
                         let contract_args_opt = Some(contract_args);
                         let args = Parens::parse(parser)?;
-                        expr = Expr::MethodCall { target, dot_token, name, contract_args_opt, args };
+                        expr = Expr::MethodCall {
+                            target,
+                            dot_token,
+                            name,
+                            contract_args_opt,
+                            args,
+                        };
                         continue;
                     }
                 }
                 if let Some(args) = Parens::try_parse(parser)? {
                     let contract_args_opt = None;
-                    expr = Expr::MethodCall { target, dot_token, name, contract_args_opt, args };
+                    expr = Expr::MethodCall {
+                        target,
+                        dot_token,
+                        name,
+                        contract_args_opt,
+                        args,
+                    };
                     continue;
                 }
-                expr = Expr::FieldProjection { target, dot_token, name };
+                expr = Expr::FieldProjection {
+                    target,
+                    dot_token,
+                    name,
+                };
                 continue;
             }
             if let Some(lit) = parser.take() {
@@ -763,16 +847,28 @@ fn parse_projection(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResul
                     Literal::Int(lit_int) => lit_int,
                     _ => {
                         let span = lit.span();
-                        return Err(parser.emit_error_with_span(ParseErrorKind::InvalidLiteralFieldName, span));
-                    },
+                        return Err(parser
+                            .emit_error_with_span(ParseErrorKind::InvalidLiteralFieldName, span));
+                    }
                 };
-                let LitInt { span, parsed, ty_opt } = lit_int;
+                let LitInt {
+                    span,
+                    parsed,
+                    ty_opt,
+                } = lit_int;
                 if let Some((_, _span)) = ty_opt {
-                    return Err(parser.emit_error_with_span(ParseErrorKind::IntFieldWithTypeSuffix, span));
+                    return Err(
+                        parser.emit_error_with_span(ParseErrorKind::IntFieldWithTypeSuffix, span)
+                    );
                 }
                 let field = parsed;
                 let field_span = span;
-                expr = Expr::TupleFieldProjection { target, dot_token, field, field_span };
+                expr = Expr::TupleFieldProjection {
+                    target,
+                    dot_token,
+                    field,
+                    field_span,
+                };
                 continue;
             }
             return Err(parser.emit_error(ParseErrorKind::ExpectedFieldName));
@@ -802,18 +898,28 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
     }
     if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
         if let Some(consumed) = parser.check_empty() {
-            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, span, consumed)));
+            return Ok(Expr::Tuple(Parens::new(
+                ExprTupleDescriptor::Nil,
+                span,
+                consumed,
+            )));
         }
         let head = parser.parse()?;
         if let Some(comma_token) = parser.take() {
             let (tail, consumed) = parser.parse_to_end()?;
-            let tuple = ExprTupleDescriptor::Cons { head, comma_token, tail };
+            let tuple = ExprTupleDescriptor::Cons {
+                head,
+                comma_token,
+                tail,
+            };
             return Ok(Expr::Tuple(Parens::new(tuple, span, consumed)));
         }
         if let Some(consumed) = parser.check_empty() {
             return Ok(Expr::Parens(Parens::new(head, span, consumed)));
         }
-        return Err(parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression));
+        return Err(
+            parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression)
+        );
     }
     if parser.peek::<AsmToken>().is_some() {
         let asm_block = parser.parse()?;
@@ -825,15 +931,20 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
     }
     if let Some(return_token) = parser.take() {
         // TODO: how to handle this properly?
-        if
-            parser.is_empty() ||
-            parser.peek::<CommaToken>().is_some() ||
-            parser.peek::<SemicolonToken>().is_some()
+        if parser.is_empty()
+            || parser.peek::<CommaToken>().is_some()
+            || parser.peek::<SemicolonToken>().is_some()
         {
-            return Ok(Expr::Return { return_token, expr_opt: None });
+            return Ok(Expr::Return {
+                return_token,
+                expr_opt: None,
+            });
         }
         let expr = parser.parse()?;
-        return Ok(Expr::Return { return_token, expr_opt: Some(expr) });
+        return Ok(Expr::Return {
+            return_token,
+            expr_opt: Some(expr),
+        });
     }
     if parser.peek::<IfToken>().is_some() {
         let if_expr = parser.parse()?;
@@ -842,18 +953,25 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
     if let Some(match_token) = parser.take() {
         let condition = Box::new(parse_condition(parser)?);
         let branches = parser.parse()?;
-        return Ok(Expr::Match { match_token, condition, branches });
+        return Ok(Expr::Match {
+            match_token,
+            condition,
+            branches,
+        });
     }
     if let Some(while_token) = parser.take() {
         let condition = Box::new(parse_condition(parser)?);
         let block = parser.parse()?;
-        return Ok(Expr::While { while_token, condition, block });
+        return Ok(Expr::While {
+            while_token,
+            condition,
+            block,
+        });
     }
-    if
-        parser.peek::<OpenAngleBracketToken>().is_some() ||
-        parser.peek::<DoubleColonToken>().is_some() ||
-        parser.peek::<TildeToken>().is_some() ||
-        parser.peek::<Ident>().is_some()
+    if parser.peek::<OpenAngleBracketToken>().is_some()
+        || parser.peek::<DoubleColonToken>().is_some()
+        || parser.peek::<TildeToken>().is_some()
+        || parser.peek::<Ident>().is_some()
     {
         let path = parser.parse()?;
         if allow_struct_exprs {
@@ -870,7 +988,7 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
 }
 
 #[derive(Clone, Debug)]
-pub struct ExprStructField  {
+pub struct ExprStructField {
     pub field_name: Ident,
     pub expr_opt: Option<(ColonToken, Box<Expr>)>,
 }
@@ -891,15 +1009,20 @@ impl Parse for ExprStructField {
             Some(colon_token) => {
                 let expr = parser.parse()?;
                 Some((colon_token, expr))
-            },
+            }
             None => None,
         };
-        Ok(ExprStructField { field_name, expr_opt })
+        Ok(ExprStructField {
+            field_name,
+            expr_opt,
+        })
     }
 }
 
 impl ParseToEnd for ExprArrayDescriptor {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
             let punctuated = Punctuated {
                 value_separator_pairs: Vec::new(),
@@ -915,7 +1038,7 @@ impl ParseToEnd for ExprArrayDescriptor {
                 Some(consumed) => consumed,
                 None => {
                     return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayLength));
-                },
+                }
             };
             let descriptor = ExprArrayDescriptor::Repeat {
                 value: Box::new(value),
@@ -926,7 +1049,9 @@ impl ParseToEnd for ExprArrayDescriptor {
         }
         if let Some(comma_token) = parser.take() {
             let (mut punctuated, consumed): (Punctuated<_, _>, _) = parser.parse_to_end()?;
-            punctuated.value_separator_pairs.insert(0, (value, comma_token));
+            punctuated
+                .value_separator_pairs
+                .insert(0, (value, comma_token));
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
             return Ok((descriptor, consumed));
         }
@@ -947,7 +1072,11 @@ impl Parse for MatchBranch {
         let pattern = parser.parse()?;
         let fat_right_arrow_token = parser.parse()?;
         let kind = parser.parse()?;
-        Ok(MatchBranch { pattern, fat_right_arrow_token, kind })
+        Ok(MatchBranch {
+            pattern,
+            fat_right_arrow_token,
+            kind,
+        })
     }
 }
 
@@ -969,31 +1098,35 @@ impl Parse for MatchBranchKind {
 impl Expr {
     pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
         match self {
-            Expr::Path(path_expr) => {
-                match path_expr.try_into_ident() {
-                    Ok(name) => Ok(Assignable::Var(name)),
-                    Err(path_expr) => Err(Expr::Path(path_expr)),
-                }
+            Expr::Path(path_expr) => match path_expr.try_into_ident() {
+                Ok(name) => Ok(Assignable::Var(name)),
+                Err(path_expr) => Err(Expr::Path(path_expr)),
             },
-            Expr::Index { target, arg } => {
-                match target.try_into_assignable() {
-                    Ok(target) => {
-                        Ok(Assignable::Index { target: Box::new(target), arg })
-                    },
-                    Err(target) => {
-                        Err(Expr::Index { target: Box::new(target), arg })
-                    },
-                }
+            Expr::Index { target, arg } => match target.try_into_assignable() {
+                Ok(target) => Ok(Assignable::Index {
+                    target: Box::new(target),
+                    arg,
+                }),
+                Err(target) => Err(Expr::Index {
+                    target: Box::new(target),
+                    arg,
+                }),
             },
-            Expr::FieldProjection { target, dot_token, name } => {
-                match target.try_into_assignable() {
-                    Ok(target) => {
-                        Ok(Assignable::FieldProjection { target: Box::new(target), dot_token, name })
-                    },
-                    Err(target) => {
-                        Err(Expr::FieldProjection { target: Box::new(target), dot_token, name })
-                    },
-                }
+            Expr::FieldProjection {
+                target,
+                dot_token,
+                name,
+            } => match target.try_into_assignable() {
+                Ok(target) => Ok(Assignable::FieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    name,
+                }),
+                Err(target) => Err(Expr::FieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    name,
+                }),
             },
             expr => Err(expr),
         }
@@ -1002,8 +1135,11 @@ impl Expr {
     pub fn is_control_flow(&self) -> bool {
         matches!(
             self,
-            Expr::Block(..) | Expr::Asm(..) | Expr::If(..) | Expr::Match { .. } | Expr::While { .. },
+            Expr::Block(..)
+                | Expr::Asm(..)
+                | Expr::If(..)
+                | Expr::Match { .. }
+                | Expr::While { .. },
         )
     }
 }
-

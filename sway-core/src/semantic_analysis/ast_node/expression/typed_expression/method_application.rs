@@ -419,7 +419,8 @@ fn re_parse_expression(
         0,
         0,
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,

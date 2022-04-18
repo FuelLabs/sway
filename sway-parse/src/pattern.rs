@@ -26,11 +26,9 @@ impl Pattern {
     pub fn span(&self) -> Span {
         match self {
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
-            Pattern::Var { mutable, name } => {
-                match mutable {
-                    Some(mut_token) => Span::join(mut_token.span(), name.span().clone()),
-                    None => name.span().clone(),
-                }
+            Pattern::Var { mutable, name } => match mutable {
+                Some(mut_token) => Span::join(mut_token.span(), name.span().clone()),
+                None => name.span().clone(),
             },
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
@@ -66,18 +64,17 @@ impl Parse for Pattern {
             return Ok(Pattern::Struct { path, fields });
         }
         match path.try_into_ident() {
-            Ok(name) => {
-                Ok(Pattern::Var { mutable: None, name })
-            },
-            Err(path) => {
-                Ok(Pattern::Constant(path))
-            },
+            Ok(name) => Ok(Pattern::Var {
+                mutable: None,
+                name,
+            }),
+            Err(path) => Ok(Pattern::Constant(path)),
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct PatternStructField  {
+pub struct PatternStructField {
     pub field_name: Ident,
     pub pattern_opt: Option<(ColonToken, Box<Pattern>)>,
 }
@@ -85,7 +82,9 @@ pub struct PatternStructField  {
 impl PatternStructField {
     pub fn span(&self) -> Span {
         match &self.pattern_opt {
-            Some((_colon_token, pattern)) => Span::join(self.field_name.span().clone(), pattern.span()),
+            Some((_colon_token, pattern)) => {
+                Span::join(self.field_name.span().clone(), pattern.span())
+            }
             None => self.field_name.span().clone(),
         }
     }
@@ -98,10 +97,12 @@ impl Parse for PatternStructField {
             Some(colon_token) => {
                 let pattern = parser.parse()?;
                 Some((colon_token, pattern))
-            },
+            }
             None => None,
         };
-        Ok(PatternStructField { field_name, pattern_opt })
+        Ok(PatternStructField {
+            field_name,
+            pattern_opt,
+        })
     }
 }
-

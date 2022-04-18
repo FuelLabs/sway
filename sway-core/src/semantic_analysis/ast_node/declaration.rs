@@ -4,7 +4,7 @@ use crate::{
     Ident, NamespaceRef, NamespaceWrapper,
 };
 
-use sway_types::{Span, Property};
+use sway_types::{Property, Span};
 
 use derivative::Derivative;
 use std::hash::{Hash, Hasher};

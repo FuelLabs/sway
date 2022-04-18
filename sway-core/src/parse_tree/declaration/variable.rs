@@ -73,10 +73,12 @@ impl VariableDeclaration {
             }
             _ => None,
         };
-        let type_ascription_span = type_ascription.clone().map(|x| Span::from_pest(
-            x.into_inner().next().unwrap().as_span(),
-            config.map(|x| x.path()),
-        ));
+        let type_ascription_span = type_ascription.clone().map(|x| {
+            Span::from_pest(
+                x.into_inner().next().unwrap().as_span(),
+                config.map(|x| x.path()),
+            )
+        });
         let type_ascription = match type_ascription {
             Some(ascription) => {
                 let type_name = ascription.into_inner().next().unwrap();

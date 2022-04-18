@@ -29,10 +29,15 @@ impl Parse for StorageField {
             Some(eq_token) => {
                 let expr = parser.parse()?;
                 Some((eq_token, expr))
-            },
+            }
             None => None,
         };
-        Ok(StorageField { name, colon_token, ty, initializer })
+        Ok(StorageField {
+            name,
+            colon_token,
+            ty,
+            initializer,
+        })
     }
 }
 
@@ -40,7 +45,9 @@ impl Parse for ItemStorage {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStorage> {
         let storage_token = parser.parse()?;
         let fields = parser.parse()?;
-        Ok(ItemStorage { storage_token, fields })
+        Ok(ItemStorage {
+            storage_token,
+            fields,
+        })
     }
 }
-

@@ -57,11 +57,19 @@ impl Parse for UseTree {
         };
         if let Some(as_token) = parser.take() {
             let alias = parser.parse()?;
-            return Ok(UseTree::Rename { name, as_token, alias });
+            return Ok(UseTree::Rename {
+                name,
+                as_token,
+                alias,
+            });
         }
         if let Some(double_colon_token) = parser.take() {
             let suffix = parser.parse()?;
-            return Ok(UseTree::Path { prefix: name, double_colon_token, suffix });
+            return Ok(UseTree::Path {
+                prefix: name,
+                double_colon_token,
+                suffix,
+            });
         }
         Ok(UseTree::Name { name })
     }
@@ -74,7 +82,12 @@ impl Parse for ItemUse {
         let root_import = parser.take();
         let tree = parser.parse()?;
         let semicolon_token = parser.parse()?;
-        Ok(ItemUse { visibility, use_token, root_import, tree, semicolon_token })
+        Ok(ItemUse {
+            visibility,
+            use_token,
+            root_import,
+            tree,
+            semicolon_token,
+        })
     }
 }
-

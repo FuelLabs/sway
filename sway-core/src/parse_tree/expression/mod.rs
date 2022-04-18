@@ -649,10 +649,7 @@ impl Expression {
             Rule::parenthesized_expression => {
                 check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
-                    ParserLifter::empty(error_recovery_exp(Span::from_pest(
-                        expr.as_span(),
-                        path,
-                    ))),
+                    ParserLifter::empty(error_recovery_exp(Span::from_pest(expr.as_span(), path,))),
                     warnings,
                     errors
                 )
@@ -896,10 +893,8 @@ impl Expression {
 
                         let (type_name, type_name_span) = match type_name {
                             Some(type_name) => {
-                                let type_name_span = Span::from_pest(
-                                    type_name.as_span(),
-                                    path.clone(),
-                                );
+                                let type_name_span =
+                                    Span::from_pest(type_name.as_span(), path.clone());
                                 (
                                     TypeInfo::pair_as_str_to_type_info(type_name, config),
                                     type_name_span,
@@ -1245,10 +1240,7 @@ impl Expression {
                     Span::from_pest(expr.as_span(), path.clone()),
                 ));
                 // construct unit expression for error recovery
-                ParserLifter::empty(error_recovery_exp(Span::from_pest(
-                    expr.as_span(),
-                    path,
-                )))
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(expr.as_span(), path)))
             }
         };
         ok(parsed_result, warnings, errors)
@@ -1470,10 +1462,8 @@ fn parse_subfield_path(
                 Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
-            let exp_result = ParserLifter::empty(error_recovery_exp(Span::from_pest(
-                item.as_span(),
-                path,
-            )));
+            let exp_result =
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(item.as_span(), path)));
             ok(exp_result, warnings, errors)
         }
     }

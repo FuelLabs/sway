@@ -1,41 +1,30 @@
 use {
-    std::{
-        iter,
-        convert::TryFrom,
-        mem::MaybeUninit,
-        ops::ControlFlow,
-    },
     crate::{
-        SwayParseTree, ParseTree, TreeType, AstNode, AstNodeContent, Declaration,
-        FunctionDeclaration, TraitDeclaration, StructDeclaration, EnumDeclaration, AbiDeclaration,
-        ConstantDeclaration, StorageDeclaration,
-        Visibility, StructField, TypeParameter, EnumVariant, FunctionParameter, CodeBlock, Purity,
-        Supertrait, TraitFn, ImplTrait, ImplSelf,
-        CallPath, StorageField,
-        IncludeStatement, VariableDeclaration, ReturnStatement, WhileLoop, Reassignment, UseStatement,
-        TypeInfo, ImportType, TypeArgument, ReassignmentTarget,
-        Expression, Literal, StructExpressionField, AsmExpression, MatchBranch, LazyOp, MethodName,
-        AsmRegister, AsmRegisterDeclaration, AsmOp,
-        MatchCondition, Scrutinee, CatchAll, StructScrutineeField, BuiltinProperty,
-        error::{CompileResult, CompileWarning, CompileError, ok, err},
-        type_engine::{insert_type, IntegerBits, AbiName},
+        error::{err, ok, CompileError, CompileResult, CompileWarning},
         parse_tree::desugar_match_expression,
-    },
-    sway_types::{Ident, Span},
-    sway_parse::{
-        Program, ProgramKind,
-        Item, ItemStruct, ItemEnum, ItemFn, ItemTrait, ItemImpl, ItemAbi, ItemConst, ItemStorage,
-        TypeField, GenericParams, GenericArgs, FnArgs, FnSignature, Traits,
-        PubToken, ImpureToken, Braces, AngleBrackets, DoubleColonToken,
-        Ty, Pattern, PatternStructField,
-        CodeBlockContents, Statement, StatementLet,
-        QualifiedPathRoot, PathType, PathTypeSegment, PathExpr, PathExprSegment,
-        Expr, ExprTupleDescriptor, ExprArrayDescriptor, ExprStructField, AsmBlock, LitInt, LitIntType,
-        IfExpr, IfCondition, AbiCastArgs,
-        Instruction, MatchBranchKind, Assignable,
-        Dependency, ItemUse, UseTree,
+        type_engine::{insert_type, AbiName, IntegerBits},
+        AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
+        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
+        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
+        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
+        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
+        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
+        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
+        SwayParseTree, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter,
+        UseStatement, VariableDeclaration, Visibility, WhileLoop,
     },
     nanoid::nanoid,
+    std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
+    sway_parse::{
+        AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
+        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArgs,
+        FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken, Instruction,
+        Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemStorage, ItemStruct, ItemTrait,
+        ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment, PathType,
+        PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
+        QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree,
+    },
+    sway_types::{Ident, Span},
     thiserror::Error,
 };
 
@@ -64,9 +53,7 @@ impl ErrorContext {
         E: Into<CompileError>,
     {
         self.errors.push(error.into());
-        ErrorEmitted {
-            _priv: (),
-        }
+        ErrorEmitted { _priv: () }
     }
 
     pub fn warnings<I, W>(&mut self, warnings: I)
@@ -74,7 +61,8 @@ impl ErrorContext {
         I: IntoIterator<Item = W>,
         W: Into<CompileWarning>,
     {
-        self.warnings.extend(warnings.into_iter().map(|warning| warning.into()));
+        self.warnings
+            .extend(warnings.into_iter().map(|warning| warning.into()));
     }
 
     pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
@@ -94,169 +82,87 @@ impl ErrorContext {
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum ConvertParseTreeError {
     #[error("pub use imports are not supported")]
-    PubUseNotSupported {
-        span: Span,
-    },
+    PubUseNotSupported { span: Span },
     #[error("return expressions are not allowed outside of blocks")]
-    ReturnOutsideOfBlock {
-        span: Span,
-    },
+    ReturnOutsideOfBlock { span: Span },
     #[error("while expressions are not allowed outside of blocks")]
-    WhileOutsideOfBlock {
-        span: Span,
-    },
+    WhileOutsideOfBlock { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
-    FunctionArbitraryExpression {
-        span: Span,
-    },
+    FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
-    GenericsNotSupportedHere {
-        span: Span,
-    },
+    GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
-    FullyQualifiedPathsNotSupportedHere {
-        span: Span,
-    },
+    FullyQualifiedPathsNotSupportedHere { span: Span },
     #[error("size_of does not take arguments")]
-    SizeOfTooManyArgs {
-        span: Span,
-    },
+    SizeOfTooManyArgs { span: Span },
     #[error("size_of requires exactly one generic argument")]
-    SizeOfOneGenericArg {
-        span: Span,
-    },
+    SizeOfOneGenericArg { span: Span },
     #[error("is_reference_type does not take arguments")]
-    IsReferenceTypeTooManyArgs {
-        span: Span,
-    },
+    IsReferenceTypeTooManyArgs { span: Span },
     #[error("is_reference_type requires exactly one generic argument")]
-    IsReferenceTypeOneGenericArg {
-        span: Span,
-    },
+    IsReferenceTypeOneGenericArg { span: Span },
     #[error("size_of_val requires exactly one argument")]
-    SizeOfValOneArg {
-        span: Span,
-    },
+    SizeOfValOneArg { span: Span },
     #[error("tuple index out of range")]
-    TupleIndexOutOfRange {
-        span: Span,
-    },
+    TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
-    ShlNotImplemented {
-        span: Span,
-    },
+    ShlNotImplemented { span: Span },
     #[error("shift-right expressions are not implemented")]
-    ShrNotImplemented {
-        span: Span,
-    },
+    ShrNotImplemented { span: Span },
     #[error("bitwise xor expressions are not implemented")]
-    BitXorNotImplemented {
-        span: Span,
-    },
+    BitXorNotImplemented { span: Span },
     #[error("reassignment expressions outside of blocks are not implemented")]
-    ReassignmentOutsideOfBlock {
-        span: Span,
-    },
+    ReassignmentOutsideOfBlock { span: Span },
     #[error("integer literals in this position cannot have a type suffix")]
-    IntTySuffixNotSupported {
-        span: Span,
-    },
+    IntTySuffixNotSupported { span: Span },
     #[error("int literal out of range")]
-    IntLiteralOutOfRange {
-        span: Span,
-    },
+    IntLiteralOutOfRange { span: Span },
     #[error("expected an integer literal")]
-    IntLiteralExpected {
-        span: Span,
-    },
+    IntLiteralExpected { span: Span },
     #[error("fully qualified traits are not supported")]
-    FullyQualifiedTraitsNotSupported {
-        span: Span,
-    },
+    FullyQualifiedTraitsNotSupported { span: Span },
     #[error("qualified path roots are not implemented")]
-    QualifiedPathRootsNotImplemented {
-        span: Span,
-    },
+    QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
-    CharLiteralsNotImplemented {
-        span: Span,
-    },
+    CharLiteralsNotImplemented { span: Span },
     #[error("hex literals must have either 2 or 64 digits")]
-    HexLiteralLength {
-        span: Span,
-    },
+    HexLiteralLength { span: Span },
     #[error("binary literals must have either 8 or 258 digits")]
-    BinaryLiteralLength {
-        span: Span,
-    },
+    BinaryLiteralLength { span: Span },
     #[error("u8 literal out of range")]
-    U8LiteralOutOfRange {
-        span: Span,
-    },
+    U8LiteralOutOfRange { span: Span },
     #[error("u16 literal out of range")]
-    U16LiteralOutOfRange {
-        span: Span,
-    },
+    U16LiteralOutOfRange { span: Span },
     #[error("u32 literal out of range")]
-    U32LiteralOutOfRange {
-        span: Span,
-    },
+    U32LiteralOutOfRange { span: Span },
     #[error("u64 literal out of range")]
-    U64LiteralOutOfRange {
-        span: Span,
-    },
+    U64LiteralOutOfRange { span: Span },
     #[error("signed integers are not supported")]
-    SignedIntegersNotSupported {
-        span: Span,
-    },
+    SignedIntegersNotSupported { span: Span },
     #[error("literal patterns not supported in this position")]
-    LiteralPatternsNotSupportedHere {
-        span: Span,
-    },
+    LiteralPatternsNotSupportedHere { span: Span },
     #[error("constant patterns not supported in this position")]
-    ConstantPatternsNotSupportedHere {
-        span: Span,
-    },
+    ConstantPatternsNotSupportedHere { span: Span },
     #[error("constructor patterns not supported in this position")]
-    ConstructorPatternsNotSupportedHere {
-        span: Span,
-    },
+    ConstructorPatternsNotSupportedHere { span: Span },
     #[error("struct patterns not supported in this position")]
-    StructPatternsNotSupportedHere {
-        span: Span,
-    },
+    StructPatternsNotSupportedHere { span: Span },
     #[error("wildcard patterns not supported in this position")]
-    WildcardPatternsNotSupportedHere {
-        span: Span,
-    },
+    WildcardPatternsNotSupportedHere { span: Span },
     #[error("constructor patterns require a single argument")]
-    ConstructorPatternOneArg {
-        span: Span,
-    },
+    ConstructorPatternOneArg { span: Span },
     #[error("mutable bindings are not supported in this position")]
-    MutableBindingsNotSupportedHere {
-        span: Span,
-    },
+    MutableBindingsNotSupportedHere { span: Span },
     #[error("constructor patterns cannot contain sub-patterns")]
-    ConstructorPatternSubPatterns {
-        span: Span,
-    },
+    ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
-    PathsNotSupportedHere {
-        span: Span,
-    },
+    PathsNotSupportedHere { span: Span },
     #[error("fully specified types are not supported")]
-    FullySpecifiedTypesNotSupported {
-        span: Span,
-    },
+    FullySpecifiedTypesNotSupported { span: Span },
     #[error("ContractCaller requires exactly one generic argument")]
-    ContractCallerOneGenericArg {
-        span: Span,
-    },
+    ContractCallerOneGenericArg { span: Span },
     #[error("ContractCaller requires a named type for its generic argument")]
-    ContractCallerNamedTypeGenericArg {
-        span: Span,
-    },
+    ContractCallerNamedTypeGenericArg { span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -307,9 +213,7 @@ impl ConvertParseTreeError {
     }
 }
 
-pub fn convert_parse_tree(
-    program: Program,
-) -> CompileResult<SwayParseTree> {
+pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
@@ -317,12 +221,8 @@ pub fn convert_parse_tree(
     let res = program_to_sway_parse_tree(&mut ec, program);
     let ErrorContext { warnings, errors } = ec;
     match res {
-        Ok(sway_parse_tree) => {
-            ok(sway_parse_tree, warnings, errors)
-        },
-        Err(_error_emitted) => {
-            err(warnings, errors)
-        },
+        Ok(sway_parse_tree) => ok(sway_parse_tree, warnings, errors),
+        Err(_error_emitted) => err(warnings, errors),
     }
 }
 
@@ -340,16 +240,18 @@ pub fn program_to_sway_parse_tree(
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = {
             program
-            .dependencies
-            .into_iter()
-            .map(|dependency| {
-                let span = dependency.span();
-                AstNode {
-                    content: AstNodeContent::IncludeStatement(dependency_to_include_statement(dependency)),
-                    span,
-                }
-            })
-            .collect()
+                .dependencies
+                .into_iter()
+                .map(|dependency| {
+                    let span = dependency.span();
+                    AstNode {
+                        content: AstNodeContent::IncludeStatement(dependency_to_include_statement(
+                            dependency,
+                        )),
+                        span,
+                    }
+                })
+                .collect()
         };
         for item in program.items {
             let ast_nodes = item_to_ast_nodes(ec, item)?;
@@ -359,57 +261,74 @@ pub fn program_to_sway_parse_tree(
     };
     Ok(SwayParseTree {
         tree_type,
-        tree: ParseTree {
-            span,
-            root_nodes,
-        },
+        tree: ParseTree { span, root_nodes },
     })
 }
 
-fn item_to_ast_nodes(
-    ec: &mut ErrorContext,
-    item: Item,
-) -> Result<Vec<AstNode>, ErrorEmitted> {
+fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
     let span = item.span();
     let contents = match item {
         Item::Use(item_use) => {
             let use_statements = item_use_to_use_statements(ec, item_use)?;
-            use_statements.into_iter().map(AstNodeContent::UseStatement).collect()
-        },
+            use_statements
+                .into_iter()
+                .map(AstNodeContent::UseStatement)
+                .collect()
+        }
         Item::Struct(item_struct) => {
             let struct_declaration = item_struct_to_struct_declaration(ec, item_struct)?;
-            vec![AstNodeContent::Declaration(Declaration::StructDeclaration(struct_declaration))]
-        },
+            vec![AstNodeContent::Declaration(Declaration::StructDeclaration(
+                struct_declaration,
+            ))]
+        }
         Item::Enum(item_enum) => {
             let enum_declaration = item_enum_to_enum_declaration(ec, item_enum)?;
-            vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(enum_declaration))]
-        },
+            vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(
+                enum_declaration,
+            ))]
+        }
         Item::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn)?;
-            vec![AstNodeContent::Declaration(Declaration::FunctionDeclaration(function_declaration))]
-        },
+            vec![AstNodeContent::Declaration(
+                Declaration::FunctionDeclaration(function_declaration),
+            )]
+        }
         Item::Trait(item_trait) => {
             let trait_declaration = item_trait_to_trait_declaration(ec, item_trait)?;
-            vec![AstNodeContent::Declaration(Declaration::TraitDeclaration(trait_declaration))]
-        },
+            vec![AstNodeContent::Declaration(Declaration::TraitDeclaration(
+                trait_declaration,
+            ))]
+        }
         Item::Impl(item_impl) => {
             let declaration = item_impl_to_declaration(ec, item_impl)?;
             vec![AstNodeContent::Declaration(declaration)]
-        },
+        }
         Item::Abi(item_abi) => {
             let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
-            vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(abi_declaration))]
-        },
+            vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
+                abi_declaration,
+            ))]
+        }
         Item::Const(item_const) => {
             let constant_declaration = item_const_to_constant_declaration(ec, item_const)?;
-            vec![AstNodeContent::Declaration(Declaration::ConstantDeclaration(constant_declaration))]
-        },
+            vec![AstNodeContent::Declaration(
+                Declaration::ConstantDeclaration(constant_declaration),
+            )]
+        }
         Item::Storage(item_storage) => {
             let storage_declaration = item_storage_to_storage_declaration(ec, item_storage)?;
-            vec![AstNodeContent::Declaration(Declaration::StorageDeclaration(storage_declaration))]
-        },
+            vec![AstNodeContent::Declaration(
+                Declaration::StorageDeclaration(storage_declaration),
+            )]
+        }
     };
-    Ok(contents.into_iter().map(|content| AstNode { span: span.clone(), content }).collect())
+    Ok(contents
+        .into_iter()
+        .map(|content| AstNode {
+            span: span.clone(),
+            content,
+        })
+        .collect())
 }
 
 fn item_use_to_use_statements(
@@ -424,7 +343,12 @@ fn item_use_to_use_statements(
     }
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
-    use_tree_to_use_statements(item_use.tree, item_use.root_import.is_some(), &mut prefix, &mut ret);
+    use_tree_to_use_statements(
+        item_use.tree,
+        item_use.root_import.is_some(),
+        &mut prefix,
+        &mut ret,
+    );
     debug_assert!(prefix.is_empty());
     Ok(ret)
 }
@@ -440,7 +364,7 @@ fn use_tree_to_use_statements(
             for use_tree in imports.into_inner() {
                 use_tree_to_use_statements(use_tree, is_absolute, path, ret);
             }
-        },
+        }
         UseTree::Name { name } => {
             let import_type = if name.as_str() == "self" {
                 ImportType::SelfImport
@@ -453,7 +377,7 @@ fn use_tree_to_use_statements(
                 is_absolute,
                 alias: None,
             });
-        },
+        }
         UseTree::Rename { name, alias, .. } => {
             let import_type = if name.as_str() == "self" {
                 ImportType::SelfImport
@@ -466,7 +390,7 @@ fn use_tree_to_use_statements(
                 is_absolute,
                 alias: Some(alias),
             });
-        },
+        }
         UseTree::Glob { .. } => {
             ret.push(UseStatement {
                 call_path: path.clone(),
@@ -474,12 +398,12 @@ fn use_tree_to_use_statements(
                 is_absolute,
                 alias: None,
             });
-        },
+        }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
             use_tree_to_use_statements(*suffix, is_absolute, path, ret);
             path.pop().unwrap();
-        },
+        }
     }
 }
 
@@ -492,11 +416,11 @@ fn item_struct_to_struct_declaration(
         name: item_struct.name,
         fields: {
             item_struct
-            .fields
-            .into_inner()
-            .into_iter()
-            .map(|type_field| type_field_to_struct_field(ec, type_field))
-            .collect::<Result<_, _>>()?
+                .fields
+                .into_inner()
+                .into_iter()
+                .map(|type_field| type_field_to_struct_field(ec, type_field))
+                .collect::<Result<_, _>>()?
         },
         type_parameters: generic_params_opt_to_type_parameters(item_struct.generics),
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
@@ -515,12 +439,12 @@ fn item_enum_to_enum_declaration(
         type_parameters: generic_params_opt_to_type_parameters(item_enum.generics),
         variants: {
             item_enum
-            .fields
-            .into_inner()
-            .into_iter()
-            .enumerate()
-            .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
-            .collect::<Result<_, _>>()?
+                .fields
+                .into_inner()
+                .into_iter()
+                .enumerate()
+                .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
+                .collect::<Result<_, _>>()?
         },
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
@@ -542,7 +466,10 @@ fn item_fn_to_function_declaration(
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
         body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
-        parameters: fn_args_to_function_parameters(ec, item_fn.fn_signature.arguments.into_inner())?,
+        parameters: fn_args_to_function_parameters(
+            ec,
+            item_fn.fn_signature.arguments.into_inner(),
+        )?,
         span,
         return_type: match item_fn.fn_signature.return_type_opt {
             Some((_right_arrow, ty)) => ty_to_type_info(ec, ty)?,
@@ -560,21 +487,19 @@ fn item_trait_to_trait_declaration(
     let name = item_trait.name;
     let interface_surface = {
         item_trait
-        .trait_items
-        .into_inner()
-        .into_iter()
-        .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
-        .collect::<Result<_, _>>()?
+            .trait_items
+            .into_inner()
+            .into_iter()
+            .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
+            .collect::<Result<_, _>>()?
     };
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
-        Some(trait_defs) => {
-            trait_defs
+        Some(trait_defs) => trait_defs
             .into_inner()
             .into_iter()
             .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
-            .collect::<Result<_, _>>()?
-        },
+            .collect::<Result<_, _>>()?,
     };
     let supertraits = match item_trait.super_traits {
         None => Vec::new(),
@@ -600,11 +525,11 @@ fn item_impl_to_declaration(
     let type_implementing_for = ty_to_type_info(ec, item_impl.ty)?;
     let functions = {
         item_impl
-        .contents
-        .into_inner()
-        .into_iter()
-        .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
-        .collect::<Result<_, _>>()?
+            .contents
+            .into_inner()
+            .into_iter()
+            .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
+            .collect::<Result<_, _>>()?
     };
     let type_parameters = generic_params_opt_to_type_parameters(item_impl.generic_params_opt);
     match item_impl.trait_opt {
@@ -618,7 +543,7 @@ fn item_impl_to_declaration(
                 block_span,
             };
             Ok(Declaration::ImplTrait(impl_trait))
-        },
+        }
         None => {
             let impl_self = ImplSelf {
                 type_implementing_for,
@@ -628,7 +553,7 @@ fn item_impl_to_declaration(
                 block_span,
             };
             Ok(Declaration::ImplSelf(impl_self))
-        },
+        }
     }
 }
 
@@ -641,21 +566,19 @@ fn item_abi_to_abi_declaration(
         name: item_abi.name,
         interface_surface: {
             item_abi
-            .abi_items
-            .into_inner()
-            .into_iter()
-            .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
-            .collect::<Result<_, _>>()?
+                .abi_items
+                .into_inner()
+                .into_iter()
+                .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
+                .collect::<Result<_, _>>()?
         },
         methods: match item_abi.abi_defs_opt {
             None => Vec::new(),
-            Some(abi_defs) => {
-                abi_defs
+            Some(abi_defs) => abi_defs
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
-                .collect::<Result<_, _>>()?
-            },
+                .collect::<Result<_, _>>()?,
         },
         span,
     })
@@ -687,11 +610,11 @@ fn item_storage_to_storage_declaration(
         span,
         fields: {
             item_storage
-            .fields
-            .into_inner()
-            .into_iter()
-            .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
-            .collect::<Result<_, _>>()?
+                .fields
+                .into_inner()
+                .into_iter()
+                .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+                .collect::<Result<_, _>>()?
         },
     };
     Ok(storage_declaration)
@@ -712,24 +635,26 @@ fn type_field_to_struct_field(
     Ok(struct_field)
 }
 
-fn generic_params_opt_to_type_parameters(generic_params_opt: Option<GenericParams>) -> Vec<TypeParameter> {
+fn generic_params_opt_to_type_parameters(
+    generic_params_opt: Option<GenericParams>,
+) -> Vec<TypeParameter> {
     let generic_params = match generic_params_opt {
         Some(generic_params) => generic_params,
         None => return Vec::new(),
     };
     generic_params
-    .parameters
-    .into_inner()
-    .into_iter()
-    .map(|ident| TypeParameter {
-        type_id: insert_type(TypeInfo::Custom {
-            name: ident.clone(),
-            type_arguments: Vec::new(),
-        }),
-        name_ident: ident,
-        trait_constraints: Vec::new(),
-    })
-    .collect()
+        .parameters
+        .into_inner()
+        .into_iter()
+        .map(|ident| TypeParameter {
+            type_id: insert_type(TypeInfo::Custom {
+                name: ident.clone(),
+                type_arguments: Vec::new(),
+            }),
+            name_ident: ident,
+            trait_constraints: Vec::new(),
+        })
+        .collect()
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -790,13 +715,14 @@ fn fn_args_to_function_parameters(
     fn_args: FnArgs,
 ) -> Result<Vec<FunctionParameter>, ErrorEmitted> {
     let function_parameters = match fn_args {
-        FnArgs::Static(args) => {
-            args
+        FnArgs::Static(args) => args
             .into_iter()
             .map(|type_field| type_field_to_function_parameter(ec, type_field))
-            .collect::<Result<_, _>>()?
-        },
-        FnArgs::NonStatic { self_token, args_opt } => {
+            .collect::<Result<_, _>>()?,
+        FnArgs::NonStatic {
+            self_token,
+            args_opt,
+        } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 type_id: insert_type(TypeInfo::SelfType),
@@ -809,7 +735,7 @@ fn fn_args_to_function_parameters(
                 }
             }
             function_parameters
-        },
+        }
     };
     Ok(function_parameters)
 }
@@ -833,28 +759,21 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
         Ty::Path(path_type) => path_type_to_type_info(ec, path_type)?,
-        Ty::Tuple(tys) => {
-            TypeInfo::Tuple(
-                tys
-                .into_inner()
+        Ty::Tuple(tys) => TypeInfo::Tuple(
+            tys.into_inner()
                 .into_iter()
                 .map(|ty| ty_to_type_argument(ec, ty))
-                .collect::<Result<_, _>>()?
-            )
-        },
+                .collect::<Result<_, _>>()?,
+        ),
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 crate::type_engine::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
             )
-        },
-        Ty::Str { length, .. } => {
-            TypeInfo::Str(expr_to_u64(ec, *length.into_inner())?)
-        },
-        Ty::Infer { .. } => {
-            TypeInfo::Unknown
-        },
+        }
+        Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(ec, *length.into_inner())?),
+        Ty::Infer { .. } => TypeInfo::Unknown,
     };
     Ok(type_info)
 }
@@ -892,9 +811,7 @@ fn traits_to_supertraits(
     ec: &mut ErrorContext,
     traits: Traits,
 ) -> Result<Vec<Supertrait>, ErrorEmitted> {
-    let mut supertraits = vec![
-        path_type_to_supertrait(ec, traits.prefix)?
-    ];
+    let mut supertraits = vec![path_type_to_supertrait(ec, traits.prefix)?];
     for (_add_token, suffix) in traits.suffixes {
         let supertrait = path_type_to_supertrait(ec, suffix)?;
         supertraits.push(supertrait);
@@ -906,7 +823,11 @@ fn path_type_to_call_path(
     ec: &mut ErrorContext,
     path_type: PathType,
 ) -> Result<CallPath, ErrorEmitted> {
-    let PathType { root_opt, prefix, mut suffix } = path_type;
+    let PathType {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_type;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
@@ -920,13 +841,11 @@ fn path_type_to_call_path(
                 suffix: path_type_segment_to_ident(ec, call_path_suffix)?,
                 is_absolute,
             }
-        },
-        None => {
-            CallPath {
-                prefixes: Vec::new(),
-                suffix: path_type_segment_to_ident(ec, prefix)?,
-                is_absolute,
-            }
+        }
+        None => CallPath {
+            prefixes: Vec::new(),
+            suffix: path_type_segment_to_ident(ec, prefix)?,
+            is_absolute,
         },
     };
     Ok(call_path)
@@ -942,31 +861,34 @@ fn expr_to_ast_node(
         Expr::Return { expr_opt, .. } => {
             let expression = match expr_opt {
                 Some(expr) => expr_to_expression(ec, *expr)?,
-                None => Expression::Tuple { fields: Vec::new(), span: span.clone() },
+                None => Expression::Tuple {
+                    fields: Vec::new(),
+                    span: span.clone(),
+                },
             };
             AstNode {
                 content: AstNodeContent::ReturnStatement(ReturnStatement { expr: expression }),
                 span,
             }
+        }
+        Expr::While {
+            condition, block, ..
+        } => AstNode {
+            content: AstNodeContent::WhileLoop(WhileLoop {
+                condition: expr_to_expression(ec, *condition)?,
+                body: braced_code_block_contents_to_code_block(ec, block)?,
+            }),
+            span,
         },
-        Expr::While { condition, block, .. } => {
-            AstNode {
-                content: AstNodeContent::WhileLoop(WhileLoop {
-                    condition: expr_to_expression(ec, *condition)?,
-                    body: braced_code_block_contents_to_code_block(ec, block)?,
-                }),
-                span,
-            }
-        },
-        Expr::Reassignment { assignable, expr, .. } => {
-            AstNode {
-                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                    lhs: assignable_to_reassignment_target(ec, assignable)?,
-                    rhs: expr_to_expression(ec, *expr)?,
-                    span: span.clone(),
-                })),
-                span,
-            }
+        Expr::Reassignment {
+            assignable, expr, ..
+        } => AstNode {
+            content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                lhs: assignable_to_reassignment_target(ec, assignable)?,
+                rhs: expr_to_expression(ec, *expr)?,
+                span: span.clone(),
+            })),
+            span,
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
@@ -981,23 +903,18 @@ fn expr_to_ast_node(
                     span,
                 }
             }
-        },
+        }
     };
     Ok(ast_node)
 }
 
-fn expr_to_expression(
-    ec: &mut ErrorContext,
-    expr: Expr,
-) -> Result<Expression, ErrorEmitted> {
+fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
         Expr::Path(path_expr) => path_expr_to_expression(ec, path_expr)?,
-        Expr::Literal(literal) => {
-            Expression::Literal {
-                value: literal_to_literal(ec, literal)?,
-                span,
-            }
+        Expr::Literal(literal) => Expression::Literal {
+            value: literal_to_literal(ec, literal)?,
+            span,
         },
         Expr::AbiCast { args, .. } => {
             let AbiCastArgs { name, address, .. } = args.into_inner();
@@ -1008,85 +925,85 @@ fn expr_to_expression(
                 address,
                 span,
             }
-        },
-        Expr::Struct { path, fields } => {
-            Expression::StructExpression {
-                struct_name: path_expr_to_call_path(ec, path)?,
-                fields: {
-                    fields
+        }
+        Expr::Struct { path, fields } => Expression::StructExpression {
+            struct_name: path_expr_to_call_path(ec, path)?,
+            fields: {
+                fields
                     .into_inner()
                     .into_iter()
                     .map(|expr_struct_field| {
                         expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
                     })
                     .collect::<Result<_, _>>()?
-                },
-                type_arguments: Vec::new(),
-                span,
-            }
+            },
+            type_arguments: Vec::new(),
+            span,
         },
-        Expr::Tuple(parenthesized_expr_tuple_descriptor) => {
-            Expression::Tuple {
-                fields: expr_tuple_descriptor_to_expressions(
-                    ec,
-                    parenthesized_expr_tuple_descriptor.into_inner(),
-                )?,
-                span,
-            }
+        Expr::Tuple(parenthesized_expr_tuple_descriptor) => Expression::Tuple {
+            fields: expr_tuple_descriptor_to_expressions(
+                ec,
+                parenthesized_expr_tuple_descriptor.into_inner(),
+            )?,
+            span,
         },
         Expr::Parens(parens) => expr_to_expression(ec, *parens.into_inner())?,
         Expr::Block(braced_code_block_contents) => {
             braced_code_block_contents_to_expression(ec, braced_code_block_contents)?
-        },
+        }
         Expr::Array(bracketed_expr_array_descriptor) => {
             match bracketed_expr_array_descriptor.into_inner() {
-                ExprArrayDescriptor::Sequence(exprs) => {
-                    Expression::Array {
-                        contents: {
-                            exprs
+                ExprArrayDescriptor::Sequence(exprs) => Expression::Array {
+                    contents: {
+                        exprs
                             .into_iter()
                             .map(|expr| expr_to_expression(ec, expr))
                             .collect::<Result<_, _>>()?
-                        },
-                        span,
-                    }
+                    },
+                    span,
                 },
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
                     let expression = expr_to_expression(ec, *value)?;
                     let length = expr_to_usize(ec, *length)?;
                     Expression::Array {
-                        contents: iter::repeat_with(|| expression.clone()).take(length).collect(),
+                        contents: iter::repeat_with(|| expression.clone())
+                            .take(length)
+                            .collect(),
                         span,
                     }
-                },
+                }
             }
-        },
-        Expr::Asm(asm_block) => {
-            Expression::AsmExpression {
-                asm: asm_block_to_asm_expression(ec, asm_block)?,
-                span,
-            }
+        }
+        Expr::Asm(asm_block) => Expression::AsmExpression {
+            asm: asm_block_to_asm_expression(ec, asm_block)?,
+            span,
         },
         Expr::Return { return_token, .. } => {
             let error = ConvertParseTreeError::ReturnOutsideOfBlock {
                 span: return_token.span(),
             };
             return Err(ec.error(error));
-        },
+        }
         Expr::If(if_expr) => if_expr_to_expression(ec, if_expr)?,
-        Expr::Match { condition, branches, .. } => {
+        Expr::Match {
+            condition,
+            branches,
+            ..
+        } => {
             let condition = expr_to_expression(ec, *condition)?;
             let branches = {
                 branches
-                .into_inner()
-                .into_iter()
-                .map(|match_branch| {
-                    match_branch_to_match_branch(ec, match_branch)
-                })
-                .collect::<Result<_, _>>()?
+                    .into_inner()
+                    .into_iter()
+                    .map(|match_branch| match_branch_to_match_branch(ec, match_branch))
+                    .collect::<Result<_, _>>()?
             };
             let desugar_result = desugar_match_expression(&condition, branches, None);
-            let CompileResult { value, warnings, errors } = desugar_result;
+            let CompileResult {
+                value,
+                warnings,
+                errors,
+            } = desugar_result;
             ec.warnings(warnings);
             let error_emitted_opt = ec.errors(errors);
             let (if_exp, var_decl_name, cases_covered) = match value {
@@ -1097,21 +1014,25 @@ fn expr_to_expression(
                 contents: CodeBlock {
                     contents: vec![
                         AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(VariableDeclaration {
-                                name: var_decl_name,
-                                type_ascription: TypeInfo::Unknown,
-                                type_ascription_span: None,
-                                is_mutable: false,
-                                body: condition,
-                            })),
+                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                                VariableDeclaration {
+                                    name: var_decl_name,
+                                    type_ascription: TypeInfo::Unknown,
+                                    type_ascription_span: None,
+                                    is_mutable: false,
+                                    body: condition,
+                                },
+                            )),
                             span: span.clone(),
                         },
                         AstNode {
-                            content: AstNodeContent::ImplicitReturnExpression(Expression::MatchExp {
-                                if_exp: Box::new(if_exp),
-                                cases_covered,
-                                span: span.clone(),
-                            }),
+                            content: AstNodeContent::ImplicitReturnExpression(
+                                Expression::MatchExp {
+                                    if_exp: Box::new(if_exp),
+                                    cases_covered,
+                                    span: span.clone(),
+                                },
+                            ),
                             span: span.clone(),
                         },
                     ],
@@ -1119,69 +1040,80 @@ fn expr_to_expression(
                 },
                 span,
             }
-        },
+        }
         Expr::While { while_token, .. } => {
             let error = ConvertParseTreeError::WhileOutsideOfBlock {
                 span: while_token.span(),
             };
             return Err(ec.error(error));
-        },
+        }
         Expr::FuncApp { func, args } => {
             let path_expr = match *func {
                 Expr::Path(path_expr) => path_expr,
                 _ => {
-                    let error = ConvertParseTreeError::FunctionArbitraryExpression {
-                        span: func.span(),
-                    };
+                    let error =
+                        ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
                     return Err(ec.error(error));
-                },
+                }
             };
-            let PathExpr { root_opt, prefix, mut suffix } = path_expr;
+            let PathExpr {
+                root_opt,
+                prefix,
+                mut suffix,
+            } = path_expr;
             let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
             let (prefixes, method_type_opt, suffix_path_expr) = match suffix.pop() {
-                Some((_double_colon_token, call_path_suffix)) => {
-                    match suffix.pop() {
-                        Some((_double_colon_token, maybe_method_segment)) => {
-                            let PathExprSegment { fully_qualified, name, generics_opt } = maybe_method_segment;
-                            if let Some((_double_colon_token, generic_args)) = generics_opt {
-                                let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                    span: generic_args.span(),
-                                };
-                                return Err(ec.error(error));
-                            }
-                            let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-                            for (_double_colon_token, call_path_prefix) in suffix {
-                                let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
-                                prefixes.push(ident);
-                            }
-                            if fully_qualified.is_some() {
-                                (prefixes, Some(name), call_path_suffix)
-                            } else {
-                                prefixes.push(name);
-                                (prefixes, None, call_path_suffix)
-                            }
-                        },
-                        None => {
-                            let PathExprSegment { fully_qualified, name, generics_opt } = prefix;
-                            if let Some((_double_colon_token, generic_args)) = generics_opt {
-                                let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                    span: generic_args.span(),
-                                };
-                                return Err(ec.error(error));
-                            }
-                            if fully_qualified.is_some() {
-                                (Vec::new(), Some(name), call_path_suffix)
-                            } else {
-                                (vec![name], None, call_path_suffix)
-                            }
-                        },
+                Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
+                    Some((_double_colon_token, maybe_method_segment)) => {
+                        let PathExprSegment {
+                            fully_qualified,
+                            name,
+                            generics_opt,
+                        } = maybe_method_segment;
+                        if let Some((_double_colon_token, generic_args)) = generics_opt {
+                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                                span: generic_args.span(),
+                            };
+                            return Err(ec.error(error));
+                        }
+                        let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
+                        for (_double_colon_token, call_path_prefix) in suffix {
+                            let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
+                            prefixes.push(ident);
+                        }
+                        if fully_qualified.is_some() {
+                            (prefixes, Some(name), call_path_suffix)
+                        } else {
+                            prefixes.push(name);
+                            (prefixes, None, call_path_suffix)
+                        }
+                    }
+                    None => {
+                        let PathExprSegment {
+                            fully_qualified,
+                            name,
+                            generics_opt,
+                        } = prefix;
+                        if let Some((_double_colon_token, generic_args)) = generics_opt {
+                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                                span: generic_args.span(),
+                            };
+                            return Err(ec.error(error));
+                        }
+                        if fully_qualified.is_some() {
+                            (Vec::new(), Some(name), call_path_suffix)
+                        } else {
+                            (vec![name], None, call_path_suffix)
+                        }
                     }
                 },
-                None => {
-                    (Vec::new(), None, prefix)
-                },
+                None => (Vec::new(), None, prefix),
             };
-            let PathExprSegment { fully_qualified, name, generics_opt } = suffix_path_expr;
+            let PathExprSegment {
+                fully_qualified,
+                name,
+                generics_opt,
+            } = suffix_path_expr;
             if let Some(tilde_token) = fully_qualified {
                 let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
                     span: tilde_token.span(),
@@ -1194,18 +1126,17 @@ fn expr_to_expression(
                 suffix: name,
             };
             let arguments = {
-                args
-                .into_inner()
-                .into_iter()
-                .map(|expr| expr_to_expression(ec, expr))
-                .collect::<Result<_, _>>()?
+                args.into_inner()
+                    .into_iter()
+                    .map(|expr| expr_to_expression(ec, expr))
+                    .collect::<Result<_, _>>()?
             };
             match method_type_opt {
                 Some(type_name) => {
                     let type_arguments = match generics_opt {
                         Some((_double_colon_token, generic_args)) => {
                             generic_args_to_type_arguments(ec, generic_args)?
-                        },
+                        }
                         None => Vec::new(),
                     };
                     let type_name_span = type_name.span().clone();
@@ -1223,32 +1154,26 @@ fn expr_to_expression(
                         type_arguments,
                         span,
                     }
-                },
+                }
                 None => {
-                    if
-                        call_path.prefixes.is_empty() &&
-                        !call_path.is_absolute &&
-                        call_path.suffix.as_str() == "size_of"
+                    if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && call_path.suffix.as_str() == "size_of"
                     {
                         if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::SizeOfTooManyArgs {
-                                span,
-                            };
+                            let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
                             return Err(ec.error(error));
                         }
                         let ty = match {
-                            generics_opt
-                            .and_then(|(_double_colon_token, generic_args)| {
+                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
                                 iter_to_array(generic_args.parameters.into_inner())
                             })
                         } {
                             Some([ty]) => ty,
                             None => {
-                                let error = ConvertParseTreeError::SizeOfOneGenericArg {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::SizeOfOneGenericArg { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
@@ -1258,30 +1183,25 @@ fn expr_to_expression(
                             type_span,
                             span,
                         }
-                    } else if
-                        call_path.prefixes.is_empty() &&
-                        !call_path.is_absolute &&
-                        call_path.suffix.as_str() == "is_reference_type"
+                    } else if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && call_path.suffix.as_str() == "is_reference_type"
                     {
                         if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs {
-                                span,
-                            };
+                            let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
                             return Err(ec.error(error));
                         }
                         let ty = match {
-                            generics_opt
-                            .and_then(|(_double_colon_token, generic_args)| {
+                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
                                 iter_to_array(generic_args.parameters.into_inner())
                             })
                         } {
                             Some([ty]) => ty,
                             None => {
-                                let error = ConvertParseTreeError::IsReferenceTypeOneGenericArg {
-                                    span,
-                                };
+                                let error =
+                                    ConvertParseTreeError::IsReferenceTypeOneGenericArg { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
@@ -1291,29 +1211,23 @@ fn expr_to_expression(
                             type_span,
                             span,
                         }
-                    } else if
-                        call_path.prefixes.is_empty() &&
-                        !call_path.is_absolute &&
-                        call_path.suffix.as_str() == "size_of_val"
+                    } else if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && call_path.suffix.as_str() == "size_of_val"
                     {
                         let exp = match <[_; 1]>::try_from(arguments) {
                             Ok([exp]) => Box::new(exp),
                             Err(..) => {
-                                let error = ConvertParseTreeError::SizeOfValOneArg {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::SizeOfValOneArg { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
-                        Expression::SizeOfVal {
-                            exp,
-                            span,
-                        }
+                        Expression::SizeOfVal { exp, span }
                     } else {
                         let type_arguments = match generics_opt {
                             Some((_double_colon_token, generic_args)) => {
                                 generic_args_to_type_arguments(ec, generic_args)?
-                            },
+                            }
                             None => Vec::new(),
                         };
                         if call_path.prefixes.is_empty() {
@@ -1332,42 +1246,40 @@ fn expr_to_expression(
                             }
                         }
                     }
-                },
+                }
             }
+        }
+        Expr::Index { target, arg } => Expression::ArrayIndex {
+            prefix: Box::new(expr_to_expression(ec, *target)?),
+            index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+            span,
         },
-        Expr::Index { target, arg } => {
-            Expression::ArrayIndex {
-                prefix: Box::new(expr_to_expression(ec, *target)?),
-                index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
-                span,
-            }
-        },
-        Expr::MethodCall { target, name, args, contract_args_opt, .. } => {
-            Expression::MethodApplication {
-                method_name: MethodName::FromModule {
-                    method_name: name,
-                },
-                contract_call_params: match contract_args_opt {
-                    None => Vec::new(),
-                    Some(contract_args) => {
-                        contract_args
-                        .into_inner()
-                        .into_iter()
-                        .map(|expr_struct_field| {
-                            expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                        })
-                        .collect::<Result<_, _>>()?
-                    },
-                },
-                arguments: {
-                    iter::once(*target)
+        Expr::MethodCall {
+            target,
+            name,
+            args,
+            contract_args_opt,
+            ..
+        } => Expression::MethodApplication {
+            method_name: MethodName::FromModule { method_name: name },
+            contract_call_params: match contract_args_opt {
+                None => Vec::new(),
+                Some(contract_args) => contract_args
+                    .into_inner()
+                    .into_iter()
+                    .map(|expr_struct_field| {
+                        expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+                    })
+                    .collect::<Result<_, _>>()?,
+            },
+            arguments: {
+                iter::once(*target)
                     .chain(args.into_inner().into_iter())
                     .map(|expr| expr_to_expression(ec, expr))
                     .collect::<Result<_, _>>()?
-                },
-                type_arguments: Vec::new(),
-                span,
-            }
+            },
+            type_arguments: Vec::new(),
+            span,
         },
         Expr::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
@@ -1377,19 +1289,18 @@ fn expr_to_expression(
                     Expr::FieldProjection { target, name, .. } => {
                         idents.push(name);
                         base = target;
-                    },
+                    }
                     Expr::Path(path_expr) => {
-                        if
-                            path_expr.root_opt.is_none() &&
-                            path_expr.suffix.is_empty() &&
-                            path_expr.prefix.fully_qualified.is_none() &&
-                            path_expr.prefix.generics_opt.is_none() &&
-                            path_expr.prefix.name.as_str() == "storage"
+                        if path_expr.root_opt.is_none()
+                            && path_expr.suffix.is_empty()
+                            && path_expr.prefix.fully_qualified.is_none()
+                            && path_expr.prefix.generics_opt.is_none()
+                            && path_expr.prefix.name.as_str() == "storage"
                         {
                             break Some(idents);
                         }
                         break None;
-                    },
+                    }
                     _ => break None,
                 }
             };
@@ -1397,120 +1308,135 @@ fn expr_to_expression(
                 Some(field_names) => {
                     let field_names = field_names.into_iter().rev().cloned().collect();
                     Expression::StorageAccess { field_names, span }
-                },
-                None => {
-                    Expression::SubfieldExpression {
-                        prefix: Box::new(expr_to_expression(ec, *target)?),
-                        field_to_access: name,
-                        span,
-                    }
+                }
+                None => Expression::SubfieldExpression {
+                    prefix: Box::new(expr_to_expression(ec, *target)?),
+                    field_to_access: name,
+                    span,
                 },
             }
+        }
+        Expr::TupleFieldProjection {
+            target,
+            field,
+            field_span,
+            ..
+        } => Expression::TupleIndex {
+            prefix: Box::new(expr_to_expression(ec, *target)?),
+            index: match usize::try_from(field) {
+                Ok(index) => index,
+                Err(..) => {
+                    let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                    return Err(ec.error(error));
+                }
+            },
+            index_span: field_span,
+            span,
         },
-        Expr::TupleFieldProjection { target, field, field_span, .. } => {
-            Expression::TupleIndex {
-                prefix: Box::new(expr_to_expression(ec, *target)?),
-                index: match usize::try_from(field) {
-                    Ok(index) => index,
-                    Err(..) => {
-                        let error = ConvertParseTreeError::TupleIndexOutOfRange {
-                            span: field_span,
-                        };
-                        return Err(ec.error(error));
-                    },
-                },
-                index_span: field_span,
-                span,
-            }
-        },
-        Expr::Ref { ref_token, expr } => {
-            unary_op_call(ec, "ref", ref_token.span(), span, *expr)?
-        },
+        Expr::Ref { ref_token, expr } => unary_op_call(ec, "ref", ref_token.span(), span, *expr)?,
         Expr::Deref { deref_token, expr } => {
             unary_op_call(ec, "deref", deref_token.span(), span, *expr)?
-        },
-        Expr::Not { bang_token, expr } => {
-            unary_op_call(ec, "not", bang_token.span(), span, *expr)?
-        },
-        Expr::Mul { lhs, star_token, rhs } => {
-            binary_op_call(ec, "multiply", star_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::Div { lhs, forward_slash_token, rhs } => {
-            binary_op_call(ec, "divide", forward_slash_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::Modulo { lhs, percent_token, rhs } => {
-            binary_op_call(ec, "modulo", percent_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::Add { lhs, add_token, rhs } => {
-            binary_op_call(ec, "add", add_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::Sub { lhs, sub_token, rhs } => {
-            binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?
-        },
+        }
+        Expr::Not { bang_token, expr } => unary_op_call(ec, "not", bang_token.span(), span, *expr)?,
+        Expr::Mul {
+            lhs,
+            star_token,
+            rhs,
+        } => binary_op_call(ec, "multiply", star_token.span(), span, *lhs, *rhs)?,
+        Expr::Div {
+            lhs,
+            forward_slash_token,
+            rhs,
+        } => binary_op_call(ec, "divide", forward_slash_token.span(), span, *lhs, *rhs)?,
+        Expr::Modulo {
+            lhs,
+            percent_token,
+            rhs,
+        } => binary_op_call(ec, "modulo", percent_token.span(), span, *lhs, *rhs)?,
+        Expr::Add {
+            lhs,
+            add_token,
+            rhs,
+        } => binary_op_call(ec, "add", add_token.span(), span, *lhs, *rhs)?,
+        Expr::Sub {
+            lhs,
+            sub_token,
+            rhs,
+        } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
         Expr::Shl { shl_token, .. } => {
             let error = ConvertParseTreeError::ShlNotImplemented {
                 span: shl_token.span(),
             };
             return Err(ec.error(error));
-        },
+        }
         Expr::Shr { shr_token, .. } => {
             let error = ConvertParseTreeError::ShrNotImplemented {
                 span: shr_token.span(),
             };
             return Err(ec.error(error));
-        },
-        Expr::BitAnd { lhs, ampersand_token, rhs } => {
-            binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?
-        },
+        }
+        Expr::BitAnd {
+            lhs,
+            ampersand_token,
+            rhs,
+        } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
         Expr::BitXor { caret_token, .. } => {
             let error = ConvertParseTreeError::BitXorNotImplemented {
                 span: caret_token.span(),
             };
             return Err(ec.error(error));
+        }
+        Expr::BitOr {
+            lhs,
+            pipe_token,
+            rhs,
+        } => binary_op_call(ec, "binary_or", pipe_token.span(), span, *lhs, *rhs)?,
+        Expr::Equal {
+            lhs,
+            double_eq_token,
+            rhs,
+        } => binary_op_call(ec, "eq", double_eq_token.span(), span, *lhs, *rhs)?,
+        Expr::NotEqual {
+            lhs,
+            bang_eq_token,
+            rhs,
+        } => binary_op_call(ec, "neq", bang_eq_token.span(), span, *lhs, *rhs)?,
+        Expr::LessThan {
+            lhs,
+            less_than_token,
+            rhs,
+        } => binary_op_call(ec, "lt", less_than_token.span(), span, *lhs, *rhs)?,
+        Expr::GreaterThan {
+            lhs,
+            greater_than_token,
+            rhs,
+        } => binary_op_call(ec, "gt", greater_than_token.span(), span, *lhs, *rhs)?,
+        Expr::LessThanEq {
+            lhs,
+            less_than_eq_token,
+            rhs,
+        } => binary_op_call(ec, "le", less_than_eq_token.span(), span, *lhs, *rhs)?,
+        Expr::GreaterThanEq {
+            lhs,
+            greater_than_eq_token,
+            rhs,
+        } => binary_op_call(ec, "ge", greater_than_eq_token.span(), span, *lhs, *rhs)?,
+        Expr::LogicalAnd { lhs, rhs, .. } => Expression::LazyOperator {
+            op: LazyOp::And,
+            lhs: Box::new(expr_to_expression(ec, *lhs)?),
+            rhs: Box::new(expr_to_expression(ec, *rhs)?),
+            span,
         },
-        Expr::BitOr { lhs, pipe_token, rhs } => {
-            binary_op_call(ec, "binary_or", pipe_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::Equal { lhs, double_eq_token, rhs } => {
-            binary_op_call(ec, "eq", double_eq_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::NotEqual { lhs, bang_eq_token, rhs } => {
-            binary_op_call(ec, "neq", bang_eq_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::LessThan { lhs, less_than_token, rhs } => {
-            binary_op_call(ec, "lt", less_than_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::GreaterThan { lhs, greater_than_token, rhs } => {
-            binary_op_call(ec, "gt", greater_than_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::LessThanEq { lhs, less_than_eq_token, rhs } => {
-            binary_op_call(ec, "le", less_than_eq_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::GreaterThanEq { lhs, greater_than_eq_token, rhs } => {
-            binary_op_call(ec, "ge", greater_than_eq_token.span(), span, *lhs, *rhs)?
-        },
-        Expr::LogicalAnd { lhs, rhs, .. } => {
-            Expression::LazyOperator {
-                op: LazyOp::And,
-                lhs: Box::new(expr_to_expression(ec, *lhs)?),
-                rhs: Box::new(expr_to_expression(ec, *rhs)?),
-                span,
-            }
-        },
-        Expr::LogicalOr { lhs, rhs, .. } => {
-            Expression::LazyOperator {
-                op: LazyOp::Or,
-                lhs: Box::new(expr_to_expression(ec, *lhs)?),
-                rhs: Box::new(expr_to_expression(ec, *rhs)?),
-                span,
-            }
+        Expr::LogicalOr { lhs, rhs, .. } => Expression::LazyOperator {
+            op: LazyOp::Or,
+            lhs: Box::new(expr_to_expression(ec, *lhs)?),
+            rhs: Box::new(expr_to_expression(ec, *rhs)?),
+            span,
         },
         Expr::Reassignment { .. } => {
-            let error = ConvertParseTreeError::ReassignmentOutsideOfBlock {
-                span,
-            };
+            let error = ConvertParseTreeError::ReassignmentOutsideOfBlock { span };
             return Err(ec.error(error));
-        },
+        }
     };
     Ok(expression)
 }
@@ -1609,28 +1535,22 @@ fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitte
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
-                    let error = ConvertParseTreeError::IntTySuffixNotSupported {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::IntTySuffixNotSupported { span };
                     return Err(ec.error(error));
-                },
+                }
             }
             match usize::try_from(lit_int.parsed) {
                 Ok(value) => value,
                 Err(..) => {
-                    let error = ConvertParseTreeError::IntLiteralOutOfRange {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::IntLiteralOutOfRange { span };
                     return Err(ec.error(error));
-                },
+                }
             }
-        },
+        }
         _ => {
-            let error = ConvertParseTreeError::IntLiteralExpected {
-                span,
-            };
+            let error = ConvertParseTreeError::IntLiteralExpected { span };
             return Err(ec.error(error));
-        },
+        }
     };
     Ok(value)
 }
@@ -1642,28 +1562,22 @@ fn expr_to_u64(ec: &mut ErrorContext, expr: Expr) -> Result<u64, ErrorEmitted> {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
-                    let error = ConvertParseTreeError::IntTySuffixNotSupported {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::IntTySuffixNotSupported { span };
                     return Err(ec.error(error));
-                },
+                }
             }
             match u64::try_from(lit_int.parsed) {
                 Ok(value) => value,
                 Err(..) => {
-                    let error = ConvertParseTreeError::IntLiteralOutOfRange {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::IntLiteralOutOfRange { span };
                     return Err(ec.error(error));
-                },
+                }
             }
-        },
+        }
         _ => {
-            let error = ConvertParseTreeError::IntLiteralExpected {
-                span,
-            };
+            let error = ConvertParseTreeError::IntLiteralExpected { span };
             return Err(ec.error(error));
-        },
+        }
     };
     Ok(value)
 }
@@ -1672,7 +1586,11 @@ fn path_type_to_supertrait(
     ec: &mut ErrorContext,
     path_type: PathType,
 ) -> Result<Supertrait, ErrorEmitted> {
-    let PathType { root_opt, prefix, mut suffix } = path_type;
+    let PathType {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_type;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
@@ -1682,11 +1600,15 @@ fn path_type_to_supertrait(
                 prefixes.push(ident);
             }
             (prefixes, call_path_suffix)
-        },
+        }
         None => (Vec::new(), prefix),
     };
     //let PathTypeSegment { fully_qualified, name, generics_opt } = call_path_suffix;
-    let PathTypeSegment { fully_qualified, name, .. } = call_path_suffix;
+    let PathTypeSegment {
+        fully_qualified,
+        name,
+        ..
+    } = call_path_suffix;
     if let Some(tilde_token) = fully_qualified {
         let error = ConvertParseTreeError::FullyQualifiedTraitsNotSupported {
             span: tilde_token.span(),
@@ -1717,7 +1639,11 @@ fn path_type_segment_to_ident(
     ec: &mut ErrorContext,
     path_type_segment: PathTypeSegment,
 ) -> Result<Ident, ErrorEmitted> {
-    let PathTypeSegment { fully_qualified, name, generics_opt } = path_type_segment;
+    let PathTypeSegment {
+        fully_qualified,
+        name,
+        generics_opt,
+    } = path_type_segment;
     if let Some(tilde_token) = fully_qualified {
         let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
             span: tilde_token.span(),
@@ -1737,7 +1663,11 @@ fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
 ) -> Result<Ident, ErrorEmitted> {
-    let PathExprSegment { fully_qualified, name, generics_opt } = path_expr_segment;
+    let PathExprSegment {
+        fully_qualified,
+        name,
+        generics_opt,
+    } = path_expr_segment;
     if let Some(tilde_token) = fully_qualified {
         let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
             span: tilde_token.span(),
@@ -1799,7 +1729,12 @@ fn if_expr_to_expression(
     if_expr: IfExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = if_expr.span();
-    let IfExpr { condition, then_block, else_opt, .. } = if_expr;
+    let IfExpr {
+        condition,
+        then_block,
+        else_opt,
+        ..
+    } = if_expr;
     let then_block_span = then_block.span();
     let then_block = braced_code_block_contents_to_code_block(ec, then_block)?;
     let else_opt = match else_opt {
@@ -1808,34 +1743,28 @@ fn if_expr_to_expression(
             let expression = match tail {
                 ControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(ec, braced_code_block_contents)?
-                },
-                ControlFlow::Continue(if_expr) => {
-                    if_expr_to_expression(ec, *if_expr)?
-                },
+                }
+                ControlFlow::Continue(if_expr) => if_expr_to_expression(ec, *if_expr)?,
             };
             Some(Box::new(expression))
-        },
+        }
     };
     let expression = match condition {
-        IfCondition::Expr(condition) => {
-            Expression::IfExp {
-                condition: Box::new(expr_to_expression(ec, *condition)?),
-                then: Box::new(Expression::CodeBlock {
-                    contents: then_block,
-                    span: then_block_span,
-                }),
-                r#else: else_opt,
-                span,
-            }
+        IfCondition::Expr(condition) => Expression::IfExp {
+            condition: Box::new(expr_to_expression(ec, *condition)?),
+            then: Box::new(Expression::CodeBlock {
+                contents: then_block,
+                span: then_block_span,
+            }),
+            r#else: else_opt,
+            span,
         },
-        IfCondition::Let { lhs, rhs, .. } => {
-            Expression::IfLet {
-                scrutinee: pattern_to_scrutinee(ec, *lhs)?,
-                expr: Box::new(expr_to_expression(ec, *rhs)?),
-                then: then_block,
-                r#else: else_opt,
-                span,
-            }
+        IfCondition::Let { lhs, rhs, .. } => Expression::IfLet {
+            scrutinee: pattern_to_scrutinee(ec, *lhs)?,
+            expr: Box::new(expr_to_expression(ec, *rhs)?),
+            then: then_block,
+            r#else: else_opt,
+            span,
         },
     };
     Ok(expression)
@@ -1853,7 +1782,7 @@ fn path_root_opt_to_bool(
                 span: qualified_path_root.span(),
             };
             return Err(ec.error(error));
-        },
+        }
     };
     Ok(b)
 }
@@ -1870,17 +1799,22 @@ fn literal_to_literal(
                 full_span.start() + 1,
                 full_span.end() - 1,
                 full_span.path().cloned(),
-            ).unwrap();
+            )
+            .unwrap();
             Literal::String(inner_span)
-        },
+        }
         sway_parse::Literal::Char(lit_char) => {
             let error = ConvertParseTreeError::CharLiteralsNotImplemented {
                 span: lit_char.span(),
             };
             return Err(ec.error(error));
-        },
+        }
         sway_parse::Literal::Int(lit_int) => {
-            let LitInt { parsed, ty_opt, span } = lit_int;
+            let LitInt {
+                parsed,
+                ty_opt,
+                span,
+            } = lit_int;
             match ty_opt {
                 None => {
                     let orig_str = span.as_str();
@@ -1893,13 +1827,11 @@ fn literal_to_literal(
                                 let mut full_bytes = [0u8; 32];
                                 full_bytes[(32 - bytes.len())..].copy_from_slice(&bytes);
                                 Literal::B256(full_bytes)
-                            },
+                            }
                             _ => {
-                                let error = ConvertParseTreeError::HexLiteralLength {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::HexLiteralLength { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         }
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
@@ -1910,84 +1842,70 @@ fn literal_to_literal(
                                 let mut full_bytes = [0u8; 32];
                                 full_bytes[(32 - bytes.len())..].copy_from_slice(&bytes);
                                 Literal::B256(full_bytes)
-                            },
+                            }
                             _ => {
-                                let error = ConvertParseTreeError::BinaryLiteralLength {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::BinaryLiteralLength { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         }
                     } else {
                         match u64::try_from(&parsed) {
                             Ok(value) => Literal::Numeric(value),
                             Err(..) => {
-                                let error = ConvertParseTreeError::IntLiteralOutOfRange {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::IntLiteralOutOfRange { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         }
                     }
-                },
+                }
                 Some((lit_int_type, _span)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,
                             Err(..) => {
-                                let error = ConvertParseTreeError::U8LiteralOutOfRange {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::U8LiteralOutOfRange { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         Literal::U8(value)
-                    },
+                    }
                     LitIntType::U16 => {
                         let value = match u16::try_from(parsed) {
                             Ok(value) => value,
                             Err(..) => {
-                                let error = ConvertParseTreeError::U16LiteralOutOfRange {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::U16LiteralOutOfRange { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         Literal::U16(value)
-                    },
+                    }
                     LitIntType::U32 => {
                         let value = match u32::try_from(parsed) {
                             Ok(value) => value,
                             Err(..) => {
-                                let error = ConvertParseTreeError::U32LiteralOutOfRange {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::U32LiteralOutOfRange { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         Literal::U32(value)
-                    },
+                    }
                     LitIntType::U64 => {
                         let value = match u64::try_from(parsed) {
                             Ok(value) => value,
                             Err(..) => {
-                                let error = ConvertParseTreeError::U64LiteralOutOfRange {
-                                    span,
-                                };
+                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
                                 return Err(ec.error(error));
-                            },
+                            }
                         };
                         Literal::U64(value)
-                    },
+                    }
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
-                        let error = ConvertParseTreeError::SignedIntegersNotSupported {
-                            span,
-                        };
+                        let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(ec.error(error));
-                    },
+                    }
                 },
             }
-        },
+        }
     };
     Ok(literal)
 }
@@ -1996,7 +1914,11 @@ fn path_expr_to_call_path(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
 ) -> Result<CallPath, ErrorEmitted> {
-    let PathExpr { root_opt, prefix, mut suffix } = path_expr;
+    let PathExpr {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
@@ -2010,13 +1932,11 @@ fn path_expr_to_call_path(
                 suffix: path_expr_segment_to_ident(ec, call_path_suffix)?,
                 is_absolute,
             }
-        },
-        None => {
-            CallPath {
-                prefixes: Vec::new(),
-                suffix: path_expr_segment_to_ident(ec, prefix)?,
-                is_absolute,
-            }
+        }
+        None => CallPath {
+            prefixes: Vec::new(),
+            suffix: path_expr_segment_to_ident(ec, prefix)?,
+            is_absolute,
         },
     };
     Ok(call_path)
@@ -2029,11 +1949,9 @@ fn expr_struct_field_to_struct_expression_field(
     let span = expr_struct_field.span();
     let value = match expr_struct_field.expr_opt {
         Some((_colon_token, expr)) => expr_to_expression(ec, *expr)?,
-        None => {
-            Expression::VariableExpression {
-                name: expr_struct_field.field_name.clone(),
-                span: span.clone(),
-            }
+        None => Expression::VariableExpression {
+            name: expr_struct_field.field_name.clone(),
+            span: span.clone(),
         },
     };
     Ok(StructExpressionField {
@@ -2055,7 +1973,7 @@ fn expr_tuple_descriptor_to_expressions(
                 expressions.push(expr_to_expression(ec, expr)?);
             }
             expressions
-        },
+        }
     };
     Ok(expressions)
 }
@@ -2077,27 +1995,33 @@ fn asm_block_to_asm_expression(
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             };
             (returns, return_type)
-        },
+        }
         None => (None, TypeInfo::Tuple(Vec::new())),
     };
     let registers = {
         asm_block
-        .registers
-        .into_inner()
-        .into_iter()
-        .map(|asm_register_declaration| {
-            asm_register_declaration_to_asm_register_declaration(ec, asm_register_declaration)
-        })
-        .collect::<Result<_, _>>()?
+            .registers
+            .into_inner()
+            .into_iter()
+            .map(|asm_register_declaration| {
+                asm_register_declaration_to_asm_register_declaration(ec, asm_register_declaration)
+            })
+            .collect::<Result<_, _>>()?
     };
     let body = {
         asm_block_contents
-        .instructions
-        .into_iter()
-        .map(|(instruction, _semicolon_token)| instruction_to_asm_op(instruction))
-        .collect()
+            .instructions
+            .into_iter()
+            .map(|(instruction, _semicolon_token)| instruction_to_asm_op(instruction))
+            .collect()
     };
-    Ok(AsmExpression { registers, body, returns, return_type, whole_block_span })
+    Ok(AsmExpression {
+        registers,
+        body,
+        returns,
+        return_type,
+        whole_block_span,
+    })
 }
 
 fn match_branch_to_match_branch(
@@ -2114,7 +2038,7 @@ fn match_branch_to_match_branch(
                     contents: braced_code_block_contents_to_code_block(ec, block)?,
                     span,
                 }
-            },
+            }
             MatchBranchKind::Expr { expr, .. } => expr_to_expression(ec, expr)?,
         },
         span,
@@ -2139,52 +2063,46 @@ fn statement_let_to_ast_nodes(
                     span,
                 };
                 vec![ast_node]
-            },
+            }
             Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
                         let type_ascription = ty_to_type_info(ec, ty)?;
                         (type_ascription, Some(type_ascription_span))
-                    },
+                    }
                     None => (TypeInfo::Unknown, None),
                 };
                 let ast_node = AstNode {
-                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(VariableDeclaration {
-                        name,
-                        type_ascription,
-                        type_ascription_span,
-                        body: expression,
-                        is_mutable: mutable.is_some(),
-                    })),
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        VariableDeclaration {
+                            name,
+                            type_ascription,
+                            type_ascription_span,
+                            body: expression,
+                            is_mutable: mutable.is_some(),
+                        },
+                    )),
                     span,
                 };
                 vec![ast_node]
-            },
+            }
             Pattern::Literal(..) => {
-                let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere {
-                    span,
-                };
+                let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
-            },
+            }
             Pattern::Constant(..) => {
-                let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere {
-                    span,
-                };
+                let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
-            },
+            }
             Pattern::Constructor { .. } => {
-                let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere {
-                    span,
-                };
+                let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
-            },
+            }
             Pattern::Struct { .. } => {
-                let error = ConvertParseTreeError::StructPatternsNotSupportedHere {
-                    span,
-                };
+                let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
-            },
+            }
             Pattern::Tuple(pat_tuple) => {
                 let mut ast_nodes = Vec::new();
                 let name = {
@@ -2197,7 +2115,7 @@ fn statement_let_to_ast_nodes(
                         let type_ascription_span = ty.span();
                         let type_ascription = ty_to_type_info(ec, ty.clone())?;
                         (type_ascription, Some(type_ascription_span))
-                    },
+                    }
                     None => (TypeInfo::Unknown, None),
                 };
                 let save_body_first = VariableDeclaration {
@@ -2208,7 +2126,9 @@ fn statement_let_to_ast_nodes(
                     is_mutable: false,
                 };
                 ast_nodes.push(AstNode {
-                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(save_body_first)),
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        save_body_first,
+                    )),
                     span: span.clone(),
                 });
                 let new_expr = Expression::VariableExpression {
@@ -2238,7 +2158,7 @@ fn statement_let_to_ast_nodes(
                     )?);
                 }
                 ast_nodes
-            },
+            }
         };
         Ok(ast_nodes)
     }
@@ -2302,7 +2222,7 @@ fn pattern_to_match_condition(
         Pattern::Wildcard { underscore_token } => {
             let span = underscore_token.span();
             MatchCondition::CatchAll(CatchAll { span })
-        },
+        }
         _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
     };
     Ok(match_condition)
@@ -2315,84 +2235,66 @@ fn pattern_to_scrutinee(
     let span = pattern.span();
     let scrutinee = match pattern {
         Pattern::Wildcard { .. } => {
-            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere {
-                span,
-            };
+            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
             return Err(ec.error(error));
+        }
+        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
+        Pattern::Literal(literal) => Scrutinee::Literal {
+            value: literal_to_literal(ec, literal)?,
+            span,
         },
-        Pattern::Var { name, .. } => {
-            Scrutinee::Variable { name, span }
-        },
-        Pattern::Literal(literal) => {
-            Scrutinee::Literal {
-                value: literal_to_literal(ec, literal)?,
-                span,
-            }
-        },
-        Pattern::Constant(path_expr) => {
-            Scrutinee::EnumScrutinee {
-                call_path: path_expr_to_call_path(ec, path_expr)?,
-                variable_to_assign: Ident::new_no_span("_"),
-                span,
-            }
+        Pattern::Constant(path_expr) => Scrutinee::EnumScrutinee {
+            call_path: path_expr_to_call_path(ec, path_expr)?,
+            variable_to_assign: Ident::new_no_span("_"),
+            span,
         },
         Pattern::Constructor { path, args } => {
             let arg = match iter_to_array(args.into_inner()) {
                 Some([arg]) => arg,
                 None => {
-                    let error = ConvertParseTreeError::ConstructorPatternOneArg {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::ConstructorPatternOneArg { span };
                     return Err(ec.error(error));
-                },
+                }
             };
             let variable_to_assign = match arg {
                 Pattern::Var { mutable, name } => {
                     if mutable.is_some() {
-                        let error = ConvertParseTreeError::MutableBindingsNotSupportedHere {
-                            span,
-                        };
+                        let error = ConvertParseTreeError::MutableBindingsNotSupportedHere { span };
                         return Err(ec.error(error));
                     }
                     name
-                },
+                }
                 _ => {
-                    let error = ConvertParseTreeError::ConstructorPatternSubPatterns {
-                        span,
-                    };
+                    let error = ConvertParseTreeError::ConstructorPatternSubPatterns { span };
                     return Err(ec.error(error));
-                },
+                }
             };
             Scrutinee::EnumScrutinee {
                 call_path: path_expr_to_call_path(ec, path)?,
                 variable_to_assign,
                 span,
             }
-        },
-        Pattern::Struct { path, fields } => {
-            Scrutinee::StructScrutinee {
-                struct_name: path_expr_to_ident(ec, path)?,
-                fields: {
-                    fields
+        }
+        Pattern::Struct { path, fields } => Scrutinee::StructScrutinee {
+            struct_name: path_expr_to_ident(ec, path)?,
+            fields: {
+                fields
                     .into_inner()
                     .into_iter()
                     .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
                     .collect::<Result<_, _>>()?
-                },
-                span,
-            }
+            },
+            span,
         },
-        Pattern::Tuple(pat_tuple) => {
-            Scrutinee::Tuple {
-                elems: {
-                    pat_tuple
+        Pattern::Tuple(pat_tuple) => Scrutinee::Tuple {
+            elems: {
+                pat_tuple
                     .into_inner()
                     .into_iter()
                     .map(|pattern| pattern_to_scrutinee(ec, pattern))
                     .collect::<Result<_, _>>()?
-                },
-                span,
-            }
+            },
+            span,
         },
     };
     Ok(scrutinee)
@@ -2425,16 +2327,15 @@ fn path_type_to_ident(path_type: PathType) -> Ident {
 }
 */
 
-fn path_expr_to_ident(
-    ec: &mut ErrorContext,
-    path_expr: PathExpr,
-) -> Result<Ident, ErrorEmitted> {
+fn path_expr_to_ident(ec: &mut ErrorContext, path_expr: PathExpr) -> Result<Ident, ErrorEmitted> {
     let span = path_expr.span();
-    let PathExpr { root_opt, prefix, suffix } = path_expr;
+    let PathExpr {
+        root_opt,
+        prefix,
+        suffix,
+    } = path_expr;
     if root_opt.is_some() || !suffix.is_empty() {
-        let error = ConvertParseTreeError::PathsNotSupportedHere {
-            span,
-        };
+        let error = ConvertParseTreeError::PathsNotSupportedHere { span };
         return Err(ec.error(error));
     }
     path_expr_segment_to_ident(ec, prefix)
@@ -2462,22 +2363,16 @@ fn assignable_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = assignable.span();
     let expression = match assignable {
-        Assignable::Var(name) => {
-            Expression::VariableExpression { name, span }
+        Assignable::Var(name) => Expression::VariableExpression { name, span },
+        Assignable::Index { target, arg } => Expression::ArrayIndex {
+            prefix: Box::new(assignable_to_expression(ec, *target)?),
+            index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+            span,
         },
-        Assignable::Index { target, arg } => {
-            Expression::ArrayIndex {
-                prefix: Box::new(assignable_to_expression(ec, *target)?),
-                index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
-                span,
-            }
-        },
-        Assignable::FieldProjection { target, name, .. } => {
-            Expression::SubfieldExpression {
-                prefix: Box::new(assignable_to_expression(ec, *target)?),
-                field_to_access: name,
-                span,
-            }
+        Assignable::FieldProjection { target, name, .. } => Expression::SubfieldExpression {
+            prefix: Box::new(assignable_to_expression(ec, *target)?),
+            field_to_access: name,
+            span,
         },
     };
     Ok(expression)
@@ -2494,14 +2389,14 @@ fn assignable_to_reassignment_target(
             Assignable::FieldProjection { target, name, .. } => {
                 idents.push(name);
                 base = target;
-            },
+            }
             Assignable::Var(name) => {
                 if name.as_str() == "storage" {
                     let idents = idents.into_iter().rev().cloned().collect();
                     return Ok(ReassignmentTarget::StorageField(idents));
                 }
                 break;
-            },
+            }
             Assignable::Index { .. } => break,
         }
     }
@@ -2514,32 +2409,37 @@ fn generic_args_to_type_arguments(
     generic_args: GenericArgs,
 ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
     generic_args
-    .parameters
-    .into_inner()
-    .into_iter()
-    .map(|ty| {
-        let span = ty.span();
-        let type_id = insert_type(ty_to_type_info(ec, ty)?);
-        Ok(TypeArgument { type_id, span })
-    })
-    .collect()
+        .parameters
+        .into_inner()
+        .into_iter()
+        .map(|ty| {
+            let span = ty.span();
+            let type_id = insert_type(ty_to_type_info(ec, ty)?);
+            Ok(TypeArgument { type_id, span })
+        })
+        .collect()
 }
-
 
 fn path_type_to_type_info(
     ec: &mut ErrorContext,
     path_type: PathType,
 ) -> Result<TypeInfo, ErrorEmitted> {
     let span = path_type.span();
-    let PathType { root_opt, prefix, suffix } = path_type;
+    let PathType {
+        root_opt,
+        prefix,
+        suffix,
+    } = path_type;
     if root_opt.is_some() || !suffix.is_empty() {
-        let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported {
-            span,
-        };
+        let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
         return Err(ec.error(error));
     }
-    let PathTypeSegment { fully_qualified, name, generics_opt } = prefix;
-    if let Some(tilde_token ) = fully_qualified {
+    let PathTypeSegment {
+        fully_qualified,
+        name,
+        generics_opt,
+    } = prefix;
+    if let Some(tilde_token) = fully_qualified {
         let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
             span: tilde_token.span(),
         };
@@ -2554,37 +2454,31 @@ fn path_type_to_type_info(
                 return Err(ec.error(error));
             }
             type_info
-        },
+        }
         None => {
             if name.as_str() == "ContractCaller" {
                 let generic_ty = match {
-                    generics_opt
-                    .and_then(|(_double_colon_token, generic_args)| {
+                    generics_opt.and_then(|(_double_colon_token, generic_args)| {
                         iter_to_array(generic_args.parameters.into_inner())
                     })
                 } {
                     Some([ty]) => ty,
                     None => {
-                        let error = ConvertParseTreeError::ContractCallerOneGenericArg {
-                            span,
-                        };
+                        let error = ConvertParseTreeError::ContractCallerOneGenericArg { span };
                         return Err(ec.error(error));
-                    },
+                    }
                 };
                 let abi_name = match generic_ty {
                     Ty::Path(path_type) => {
                         let call_path = path_type_to_call_path(ec, path_type)?;
                         AbiName::Known(call_path)
-                    },
-                    Ty::Infer { .. } => {
-                        AbiName::Deferred
-                    },
+                    }
+                    Ty::Infer { .. } => AbiName::Deferred,
                     _ => {
-                        let error = ConvertParseTreeError::ContractCallerNamedTypeGenericArg {
-                            span,
-                        };
+                        let error =
+                            ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span };
                         return Err(ec.error(error));
-                    },
+                    }
                 };
                 TypeInfo::ContractCaller {
                     abi_name,
@@ -2594,12 +2488,15 @@ fn path_type_to_type_info(
                 let type_arguments = match generics_opt {
                     Some((_double_colon_token, generic_args)) => {
                         generic_args_to_type_arguments(ec, generic_args)?
-                    },
+                    }
                     None => Vec::new(),
                 };
-                TypeInfo::Custom { name, type_arguments }
+                TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                }
             }
-        },
+        }
     };
     Ok(type_info)
 }
@@ -2619,7 +2516,7 @@ where
                 unsafe {
                     value_ptr.write(value);
                 }
-            },
+            }
             None => {
                 for j in (0..i).rev() {
                     let array_ptr = ret.as_mut_ptr();
@@ -2630,10 +2527,9 @@ where
                     }
                 }
                 return None;
-            },
+            }
         }
     }
     let ret = unsafe { ret.assume_init() };
     Some(ret)
 }
-

@@ -19,4 +19,3 @@ impl Parse for ItemFn {
         Ok(ItemFn { fn_signature, body })
     }
 }
-

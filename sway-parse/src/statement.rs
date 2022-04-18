@@ -26,11 +26,12 @@ impl Statement {
         match self {
             Statement::Let(statement_let) => statement_let.span(),
             Statement::Item(item) => item.span(),
-            Statement::Expr { expr, semicolon_token_opt } => {
-                match semicolon_token_opt {
-                    None => expr.span(),
-                    Some(semicolon_token) => Span::join(expr.span(), semicolon_token.span()),
-                }
+            Statement::Expr {
+                expr,
+                semicolon_token_opt,
+            } => match semicolon_token_opt {
+                None => expr.span(),
+                Some(semicolon_token) => Span::join(expr.span(), semicolon_token.span()),
             },
         }
     }
@@ -41,4 +42,3 @@ impl StatementLet {
         Span::join(self.let_token.span(), self.semicolon_token.span())
     }
 }
-

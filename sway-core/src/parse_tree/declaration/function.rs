@@ -212,10 +212,8 @@ impl FunctionParameter {
             if pair.as_str().trim() == "self" {
                 let type_span = Span::from_pest(pair.as_span(), path.clone());
                 let type_id = insert_type(TypeInfo::SelfType);
-                let name = Ident::new_with_override(
-                    "self",
-                    Span::from_pest(pair.as_span(), path.clone()),
-                );
+                let name =
+                    Ident::new_with_override("self", Span::from_pest(pair.as_span(), path.clone()));
                 pairs_buf.push(FunctionParameter {
                     name,
                     type_id,

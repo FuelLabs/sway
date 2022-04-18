@@ -133,9 +133,7 @@ pub struct LexError {
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum LexErrorKind {
     #[error("unclosed multiline comment")]
-    UnclosedMultilineComment {
-        unclosed_indices: Vec<usize>,
-    },
+    UnclosedMultilineComment { unclosed_indices: Vec<usize> },
     #[error("unexpected close delimiter")]
     UnexpectedCloseDelimiter {
         position: usize,
@@ -154,60 +152,33 @@ pub enum LexErrorKind {
         open_delimiter: Delimiter,
     },
     #[error("unclosed string literal")]
-    UnclosedStringLiteral {
-        position: usize,
-    },
+    UnclosedStringLiteral { position: usize },
     #[error("unclosed char literal")]
-    UnclosedCharLiteral {
-        position: usize,
-    },
+    UnclosedCharLiteral { position: usize },
     #[error("expected close quote")]
-    ExpectedCloseQuote {
-        position: usize,
-    },
+    ExpectedCloseQuote { position: usize },
     #[error("incomplete hex int literal")]
-    IncompleteHexIntLiteral {
-        position: usize,
-    },
+    IncompleteHexIntLiteral { position: usize },
     #[error("incomplete binary int literal")]
-    IncompleteBinaryIntLiteral {
-        position: usize,
-    },
+    IncompleteBinaryIntLiteral { position: usize },
     #[error("incomplete octal int literal")]
-    IncompleteOctalIntLiteral {
-        position: usize,
-    },
+    IncompleteOctalIntLiteral { position: usize },
     #[error("invalid int suffix: {}", suffix)]
-    InvalidIntSuffix {
-        suffix: Ident,
-    },
+    InvalidIntSuffix { suffix: Ident },
     #[error("invalid character")]
-    InvalidCharacter {
-        position: usize,
-        character: char,
-    },
+    InvalidCharacter { position: usize, character: char },
     #[error("invalid hex escape")]
     InvalidHexEscape,
     #[error("unicode escape missing brace")]
-    UnicodeEscapeMissingBrace {
-        position: usize,
-    },
+    UnicodeEscapeMissingBrace { position: usize },
     #[error("invalid unicode escape digit")]
-    InvalidUnicodeEscapeDigit {
-        position: usize,
-    },
+    InvalidUnicodeEscapeDigit { position: usize },
     #[error("unicode escape out of range")]
-    UnicodeEscapeOutOfRange {
-        position: usize,
-    },
+    UnicodeEscapeOutOfRange { position: usize },
     #[error("unicode escape represents an invalid char value")]
-    UnicodeEscapeInvalidCharValue {
-        span: Span,
-    },
+    UnicodeEscapeInvalidCharValue { span: Span },
     #[error("invalid escape code")]
-    InvalidEscapeCode {
-        position: usize,
-    },
+    InvalidEscapeCode { position: usize },
 }
 
 impl LexError {
@@ -290,11 +261,17 @@ impl<'a> Iterator for CharIndicesInner<'a> {
 
 type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
 
-pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Result<TokenStream, LexError> {
+pub fn lex(
+    src: &Arc<str>,
+    start: usize,
+    end: usize,
+    path: Option<Arc<PathBuf>>,
+) -> Result<TokenStream, LexError> {
     let mut char_indices = CharIndicesInner {
         src: &src[..end],
         position: start,
-    }.peekable();
+    }
+    .peekable();
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
     while let Some((index, character)) = char_indices.next() {
@@ -310,7 +287,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                             break;
                         }
                     }
-                },
+                }
                 Some((_, '*')) => {
                     let _ = char_indices.next();
                     let mut unclosed_indices = vec![index];
@@ -322,14 +299,15 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                     *unclosed_indices.last().unwrap(),
                                     src.len(),
                                     path.clone(),
-                                ).unwrap();
-                                return Err(LexError{
+                                )
+                                .unwrap();
+                                return Err(LexError {
                                     kind: LexErrorKind::UnclosedMultilineComment {
                                         unclosed_indices,
                                     },
                                     span,
                                 });
-                            },
+                            }
                             Some((_, '*')) => match char_indices.next() {
                                 None => {
                                     let span = Span::new(
@@ -337,21 +315,22 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                         *unclosed_indices.last().unwrap(),
                                         src.len(),
                                         path.clone(),
-                                    ).unwrap();
+                                    )
+                                    .unwrap();
                                     return Err(LexError {
                                         kind: LexErrorKind::UnclosedMultilineComment {
                                             unclosed_indices,
                                         },
                                         span,
                                     });
-                                },
+                                }
                                 Some((_, '/')) => {
                                     let _ = char_indices.next();
                                     unclosed_indices.pop();
                                     if unclosed_indices.is_empty() {
                                         break;
                                     }
-                                },
+                                }
                                 Some((_, _)) => (),
                             },
                             Some((next_index, '/')) => match char_indices.next() {
@@ -361,23 +340,24 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                         *unclosed_indices.last().unwrap(),
                                         src.len(),
                                         path.clone(),
-                                    ).unwrap();
+                                    )
+                                    .unwrap();
                                     return Err(LexError {
                                         kind: LexErrorKind::UnclosedMultilineComment {
                                             unclosed_indices,
                                         },
                                         span,
                                     });
-                                },
+                                }
                                 Some((_, '*')) => {
                                     unclosed_indices.push(next_index);
-                                },
+                                }
                                 Some((_, _)) => (),
                             },
                             Some((_, _)) => (),
                         }
                     }
-                },
+                }
                 Some(&(end, next_character)) => {
                     let spacing = if let Some(..) = next_character.as_punct_kind() {
                         Spacing::Joint
@@ -391,7 +371,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                         span,
                     };
                     token_trees.push(TokenTree::Punct(punct));
-                },
+                }
                 None => {
                     let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
                     let punct = Punct {
@@ -400,22 +380,23 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                         span,
                     };
                     token_trees.push(TokenTree::Punct(punct));
-                },
+                }
             }
             continue;
         }
         if character.is_xid_start() || character == '_' {
-            let is_single_underscore = character == '_' && match char_indices.peek() {
-                Some((_, next_character)) => !next_character.is_xid_continue(),
-                None => true,
-            };
+            let is_single_underscore = character == '_'
+                && match char_indices.peek() {
+                    Some((_, next_character)) => !next_character.is_xid_continue(),
+                    None => true,
+                };
             if !is_single_underscore {
                 while let Some((_, next_character)) = char_indices.peek() {
                     if !next_character.is_xid_continue() {
                         break;
                     }
                     let _ = char_indices.next();
-                };
+                }
                 let span = span_until(src, index, &mut char_indices, &path);
                 let ident = Ident::new(span);
                 token_trees.push(TokenTree::Ident(ident));
@@ -440,9 +421,10 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                             index,
                             index + character.len_utf8(),
                             path.clone(),
-                        ).unwrap(),
+                        )
+                        .unwrap(),
                     });
-                },
+                }
                 Some((mut parent, open_index, open_delimiter)) => {
                     if open_delimiter != close_delimiter {
                         return Err(LexError {
@@ -457,7 +439,8 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                 index,
                                 index + character.len_utf8(),
                                 path.clone(),
-                            ).unwrap(),
+                            )
+                            .unwrap(),
                         });
                     }
                     mem::swap(&mut parent, &mut token_trees);
@@ -469,7 +452,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                         span: span_until(src, open_index, &mut char_indices, &path),
                     };
                     token_trees.push(TokenTree::Group(group));
-                },
+                }
             }
             continue;
         }
@@ -480,43 +463,38 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                     Some((_, next_character)) => next_character,
                     None => {
                         return Err(LexError {
-                            kind: LexErrorKind::UnclosedStringLiteral {
-                                position: index,
-                            },
-                            span: Span::new(
-                                src.clone(),
-                                index,
-                                src.len(),
-                                path.clone(),
-                            ).unwrap(),
+                            kind: LexErrorKind::UnclosedStringLiteral { position: index },
+                            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
                         });
-                    },
+                    }
                 };
                 match next_character {
                     '\\' => {
-                        let parsed_character = match parse_escape_code(src, &mut char_indices, &path) {
-                            Ok(parsed_character) => parsed_character,
-                            Err(None) => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::UnclosedStringLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        src.len(),
-                                        path.clone(),
-                                    ).unwrap(),
-                                });
-                            },
-                            Err(Some(err)) => return Err(err),
-                        };
+                        let parsed_character =
+                            match parse_escape_code(src, &mut char_indices, &path) {
+                                Ok(parsed_character) => parsed_character,
+                                Err(None) => {
+                                    return Err(LexError {
+                                        kind: LexErrorKind::UnclosedStringLiteral {
+                                            position: index,
+                                        },
+                                        span: Span::new(
+                                            src.clone(),
+                                            index,
+                                            src.len(),
+                                            path.clone(),
+                                        )
+                                        .unwrap(),
+                                    });
+                                }
+                                Err(Some(err)) => return Err(err),
+                            };
                         parsed.push(parsed_character);
-                    },
+                    }
                     '"' => break,
                     _ => {
                         parsed.push(next_character);
-                    },
+                    }
                 }
             }
             let span = span_until(src, index, &mut char_indices, &path);
@@ -529,34 +507,20 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 Some((_, next_character)) => next_character,
                 None => {
                     return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral {
-                            position: index,
-                        },
-                        span: Span::new(
-                            src.clone(),
-                            index,
-                            src.len(),
-                            path.clone(),
-                        ).unwrap(),
+                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
+                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
                     });
-                },
+                }
             };
             let parsed = if next_character == '\\' {
                 match parse_escape_code(src, &mut char_indices, &path) {
                     Ok(parsed) => parsed,
                     Err(None) => {
                         return Err(LexError {
-                            kind: LexErrorKind::UnclosedCharLiteral {
-                                position: index,
-                            },
-                            span: Span::new(
-                                src.clone(),
-                                index,
-                                src.len(),
-                                path.clone(),
-                            ).unwrap(),
+                            kind: LexErrorKind::UnclosedCharLiteral { position: index },
+                            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
                         });
-                    },
+                    }
                     Err(Some(err)) => return Err(err),
                 }
             } else {
@@ -565,17 +529,10 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
             match char_indices.next() {
                 None => {
                     return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral {
-                            position: index,
-                        },
-                        span: Span::new(
-                            src.clone(),
-                            index,
-                            src.len(),
-                            path.clone(),
-                        ).unwrap(),
+                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
+                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
                     });
-                },
+                }
                 Some((_, '\'')) => (),
                 Some((next_index, unexpected_char)) => {
                     return Err(LexError {
@@ -587,9 +544,10 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                             next_index,
                             next_index + unexpected_char.len_utf8(),
                             path.clone(),
-                        ).unwrap(),
+                        )
+                        .unwrap(),
                     });
-                },
+                }
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::Char(LitChar { span, parsed });
@@ -604,39 +562,34 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                         let (hex_digit_position, hex_digit) = match char_indices.next() {
                             None => {
                                 return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        src.len(),
-                                        path.clone(),
-                                    ).unwrap(),
+                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
+                                    span: Span::new(src.clone(), index, src.len(), path.clone())
+                                        .unwrap(),
                                 });
-                            },
-                            Some((hex_digit_position, hex_digit)) => (hex_digit_position, hex_digit),
+                            }
+                            Some((hex_digit_position, hex_digit)) => {
+                                (hex_digit_position, hex_digit)
+                            }
                         };
                         let hex_digit = match hex_digit.to_digit(16) {
                             Some(hex_digit) => hex_digit,
                             None => {
                                 return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral {
-                                        position: index,
-                                    },
+                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
                                     span: Span::new(
                                         src.clone(),
                                         index,
                                         hex_digit_position,
                                         path.clone(),
-                                    ).unwrap(),
+                                    )
+                                    .unwrap(),
                                 });
-                            },
+                            }
                         };
                         let mut big_uint = BigUint::from(hex_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 16);
                         (big_uint, end_opt)
-                    },
+                    }
                     Some((_, 'b')) => {
                         let _ = char_indices.next();
                         let (bin_digit_position, bin_digit) = match char_indices.next() {
@@ -645,15 +598,13 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                     kind: LexErrorKind::IncompleteBinaryIntLiteral {
                                         position: index,
                                     },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        src.len(),
-                                        path.clone(),
-                                    ).unwrap(),
+                                    span: Span::new(src.clone(), index, src.len(), path.clone())
+                                        .unwrap(),
                                 });
-                            },
-                            Some((bin_digit_position, bin_digit)) => (bin_digit_position, bin_digit),
+                            }
+                            Some((bin_digit_position, bin_digit)) => {
+                                (bin_digit_position, bin_digit)
+                            }
                         };
                         let bin_digit = match bin_digit.to_digit(2) {
                             Some(bin_digit) => bin_digit,
@@ -667,14 +618,15 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                         index,
                                         bin_digit_position,
                                         path.clone(),
-                                    ).unwrap(),
+                                    )
+                                    .unwrap(),
                                 });
-                            },
+                            }
                         };
                         let mut big_uint = BigUint::from(bin_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 2);
                         (big_uint, end_opt)
-                    },
+                    }
                     Some((_, 'o')) => {
                         let _ = char_indices.next();
                         let (oct_digit_position, oct_digit) = match char_indices.next() {
@@ -683,15 +635,13 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                     kind: LexErrorKind::IncompleteOctalIntLiteral {
                                         position: index,
                                     },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        src.len(),
-                                        path.clone(),
-                                    ).unwrap(),
+                                    span: Span::new(src.clone(), index, src.len(), path.clone())
+                                        .unwrap(),
                                 });
-                            },
-                            Some((oct_digit_position, oct_digit)) => (oct_digit_position, oct_digit),
+                            }
+                            Some((oct_digit_position, oct_digit)) => {
+                                (oct_digit_position, oct_digit)
+                            }
                         };
                         let oct_digit = match oct_digit.to_digit(2) {
                             Some(oct_digit) => oct_digit,
@@ -705,19 +655,20 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                         index,
                                         oct_digit_position,
                                         path.clone(),
-                                    ).unwrap(),
+                                    )
+                                    .unwrap(),
                                 });
-                            },
+                            }
                         };
                         let mut big_uint = BigUint::from(oct_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 8);
                         (big_uint, end_opt)
-                    },
+                    }
                     Some((_, '_')) | Some((_, '0'..='9')) => {
                         let mut big_uint = BigUint::from(0u32);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
                         (big_uint, end_opt)
-                    },
+                    }
                     Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
                     None => (BigUint::from(0u32), None),
                 }
@@ -741,7 +692,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                 } else {
                                     break *position;
                                 }
-                            },
+                            }
                             None => break src.len(),
                         }
                     };
@@ -760,21 +711,26 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                 suffix_start_position,
                                 suffix_end_position,
                                 path.clone(),
-                            ).unwrap();
+                            )
+                            .unwrap();
                             return Err(LexError {
                                 kind: LexErrorKind::InvalidIntSuffix {
                                     suffix: Ident::new(span.clone()),
                                 },
                                 span,
                             });
-                        },
+                        }
                     };
                     let span = span_until(src, suffix_start_position, &mut char_indices, &path);
                     Some((ty, span))
-                },
+                }
                 _ => None,
             };
-            let literal = Literal::Int(LitInt { span, parsed: big_uint, ty_opt });
+            let literal = Literal::Int(LitInt {
+                span,
+                parsed: big_uint,
+                ty_opt,
+            });
             token_trees.push(TokenTree::Literal(literal));
             continue;
         }
@@ -782,7 +738,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
             let spacing = match char_indices.peek() {
                 Some((_, next_character)) if next_character.as_punct_kind().is_some() => {
                     Spacing::Joint
-                },
+                }
                 _ => Spacing::Alone,
             };
             let span = span_until(src, index, &mut char_indices, &path);
@@ -804,7 +760,8 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 index,
                 index + character.len_utf8(),
                 path.clone(),
-            ).unwrap(),
+            )
+            .unwrap(),
         });
     }
     if let Some((_, open_position, open_delimiter)) = parent_token_trees.pop() {
@@ -818,7 +775,8 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 open_position,
                 open_position + open_delimiter.as_open_char().len_utf8(),
                 path.clone(),
-            ).unwrap(),
+            )
+            .unwrap(),
         });
     }
     let token_stream = TokenStream { token_trees };
@@ -852,28 +810,27 @@ fn parse_escape_code(
                         kind: LexErrorKind::InvalidHexEscape,
                         span,
                     }));
-                },
+                }
             };
             let parsed_character = char::from_u32((high << 4) | low).unwrap();
             Ok(parsed_character)
-        },
+        }
         Some((index, 'u')) => {
             match char_indices.next() {
                 None => return Err(None),
                 Some((_, '{')) => (),
                 Some((_, unexpected_char)) => {
                     return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeMissingBrace {
-                            position: index,
-                        },
+                        kind: LexErrorKind::UnicodeEscapeMissingBrace { position: index },
                         span: Span::new(
                             src.clone(),
                             index,
                             index + unexpected_char.len_utf8(),
                             path.clone(),
-                        ).unwrap(),
+                        )
+                        .unwrap(),
                     }));
-                },
+                }
             }
             let mut digits_start_position_opt = None;
             let mut char_value = BigUint::from(0u32);
@@ -889,17 +846,16 @@ fn parse_escape_code(
                 let digit = match digit.to_digit(16) {
                     None => {
                         return Err(Some(LexError {
-                            kind: LexErrorKind::InvalidUnicodeEscapeDigit {
-                                position,
-                            },
+                            kind: LexErrorKind::InvalidUnicodeEscapeDigit { position },
                             span: Span::new(
                                 src.clone(),
                                 position,
                                 position + digit.len_utf8(),
                                 path.clone(),
-                            ).unwrap(),
+                            )
+                            .unwrap(),
                         }));
-                    },
+                    }
                     Some(digit) => digit,
                 };
                 char_value *= 16u32;
@@ -909,17 +865,16 @@ fn parse_escape_code(
             let char_value = match u32::try_from(char_value) {
                 Err(..) => {
                     return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeOutOfRange {
-                            position: index,
-                        },
+                        kind: LexErrorKind::UnicodeEscapeOutOfRange { position: index },
                         span: Span::new(
                             src.clone(),
                             digits_start_position,
                             digits_end_position,
                             path.clone(),
-                        ).unwrap(),
+                        )
+                        .unwrap(),
                     }));
-                },
+                }
                 Ok(char_value) => char_value,
             };
             let parsed_character = match char::from_u32(char_value) {
@@ -932,51 +887,56 @@ fn parse_escape_code(
                             digits_start_position,
                             digits_end_position,
                             path.clone(),
-                        ).unwrap(),
+                        )
+                        .unwrap(),
                     }));
-                },
+                }
                 Some(parsed_character) => parsed_character,
             };
             Ok(parsed_character)
-        },
-        Some((index, unexpected_char)) => {
-            Err(Some(LexError {
-                kind: LexErrorKind::InvalidEscapeCode {
-                    position: index,
-                },
-                span: Span::new(
-                    src.clone(),
-                    index,
-                    index + unexpected_char.len_utf8(),
-                    path.clone(),
-                ).unwrap(),
-            }))
-        },
+        }
+        Some((index, unexpected_char)) => Err(Some(LexError {
+            kind: LexErrorKind::InvalidEscapeCode { position: index },
+            span: Span::new(
+                src.clone(),
+                index,
+                index + unexpected_char.len_utf8(),
+                path.clone(),
+            )
+            .unwrap(),
+        })),
     }
 }
 
-fn parse_digits(big_uint: &mut BigUint, char_indices: &mut CharIndices, radix: u32) -> Option<usize> {
+fn parse_digits(
+    big_uint: &mut BigUint,
+    char_indices: &mut CharIndices,
+    radix: u32,
+) -> Option<usize> {
     loop {
         match char_indices.peek() {
             None => break None,
             Some((_, '_')) => {
                 let _ = char_indices.next();
-            },
-            Some(&(index, character)) => {
-                match character.to_digit(radix) {
-                    None => break Some(index),
-                    Some(digit) => {
-                        let _ = char_indices.next();
-                        *big_uint *= radix;
-                        *big_uint += digit;
-                    },
+            }
+            Some(&(index, character)) => match character.to_digit(radix) {
+                None => break Some(index),
+                Some(digit) => {
+                    let _ = char_indices.next();
+                    *big_uint *= radix;
+                    *big_uint += digit;
                 }
             },
         };
     }
 }
 
-fn span_until(src: &Arc<str>, start: usize, char_indices: &mut CharIndices, path: &Option<Arc<PathBuf>>) -> Span {
+fn span_until(
+    src: &Arc<str>,
+    start: usize,
+    char_indices: &mut CharIndices,
+    path: &Option<Arc<PathBuf>>,
+) -> Span {
     let end = match char_indices.peek() {
         Some(&(end, _)) => end,
         None => src.len(),
@@ -989,4 +949,3 @@ impl TokenStream {
         &self.token_trees
     }
 }
-

@@ -65,7 +65,9 @@ impl<T> ParseToEnd for Vec<T>
 where
     T: Parse,
 {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Vec<T>, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(Vec<T>, ParserConsumed<'a>)> {
         let mut ret = Vec::new();
         loop {
             if let Some(consumed) = parser.check_empty() {
@@ -97,5 +99,3 @@ impl Peek for Delimiter {
         peeker.peek_delimiter().ok()
     }
 }
-
-

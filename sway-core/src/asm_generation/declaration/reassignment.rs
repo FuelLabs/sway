@@ -118,7 +118,8 @@ pub(crate) fn convert_reassignment_to_asm(
                     0,
                     0,
                     None,
-                ).unwrap();
+                )
+                .unwrap();
                 let fields_for_layout = fields
                     .iter()
                     .map(|TypedStructField { name, r#type, .. }| {

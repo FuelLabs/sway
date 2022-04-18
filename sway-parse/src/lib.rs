@@ -1,67 +1,63 @@
-mod priv_prelude;
-mod literal;
-mod token;
-mod error;
-pub mod parser;
-pub mod parse;
-pub mod keywords;
-pub mod program;
-pub mod dependency;
-mod item;
-pub mod brackets;
-pub mod punctuated;
-pub mod ty;
-pub mod expr;
-pub mod pattern;
-pub mod path;
-pub mod generics;
-pub mod where_clause;
-pub mod statement;
 pub mod assignable;
+pub mod brackets;
+pub mod dependency;
+mod error;
+pub mod expr;
+pub mod generics;
+mod item;
+pub mod keywords;
+mod literal;
+pub mod parse;
+pub mod parser;
+pub mod path;
+pub mod pattern;
+mod priv_prelude;
+pub mod program;
+pub mod punctuated;
+pub mod statement;
+mod token;
+pub mod ty;
+pub mod where_clause;
 
 pub use crate::{
-    error::{ParseError, ParseErrorKind},
-    token::lex,
-    parser::Parser,
-    parse::Parse,
-    program::{Program, ProgramKind},
-    token::LexError,
+    assignable::Assignable,
     brackets::{AngleBrackets, Braces},
     dependency::Dependency,
-    item::{
-        Item, TypeField, FnArgs, FnSignature,
-        item_use::{ItemUse, UseTree},
-        item_struct::ItemStruct,
-        item_enum::ItemEnum,
-        item_fn::ItemFn,
-        item_trait::{ItemTrait, Traits},
-        item_impl::ItemImpl,
-        item_abi::ItemAbi,
-        item_const::ItemConst,
-        item_storage::{ItemStorage, StorageField},
-    },
-    keywords::{PubToken, ImpureToken, DoubleColonToken},
-    literal::{Literal, LitInt, LitIntType},
-    generics::{GenericParams, GenericArgs},
-    where_clause::{WhereClause, WhereBound},
-    ty::Ty,
-    assignable::Assignable,
+    error::{ParseError, ParseErrorKind},
     expr::{
-        Expr, CodeBlockContents, IfExpr, IfCondition, AbiCastArgs,
-        ExprArrayDescriptor, ExprTupleDescriptor, ExprStructField,
-        MatchBranch, MatchBranchKind,
         asm::{AsmBlock, AsmRegisterDeclaration},
         op_code::Instruction,
+        AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
+        ExprTupleDescriptor, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
     },
-    statement::{Statement, StatementLet},
-    path::{QualifiedPathRoot, PathType, PathTypeSegment, PathExpr, PathExprSegment},
+    generics::{GenericArgs, GenericParams},
+    item::{
+        item_abi::ItemAbi,
+        item_const::ItemConst,
+        item_enum::ItemEnum,
+        item_fn::ItemFn,
+        item_impl::ItemImpl,
+        item_storage::{ItemStorage, StorageField},
+        item_struct::ItemStruct,
+        item_trait::{ItemTrait, Traits},
+        item_use::{ItemUse, UseTree},
+        FnArgs, FnSignature, Item, TypeField,
+    },
+    keywords::{DoubleColonToken, ImpureToken, PubToken},
+    literal::{LitInt, LitIntType, Literal},
+    parse::Parse,
+    parser::Parser,
+    path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
+    program::{Program, ProgramKind},
+    statement::{Statement, StatementLet},
+    token::lex,
+    token::LexError,
+    ty::Ty,
+    where_clause::{WhereBound, WhereClause},
 };
 
-use std::{
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 
 pub fn lex_and_parse<T>(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> T
 where
@@ -96,4 +92,3 @@ pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Program, 
     };
     Ok(program)
 }
-

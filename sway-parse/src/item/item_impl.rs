@@ -22,7 +22,7 @@ impl Parse for ItemImpl {
             Some(_open_angle_bracket_token) => {
                 let generic_params = parser.parse()?;
                 Some(generic_params)
-            },
+            }
             None => None,
         };
         let path_type = parser.parse()?;
@@ -30,10 +30,16 @@ impl Parse for ItemImpl {
             Some(for_token) => {
                 let ty = parser.parse()?;
                 (Some((path_type, for_token)), ty)
-            },
+            }
             None => (None, Ty::Path(path_type)),
         };
         let contents = parser.parse()?;
-        Ok(ItemImpl { impl_token, generic_params_opt, trait_opt, ty, contents })
+        Ok(ItemImpl {
+            impl_token,
+            generic_params_opt,
+            trait_opt,
+            ty,
+            contents,
+        })
     }
 }

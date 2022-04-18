@@ -43,9 +43,10 @@ impl ProgramKind {
             ProgramKind::Script { script_token } => script_token.span(),
             ProgramKind::Contract { contract_token } => contract_token.span(),
             ProgramKind::Predicate { predicate_token } => predicate_token.span(),
-            ProgramKind::Library { library_token, name } => {
-                Span::join(library_token.span(), name.span().clone())
-            },
+            ProgramKind::Library {
+                library_token,
+                name,
+            } => Span::join(library_token.span(), name.span().clone()),
         }
     }
 }
@@ -71,7 +72,9 @@ impl Parse for ProgramKind {
 }
 
 impl ParseToEnd for Program {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Program, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(Program, ParserConsumed<'a>)> {
         let kind = parser.parse()?;
         let semicolon_token = parser.parse()?;
         let mut dependencies = Vec::new();
@@ -79,7 +82,7 @@ impl ParseToEnd for Program {
             let dependency = parser.parse()?;
             dependencies.push(dependency);
         }
-        let (items, consumed) = parser.parse_to_end()?; 
+        let (items, consumed) = parser.parse_to_end()?;
         let program = Program {
             kind,
             semicolon_token,
@@ -89,4 +92,3 @@ impl ParseToEnd for Program {
         Ok((program, consumed))
     }
 }
-

@@ -1,20 +1,15 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    convert_parse_tree::ConvertParseTreeError,
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
     VariableDeclaration,
-    convert_parse_tree::ConvertParseTreeError,
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::{
-    fmt,
-    borrow::Cow,
-    sync::Arc,
-    path::PathBuf,
-};
+use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -935,13 +930,9 @@ pub enum CompileError {
         error: ConvertParseTreeError,
     },
     #[error("lex error: {}", error)]
-    Lex {
-        error: sway_parse::LexError,
-    },
+    Lex { error: sway_parse::LexError },
     #[error("parse error: {}", error)]
-    Parse {
-        error: sway_parse::ParseError,
-    },
+    Parse { error: sway_parse::ParseError },
 }
 
 impl std::convert::From<TypeError> for CompileError {

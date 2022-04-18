@@ -1,11 +1,6 @@
 use {
-    std::{
-        cmp, fmt,
-        borrow::Cow,
-        path::PathBuf,
-        sync::Arc,
-    },
     lazy_static::lazy_static,
+    std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc},
 };
 
 lazy_static! {
@@ -39,9 +34,19 @@ impl Span {
         }
     }
 
-    pub fn new(src: Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Option<Span> {
+    pub fn new(
+        src: Arc<str>,
+        start: usize,
+        end: usize,
+        path: Option<Arc<PathBuf>>,
+    ) -> Option<Span> {
         let _ = src.get(start..end)?;
-        Some(Span { src, start, end, path })
+        Some(Span {
+            src,
+            start,
+            end,
+            path,
+        })
     }
 
     pub fn src(&self) -> &Arc<str> {
@@ -125,13 +130,12 @@ impl Span {
 
 impl fmt::Debug for Span {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt
-        .debug_struct("Span")
-        .field("src (ptr)", &self.src.as_ptr())
-        .field("path", &self.path)
-        .field("start", &self.start)
-        .field("end", &self.end)
-        .field("as_str()", &self.as_str())
-        .finish()
+        fmt.debug_struct("Span")
+            .field("src (ptr)", &self.src.as_ptr())
+            .field("path", &self.path)
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("as_str()", &self.as_str())
+            .finish()
     }
 }

@@ -86,7 +86,8 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
-        T::parse(self) }
+        T::parse(self)
+    }
 
     pub fn parse_to_end<T: ParseToEnd>(self) -> ParseResult<(T, ParserConsumed<'a>)> {
         T::parse_to_end(self)
@@ -101,16 +102,26 @@ impl<'a, 'e> Parser<'a, 'e> {
         Ok(Some((value, consumed)))
     }
 
-    pub fn enter_delimited(&mut self, expected_delimiter: Delimiter) -> Option<(Parser<'_, '_>, Span)> {
+    pub fn enter_delimited(
+        &mut self,
+        expected_delimiter: Delimiter,
+    ) -> Option<(Parser<'_, '_>, Span)> {
         match self.token_trees.split_first()? {
-            (TokenTree::Group(Group { delimiter, token_stream, span }), rest) if *delimiter == expected_delimiter => {
+            (
+                TokenTree::Group(Group {
+                    delimiter,
+                    token_stream,
+                    span,
+                }),
+                rest,
+            ) if *delimiter == expected_delimiter => {
                 self.token_trees = rest;
                 let parser = Parser {
                     token_trees: token_stream.token_trees(),
                     errors: self.errors,
                 };
                 Some((parser, span.clone()))
-            },
+            }
             _ => None,
         }
     }
@@ -121,9 +132,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn check_empty(&self) -> Option<ParserConsumed<'a>> {
         if self.is_empty() {
-            Some(ParserConsumed {
-                _priv: PhantomData,
-            })
+            Some(ParserConsumed { _priv: PhantomData })
         } else {
             None
         }
@@ -146,7 +155,7 @@ impl<'a> Peeker<'a> {
             Some(TokenTree::Ident(ident)) => {
                 *self.num_tokens = 1;
                 Ok(ident)
-            },
+            }
             _ => Err(self),
         }
     }
@@ -156,12 +165,16 @@ impl<'a> Peeker<'a> {
             Some(TokenTree::Literal(literal)) => {
                 *self.num_tokens = 1;
                 Ok(literal)
-            },
+            }
             _ => Err(self),
         }
     }
 
-    pub fn peek_punct_kinds(self, punct_kinds: &[PunctKind], not_followed_by: &[PunctKind]) -> Result<Span, Self> {
+    pub fn peek_punct_kinds(
+        self,
+        punct_kinds: &[PunctKind],
+        not_followed_by: &[PunctKind],
+    ) -> Result<Span, Self> {
         let (last_punct_kind, first_punct_kinds) = match punct_kinds.split_last() {
             Some((last_punct_kind, first_punct_kinds)) => (last_punct_kind, first_punct_kinds),
             None => panic!("peek_punct_kinds called with empty slice"),
@@ -171,16 +184,24 @@ impl<'a> Peeker<'a> {
         }
         for (i, punct_kind) in first_punct_kinds.iter().enumerate() {
             match &self.token_trees[i] {
-                TokenTree::Punct(Punct { kind, spacing: Spacing::Joint, .. }) => {
+                TokenTree::Punct(Punct {
+                    kind,
+                    spacing: Spacing::Joint,
+                    ..
+                }) => {
                     if *kind != *punct_kind {
                         return Err(self);
                     }
-                },
+                }
                 _ => return Err(self),
             }
         }
         let span_end = match &self.token_trees[punct_kinds.len() - 1] {
-            TokenTree::Punct(Punct { kind, spacing, span }) => {
+            TokenTree::Punct(Punct {
+                kind,
+                spacing,
+                span,
+            }) => {
                 if *kind != *last_punct_kind {
                     return Err(self);
                 }
@@ -192,11 +213,11 @@ impl<'a> Peeker<'a> {
                                 return Err(self);
                             }
                             span
-                        },
+                        }
                         _ => span,
                     },
                 }
-            },
+            }
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {
@@ -213,7 +234,7 @@ impl<'a> Peeker<'a> {
             Some(TokenTree::Group(Group { delimiter, .. })) => {
                 *self.num_tokens = 1;
                 Ok(*delimiter)
-            },
+            }
             _ => Err(self),
         }
     }
@@ -224,8 +245,8 @@ pub struct ErrorEmitted {
     _priv: (),
 }
 
-pub struct ParserConsumed<'a> { _priv: PhantomData<fn(&'a ()) -> &'a ()>,
+pub struct ParserConsumed<'a> {
+    _priv: PhantomData<fn(&'a ()) -> &'a ()>,
 }
 
 pub type ParseResult<T> = Result<T, ErrorEmitted>;
-

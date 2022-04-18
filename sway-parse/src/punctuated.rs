@@ -11,7 +11,9 @@ where
     T: Parse,
     P: Parse,
 {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
         let mut value_separator_pairs = Vec::new();
         loop {
             if let Some(consumed) = parser.check_empty() {
@@ -86,20 +88,17 @@ impl<'a, T, P> Iterator for PunctuatedRefIter<'a, T, P> {
             return None;
         }
         match self.punctuated.value_separator_pairs.get(self.index) {
-            None => {
-                match &self.punctuated.final_value_opt {
-                    Some(value) => {
-                        self.index += 1;
-                        Some(value)
-                    },
-                    None => None,
+            None => match &self.punctuated.final_value_opt {
+                Some(value) => {
+                    self.index += 1;
+                    Some(value)
                 }
+                None => None,
             },
             Some((value, _separator)) => {
                 self.index += 1;
                 Some(value)
-            },
+            }
         }
     }
 }
-

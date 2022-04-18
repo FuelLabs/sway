@@ -30,10 +30,7 @@ impl IncludeStatement {
 
         for item in path_to_file_raw {
             if item.as_rule() == Rule::file_path {
-                path_span = Some(
-                    Span::from_pest(item.as_span(), path.clone())
-                    .trim(),
-                );
+                path_span = Some(Span::from_pest(item.as_span(), path.clone()).trim());
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = check!(
                     ident::parse_from_pair(item.into_inner().next().unwrap(), config),

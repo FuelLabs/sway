@@ -6,10 +6,7 @@ use crate::{
     parser::Rule,
 };
 
-use sway_types::{
-    span::Span,
-    Ident,
-};
+use sway_types::{span::Span, Ident};
 
 use pest::iterators::Pair;
 
@@ -263,10 +260,8 @@ fn parse_subfield_path_ensure_only_var(
                 Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
-            let exp_result = ParserLifter::empty(error_recovery_exp(Span::from_pest(
-                item.as_span(),
-                path,
-            )));
+            let exp_result =
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(item.as_span(), path)));
             ok(exp_result, warnings, errors)
         }
     }

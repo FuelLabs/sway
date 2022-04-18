@@ -48,7 +48,11 @@ impl Parse for AsmBlock {
         let asm_token = parser.parse()?;
         let registers = parser.parse()?;
         let contents = parser.parse()?;
-        Ok(AsmBlock { asm_token, registers, contents })
+        Ok(AsmBlock {
+            asm_token,
+            registers,
+            contents,
+        })
     }
 }
 
@@ -59,15 +63,20 @@ impl Parse for AsmRegisterDeclaration {
             Some(colon_token) => {
                 let value = parser.parse()?;
                 Some((colon_token, value))
-            },
+            }
             None => None,
         };
-        Ok(AsmRegisterDeclaration { register, value_opt })
+        Ok(AsmRegisterDeclaration {
+            register,
+            value_opt,
+        })
     }
 }
 
 impl ParseToEnd for AsmBlockContents {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(
+        mut parser: Parser<'a, 'e>,
+    ) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
         let mut instructions = Vec::new();
         let (final_expr_opt, consumed) = loop {
             if let Some(consumed) = parser.check_empty() {
@@ -86,8 +95,10 @@ impl ParseToEnd for AsmBlockContents {
                 let consumed = match parser.check_empty() {
                     Some(consumed) => consumed,
                     None => {
-                        return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAsmReturnType));
-                    },
+                        return Err(
+                            parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAsmReturnType)
+                        );
+                    }
                 };
                 let final_expr = AsmFinalExpr {
                     register: ident,
@@ -99,7 +110,10 @@ impl ParseToEnd for AsmBlockContents {
             let semicolon_token = parser.parse()?;
             instructions.push((instruction, semicolon_token));
         };
-        let contents = AsmBlockContents { instructions, final_expr_opt };
+        let contents = AsmBlockContents {
+            instructions,
+            final_expr_opt,
+        };
         Ok((contents, consumed))
     }
 }
@@ -121,4 +135,3 @@ impl Parse for AsmImmediate {
         })
     }
 }
-
