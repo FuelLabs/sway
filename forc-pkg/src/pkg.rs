@@ -525,18 +525,18 @@ pub fn graph_to_path_map(
                 })?
             }
             SourcePinned::Path => {
-                let parent_node = graph
+                let (parent_node, dep_name) = graph
                     .edges_directed(dep_node, Direction::Incoming)
                     .next()
-                    .ok_or_else(|| anyhow!("more than one root package detected in graph"))?
-                    .source();
+                    .map(|edge| (edge.source(), edge.weight().clone()))
+                    .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
                 let parent = &graph[parent_node];
                 let parent_path = &path_map[&parent.id()];
                 let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
-                    .and_then(|deps| match &deps[&dep.name] {
+                    .and_then(|deps| match &deps[&dep_name] {
                         Dependency::Detailed(detailed) => Some(detailed),
                         Dependency::Simple(_) => None,
                     })
