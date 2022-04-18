@@ -52,11 +52,7 @@ impl Parse for Traits {
     fn parse(parser: &mut Parser) -> ParseResult<Traits> {
         let prefix = parser.parse()?;
         let mut suffixes = Vec::new();
-        loop {
-            let add_token = match parser.take() {
-                Some(add_token) => add_token,
-                None => break,
-            };
+        while let Some(add_token) = parser.take() {
             let suffix = parser.parse()?;
             suffixes.push((add_token, suffix));
         }

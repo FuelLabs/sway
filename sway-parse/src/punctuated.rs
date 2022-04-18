@@ -57,10 +57,7 @@ impl<T, P> Iterator for PunctuatedIter<T, P> {
     fn next(&mut self) -> Option<T> {
         match self.value_separator_pairs.next() {
             Some((value, _separator)) => Some(value),
-            None => match self.final_value_opt.take() {
-                Some(value) => Some(*value),
-                None => None,
-            },
+            None => self.final_value_opt.take().map(|final_value| *final_value),
         }
     }
 }
@@ -87,22 +84,21 @@ impl<'a, T, P> Iterator for PunctuatedRefIter<'a, T, P> {
     fn next(&mut self) -> Option<&'a T> {
         if self.index > self.punctuated.value_separator_pairs.len() {
             return None;
-        } else {
-            match self.punctuated.value_separator_pairs.get(self.index) {
-                None => {
-                    match &self.punctuated.final_value_opt {
-                        Some(value) => {
-                            self.index += 1;
-                            Some(value)
-                        },
-                        None => None,
-                    }
-                },
-                Some((value, _separator)) => {
-                    self.index += 1;
-                    Some(value)
-                },
-            }
+        }
+        match self.punctuated.value_separator_pairs.get(self.index) {
+            None => {
+                match &self.punctuated.final_value_opt {
+                    Some(value) => {
+                        self.index += 1;
+                        Some(value)
+                    },
+                    None => None,
+                }
+            },
+            Some((value, _separator)) => {
+                self.index += 1;
+                Some(value)
+            },
         }
     }
 }

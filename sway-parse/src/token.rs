@@ -297,11 +297,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
     }.peekable();
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
-    loop {
-        let (index, character) = match char_indices.next() {
-            Some((index, character)) => (index, character),
-            None => break,
-        };
+    while let Some((index, character)) = char_indices.next() {
         if character.is_whitespace() {
             continue;
         }
@@ -309,11 +305,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
             match char_indices.peek() {
                 Some((_, '/')) => {
                     let _ = char_indices.next();
-                    loop {
-                        let character = match char_indices.next() {
-                            Some((_, next_character)) => next_character,
-                            None => break,
-                        };
+                    for (_, character) in char_indices.by_ref() {
                         if character == '\n' {
                             break;
                         }
@@ -418,11 +410,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 None => true,
             };
             if !is_single_underscore {
-                loop {
-                    let next_character = match char_indices.peek() {
-                        Some((_, next_character)) => next_character,
-                        None => break,
-                    };
+                while let Some((_, next_character)) = char_indices.peek() {
                     if !next_character.is_xid_continue() {
                         break;
                     }
@@ -435,7 +423,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
             }
         }
         if let Some(delimiter) = character.as_open_delimiter() {
-            let token_trees = mem::replace(&mut token_trees, Vec::new());
+            let token_trees = mem::take(&mut token_trees);
             parent_token_trees.push((token_trees, index, delimiter));
             continue;
         }
@@ -738,7 +726,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
                 (big_uint, end_opt)
             };
-            let end = end_opt.unwrap_or_else(|| src.len());
+            let end = end_opt.unwrap_or(src.len());
             let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
             let ty_opt = match char_indices.peek() {
                 Some((_, c)) if c.is_xid_continue() => {

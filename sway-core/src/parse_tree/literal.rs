@@ -120,7 +120,7 @@ impl Literal {
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::basic_integer => {
-                let span = span::Span::from_pest(lit_inner.as_span(), path.clone());
+                let span = span::Span::from_pest(lit_inner.as_span(), path);
                 (
                     lit_inner
                         .as_str()
@@ -144,7 +144,7 @@ impl Literal {
                 if int_inner.as_rule() != Rule::basic_integer {
                     int_inner = int_inner.into_inner().next().unwrap()
                 }
-                let span = span::Span::from_pest(int_inner.as_span(), path.clone());
+                let span = span::Span::from_pest(int_inner.as_span(), path);
                 (
                     match rule {
                         Rule::u8_integer => int_inner

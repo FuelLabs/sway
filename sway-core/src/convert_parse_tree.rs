@@ -726,7 +726,7 @@ fn generic_params_opt_to_type_parameters(generic_params_opt: Option<GenericParam
             name: ident.clone(),
             type_arguments: Vec::new(),
         }),
-        name_ident: ident.clone(),
+        name_ident: ident,
         trait_constraints: Vec::new(),
     })
     .collect()
@@ -1238,10 +1238,9 @@ fn expr_to_expression(
                         }
                         let ty = match {
                             generics_opt
-                            .map(|(_double_colon_token, generic_args)| {
+                            .and_then(|(_double_colon_token, generic_args)| {
                                 iter_to_array(generic_args.parameters.into_inner())
                             })
-                            .flatten()
                         } {
                             Some([ty]) => ty,
                             None => {
@@ -1272,10 +1271,9 @@ fn expr_to_expression(
                         }
                         let ty = match {
                             generics_opt
-                            .map(|(_double_colon_token, generic_args)| {
+                            .and_then(|(_double_colon_token, generic_args)| {
                                 iter_to_array(generic_args.parameters.into_inner())
                             })
-                            .flatten()
                         } {
                             Some([ty]) => ty,
                             None => {
@@ -1381,13 +1379,13 @@ fn expr_to_expression(
                         base = target;
                     },
                     Expr::Path(path_expr) => {
-                        if {
+                        if
                             path_expr.root_opt.is_none() &&
                             path_expr.suffix.is_empty() &&
                             path_expr.prefix.fully_qualified.is_none() &&
                             path_expr.prefix.generics_opt.is_none() &&
                             path_expr.prefix.name.as_str() == "storage"
-                        } {
+                        {
                             break Some(idents);
                         }
                         break None;
@@ -1397,7 +1395,7 @@ fn expr_to_expression(
             };
             match storage_access_field_names_opt {
                 Some(field_names) => {
-                    let field_names = field_names.into_iter().rev().map(|name| name.clone()).collect();
+                    let field_names = field_names.into_iter().rev().cloned().collect();
                     Expression::StorageAccess { field_names, span }
                 },
                 None => {
@@ -2499,7 +2497,7 @@ fn assignable_to_reassignment_target(
             },
             Assignable::Var(name) => {
                 if name.as_str() == "storage" {
-                    let idents = idents.into_iter().rev().map(|ident| ident.clone()).collect();
+                    let idents = idents.into_iter().rev().cloned().collect();
                     return Ok(ReassignmentTarget::StorageField(idents));
                 }
                 break;
@@ -2561,10 +2559,9 @@ fn path_type_to_type_info(
             if name.as_str() == "ContractCaller" {
                 let generic_ty = match {
                     generics_opt
-                    .map(|(_double_colon_token, generic_args)| {
+                    .and_then(|(_double_colon_token, generic_args)| {
                         iter_to_array(generic_args.parameters.into_inner())
                     })
-                    .flatten()
                 } {
                     Some([ty]) => ty,
                     None => {

@@ -31,12 +31,12 @@ impl PathExpr {
     }
 
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
-        if {
+        if
             self.root_opt.is_none() &&
             self.suffix.is_empty() &&
             self.prefix.fully_qualified.is_none() &&
             self.prefix.generics_opt.is_none()
-        } {
+        {
             return Ok(self.prefix.name);
         }
         Err(self)
@@ -72,21 +72,12 @@ impl Parse for PathExpr {
                 Some((Some(angle_brackets), double_colon_token))
             },
             None => {
-                match parser.take() {
-                    Some(double_colon_token) => {
-                        Some((None, double_colon_token))
-                    },
-                    None => None,
-                }
+                parser.take().map(|double_colon_token| (None, double_colon_token))
             },
         };
         let prefix = parser.parse()?;
         let mut suffix = Vec::new();
-        loop {
-            let double_colon_token = match parser.take() {
-                Some(double_colon_token) => double_colon_token,
-                None => break,
-            };
+        while let Some(double_colon_token) = parser.take() {
             let segment = parser.parse()?;
             suffix.push((double_colon_token, segment));
         }
@@ -175,21 +166,12 @@ impl Parse for PathType {
                 Some((Some(angle_brackets), double_colon_token))
             },
             None => {
-                match parser.take() {
-                    Some(double_colon_token) => {
-                        Some((None, double_colon_token))
-                    },
-                    None => None,
-                }
+                parser.take().map(|double_colon_token| (None, double_colon_token))
             },
         };
         let prefix = parser.parse()?;
         let mut suffix = Vec::new();
-        loop {
-            let double_colon_token = match parser.take() {
-                Some(double_colon_token) => double_colon_token,
-                None => break,
-            };
+        while let Some(double_colon_token) = parser.take() {
             let segment = parser.parse()?;
             suffix.push((double_colon_token, segment));
         }

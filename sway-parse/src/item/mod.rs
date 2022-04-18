@@ -10,6 +10,7 @@ pub mod item_abi;
 pub mod item_const;
 pub mod item_storage;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum Item {
     Use(ItemUse),
@@ -53,12 +54,12 @@ impl Parse for Item {
             let item_enum = parser.parse()?;
             return Ok(Item::Enum(item_enum));
         }
-        if {
+        if
             parser.peek::<FnToken>().is_some() ||
             parser.peek2::<PubToken, FnToken>().is_some() ||
             parser.peek2::<ImpureToken, FnToken>().is_some() ||
             parser.peek3::<PubToken, ImpureToken, FnToken>().is_some()
-        } {
+        {
             let item_fn = parser.parse()?;
             return Ok(Item::Fn(item_fn));
         }

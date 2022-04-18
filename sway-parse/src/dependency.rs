@@ -32,11 +32,7 @@ impl Parse for DependencyPath {
     fn parse(parser: &mut Parser) -> ParseResult<DependencyPath> {
         let prefix = parser.parse()?;
         let mut suffixes = Vec::new();
-        loop {
-            let forward_slash_token = match parser.take() {
-                Some(forward_slash_token) => forward_slash_token,
-                None => break,
-            };
+        while let Some(forward_slash_token) = parser.take() {
             let suffix = parser.parse()?;
             suffixes.push((forward_slash_token, suffix));
         }

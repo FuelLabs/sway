@@ -40,9 +40,7 @@ impl Span {
     }
 
     pub fn new(src: Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Option<Span> {
-        if src.get(start..end).is_none() {
-            return None;
-        }
+        let _ = src.get(start..end)?;
         Some(Span { src, start, end, path })
     }
 

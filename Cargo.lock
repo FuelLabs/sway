@@ -3239,7 +3239,6 @@ dependencies = [
  "sway-types",
  "thiserror",
  "unicode-xid",
- "walkdir",
 ]
 
 [[package]]

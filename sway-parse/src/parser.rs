@@ -162,14 +162,17 @@ impl<'a> Peeker<'a> {
     }
 
     pub fn peek_punct_kinds(self, punct_kinds: &[PunctKind], not_followed_by: &[PunctKind]) -> Result<Span, Self> {
-        assert!(punct_kinds.len() > 0);
+        let (last_punct_kind, first_punct_kinds) = match punct_kinds.split_last() {
+            Some((last_punct_kind, first_punct_kinds)) => (last_punct_kind, first_punct_kinds),
+            None => panic!("peek_punct_kinds called with empty slice"),
+        };
         if self.token_trees.len() < punct_kinds.len() {
             return Err(self);
         }
-        for i in 0..(punct_kinds.len() - 1) {
+        for (i, punct_kind) in first_punct_kinds.iter().enumerate() {
             match &self.token_trees[i] {
                 TokenTree::Punct(Punct { kind, spacing: Spacing::Joint, .. }) => {
-                    if *kind != punct_kinds[i] {
+                    if *kind != *punct_kind {
                         return Err(self);
                     }
                 },
@@ -178,13 +181,13 @@ impl<'a> Peeker<'a> {
         }
         let span_end = match &self.token_trees[punct_kinds.len() - 1] {
             TokenTree::Punct(Punct { kind, spacing, span }) => {
-                if *kind != punct_kinds[punct_kinds.len() - 1] {
+                if *kind != *last_punct_kind {
                     return Err(self);
                 }
                 match spacing {
                     Spacing::Alone => span,
-                    Spacing::Joint => match &self.token_trees[punct_kinds.len()] {
-                        TokenTree::Punct(Punct { kind, .. }) => {
+                    Spacing::Joint => match &self.token_trees.get(punct_kinds.len()) {
+                        Some(TokenTree::Punct(Punct { kind, .. })) => {
                             if not_followed_by.contains(kind) {
                                 return Err(self);
                             }

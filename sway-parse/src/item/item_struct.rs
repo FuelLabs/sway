@@ -17,7 +17,7 @@ impl ItemStruct {
             None => self.struct_token.span(),
         };
         let end = self.fields.span();
-        Span::join(start.clone(), end)
+        Span::join(start, end)
     }
 }
 

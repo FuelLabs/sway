@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum Statement {
     Let(StatementLet),

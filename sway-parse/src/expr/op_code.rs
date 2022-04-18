@@ -86,6 +86,7 @@ macro_rules! define_op_codes (
                 }
             }
 
+            #[allow(clippy::vec_init_then_push)]
             pub fn register_arg_idents(&self) -> Vec<Ident> {
                 match self {
                     $(Instruction::$op_name { $($arg_name,)* .. } => {

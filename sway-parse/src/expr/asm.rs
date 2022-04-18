@@ -107,11 +107,11 @@ impl ParseToEnd for AsmBlockContents {
 impl Parse for AsmImmediate {
     fn parse(parser: &mut Parser) -> ParseResult<AsmImmediate> {
         let ident = parser.parse::<Ident>()?;
-        let digits = match ident.as_str().strip_prefix("i") {
+        let digits = match ident.as_str().strip_prefix('i') {
             Some(digits) => digits,
             None => return Err(parser.emit_error(ParseErrorKind::MalformedAsmImmediate)),
         };
-        let parsed = match BigUint::from_str(&digits).ok() {
+        let parsed = match BigUint::from_str(digits).ok() {
             Some(parsed) => parsed,
             None => return Err(parser.emit_error(ParseErrorKind::MalformedAsmImmediate)),
         };

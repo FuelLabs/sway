@@ -16,7 +16,7 @@ impl ItemUse {
             None => self.use_token.span(),
         };
         let end = self.semicolon_token.span();
-        Span::join(start.clone(), end)
+        Span::join(start, end)
     }
 }
 

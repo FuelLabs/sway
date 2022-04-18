@@ -310,6 +310,7 @@ impl ParseToEnd for AbiCastArgs {
     }
 }
 
+#[allow(clippy::type_complexity)]
 #[derive(Clone, Debug)]
 pub struct IfExpr {
     pub if_token: IfToken,
@@ -415,6 +416,7 @@ impl MatchBranch {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MatchBranchKind {
     Block {
@@ -462,7 +464,7 @@ impl ParseToEnd for CodeBlockContents {
             if let Some(consumed) = parser.check_empty() {
                 break (None, consumed);
             }
-            if {
+            if
                 parser.peek::<UseToken>().is_some() ||
                 parser.peek::<StructToken>().is_some() ||
                 parser.peek::<EnumToken>().is_some() ||
@@ -474,7 +476,7 @@ impl ParseToEnd for CodeBlockContents {
                 parser.peek2::<AbiToken, Ident>().is_some() ||
                 parser.peek::<ConstToken>().is_some() ||
                 matches!(parser.peek2::<StorageToken, Delimiter>(), Some((_, Delimiter::Brace)))
-            } {
+            {
                 let item = parser.parse()?;
                 let statement = Statement::Item(item);
                 statements.push(statement);
@@ -823,11 +825,11 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
     }
     if let Some(return_token) = parser.take() {
         // TODO: how to handle this properly?
-        if {
+        if
             parser.is_empty() ||
             parser.peek::<CommaToken>().is_some() ||
             parser.peek::<SemicolonToken>().is_some()
-        } {
+        {
             return Ok(Expr::Return { return_token, expr_opt: None });
         }
         let expr = parser.parse()?;
@@ -847,12 +849,12 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
         let block = parser.parse()?;
         return Ok(Expr::While { while_token, condition, block });
     }
-    if {
+    if
         parser.peek::<OpenAngleBracketToken>().is_some() ||
         parser.peek::<DoubleColonToken>().is_some() ||
         parser.peek::<TildeToken>().is_some() ||
         parser.peek::<Ident>().is_some()
-    } {
+    {
         let path = parser.parse()?;
         if allow_struct_exprs {
             if let Some(fields) = Braces::try_parse(parser)? {
@@ -998,14 +1000,10 @@ impl Expr {
     }
 
     pub fn is_control_flow(&self) -> bool {
-        match self {
-            Expr::Block(..) |
-            Expr::Asm(..) |
-            Expr::If(..) |
-            Expr::Match { .. } |
-            Expr::While { .. } => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Expr::Block(..) | Expr::Asm(..) | Expr::If(..) | Expr::Match { .. } | Expr::While { .. },
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum Ty {
     Path(PathType),
@@ -55,11 +56,11 @@ impl Parse for Ty {
         if let Some(underscore_token) = parser.take() {
             return Ok(Ty::Infer { underscore_token });
         }
-        if {
+        if
             parser.peek::<OpenAngleBracketToken>().is_some() ||
             parser.peek::<DoubleColonToken>().is_some() ||
             parser.peek::<Ident>().is_some()
-        } {
+        {
             let path_type = parser.parse()?;
             return Ok(Ty::Path(path_type));
         }
