@@ -1762,8 +1762,7 @@ impl TypedExpression {
             .is_some();
 
         // Check if the call path refers to an enum in another module.
-        let (enum_mod_path, enum_path) = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
-        let enum_name = &enum_path[0];
+        let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
         let exp = if let Some(enum_decl) = namespace
             .find_module_relative_mut(enum_mod_path)
             .ok(&mut warnings, &mut errors)
