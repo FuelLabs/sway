@@ -328,7 +328,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut local_namespace = Namespace::default();
+    let mut local_namespace = namespace.clone();
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
