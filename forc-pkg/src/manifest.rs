@@ -38,6 +38,7 @@ pub struct Project {
     pub license: String,
     #[serde(default = "default_entry")]
     pub entry: String,
+    pub implicit_std: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -253,6 +254,7 @@ impl Manifest {
     fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
         const CORE: &str = "core";
         const STD: &str = "std";
+        let include_implicit_std = self.project.implicit_std.unwrap_or(true);
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.
@@ -263,13 +265,20 @@ impl Manifest {
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
         {
+            if !include_implicit_std {
+                println_yellow_err("Warning: You specified an STD path but set `implicit-std` to `false`.\
+                 Your custom std path will take precdence and be imported regardless.");
+            }
             return;
         }
         // Add a `[dependencies]` table if there isn't one.
         let deps = self.dependencies.get_or_insert_with(Default::default);
         // Add the missing dependency.
-        let std_dep = implicit_std_dep(sway_git_tag.to_string());
-        deps.insert(STD.to_string(), std_dep);
+        if !include_implicit_std {
+            println_yellow_err("Warning: Project being built without an STD");
+            let std_dep = implicit_std_dep(sway_git_tag.to_string());
+            deps.insert(STD.to_string(), std_dep);
+        }
     }
 
     /// Retrieve a reference to the dependency with the given name.
