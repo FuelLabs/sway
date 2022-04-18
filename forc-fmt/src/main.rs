@@ -55,6 +55,7 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                             if app.check {
                                 if *file_content != *formatted_content {
                                     contains_edits = true;
+                                    println!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
                             } else {
