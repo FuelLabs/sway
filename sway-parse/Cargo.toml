@@ -5,10 +5,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
+extension-trait = "1.0.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
-unicode-xid = "0.2.2"
-extension-trait = "1.0.1"
-thiserror = "1.0"
 sway-types = { version = "0.10.1", path = "../sway-types" }
+thiserror = "1.0"
+unicode-xid = "0.2.2"
 
