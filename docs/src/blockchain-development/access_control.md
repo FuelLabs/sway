@@ -1,8 +1,6 @@
 # Access Control
 
-Smart contracts require the ability to restrict access to and identify certain users or contracts.
-
-Unlike account based blockchains, Fuel calls can originate from an origin which has potentially multiple parties.
+Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.
 
 ## msg_sender
 
