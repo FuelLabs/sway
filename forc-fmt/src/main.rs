@@ -11,7 +11,6 @@ use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
 
-
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
