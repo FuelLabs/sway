@@ -121,27 +121,52 @@ impl CodeBuilder {
 
                         '[' => {
                             if code_line.is_collection() {
-                                code_line.push_char('[');
-                                code_line.become_nested_collection();
+                                if code_line.text.len() >= 60 {
+                                    code_line.push_str("[is");
+                                    code_line.become_nested_collection();
+                                    self.complete_and_add_line(code_line);
+
+                                    // if there is more - move to new line!
+                                    return self.move_rest_to_new_line(line, iter);
+                                } else {
+                                    code_line.push_str("[len1");
+                                    code_line.become_nested_collection();
+                                }
                             } else if !code_line.is_collection() {
-                                code_line.append_with_whitespace("[");
-                                code_line.become_collection();
+                                if code_line.text.len() >= 60 {
+                                    code_line.push_str("[not");
+                                    code_line.become_collection();
+                                    self.complete_and_add_line(code_line);
+
+                                    // if there is more - move to new line!
+                                    return self.move_rest_to_new_line(line, iter);
+                                } else {
+                                    code_line
+                                        .push_str(&format!("{}", code_line.text.chars().count()));
+                                    code_line.become_collection();
+                                }
                             }
                         }
 
                         ']' => {
-                            if code_line.is_nested_collection() {
-                                code_line.push_char(']');
+                            if code_line.is_nested_collection() && code_line.text.len() >= 60 {
                                 if let Some((_, c)) = iter.peek() {
                                     if *c == ';' || *c == ']' {
                                         code_line.become_collection();
                                     }
                                 }
+                                if code_line.text.len() >= 60 {
+                                    return self.handle_close_bracket(line, code_line, iter);
+                                } else {
+                                    code_line.push_char(']');
+                                }
                             } else if code_line.is_collection() {
-                                code_line.push_char(']');
                                 code_line.become_default();
-                            } else {
-                                code_line.push_char(']');
+                                if code_line.text.len() >= 60 {
+                                    return self.handle_close_bracket(line, code_line, iter);
+                                } else {
+                                    code_line.push_char(']');
+                                }
                             }
                         }
 
@@ -159,6 +184,23 @@ impl CodeBuilder {
                         // handle line breakers ';', '{', '}' & ','
                         ',' => {
                             let rest_of_line = &line[current_index + 1..];
+                            if code_line.is_collection()
+                                || code_line.is_nested_collection() && rest_of_line.len() >= 60
+                            {
+                                match get_new_line_pattern(rest_of_line) {
+                                    Some(line_after_pattern) => {
+                                        code_line.push_char(',');
+                                        self.complete_and_add_line(code_line);
+                                        self.indent();
+
+                                        return self.move_rest_to_new_line(
+                                            line_after_pattern,
+                                            line_after_pattern.chars().enumerate().peekable(),
+                                        );
+                                    }
+                                    None => code_line.push_str(", "),
+                                }
+                            }
                             match get_new_line_pattern(rest_of_line) {
                                 Some(line_after_pattern) => {
                                     code_line.push_char(',');
@@ -327,6 +369,63 @@ impl CodeBuilder {
             }
             None => {
                 self.complete_and_add_line(CodeLine::new("}".into()));
+            }
+        }
+    }
+
+    fn handle_close_bracket(
+        &mut self,
+        line: &str,
+        code_line: CodeLine,
+        iter: Peekable<Enumerate<Chars>>,
+    ) {
+        let mut iter = iter;
+
+        // if there was something prior to '}', add as separate line
+        if !code_line.is_empty() {
+            self.complete_and_add_line(code_line);
+        }
+
+        // clean empty space before '}'
+        if let Some(last_line) = self.edits.last() {
+            if last_line.text.is_empty() {
+                self.edits.pop();
+            }
+        }
+
+        self.outdent();
+        clean_all_whitespace(&mut iter);
+
+        match iter.peek() {
+            // check is there a ';' and add it after '}'
+            Some((_, ';')) => {
+                self.complete_and_add_line(CodeLine::new("];".into()));
+                iter.next();
+                self.move_rest_to_new_line(line, iter);
+            }
+            Some((_, ',')) => {
+                self.complete_and_add_line(CodeLine::new("],".into()));
+                iter.next();
+                self.move_rest_to_new_line(line, iter);
+            }
+            // if there is more move to new line, unless it's 'else' statement or ')' | '{'
+            Some((next_index, next_char)) => {
+                let next_line = &line[*next_index..].trim();
+                let is_valid_char = *next_char == '[';
+
+                if is_valid_char {
+                    self.add_line(CodeLine::new("]".into()));
+                    self.format_and_add(next_line);
+                } else if is_else_statement_next(next_line) {
+                    self.add_line(CodeLine::new("] ".into()));
+                    self.format_and_add(next_line);
+                } else {
+                    self.complete_and_add_line(CodeLine::new("]".into()));
+                    self.move_rest_to_new_line(line, iter);
+                }
+            }
+            None => {
+                self.complete_and_add_line(CodeLine::new("]".into()));
             }
         }
     }

@@ -164,24 +164,6 @@ pub fn handle_ampersand_case(code_line: &mut CodeLine, iter: &mut Peekable<Enume
     }
 }
 
-// TODO: Maximum width of an array literal before falling back to vertical formatting is 60.
-// pub fn handle_collection_case(
-//     code_line: &mut CodeLine,
-//     current_char: char,
-//     iter: &mut Peekable<Enumerate<Chars>>,
-// ) {
-//     code_line.push_char(current_char);
-
-//     for (_, next_char) in iter {
-//         if next_char != ']' {
-//             code_line.push_char(next_char);
-//         } else {
-//             code_line.push_char(']');
-//             code_line.become_default();
-//         }
-//     }
-// }
-
 /// cleans whitespace, including newlines
 pub fn clean_all_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
     while let Some((_, next_char)) = iter.peek() {
