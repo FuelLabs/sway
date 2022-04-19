@@ -4,7 +4,7 @@ Smart contracts require the ability to restrict access to and identify certain u
 
 ## msg_sender
 
-To deliver an experience akin to Ethereum based access control, the `std` library provides a `msg_sender` method, which determines a single sender based upon the call and transaction input data.
+To deliver an experience akin to Ethereum's access control, the `std` library provides a `msg_sender` function, which identifies a unique caller based upon the call and/or transaction input data.
 
 ```sway
 {{#include ../../../examples/msg_sender/src/main.sw}}
