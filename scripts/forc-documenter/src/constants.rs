@@ -50,19 +50,9 @@ You can find an example under the [Testing with Rust](../../testing/testing-with
 pub static FORC_DEPLOY_EXAMPLE: &str = r#"
 Deploy contract project. Crafts a contract deployment transaction then sends it to a running node.
 
-Alternatively, you could deploy your contract programmatically using our SDK:
+Alternatively, you can deploy your Sway contract programmatically using [fuels-rs](https://github.com/FuelLabs/fuels-rs), our Rust SDK.
 
-```rust
-// Build the contract
-let salt: [u8; 32] = rng.gen();
-let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-
-// Launch a local network and deploy the contract
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-let client = Provider::launch(Config::local_node()).await.unwrap();
-let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
-```
+You can find an example within our [fuels-rs book](https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html).
 "#;
 
 pub static FORC_PARSE_BYTECODE_EXAMPLE: &str = r#"
