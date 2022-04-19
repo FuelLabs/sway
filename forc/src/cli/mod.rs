@@ -31,8 +31,8 @@ struct Opt {
 enum Forc {
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
+    #[clap(alias = "b")]
     Build(BuildCommand),
-    B(BuildCommand),
     Clean(CleanCommand),
     #[clap(after_help = completions::COMPLETIONS_HELP)]
     Completions(CompletionsCommand),
@@ -40,8 +40,8 @@ enum Forc {
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
+    #[clap(alias = "t")]
     Test(TestCommand),
-    T(TestCommand),
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
     /// Find all forc plugins available via `PATH`.
@@ -64,7 +64,7 @@ pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),
-        Forc::Build(command) | Forc::B(command) => build::exec(command),
+        Forc::Build(command) => build::exec(command),
         Forc::Clean(command) => clean::exec(command),
         Forc::Completions(command) => completions::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
@@ -72,7 +72,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins => plugins::exec(),
         Forc::Run(command) => run::exec(command).await,
-        Forc::Test(command) | Forc::T(command) => test::exec(command),
+        Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
         Forc::Plugin(args) => {
