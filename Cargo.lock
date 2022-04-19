@@ -1123,6 +1123,7 @@ dependencies = [
  "clap 3.1.6",
  "forc-util",
  "prettydiff",
+ "sway-core",
  "sway-fmt",
  "sway-utils",
  "taplo",
