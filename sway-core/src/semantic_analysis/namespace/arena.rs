@@ -86,6 +86,7 @@ pub trait NamespaceWrapper {
     /// and `function` is the suffix
     fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration>;
     fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration>;
+    fn get_canonical_path(&self, symbol: &Ident) -> Vec<Ident>;
     fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration>;
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid
@@ -279,6 +280,13 @@ impl NamespaceWrapper for NamespaceRef {
             } => Some(inner),
             _ => None,
         }
+    }
+
+    fn get_canonical_path(&self, symbol: &Ident) -> Vec<Ident> {
+        read_module(
+            |m| m.use_synonyms.get(symbol).unwrap_or(&vec![]).clone(),
+            *self,
+        )
     }
 
     fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {

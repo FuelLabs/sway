@@ -58,7 +58,7 @@ pub(crate) fn implementation_of_trait(
                     &tr.interface_surface,
                     &functions,
                     &tr.methods,
-                    &tr.name,
+                    &trait_name,
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -116,7 +116,7 @@ pub(crate) fn implementation_of_trait(
                     &abi.interface_surface,
                     &functions,
                     &abi.methods,
-                    &abi.name,
+                    &trait_name,
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -178,7 +178,7 @@ fn type_check_trait_implementation(
     interface_surface: &[TypedTraitFn],
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
-    trait_name: &Ident,
+    trait_name: &CallPath,
     namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     _self_type: TypeId,
@@ -233,7 +233,7 @@ fn type_check_trait_implementation(
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
-                    trait_name: trait_name.clone(),
+                    trait_name: trait_name.suffix.clone(),
                     span: fn_decl.name.span().clone(),
                 });
                 return err(warnings, errors);
@@ -256,7 +256,7 @@ fn type_check_trait_implementation(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
                                 fn_name: fn_decl.name.clone(),
-                                trait_name: trait_name.clone(),
+                                trait_name: trait_name.suffix.clone(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },
@@ -329,10 +329,24 @@ fn type_check_trait_implementation(
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
     let local_namespace: NamespaceRef = create_new_scope(namespace);
+
+    // A trait impl needs access to everything that the trait methods have access to, which is
+    // basically everything in the path where the trait is declared.
+    // First, get the path to where the trait is declared. This is a combination of the path stored
+    // in the symbols map and the path stored in the CallPath.
+    local_namespace.star_import(
+        Some(crate_namespace),
+        [
+            &trait_name.prefixes[..],
+            &local_namespace.get_canonical_path(&trait_name.suffix)[..],
+        ]
+        .concat(),
+    );
+
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
-            suffix: trait_name.clone(),
+            suffix: trait_name.suffix.clone(),
             is_absolute: false,
         },
         match resolve_type(type_implementing_for, type_implementing_for_span) {
