@@ -59,20 +59,6 @@ pub use crate::{
 
 use std::{path::PathBuf, sync::Arc};
 
-pub fn lex_and_parse<T>(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> T
-where
-    T: Parse,
-{
-    let token_stream = lex(src, start, end, path).unwrap();
-    let mut errors = Vec::new();
-    let mut parser = Parser::new(&token_stream, &mut errors);
-    let ret = parser.parse().unwrap();
-    if !parser.is_empty() {
-        panic!("not all tokens consumed");
-    }
-    ret
-}
-
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum ParseFileError {
     Lex(LexError),
