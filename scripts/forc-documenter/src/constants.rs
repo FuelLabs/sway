@@ -48,7 +48,7 @@ You can find an example under the [Testing with Rust](../../testing/testing-with
 "#;
 
 pub static FORC_DEPLOY_EXAMPLE: &str = r#"
-Deploy contract project. Crafts a contract deployment transaction then sends it to a running node.
+You can use `forc deploy` to trigger a contract deployment transaction and then send it to a running node.
 
 Alternatively, you can deploy your Sway contract programmatically using [fuels-rs](https://github.com/FuelLabs/fuels-rs), our Rust SDK.
 
