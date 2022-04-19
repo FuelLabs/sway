@@ -26,3 +26,4 @@ impl MyOwnedContract for Contract {
         true
     }
 }
+
