@@ -195,6 +195,16 @@ assert(foo.baz);
 <h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
 <p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
 <p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
+<h2 id="tuples"><a class="header" href="#tuples">Tuples</a></h2>
+<p>Tuples are a <a href="./built_in_types.html#tuple-types">basic static-length type</a> which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums. An example of a tuple declaration is provided below.</p>
+<pre><code class="language-sway">let my_tuple: (u64, bool, u64) = (100, false, 10000);
+</code></pre>
+<p>The values within this tuple can then be accessed with a <code>.</code> syntax in order of the type, starting at an index of 0 like shown in the example provided below.</p>
+<pre><code class="language-sway">let x: u64 = my_tuple.0;
+let y: bool = my_tuple.1;
+</code></pre>
+<p>Tuples can also contain tuples within themselves, and be used in destructing syntax to declare multiple values at once.</p>
+<p>Common usecases for tuples are returning multiple values from a function, packing parameters into a function, or storing a series of related values.</p>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
 <pre><code class="language-sway">enum Color {

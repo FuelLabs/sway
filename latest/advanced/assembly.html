@@ -215,6 +215,7 @@ fn main() -&gt; bool {
 <li><code>one</code> is an example of a &quot;reserved register&quot;, of which there are 16 in total. Further reading on this is linked below under &quot;Semantics&quot;.</li>
 <li>we return <code>r2</code> &amp; specify the return type as being u32 (the return type is u64 by default).</li>
 </ul>
+<p>An important note is that the <code>ji</code> and <code>jnei</code> opcodes are not available within an <code>asm</code> block. For those looking to introduce control flow to <code>asm</code> blocks, it is recommended to surround smaller chunks of <code>asm</code> with control flow (<code>if</code>, <code>else</code>, and <code>while</code>).</p>
 <h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
 <p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">Sway standard library</a>.</p>
 <p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md">Instructions</a>.</p>
