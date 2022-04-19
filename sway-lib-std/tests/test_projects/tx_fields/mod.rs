@@ -198,36 +198,35 @@ async fn can_get_script_start_offset() {
 
 #[tokio::test]
 async fn can_get_tx_input_type() {
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //let (contract_instance, _, _) = get_contracts().await;
-    //
-    //// Contract input
-    //let input_type = 1;
-    //let result_ptr = contract_instance
-    //    .get_tx_input_pointer(0)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //let result = contract_instance
-    //    .get_tx_input_type(result_ptr.value)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //assert_eq!(result.value, input_type);
-    //
-    //// Coin input
-    //let input_type = 0;
-    //let result_ptr = contract_instance
-    //    .get_tx_input_pointer(1)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //let result = contract_instance
-    //    .get_tx_input_type(result_ptr.value)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //assert_eq!(result.value, input_type);
+    let (contract_instance, _, _) = get_contracts().await;
+
+    // Contract input
+    let input_type = 1;
+    let result_ptr = contract_instance
+        .get_tx_input_pointer(0)
+        .call()
+        .await
+        .unwrap();
+    let result = contract_instance
+        .get_tx_input_type(result_ptr.value)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, input_type);
+
+    // Coin input
+    let input_type = 0;
+    let result_ptr = contract_instance
+        .get_tx_input_pointer(1)
+        .call()
+        .await
+        .unwrap();
+    let result = contract_instance
+        .get_tx_input_type(result_ptr.value)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, input_type);
 }
 
 #[tokio::test]
@@ -238,50 +237,48 @@ async fn can_get_tx_input_coin_owner() {
     let input_owner = txcontracttest_mod::Address {
         value: wallet.address().into(),
     };
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //let result_ptr = contract_instance
-    //    .get_tx_input_pointer(1)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //let result = contract_instance
-    //    .get_tx_input_coin_owner(result_ptr.value)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //assert_eq!(result.value, input_owner);
+    let result_ptr = contract_instance
+        .get_tx_input_pointer(1)
+        .call()
+        .await
+        .unwrap();
+    let result = contract_instance
+        .get_tx_input_coin_owner(result_ptr.value)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, input_owner);
 }
 
 #[tokio::test]
 async fn can_get_tx_output_type() {
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //let (contract_instance, _, _) = get_contracts().await;
-    //
-    //// Contract output
-    //let output_type = 1;
-    //let result_ptr = contract_instance
-    //    .get_tx_output_pointer(1)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //let result = contract_instance
-    //    .get_tx_output_type(result_ptr.value)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //assert_eq!(result.value, output_type);
-    //
-    //// Change output
-    //let output_type = 3;
-    //let result_ptr = contract_instance
-    //    .get_tx_output_pointer(0)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //let result = contract_instance
-    //    .get_tx_output_type(result_ptr.value)
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //assert_eq!(result.value, output_type);
+    let (contract_instance, _, _) = get_contracts().await;
+
+    // Contract output
+    let output_type = 1;
+    let result_ptr = contract_instance
+        .get_tx_output_pointer(1)
+        .call()
+        .await
+        .unwrap();
+    let result = contract_instance
+        .get_tx_output_type(result_ptr.value)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, output_type);
+
+    // Change output
+    let output_type = 3;
+    let result_ptr = contract_instance
+        .get_tx_output_pointer(0)
+        .call()
+        .await
+        .unwrap();
+    let result = contract_instance
+        .get_tx_output_type(result_ptr.value)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, output_type);
 }

@@ -5,22 +5,20 @@ DATA_SECTION_OFFSET[0..32]
 DATA_SECTION_OFFSET[32..64]
 lw   $ds $is 1
 add  $$ds $$ds $is
-lw   $r1 $fp i73              ; load input function selector
-lw   $r0 data_2               ; load fn selector for comparison
-eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i17            ; jump to selected function
-lw   $r0 data_3               ; load fn selector for comparison
-eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i20            ; jump to selected function
-lw   $r0 data_4               ; load fn selector for comparison
-eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i24            ; jump to selected function
+lw   $r0 $fp i73              ; load input function selector
+lw   $r1 data_2               ; load fn selector for comparison
+eq   $r1 $r0 $r1              ; function selector comparison
+jnei $zero $r1 i17            ; jump to selected function
+lw   $r1 data_3               ; load fn selector for comparison
+eq   $r1 $r0 $r1              ; function selector comparison
+jnei $zero $r1 i19            ; jump to selected function
+lw   $r1 data_4               ; load fn selector for comparison
+eq   $r0 $r0 $r1              ; function selector comparison
+jnei $zero $r0 i22            ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 lw   $r0 $fp i74              ; Base register for method parameter
-lw   $r0 $r0 i0               ; Get arg val
 ret  $r0
-lw   $r0 $fp i74              ; Base register for method parameter
-addi $r1 $r0 i0               ; Get address for arg val
+lw   $r1 $fp i74              ; Base register for method parameter
 lw   $r0 data_0               ; loading size for RETD
 retd  $r1 $r0
 lw   $r1 $fp i74              ; Base register for method parameter

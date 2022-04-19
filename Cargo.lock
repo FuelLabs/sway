@@ -1063,7 +1063,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "forc-documenter"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap 3.1.6",
@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "clap 3.1.6",
@@ -1117,12 +1117,13 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "clap 3.1.6",
  "forc-util",
  "prettydiff",
+ "sway-core",
  "sway-fmt",
  "sway-utils",
  "taplo",
@@ -1130,7 +1131,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "clap 3.1.6",
@@ -1140,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1159,7 +1160,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2258,7 +2259,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "chumsky",
  "generational-arena",
@@ -3194,7 +3195,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "clap 3.1.6",
  "derivative",
@@ -3224,7 +3225,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3233,7 +3234,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "fuel-pest",
  "generational-arena",
@@ -3244,7 +3245,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
@@ -3263,7 +3264,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.10.1"
+version = "0.10.3"
 dependencies = [
  "fuel-asm",
  "fuel-crypto 0.4.0",
@@ -3274,7 +3275,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.10.1"
+version = "0.10.3"
 
 [[package]]
 name = "syn"

@@ -66,14 +66,13 @@ async fn can_get_this_balance() {
         .await
         .unwrap();
 
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //caller_instance
-    //    .call_receive_coins(send_amount, context_sway_id)
-    //    .set_contracts(&[context_id])
-    //    .tx_params(TxParameters::new(None, Some(1_000_000), None))
-    //    .call()
-    //    .await
-    //    .unwrap();
+    caller_instance
+        .call_receive_coins(send_amount, context_sway_id)
+        .set_contracts(&[context_id])
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .call()
+        .await
+        .unwrap();
 
     let result = context_instance
         .get_this_balance(caller_sway_id)
@@ -81,8 +80,7 @@ async fn can_get_this_balance() {
         .await
         .unwrap();
 
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //assert_eq!(result.value, send_amount);
+    assert_eq!(result.value, send_amount);
 }
 
 #[tokio::test]
@@ -106,8 +104,7 @@ async fn can_get_balance_of_contract() {
         .await
         .unwrap();
 
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //assert_eq!(result.value, send_amount);
+    assert_eq!(result.value, send_amount);
 }
 
 #[tokio::test]
@@ -151,16 +148,15 @@ async fn can_get_msg_id() {
         .await
         .unwrap();
 
-    // TEMPORARILY DISABLED until https://github.com/FuelLabs/fuels-rs/issues/201 is resolved.
-    //let result = caller_instance
-    //    .call_get_asset_id_with_coins(send_amount, context_sway_id)
-    //    .set_contracts(&[caller_id, context_id])
-    //    .tx_params(TxParameters::new(None, Some(1_000_000), None))
-    //    .call()
-    //    .await
-    //    .unwrap();
-    //
-    //assert_eq!(result.value, caller_sway_id);
+    let result = caller_instance
+        .call_get_asset_id_with_coins(send_amount, context_sway_id)
+        .set_contracts(&[caller_id, context_id])
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(result.value, caller_sway_id);
 }
 
 #[tokio::test]

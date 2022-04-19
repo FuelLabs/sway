@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use crate::{
     asm_generation::{
-        build_contract_abi_switch, build_preamble, finalized_asm::FinalizedAsm,
+        build_contract_abi_switch, build_preamble, compiler_constants, finalized_asm::FinalizedAsm,
         register_sequencer::RegisterSequencer, AbstractInstructionSet, DataId, DataSection,
         SwayAsmSet,
     },
@@ -227,16 +227,101 @@ impl<'ir> AsmBuilder<'ir> {
             return;
         }
 
-        // Nothing to do if there are no arguments
-        if function.args_iter(self.context).next().is_none() {
-            return;
-        }
+        match function.args_iter(self.context).count() {
+            // Nothing to do if there are no arguments
+            0 => (),
 
-        // Base pointer for the arumgnets using the $fp register
-        let args_base_reg = self.reg_seqr.next();
+            // A special case for when there's only a single arg, its value (or address) is placed
+            // directly in the base register.
+            1 => {
+                let (_, val) = function.args_iter(self.context).next().unwrap();
+                let single_arg_reg = self.value_to_register(val);
+                self.read_args_value_from_frame(&single_arg_reg);
+            }
+
+            // Otherwise, the args are bundled together and pointed to by the base register.
+            _ => {
+                let args_base_reg = self.reg_seqr.next();
+                self.read_args_value_from_frame(&args_base_reg);
+
+                // Successively load each argument. The asm generated depends on the arg type size
+                // and whether the offset fits in a 12-bit immediate.
+                let mut arg_word_offset = 0;
+                for (name, val) in function.args_iter(self.context) {
+                    let current_arg_reg = self.value_to_register(val);
+                    let arg_type = val.get_type(self.context).unwrap();
+                    let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
+                    if arg_type.is_copy_type() {
+                        if arg_word_offset > compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    args_base_reg.clone(),
+                                    args_base_reg.clone(),
+                                    offs_reg.clone(),
+                                )),
+                                comment: format!("Get offset for arg {}", name),
+                                owning_span: None,
+                            });
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    current_arg_reg.clone(),
+                                    offs_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: format!("Get arg {}", name),
+                                owning_span: None,
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    current_arg_reg.clone(),
+                                    args_base_reg.clone(),
+                                    VirtualImmediate12 {
+                                        value: arg_word_offset as u16,
+                                    },
+                                )),
+                                comment: format!("Get arg {}", name),
+                                owning_span: None,
+                            });
+                        }
+                    } else if arg_word_offset * 8 > compiler_constants::TWELVE_BITS {
+                        let offs_reg = self.reg_seqr.next();
+                        self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                current_arg_reg.clone(),
+                                args_base_reg.clone(),
+                                offs_reg,
+                            )),
+                            comment: format!("Get offset or arg {}", name),
+                            owning_span: None,
+                        });
+                    } else {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADDI(
+                                current_arg_reg.clone(),
+                                args_base_reg.clone(),
+                                VirtualImmediate12 {
+                                    value: (arg_word_offset * 8) as u16,
+                                },
+                            )),
+                            comment: format!("Get address for arg {}", name),
+                            owning_span: None,
+                        });
+                    }
+
+                    arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
+                }
+            }
+        }
+    }
+
+    // Read the argument(s) base from the call frame.
+    fn read_args_value_from_frame(&mut self, reg: &VirtualRegister) {
         self.bytecode.push(Op {
             opcode: Either::Left(VirtualOp::LW(
-                args_base_reg.clone(),
+                reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
                 // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
                 VirtualImmediate12 { value: 74 },
@@ -244,76 +329,6 @@ impl<'ir> AsmBuilder<'ir> {
             comment: "Base register for method parameter".into(),
             owning_span: None,
         });
-
-        // Successively load each argument. The asm generated depends on the arg type size and
-        // whether the offset fits in a 12-bit immediate.
-        let mut arg_word_offset = 0;
-        for (name, val) in function.args_iter(self.context) {
-            let current_arg_reg = self.value_to_register(val);
-            let arg_type = val.get_type(self.context).unwrap();
-            let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
-            if arg_type.is_copy_type() {
-                if arg_word_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
-                    let offs_reg = self.reg_seqr.next();
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::ADD(
-                            args_base_reg.clone(),
-                            args_base_reg.clone(),
-                            offs_reg.clone(),
-                        )),
-                        comment: format!("Get offset for arg {}", name),
-                        owning_span: None,
-                    });
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LW(
-                            current_arg_reg.clone(),
-                            offs_reg,
-                            VirtualImmediate12 { value: 0 },
-                        )),
-                        comment: format!("Get arg {}", name),
-                        owning_span: None,
-                    });
-                } else {
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LW(
-                            current_arg_reg.clone(),
-                            args_base_reg.clone(),
-                            VirtualImmediate12 {
-                                value: arg_word_offset as u16,
-                            },
-                        )),
-                        comment: format!("Get arg {}", name),
-                        owning_span: None,
-                    });
-                }
-            } else if arg_word_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
-                let offs_reg = self.reg_seqr.next();
-                self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
-                self.bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADD(
-                        current_arg_reg.clone(),
-                        args_base_reg.clone(),
-                        offs_reg,
-                    )),
-                    comment: format!("Get offset or arg {}", name),
-                    owning_span: None,
-                });
-            } else {
-                self.bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
-                        current_arg_reg.clone(),
-                        args_base_reg.clone(),
-                        VirtualImmediate12 {
-                            value: (arg_word_offset * 8) as u16,
-                        },
-                    )),
-                    comment: format!("Get address for arg {}", name),
-                    owning_span: None,
-                });
-            }
-
-            arg_word_offset += arg_type_size_bytes / 8;
-        }
     }
 
     fn add_locals(&mut self, function: Function) {
@@ -371,7 +386,7 @@ impl<'ir> AsmBuilder<'ir> {
 
             // It's possible (though undesirable) to have empty local data structures only.
             if stack_base != 0 {
-                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                if stack_base * 8 > compiler_constants::TWENTY_FOUR_BITS {
                     todo!("Enormous stack usage for locals.");
                 }
                 let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
@@ -407,6 +422,20 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+        if function.has_selector(self.context) {
+            // Add a comment noting that this is a named contract method.
+            self.bytecode.push(Op::new_comment(format!(
+                "contract method: {}, selector: 0x{}",
+                function.get_name(self.context),
+                function
+                    .get_selector(self.context)
+                    .unwrap()
+                    .into_iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<String>()
+            )));
+        }
+
         // Compile instructions.
         self.add_locals(function);
         self.compile_fn_args(function);
@@ -835,7 +864,7 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             // Value too big for a register, so we return the memory offset.
-            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if elem_size > compiler_constants::TWELVE_BITS {
                 let size_data_id = self
                     .data_section
                     .insert_data_value(&Literal::U64(elem_size));
@@ -888,7 +917,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         let instr_reg = self.reg_seqr.next();
         if field_type.is_copy_type() {
-            if extract_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if extract_offset > compiler_constants::TWELVE_BITS {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     extract_offset,
@@ -942,7 +971,7 @@ impl<'ir> AsmBuilder<'ir> {
             }
         } else {
             // Value too big for a register, so we return the memory offset.
-            if extract_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if extract_offset * 8 > compiler_constants::TWELVE_BITS {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     extract_offset * 8,
@@ -996,7 +1025,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                     let offset_in_bytes = word_offs * 8 + ptr_ty_size_in_bytes * offset;
                     let instr_reg = self.reg_seqr.next();
-                    if offset_in_bytes > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    if offset_in_bytes > compiler_constants::TWELVE_BITS {
                         self.number_to_reg(
                             offset_in_bytes,
                             &instr_reg,
@@ -1069,7 +1098,7 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             // Element size is larger than 8; we switch to bytewise offsets and sizes and use MCP.
-            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if elem_size > compiler_constants::TWELVE_BITS {
                 todo!("array element size bigger than 4k")
             } else {
                 let elem_index_offs_reg = self.reg_seqr.next();
@@ -1135,7 +1164,7 @@ impl<'ir> AsmBuilder<'ir> {
             .collect::<Vec<String>>()
             .join(",");
         if value.get_type(self.context).unwrap().is_copy_type() {
-            if insert_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if insert_offs > compiler_constants::TWELVE_BITS {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     insert_offs,
@@ -1175,7 +1204,7 @@ impl<'ir> AsmBuilder<'ir> {
             }
         } else {
             let offs_reg = self.reg_seqr.next();
-            if insert_offs * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if insert_offs * 8 > compiler_constants::TWELVE_BITS {
                 self.number_to_reg(insert_offs * 8, &offs_reg, instr_val.get_span(self.context));
             } else {
                 self.bytecode.push(Op {
@@ -1190,7 +1219,7 @@ impl<'ir> AsmBuilder<'ir> {
                     owning_span: instr_val.get_span(self.context),
                 });
             }
-            if value_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if value_size > compiler_constants::TWELVE_BITS {
                 let size_reg = self.reg_seqr.next();
                 self.number_to_reg(value_size, &size_reg, instr_val.get_span(self.context));
                 self.bytecode.push(Op {
@@ -1244,7 +1273,7 @@ impl<'ir> AsmBuilder<'ir> {
                     // XXX Need to check for zero sized types?
                     if load_size_in_words == 1 {
                         // Value can fit in a register, so we load the value.
-                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
@@ -1281,7 +1310,7 @@ impl<'ir> AsmBuilder<'ir> {
                         // Value too big for a register, so we return the memory offset.  This is
                         // what LW to the data section does, via LWDataId.
                         let word_offs = word_offs * 8;
-                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
                                 word_offs,
@@ -1399,7 +1428,7 @@ impl<'ir> AsmBuilder<'ir> {
         span: Option<Span>,
     ) -> VirtualRegister {
         let offset_reg = self.reg_seqr.next();
-        if offset_in_bytes > crate::asm_generation::compiler_constants::TWELVE_BITS {
+        if offset_in_bytes > compiler_constants::TWELVE_BITS {
             let offs_reg = self.reg_seqr.next();
             self.number_to_reg(offset_in_bytes, &offs_reg, span.clone());
             self.bytecode.push(Op {
@@ -1628,7 +1657,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
                                 tmp_reg
                             };
-                            if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                            if word_offs > compiler_constants::TWELVE_BITS {
                                 let offs_reg = self.reg_seqr.next();
                                 self.number_to_reg(
                                     word_offs,
@@ -1672,9 +1701,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                             // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
                             let dest_offs_reg = self.reg_seqr.next();
-                            if word_offs * 8
-                                > crate::asm_generation::compiler_constants::TWELVE_BITS
-                            {
+                            if word_offs * 8 > compiler_constants::TWELVE_BITS {
                                 self.number_to_reg(
                                     word_offs * 8,
                                     &dest_offs_reg,
@@ -1703,9 +1730,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
                             }
 
-                            if store_size_in_words * 8
-                                > crate::asm_generation::compiler_constants::TWELVE_BITS
-                            {
+                            if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
                                 let size_reg = self.reg_seqr.next();
                                 self.number_to_reg(
                                     store_size_in_words * 8,
@@ -1778,9 +1803,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 let total_size = size_bytes_round_up_to_word_alignment!(
                                     self.constant_size_in_bytes(constant)
                                 );
-                                if total_size
-                                    > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS
-                                {
+                                if total_size > compiler_constants::TWENTY_FOUR_BITS {
                                     todo!("Enormous stack usage for locals.");
                                 }
 
@@ -1878,7 +1901,7 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn number_to_reg(&mut self, offset: u64, offset_reg: &VirtualRegister, span: Option<Span>) {
-        if offset > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+        if offset > compiler_constants::TWENTY_FOUR_BITS {
             todo!("Absolutely giant arrays.");
         }
 
@@ -1971,7 +1994,7 @@ impl<'ir> AsmBuilder<'ir> {
                 // needs to use a MCP instruction.
                 if matches!(lit, Literal::B256(_)) {
                     let offs_reg = self.reg_seqr.next();
-                    if offs_in_words * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
                         self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADD(
@@ -2007,7 +2030,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                     4 // 32 bytes is 4 words.
                 } else {
-                    if offs_in_words > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    if offs_in_words > compiler_constants::TWELVE_BITS {
                         let offs_reg = self.reg_seqr.next();
                         self.number_to_reg(offs_in_words, &offs_reg, span.clone());
                         self.bytecode.push(Op {

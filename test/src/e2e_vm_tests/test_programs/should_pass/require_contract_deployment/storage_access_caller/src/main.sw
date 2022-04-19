@@ -3,7 +3,7 @@ use storage_access_abi::{S, StorageAccess, T};
 use std::assert::assert;
 
 fn main() -> bool {
-    let contract_id = 0x1c305447488d8da2c5bd6b025222970b699edd84aa405f15cace2b33a13ddaf4;
+    let contract_id = 0x6104ddf866ec7ecf8e6bb8c4991663fed82f5afba994d822072a4cdb7de7bd39;
     let caller = abi(StorageAccess, contract_id);
 
     // Test 1
