@@ -38,6 +38,7 @@ pub struct Project {
     pub license: String,
     #[serde(default = "default_entry")]
     pub entry: String,
+    pub implicit_std: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -262,6 +263,7 @@ impl Manifest {
             || self.pkg_dep(CORE).is_some()
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
+            || !self.project.implicit_std.unwrap_or(true)
         {
             return;
         }
