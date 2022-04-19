@@ -121,6 +121,7 @@ impl TokenTree {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TokenStream {
     token_trees: Vec<TokenTree>,
+    full_span: Span,
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -444,9 +445,12 @@ pub fn lex(
                         });
                     }
                     mem::swap(&mut parent, &mut token_trees);
+                    let start_index = open_index + open_delimiter.as_open_char().len_utf8();
+                    let full_span = Span::new(src.clone(), start_index, index, path.clone()).unwrap();
                     let group = Group {
                         token_stream: TokenStream {
                             token_trees: parent,
+                            full_span,
                         },
                         delimiter: close_delimiter,
                         span: span_until(src, open_index, &mut char_indices, &path),
@@ -779,7 +783,8 @@ pub fn lex(
             .unwrap(),
         });
     }
-    let token_stream = TokenStream { token_trees };
+    let full_span = Span::new(src.clone(), start, end, path).unwrap();
+    let token_stream = TokenStream { token_trees, full_span };
     Ok(token_stream)
 }
 
@@ -947,5 +952,9 @@ fn span_until(
 impl TokenStream {
     pub fn token_trees(&self) -> &[TokenTree] {
         &self.token_trees
+    }
+
+    pub fn span(&self) -> Span {
+        self.full_span.clone()
     }
 }
