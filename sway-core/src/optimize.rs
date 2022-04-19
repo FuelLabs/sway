@@ -2643,6 +2643,7 @@ mod tests {
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
             use_orig_asm: false,
+            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

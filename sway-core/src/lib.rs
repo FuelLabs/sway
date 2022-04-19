@@ -129,8 +129,31 @@ impl ParseTree {
 /// # Panics
 /// Panics if the generated parser from Pest panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let use_new_parser = true;
-    if use_new_parser {
+    let use_orig_parser = config.map(|config| config.use_orig_parser).unwrap_or_default();
+    if use_orig_parser {
+        let mut warnings: Vec<CompileWarning> = Vec::new();
+        let mut errors: Vec<CompileError> = Vec::new();
+        let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                let path = config.map(|config| config.path());
+                return err(
+                    Vec::new(),
+                    vec![CompileError::ParseFailure {
+                        span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
+                        err: e,
+                    }],
+                );
+            }
+        };
+        let parsed_root = check!(
+            parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(parsed_root, warnings, errors)
+    } else {
         let path = config.map(|config| config.path());
         let program = match sway_parse::parse_file(input, path) {
             Ok(program) => program,
@@ -155,29 +178,6 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Swa
             errors,
         );
         ok(sway_parse_tree, warnings, errors)
-    } else {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
-        let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
-            Ok(o) => o,
-            Err(e) => {
-                let path = config.map(|config| config.path());
-                return err(
-                    Vec::new(),
-                    vec![CompileError::ParseFailure {
-                        span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
-                        err: e,
-                    }],
-                );
-            }
-        };
-        let parsed_root = check!(
-            parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        ok(parsed_root, warnings, errors)
     }
 }
 

@@ -12,6 +12,9 @@ pub struct Command {
     /// Whether to compile using the original (pre- IR) pipeline.
     #[clap(long)]
     pub use_orig_asm: bool,
+    /// Whether to compile using the original (pest based) parser.
+    #[clap(long)]
+    pub use_orig_parser: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,
