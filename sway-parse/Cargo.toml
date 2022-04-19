@@ -1,8 +1,12 @@
 [package]
 name = "sway-parse"
-version = "0.0.1"
+version = "0.10.3"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
-publish = false
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Sway's parser"
 
 [dependencies]
 extension-trait = "1.0.1"
