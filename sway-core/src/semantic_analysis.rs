@@ -1,6 +1,6 @@
 //! Type checking for Sway.
 pub mod ast_node;
-mod namespace;
+pub mod namespace;
 mod node_dependencies;
 mod syntax_tree;
 pub(crate) mod type_check_arguments;

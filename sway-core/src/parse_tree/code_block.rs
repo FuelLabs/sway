@@ -107,7 +107,6 @@ impl CodeBlock {
                     ast_node_contents
                 }
                 a => {
-                    println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     errors.push(CompileError::UnimplementedRule(a, span));
                     continue;
                 }

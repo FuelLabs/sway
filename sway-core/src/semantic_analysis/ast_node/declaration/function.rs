@@ -72,8 +72,9 @@ impl TypedFunctionDeclaration {
         let mut errors = Vec::new();
         let TypeCheckArguments {
             checkee: fn_decl,
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             self_type,
             build_config,
             dead_code_graph,
@@ -99,12 +100,13 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // insert parameters and generic type declarations into namespace
-        let mut namespace = namespace.clone();
+        let mut temp_root = root.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
-                namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
+                temp_root[mod_path]
+                    .insert(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -116,7 +118,8 @@ impl TypedFunctionDeclaration {
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
                     None => check!(
-                        namespace.resolve_type_with_self(
+                        temp_root.resolve_type_with_self(
+                            mod_path,
                             look_up_type_id(parameter.type_id),
                             self_type,
                             parameter.type_span.clone(),
@@ -129,6 +132,7 @@ impl TypedFunctionDeclaration {
                 };
         });
 
+        let namespace = &mut temp_root[mod_path];
         for FunctionParameter { name, type_id, .. } in parameters.clone() {
             namespace.insert(
                 name.clone(),
@@ -150,7 +154,8 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => check!(
-                namespace.resolve_type_with_self(
+                temp_root.resolve_type_with_self(
+                    mod_path,
                     return_type,
                     self_type,
                     return_type_span.clone(),
@@ -167,8 +172,9 @@ impl TypedFunctionDeclaration {
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace: &mut namespace,
-                crate_namespace,
+                init,
+                root: &mut temp_root,
+                mod_path,
                 return_type_annotation: return_type,
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",

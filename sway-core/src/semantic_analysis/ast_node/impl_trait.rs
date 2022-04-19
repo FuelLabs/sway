@@ -14,8 +14,9 @@ use sway_types::span::Span;
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
-    namespace: &mut Namespace,
-    crate_namespace: &Namespace,
+    init: &Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
@@ -32,7 +33,7 @@ pub(crate) fn implementation_of_trait(
         ..
     } = impl_trait;
     let type_implementing_for = check!(
-        namespace.resolve_type_without_self(&type_implementing_for),
+        root.resolve_type_without_self(mod_path, &type_implementing_for),
         return err(warnings, errors),
         warnings,
         errors
@@ -48,8 +49,8 @@ pub(crate) fn implementation_of_trait(
             break;
         }
     }
-    match namespace
-        .get_call_path(&trait_name)
+    match root
+        .get_call_path(mod_path, &trait_name)
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
@@ -59,8 +60,9 @@ pub(crate) fn implementation_of_trait(
                     &functions,
                     &tr.methods,
                     &trait_name,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -77,7 +79,7 @@ pub(crate) fn implementation_of_trait(
             // type check all components of the impl trait functions
             // add the methods to the namespace
 
-            namespace.insert_trait_implementation(
+            root[mod_path].insert_trait_implementation(
                 trait_name.clone(),
                 match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
                     Ok(o) => o,
@@ -117,8 +119,9 @@ pub(crate) fn implementation_of_trait(
                     &functions,
                     &abi.methods,
                     &trait_name,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -135,7 +138,7 @@ pub(crate) fn implementation_of_trait(
             // type check all components of the impl trait functions
             // add the methods to the namespace
 
-            namespace.insert_trait_implementation(
+            root[mod_path].insert_trait_implementation(
                 trait_name.clone(),
                 look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
@@ -179,8 +182,9 @@ fn type_check_trait_implementation(
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
     trait_name: &CallPath,
-    namespace: &mut Namespace,
-    crate_namespace: &Namespace,
+    init: &Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -209,8 +213,9 @@ fn type_check_trait_implementation(
         let fn_decl = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: fn_decl.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,
@@ -328,22 +333,20 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut local_namespace = namespace.clone();
+    let mut temp_root = root.clone();
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
     // First, get the path to where the trait is declared. This is a combination of the path stored
     // in the symbols map and the path stored in the CallPath.
-    local_namespace.star_import(
-        Some(crate_namespace),
-        [
-            &trait_name.prefixes[..],
-            local_namespace.get_canonical_path(&trait_name.suffix),
-        ]
-        .concat(),
-    );
+    let trait_path = [
+        &trait_name.prefixes[..],
+        temp_root.get_canonical_path(&trait_name.suffix),
+    ]
+    .concat();
+    temp_root.star_import(&trait_path, mod_path);
 
-    local_namespace.insert_trait_implementation(
+    temp_root.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.suffix.clone(),
@@ -367,8 +370,9 @@ fn type_check_trait_implementation(
         let method = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
-                namespace: &mut local_namespace,
-                crate_namespace,
+                init,
+                root: &mut temp_root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,

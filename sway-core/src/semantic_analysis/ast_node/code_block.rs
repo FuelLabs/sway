@@ -28,8 +28,9 @@ impl TypedCodeBlock {
 
         let TypeCheckArguments {
             checkee: other,
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             help_text,
             self_type,
@@ -39,16 +40,17 @@ impl TypedCodeBlock {
             ..
         } = arguments;
 
-        // Create a scoped namespace for the code block.
-        let mut local_namespace = namespace.clone();
+        // Create a temp namespace for this code block.
+        let mut temp_root = root.clone();
         let evaluated_contents = other
             .contents
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
-                    namespace: &mut local_namespace,
-                    crate_namespace,
+                    init,
+                    root: &mut temp_root,
+                    mod_path,
                     return_type_annotation: type_annotation,
                     help_text,
                     self_type,

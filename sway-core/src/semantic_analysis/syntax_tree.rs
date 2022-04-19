@@ -8,7 +8,11 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::Purity,
-    semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments},
+    semantic_analysis::{
+        ast_node::Mode,
+        namespace::{self, Namespace},
+        TypeCheckArguments,
+    },
     type_engine::*,
     AstNode, ParseTree,
 };
@@ -118,9 +122,29 @@ impl TypedParseTree {
         }
     }
 
+    /// Type-check the given `parsed` tree.
+    ///
+    /// This is called from both the top-level `compile_*` functions, as well as internally for
+    /// each sub-module library.
+    ///
+    /// ### Arguments
+    ///
+    /// - `init` is the initial namespace consisting of the names that are always present no matter
+    ///   the module or scope we are currently checking. These include external library
+    ///   dependencies and (when it's added) the `std` prelude. This is passed through
+    ///   type-checking in order to initialise the namespace of each submodule library in the
+    ///   project.
+    /// - `root` provides access to the root of the project namespace. From the root, the entirety
+    ///   of the project's namespace can be accessed. The `root` is initialised from the `init`
+    ///   namespace, but accumulates names as it traverses the tree. Upon successful validation,
+    ///   the accumulated `root` namespace is returned inside `Self`.
+    /// - `mod_path` is an absolute path into the `root` that represents the current module we are
+    ///   type-checking.
     pub(crate) fn type_check(
         parsed: ParseTree,
-        crate_namespace: Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -135,16 +159,12 @@ impl TypedParseTree {
             errors
         );
 
-        // We'll build the new namespace as we traverse the tree. We initialise the new namespace
-        // with the root namespace. This root namespace consists of dependency packages, and should
-        // possibly also include prelude items in the future.
-        let mut new_namespace = crate_namespace.clone();
-
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
-                &mut new_namespace,
-                &crate_namespace,
+                init,
+                root,
+                mod_path,
                 build_config,
                 dead_code_graph,
             ),
@@ -156,7 +176,7 @@ impl TypedParseTree {
         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
-            new_namespace,
+            root.clone(),
             tree_type,
             warnings,
             errors,
@@ -165,8 +185,9 @@ impl TypedParseTree {
 
     fn type_check_nodes(
         nodes: Vec<AstNode>,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Vec<TypedAstNode>> {
@@ -177,8 +198,9 @@ impl TypedParseTree {
             .map(|node| {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
@@ -211,7 +233,8 @@ impl TypedParseTree {
 
         // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
         // then B is also implemented for type T
-        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+        // Note that we're checking supertraits from the root, so we pass an empty module path.
+        errors.append(&mut check_supertraits(&all_nodes, &namespace, &[]));
 
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
@@ -312,7 +335,8 @@ impl TypedParseTree {
 ///
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
-    namespace: &Namespace,
+    root: &Namespace,
+    mod_path: &namespace::Path,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
@@ -326,7 +350,7 @@ fn check_supertraits(
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
                 ..
-            } = namespace.get_call_path(trait_name)
+            } = root.get_call_path(mod_path, trait_name)
             {
                 let supertraits = tr.supertraits;
                 for supertrait in &supertraits {
@@ -347,8 +371,8 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                namespace.get_call_path(search_node_trait_name),
-                                namespace.get_call_path(&supertrait.name),
+                                root.get_call_path(mod_path, search_node_trait_name),
+                                root.get_call_path(mod_path, &supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (type_implementing_for

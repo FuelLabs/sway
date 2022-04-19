@@ -26,6 +26,9 @@ type ModuleMap = im::OrdMap<ModuleName, Namespace>;
 type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
 type UseAliases = im::HashMap<String, Ident>;
 
+pub type Path = [Ident];
+pub type PathBuf = Vec<Ident>;
+
 /// A namespace represents all items that exist either within some lexical scope via declaration or
 /// importing.
 ///
@@ -206,15 +209,21 @@ impl Namespace {
     /// `foo::bar::function`
     ///
     /// where `foo` and `bar` are the prefixes and `function` is the suffix.
-    pub(crate) fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
-        let path = if symbol.prefixes.is_empty() {
-            self.use_synonyms
-                .get(&symbol.suffix)
-                .unwrap_or(&symbol.prefixes)
-        } else {
-            &symbol.prefixes
-        };
-        self.get_name_from_path(path, &symbol.suffix)
+    ///
+    /// The given `mod_path` is a path to the module in which we're retrieving the symbol. If the
+    /// call path has no prefix path, we look up the synonym within the given module to find the
+    /// symbol's absolute path that we can use with `self`.
+    pub(crate) fn get_call_path(
+        &self,
+        mod_path: &Path,
+        symbol: &CallPath,
+    ) -> CompileResult<TypedDeclaration> {
+        if symbol.prefixes.is_empty() {
+            if let Some(path) = self[mod_path].use_synonyms.get(&symbol.suffix) {
+                return self.get_name_from_path(path, &symbol.suffix);
+            }
+        }
+        self[mod_path].get_name_from_path(&symbol.prefixes, &symbol.suffix)
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
@@ -286,6 +295,7 @@ impl Namespace {
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        mod_path: &Path,
         ty: TypeInfo,
         self_type: TypeId,
         span: Span,
@@ -302,6 +312,7 @@ impl Namespace {
                 for type_argument in type_arguments.into_iter() {
                     let new_type_id = check!(
                         self.resolve_type_with_self(
+                            mod_path,
                             look_up_type_id(type_argument.type_id),
                             self_type,
                             type_argument.span.clone(),
@@ -317,7 +328,10 @@ impl Namespace {
                     };
                     new_type_arguments.push(type_argument);
                 }
-                match self.get_symbol(name).ok(&mut warnings, &mut errors) {
+                match self
+                    .get_symbol(mod_path, name)
+                    .ok(&mut warnings, &mut errors)
+                {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         if enforce_type_args
                             && new_type_arguments.is_empty()
@@ -331,7 +345,11 @@ impl Namespace {
                         }
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize(self, &new_type_arguments, Some(self_type)),
+                                decl.monomorphize(
+                                    &mut self[mod_path],
+                                    &new_type_arguments,
+                                    Some(self_type)
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -355,7 +373,7 @@ impl Namespace {
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
                                 decl.monomorphize_with_type_arguments(
-                                    self,
+                                    &mut self[mod_path],
                                     &new_type_arguments,
                                     Some(self_type)
                                 ),
@@ -384,7 +402,11 @@ impl Namespace {
         ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn resolve_type_without_self(&mut self, ty: &TypeInfo) -> CompileResult<TypeId> {
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        mod_path: &Path,
+        ty: &TypeInfo,
+    ) -> CompileResult<TypeId> {
         let ty = ty.clone();
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -392,12 +414,16 @@ impl Namespace {
             TypeInfo::Custom {
                 name,
                 type_arguments,
-            } => match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
+            } => match self
+                .get_symbol(mod_path, &name)
+                .ok(&mut warnings, &mut errors)
+            {
                 Some(TypedDeclaration::StructDeclaration(decl)) => {
                     let mut new_type_arguments = vec![];
                     for type_argument in type_arguments.into_iter() {
                         let new_type_id = check!(
                             self.resolve_type_without_self(
+                                mod_path,
                                 &look_up_type_id(type_argument.type_id),
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
@@ -412,7 +438,7 @@ impl Namespace {
                     }
                     if !decl.type_parameters.is_empty() {
                         let new_decl = check!(
-                            decl.monomorphize(self, &new_type_arguments, None),
+                            decl.monomorphize(&mut self[mod_path], &new_type_arguments, None),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -427,6 +453,7 @@ impl Namespace {
                     for type_argument in type_arguments.into_iter() {
                         let new_type_id = check!(
                             self.resolve_type_without_self(
+                                mod_path,
                                 &look_up_type_id(type_argument.type_id),
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
@@ -441,7 +468,11 @@ impl Namespace {
                     }
                     if !decl.type_parameters.is_empty() {
                         let new_decl = check!(
-                            decl.monomorphize_with_type_arguments(self, &new_type_arguments, None),
+                            decl.monomorphize_with_type_arguments(
+                                &mut self[mod_path],
+                                &new_type_arguments,
+                                None
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -459,11 +490,20 @@ impl Namespace {
         ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
-        let empty = vec![];
-        let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
-        let true_symbol = self.use_aliases.get(symbol.as_str()).unwrap_or(symbol);
-        self.get_name_from_path(path, true_symbol)
+    /// Get the `symbol` within the module at the given `mod_path`.
+    pub(crate) fn get_symbol(
+        &self,
+        mod_path: &Path,
+        symbol: &Ident,
+    ) -> CompileResult<TypedDeclaration> {
+        let true_symbol = self[mod_path]
+            .use_aliases
+            .get(symbol.as_str())
+            .unwrap_or(symbol);
+        match self[mod_path].use_synonyms.get(symbol) {
+            None => self.get_name_from_path(mod_path, true_symbol),
+            Some(path) => self.get_name_from_path(path, true_symbol),
+        }
     }
 
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
@@ -471,23 +511,27 @@ impl Namespace {
     /// library where we pull the type from the arguments buffer.
     ///
     /// This function will generate a missing method error if the method is not found.
+    ///
+    /// This method should only be called on the root namespace. `mod_path` is the current module,
+    /// `method_path` is assumed to be absolute.
     pub(crate) fn find_method_for_type(
         &mut self,
+        mod_path: &Path,
         r#type: TypeId,
-        method_name: &Ident,
-        method_path: &[Ident],
-        from_module: Option<&Namespace>,
+        method_path: &Path,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // TODO: We likely want to use `from_module` directly here but don't have `&mut` access.
-        let mut from_module = from_module.cloned();
-        let local_methods = self.get_methods_for_type(r#type);
-        let base_module = from_module.as_mut().unwrap_or(self);
-        let namespace = check!(
-            base_module.find_module_relative_mut(method_path),
+
+        let mut root_methods = self.get_methods_for_type(r#type);
+        let local_methods = self[mod_path].get_methods_for_type(r#type);
+        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
+
+        // Ensure there's a module for the given method prefix.
+        check!(
+            self.find_module_relative(method_prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -496,7 +540,8 @@ impl Namespace {
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
         let r#type = check!(
-            namespace.resolve_type_with_self(
+            self.resolve_type_with_self(
+                method_prefix,
                 look_up_type_id(r#type),
                 self_type,
                 method_name.span().clone(),
@@ -506,9 +551,17 @@ impl Namespace {
             warnings,
             errors
         );
-        let mut ns_methods = namespace.get_methods_for_type(r#type);
+        let mut ns_methods = self[method_prefix].get_methods_for_type(r#type);
+
+        // TODO
+        // Here we collect function declarations for the given type from the current module, the
+        // module in which the method was implemented, and the root. Perhaps we should instead have
+        // a root-level map that always stores all inherent methods for each type, seeing as
+        // inherent methods are always accessible?
         let mut methods = local_methods;
         methods.append(&mut ns_methods);
+        // TODO: Make sure we actually want this?
+        methods.append(&mut root_methods);
 
         match methods
             .into_iter()
@@ -658,8 +711,12 @@ impl Namespace {
         ok((symbol, parent_rover), warnings, errors)
     }
 
-    pub(crate) fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
-        match self.get_symbol(enum_name) {
+    pub(crate) fn find_enum(
+        &self,
+        mod_path: &Path,
+        enum_name: &Ident,
+    ) -> Option<TypedEnumDeclaration> {
+        match self.get_symbol(mod_path, enum_name) {
             CompileResult {
                 value: Some(TypedDeclaration::EnumDeclaration(inner)),
                 ..
@@ -668,26 +725,21 @@ impl Namespace {
         }
     }
 
-    /// Given a path to a module, create synonyms to every symbol in that module.
+    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
+    /// `dst` module.
+    ///
     /// This is used when an import path contains an asterisk.
-    pub(crate) fn star_import(
-        &mut self,
-        from_module: Option<&Namespace>,
-        path: Vec<Ident>,
-    ) -> CompileResult<()> {
+    pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let namespace = {
-            let base_namespace = from_module.unwrap_or(self);
-            check!(
-                base_namespace.find_module_relative(&path),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        };
-        let implemented_traits = namespace.implemented_traits.clone();
-        let symbols = namespace
+        let src_ns = check!(
+            self.find_module_relative(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let implemented_traits = src_ns.implemented_traits.clone();
+        let symbols = src_ns
             .symbols
             .iter()
             .filter_map(|(symbol, decl)| {
@@ -699,58 +751,58 @@ impl Namespace {
             })
             .collect::<Vec<_>>();
 
+        let dst_ns = &mut self[dst];
         check!(
-            self.implemented_traits.extend(implemented_traits),
+            dst_ns.implemented_traits.extend(implemented_traits),
             (),
             warnings,
             errors
         );
         for symbol in symbols {
-            if self.use_synonyms.contains_key(&symbol) {
+            if dst_ns.use_synonyms.contains_key(&symbol) {
                 errors.push(CompileError::StarImportShadowsOtherSymbol {
                     name: symbol.clone(),
                 });
             }
-            self.use_synonyms.insert(symbol, path.clone());
+            dst_ns.use_synonyms.insert(symbol, src.to_vec());
         }
         ok((), warnings, errors)
     }
 
-    /// Pull a single item from a module and import it into this namespace.
+    /// Pull a single item from a `src` module and import it into the `dst` module.
     ///
     /// The item we want to import is basically the last item in path because this is a self
     /// import.
     pub(crate) fn self_import(
         &mut self,
-        from_namespace: Option<&Namespace>,
-        path: Vec<Ident>,
+        src: &Path,
+        dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
-        let mut new_path = path;
-        let last_item = new_path.pop().expect("guaranteed by grammar");
-        self.item_import(from_namespace, new_path, &last_item, alias)
+        let (last_item, src) = src.split_last().expect("guaranteed by grammar");
+        self.item_import(src, last_item, dst, alias)
     }
 
-    /// Pull a single item from a module and import it into this namespace.
+    /// Pull a single `item` from the given `src` module and import it into the `dst` module.
+    ///
+    /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
-        from_namespace: Option<&Namespace>,
-        path: Vec<Ident>,
+        src: &Path,
         item: &Ident,
+        dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let base_namespace = from_namespace.unwrap_or(self);
-        let namespace = check!(
-            base_namespace.find_module_relative(&path),
+        let src_ns = check!(
+            self.find_module_relative(src),
             return err(warnings, errors),
             warnings,
             errors
         );
         let mut impls_to_insert = vec![];
-
-        match namespace.symbols.get(item).cloned() {
+        match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 if decl.visibility() != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol {
@@ -764,37 +816,39 @@ impl Namespace {
                     ..
                 }) = decl
                 {
-                    self.insert(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                    self[dst].insert(alias.unwrap_or_else(|| name.clone()), decl.clone());
                     return ok((), warnings, errors);
                 }
                 let a = decl.return_type().value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
-                    Some(a) => namespace
+                    Some(a) => src_ns
                         .implemented_traits
                         .get_call_path_and_type_info(look_up_type_id(a)),
                     None => vec![],
                 };
                 impls_to_insert.append(&mut res);
                 // no matter what, import it this way though.
+                let dst_ns = &mut self[dst];
                 match alias {
                     Some(alias) => {
-                        if self.use_synonyms.contains_key(&alias) {
+                        if dst_ns.use_synonyms.contains_key(&alias) {
                             errors.push(CompileError::ShadowsOtherSymbol {
                                 name: alias.clone(),
                             });
                         }
-                        self.use_synonyms.insert(alias.clone(), path.clone());
-                        self.use_aliases
+                        dst_ns.use_synonyms.insert(alias.clone(), src.to_vec());
+                        dst_ns
+                            .use_aliases
                             .insert(alias.as_str().to_string(), item.clone());
                     }
                     None => {
-                        if self.use_synonyms.contains_key(item) {
+                        if dst_ns.use_synonyms.contains_key(item) {
                             errors.push(CompileError::ShadowsOtherSymbol {
                                 name: item.clone(),
                             });
                         }
-                        self.use_synonyms.insert(item.clone(), path.clone());
+                        dst_ns.use_synonyms.insert(item.clone(), src.to_vec());
                     }
                 };
             }
@@ -806,14 +860,42 @@ impl Namespace {
             }
         };
 
+        let dst_ns = &mut self[dst];
         impls_to_insert
             .into_iter()
             .for_each(|((call_path, type_info), methods)| {
-                self.implemented_traits
+                dst_ns
+                    .implemented_traits
                     .insert(call_path, type_info, methods);
             });
 
         ok((), warnings, errors)
+    }
+
+    /// Lookup the module at the given path.
+    pub fn module(&self, path: &Path) -> Option<&Namespace> {
+        self.find_module_relative(path).ok(&mut vec![], &mut vec![])
+    }
+
+    /// Unique access to the module at the given path.
+    pub fn module_mut(&mut self, path: &Path) -> Option<&mut Namespace> {
+        self.find_module_relative_mut(path)
+            .ok(&mut vec![], &mut vec![])
+    }
+}
+
+impl<'a> std::ops::Index<&'a Path> for Namespace {
+    type Output = Namespace;
+    fn index(&self, path: &'a Path) -> &Self::Output {
+        self.module(path)
+            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+    }
+}
+
+impl<'a> std::ops::IndexMut<&'a Path> for Namespace {
+    fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
+        self.module_mut(path)
+            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
     }
 }
 
@@ -930,7 +1012,11 @@ impl TraitMap {
 fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-            Span::join(acc, this_one.span().clone())
+            if acc.path() == this_one.span().path() {
+                Span::join(acc, this_one.span().clone())
+            } else {
+                acc
+            }
         }),
         name: path
             .iter()

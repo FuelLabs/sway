@@ -33,7 +33,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
-    Namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    namespace, Namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
@@ -254,80 +254,6 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
-/// This struct represents the compilation of an internal dependency
-/// defined through an include statement (the `dep` keyword).
-pub(crate) struct InnerDependencyCompileResult {
-    name: Ident,
-    namespace: Namespace,
-}
-
-/// For internal compiler use.
-/// Compiles an included file and returns its control flow and dead code graphs.
-/// These graphs are merged into the parent program's graphs for accurate analysis.
-///
-/// TODO -- there is _so_ much duplicated code and messiness in this file around the
-/// different types of compilation and stuff. After we get to a good state with the MVP,
-/// clean up the types here with the power of hindsight
-pub(crate) fn compile_inner_dependency(
-    input: Arc<str>,
-    initial_namespace: Namespace,
-    build_config: BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
-) -> CompileResult<InnerDependencyCompileResult> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-    let parse_tree = check!(
-        parse(input.clone(), Some(&build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let library_name = match &parse_tree.tree_type {
-        TreeType::Library { name } => name,
-        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            errors.push(CompileError::ImportMustBeLibrary {
-                span: span::Span::new(input, 0, 0, Some(build_config.path())).unwrap(),
-            });
-            return err(warnings, errors);
-        }
-    };
-    let typed_parse_tree = check!(
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            initial_namespace,
-            &parse_tree.tree_type,
-            &build_config,
-            dead_code_graph,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // look for return path errors
-    let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
-    errors.append(&mut graph.analyze_return_paths());
-
-    // The dead code will be analyzed later wholistically with the rest of the program
-    // since we can't tell what is dead and what isn't just from looking at this file
-    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
-        &typed_parse_tree,
-        &parse_tree.tree_type,
-        dead_code_graph,
-    ) {
-        errors.push(e)
-    };
-
-    ok(
-        InnerDependencyCompileResult {
-            name: library_name.clone(),
-            namespace: typed_parse_tree.into_namespace(),
-        },
-        warnings,
-        errors,
-    )
-}
-
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: Namespace,
@@ -358,13 +284,22 @@ pub fn compile_to_ast(
         namespace: Default::default(),
     };
 
+    // The initial namespace is used to initialise the project's root namespace as well as its
+    // submodules. It includes library dependencies (as modules), and eventually should include the
+    // std prelude.
+    let mut root = initial_namespace.clone();
+    // Path into the root of the module undergoing type-checking. We start with the `root` itself.
+    let mod_path = &[];
+
     let CompileResult {
         value: typed_parse_tree_result,
         warnings: new_warnings,
         errors: new_errors,
     } = TypedParseTree::type_check(
         parse_tree.tree,
-        initial_namespace,
+        &initial_namespace,
+        &mut root,
+        mod_path,
         &parse_tree.tree_type,
         &build_config.clone(),
         &mut dead_code_graph,

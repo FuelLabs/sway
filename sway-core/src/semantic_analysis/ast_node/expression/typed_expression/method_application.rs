@@ -16,8 +16,9 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
-    namespace: &mut Namespace,
-    crate_namespace: &Namespace,
+    init: &Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -31,8 +32,9 @@ pub(crate) fn type_check_method_application(
         args_buf.push_back(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: arg,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -96,17 +98,20 @@ pub(crate) fn type_check_method_application(
                 }
                 (ty, true) => ty,
             };
-            let from_module = if call_path.is_absolute {
-                Some(crate_namespace)
+            let abs_path: Vec<Ident> = if call_path.is_absolute {
+                call_path.full_path().cloned().collect()
             } else {
-                None
+                mod_path
+                    .iter()
+                    .chain(call_path.full_path())
+                    .cloned()
+                    .collect()
             };
             check!(
-                namespace.find_method_for_type(
+                root.find_method_for_type(
+                    mod_path,
                     insert_type(ty),
-                    &call_path.suffix,
-                    &call_path.prefixes[..],
-                    from_module,
+                    &abs_path,
                     self_type,
                     &args_buf,
                 ),
@@ -120,8 +125,9 @@ pub(crate) fn type_check_method_application(
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+            let abs_path: Vec<_> = mod_path.iter().chain(Some(method_name)).cloned().collect();
             check!(
-                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
+                root.find_method_for_type(mod_path, ty, &abs_path, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -169,8 +175,9 @@ pub(crate) fn type_check_method_application(
                         check!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: param.value,
-                                namespace,
-                                crate_namespace,
+                                init,
+                                root,
+                                mod_path,
                                 return_type_annotation: match param.name.span().as_str() {
                                     constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                                     | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => insert_type(
@@ -270,8 +277,9 @@ pub(crate) fn type_check_method_application(
                     re_parse_expression(
                         contract_address.into(),
                         build_config,
-                        namespace,
-                        crate_namespace,
+                        init,
+                        root,
+                        mod_path,
                         self_type,
                         dead_code_graph,
                         opts,
@@ -354,8 +362,9 @@ pub(crate) fn type_check_method_application(
                     re_parse_expression(
                         contract_address.into(),
                         build_config,
-                        namespace,
-                        crate_namespace,
+                        init,
+                        root,
+                        mod_path,
                         self_type,
                         dead_code_graph,
                         opts,
@@ -399,8 +408,9 @@ pub(crate) fn type_check_method_application(
 fn re_parse_expression(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
-    namespace: &mut Namespace,
-    crate_namespace: &Namespace,
+    init: &Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
@@ -454,8 +464,9 @@ fn re_parse_expression(
     let contract_address = check!(
         TypedExpression::type_check(TypeCheckArguments {
             checkee: value,
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: insert_type(TypeInfo::Unknown),
             help_text: Default::default(),
             self_type,

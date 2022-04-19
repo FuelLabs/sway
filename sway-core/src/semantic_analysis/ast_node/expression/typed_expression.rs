@@ -185,8 +185,9 @@ impl TypedExpression {
     pub(crate) fn type_check(arguments: TypeCheckArguments<'_, Expression>) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             help_text,
             self_type,
@@ -199,7 +200,7 @@ impl TypedExpression {
         let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression { name, span, .. } => {
-                Self::type_check_variable_expression(name, span, namespace)
+                Self::type_check_variable_expression(name, span, root, mod_path)
             }
             Expression::FunctionApplication {
                 name,
@@ -210,8 +211,9 @@ impl TypedExpression {
             } => Self::type_check_function_application(
                 TypeCheckArguments {
                     checkee: (name, arguments, type_arguments),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text,
                     self_type,
@@ -226,8 +228,9 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (op, *lhs, *rhs),
                     return_type_annotation: insert_type(TypeInfo::Boolean),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     help_text,
                     self_type,
                     build_config,
@@ -240,8 +243,9 @@ impl TypedExpression {
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
                 contents,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 type_annotation,
                 help_text,
                 self_type,
@@ -260,8 +264,9 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (condition, then, r#else),
                     return_type_annotation: type_annotation,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -279,8 +284,9 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (*if_exp, cases_covered),
                     return_type_annotation: type_annotation,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -293,8 +299,9 @@ impl TypedExpression {
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -310,8 +317,9 @@ impl TypedExpression {
                 struct_name,
                 type_arguments,
                 fields,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -325,8 +333,9 @@ impl TypedExpression {
                 prefix,
                 span,
                 field_to_access,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -344,8 +353,9 @@ impl TypedExpression {
                 arguments,
                 type_arguments,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -354,8 +364,9 @@ impl TypedExpression {
             Expression::Tuple { fields, span } => Self::type_check_tuple(
                 fields,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 type_annotation,
                 self_type,
                 build_config,
@@ -372,8 +383,9 @@ impl TypedExpression {
                 index,
                 index_span,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -389,8 +401,9 @@ impl TypedExpression {
                 span,
                 args,
                 type_arguments,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -404,8 +417,9 @@ impl TypedExpression {
                 abi_name,
                 address,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -414,8 +428,9 @@ impl TypedExpression {
             Expression::Array { contents, span } => Self::type_check_array(
                 contents,
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -428,8 +443,9 @@ impl TypedExpression {
             } => Self::type_check_array_index(
                 TypeCheckArguments {
                     checkee: (*prefix, *index),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -444,8 +460,9 @@ impl TypedExpression {
                 Self::type_check_delayed_resolution(
                     variant,
                     span,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -455,8 +472,9 @@ impl TypedExpression {
             Expression::StorageAccess { field_names, .. } => Self::type_check_storage_load(
                 TypeCheckArguments {
                     checkee: field_names,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -480,8 +498,9 @@ impl TypedExpression {
                     mode: Mode::NonAbi,
                     help_text: Default::default(),
                     opts,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -491,8 +510,9 @@ impl TypedExpression {
             Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
                 TypeCheckArguments {
                     checkee: *exp,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -512,8 +532,9 @@ impl TypedExpression {
                 builtin,
                 TypeCheckArguments {
                     checkee: (type_name, type_span),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -548,7 +569,8 @@ impl TypedExpression {
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
-            namespace.resolve_type_with_self(
+            root.resolve_type_with_self(
+                mod_path,
                 look_up_type_id(typed_expression.return_type),
                 self_type,
                 expr_span.clone(),
@@ -620,10 +642,11 @@ impl TypedExpression {
     pub(crate) fn type_check_variable_expression(
         name: Ident,
         span: Span,
-        namespace: &Namespace,
+        root: &Namespace,
+        mod_path: &namespace::Path,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let exp = match namespace.get_symbol(&name).value {
+        let exp = match root.get_symbol(mod_path, &name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
             })) => TypedExpression {
@@ -674,8 +697,9 @@ impl TypedExpression {
         let mut errors = vec![];
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             self_type,
             build_config,
             dead_code_graph,
@@ -683,7 +707,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let function_declaration = check!(
-            namespace.get_call_path(&name),
+            root.get_call_path(mod_path, &name),
             return err(warnings, errors),
             warnings,
             errors
@@ -703,8 +727,9 @@ impl TypedExpression {
             name,
             type_arguments,
             arguments,
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             self_type,
             build_config,
             dead_code_graph,
@@ -718,8 +743,9 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (op, lhs, rhs),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             self_type,
             build_config,
             dead_code_graph,
@@ -737,8 +763,9 @@ impl TypedExpression {
                 mode: Mode::NonAbi,
                 opts,
                 self_type,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation,
                 build_config,
                 dead_code_graph,
@@ -751,8 +778,9 @@ impl TypedExpression {
         let typed_rhs = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: rhs.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation,
                 help_text: Default::default(),
                 self_type,
@@ -785,8 +813,9 @@ impl TypedExpression {
     fn type_check_code_block(
         contents: CodeBlock,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
@@ -799,8 +828,9 @@ impl TypedExpression {
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: contents,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: type_annotation,
                 help_text,
                 self_type,
@@ -857,8 +887,9 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (scrutinee, expr, then, r#else),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -870,7 +901,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (enum_type, variant) = check!(
-            check_scrutinee_type(&scrutinee, namespace),
+            check_scrutinee_type(&scrutinee, root, mod_path),
             return err(warnings, errors),
             warnings,
             errors
@@ -884,8 +915,9 @@ impl TypedExpression {
         let expr = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *expr.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: enum_type,
                 help_text: "The return value of this expression must match the type of the pattern provided.",
                 self_type,
@@ -898,12 +930,14 @@ impl TypedExpression {
             warnings,
             errors
         ));
-        // put the variable and type of the enum variants inner type into the namespace for the
-        // "then" branch but not the else branch
-        let mut then_branch_scope = namespace.clone();
+
+        // put the variable and type of the enum variants inner type into a temporary namespace for
+        // the "then" branch, but not the else branch.
+        let mut temp_root = root.clone();
+
         // calculate the return type of the variable by checking the enum variant's return type
 
-        then_branch_scope.insert(
+        temp_root[mod_path].insert(
             variable_to_assign.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: variable_to_assign.clone(),
@@ -925,8 +959,9 @@ impl TypedExpression {
         let (then, then_branch_code_block_return_type) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: then,
-                namespace: &mut then_branch_scope,
-                crate_namespace,
+                init,
+                root: &mut temp_root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "Because the return value of this expression is used, all branches of `if let` expression must return this type",
                 self_type,
@@ -971,8 +1006,9 @@ impl TypedExpression {
                 let r#else = check!(
                     TypedExpression::type_check(TypeCheckArguments {
                         checkee: *expr,
-                        namespace,
-                        crate_namespace,
+                        init,
+                        root,
+                        mod_path,
                         return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text:
                             "The two branches of an if let expression must return the same type.",
@@ -1045,8 +1081,9 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (condition, then, r#else),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -1059,8 +1096,9 @@ impl TypedExpression {
         let condition = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *condition.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Boolean),
                 help_text: "The condition of an if expression must be a boolean expression.",
                 self_type,
@@ -1076,8 +1114,9 @@ impl TypedExpression {
         let then = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1114,8 +1153,9 @@ impl TypedExpression {
             let r#else = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: *expr.clone(),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -1192,8 +1232,9 @@ impl TypedExpression {
         let mut errors = vec![];
         let TypeCheckArguments {
             checkee: (if_exp, cases_covered),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -1203,8 +1244,9 @@ impl TypedExpression {
         } = arguments;
         let args = TypeCheckArguments {
             checkee: if_exp.clone(),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,
@@ -1247,8 +1289,9 @@ impl TypedExpression {
     fn type_check_asm_expression(
         asm: AsmExpression,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1262,7 +1305,13 @@ impl TypedExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span, false),
+            root.resolve_type_with_self(
+                mod_path,
+                asm.return_type.clone(),
+                self_type,
+                asm_span,
+                false
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -1278,8 +1327,9 @@ impl TypedExpression {
                         check!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: initializer.clone(),
-                                namespace,
-                                crate_namespace,
+                                init,
+                                root,
+                                mod_path,
                                 return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text: Default::default(),
                                 self_type,
@@ -1316,8 +1366,9 @@ impl TypedExpression {
         call_path: CallPath,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1327,15 +1378,19 @@ impl TypedExpression {
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
 
+        let module_path: Vec<_> = mod_path
+            .iter()
+            .chain(&call_path.prefixes)
+            .cloned()
+            .collect();
         let decl = {
-            let module = check!(
-                namespace.find_module_relative(&call_path.prefixes),
+            check!(
+                root.find_module_relative(&module_path),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-
-            match module.get_symbol(&call_path.suffix).value {
+            match root.get_symbol(&module_path, &call_path.suffix).value {
                 Some(TypedDeclaration::StructDeclaration(decl)) => decl,
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
@@ -1375,7 +1430,8 @@ impl TypedExpression {
                 let mut type_arguments = type_arguments;
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        namespace.resolve_type_with_self(
+                        root.resolve_type_with_self(
+                            mod_path,
                             look_up_type_id(type_argument.type_id),
                             self_type,
                             type_argument.span.clone(),
@@ -1387,15 +1443,8 @@ impl TypedExpression {
                     );
                 }
 
-                let module = check!(
-                    namespace.find_module_relative_mut(&call_path.prefixes),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
                 check!(
-                    decl.monomorphize(module, &type_arguments, Some(self_type)),
+                    decl.monomorphize(&mut root[&module_path], &type_arguments, Some(self_type)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1430,8 +1479,9 @@ impl TypedExpression {
             let typed_field = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: expr_field.value,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: def_field.r#type,
                     help_text: "Struct field's type must match up with the type specified in its \
                      declaration.",
@@ -1481,8 +1531,9 @@ impl TypedExpression {
         prefix: Box<Expression>,
         span: Span,
         field_to_access: Ident,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1493,8 +1544,9 @@ impl TypedExpression {
         let parent = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *prefix,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1508,7 +1560,7 @@ impl TypedExpression {
             errors
         );
         let (fields, struct_name) = check!(
-            namespace.get_struct_type_fields(
+            root[mod_path].get_struct_type_fields(
                 parent.return_type,
                 parent.span.as_str(),
                 &parent.span
@@ -1551,8 +1603,9 @@ impl TypedExpression {
     fn type_check_tuple(
         fields: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1579,8 +1632,9 @@ impl TypedExpression {
             let typed_field = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: field,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: field_type.type_id,
                     help_text: "tuple field type does not match the expected type",
                     self_type,
@@ -1620,15 +1674,23 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, Vec<Ident>>,
         span: &Span,
     ) -> CompileResult<TypedExpression> {
+        let TypeCheckArguments {
+            root,
+            mod_path,
+            checkee,
+            ..
+        } = arguments;
+
         let mut warnings = vec![];
         let mut errors = vec![];
-        if !arguments.namespace.has_storage_declared() {
+        let namespace = &root[mod_path];
+        if !namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
         }
 
         let storage_fields = check!(
-            arguments.namespace.get_storage_field_descriptors(),
+            namespace.get_storage_field_descriptors(),
             return err(warnings, errors),
             warnings,
             errors
@@ -1636,9 +1698,7 @@ impl TypedExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            arguments
-                .namespace
-                .apply_storage_load(arguments.checkee, &storage_fields),
+            namespace.apply_storage_load(checkee, &storage_fields),
             return err(warnings, errors),
             warnings,
             errors
@@ -1660,8 +1720,9 @@ impl TypedExpression {
         index: usize,
         index_span: Span,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1672,8 +1733,9 @@ impl TypedExpression {
         let parent = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1688,7 +1750,7 @@ impl TypedExpression {
         );
         let mut tuple_elem_to_access = None;
         let tuple_elems = check!(
-            namespace.get_tuple_elems(parent.return_type, parent.span.as_str(), &parent.span),
+            root[mod_path].get_tuple_elems(parent.return_type, parent.span.as_str(), &parent.span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1729,8 +1791,9 @@ impl TypedExpression {
         span: Span,
         args: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1756,17 +1819,19 @@ impl TypedExpression {
 
         // First, check if this could be a module. We check first so that we can check for
         // ambiguity in the following enum check.
-        let is_module = namespace
+        let is_module = root[mod_path]
             .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors)
             .is_some();
 
         // Check if the call path refers to an enum in another module.
         let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
-        let exp = if let Some(enum_decl) = namespace
+        let abs_enum_mod_path: Vec<_> = mod_path.iter().chain(enum_mod_path).cloned().collect();
+        let exp = if let Some(enum_decl) = root[mod_path]
             .find_module_relative_mut(enum_mod_path)
             .ok(&mut warnings, &mut errors)
-            .and_then(|ns| ns.find_enum(enum_name))
+            .map(|_| ())
+            .and_then(|_| root.find_enum(&abs_enum_mod_path, enum_name))
         {
             // Check for ambiguity between this enum name and a module name.
             if is_module {
@@ -1780,8 +1845,9 @@ impl TypedExpression {
                     call_path.suffix,
                     args,
                     type_arguments,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -1793,11 +1859,17 @@ impl TypedExpression {
             )
 
         // Otherwise, our prefix should point to some module ending with an enum or function.
-        } else if let Some(module) = namespace
+        } else if root[mod_path]
             .find_module_relative_mut(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors)
+            .is_some()
         {
-            let decl = match module.get_symbol(&call_path.suffix).value {
+            let path: Vec<_> = mod_path
+                .iter()
+                .chain(&call_path.prefixes)
+                .cloned()
+                .collect();
+            let decl = match root.get_symbol(&path, &call_path.suffix).value {
                 Some(decl) => decl,
                 None => {
                     errors.push(symbol_not_found(&call_path.suffix));
@@ -1813,8 +1885,9 @@ impl TypedExpression {
                             call_path.suffix,
                             args,
                             type_arguments,
-                            namespace,
-                            crate_namespace,
+                            init,
+                            root,
+                            mod_path,
                             self_type,
                             build_config,
                             dead_code_graph,
@@ -1825,23 +1898,26 @@ impl TypedExpression {
                         errors
                     )
                 }
-                TypedDeclaration::FunctionDeclaration(func_decl) => check!(
-                    instantiate_function_application(
-                        func_decl,
-                        call_path,
-                        vec!(), // the type args in this position are guarenteed to be empty due to parsing
-                        args,
-                        namespace,
-                        crate_namespace,
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        opts,
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                TypedDeclaration::FunctionDeclaration(func_decl) => {
+                    check!(
+                        instantiate_function_application(
+                            func_decl,
+                            call_path,
+                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
+                            args,
+                            init,
+                            root,
+                            mod_path,
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            opts,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
                 a => {
                     // TODO: Should this be `NotAnEnumOrFunction`?
                     errors.push(CompileError::NotAnEnum {
@@ -1867,8 +1943,9 @@ impl TypedExpression {
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1885,8 +1962,9 @@ impl TypedExpression {
         let address_expr = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *address,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::B256),
                 help_text: "An address that is being ABI cast must be of type b256",
                 self_type,
@@ -1901,7 +1979,7 @@ impl TypedExpression {
         );
         // look up the call path and get the declaration it references
         let abi = check!(
-            namespace.get_call_path(&abi_name),
+            root.get_call_path(mod_path, &abi_name),
             return err(warnings, errors),
             warnings,
             errors
@@ -1927,7 +2005,7 @@ impl TypedExpression {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
                         let decl = check!(
-                            namespace.get_call_path(&abi_name),
+                            root.get_call_path(mod_path, &abi_name),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1985,8 +2063,9 @@ impl TypedExpression {
             type_checked_fn_buf.push(check!(
                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                     checkee: method.clone(),
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
@@ -2002,7 +2081,7 @@ impl TypedExpression {
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
-        namespace.insert_trait_implementation(
+        root[mod_path].insert_trait_implementation(
             abi_name.clone(),
             look_up_type_id(return_type),
             functions_buf,
@@ -2024,8 +2103,9 @@ impl TypedExpression {
     fn type_check_array(
         contents: Vec<Expression>,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -2055,8 +2135,9 @@ impl TypedExpression {
                 check!(
                     Self::type_check(TypeCheckArguments {
                         checkee: expr,
-                        namespace,
-                        crate_namespace,
+                        init,
+                        root,
+                        mod_path,
                         return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text: Default::default(),
                         self_type,
@@ -2113,8 +2194,9 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (prefix, index),
-            namespace,
-            crate_namespace,
+            init,
+            root,
+            mod_path,
             self_type,
             build_config,
             dead_code_graph,
@@ -2127,8 +2209,9 @@ impl TypedExpression {
         let prefix_te = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix.clone(),
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -2147,8 +2230,9 @@ impl TypedExpression {
             let index_te = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: index,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::UnsignedInteger(
                         IntegerBits::SixtyFour
                     )),
@@ -2197,8 +2281,9 @@ impl TypedExpression {
                 vec![prefix, index],
                 vec![],
                 span,
-                namespace,
-                crate_namespace,
+                init,
+                root,
+                mod_path,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -2219,8 +2304,9 @@ impl TypedExpression {
     fn type_check_delayed_resolution(
         variant: DelayedResolutionVariant,
         span: Span,
-        namespace: &mut Namespace,
-        crate_namespace: &Namespace,
+        init: &Namespace,
+        root: &mut Namespace,
+        mod_path: &namespace::Path,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -2235,8 +2321,9 @@ impl TypedExpression {
             }) => {
                 let args = TypeCheckArguments {
                     checkee: *exp,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -2252,7 +2339,7 @@ impl TypedExpression {
                     errors
                 );
                 let tuple_elems = check!(
-                    namespace.get_tuple_elems(
+                    root[mod_path].get_tuple_elems(
                         parent.return_type,
                         parent.span.as_str(),
                         &parent.span
@@ -2308,8 +2395,9 @@ impl TypedExpression {
             }) => {
                 let args = TypeCheckArguments {
                     checkee: *exp,
-                    namespace,
-                    crate_namespace,
+                    init,
+                    root,
+                    mod_path,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -2325,7 +2413,7 @@ impl TypedExpression {
                     errors
                 );
                 let (struct_fields, other_struct_name) = check!(
-                    namespace.get_struct_type_fields(
+                    root[mod_path].get_struct_type_fields(
                         parent.return_type,
                         parent.span.as_str(),
                         &parent.span
@@ -2409,11 +2497,12 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (type_name, type_span),
             self_type,
-            namespace,
+            root,
+            mod_path,
             ..
         } = arguments;
         let type_id = check!(
-            namespace.resolve_type_with_self(type_name, self_type, type_span, true),
+            root.resolve_type_with_self(mod_path, type_name, self_type, type_span, true),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -2533,13 +2622,14 @@ impl TypedExpression {
 
 fn check_scrutinee_type(
     scrutinee: &Scrutinee,
-    namespace: &mut Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
 ) -> CompileResult<(TypeId, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (ty, enum_variant) = match scrutinee {
         Scrutinee::EnumScrutinee { ref call_path, .. } => check!(
-            check_enum_scrutinee_type(call_path, namespace),
+            check_enum_scrutinee_type(call_path, root, mod_path),
             return err(warnings, errors),
             warnings,
             errors
@@ -2558,14 +2648,15 @@ fn check_scrutinee_type(
 
 fn check_enum_scrutinee_type(
     call_path: &CallPath,
-    namespace: &mut Namespace,
+    root: &mut Namespace,
+    mod_path: &namespace::Path,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
     let decl: TypedDeclaration = check!(
-        namespace.get_call_path(&call_path),
+        root.get_call_path(mod_path, &call_path),
         return err(warnings, errors),
         warnings,
         errors
@@ -2580,7 +2671,7 @@ fn check_enum_scrutinee_type(
         }
     };
     let enum_decl = if !enum_decl.type_parameters.is_empty() {
-        enum_decl.monomorphize(namespace)
+        enum_decl.monomorphize(&mut root[mod_path])
     } else {
         enum_decl
     };
