@@ -17,6 +17,3 @@ sway-lib-std/Forc.lock
 
 # Forc's build directory
 out
-
-# Files specific to IDEs
-.vscode
