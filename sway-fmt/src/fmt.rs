@@ -183,6 +183,12 @@ fn main() {
     sadasd
         sadasd sadasd
     ";
+
+    storage {
+        foo: u64,
+        bar: i32,
+    }
+    storage.foo;
 }
 "#;
 
@@ -201,6 +207,11 @@ fn main(){
         sadasd sadasd
     "          
                ;
+
+storage {
+            foo: u64, bar:i32,  
+            }
+            storage.foo ;    
 }
 "#;
 
