@@ -446,7 +446,8 @@ pub fn lex(
                     }
                     mem::swap(&mut parent, &mut token_trees);
                     let start_index = open_index + open_delimiter.as_open_char().len_utf8();
-                    let full_span = Span::new(src.clone(), start_index, index, path.clone()).unwrap();
+                    let full_span =
+                        Span::new(src.clone(), start_index, index, path.clone()).unwrap();
                     let group = Group {
                         token_stream: TokenStream {
                             token_trees: parent,
@@ -784,7 +785,10 @@ pub fn lex(
         });
     }
     let full_span = Span::new(src.clone(), start, end, path).unwrap();
-    let token_stream = TokenStream { token_trees, full_span };
+    let token_stream = TokenStream {
+        token_trees,
+        full_span,
+    };
     Ok(token_stream)
 }
 

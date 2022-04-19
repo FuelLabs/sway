@@ -18,14 +18,13 @@ impl<'a, 'e> Parser<'a, 'e> {
     pub fn emit_error(&mut self, kind: ParseErrorKind) -> ErrorEmitted {
         let span = match self.token_trees.first() {
             Some(token_tree) => token_tree.span(),
-            None => {
-                Span::new(
-                    self.full_span.src().clone(),
-                    self.full_span.end(),
-                    self.full_span.end(),
-                    self.full_span.path().cloned(),
-                ).unwrap()
-            },
+            None => Span::new(
+                self.full_span.src().clone(),
+                self.full_span.end(),
+                self.full_span.end(),
+                self.full_span.path().cloned(),
+            )
+            .unwrap(),
         };
         self.emit_error_with_span(kind, span)
     }
