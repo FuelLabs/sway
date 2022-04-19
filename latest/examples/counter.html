@@ -169,7 +169,9 @@
                     <main>
                         <h1 id="counter"><a class="header" href="#counter">Counter</a></h1>
 <p>The following is a simple example of a contract which implements a counter. Both the <code>initialize()</code> and <code>increment()</code> functions return the currently set value.</p>
-<p>The use of <code>storage</code> here is <strong>new and is still being stabilized</strong>, please see the <a href="./subcurrency.html">Subcurrency</a> example for writing storage by-hand.</p>
+<pre><code class="language-bash">forc init --template counter my_counter_project
+</code></pre>
+<p>The use of <code>storage</code> here is <strong>new and is still being stabilized</strong>, please see the <a href="./subcurrency.html">Subcurrency</a> example for writing storage manually.</p>
 <pre><code class="language-sway">contract;
 
 abi TestContract {
