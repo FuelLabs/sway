@@ -6,7 +6,7 @@ Unlike account based blockchains, Fuel calls can originate from an origin which 
 
 ## msg_sender
 
-To deliver an akin experience to Ethereum based access control, the `std` library provides a `msg_sender` method, which determines a single sender based upon the call and transaction input data.
+To deliver an experience akin to Ethereum based access control, the `std` library provides a `msg_sender` method, which determines a single sender based upon the call and transaction input data.
 
 ```sway
 {{#include ../../../examples/msg_sender/src/main.sw}}
