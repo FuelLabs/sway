@@ -31,6 +31,7 @@ struct Opt {
 enum Forc {
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
+    #[clap(visible_alias = "b")]
     Build(BuildCommand),
     Clean(CleanCommand),
     #[clap(after_help = completions::COMPLETIONS_HELP)]
@@ -39,6 +40,7 @@ enum Forc {
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
+    #[clap(visible_alias = "t")]
     Test(TestCommand),
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
