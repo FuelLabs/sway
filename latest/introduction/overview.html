@@ -212,7 +212,7 @@ abi Wallet {
 <p>In the first line, we declare the name of this ABI: <code>Wallet</code>. To import this ABI into either a script or another contract for calling the contract, or the contract to implement the ABI, you would use <code>use wallet_lib::Wallet;</code>.</p>
 <p>In the second line we declare an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.</p>
 <p><em>Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>.</em></p>
-<p>In the third line we are declare another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
+<p>In the third line we declare another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
 <h3 id="implementing-the-abi-methods-in-wallet_contract"><a class="header" href="#implementing-the-abi-methods-in-wallet_contract">Implementing the ABI Methods in <code>wallet_contract</code></a></h3>
 <p>Now that we've defined the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>To do this, navigate to the <code>wallet_contract</code> directory that you created with <code>forc</code> previously.</p>
