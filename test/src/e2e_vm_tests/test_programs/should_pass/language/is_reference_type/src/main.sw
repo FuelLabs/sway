@@ -20,7 +20,7 @@ fn main() -> bool {
     assert(!is_reference_type::<byte>());
     assert(!is_reference_type::<u64>());
 
-    assert(is_reference_type::<str[1]>());
+    assert(!is_reference_type::<str[1]>());
     assert(is_reference_type::<b256>());
     assert(is_reference_type::<S>());
     assert(is_reference_type::<E>());
