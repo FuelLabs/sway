@@ -10,7 +10,8 @@ To deliver an experience akin to Ethereum's access control, the `std` library pr
 {{#include ../../../examples/msg_sender/src/main.sw}}
 ```
 
-The `msg_sender` method works as follows: 
-- If the caller is a contract, then `Result::Ok(Sender)` is returned with the `ContractId` specified.
-- If the caller is external (i.e. from a script), then all transaction input coin owners are checked, if all owners are the same, then `Result::Ok(Sender)` is returned with `Address` specified.
-- If input coin owners are different, then the `Sender` cannot be determined and an `Result::Err(AuthError)` is returned.
+The `msg_sender` function works as follows:
+
+- If the caller is a contract, then `Result::Ok(Sender)` is returned with the `ContractId` sender variant.
+- If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then `Result::Ok(Sender)` is returned with the `Address` sender variant.
+- If the caller is external and coin input owners are different, then the caller cannot be determined and a `Result::Err(AuthError)` is returned.
