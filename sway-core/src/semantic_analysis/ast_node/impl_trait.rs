@@ -334,10 +334,14 @@ fn type_check_trait_implementation(
     // basically everything in the path where the trait is declared.
     // First, get the path to where the trait is declared. This is a combination of the path stored
     // in the symbols map and the path stored in the CallPath.
-    let path_to_symbol = local_namespace.get_path_for_symbol(&trait_name.suffix);
-    let mut real_path = trait_name.prefixes.clone();
-    real_path.extend(path_to_symbol);
-    local_namespace.star_import(Some(crate_namespace), real_path);
+    local_namespace.star_import(
+        Some(crate_namespace),
+        [
+            &trait_name.prefixes[..],
+            &local_namespace.get_canonical_path(&trait_name.suffix)[..],
+        ]
+        .concat(),
+    );
 
     local_namespace.insert_trait_implementation(
         CallPath {
