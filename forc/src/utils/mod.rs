@@ -1,8 +1,8 @@
 pub mod defaults;
 pub mod parameters;
 
-use anyhow::Result;
-use forc_util::{println_red_err, println_yellow_err};
+use anyhow::{anyhow, Result};
+use forc_util::println_yellow_err;
 use rustc_version::{version, Version};
 use std::fs::File;
 use std::io::Read;
@@ -30,27 +30,29 @@ pub(crate) fn check_rust_version() -> Result<()> {
     let toml = forc_cargo_toml_as_str()?;
     let rustc_version = match version() {
         Ok(v) => v,
-        Err(_e) => {
-            println_red_err("rustc was not found in this environment.\n\nPlease see https://www.rust-lang.org/tools/install for more details on how you can install rustc.");
-            std::process::exit(0x01);
+        Err(e) => {
+            return Err(anyhow!("Could not locate rustc version due to:\n\n{}", e));
         }
     };
 
     let cargo_toml: toml::Value = toml::de::from_str(&toml)?;
 
     if let Some(table) = cargo_toml.as_table() {
-        if let Some(version) = table.get("package").unwrap().get("rust-version") {
-            let version_str = &version.as_str().unwrap();
-            let forc_rustc_version = Version::parse(version_str)?;
-            if rustc_version > forc_rustc_version {
-                let warning = format!(
-                    "\nFound rustc version {}, which is greater than the suggested version {}\n",
-                    &rustc_version, &forc_rustc_version
-                );
-                println_yellow_err(&warning);
+        if let Some(package) = table.get("package") {
+            if let Some(version) = package.get("rust-version") {
+                let version_str = &version.as_str().unwrap();
+                let forc_rustc_version = Version::parse(version_str)?;
+                if rustc_version > forc_rustc_version {
+                    let warning = format!(
+                        "\nFound rustc version {}, which is greater than the suggested version {}\n",
+                        &rustc_version, &forc_rustc_version
+                    );
+                    println_yellow_err(&warning);
+                }
+                return Ok(());
             }
         }
     }
 
-    Ok(())
+    return Err(anyhow!("Failed to read rust-version from forc/Cargo.toml"));
 }

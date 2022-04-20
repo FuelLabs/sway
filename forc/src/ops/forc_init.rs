@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{check_rust_version, defaults};
 use anyhow::{anyhow, Context, Result};
-use forc_util::{println_green, validate_name};
+use forc_util::{println_green, println_red_err, validate_name};
 use serde::Deserialize;
 use std::fs;
 use std::fs::File;
@@ -102,7 +102,10 @@ pub fn init(command: InitCommand) -> Result<()> {
 }
 
 pub(crate) fn init_new_project(project_name: String) -> Result<()> {
-    check_rust_version()?;
+    if let Err(e) = check_rust_version() {
+        println_red_err(&e.to_string());
+        std::process::exit(0x01);
+    }
 
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
