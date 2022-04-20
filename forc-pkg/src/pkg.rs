@@ -536,11 +536,19 @@ pub fn graph_to_path_map(
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
-                    .and_then(|deps| match &deps[&dep_name] {
-                        Dependency::Detailed(detailed) => Some(detailed),
-                        Dependency::Simple(_) => None,
+                    .and_then(|deps| deps.get(&dep_name))
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "dependency required for path reconstruction \
+                            has been removed from the manifest"
+                        )
                     })
-                    .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
+                    .and_then(|dep| match dep {
+                        Dependency::Detailed(detailed) => Ok(detailed),
+                        Dependency::Simple(_) => {
+                            bail!("missing path info for dependency: {}", &dep_name);
+                        }
+                    })?;
                 let rel_dep_path = detailed
                     .path
                     .as_ref()
