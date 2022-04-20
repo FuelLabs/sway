@@ -228,7 +228,7 @@ jobs:
           command: run
           args: --bin build-all-examples
       - name: Build All Tests
-        run: cd sway-lib-std && bash build.sh && cd ..
+        run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
