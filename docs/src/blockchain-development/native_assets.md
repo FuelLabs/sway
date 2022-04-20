@@ -22,7 +22,7 @@ In this example, we show a basic liquidity pool contract minting its own native 
 
 ## Native Token Example
 
-In this example, we show a native token with more minting, burning and transfering capibility.
+In this example, we show a native token contract with more minting, burning and transferring capabilities.
 
 ```sway
 {{#include ../../../examples/native_token/src/main.sw}}
