@@ -8,7 +8,4 @@ dependencies = ['core']
 
 [[package]]
 name = 'u64_ops'
-dependencies = [
-    'core',
-    'std',
-]
+dependencies = ['std']
