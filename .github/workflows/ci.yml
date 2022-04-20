@@ -107,6 +107,16 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
@@ -124,6 +134,16 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -202,6 +222,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Build All Tests
         run: cd sway-lib-std && bash build.sh && cd ..
       - name: Cargo Test sway-lib-std
@@ -220,6 +245,16 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -257,6 +292,16 @@ jobs:
           toolchain: nightly
           default: true
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:
