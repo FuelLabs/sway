@@ -5,8 +5,7 @@ license = "Apache-2.0"
 name = "counter"
 version = "0.1.0"
 
-[dependencies]
-fuel-gql-client = { version = "0.5", default-features = false }
+[dev-dependencies]
 fuel-tx = "0.7"
 fuels-abigen-macro = "0.9"
 fuels-contract = "0.9"
