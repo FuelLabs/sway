@@ -1,7 +1,7 @@
 #!/bin/bash
 
 FILES="./test_*/*"
-MANIFEST="forc.toml"
+MANIFEST="Forc.toml"
 
 pwd
 for f in $FILES
