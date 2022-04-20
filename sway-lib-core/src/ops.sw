@@ -438,6 +438,13 @@ impl u64 {
             r3: u64
         }
     }
+
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u64
+        }
+    }
 }
 
 impl OrdEq for u64 {}
