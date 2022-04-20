@@ -43,10 +43,9 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    // Ensure the project builds before running tests.
-
     check_rust_version()?;
 
+    // Ensure the project builds before running tests.
     forc_build::build(Default::default())?;
 
     let mut cmd = process::Command::new("cargo");
