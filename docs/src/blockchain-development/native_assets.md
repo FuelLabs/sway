@@ -7,3 +7,23 @@ What does this mean in practice?
 As in Ethereum, sending ETH to an address or contract is an operation built into the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances to track ownership.
 
 However, unlike Ethereum, the process for sending _any_ native asset is the same. This means that while you would still need a smart contract to handle the minting and burning of fungible tokens, the sending and receiving of these tokens can be done independently of the token contract.
+
+## Liquidity Pool Example
+
+All contracts in Fuel can mint and burn their own native token. Contracts also manage an internal balance of all native assets pushed through calls or minted by the contract. Lastly, contracts can receive and transfer any native asset including their own.
+
+The `std` library provides handy methods for accessing Fuel's native assset operations.
+
+In this example, we show a basic liquidity pool contract minting its own native asset LP token.
+
+```sway
+{{#include ../../../examples/liquidity_pool/src/main.sw}}
+```
+
+## Native Token Example
+
+In this example, we show a native token with more minting, burning and transfering capibility.
+
+```sway
+{{#include ../../../examples/native_token/src/main.sw}}
+```
