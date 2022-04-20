@@ -3,6 +3,7 @@
 FILES="./test_*/*"
 MANIFEST="forc.toml"
 
+pwd
 for f in $FILES
 do
 if [ ! -e ${f}/$MANIFEST ]
