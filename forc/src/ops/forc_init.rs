@@ -190,19 +190,18 @@ pub(crate) fn init_from_git_template(
     if out_dir.join("tests").exists() {
         // Change the project name and authors of the Cargo.toml file
         edit_cargo_toml(&out_dir, &project_name, &real_name)?;
+
+        if template_name == "counter" {
+            edit_counter_test_harness(&out_dir, &project_name)?;
+        }
     } else {
         // Create the tests directory, harness.rs and Cargo.toml file
         fs::create_dir_all(out_dir.join("tests"))?;
 
-        // If the counter template is used, insert the counter test harness
-        // Ohterwise, insert the default test harness
-        let test_program = if template_name == "counter" {
-            counter_test_harness(&project_name)
-        } else {
-            defaults::default_test_program(&project_name)
-        };
-
-        fs::write(out_dir.join("tests").join("harness.rs"), test_program)?;
+        fs::write(
+            out_dir.join("tests").join("harness.rs"),
+            defaults::default_test_program(&project_name),
+        )?;
 
         fs::write(
             out_dir.join("Cargo.toml"),
@@ -214,6 +213,20 @@ pub(crate) fn init_from_git_template(
 
     print_welcome_message();
 
+    Ok(())
+}
+
+fn edit_counter_test_harness(out_dir: &Path, project_name: &str) -> Result<()> {
+    let mut file = File::open(out_dir.join(constants::TEST_DIRECTORY).join("harness.rs"))?;
+    let mut harness = String::new();
+    file.read_to_string(&mut harness)?;
+    // Replace the project name with the new one
+    harness = harness.replace(
+        "examples/counter/out/debug/counter-abi.json",
+        &format!("./out/debug/{}-abi.json", project_name),
+    );
+    harness = harness.replace("counter.bin", &format!("{}.bin", project_name));
+    file.write_all(harness.as_bytes())?;
     Ok(())
 }
 
@@ -358,65 +371,6 @@ fn download_contents(url: &str, out_dir: &Path, responses: &[ContentResponse]) -
     }
 
     Ok(())
-}
-
-/// A harness for testing the contract of the counter template
-pub(crate) fn counter_test_harness(project_name: &str) -> String {
-    format!(
-        "{}{}{}{}{}",
-        r#"use fuel_tx::Salt;
-use fuels_abigen_macro::abigen;
-use fuels_contract::contract::Contract;
-use fuels_contract::parameters::TxParameters;
-use fuels_signers::util::test_helpers::setup_test_provider_and_wallet;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
-// Load abi from json
-abigen!(MyContract, "out/debug/"#,
-        project_name,
-        r#"-abi.json");
-
-#[tokio::test]
-async fn harness() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    // Build the contract
-    let salt: [u8; 32] = rng.gen();
-    let salt = Salt::from(salt);
-
-    // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract("./out/debug/"#,
-        project_name,
-        r#".bin", salt).unwrap();
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    println!("Contract deployed @ {:x}", contract_id);
-
-    let contract_instance = MyContract::new(contract_id.to_string(), provider, wallet);
-
-    // Call `initialize_counter()` method in our deployed contract.
-    // Note that, here, you get type-safety for free!
-    let result = contract_instance
-        .initialize_counter(42)
-        .call()
-        .await
-        .unwrap();
-
-    assert_eq!(42, result.value);
-
-    // Call `increment_counter()` method in our deployed contract.
-    let result = contract_instance
-        .increment_counter(10)
-        .call()
-        .await
-        .unwrap();
-
-    assert_eq!(52, result.value);
-}"#
-    )
 }
 
 #[cfg(test)]
