@@ -198,6 +198,18 @@
 <p>You can update <code>forc</code> and <code>fuel-core</code> with:</p>
 <pre><code class="language-sh">cargo install forc fuel-core
 </code></pre>
+<h3 id="installing-forc-plugins"><a class="header" href="#installing-forc-plugins">Installing <code>forc</code> Plugins</a></h3>
+<p>The Fuel ecosystem has a few plugins which can be easily installed via cargo.</p>
+<p>Note, <code>forc</code> detects anything in your path prefixed with <code>forc-</code> as a plugin. Use <code>forc plugins</code> to see what you currently have installed.</p>
+<pre><code class="language-sh"># Sway Formatter
+cargo install forc-fmt
+
+# Block Explorer
+cargo install forc-explore
+
+# Forc Language Server
+cargo install forc-lsp
+</code></pre>
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
 <p>The Sway toolchain can be built from source by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>.</p>
 <p>The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
