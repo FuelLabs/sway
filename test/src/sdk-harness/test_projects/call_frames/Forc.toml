@@ -6,4 +6,4 @@ name = "call_frames"
 
 [dependencies]
 call_frames_test_abi = { path = "../../test_artifacts/call_frames_test_abi" }
-std = { path = "../../../" }
+std = { path = "../../../../../sway-lib-std" }
