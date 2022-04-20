@@ -172,6 +172,125 @@
 <p>What does this mean in practice?</p>
 <p>As in Ethereum, sending ETH to an address or contract is an operation built into the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances to track ownership.</p>
 <p>However, unlike Ethereum, the process for sending <em>any</em> native asset is the same. This means that while you would still need a smart contract to handle the minting and burning of fungible tokens, the sending and receiving of these tokens can be done independently of the token contract.</p>
+<h2 id="liquidity-pool-example"><a class="header" href="#liquidity-pool-example">Liquidity Pool Example</a></h2>
+<p>All contracts in Fuel can mint and burn their own native token. Contracts can also receive and transfer any native asset including their own. Internal balances of all native assets pushed through calls or minted by the contract are tracked by the FuelVM and can be queried at any point using the balance_of function from the <code>std</code> library. Therefore, there is no need for any manual accounting of the contract's balances using persistent storage.</p>
+<p>The <code>std</code> library provides handy methods for accessing Fuel's native assset operations.</p>
+<p>In this example, we show a basic liquidity pool contract minting its own native asset LP token.</p>
+<pre><code class="language-sway">contract;
+
+use std::{
+    address::Address,
+    assert::assert,
+    context::call_frames::{
+        contract_id,
+        msg_asset_id
+    },
+    context::msg_amount,
+    contract_id::ContractId,
+    token::{
+        mint_to_address,
+        transfer_to_output
+    }
+};
+
+abi LiquidityPool {
+    fn deposit(recipient: Address);
+    fn withdraw(recipient: Address);
+}
+
+const BASE_TOKEN: b256 = 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c;
+
+impl LiquidityPool for Contract {
+    fn deposit(recipient: Address) {
+        assert(msg_asset_id() == ~ContractId::from(BASE_TOKEN));
+        assert(msg_amount() &gt; 0);
+
+        // Mint two times the amount.
+        let amount_to_mint = msg_amount() * 2;
+
+        // Mint some LP token based upon the amount of the base token.
+        mint_to_address(amount_to_mint, recipient);
+    }
+
+    fn withdraw(recipient: Address) {
+        assert(msg_asset_id() == contract_id());
+        assert(msg_amount() &gt; 0);
+
+        // Amount to withdraw.
+        let amount_to_transfer = msg_amount() / 2;
+
+        // Transfer base token to recipient.
+        transfer_to_output(amount_to_transfer, ~ContractId::from(BASE_TOKEN), recipient);
+    }
+}
+
+</code></pre>
+<h2 id="native-token-example"><a class="header" href="#native-token-example">Native Token Example</a></h2>
+<p>In this example, we show a native token contract with more minting, burning and transferring capabilities.</p>
+<pre><code class="language-sway">contract;
+
+use std::{
+    address::Address,
+    assert::assert,
+    context::*,
+    contract_id::ContractId,
+    token::*
+};
+
+abi NativeAssetToken {
+    fn mint_coins(mint_amount: u64);
+    fn burn_coins(burn_amount: u64);
+    fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId);
+    fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address);
+    fn deposit();
+    fn get_balance(target: ContractId, asset_id: ContractId) -&gt; u64;
+    fn mint_and_send_to_contract(amount: u64, destination: ContractId);
+    fn mint_and_send_to_address(amount: u64, recipient: Address);
+}
+
+impl NativeAssetToken for Contract {
+    /// Mint an amount of this contracts native asset to the contracts balance.
+    fn mint_coins(mint_amount: u64) {
+        mint(mint_amount);
+    }
+
+    /// Burn an amount of this contracts native asset.
+    fn burn_coins(burn_amount: u64) {
+        burn(burn_amount);
+    }
+
+    /// Transfer coins to a target contract.
+    fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId) {
+        force_transfer(coins, asset_id, target);
+    }
+
+    /// Transfer coins to a transaction output to be spent later.
+    fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address) {
+        transfer_to_output(coins, asset_id, recipient);
+    }
+
+    /// Get the internal balance of a specific coin at a specific contract.
+    fn get_balance(target: ContractId, asset_id: ContractId) -&gt; u64 {
+        balance_of(target, asset_id)
+    }
+
+    /// Deposit tokens back into the contract.
+    fn deposit() {
+        assert(msg_amount() &gt; 0);
+    }
+
+    /// Mint and send this contracts native token to a destination contract.
+    fn mint_and_send_to_contract(amount: u64, destination: ContractId) {
+        mint_to_contract(amount, destination);
+    }
+
+    /// Mind and send this contracts native token to a destination address.
+    fn mint_and_send_to_address(amount: u64, recipient: Address) {
+        mint_to_address(amount, recipient);
+    }
+}
+
+</code></pre>
 
                     </main>
 
