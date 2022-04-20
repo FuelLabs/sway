@@ -38,7 +38,7 @@ The Fuel ecosystem has a few plugins which can be easily installed via cargo.
 
 Note, `forc` detects anything in your path prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
 
-```bash
+```sh
 # Sway Formatter
 cargo install forc-fmt
 
