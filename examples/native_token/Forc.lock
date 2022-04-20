@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'native_token'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']
