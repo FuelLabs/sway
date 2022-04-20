@@ -87,6 +87,12 @@ Silent mode. Don't output any warnings or errors to the command line
 
 Whether to compile using the original (pre- IR) pipeline
 
+
+`--use-orig-parser` 
+
+
+Whether to compile using the original (pest based) parser
+
 ## EXAMPLES:
 
 Compile the sway files of the current project.
