@@ -8,7 +8,7 @@ for f in $FILES
 do
 if [ ! -e ${f}/$MANIFEST ]
   then
-  echo "Not building $f, no manifest found."
+  echo "Can't build a project without a Forc manifest."
   else
   if [ -d "${f}" ];
     then
@@ -24,4 +24,4 @@ if [ ! -e ${f}/$MANIFEST ]
 fi
 done
 
-echo "Successfully built all projects."
+echo "Successfully built all buildable projects."
