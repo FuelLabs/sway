@@ -45,3 +45,4 @@ impl LiquidityPool for Contract {
         transfer_to_output(amount_to_transfer, ~ContractId::from(BASE_TOKEN), recipient);
     }
 }
+
