@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Place in root of project and run to build the project and all its tests and artifacts
-FILES="./tests/test_*/*"
+FILES="../test/src/sdk-harness/test_*/*"
 for f in $FILES
 do
 if [ -d "${f}" ];
