@@ -94,8 +94,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(43),
         ),
         ("should_pass/language/bool_and_or", ProgramState::Return(42)),
-        ("should_pass/language/neq_4_test", ProgramState::Return(0)),
-        ("should_pass/language/eq_4_test", ProgramState::Return(1)),
+        ("should_pass/language/eq_and_neq", ProgramState::Return(1)),
         (
             "should_pass/language/local_impl_for_ord",
             ProgramState::Return(1), // true
@@ -127,6 +126,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
+        ("should_pass/language/u64_ops", ProgramState::Return(1)),      // true
         (
             "should_pass/language/import_method_from_other_file",
             ProgramState::Return(10), // true

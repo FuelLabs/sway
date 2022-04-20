@@ -3,5 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'neq_4_test'
+name = 'native_token'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
 dependencies = ['core']

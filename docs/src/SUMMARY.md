@@ -31,6 +31,7 @@
   - [Function Purity](./blockchain-development/purity.md)
   - [Identifiers](./blockchain-development/identifiers.md)
   - [Native Assets](./blockchain-development/native_assets.md)
+  - [Access Control](./blockchain-development/access_control.md)
   - [Calling Contracts](./blockchain-development/calling_contracts.md)
 - [Forc](./forc/index.md)
   - [Commands](./forc/commands/index.md)
