@@ -3,6 +3,7 @@ contract;
 use std::{
     address::Address,
     context::*,
+    assert::assert,
     contract_id::ContractId,
     token::*
 };
