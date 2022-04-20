@@ -7,7 +7,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, "./examples/counter/out/debug/counter-abi.json");
+abigen!(MyContract, "examples/counter/out/debug/counter-abi.json");
 
 #[tokio::test]
 async fn harness() {
