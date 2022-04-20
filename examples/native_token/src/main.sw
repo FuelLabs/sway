@@ -60,3 +60,4 @@ impl NativeAssetToken for Contract {
         mint_to_address(amount, recipient);
     }
 }
+
