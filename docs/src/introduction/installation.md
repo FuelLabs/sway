@@ -32,6 +32,23 @@ You can update `forc` and `fuel-core` with:
 cargo install forc fuel-core
 ```
 
+### Installing `forc` Plugins
+
+The Fuel ecosystem has a few plugins which can be easily installed via cargo.
+
+Note, `forc` detects anything in your path prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+
+```bash
+# Sway Formatter
+cargo install forc-fmt
+
+# Block Explorer
+cargo install forc-explore
+
+# Forc Language Server
+cargo install forc-lsp
+```
+
 ## Building from Source
 
 The Sway toolchain can be built from source by following instructions at <https://github.com/FuelLabs/sway>.
