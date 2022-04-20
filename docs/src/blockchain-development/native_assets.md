@@ -10,7 +10,7 @@ However, unlike Ethereum, the process for sending _any_ native asset is the same
 
 ## Liquidity Pool Example
 
-All contracts in Fuel can mint and burn their own native token. Contracts also manage an internal balance of all native assets pushed through calls or minted by the contract. Lastly, contracts can receive and transfer any native asset including their own.
+All contracts in Fuel can mint and burn their own native token. Contracts can also receive and transfer any native asset including their own. Internal balances of all native assets pushed through calls or minted by the contract are tracked by the FuelVM and can be queried at any point using the balance_of function from the `std` library. Therefore, there is no need for any manual accounting of the contract's balances using persistent storage.
 
 The `std` library provides handy methods for accessing Fuel's native assset operations.
 
