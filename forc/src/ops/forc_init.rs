@@ -1,5 +1,5 @@
 use crate::cli::InitCommand;
-use crate::utils::defaults;
+use crate::utils::{check_rust_version, defaults};
 use anyhow::{anyhow, Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
@@ -102,6 +102,8 @@ pub fn init(command: InitCommand) -> Result<()> {
 }
 
 pub(crate) fn init_new_project(project_name: String) -> Result<()> {
+    check_rust_version()?;
+
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
     // Make a new directory for the project

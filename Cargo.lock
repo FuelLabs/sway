@@ -1077,6 +1077,7 @@ dependencies = [
  "fuel-vm",
  "futures",
  "hex",
+ "rustc_version 0.2.3",
  "serde",
  "serde_json",
  "sway-core",

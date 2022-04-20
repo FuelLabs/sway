@@ -1,4 +1,6 @@
 use crate::ops::forc_build;
+use crate::utils::check_rust_version;
+
 use anyhow::Result;
 use clap::Parser;
 use std::io::{BufRead, BufReader};
@@ -42,6 +44,9 @@ pub(crate) struct Command {
 
 pub(crate) fn exec(command: Command) -> Result<()> {
     // Ensure the project builds before running tests.
+
+    check_rust_version()?;
+
     forc_build::build(Default::default())?;
 
     let mut cmd = process::Command::new("cargo");
