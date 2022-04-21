@@ -12,5 +12,6 @@ description = "Sway core types."
 fuel-asm = "0.3"
 fuel-crypto = "0.4"
 fuel-tx = "0.7"
+lazy_static = "1.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
 serde = { version = "1.0", features = ["derive"] }

@@ -7,7 +7,7 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
@@ -214,10 +214,7 @@ impl<'ir> AsmBuilder<'ir> {
     // guaranteed to be available span.
     fn empty_span() -> Span {
         let msg = "unknown source location";
-        Span {
-            span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-            path: None,
-        }
+        Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
     }
 
     // Handle loading the arguments of a contract call
@@ -2106,10 +2103,9 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::String(bs) => {
             // ConstantValue::String bytes are guaranteed to be valid UTF8.
             let s = std::str::from_utf8(bs).unwrap();
-            Literal::String(crate::span::Span {
-                span: pest::Span::new(std::sync::Arc::from(s), 0, s.len()).unwrap(),
-                path: None,
-            })
+            Literal::String(
+                crate::span::Span::new(std::sync::Arc::from(s), 0, s.len(), None).unwrap(),
+            )
         }
         ConstantValue::Array(_) | ConstantValue::Struct(_) => {
             unreachable!("Cannot convert aggregates to a literal.")
@@ -2248,6 +2244,7 @@ mod tests {
                 dir_of_code: std::sync::Arc::new("".into()),
                 manifest_path: std::sync::Arc::new("".into()),
                 use_orig_asm: false,
+                use_orig_parser: false,
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,

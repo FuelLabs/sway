@@ -4,7 +4,7 @@ use crate::{
     Ident, NamespaceRef, NamespaceWrapper,
 };
 
-use sway_types::{join_spans, span::Span, Property};
+use sway_types::{Property, Span};
 
 use derivative::Derivative;
 use std::hash::{Hash, Hasher};
@@ -137,7 +137,7 @@ impl TypedDeclaration {
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment { lhs, .. }) => lhs
                 .iter()
-                .fold(lhs[0].span(), |acc, this| join_spans(acc, this.span())),
+                .fold(lhs[0].span(), |acc, this| Span::join(acc, this.span())),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             StorageDeclaration(decl) => decl.span(),
@@ -281,7 +281,7 @@ impl TypedStructDeclaration {
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
-            .reduce(join_spans)
+            .reduce(Span::join)
             .unwrap_or_else(|| self.span.clone());
         if !type_arguments.is_empty() {
             if type_mapping.len() != type_arguments.len() {
@@ -435,7 +435,7 @@ impl TypedEnumDeclaration {
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
-            .reduce(join_spans)
+            .reduce(Span::join)
             .unwrap_or_else(|| self.span.clone());
         if type_mapping.len() != type_arguments.len() {
             errors.push(CompileError::IncorrectNumberOfTypeArguments {

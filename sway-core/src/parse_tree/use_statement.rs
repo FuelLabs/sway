@@ -154,10 +154,7 @@ fn handle_import_path(
                 // Check that a star import does not have an alias
                 if top_level_alias.is_some() {
                     errors.push(CompileError::AsteriskWithAlias {
-                        span: span::Span {
-                            span: last_item.as_span(),
-                            path: config.map(|c| c.path()),
-                        },
+                        span: span::Span::from_pest(last_item.as_span(), config.map(|c| c.path())),
                     });
                 }
                 ImportType::Star

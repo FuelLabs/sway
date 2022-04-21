@@ -363,7 +363,7 @@ impl TypeCheckedStorageAccess {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                join_spans(acc, field.span.clone())
+                Span::join(acc, field.span.clone())
             })
     }
 }

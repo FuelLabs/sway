@@ -98,10 +98,7 @@ impl Scrutinee {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
-        let span = Span {
-            span: scrutinee.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(scrutinee.as_span(), path.clone());
         let parsed = match scrutinee.as_rule() {
             Rule::literal_value => check!(
                 Self::parse_from_pair_literal(scrutinee, config, span),
@@ -142,17 +139,11 @@ impl Scrutinee {
                 );
                 errors.push(CompileError::UnimplementedRule(
                     a,
-                    Span {
-                        span: scrutinee.as_span(),
-                        path: path.clone(),
-                    },
+                    Span::from_pest(scrutinee.as_span(), path.clone()),
                 ));
                 // construct unit expression for error recovery
                 Scrutinee::Unit {
-                    span: Span {
-                        span: scrutinee.as_span(),
-                        path,
-                    },
+                    span: Span::from_pest(scrutinee.as_span(), path),
                 }
             }
         };
@@ -211,10 +202,7 @@ impl Scrutinee {
         let fields = it.next().unwrap().into_inner().collect::<Vec<_>>();
         let mut fields_buf = vec![];
         for field in fields.iter() {
-            let span = Span {
-                span: field.as_span(),
-                path: path.clone(),
-            };
+            let span = Span::from_pest(field.as_span(), path.clone());
             let mut field_parts = field.clone().into_inner();
             let name = field_parts.next().unwrap();
             let name = check!(
@@ -259,10 +247,7 @@ impl Scrutinee {
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = pair.as_span();
-        let span = Span {
-            span,
-            path: config.map(|x| x.path()),
-        };
+        let span = Span::from_pest(span, config.map(|x| x.path()));
         let mut iter = pair.into_inner();
         let enum_scrutinee_component_pair = iter.next().expect("guaranteed by grammar");
         let assignment_for_value_pair = iter.next().expect("guaranteed by grammar");
