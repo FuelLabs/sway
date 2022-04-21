@@ -14,9 +14,10 @@ if [ ! -e ${f}/$MANIFEST ]
     then
     echo "building test $f..."
       forc build -o temp -p $f
+      echo -e "\xE2\x9C\x94\n"
       if ! [ -f temp ];
         then
-        echo "Failed to build $f"
+        echo -e "\xE2\x9D\x8C  Failed to build $f"
         exit 1
       fi
       rm temp
