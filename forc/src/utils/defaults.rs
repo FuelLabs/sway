@@ -144,9 +144,10 @@ target
 
 #[test]
 fn parse_default_manifest() {
+    use sway_utils::constants::MAIN_ENTRY;
     println!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", "main.sw")).unwrap()
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
     )
 }
 
