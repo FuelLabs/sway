@@ -4,51 +4,8 @@ use ::panic::panic;
 use ::chain::log_u64;
 
 
-pub trait Shiftable {
-    fn lsh(self, other: Self) -> Self;
-    fn rsh(self, other: Self) -> Self;
-}
-
-impl Shiftable for u64 {
-    fn lsh(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u64
-        }
-    }
-    fn rsh(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u64
-        }
-    }
-}
-
-impl u64 {
-    fn binary_and(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            and r3 r1 r2;
-            r3: u64
-        }
-    }
-
-    fn binary_or(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            or r3 r1 r2;
-            r3: u64
-        }
-    }
-
-    fn binary_xor(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            xor r3 r1 r2;
-            r3: u64
-        }
-    }
-}
-
-impl b256 {
-    pub fn and_b256(val: self, other: Self) -> Self {
+impl AndOrXor for b256 {
+    pub fn binary_and(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
@@ -59,7 +16,7 @@ impl b256 {
         rebuilt
     }
 
-    pub fn or_b256(val: self, other: Self) -> Self {
+    pub fn binary_or(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
@@ -70,7 +27,7 @@ impl b256 {
         rebuilt
     }
 
-    pub fn xor_b256(val: self, other: Self) -> Self {
+    pub fn binary_xor(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
