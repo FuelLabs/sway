@@ -87,8 +87,6 @@ fn main() -> bool {
     // will be 0 or panic
     assert(max >> 64 == max);
 
-    assert(2 >> 1 == 1);
-
     true
 }
 
