@@ -7,7 +7,6 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 description = "Fuel Orchestrator."
-rust-version = "1.58.0"
 
 [lib]
 name = "forc"

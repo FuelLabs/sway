@@ -9,6 +9,7 @@ authors = ["{real_name}"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "{project_name}"
+rust-version = "1.58.0"
 
 [dependencies]
 "#
@@ -28,6 +29,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "{project_name}"
 version = "0.1.0"
+rust-version = "1.58.0"
 
 [dependencies]
 fuel-gql-client = {{ version = "0.5", default-features = false }}

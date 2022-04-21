@@ -14,16 +14,12 @@ use std::path::Path;
 /// dependency to the `forc` version.
 pub const SWAY_GIT_TAG: &str = concat!("v", clap::crate_version!());
 
-pub(crate) fn check_rust_version() -> Result<()> {
-    let rustc_version = match version() {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(anyhow!("Could not locate rustc version due to:\n\n{}", e));
-        }
-    };
+pub(crate) fn forc_rustc_version() -> Result<Version> {
+    let local_rustc_version = version().map_err(|e| anyhow!("Failed to locate rustc: {}", e))?;
 
-    let cargo_file = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
-    let toml_path = Path::new(&cargo_file);
+    let path = std::env::current_dir()?;
+    let forc_toml_file = path.join("Forc.toml");
+    let toml_path = Path::new(&forc_toml_file);
 
     let mut file = File::open(toml_path)?;
     let mut toml = String::new();
@@ -32,31 +28,31 @@ pub(crate) fn check_rust_version() -> Result<()> {
     let cargo_toml: toml::Value = toml::de::from_str(&toml)?;
 
     if let Some(table) = cargo_toml.as_table() {
-        if let Some(package) = table.get("package") {
-            if let Some(version) = package.get("rust-version") {
-                let version_str = &version.as_str().unwrap();
-                let forc_rustc_version = Version::parse(version_str)?;
-                if rustc_version > forc_rustc_version {
+        if let Some(project) = table.get("project") {
+            if let Some(v) = project.get("rust-version") {
+                let vs = &v.as_str().unwrap();
+                let forc_rustc_version = Version::parse(vs)?;
+                if local_rustc_version > forc_rustc_version {
                     let warning = format!(
-                        "\nFound rustc version {}, which is greater than the suggested version {}\n",
-                        &rustc_version, &forc_rustc_version
+                        "\nFound rustc version {}. Recommended version is {}\n",
+                        &local_rustc_version, &forc_rustc_version
                     );
                     println_yellow_err(&warning);
                 }
-                return Ok(());
             }
         }
     }
 
-    return Err(anyhow!("Failed to read rust-version from forc/Cargo.toml"));
+    Ok(local_rustc_version)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::check_rust_version;
+    use super::forc_rustc_version;
 
     #[test]
-    fn test_check_rust_version_returns_ok_when_using_forc_cargo_toml() {
-        assert_eq!(check_rust_version().unwrap(), ());
+    fn test_forc_rustc_version_returns_found_rustc_version() {
+        let version = forc_rustc_version().unwrap();
+        assert_eq!(version.major, 1);
     }
 }

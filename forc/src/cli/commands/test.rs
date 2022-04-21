@@ -1,7 +1,5 @@
 use crate::ops::forc_build;
-use crate::utils::check_rust_version;
-use forc_util::println_red_err;
-
+use crate::utils::forc_rustc_version;
 use anyhow::Result;
 use clap::Parser;
 use std::io::{BufRead, BufReader};
@@ -44,10 +42,7 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    if let Err(e) = check_rust_version() {
-        println_red_err(&e.to_string());
-        std::process::exit(0x01);
-    }
+    forc_rustc_version()?;
 
     // Ensure the project builds before running tests.
     forc_build::build(Default::default())?;

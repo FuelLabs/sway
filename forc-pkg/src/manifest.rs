@@ -39,6 +39,7 @@ pub struct Project {
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
+    pub rust_version: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
