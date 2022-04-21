@@ -45,14 +45,3 @@ pub(crate) fn forc_rustc_version() -> Result<Version> {
 
     Ok(local_rustc_version)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::forc_rustc_version;
-
-    #[test]
-    fn test_forc_rustc_version_returns_found_rustc_version() {
-        let version = forc_rustc_version().unwrap();
-        assert_eq!(version.major, 1);
-    }
-}
