@@ -17,7 +17,7 @@ custom_lib = { git = "https://github.com/FuelLabs/custom_lib", branch = "master"
 # custom_lib = { git = "https://github.com/FuelLabs/custom_lib", rev = "87f80bdf323e2d64e213895d0a639ad468f4deff" }
 ```
 
-Installing a local library using `path`:
+Depending on a local library using `path`:
 
 ```toml
 [dependencies]
