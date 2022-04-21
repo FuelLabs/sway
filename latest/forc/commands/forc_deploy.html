@@ -202,22 +202,9 @@ it will only try to use previously downloaded dependencies</p>
 <p><code>--use-orig-parser</code> </p>
 <p>Whether to compile using the original (pest based) parser</p>
 <h2 id="examples"><a class="header" href="#examples">EXAMPLES:</a></h2>
-<p>Deploy contract project. Crafts a contract deployment transaction then sends it to a running node.</p>
-<p>Alternatively, you could deploy your contract programmatically using our SDK:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Build the contract
-let salt: [u8; 32] = rng.gen();
-let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract(&quot;./&quot;, salt).unwrap();
-
-// Launch a local network and deploy the contract
-let compiled = Contract::compile_sway_contract(&quot;./&quot;, salt).unwrap();
-let client = Provider::launch(Config::local_node()).await.unwrap();
-let contract_id = Contract::deploy(&amp;compiled, &amp;client).await.unwrap();
-<span class="boring">}
-</span></code></pre></pre>
+<p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
+<p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
+<p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
 
                     </main>
 
