@@ -8,7 +8,7 @@ If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Belo
 
 If a `git` source is specified, `forc` will fetch the git repository at the given URL and then search for a `Forc.toml` for a package with the given name anywhere inside the git repository.
 
-The following example adds a library dependency named `custom_lib`. Alongside git dependencies you may specify a `branch`, `tag` or `rev` reference from which forc should fetch the source.
+The following example adds a library dependency named `custom_lib`. For git dependencies you may optionally specify a `branch`, `tag`, or `rev` (i.e. commit hash) reference.
 
 ```toml
 [dependencies]
