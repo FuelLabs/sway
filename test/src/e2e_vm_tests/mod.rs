@@ -292,6 +292,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
         ),
+        (
+            "should_pass/language/unused_generic",
+            ProgramState::Return(8),
+        ),
     ];
 
     let mut number_of_tests_run =
