@@ -24,7 +24,7 @@ Depending on a local library using `path`:
 custom_lib = { path = "../custom_lib" }
 ```
 
-Once the package is added, you can re-run `forc build` to include and build the project.
+Once the package is added, running `forc build` will automatically download added dependencies.
 
 ## Updating dependencies
 
