@@ -6,7 +6,7 @@ Forc has a dependency management system which can pull packages using git. This 
 
 If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Below, list the package name alongside its source. Currently, `forc` supports both `git` and `path` sources.
 
-If a `git` source is specified, forc will fetch the git repository at the given URL and then search for a `Forc.toml` for a package with the given name anywhere inside the git repository.
+If a `git` source is specified, `forc` will fetch the git repository at the given URL and then search for a `Forc.toml` for a package with the given name anywhere inside the git repository.
 
 The following example adds a library dependency named `custom_lib`. Alongside git dependencies you may specify a `branch`, `tag` or `rev` reference from which forc should fetch the source.
 
