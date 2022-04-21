@@ -28,4 +28,4 @@ Once the package is added, you can re-run `forc build` to include and build the 
 
 ## Updating dependencies
 
-To update dependancies in your Forc directory you can run `forc update`.
+To update dependencies in your Forc directory you can run `forc update`. For `path` dependencies this will have no effect. For `git` dependencies with a `branch` reference, this will update the project to use the latest commit for the given branch.
