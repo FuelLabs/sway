@@ -21,6 +21,8 @@ $ tree .
 
 `Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
 
+For additional information on dependency management, see: [here](../forc/dependancies.md).
+
 ```toml
 {{#include ../../../examples/hello_world/Forc.toml}}
 ```

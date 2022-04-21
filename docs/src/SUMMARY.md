@@ -34,6 +34,7 @@
   - [Access Control](./blockchain-development/access_control.md)
   - [Calling Contracts](./blockchain-development/calling_contracts.md)
 - [Forc](./forc/index.md)
+  - [Dependancies](./forc/dependancies.md)
   - [Commands](./forc/commands/index.md)
     - [forc addr2line](./forc/commands/forc_addr2line.md)
     - [forc build](./forc/commands/forc_build.md)
