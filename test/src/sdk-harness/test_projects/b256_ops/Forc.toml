@@ -5,5 +5,4 @@ license = "Apache-2.0"
 name = "b256_ops"
 
 [dependencies]
-core = { path = "../../../../sway-lib-core" }
-std = { path = "../../../" }
+std = { path = "../../../../../sway-lib-std" }
