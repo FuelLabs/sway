@@ -72,7 +72,9 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         let string = toml::ser::to_string_pretty(&lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
+        if !command.silent_mode {
+            println!("   Created new lock file at {}", lock_path.display());
+        }
         Ok(plan)
     })?;
 
