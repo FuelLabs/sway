@@ -269,7 +269,7 @@ pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-        not(self.eq(other))  
+        not(self.eq(other))
     }
 }
 
@@ -424,7 +424,13 @@ impl b256 {
     }
 }
 
-impl u64 {
+pub trait Andorable {
+    fn binary_and(self, other: Self) -> Self;
+    fn binary_or(self, other: Self) -> Self;
+    fn binary_xor(self, other: Self) -> Self;
+}
+
+impl Andorable for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
             and r3 r1 r2;
