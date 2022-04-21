@@ -1,12 +1,12 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_manifest(project_name: &str) -> String {
+pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
     let real_name = whoami::realname();
 
     format!(
         r#"[project]
 authors = ["{real_name}"]
-entry = "main.sw"
+entry = "{entry_type}"
 license = "Apache-2.0"
 name = "{project_name}"
 
@@ -66,26 +66,28 @@ impl MyContract for Contract {
 pub(crate) fn default_script() -> String {
     r#"script;
 
+fn main() {
 
+}
 "#
     .into()
 }
 
-pub(crate) fn default_library() -> String {
-    r#"library;
+pub(crate) fn default_library(project_name: &str) -> String {
+    format!(
+        "library {project_name};
 
-struct Test {
-    thing: String,
-    other_thing: u32,
-}
-"#
-    .into()
+// anything `pub` here will be exported as a part of this library's API
+"
+    )
 }
 
 pub(crate) fn default_predicate() -> String {
     r#"predicate;
 
-
+fn main() -> bool {
+    false
+}
 "#
     .into()
 }
@@ -144,7 +146,7 @@ target
 fn parse_default_manifest() {
     println!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj")).unwrap()
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", "main.sw")).unwrap()
     )
 }
 

@@ -110,10 +110,17 @@ pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) 
     fs::create_dir_all(Path::new(&project_name).join("tests"))?;
 
     // Insert default manifest file
-    fs::write(
-        Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
-        defaults::default_manifest(&neat_name),
-    )?;
+    use ProjectType::*;
+    match project_type {
+        Library => fs::write(
+            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&neat_name, constants::LIB_ENTRY),
+        )?,
+        _ => fs::write(
+            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&neat_name, constants::MAIN_ENTRY),
+        )?,
+    }
 
     // Insert default test manifest file
     fs::write(
@@ -122,22 +129,29 @@ pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) 
     )?;
 
     // Insert project based on project_type
-    use ProjectType::*;
     match project_type {
         Contract => fs::write(
-            Path::new(&project_name).join("src").join("main.sw"),
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
         Script => fs::write(
-            Path::new(&project_name).join("src").join("main.sw"),
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
         Library => fs::write(
-            Path::new(&project_name).join("src").join("main.sw"),
-            defaults::default_library(),
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::LIB_ENTRY),
+            defaults::default_library(&project_name),
         )?,
         Predicate => fs::write(
-            Path::new(&project_name).join("src").join("main.sw"),
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
             defaults::default_predicate(),
         )?,
     }

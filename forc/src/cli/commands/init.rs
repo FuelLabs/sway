@@ -10,11 +10,11 @@ Example Templates:
 
 const PROJECT_HELP: &str = r#"Initialize a new project of a specific type. If a project type is not given the default project type is a contract.
 
- Available Project Types:
-  - contract
-  - script
-  - predicate
-  - library"#;
+Project Types:
+ - contract
+ - script
+ - predicate
+ - library"#;
 
 /// Create a new Forc project.
 #[derive(Debug, Parser)]
