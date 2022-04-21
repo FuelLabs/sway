@@ -34,6 +34,28 @@ let my_data = if some_bool < 10 { foo() } else { bar() };
 
 Note that all branches of the `if` expression must return a value of the same type.
 
+### `match` expressions
+
+Sway supports advanced pattern matching through exhaustive _match_ expressions.
+
+```sway
+let x = 5;
+let a = match 8 {
+    7 => { 4 },
+    9 => { 5 },
+    8 => { 6 },
+    _ => { 100 },
+};
+let b = match x {
+    5 => { 42 },
+    _ => { 24 },
+};
+match 42 {
+    0 => { 24 },
+    foo => { foo },
+}
+```
+
 ## Loops
 
 ### `while`
