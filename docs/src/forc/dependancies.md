@@ -1,6 +1,6 @@
 # Dependencies
 
-Forc has an dependancy management system which can pull packages using git. This serves as a way to allow others build and share installable Forc projects.
+Forc has a dependency management system which can pull packages using git. This allows users to build and share Forc libraries.
 
 ## Adding a dependency
 
