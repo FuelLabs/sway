@@ -8,7 +8,7 @@ If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Belo
 
 When installing from `git` Forc will look for the nearest `Forc.toml` with a matching project `name` field to the dependancy name specified.
 
-This example adds a dependency of the custom crate, you can specify a specific git `branch`, `tag` or `rev` field:
+The following example adds a library dependency named `custom_lib`. Alongside git dependencies you may specify a `branch`, `tag` or `rev` reference from which forc should fetch the source.
 
 ```toml
 [dependencies]
