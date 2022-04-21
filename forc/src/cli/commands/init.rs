@@ -1,4 +1,5 @@
 use crate::ops::forc_init;
+use crate::utils::project_type::ProjectType;
 use anyhow::Result;
 use clap::Parser;
 
@@ -13,11 +14,12 @@ pub struct Command {
     /// Initialize a new project from a template
     #[clap(short, long, help = TEMPLATE_HELP)]
     pub template: Option<String>,
-    /// There are four accepted project types: contract, script, predicate or library.
-    /// If a project type is not given the default project type is a contract.
-    pub project_type: Option<String>,
     /// The name of your project
     pub project_name: String,
+    /// There are four accepted project types: contract, script, predicate or library.
+    /// If a project type is not given the default project type is a contract.
+    #[clap(parse(try_from_str), default_value_t = ProjectType::Contract)]
+    pub project_type: ProjectType,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

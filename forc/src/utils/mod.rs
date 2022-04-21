@@ -1,5 +1,6 @@
 pub mod defaults;
 pub mod parameters;
+pub mod project_type;
 
 /// The `forc` crate version formatted with the `v` prefix. E.g. "v1.2.3".
 ///

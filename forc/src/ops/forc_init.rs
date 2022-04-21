@@ -1,5 +1,5 @@
 use crate::cli::InitCommand;
-use crate::utils::defaults;
+use crate::utils::{defaults, project_type::ProjectType};
 use anyhow::{bail, Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
@@ -82,10 +82,7 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
-    let project_type = match command.project_type {
-        Some(project_type) => project_type.to_lowercase(),
-        None => "contract".to_string(),
-    };
+    let project_type = command.project_type;
 
     match command.template {
         Some(template) => {
@@ -99,11 +96,11 @@ pub fn init(command: InitCommand) -> Result<()> {
             };
             init_from_git_template(project_name, &template_url)
         }
-        None => init_new_project(project_name, &project_type),
+        None => init_new_project(project_name, project_type),
     }
 }
 
-pub(crate) fn init_new_project(project_name: String, project_type: &str) -> Result<()> {
+pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) -> Result<()> {
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
     // Make a new directory for the project
@@ -125,24 +122,24 @@ pub(crate) fn init_new_project(project_name: String, project_type: &str) -> Resu
     )?;
 
     // Insert project based on project_type
+    use ProjectType::*;
     match project_type {
-        "contract" => fs::write(
+        Contract => fs::write(
             Path::new(&project_name).join("src").join("main.sw"),
             defaults::default_contract(),
         )?,
-        "script" => fs::write(
+        Script => fs::write(
             Path::new(&project_name).join("src").join("main.sw"),
             defaults::default_script(),
         )?,
-        "library" => fs::write(
+        Library => fs::write(
             Path::new(&project_name).join("src").join("main.sw"),
             defaults::default_library(),
         )?,
-        "predicate" => fs::write(
+        Predicate => fs::write(
             Path::new(&project_name).join("src").join("main.sw"),
             defaults::default_predicate(),
         )?,
-        _ => bail!("Unrecognized project type: \n Possible Types:\n - contract\n - script\n - library\n - predicate")
     }
 
     // Insert default test function
@@ -158,8 +155,7 @@ pub(crate) fn init_new_project(project_name: String, project_type: &str) -> Resu
     )?;
 
     println_green(&format!(
-        "Successfully created {}: {}",
-        project_name, project_type
+        "Successfully created {project_type}: {project_name}",
     ));
 
     print_welcome_message();
