@@ -273,7 +273,8 @@ pub trait Eq {
     }
 }
 
-trait OrdEq: Ord + Eq { } {
+trait OrdEq: Ord + Eq {
+} {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
     }
@@ -463,7 +464,11 @@ impl BitwiseXor for u64 {
     }
 }
 
-impl OrdEq for u64 {}
-impl OrdEq for u32 {}
-impl OrdEq for u16 {}
-impl OrdEq for u8  {}
+impl OrdEq for u64 {
+}
+impl OrdEq for u32 {
+}
+impl OrdEq for u16 {
+}
+impl OrdEq for u8 {
+}
