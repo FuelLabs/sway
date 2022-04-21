@@ -5,4 +5,3 @@ license = "Apache-2.0"
 name = "hello_world"
 
 [dependencies]
-std = { path = "../../sway-lib-std" }
