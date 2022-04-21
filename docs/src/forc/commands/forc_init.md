@@ -3,7 +3,7 @@ Create a new Forc project
 
 
 ## USAGE:
-forc init [OPTIONS] <PROJECT_NAME>
+forc init [OPTIONS] <PROJECT_NAME> [PROJECT_TYPE]
 
 
 ## ARGS:
@@ -11,6 +11,17 @@ forc init [OPTIONS] <PROJECT_NAME>
 <_PROJECT_NAME_>
 
    The name of your project
+
+<_PROJECT_TYPE_>
+
+   Initialize a new project of a specific type. If a project type is not
+given the default project type is a contract.
+
+Available Project Types:
+- contract
+- script
+- predicate
+- library [default: contract]
 
 
 ## OPTIONS:
