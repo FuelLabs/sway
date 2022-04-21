@@ -36,7 +36,7 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 ### `match` expressions
 
-Sway supports advanced pattern matching through exhaustive _match_ expressions.
+Sway supports advanced pattern matching through exhaustive `match` expressions.
 
 ```sway
 let x = 5;
