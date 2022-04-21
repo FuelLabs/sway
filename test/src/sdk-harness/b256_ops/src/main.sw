@@ -28,11 +28,11 @@ fn main() -> bool {
     let e = 0x1000000100000000_1000000010000000_1000000010000000_1000000010000000;
 
     // test and_b256()
-    assert(a.and_b256(b) == c);
+    assert(a & b == c);
     // test or_b256()
-    assert(a.or_b256(b) == d);
+    assert(a | b == d);
     // test xor_b256()
-    assert(a.xor_b256(b) == e);
+    assert(a ^ b == e);
 
     true
 }
