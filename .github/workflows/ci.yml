@@ -162,9 +162,9 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: cargo-toml-lint
-          version: "0.1"
+          version: '0.1'
       - name: Run Cargo.toml linter
-        run:  git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     needs: cancel-previous-runs
@@ -228,12 +228,12 @@ jobs:
           command: run
           args: --bin build-all-examples
       - name: Build All Tests
-        run: cd sway-lib-std && bash build.sh && cd ..
+        run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./sway-lib-std/tests/Cargo.toml -- --test-threads=1 --nocapture
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     needs: cancel-previous-runs

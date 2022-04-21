@@ -126,6 +126,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
+        ("should_pass/language/u64_ops", ProgramState::Return(1)),      // true
         (
             "should_pass/language/import_method_from_other_file",
             ProgramState::Return(10), // true
