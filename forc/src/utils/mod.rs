@@ -14,26 +14,20 @@ use std::path::Path;
 /// dependency to the `forc` version.
 pub const SWAY_GIT_TAG: &str = concat!("v", clap::crate_version!());
 
-pub(crate) fn forc_cargo_toml_as_str() -> Result<String> {
-    let cargo_dir = env!("CARGO_MANIFEST_DIR");
-    let cargo_file = format!("{}/Cargo.toml", cargo_dir);
-    let toml_path = Path::new(&cargo_file);
-
-    let mut file = File::open(toml_path)?;
-    let mut toml = String::new();
-    file.read_to_string(&mut toml)?;
-
-    Ok(toml)
-}
-
 pub(crate) fn check_rust_version() -> Result<()> {
-    let toml = forc_cargo_toml_as_str()?;
     let rustc_version = match version() {
         Ok(v) => v,
         Err(e) => {
             return Err(anyhow!("Could not locate rustc version due to:\n\n{}", e));
         }
     };
+
+    let cargo_file = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+    let toml_path = Path::new(&cargo_file);
+
+    let mut file = File::open(toml_path)?;
+    let mut toml = String::new();
+    file.read_to_string(&mut toml)?;
 
     let cargo_toml: toml::Value = toml::de::from_str(&toml)?;
 
@@ -55,4 +49,14 @@ pub(crate) fn check_rust_version() -> Result<()> {
     }
 
     return Err(anyhow!("Failed to read rust-version from forc/Cargo.toml"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_rust_version;
+
+    #[test]
+    fn test_check_rust_version_returns_ok_when_using_forc_cargo_toml() {
+        assert_eq!(check_rust_version().unwrap(), ());
+    }
 }
