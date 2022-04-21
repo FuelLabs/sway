@@ -47,7 +47,7 @@ path = "tests/harness.rs"
     )
 }
 
-pub(crate) fn default_program() -> String {
+pub(crate) fn default_contract() -> String {
     r#"contract;
 
 abi MyContract {
@@ -59,6 +59,33 @@ impl MyContract for Contract {
         true
     }
 }
+"#
+    .into()
+}
+
+pub(crate) fn default_script() -> String {
+    r#"script;
+
+
+"#
+    .into()
+}
+
+pub(crate) fn default_library() -> String {
+    r#"library;
+
+struct Test {
+    thing: String,
+    other_thing: u32,
+}
+"#
+    .into()
+}
+
+pub(crate) fn default_predicate() -> String {
+    r#"predicate;
+
+
 "#
     .into()
 }

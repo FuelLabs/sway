@@ -1,6 +1,6 @@
 use crate::cli::InitCommand;
 use crate::utils::defaults;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
@@ -82,6 +82,10 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
+    let project_type = match command.project_type {
+        Some(project_type) => project_type.to_lowercase(),
+        None => "contract".to_string(),
+    };
 
     match command.template {
         Some(template) => {
@@ -90,18 +94,18 @@ pub fn init(command: InitCommand) -> Result<()> {
                     Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")?
                 }
                 _ => {
-                    return Err(anyhow!(
+                    bail!(
                         "Unrecognized template: \n Example Templates:\n - counter"
-                    ));
+                    );
                 }
             };
             init_from_git_template(project_name, &template_url)
         }
-        None => init_new_project(project_name),
+        None => init_new_project(project_name, &project_type),
     }
 }
 
-pub(crate) fn init_new_project(project_name: String) -> Result<()> {
+pub(crate) fn init_new_project(project_name: String, project_type: &str) -> Result<()> {
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
     // Make a new directory for the project
@@ -122,11 +126,26 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         defaults::default_tests_manifest(&neat_name),
     )?;
 
-    // Insert default main function
-    fs::write(
-        Path::new(&project_name).join("src").join("main.sw"),
-        defaults::default_program(),
-    )?;
+    // Insert project based on project_type
+    match project_type {
+        "contract" => fs::write(
+            Path::new(&project_name).join("src").join("main.sw"),
+            defaults::default_contract(),
+        )?,
+        "script" => fs::write(
+            Path::new(&project_name).join("src").join("main.sw"),
+            defaults::default_script(),
+        )?,
+        "library" => fs::write(
+            Path::new(&project_name).join("src").join("main.sw"),
+            defaults::default_library(),
+        )?,
+        "predicate" => fs::write(
+            Path::new(&project_name).join("src").join("main.sw"),
+            defaults::default_predicate(),
+        )?,
+        _ => bail!("Unrecognized project type: \n Possible Types:\n - contract\n - script\n - library\n - predicate")
+    }
 
     // Insert default test function
     fs::write(
@@ -140,7 +159,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         defaults::default_gitignore(),
     )?;
 
-    println_green(&format!("Successfully created: {}", project_name));
+    println_green(&format!("Successfully created {}: {}", project_name, project_type));
 
     print_welcome_message();
 
@@ -168,10 +187,10 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
         .iter()
         .any(|response| response.name == "Forc.toml");
     if !valid_sway_project {
-        return Err(anyhow!(
+        bail!(
             "The provided github URL: {} does not contain a Forc.toml file at the root",
             example_url
-        ));
+        );
     }
 
     // Download the files and directories from the github example

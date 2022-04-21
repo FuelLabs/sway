@@ -13,6 +13,9 @@ pub struct Command {
     /// Initialize a new project from a template
     #[clap(short, long, help = TEMPLATE_HELP)]
     pub template: Option<String>,
+    /// There are four accepted project types: contract, script, predicate or library.
+    /// If a project type is not given the default project type is a contract.
+    pub project_type: Option<String>,
     /// The name of your project
     pub project_name: String,
 }
