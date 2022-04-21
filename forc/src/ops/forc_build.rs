@@ -12,6 +12,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         path,
         binary_outfile,
         use_orig_asm,
+        use_orig_parser,
         debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
@@ -24,6 +25,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let config = pkg::BuildConfig {
         use_orig_asm,
+        use_orig_parser,
         print_ir,
         print_finalized_asm,
         print_intermediate_asm,

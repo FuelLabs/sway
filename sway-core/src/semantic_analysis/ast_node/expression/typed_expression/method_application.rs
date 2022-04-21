@@ -79,7 +79,7 @@ pub(crate) fn type_check_method_application(
                         let type_args_span = type_args
                             .iter()
                             .map(|x| x.span.clone())
-                            .fold(type_args[0].span.clone(), join_spans);
+                            .fold(type_args[0].span.clone(), Span::join);
                         errors.push(CompileError::Internal(
                             "did not expect to find type arguments here",
                             type_args_span,
@@ -414,15 +414,13 @@ fn re_parse_expression(
     }
     let mut warnings = vec![];
     let mut errors = vec![];
-    let span = sway_types::span::Span {
-        span: pest::Span::new(
-            "TODO(static span): use Idents instead of Strings".into(),
-            0,
-            0,
-        )
-        .unwrap(),
-        path: None,
-    };
+    let span = sway_types::span::Span::new(
+        "TODO(static span): use Idents instead of Strings".into(),
+        0,
+        0,
+        None,
+    )
+    .unwrap();
 
     let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,

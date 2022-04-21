@@ -311,10 +311,7 @@ mod ir_builder {
 
             rule asm_op_arg_imm() -> Ident
                 = imm:$("i" d:decimal()) {
-                    Ident::new(Span {
-                        span: pest::Span::new(imm.into(), 0, imm.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(imm.into(), 0, imm.len(), None).unwrap())
                 }
 
             rule constant() -> IrAstConst
@@ -417,10 +414,7 @@ mod ir_builder {
 
             rule id_id() -> Ident
                 = !ast_ty() id:$(id_char0() id_char()*) _ {
-                    Ident::new(Span {
-                        span: pest::Span::new(id.into(), 0, id.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
             rule metadata_decl() -> (MdIdxRef, IrMetadatum)

@@ -19,20 +19,14 @@ impl MatchBranch {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = span::Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = span::Span::from_pest(pair.as_span(), path.clone());
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path,
-                    },
+                    span::Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
@@ -41,10 +35,7 @@ impl MatchBranch {
             Some(e) => {
                 match e.as_rule() {
                     Rule::catch_all => MatchCondition::CatchAll(CatchAll {
-                        span: span::Span {
-                            span: e.as_span(),
-                            path: path.clone(),
-                        },
+                        span: span::Span::from_pest(e.as_span(), path.clone()),
                     }),
                     Rule::scrutinee => {
                         let scrutinee = check!(
@@ -64,17 +55,11 @@ impl MatchBranch {
                         );
                         errors.push(CompileError::UnimplementedRule(
                             a,
-                            span::Span {
-                                span: e.as_span(),
-                                path: path.clone(),
-                            },
+                            span::Span::from_pest(e.as_span(), path.clone()),
                         ));
                         // construct unit expression for error recovery
                         MatchCondition::CatchAll(CatchAll {
-                            span: span::Span {
-                                span: e.as_span(),
-                                path: path.clone(),
-                            },
+                            span: span::Span::from_pest(e.as_span(), path.clone()),
                         })
                     }
                 }
@@ -82,10 +67,7 @@ impl MatchBranch {
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match condition parsing.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path,
-                    },
+                    span::Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
@@ -95,20 +77,14 @@ impl MatchBranch {
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path,
-                    },
+                    span::Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
         };
         let result = match result.as_rule() {
             Rule::code_block => {
-                let span = span::Span {
-                    span: result.as_span(),
-                    path,
-                };
+                let span = span::Span::from_pest(result.as_span(), path);
                 Expression::CodeBlock {
                     contents: check!(
                         CodeBlock::parse_from_pair(result, config),
@@ -123,10 +99,7 @@ impl MatchBranch {
                 }
             }
             a => {
-                let span = Span {
-                    span: result.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(result.as_span(), path);
                 errors.push(CompileError::UnimplementedRule(a, span.clone()));
                 Expression::Tuple {
                     fields: vec![],

@@ -18,6 +18,10 @@ pub struct Command {
     #[clap(long)]
     pub use_orig_asm: bool,
 
+    /// Whether to compile using the original (pest based) parser.
+    #[clap(long)]
+    pub use_orig_parser: bool,
+
     /// Only craft transaction and print it out.
     #[clap(long)]
     pub dry_run: bool,

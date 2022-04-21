@@ -143,6 +143,7 @@ pub struct BuildPlan {
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 pub struct BuildConfig {
     pub use_orig_asm: bool,
+    pub use_orig_parser: bool,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
@@ -942,6 +943,7 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
     )
     .use_orig_asm(build_conf.use_orig_asm)
+    .use_orig_parser(build_conf.use_orig_parser)
     .print_finalized_asm(build_conf.print_finalized_asm)
     .print_intermediate_asm(build_conf.print_intermediate_asm)
     .print_ir(build_conf.print_ir);

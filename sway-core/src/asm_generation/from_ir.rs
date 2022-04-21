@@ -7,7 +7,7 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
@@ -214,10 +214,7 @@ impl<'ir> AsmBuilder<'ir> {
     // guaranteed to be available span.
     fn empty_span() -> Span {
         let msg = "unknown source location";
-        Span {
-            span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-            path: None,
-        }
+        Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
     }
 
     // Handle loading the arguments of a contract call
@@ -355,11 +352,11 @@ impl<'ir> AsmBuilder<'ir> {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 4;
                     }
-                    Type::String(_) => {
+                    Type::String(n) => {
                         // Strings are always constant and used by reference, so we only store the
                         // pointer on the stack.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += 1;
+                        stack_base += size_bytes_round_up_to_word_alignment!(n)
                     }
                     Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
                         // Store this aggregate at the current stack base.
@@ -2106,10 +2103,9 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::String(bs) => {
             // ConstantValue::String bytes are guaranteed to be valid UTF8.
             let s = std::str::from_utf8(bs).unwrap();
-            Literal::String(crate::span::Span {
-                span: pest::Span::new(std::sync::Arc::from(s), 0, s.len()).unwrap(),
-                path: None,
-            })
+            Literal::String(
+                crate::span::Span::new(std::sync::Arc::from(s), 0, s.len(), None).unwrap(),
+            )
         }
         ConstantValue::Array(_) | ConstantValue::Struct(_) => {
             unreachable!("Cannot convert aggregates to a literal.")
@@ -2123,7 +2119,7 @@ pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) => 8,
         Type::B256 => 32,
-        Type::String(_) => 8,
+        Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {
             if let AggregateContent::ArrayType(el_ty, cnt) = &context.aggregates[aggregate.0] {
                 cnt * ir_type_size_in_bytes(context, el_ty)
@@ -2248,6 +2244,7 @@ mod tests {
                 dir_of_code: std::sync::Arc::new("".into()),
                 manifest_path: std::sync::Arc::new("".into()),
                 use_orig_asm: false,
+                use_orig_parser: false,
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,
