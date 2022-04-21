@@ -8,6 +8,14 @@ const TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
 Example Templates: 
  - counter"#;
 
+const PROJECT_HELP: &str = r#"Initialize a new project of a specific type. If a project type is not given the default project type is a contract.
+
+ Available Project Types:
+  - contract
+  - script
+  - predicate
+  - library"#;
+
 /// Create a new Forc project.
 #[derive(Debug, Parser)]
 pub struct Command {
@@ -18,7 +26,7 @@ pub struct Command {
     pub project_name: String,
     /// There are four accepted project types: contract, script, predicate or library.
     /// If a project type is not given the default project type is a contract.
-    #[clap(parse(try_from_str), default_value_t = ProjectType::Contract)]
+    #[clap(parse(try_from_str), default_value_t = ProjectType::Contract, help = PROJECT_HELP)]
     pub project_type: ProjectType,
 }
 
