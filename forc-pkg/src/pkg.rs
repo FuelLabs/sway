@@ -7,6 +7,7 @@ use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
 };
+use fuels_types::JsonABI;
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -19,7 +20,6 @@ use sway_core::{
     source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, NamespaceRef,
     NamespaceWrapper, TreeType, TypedParseTree,
 };
-use sway_types::JsonABI;
 use sway_utils::constants;
 use url::Url;
 

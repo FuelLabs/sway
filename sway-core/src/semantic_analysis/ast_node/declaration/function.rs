@@ -12,10 +12,9 @@ use crate::{
     type_engine::*,
     Ident, TypeParameter,
 };
-
-use sway_types::{Function, Property, Span};
-
+use fuels_types::{Function, Property};
 use sha2::{Digest, Sha256};
+use sway_types::Span;
 
 mod function_parameter;
 pub use function_parameter::*;

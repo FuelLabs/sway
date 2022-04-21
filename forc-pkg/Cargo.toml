@@ -11,13 +11,13 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 [dependencies]
 anyhow = "1"
 forc-util = { version = "0.12.1", path = "../forc-util" }
+fuels-types = "0.10"
 git2 = "0.14"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 sway-core = { version = "0.12.1", path = "../sway-core" }
-sway-types = { version = "0.12.1", path = "../sway-types" }
 sway-utils = { version = "0.12.1", path = "../sway-utils" }
 toml = "0.5"
 url = { version = "2.2", features = ["serde"] }
