@@ -91,18 +91,8 @@ Whether to compile using the original (pest based) parser
 
 ## EXAMPLES:
 
-Deploy contract project. Crafts a contract deployment transaction then sends it to a running node.
+You can use `forc deploy`, which triggers a contract deployment transaction and sends it to a running node.
 
-Alternatively, you could deploy your contract programmatically using our SDK:
+Alternatively, you can deploy your Sway contract programmatically using [fuels-rs](https://github.com/FuelLabs/fuels-rs), our Rust SDK.
 
-```rust
-// Build the contract
-let salt: [u8; 32] = rng.gen();
-let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-
-// Launch a local network and deploy the contract
-let compiled = Contract::compile_sway_contract("./", salt).unwrap();
-let client = Provider::launch(Config::local_node()).await.unwrap();
-let contract_id = Contract::deploy(&compiled, &client).await.unwrap();
-```
+You can find an example within our [fuels-rs book](https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract).
