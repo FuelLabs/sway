@@ -4,7 +4,7 @@ Forc has an dependancy management system which can pull packages using git. This
 
 ## Adding a dependency
 
-If your `Forc.toml` doesn't already have a `[dependencies]` section, add that, then list the crate name and path or git details that you would like to use.
+If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Below, list the package name alongside its source. Currently, `forc` supports both `git` and `path` sources.
 
 When installing from `git` Forc will look for the nearest `Forc.toml` with a matching project `name` field to the dependancy name specified.
 
