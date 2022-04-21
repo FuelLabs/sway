@@ -26,12 +26,34 @@ fn main() -> bool {
     let c = 0x0000000000000001_0000000000000001_0000000000000001_0000000000000001;
     let d = 0x1000000100000001_1000000010000001_1000000010000001_1000000010000001;
     let e = 0x1000000100000000_1000000010000000_1000000010000000_1000000010000000;
+    let f = 0x1000000000000000_1000000000000000_1000000000000000_1000000000000000;
+    let addr_1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    let addr_2 = 0x3333333333333333333333333333333333333333333333333333333333333333;
+    let addr_3 = 0x1111111111111111111111111111111111111111111111111111111111111111;
+    let addr_4 = 0x2222222222222222222222222222222222222222222222222222222222222222;
 
-    // test and_b256()
+
     assert(a & b == c);
-    // test or_b256()
+    assert(a & c == c);
+    assert(a & d == a);
+    assert(a & e == f);
+    assert(f & e == f);
+    assert(addr_1 & addr_2 == addr_2);
+    assert(addr_4 & addr_3 == 0);
+    assert(addr_1 & addr_4 == addr_4);
+
+
     assert(a | b == d);
-    // test xor_b256()
+    assert(a | d == d);
+    assert(a | c == a);
+    assert(c | f == a);
+    assert(c | e == d);
+    assert(addr_1 | addr_2 == addr_1);
+    assert(addr_2 | addr_3 == addr_2);
+    assert(addr_3 | addr_4 == addr_2);
+
+
+
     assert(a ^ b == e);
 
     true
