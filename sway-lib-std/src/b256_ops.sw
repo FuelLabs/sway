@@ -4,7 +4,7 @@ use ::panic::panic;
 use ::chain::log_u64;
 
 
-impl AndOrXor for b256 {
+impl BitwiseAnd for u64 {
     pub fn binary_and(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
@@ -15,7 +15,9 @@ impl AndOrXor for b256 {
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
     }
+}
 
+impl BitwiseOr for u64 {
     pub fn binary_or(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
@@ -26,7 +28,9 @@ impl AndOrXor for b256 {
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
     }
+}
 
+impl BitwiseXor for u64 {
     pub fn binary_xor(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
