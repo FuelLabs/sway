@@ -352,11 +352,11 @@ impl<'ir> AsmBuilder<'ir> {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 4;
                     }
-                    Type::String(_) => {
+                    Type::String(n) => {
                         // Strings are always constant and used by reference, so we only store the
                         // pointer on the stack.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += 1;
+                        stack_base += size_bytes_round_up_to_word_alignment!(n)
                     }
                     Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
                         // Store this aggregate at the current stack base.
@@ -2119,7 +2119,7 @@ pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) => 8,
         Type::B256 => 32,
-        Type::String(_) => 8,
+        Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {
             if let AggregateContent::ArrayType(el_ty, cnt) = &context.aggregates[aggregate.0] {
                 cnt * ir_type_size_in_bytes(context, el_ty)
