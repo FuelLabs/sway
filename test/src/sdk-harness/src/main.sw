@@ -1,0 +1,4 @@
+script;
+
+fn main() {
+}
