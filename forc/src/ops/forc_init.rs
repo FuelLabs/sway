@@ -94,9 +94,7 @@ pub fn init(command: InitCommand) -> Result<()> {
                     Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")?
                 }
                 _ => {
-                    bail!(
-                        "Unrecognized template: \n Example Templates:\n - counter"
-                    );
+                    bail!("Unrecognized template: \n Example Templates:\n - counter");
                 }
             };
             init_from_git_template(project_name, &template_url)
@@ -159,7 +157,10 @@ pub(crate) fn init_new_project(project_name: String, project_type: &str) -> Resu
         defaults::default_gitignore(),
     )?;
 
-    println_green(&format!("Successfully created {}: {}", project_name, project_type));
+    println_green(&format!(
+        "Successfully created {}: {}",
+        project_name, project_type
+    ));
 
     print_welcome_message();
 
