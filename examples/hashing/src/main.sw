@@ -2,10 +2,10 @@ script;
 
 use std::chain::log_b256;
 use std::hash::{
-    hash_u64,
-    hash_value,
+    HashMethod,
     hash_pair,
-    HashMethod
+    hash_u64,
+    hash_value
 };
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
