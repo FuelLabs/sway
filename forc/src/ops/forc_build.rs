@@ -57,14 +57,12 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
-        if !command.silent_mode {
-            let cause = if e.to_string().contains("No such file or directory") {
-                anyhow!("lock file did not exist")
-            } else {
-                e
-            };
-            println!("  Creating a new `Forc.lock` file (cause: {})", cause);
-        }
+        let cause = if e.to_string().contains("No such file or directory") {
+            anyhow!("lock file did not exist")
+        } else {
+            e
+        };
+        println!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);
@@ -72,9 +70,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         let string = toml::ser::to_string_pretty(&lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        if !command.silent_mode {
-            println!("   Created new lock file at {}", lock_path.display());
-        }
+        println!("   Created new lock file at {}", lock_path.display());
         Ok(plan)
     })?;
 
