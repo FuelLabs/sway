@@ -212,6 +212,11 @@ fn inline_instruction(
                     .ins(context)
                     .asm_block_from_asm(asm, new_args, span_md_idx)
             }
+            Instruction::BitCast(value, ty) => {
+                new_block
+                    .ins(context)
+                    .bitcast(map_value(value), ty, span_md_idx)
+            }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
             Instruction::Branch(b) => {

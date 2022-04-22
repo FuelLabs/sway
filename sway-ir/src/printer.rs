@@ -295,6 +295,16 @@ fn instruction_to_doc<'a>(
             Instruction::AsmBlock(asm, args) => {
                 asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, span_md_idx)
             }
+            Instruction::BitCast(value, ty) => maybe_constant_to_doc(
+                context, md_namer, namer, value,
+            )
+            .append(Doc::text_line(format!(
+                "{} = bitcast {} to {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, value),
+                ty.as_string(context),
+                md_namer.meta_as_string(context, span_md_idx, true)
+            ))),
             Instruction::Branch(to_block) => maybe_constant_phi_to_doc(
                 context, md_namer, namer, block, to_block,
             )
