@@ -1,5 +1,8 @@
 use crate::cli::InitCommand;
-use crate::utils::{defaults, project_type::ProjectType};
+use crate::utils::{
+    defaults,
+    program_type::{ProgramType, ProgramType::*},
+};
 use anyhow::{bail, Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
@@ -82,7 +85,21 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
-    let project_type = command.project_type;
+    let program_type = match (
+        command.contract,
+        command.script,
+        command.predicate,
+        command.library,
+    ) {
+        (_, false, false, false) => Contract,
+        (false, true, false, false) => Script,
+        (false, false, true, false) => Predicate,
+        (false, false, false, true) => Library,
+        _ => anyhow::bail!(
+            "Unrecognized program type, or multiple types detected: \
+        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+        ),
+    };
 
     match command.template {
         Some(template) => {
@@ -96,11 +113,11 @@ pub fn init(command: InitCommand) -> Result<()> {
             };
             init_from_git_template(project_name, &template_url)
         }
-        None => init_new_project(project_name, project_type),
+        None => init_new_project(project_name, program_type),
     }
 }
 
-pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) -> Result<()> {
+pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) -> Result<()> {
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
     // Make a new directory for the project
@@ -110,8 +127,7 @@ pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) 
     fs::create_dir_all(Path::new(&project_name).join("tests"))?;
 
     // Insert default manifest file
-    use ProjectType::*;
-    match project_type {
+    match program_type {
         Library => fs::write(
             Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
             defaults::default_manifest(&neat_name, constants::LIB_ENTRY),
@@ -129,7 +145,7 @@ pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) 
     )?;
 
     // Insert project based on project_type
-    match project_type {
+    match program_type {
         Contract => fs::write(
             Path::new(&project_name)
                 .join("src")
@@ -169,7 +185,7 @@ pub(crate) fn init_new_project(project_name: String, project_type: ProjectType) 
     )?;
 
     println_green(&format!(
-        "Successfully created {project_type}: {project_name}",
+        "Successfully created {program_type}: {project_name}",
     ));
 
     print_welcome_message();
