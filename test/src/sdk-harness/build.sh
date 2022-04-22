@@ -6,10 +6,8 @@ MANIFEST="Forc.toml"
 pwd
 for f in $FILES
 do
-if [ ! -e ${f}/$MANIFEST ]
+if [ -e ${f}/$MANIFEST ]
   then
-  echo "Can't build a project without a Forc manifest."
-  else
   if [ -d "${f}" ];
     then
     echo "building test $f..."
@@ -24,5 +22,4 @@ if [ ! -e ${f}/$MANIFEST ]
   fi
 fi
 done
-
-echo "Successfully built all buildable projects."
+echo "Successfully built all projects."
