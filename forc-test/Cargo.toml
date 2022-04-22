@@ -1,0 +1,19 @@
+[package]
+name = "forc-test"
+version = "0.9.1"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "FIXME."
+
+[dependencies]
+fuel-gql-client = { version = "0.5", default-features = false }
+fuel-tx = "0.7"
+fuels-abigen-macro = "0.9"
+fuels-contract = "0.9"
+fuels-core = "0.9"
+fuels-signers = "0.9"
+rand = "0.8"
+tokio = { version = "1.12", features = ["rt", "macros"] }

@@ -30,14 +30,7 @@ name = "{project_name}"
 version = "0.1.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.5", default-features = false }}
-fuel-tx = "0.7"
-fuels-abigen-macro = "0.9"
-fuels-contract = "0.9"
-fuels-core = "0.9"
-fuels-signers = "0.9"
-rand = "0.8"
-tokio = {{ version = "1.12", features = ["rt", "macros"] }}
+forc-test = "0.9.1"
 
 [[test]]
 harness = true
@@ -68,10 +61,12 @@ impl MyContract for Contract {
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
-        r#"use fuel_tx::{ContractId, Salt};
-use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::util::test_helpers;
+        r#"use forc_test::{
+    fuel_tx::{ContractId, Salt};
+    fuels_abigen_macro::abigen;
+    fuels_contract::{contract::Contract, parameters::TxParameters};
+    fuels_signers::util::test_helpers;
+};
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,

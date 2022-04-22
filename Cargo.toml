@@ -8,6 +8,7 @@ members = [
     "forc-fmt",
     "forc-lsp",
     "forc-pkg",
+    "forc-test",
     "forc-util",
     "scripts/forc-documenter",
     "sway-core",
