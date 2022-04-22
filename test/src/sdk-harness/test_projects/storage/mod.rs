@@ -4,7 +4,7 @@ use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::util::test_helpers;
 
 // Load abi from json
-abigen!(Storage, "out/debug/storage-abi.json");
+abigen!(Storage, "test_projects/storage/out/debug/storage-abi.json");
 
 async fn get_contract_instance() -> (Storage, ContractId) {
     // Deploy the compiled contract
