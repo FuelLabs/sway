@@ -1,6 +1,7 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    convert_parse_tree::ConvertParseTreeError,
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
@@ -8,7 +9,7 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::fmt;
+use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -200,8 +201,12 @@ impl CompileWarning {
         (self.span.start(), self.span.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.span.path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.span.path_str()
     }
 
     /// Returns the line and column start and end
@@ -919,6 +924,15 @@ pub enum CompileError {
     UnexpectedDeclaration { decl_type: &'static str, span: Span },
     #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
     ContractAddressMustBeKnown { span: Span },
+    #[error("{}", error)]
+    ConvertParseTree {
+        #[from]
+        error: ConvertParseTreeError,
+    },
+    #[error("{}", error)]
+    Lex { error: sway_parse::LexError },
+    #[error("{}", error)]
+    Parse { error: sway_parse::ParseError },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1000,8 +1014,12 @@ impl CompileError {
         (sp.start(), sp.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.internal_span().path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.internal_span().path_str()
     }
 
     pub fn internal_span(&self) -> &Span {
@@ -1137,6 +1155,9 @@ impl CompileError {
             InvalidVariableName { span, .. } => span,
             UnexpectedDeclaration { span, .. } => span,
             ContractAddressMustBeKnown { span, .. } => span,
+            ConvertParseTree { error } => error.span_ref(),
+            Lex { error } => error.span_ref(),
+            Parse { error } => &error.span,
         }
     }
 

@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt,
 };
+use sway_types::Span;
 
 use crate::semantic_analysis::ast_node::{
     TypedStructField, TypedVariableDeclaration, VariableMutability,
@@ -42,7 +43,6 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
-use sway_types::join_spans;
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -1308,7 +1308,7 @@ fn compile_contract_to_selectors(
                     .parameters
                     .iter()
                     .fold(decl.parameters[0].name.span().clone(), |acc, x| {
-                        join_spans(acc, x.name.span().clone())
+                        Span::join(acc, x.name.span().clone())
                     });
 
                 // Create a new struct type that contains all the arguments. Then, for each argument,

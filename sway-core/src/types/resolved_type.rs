@@ -49,10 +49,7 @@ impl ResolvedType {
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
-        let span = sway_types::span::Span {
-            span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
-            path: None,
-        };
+        let span = sway_types::span::Span::new("TODO(static span)".into(), 0, 0, None).unwrap();
 
         match self {
             // Each char is a byte, so the size is the num of characters / 8

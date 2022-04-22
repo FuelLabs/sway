@@ -269,19 +269,17 @@ pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-      asm(r1: self.eq(other), r2) {
-        eq r2 r1 zero;
-        r2: bool
-      }
+        not(self.eq(other))
     }
 }
 
-trait OrdEq: Ord + Eq { } {
+trait OrdEq: Ord + Eq {
+} {
     fn ge(self, other: Self) -> bool {
-      self.gt(other) || self.eq(other)
+        self.gt(other) || self.eq(other)
     }
     fn le(self, other: Self) -> bool {
-      self.lt(other) || self.eq(other)
+        self.lt(other) || self.eq(other)
     }
 }
 
@@ -427,14 +425,28 @@ impl b256 {
     }
 }
 
-impl u64 {
+pub trait BitwiseAnd {
+    fn binary_and(self, other: Self) -> Self;
+}
+
+pub trait BitwiseOr {
+    fn binary_or(self, other: Self) -> Self;
+}
+
+pub trait BitwiseXor {
+    fn binary_xor(self, other: Self) -> Self;
+}
+
+impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
             and r3 r1 r2;
             r3: u64
         }
     }
+}
 
+impl BitwiseOr for u64 {
     fn binary_or(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
             or r3 r1 r2;
@@ -443,7 +455,20 @@ impl u64 {
     }
 }
 
-impl OrdEq for u64 {}
-impl OrdEq for u32 {}
-impl OrdEq for u16 {}
-impl OrdEq for u8  {}
+impl BitwiseXor for u64 {
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
+impl OrdEq for u64 {
+}
+impl OrdEq for u32 {
+}
+impl OrdEq for u16 {
+}
+impl OrdEq for u8 {
+}

@@ -3,8 +3,7 @@ use crate::ops::forc_build;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{check_program_type, fuel_core_not_running, manifest_file_missing, Manifest};
-use forc_util::find_manifest_dir;
+use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
@@ -18,10 +17,8 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest_dir =
-        find_manifest_dir(&path_dir).ok_or_else(|| manifest_file_missing(path_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
-    check_program_type(&manifest, manifest_dir, TreeType::Script)?;
+    let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
+    manifest.check_program_type(TreeType::Script)?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
@@ -30,6 +27,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let build_command = BuildCommand {
         path: command.path,
         use_orig_asm: command.use_orig_asm,
+        use_orig_parser: command.use_orig_parser,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,

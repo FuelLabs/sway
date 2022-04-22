@@ -23,10 +23,7 @@ impl AbiDeclaration {
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
-        let span = Span {
-            span: pair.as_span(),
-            path: config.map(|c| c.path()),
-        };
+        let span = Span::from_pest(pair.as_span(), config.map(|c| c.path()));
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

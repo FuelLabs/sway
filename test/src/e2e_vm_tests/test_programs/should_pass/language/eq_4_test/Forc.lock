@@ -1,7 +1,0 @@
-[[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
-name = 'eq_4_test'
-dependencies = ['core']

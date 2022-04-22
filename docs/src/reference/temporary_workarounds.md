@@ -1,16 +1,5 @@
 # Temporary Workarounds
 
-## Standard Library
-
-The standard library is currently not distributed with `forc` if [installed via `cargo`](../introduction/installation.md#installing-from-cargo). It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's `Forc.toml` file:
-
-```toml
-[dependencies]
-std = { git = "https://github.com/FuelLabs/sway", branch = "master" }
-```
-
-Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
-
 ## Storage Variables and Mappings
 
 Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.

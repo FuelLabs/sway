@@ -13,7 +13,7 @@ use crate::{
     Ident, TypeParameter,
 };
 
-use sway_types::{join_spans, span::Span, Function, Property};
+use sway_types::{Function, Property, Span};
 
 use sha2::{Digest, Sha256};
 
@@ -273,7 +273,7 @@ impl TypedFunctionDeclaration {
             let type_arguments_span = type_arguments
                 .iter()
                 .map(|x| x.span.clone())
-                .reduce(join_spans)
+                .reduce(Span::join)
                 .unwrap_or_else(|| self.span.clone());
             if new_decl.type_parameters.len() != type_arguments.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
@@ -307,7 +307,7 @@ impl TypedFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span().clone(),
-                |acc, TypedFunctionParameter { type_span, .. }| join_spans(acc, type_span.clone()),
+                |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
             self.name.span().clone()
@@ -424,31 +424,16 @@ fn test_function_selector_behavior() {
     use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new_with_override(
-            "foo",
-            Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
-        ),
+        name: Ident::new_no_span("foo"),
         body: TypedCodeBlock {
             contents: vec![],
-            whole_block_span: Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
+            whole_block_span: Span::dummy(),
         },
         parameters: vec![],
-        span: Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
+        span: Span::dummy(),
         return_type: 0,
         type_parameters: vec![],
-        return_type_span: Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
+        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
     };
@@ -462,60 +447,27 @@ fn test_function_selector_behavior() {
 
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new_with_override(
-            "bar",
-            Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
-        ),
+        name: Ident::new_with_override("bar", Span::dummy()),
         body: TypedCodeBlock {
             contents: vec![],
-            whole_block_span: Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
+            whole_block_span: Span::dummy(),
         },
         parameters: vec![
             TypedFunctionParameter {
-                name: Ident::new_with_override(
-                    "foo",
-                    Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
-                ),
+                name: Ident::new_no_span("foo"),
                 r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
-                type_span: Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                type_span: Span::dummy(),
             },
             TypedFunctionParameter {
-                name: Ident::new_with_override(
-                    "baz",
-                    Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
-                ),
+                name: Ident::new_no_span("baz"),
                 r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                type_span: Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                type_span: Span::dummy(),
             },
         ],
-        span: Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
+        span: Span::dummy(),
         return_type: 0,
         type_parameters: vec![],
-        return_type_span: Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        },
+        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
     };

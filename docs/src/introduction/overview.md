@@ -67,7 +67,7 @@ In the second line we declare an ABI method called `receive_funds` which, when c
 
 _Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md)._
 
-In the third line we are declare another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
+In the third line we declare another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
 
 ### Implementing the ABI Methods in `wallet_contract`
 
@@ -85,7 +85,6 @@ license = "Apache-2.0"
 name = "wallet_contract"
 
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway", branch = "master" }
 ```
 
 Include the `wallet_lib` project as a dependency by adding the following line to the bottom of the file:

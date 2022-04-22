@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'eq_and_neq'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

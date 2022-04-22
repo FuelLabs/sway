@@ -72,10 +72,7 @@ impl ConstantDeclaration {
         assert_or_warn!(
             is_screaming_snake_case(name.as_str()),
             warnings,
-            Span {
-                span: name_pair.as_span(),
-                path,
-            },
+            Span::from_pest(name_pair.as_span(), path),
             Warning::NonScreamingSnakeCaseConstName { name: name.clone() }
         );
         let decl = ConstantDeclaration {

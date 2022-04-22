@@ -1006,7 +1006,13 @@ fn connect_expression(
             }
             Ok(vec![this_ix])
         }
-        TypeProperty { .. } => Ok(Vec::new()),
+        TypeProperty { .. } => {
+            let node = graph.add_node("Type Property".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
+        }
         SizeOfValue { expr } => {
             let expr = connect_expression(
                 &(*expr).expression,
