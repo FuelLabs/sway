@@ -1133,20 +1133,24 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
+                    let type_name_span = type_name.span().clone();
+                    let type_name = match type_name_to_type_info_opt(&type_name) {
+                        Some(type_info) => type_info,
+                        None => TypeInfo::Custom {
+                            name: type_name,
+                            type_arguments: Vec::new(),
+                        },
+                    };
                     let type_arguments = match generics_opt {
                         Some((_double_colon_token, generic_args)) => {
                             generic_args_to_type_arguments(ec, generic_args)?
                         }
                         None => Vec::new(),
                     };
-                    let type_name_span = type_name.span().clone();
                     Expression::MethodApplication {
                         method_name: MethodName::FromType {
                             call_path,
-                            type_name: Some(TypeInfo::Custom {
-                                name: type_name,
-                                type_arguments: Vec::new(),
-                            }),
+                            type_name: Some(type_name),
                             type_name_span: Some(type_name_span),
                         },
                         contract_call_params: Vec::new(),
@@ -1363,29 +1367,26 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             sub_token,
             rhs,
         } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
-        Expr::Shl { shl_token, .. } => {
-            let error = ConvertParseTreeError::ShlNotImplemented {
-                span: shl_token.span(),
-            };
-            return Err(ec.error(error));
-        }
-        Expr::Shr { shr_token, .. } => {
-            let error = ConvertParseTreeError::ShrNotImplemented {
-                span: shr_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::Shl {
+            lhs,
+            shl_token,
+            rhs,
+        } => binary_op_call(ec, "lsh", shl_token.span(), span, *lhs, *rhs)?,
+        Expr::Shr {
+            lhs,
+            shr_token,
+            rhs,
+        } => binary_op_call(ec, "rsh", shr_token.span(), span, *lhs, *rhs)?,
         Expr::BitAnd {
             lhs,
             ampersand_token,
             rhs,
         } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
-        Expr::BitXor { caret_token, .. } => {
-            let error = ConvertParseTreeError::BitXorNotImplemented {
-                span: caret_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::BitXor {
+            lhs,
+            caret_token,
+            rhs,
+        } => binary_op_call(ec, "binary_xor", caret_token.span(), span, *lhs, *rhs)?,
         Expr::BitOr {
             lhs,
             pipe_token,

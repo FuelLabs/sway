@@ -114,14 +114,12 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
     let mut existing_summary_contents = String::new();
     summary_file.read_to_string(&mut existing_summary_contents)?;
 
-    let version = process::Command::new("forc")
+    let output = process::Command::new("forc")
         .arg("--version")
         .output()
-        .expect("Failed running forc --version")
-        .stdout;
-
-    let version_message =
-        "Running forc --help using ".to_owned() + &String::from_utf8_lossy(&version);
+        .expect("Failed running forc --version");
+    let version = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
+    let version_message = "Running forc --help using ".to_owned() + &version;
     println!("{}", version_message);
 
     let output = process::Command::new("forc")
@@ -129,7 +127,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
         .output()
         .expect("Failed to run help command");
 
-    let s = String::from_utf8_lossy(&output.stdout);
+    let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
     let lines = s.lines();
 
     let mut subcommand_is_parsed = false;
@@ -236,7 +234,7 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         return Err(anyhow!("Failed to run forc {} --help", subcommand));
     }
 
-    let s = String::from_utf8_lossy(&output.stdout);
+    let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
 
     for (index, line) in s.lines().enumerate() {
         let mut formatted_line = String::new();
