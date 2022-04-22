@@ -1133,20 +1133,24 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
+                    let type_name_span = type_name.span().clone();
+                    let type_name = match type_name_to_type_info_opt(&type_name) {
+                        Some(type_info) => type_info,
+                        None => TypeInfo::Custom {
+                            name: type_name,
+                            type_arguments: Vec::new(),
+                        },
+                    };
                     let type_arguments = match generics_opt {
                         Some((_double_colon_token, generic_args)) => {
                             generic_args_to_type_arguments(ec, generic_args)?
                         }
                         None => Vec::new(),
                     };
-                    let type_name_span = type_name.span().clone();
                     Expression::MethodApplication {
                         method_name: MethodName::FromType {
                             call_path,
-                            type_name: Some(TypeInfo::Custom {
-                                name: type_name,
-                                type_arguments: Vec::new(),
-                            }),
+                            type_name: Some(type_name),
                             type_name_span: Some(type_name_span),
                         },
                         contract_call_params: Vec::new(),
