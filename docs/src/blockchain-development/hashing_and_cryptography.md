@@ -4,12 +4,12 @@ The Sway standard library provides easy access to hashing (namely `sha256` and E
 
 ## Hashing
 
-```rust
+```sway
 {{#include ../../../examples/hashing/src/main.sw}}
 ```
 
 ## Signature Recovery
 
-```rust
+```sway
 {{#include ../../../examples/cryptography/src/main.sw}}
 ```
