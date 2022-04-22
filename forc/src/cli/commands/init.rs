@@ -13,14 +13,16 @@ pub struct Command {
     /// Initialize a new project from a template
     #[clap(short, long, help = TEMPLATE_HELP)]
     pub template: Option<String>,
-    /// There are four accepted project types: contract, script, predicate or library.
-    /// If a project type is not given the default project type is a contract.
+    /// The default program type, excluding all flags or adding this flag creates a basic contract program.
     #[clap(long)]
     pub contract: bool,
+    /// Adding this flag creates an empty script program.
     #[clap(long)]
     pub script: bool,
+    /// Adding this flag creates an empty predicate program.
     #[clap(long)]
     pub predicate: bool,
+    /// Adding this flag creates an empty library program.
     #[clap(long = "lib")]
     pub library: bool,
     /// The name of your project
