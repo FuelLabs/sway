@@ -1,43 +1,43 @@
 library b256_ops;
 
 use ::panic::panic;
-use ::chain::log_u64;
+use core::ops::{ BitwiseAnd, BitwiseOr, BitwiseXor };
 
 
-impl BitwiseAnd for u64 {
+impl BitwiseAnd for b256 {
     pub fn binary_and(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        let word_1 = value_word_1.binary_and(other_word_1);
-        let word_2 = value_word_2.binary_and(other_word_2);
-        let word_3 = value_word_3.binary_and(other_word_3);
-        let word_4 = value_word_4.binary_and(other_word_4);
+        let word_1 = value_word_1 & other_word_1;
+        let word_2 = value_word_2 & other_word_2;
+        let word_3 = value_word_3 & other_word_3;
+        let word_4 = value_word_4 & other_word_4;
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
     }
 }
 
-impl BitwiseOr for u64 {
+impl BitwiseOr for b256 {
     pub fn binary_or(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        let word_1 = value_word_1.binary_or(other_word_1);
-        let word_2 = value_word_2.binary_or(other_word_2);
-        let word_3 = value_word_3.binary_or(other_word_3);
-        let word_4 = value_word_4.binary_or(other_word_4);
+        let word_1 = value_word_1 | other_word_1;
+        let word_2 = value_word_2 | other_word_2;
+        let word_3 = value_word_3 | other_word_3;
+        let word_4 = value_word_4 | other_word_4;
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
     }
 }
 
-impl BitwiseXor for u64 {
+impl BitwiseXor for b256 {
     pub fn binary_xor(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        let word_1 = value_word_1.binary_xor(other_word_1);
-        let word_2 = value_word_2.binary_xor(other_word_2);
-        let word_3 = value_word_3.binary_xor(other_word_3);
-        let word_4 = value_word_4.binary_xor(other_word_4);
+        let word_1 = value_word_1 ^ other_word_1;
+        let word_2 = value_word_2 ^ other_word_2;
+        let word_3 = value_word_3 ^ other_word_3;
+        let word_4 = value_word_4 ^ other_word_4;
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
     }
@@ -56,9 +56,9 @@ pub fn get_word_from_b256(val: b256, offset: u64) -> u64 {
 // Get 4 words from a single b256 value.
 pub fn decompose(val: b256) -> (u64, u64, u64, u64) {
     let w1 = get_word_from_b256(val, 0);
-    let w2 = get_word_from_b256(val, 8);
-    let w3 = get_word_from_b256(val, 16);
-    let w4 = get_word_from_b256(val, 24);
+    let w2 = get_word_from_b256(val, 1);
+    let w3 = get_word_from_b256(val, 2);
+    let w4 = get_word_from_b256(val, 3);
     (w1, w2, w3, w4)
 }
 
