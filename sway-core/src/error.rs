@@ -929,9 +929,9 @@ pub enum CompileError {
         #[from]
         error: ConvertParseTreeError,
     },
-    #[error("lex error: {}", error)]
+    #[error("{}", error)]
     Lex { error: sway_parse::LexError },
-    #[error("parse error: {}", error)]
+    #[error("{}", error)]
     Parse { error: sway_parse::ParseError },
 }
 
