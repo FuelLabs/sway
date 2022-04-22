@@ -4,9 +4,9 @@ use fuels_contract::{contract::Contract, parameters::TxParameters};
 use fuels_signers::util::test_helpers;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/storage-abi.json");
+abigen!(Storage, "out/debug/storage-abi.json");
 
-async fn get_contract_instance() -> (MyContract, ContractId) {
+async fn get_contract_instance() -> (Storage, ContractId) {
     // Deploy the compiled contract
     let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract("./out/debug/storage.bin", salt).unwrap();
@@ -18,7 +18,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
         .await
         .unwrap();
 
-    let instance = MyContract::new(id.to_string(), provider, wallet);
+    let instance = Storage::new(id.to_string(), provider, wallet);
 
     (instance, id)
 }

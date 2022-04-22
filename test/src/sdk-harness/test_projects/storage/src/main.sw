@@ -1,10 +1,10 @@
 contract;
 
-abi MyContract {
+abi Storage {
     fn test_function() -> bool;
 }
 
-impl MyContract for Contract {
+impl Storage for Contract {
     fn test_function() -> bool {
         true
     }
