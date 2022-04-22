@@ -9,7 +9,6 @@ authors = ["{real_name}"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "{project_name}"
-rust-version = "1.58.0"
 
 [dependencies]
 "#
