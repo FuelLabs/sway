@@ -22,4 +22,3 @@ fn main() {
 
     log_b256(hashed_pair);
 }
-
