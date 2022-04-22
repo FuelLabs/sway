@@ -5,10 +5,10 @@ script {
         local ptr { u64 } a__
 
         entry:
-        v0 = get_ptr ptr bool a, !1
+        v0 = get_ptr ptr bool a, ptr bool, 0, !1
         v1 = const bool true, !2
         store v1, ptr v0, !1
-        v2 = get_ptr ptr bool a, !3
+        v2 = get_ptr ptr bool a, ptr bool, 0, !3
         v3 = load ptr v2, !3
         cbr v3, block0, block1, !4
 
@@ -22,15 +22,15 @@ script {
 
         block2:
         v6 = phi(block0: v4, block1: v5)
-        v7 = get_ptr ptr u64 a_, !7
+        v7 = get_ptr ptr u64 a_, ptr u64, 0, !7
         store v6, ptr v7, !7
-        v8 = get_ptr ptr u64 a_, !8
+        v8 = get_ptr ptr u64 a_, ptr u64, 0, !8
         v9 = load ptr v8, !8
         v10 = const { u64 } { u64 undef }, !9
         v11 = insert_value v10, { u64 }, v9, 0, !9
-        v12 = get_ptr ptr { u64 } a__, !10
+        v12 = get_ptr ptr { u64 } a__, ptr { u64 }, 0, !10
         store v11, ptr v12, !10
-        v13 = get_ptr ptr { u64 } a__, !11
+        v13 = get_ptr ptr { u64 } a__, ptr { u64 }, 0, !11
         v14 = extract_value v13, { u64 }, 0, !12
         ret u64 v14
     }
@@ -48,4 +48,4 @@ script {
 !9 = span !0 121 131
 !10 = span !0 113 132
 !11 = span !0 137 138
-!12 = span !0 139 140
+!12 = span !0 128 129

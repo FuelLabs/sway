@@ -43,11 +43,9 @@ script {
         cbr v6, not_block03, not_block14
 
         not_block03:
-        v1 = const bool false
         br not_block25
 
         not_block14:
-        v2 = const bool true
         br not_block25
 
         not_block25:

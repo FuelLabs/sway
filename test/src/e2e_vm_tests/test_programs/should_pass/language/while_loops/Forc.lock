@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']
+
+[[package]]
+name = 'while_loops'
+dependencies = ['std']

@@ -2,6 +2,7 @@ use super::code_builder::CodeBuilder;
 use crate::traversal::{traverse_for_changes, Change};
 use ropey::Rope;
 use std::sync::Arc;
+use sway_core::BuildConfig;
 
 /// Returns number of lines and formatted text.
 /// Formatting is done as a 2-step process.
@@ -12,8 +13,9 @@ use std::sync::Arc;
 pub fn get_formatted_data(
     file: Arc<str>,
     formatting_options: FormattingOptions,
+    build_config: Option<&BuildConfig>,
 ) -> Result<(usize, String), Vec<String>> {
-    let parsed_res = sway_core::parse(file.clone(), None);
+    let parsed_res = sway_core::parse(file.clone(), build_config);
 
     match parsed_res.value {
         Some(parse_tree) => {
@@ -115,7 +117,7 @@ pub fn add(a: u32, b: u32) -> u32 {
     a + b
 }
 "#;
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -164,7 +166,7 @@ add
 
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -181,10 +183,16 @@ fn main() {
     sadasd
         sadasd sadasd
     ";
+
+    storage {
+        foo: u64,
+        bar: i32,
+    }
+    storage.foo;
 }
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -199,10 +207,15 @@ fn main(){
         sadasd sadasd
     "          
                ;
+
+storage {
+            foo: u64, bar:i32,  
+            }
+            storage.foo ;    
 }
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -223,7 +236,7 @@ fn main() {
 }
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -244,7 +257,7 @@ fn main() {
 }
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -278,7 +291,7 @@ struct Example { // first comment
 } // comment as well
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -309,7 +322,7 @@ struct Example {    // first comment
 }   // comment as well
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -419,7 +432,7 @@ fn get_gas() -> A {
 }
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -519,7 +532,7 @@ cgas
 }
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -548,7 +561,7 @@ pub fn tell_a_story() -> Story {
 }
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -576,7 +589,7 @@ pub fn tell_a_story() -> Story {
         }
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -606,7 +619,7 @@ fn one_liner() -> bool {
 }
 "#;
 
-        let result = get_formatted_data(correct_sway_code.into(), OPTIONS);
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -636,7 +649,7 @@ fn one_liner() -> bool {
         }
 "#;
 
-        let result = get_formatted_data(sway_code.into(), OPTIONS);
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
@@ -665,9 +678,46 @@ use a::b::{c, d::{self, f}};
 fn main() {
 }
 "#;
-        let result = get_formatted_data(test_sway.into(), OPTIONS);
+        let result = get_formatted_data(test_sway.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
         assert_eq!(formatted_code, expected_sway);
+    }
+
+    #[test]
+    fn test_logical_not_operator() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let a = true;
+    let b = false;
+
+    if (!a) {
+    } else if !(!a) {
+    } else if !(a == b) {
+    }
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+fn main() {
+    let a = true;
+    let b = false;
+
+    if ( ! a ) {
+    } else if ! (   !  
+        a ) {
+    } else if !   ( a == b) {}
+}
+"#;
+
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
     }
 }

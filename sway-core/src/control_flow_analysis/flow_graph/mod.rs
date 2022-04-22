@@ -11,6 +11,7 @@ use sway_types::span::Span;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
+use crate::semantic_analysis::declaration::TypedStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -53,6 +54,7 @@ pub enum ControlFlowGraphNode {
     EnumVariant {
         span: Span,
         variant_name: String,
+        is_public: bool,
     },
     MethodDeclaration {
         span: Span,
@@ -61,6 +63,9 @@ pub enum ControlFlowGraphNode {
     StructField {
         struct_field_name: Ident,
         span: Span,
+    },
+    StorageField {
+        field_name: Ident,
     },
 }
 
@@ -80,23 +85,24 @@ impl std::fmt::Debug for ControlFlowGraphNode {
             } => {
                 format!("Struct field {}", struct_field_name.as_str())
             }
+            ControlFlowGraphNode::StorageField { field_name } => {
+                format!("Storage field {}", field_name.as_str())
+            }
         };
         f.write_str(&text)
+    }
+}
+impl std::convert::From<&TypedStorageField> for ControlFlowGraphNode {
+    fn from(other: &TypedStorageField) -> Self {
+        ControlFlowGraphNode::StorageField {
+            field_name: other.name.clone(),
+        }
     }
 }
 
 impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
     fn from(other: &TypedAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
-    }
-}
-
-impl std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
-    fn from(other: &TypedEnumVariant) -> Self {
-        ControlFlowGraphNode::EnumVariant {
-            variant_name: other.name.as_str().to_string(),
-            span: other.span.clone(),
-        }
     }
 }
 
@@ -143,5 +149,18 @@ impl ControlFlowGraph {
     pub(crate) fn visualize(&self) {
         use petgraph::dot::Dot;
         println!("{:?}", Dot::with_config(&self.graph, &[]));
+    }
+}
+
+impl ControlFlowGraphNode {
+    pub(crate) fn from_enum_variant(
+        other: &TypedEnumVariant,
+        is_public: bool,
+    ) -> ControlFlowGraphNode {
+        ControlFlowGraphNode::EnumVariant {
+            variant_name: other.name.as_str().to_string(),
+            span: other.span.clone(),
+            is_public,
+        }
     }
 }

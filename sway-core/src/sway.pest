@@ -29,6 +29,7 @@ const_decl_keyword   =  {"const"}
 impurity_keyword     =  {"impure"}
 size_of_type_keyword =  {"size_of"}
 size_of_val_keyword  =  {"size_of_val"}
+is_ref_type_keyword  =  {"is_reference_type"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -60,13 +61,33 @@ call_path_          =  {relative_call_path_|absolute_call_path_}
 relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
 absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
 
-expr_inner               = _{unary_op_expr|asm_expression|size_of_expr|match_expression|abi_cast|if_exp|code_block|tuple_index|struct_expression|delineated_path|func_app|literal_value|method_exp|struct_field_access|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
+expr_inner = _{ unary_op_expr
+              | asm_expression
+              | built_in_expr
+              | match_expression
+              | abi_cast
+              | if_let_exp
+              | if_exp
+              | code_block
+              | tuple_index
+              | struct_expression
+              | storage_access
+              | delineated_path
+              | func_app
+              | literal_value
+              | method_exp
+              | struct_field_access
+              | array_index
+              | var_exp
+              | array_exp
+              | parenthesized_expression
+              | tuple_expr
+              }
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
-// // op exps built in to expr to prevent left recursion
+// op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {call_path ~ type_args? ~ fn_args}
-type_args                =  {path_separator ~ type_params}
+func_app                 =  {call_path ~ type_args_with_path? ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 var_exp                  =  {var_name_ident}
 var_name_ident           =  {ident}
@@ -76,22 +97,28 @@ subfield_exp             =  {subfield_path ~ contract_call_params? ~ fn_args}
 contract_call_params     =  {"{" ~ struct_expr_fields ~ "}"}
 subfield_path            =  {(sub_subfield_path ~ ".")+ ~ call_item}
 sub_subfield_path        =  {array_index|call_item}
-fully_qualified_method   =  {call_path? ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
+fully_qualified_method   =  {call_path? ~ "~" ~ ident ~ path_separator ~ call_item ~ type_args_with_path? ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
-delineated_path          =  {call_path_ ~ fn_args?}
+delineated_path          =  {call_path_ ~ type_args_with_path? ~ fn_args?}
+path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
+path_ident               =  {ident}
 array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
+storage_access           =  {storage_keyword ~ "." ~ ident ~ ("." ~ ident)*}
 
-// size_of
-size_of_expr      =  {size_of_type_expr|size_of_val_expr}
+// built in expressions
+built_in_expr     =  {size_of_type_expr|size_of_val_expr|is_ref_type_expr}
 size_of_type_expr =  {size_of_type_keyword ~ "::<" ~ type_name ~ ">" ~ "(" ~ ")"}
 size_of_val_expr  =  {size_of_val_keyword ~ "(" ~ expr ~ ")"}
+is_ref_type_expr  =  {is_ref_type_keyword ~ "::<" ~ type_name ~ ">" ~ "(" ~ ")"}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ call_path ~ "," ~ expr ~ ")"}
 abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
-if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
+if_exp     = {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
+if_let_exp = {"if" ~ var_decl_keyword ~ scrutinee ~ assign ~ expr ~ code_block ~ ( "else" ~ (code_block|if_let_exp))?}
+
 
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|ref_keyword|deref_keyword}
@@ -120,14 +147,16 @@ struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
 field_scrutinee  =  {":" ~ scrutinee}
-enum_scrutinee   =  {call_path_ ~ fn_args_scrutinee?}
-fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
+
+// this doesn't support nested destructuring -- that is TBD
+enum_scrutinee   =  {call_path_ ~ "(" ~ (ident|"_") ~ ")"}
+enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)*}
 tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
-struct_expression  =  {call_path ~ "{" ~ struct_expr_fields ~ "}"}
+struct_expression  =  {call_path ~ type_args_with_path? ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
@@ -145,9 +174,10 @@ fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name
 var_lhs                   =  {var_name|var_tuple}
 var_name                  =  {mut_keyword? ~ ident}
 var_tuple                 =  {"(" ~ (var_lhs ~ ("," ~ var_lhs)* ~ ","?)? ~ ")" }
-reassignment              =  {variable_reassignment | struct_field_reassignment}
+reassignment              =  {variable_reassignment | storage_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
+storage_reassignment      =  {storage_keyword ~ "." ~ ident ~ ("." ~ ident)* ~ assign ~ expr ~ ";"}
 const_decl                =  {visibility ~ const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
 
 visibility =  {"pub"?}
@@ -155,7 +185,7 @@ visibility =  {"pub"?}
 struct_decl       =  {visibility ~ struct_keyword ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}"}
 storage_decl      =  {storage_keyword ~ "{" ~ storage_fields ~ "}"}
 storage_fields    =  {storage_field ~ ("," ~ storage_field)* ~ ","?}
-storage_field     =  {ident ~ ":" ~ type_name ~ assign ~ expr}
+storage_field     =  {ident ~ ":" ~ type_name}
 struct_name       =  {ident}
 struct_fields     =  {(struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?)?}
 struct_field_name =  {ident}
@@ -165,20 +195,23 @@ enum_fields       =  {(enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_nam
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
-impl_self =  {impl_keyword ~ type_params? ~ type_name ~  trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_self =  {impl_keyword ~ type_params? ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
-fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
-type_params        =  {"<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">"}
-fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
-fn_decl_param_name =  {ident}
-fn_decl_name       =  {ident}
-type_name          =  {str_type|ident ~ type_params?|tuple_type|array_type}
-str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
-trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ call_path) ~ ("," ~ generic_type_param ~ ":" ~ call_path)*}
-generic_type_param =  {ident}
+fn_decl_params       =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ","? ~ ")"}
+fn_decl_param        =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
+fn_decl_param_name   =  {ident}
+fn_decl_name         =  {ident}
+type_params          =  {"<" ~ type_param ~ (", " ~ type_param)* ~ ">"}
+type_param           =  {ident}
+type_args_with_path  =  {path_separator ~ type_args}
+type_args            =  {"<" ~ type_name ~ (", " ~ type_name)* ~ ">"}
+type_name            =  {str_type|contract_caller_type|ident ~ type_args?|tuple_type|array_type}
+contract_caller_type =  {"ContractCaller" ~ "<" ~ (call_path|"_") ~ ">" }
+str_type             =  { "str" ~ "[" ~ basic_integer ~ "]" }
+trait_bounds         =  {"where" ~ (type_param ~ ":" ~ call_path) ~ ("," ~ type_param ~ ":" ~ call_path)*}
 // Array size can be any constant u64 expression, but we don't properly support constant expressions.  See `array_elems rule above.
-array_type         =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
+array_type          =  {"[" ~ type_name ~ ";" ~ basic_integer ~ "]"}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
@@ -186,18 +219,18 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement   =  {expr ~ ";"}
 
 // traits
-trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ supertraits? ~ trait_bounds? ~ trait_methods}
+trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ supertraits? ~ trait_methods}
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 supertraits   =  {":" ~ supertrait ~ ("+" ~ supertrait)*}
-supertrait    =  {call_path ~ type_params?}
-impl_trait    =  {impl_keyword ~ call_path ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+supertrait    =  {call_path}
+impl_trait    =  {impl_keyword ~ type_params? ~ call_path ~ "for" ~ type_name ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
 use_statement           =  {relative_use_statement | absolute_use_statement}
 relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
 absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
 import_path             =  {(star ~ alias?)|(self_keyword ~ alias?)|(ident ~ (path_separator ~ ident)* ~ ((path_separator ~ star ~ alias?)|import_items|alias)?)}
-import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ "}"}
+import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ ","? ~ "}"}
 star                    =  {"*"}
 self_keyword            =  {"self"}
 

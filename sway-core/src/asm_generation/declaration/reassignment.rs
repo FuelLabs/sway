@@ -6,7 +6,7 @@ use crate::{
     },
     asm_lang::{VirtualImmediate12, VirtualOp},
     constants::VM_WORD_SIZE,
-    semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
+    semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     type_engine::*,
     type_engine::{resolve_type, TypeInfo},
 };
@@ -59,7 +59,7 @@ pub(crate) fn convert_reassignment_to_asm(
                     .lhs
                     .iter()
                     .fold(reassignment.lhs[0].span(), |acc, this| {
-                        sway_types::span::join_spans(acc, this.span())
+                        sway_types::Span::join(acc, this.span())
                     }),
                 format!(
                     "variable {} reassignment",
@@ -113,18 +113,16 @@ pub(crate) fn convert_reassignment_to_asm(
                     }
                 };
                 // TODO(static span) use spans instead of strings below
-                let span = sway_types::span::Span {
-                    span: pest::Span::new(
-                        "TODO(static span): use Idents instead of Strings".into(),
-                        0,
-                        0,
-                    )
-                    .unwrap(),
-                    path: None,
-                };
+                let span = sway_types::span::Span::new(
+                    "TODO(static span): use Idents instead of Strings".into(),
+                    0,
+                    0,
+                    None,
+                )
+                .unwrap();
                 let fields_for_layout = fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, r#type, .. }| {
+                    .map(|TypedStructField { name, r#type, .. }| {
                         (*r#type, span.clone(), name.clone())
                     })
                     .collect::<Vec<_>>();
@@ -189,7 +187,7 @@ pub(crate) fn convert_reassignment_to_asm(
                         ptr.clone(),
                         return_register,
                         offset_in_words,
-                        sway_types::span::join_spans(
+                        sway_types::Span::join(
                             reassignment.lhs[0].span(),
                             reassignment.rhs.span.clone(),
                         ),

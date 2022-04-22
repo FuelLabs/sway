@@ -1,4 +1,9 @@
-use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, TypeInfo};
+use std::hash::{Hash, Hasher};
+
+use crate::{
+    build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, TypeInfo,
+    VariableDeclaration,
+};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -20,18 +25,15 @@ impl AsmExpression {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
-        let whole_block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = Span::from_pest(pair.as_span(), path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
-        let asm_registers = check!(
+        let asm_register_result = check!(
             AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
@@ -59,10 +61,7 @@ impl AsmExpression {
                             warnings,
                             errors
                         ),
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        Span::from_pest(pair.as_span(), path.clone()),
                     ));
                 }
                 Rule::type_name => {
@@ -81,14 +80,18 @@ impl AsmExpression {
         } else {
             TypeInfo::Tuple(Vec::new())
         });
+        let exp = AsmExpression {
+            registers: asm_register_result.value,
+            body: asm_op_buf,
+            returns: implicit_op_return,
+            return_type,
+            whole_block_span,
+        };
 
         ok(
-            AsmExpression {
-                registers: asm_registers,
-                body: asm_op_buf,
-                returns: implicit_op_return,
-                return_type,
-                whole_block_span,
+            ParserLifter {
+                var_decls: asm_register_result.var_decls,
+                value: exp,
             },
             warnings,
             errors,
@@ -102,6 +105,34 @@ pub(crate) struct AsmOp {
     pub(crate) op_args: Vec<Ident>,
     pub(crate) span: Span,
     pub(crate) immediate: Option<Ident>,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl Hash for AsmOp {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.op_name.hash(state);
+        self.op_args.hash(state);
+        if let Some(immediate) = self.immediate.clone() {
+            immediate.hash(state);
+        }
+    }
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for AsmOp {
+    fn eq(&self, other: &Self) -> bool {
+        self.op_name == other.op_name
+            && self.op_args == other.op_args
+            && if let (Some(l), Some(r)) = (self.immediate.clone(), other.immediate.clone()) {
+                l == r
+            } else {
+                true
+            }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -132,10 +163,7 @@ impl AsmOp {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let opcode = check!(
             ident::parse_from_pair(iter.next().unwrap(), config),
@@ -149,16 +177,11 @@ impl AsmOp {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    args.push(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    immediate_value =
+                        Some(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 _ => unreachable!(),
             }
@@ -183,11 +206,15 @@ pub(crate) struct AsmRegisterDeclaration {
 }
 
 impl AsmRegisterDeclaration {
-    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Vec<Self>> {
+    fn parse_from_pair(
+        pair: Pair<Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<ParserLifter<Vec<Self>>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut reg_buf: Vec<AsmRegisterDeclaration> = Vec::new();
+        let mut var_decl_buf: Vec<VariableDeclaration> = vec![];
         for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
@@ -199,7 +226,7 @@ impl AsmRegisterDeclaration {
             );
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
-            let initializer = if let Some(pair) = iter.next() {
+            let initializer_result = if let Some(pair) = iter.next() {
                 Some(check!(
                     Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
@@ -209,13 +236,27 @@ impl AsmRegisterDeclaration {
             } else {
                 None
             };
+            let (initializer, mut var_decls) = match initializer_result {
+                Some(initializer_result) => {
+                    (Some(initializer_result.value), initializer_result.var_decls)
+                }
+                None => (None, vec![]),
+            };
             reg_buf.push(AsmRegisterDeclaration {
                 name: reg_name,
                 initializer,
-            })
+            });
+            var_decl_buf.append(&mut var_decls);
         }
 
-        ok(reg_buf, warnings, errors)
+        ok(
+            ParserLifter {
+                var_decls: var_decl_buf,
+                value: reg_buf,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 

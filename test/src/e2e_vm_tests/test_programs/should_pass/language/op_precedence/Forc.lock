@@ -1,0 +1,7 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'unary_not_basic'
+dependencies = ['core']

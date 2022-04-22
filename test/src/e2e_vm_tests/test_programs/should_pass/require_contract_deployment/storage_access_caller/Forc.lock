@@ -1,0 +1,18 @@
+[[package]]
+name = 'call_basic_storage'
+dependencies = [
+    'std',
+    'storage_access_abi',
+]
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_access_abi'
+dependencies = []

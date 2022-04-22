@@ -12,9 +12,9 @@ script {
         v6 = const b256 0x0102030405060708010203040506070801020304050607080102030405060708, !5
         v7 = insert_value v5, { b256, { bool, u64 } }, v6, 0, !4
         v8 = insert_value v7, { b256, { bool, u64 } }, v4, 1, !4
-        v9 = get_ptr ptr { b256, { bool, u64 } } record, !6
+        v9 = get_ptr ptr { b256, { bool, u64 } } record, ptr { b256, { bool, u64 } }, 0, !6
         store v8, ptr v9, !6
-        v10 = get_ptr ptr { b256, { bool, u64 } } record, !7
+        v10 = get_ptr ptr { b256, { bool, u64 } } record, ptr { b256, { bool, u64 } }, 0, !7
         v11 = extract_value v10, { b256, { bool, u64 } }, 1, !8
         v12 = extract_value v11, { bool, u64 }, 1, !9
         ret u64 v12
@@ -29,5 +29,5 @@ script {
 !5 = span !0 65 131
 !6 = span !0 32 208
 !7 = span !0 213 219
-!8 = span !0 220 221
-!9 = span !0 222 223
+!8 = span !0 144 201
+!9 = span !0 305 306

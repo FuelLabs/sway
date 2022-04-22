@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']
+
+[[package]]
+name = 'unary_not_basic'
+dependencies = ['std']

@@ -10,12 +10,13 @@ use pest::Span;
 
 use std::{
     convert::TryInto,
+    hash::{Hash, Hasher},
     num::{IntErrorKind, ParseIntError},
     path::PathBuf,
     sync::Arc,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq)]
 pub enum Literal {
     U8(u8),
     U16(u16),
@@ -26,6 +27,73 @@ pub enum Literal {
     Boolean(bool),
     Byte(u8),
     B256([u8; 32]),
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl Hash for Literal {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Literal::*;
+        match self {
+            U8(x) => {
+                state.write_u8(1);
+                x.hash(state);
+            }
+            U16(x) => {
+                state.write_u8(2);
+                x.hash(state);
+            }
+            U32(x) => {
+                state.write_u8(3);
+                x.hash(state);
+            }
+            U64(x) => {
+                state.write_u8(4);
+                x.hash(state);
+            }
+            Numeric(x) => {
+                state.write_u8(5);
+                x.hash(state);
+            }
+            String(inner) => {
+                state.write_u8(6);
+                inner.as_str().hash(state);
+            }
+            Boolean(x) => {
+                state.write_u8(7);
+                x.hash(state);
+            }
+            Byte(x) => {
+                state.write_u8(8);
+                x.hash(state);
+            }
+            B256(x) => {
+                state.write_u8(9);
+                x.hash(state);
+            }
+        }
+    }
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for Literal {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::U8(l0), Self::U8(r0)) => l0 == r0,
+            (Self::U16(l0), Self::U16(r0)) => l0 == r0,
+            (Self::U32(l0), Self::U32(r0)) => l0 == r0,
+            (Self::U64(l0), Self::U64(r0)) => l0 == r0,
+            (Self::String(l0), Self::String(r0)) => *l0.as_str() == *r0.as_str(),
+            (Self::Numeric(l0), Self::Numeric(r0)) => l0 == r0,
+            (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
+            (Self::Byte(l0), Self::Byte(r0)) => l0 == r0,
+            (Self::B256(l0), Self::B256(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
 }
 
 impl Literal {
@@ -52,10 +120,7 @@ impl Literal {
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::basic_integer => {
-                let span = span::Span {
-                    span: lit_inner.as_span(),
-                    path: path.clone(),
-                };
+                let span = span::Span::from_pest(lit_inner.as_span(), path);
                 (
                     lit_inner
                         .as_str()
@@ -67,8 +132,7 @@ impl Literal {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                lit_inner.as_span(),
-                                path.clone(),
+                                span.clone(),
                             )
                         }),
                     span,
@@ -80,10 +144,7 @@ impl Literal {
                 if int_inner.as_rule() != Rule::basic_integer {
                     int_inner = int_inner.into_inner().next().unwrap()
                 }
-                let span = span::Span {
-                    span: int_inner.as_span(),
-                    path: path.clone(),
-                };
+                let span = span::Span::from_pest(int_inner.as_span(), path);
                 (
                     match rule {
                         Rule::u8_integer => int_inner
@@ -96,8 +157,7 @@ impl Literal {
                                 Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                    int_inner.as_span(),
-                                    path.clone(),
+                                    span.clone(),
                                 )
                             }),
                         Rule::u16_integer => int_inner
@@ -110,8 +170,7 @@ impl Literal {
                                 Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                    int_inner.as_span(),
-                                    path.clone(),
+                                    span.clone(),
                                 )
                             }),
                         Rule::u32_integer => int_inner
@@ -124,8 +183,7 @@ impl Literal {
                                 Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                    int_inner.as_span(),
-                                    path.clone(),
+                                    span.clone(),
                                 )
                             }),
                         Rule::u64_integer => int_inner
@@ -138,8 +196,7 @@ impl Literal {
                                 Literal::handle_parse_int_error(
                                     e,
                                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                    int_inner.as_span(),
-                                    path.clone(),
+                                    span.clone(),
                                 )
                             }),
                         _ => unreachable!(),
@@ -150,27 +207,19 @@ impl Literal {
             Rule::string => {
                 // remove opening and closing quotes
                 let lit_span = lit_inner.as_span();
-                let lit = span::Span {
-                    span: pest::Span::new(
-                        lit_span.input().clone(),
-                        lit_span.start() + 1,
-                        lit_span.end() - 1,
-                    )
-                    .unwrap(),
-                    path: path.clone(),
-                };
-                let span = span::Span {
-                    span: lit_span,
-                    path,
-                };
+                let lit = span::Span::new(
+                    lit_span.input().clone(),
+                    lit_span.start() + 1,
+                    lit_span.end() - 1,
+                    path.clone(),
+                )
+                .unwrap();
+                let span = span::Span::from_pest(lit_span, path);
                 (Ok(Literal::String(lit)), span)
             }
             Rule::byte => {
                 let inner_byte = lit_inner.into_inner().next().unwrap();
-                let span = span::Span {
-                    span: inner_byte.as_span(),
-                    path,
-                };
+                let span = span::Span::from_pest(inner_byte.as_span(), path);
                 (
                     match inner_byte.as_rule() {
                         Rule::binary_byte => parse_binary_from_pair(inner_byte, config),
@@ -181,10 +230,7 @@ impl Literal {
                 )
             }
             Rule::boolean => {
-                let span = span::Span {
-                    span: lit_inner.as_span(),
-                    path,
-                };
+                let span = span::Span::from_pest(lit_inner.as_span(), path);
                 (
                     Ok(match lit_inner.as_str() {
                         "true" => Literal::Boolean(true),
@@ -203,15 +249,9 @@ impl Literal {
                 (
                     Err(CompileError::UnimplementedRule(
                         a,
-                        span::Span {
-                            span: lit_inner.as_span(),
-                            path: path.clone(),
-                        },
+                        span::Span::from_pest(lit_inner.as_span(), path.clone()),
                     )),
-                    span::Span {
-                        span: lit_inner.as_span(),
-                        path,
-                    },
+                    span::Span::from_pest(lit_inner.as_span(), path),
                 )
             }
         };
@@ -272,26 +312,24 @@ impl Literal {
     pub(crate) fn handle_parse_int_error(
         e: ParseIntError,
         ty: TypeInfo,
-        span: Span,
-        path: Option<Arc<PathBuf>>,
+        span: sway_types::Span,
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
                 ty: ty.friendly_type_str(),
-                span: span::Span { span, path },
+                span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
                 ty: ty.friendly_type_str(),
-                span: span::Span { span, path },
+                span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
                 ty: ty.friendly_type_str(),
-                span: span::Span { span, path },
+                span,
             },
-            IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
-                "Called incorrect internal sway-core on literal type.",
-                span::Span { span, path },
-            ),
+            IntErrorKind::Zero | IntErrorKind::Empty | _ => {
+                CompileError::Internal("Called incorrect internal sway-core on literal type.", span)
+            }
         }
     }
 }
@@ -310,10 +348,7 @@ fn parse_hex_from_pair(
         2 => Literal::Byte(u8::from_str_radix(hex, 16).map_err(|_| {
             CompileError::Internal(
                 "Attempted to parse hex string from invalid hex",
-                span::Span {
-                    span: pair.as_span(),
-                    path: path.clone(),
-                },
+                span::Span::from_pest(pair.as_span(), path.clone()),
             )
         })?),
         64 => {
@@ -327,10 +362,7 @@ fn parse_hex_from_pair(
                     u8::from_str_radix(&str_buf, 16).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid hex string.",
-                            span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
+                            span::Span::from_pest(pair.as_span(), path.clone()),
                         )
                     })
                 })
@@ -338,20 +370,14 @@ fn parse_hex_from_pair(
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
                 CompileError::Internal(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
-                    span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
+                    span::Span::from_pest(pair.as_span(), path.clone()),
                 )
             })?;
             Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {
-                span: span::Span {
-                    span: pair.as_span(),
-                    path,
-                },
+                span: span::Span::from_pest(pair.as_span(), path),
                 byte_length: a,
             })
         }
@@ -372,10 +398,7 @@ fn parse_binary_from_pair(
         8 => Literal::Byte(u8::from_str_radix(bin, 2).map_err(|_| {
             CompileError::Internal(
                 "Attempted to parse bin string from invalid bin string.",
-                span::Span {
-                    span: pair.as_span(),
-                    path: path.clone(),
-                },
+                span::Span::from_pest(pair.as_span(), path.clone()),
             )
         })?),
         256 => {
@@ -389,10 +412,7 @@ fn parse_binary_from_pair(
                     u8::from_str_radix(&str_buf, 2).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid bin.",
-                            span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
+                            span::Span::from_pest(pair.as_span(), path.clone()),
                         )
                     })
                 })
@@ -400,20 +420,14 @@ fn parse_binary_from_pair(
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
                 CompileError::Internal(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
-                    span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
+                    span::Span::from_pest(pair.as_span(), path.clone()),
                 )
             })?;
             Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {
-                span: span::Span {
-                    span: pair.as_span(),
-                    path,
-                },
+                span: span::Span::from_pest(pair.as_span(), path),
                 byte_length: a,
             })
         }
@@ -430,19 +444,19 @@ pub(crate) fn handle_parse_int_error(
     match e.kind() {
         IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
             ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
+            span: span::Span::from_pest(span, path),
         },
         IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
             ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
+            span: span::Span::from_pest(span, path),
         },
         IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
             ty: ty.friendly_type_str(),
-            span: span::Span { span, path },
+            span: span::Span::from_pest(span, path),
         },
         IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
             "Called incorrect internal sway-core on literal type.",
-            span::Span { span, path },
+            span::Span::from_pest(span, path),
         ),
     }
 }

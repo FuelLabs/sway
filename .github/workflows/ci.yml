@@ -21,6 +21,42 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
+  build-sway-lib-core:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-core
+        run: forc build --path sway-lib-core
+
+  build-sway-lib-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build sway-lib-std
+        run: forc build --path sway-lib-std
+
   build-sway-examples:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -42,6 +78,25 @@ jobs:
           command: run
           args: --bin build-all-examples
 
+  build-mdbook:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run mdbook build
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: '0.4.7'
+      - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
+        run: |
+          mdbook build docs &> tmp.txt
+          if cat tmp.txt | grep 'ERROR'
+          then
+            rm tmp.txt && exit 1
+          else
+            rm tmp.txt && exit 0
+          fi
+
   cargo-build-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -52,13 +107,23 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
           command: build
           args: --workspace --all-features --all-targets
         env:
-          RUSTFLAGS: "-D warnings"
+          RUSTFLAGS: '-D warnings'
 
   cargo-clippy:
     needs: cancel-previous-runs
@@ -69,11 +134,37 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all-features --all-targets -- -D warnings
+
+  cargo-toml-fmt-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Cargo.toml linter
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-toml-lint
+          version: '0.1'
+      - name: Run Cargo.toml linter
+        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     needs: cancel-previous-runs
@@ -94,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.4.1
+        image: ghcr.io/fuellabs/fuel-core:v0.5.0
         ports:
           - 4000:4000
     steps:
@@ -110,6 +201,40 @@ jobs:
           command: run
           args: --release --bin test
 
+  # TODO: Remove this upon merging std tests with the rest of the E2E tests.
+  cargo-test-lib-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core:v0.5.0
+        ports:
+          - 4000:4000
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
+      - name: Build All Tests
+        run: cd test/src/sdk-harness && bash build.sh && cd ../../../
+      - name: Cargo Test sway-lib-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+
   cargo-test-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -120,13 +245,88 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
 
+  forc-documenter-dry-run:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Run forc-documenter in dry run mode
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin forc-documenter write-docs --dry-run
+
+  cargo-unused-deps-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          # `cargo-udeps` requires nightly to run
+          toolchain: nightly
+          default: true
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Build Sway Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin build-all-examples
+      - name: Install cargo-udeps
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-udeps
+      - name: Check Unused Deps
+        uses: actions-rs/cargo@v1
+        with:
+          command: udeps
+          args: --all-targets
+
   notify-slack-on-failure:
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs:
+      [
+        build-sway-examples,
+        build-sway-lib-core,
+        build-sway-lib-std,
+        cargo-build-workspace,
+        cargo-clippy,
+        cargo-fmt-check,
+        cargo-run-e2e-test,
+        cargo-test-lib-std,
+        cargo-test-workspace,
+        cargo-unused-deps-check,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
@@ -144,53 +344,80 @@ jobs:
 
   publish:
     # Only do this job if publishing a release
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs:
+      [
+        build-sway-examples,
+        build-sway-lib-core,
+        build-sway-lib-std,
+        cargo-build-workspace,
+        cargo-clippy,
+        cargo-fmt-check,
+        cargo-run-e2e-test,
+        cargo-test-lib-std,
+        cargo-test-workspace,
+        cargo-unused-deps-check,
+      ]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
 
-    - name: Verify tag version
-      run: |
-        cargo install toml-cli
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
-    - name: Publish crate
-      uses: katyo/publish-crates@v1
-      with:
+      - name: Verify tag version
+        run: |
+          cargo install toml-cli
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-explore/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-fmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-lsp/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
+      - name: Publish crate
+        uses: katyo/publish-crates@v1
+        with:
           publish-delay: 30000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-    
-    - name: Notify if Job Fails
-      uses: ravsamhq/notify-slack-action@v1
-      if: always()
-      with:
-        status: ${{ job.status }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-        notification_title: '{workflow} has {status_message}'
-        message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-        footer: ''
-        notify_when: 'failure'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
   build-publish-master-image:
-    needs: [build-sway-examples, cargo-build-workspace, cargo-clippy, cargo-fmt-check, cargo-run-e2e-test, cargo-test-workspace]
+    needs:
+      [
+        build-sway-examples,
+        build-sway-lib-core,
+        build-sway-lib-std,
+        cargo-build-workspace,
+        cargo-clippy,
+        cargo-fmt-check,
+        cargo-run-e2e-test,
+        cargo-test-lib-std,
+        cargo-test-workspace,
+        cargo-unused-deps-check,
+      ]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -234,7 +461,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v1
         if: always()
@@ -289,7 +516,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v1
         if: always()

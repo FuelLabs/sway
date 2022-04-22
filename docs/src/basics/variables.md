@@ -1,6 +1,6 @@
 # Variables
 
-Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
+Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
 
 ## Declaring a Variable
 

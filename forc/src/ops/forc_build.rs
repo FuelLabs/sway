@@ -1,18 +1,18 @@
-use crate::cli::BuildCommand;
-use anyhow::{anyhow, bail, Result};
-use forc_pkg::{self as pkg, lock, Lock, Manifest};
+use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
+use anyhow::{anyhow, Result};
+use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
 use std::{
     fs::{self, File},
     path::PathBuf,
 };
-use sway_utils::{find_manifest_dir, MANIFEST_FILE_NAME};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
         path,
         binary_outfile,
-        use_ir,
+        use_orig_asm,
+        use_orig_parser,
         debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
@@ -24,35 +24,25 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     } = command;
 
     let config = pkg::BuildConfig {
-        use_ir,
+        use_orig_asm,
+        use_orig_parser,
         print_ir,
         print_finalized_asm,
         print_intermediate_asm,
         silent: silent_mode,
     };
 
-    // find manifest directory, even if in subdirectory
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
 
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            bail!(
-                "could not find `{}` in `{}` or any parent directory",
-                MANIFEST_FILE_NAME,
-                this_dir.display(),
-            );
-        }
-    };
-    let manifest = Manifest::from_dir(&manifest_dir)?;
-    let lock_path = lock_path(&manifest_dir);
+    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let lock_path = lock_path(manifest.dir());
 
     // Load the build plan from the lock file.
-    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path);
+    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
 
     // Retrieve the old lock file state so we can produce a diff.
     let old_lock = plan_result
@@ -62,13 +52,14 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .unwrap_or_default();
 
     // Validate the loaded build plan for the current manifest.
-    let plan_result = plan_result.and_then(|plan| plan.validate(&manifest).map(|_| plan));
+    let plan_result =
+        plan_result.and_then(|plan| plan.validate(&manifest, SWAY_GIT_TAG).map(|_| plan));
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         println!("  Creating a new `Forc.lock` file");
         println!("    Cause: {}", e);
-        let plan = pkg::BuildPlan::new(&manifest_dir, offline)?;
+        let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);
         lock::print_diff(&manifest.project.name, &diff);
@@ -80,7 +71,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     })?;
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &config)?;
+    let (compiled, source_map) = pkg::build(&plan, &config, SWAY_GIT_TAG)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;
@@ -97,7 +88,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     // Create the output directory for build artifacts.
     let output_dir = output_directory
         .map(PathBuf::from)
-        .unwrap_or_else(|| default_output_directory(&manifest_dir).join(profile));
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(profile));
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir)?;
     }

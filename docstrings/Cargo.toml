@@ -3,6 +3,3 @@ name = "docstrings"
 version = "0.0.0"
 edition = "2021"
 publish = false
-
-[dependencies]
-thiserror = "1.0" 

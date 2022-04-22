@@ -1,0 +1,7 @@
+[[package]]
+name = 'chained_if_let'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

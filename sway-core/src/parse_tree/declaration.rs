@@ -7,6 +7,7 @@ mod reassignment;
 mod storage;
 mod r#struct;
 mod r#trait;
+mod type_argument;
 mod type_parameter;
 mod variable;
 
@@ -19,6 +20,7 @@ pub use r#struct::*;
 pub use r#trait::*;
 pub(crate) use reassignment::*;
 pub use storage::*;
+pub(crate) use type_argument::*;
 pub(crate) use type_parameter::*;
 pub use variable::*;
 
@@ -44,7 +46,7 @@ impl Declaration {
     pub(crate) fn parse_non_var_from_pair(
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pair = decl.into_inner();
@@ -63,14 +65,14 @@ impl Declaration {
                     warnings,
                     errors
                 );
-                Declaration::FunctionDeclaration(fn_decl)
+                vec![Declaration::FunctionDeclaration(fn_decl)]
             }
-            Rule::trait_decl => Declaration::TraitDeclaration(check!(
+            Rule::trait_decl => vec![Declaration::TraitDeclaration(check!(
                 TraitDeclaration::parse_from_pair(decl_inner, config,),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
+            ))],
             Rule::struct_decl => {
                 let struct_decl = check!(
                     StructDeclaration::parse_from_pair(decl_inner, config,),
@@ -78,7 +80,7 @@ impl Declaration {
                     warnings,
                     errors
                 );
-                Declaration::StructDeclaration(struct_decl)
+                vec![Declaration::StructDeclaration(struct_decl)]
             }
             Rule::enum_decl => {
                 let enum_decl = check!(
@@ -87,20 +89,20 @@ impl Declaration {
                     warnings,
                     errors
                 );
-                Declaration::EnumDeclaration(enum_decl)
+                vec![Declaration::EnumDeclaration(enum_decl)]
             }
-            Rule::impl_trait => Declaration::ImplTrait(check!(
+            Rule::impl_trait => vec![Declaration::ImplTrait(check!(
                 ImplTrait::parse_from_pair(decl_inner, config,),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
-            Rule::impl_self => Declaration::ImplSelf(check!(
+            ))],
+            Rule::impl_self => vec![Declaration::ImplSelf(check!(
                 ImplSelf::parse_from_pair(decl_inner, config,),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )),
+            ))],
             Rule::abi_decl => {
                 let abi_decl = check!(
                     AbiDeclaration::parse_from_pair(decl_inner, config,),
@@ -108,20 +110,38 @@ impl Declaration {
                     warnings,
                     errors
                 );
-                Declaration::AbiDeclaration(abi_decl)
+                vec![Declaration::AbiDeclaration(abi_decl)]
             }
-            Rule::const_decl => Declaration::ConstantDeclaration(check!(
-                ConstantDeclaration::parse_from_pair(decl_inner, config,),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
-            Rule::storage_decl => Declaration::StorageDeclaration(check!(
-                StorageDeclaration::parse_from_pair(decl_inner, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            Rule::const_decl => {
+                let res_result = check!(
+                    ConstantDeclaration::parse_from_pair(decl_inner, config,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut decls = res_result
+                    .var_decls
+                    .into_iter()
+                    .map(Declaration::VariableDeclaration)
+                    .collect::<Vec<_>>();
+                decls.push(Declaration::ConstantDeclaration(res_result.value));
+                decls
+            }
+            Rule::storage_decl => {
+                let res_result = check!(
+                    StorageDeclaration::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut decls = res_result
+                    .var_decls
+                    .into_iter()
+                    .map(Declaration::VariableDeclaration)
+                    .collect::<Vec<_>>();
+                decls.push(Declaration::StorageDeclaration(res_result.value));
+                decls
+            }
             a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };
         ok(parsed_declaration, warnings, errors)
@@ -168,11 +188,10 @@ impl Declaration {
                     warnings,
                     errors
                 );
-                let mut decls = vec![];
-                for var_decl in var_decls.into_iter() {
-                    decls.push(Declaration::VariableDeclaration(var_decl));
-                }
-                decls
+                var_decls
+                    .into_iter()
+                    .map(Declaration::VariableDeclaration)
+                    .collect::<Vec<_>>()
             }
             Rule::trait_decl => vec![Declaration::TraitDeclaration(check!(
                 TraitDeclaration::parse_from_pair(decl_inner, config),
@@ -186,24 +205,33 @@ impl Declaration {
                 warnings,
                 errors
             ))],
-            Rule::non_var_decl => vec![check!(
+            Rule::non_var_decl => check!(
                 Self::parse_non_var_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
-            )],
+            ),
             Rule::enum_decl => vec![Declaration::EnumDeclaration(check!(
                 EnumDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
             ))],
-            Rule::reassignment => vec![Declaration::Reassignment(check!(
-                Reassignment::parse_from_pair(decl_inner, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ))],
+            Rule::reassignment => {
+                let res_result = check!(
+                    Reassignment::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut decls = res_result
+                    .var_decls
+                    .into_iter()
+                    .map(Declaration::VariableDeclaration)
+                    .collect::<Vec<_>>();
+                decls.push(Declaration::Reassignment(res_result.value));
+                decls
+            }
             Rule::impl_trait => vec![Declaration::ImplTrait(check!(
                 ImplTrait::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
@@ -216,12 +244,21 @@ impl Declaration {
                 warnings,
                 errors
             ))],
-            Rule::const_decl => vec![Declaration::ConstantDeclaration(check!(
-                ConstantDeclaration::parse_from_pair(decl_inner, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ))],
+            Rule::const_decl => {
+                let res_result = check!(
+                    ConstantDeclaration::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut decls = res_result
+                    .var_decls
+                    .into_iter()
+                    .map(Declaration::VariableDeclaration)
+                    .collect::<Vec<_>>();
+                decls.push(Declaration::ConstantDeclaration(res_result.value));
+                decls
+            }
             Rule::abi_decl => vec![Declaration::AbiDeclaration(check!(
                 AbiDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),

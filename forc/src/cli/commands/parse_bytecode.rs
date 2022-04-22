@@ -62,7 +62,10 @@ pub(crate) fn exec(command: Command) -> Result<()> {
             TableCell::new_with_alignment(word_ix, 1, Alignment::Right),
             TableCell::new(word_ix * 4),
             TableCell::new(format!("{:?}", instruction.1)),
-            TableCell::new(format!("{:?}", instruction.0)),
+            TableCell::new(format!(
+                "{:02x} {:02x} {:02x} {:02x}",
+                instruction.0[0], instruction.0[1], instruction.0[2], instruction.0[3],
+            )),
             TableCell::new(notes),
         ]));
     }

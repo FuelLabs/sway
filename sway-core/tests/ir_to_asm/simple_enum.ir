@@ -1,29 +1,22 @@
 script {
     fn main() -> () {
-        local ptr { u64, { () | () | u64 } } lunch
+        local ptr { u64, ( () | () | u64 ) } lunch
 
         entry:
-        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v0 = const { u64, ( () | () | u64 ) } { u64 undef, ( () | () | u64 ) undef }
         v1 = const u64 1
-        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
-        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch
+        v2 = insert_value v0, { u64, ( () | () | u64 ) }, v1, 0
+        v3 = get_ptr ptr { u64, ( () | () | u64 ) } lunch, ptr { u64, ( () | () | u64 ) }, 0
         store v2, ptr v3
-        v4 = get_ptr ptr { u64, { () | () | u64 } } lunch
+        v4 = get_ptr ptr { u64, ( () | () | u64 ) } lunch, ptr { u64, ( () | () | u64 ) }, 0
         v5 = const bool false
-        br block0
-
-        block0:
-        v6 = phi(entry: v5)
-        v7 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
-        v8 = const u64 2
-        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 0
-        v10 = const u64 3
-        v11 = insert_value v9, { u64, { () | () | u64 } }, v10, 1
-        v12 = const bool false
-        br block1
-
-        block1:
-        v13 = phi(block0: v12)
-        ret () v13
+        v6 = const { u64, ( () | () | u64 ) } { u64 undef, ( () | () | u64 ) undef }
+        v7 = const u64 2
+        v8 = insert_value v6, { u64, ( () | () | u64 ) }, v7, 0
+        v9 = const u64 3
+        v10 = insert_value v8, { u64, ( () | () | u64 ) }, v9, 1
+        v11 = const bool false
+        v12 = const unit ()
+        ret () v12
     }
 }

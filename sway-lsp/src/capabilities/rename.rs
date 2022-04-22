@@ -1,13 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
-use lspower::lsp::{self, WorkspaceEdit};
-
-use crate::{
-    core::{session::Session, token::Token, token_type::TokenType},
-    utils::lsp_helpers::make_range_end_inclusive,
+use tower_lsp::lsp_types::{
+    PrepareRenameResponse, RenameParams, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 
-pub fn rename(session: Arc<Session>, params: lsp::RenameParams) -> Option<lsp::WorkspaceEdit> {
+use crate::core::{session::Session, token::Token, token_type::TokenType};
+
+pub fn rename(session: Arc<Session>, params: RenameParams) -> Option<WorkspaceEdit> {
     let new_name = params.new_name;
     let url = params.text_document_position.text_document.uri;
     let position = params.text_document_position.position;
@@ -35,8 +34,8 @@ pub fn rename(session: Arc<Session>, params: lsp::RenameParams) -> Option<lsp::W
 
 pub fn prepare_rename(
     session: Arc<Session>,
-    params: lsp::TextDocumentPositionParams,
-) -> Option<lsp::PrepareRenameResponse> {
+    params: TextDocumentPositionParams,
+) -> Option<PrepareRenameResponse> {
     let url = params.text_document.uri;
 
     match session.documents.get(url.path()) {
@@ -44,7 +43,7 @@ pub fn prepare_rename(
             if let Some(token) = document.get_token_at_position(params.position) {
                 match token.token_type {
                     TokenType::Library | TokenType::Reassignment => None,
-                    _ => Some(lsp::PrepareRenameResponse::RangeWithPlaceholder {
+                    _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
                         range: token.range,
                         placeholder: token.name.clone(),
                     }),
@@ -57,9 +56,9 @@ pub fn prepare_rename(
     }
 }
 
-fn prepare_token_rename(tokens: &[&Token], new_name: String) -> Vec<lsp::TextEdit> {
+fn prepare_token_rename(tokens: &[&Token], new_name: String) -> Vec<TextEdit> {
     tokens
         .iter()
-        .map(|token| lsp::TextEdit::new(make_range_end_inclusive(token.range), new_name.clone()))
+        .map(|token| TextEdit::new(token.range, new_name.clone()))
         .collect()
 }

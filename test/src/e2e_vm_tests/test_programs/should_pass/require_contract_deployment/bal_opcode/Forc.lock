@@ -1,0 +1,18 @@
+[[package]]
+name = 'bal_opcode'
+dependencies = [
+    'balance_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'balance_test_abi'
+dependencies = []
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

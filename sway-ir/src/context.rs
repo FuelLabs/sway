@@ -12,8 +12,8 @@ use crate::{
     asm::AsmBlockContent,
     block::BlockContent,
     function::FunctionContent,
-    irtype::{AbiInstanceContent, AggregateContent},
-    metadata::Metadatum,
+    irtype::AggregateContent,
+    metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     module::ModuleIterator,
     pointer::PointerContent,
@@ -32,10 +32,12 @@ pub struct Context {
     pub values: Arena<ValueContent>,
     pub pointers: Arena<PointerContent>,
     pub aggregates: Arena<AggregateContent>,
-    pub abi_instances: Arena<AbiInstanceContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
 
+    // The metadata indices for locations need a fast lookup, hence the metadata_reverse_map.
+    // Using a HashMap might be overkill as most projects have only a handful of source files.
     pub metadata: Arena<Metadatum>,
+    pub metadata_reverse_map: std::collections::HashMap<*const std::path::PathBuf, MetadataIndex>,
 
     next_unique_sym_tag: u64,
 }

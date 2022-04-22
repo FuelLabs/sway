@@ -1,0 +1,50 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "initial_value",
+        "type": "u64"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "increment_by",
+        "type": "u64"
+      }
+    ],
+    "name": "increment",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  }
+]

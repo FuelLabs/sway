@@ -3,10 +3,10 @@ script {
         local ptr b256 a
 
         entry:
-        v0 = get_ptr ptr b256 a, !1
+        v0 = get_ptr ptr b256 a, ptr b256, 0, !1
         v1 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !2
         store v1, ptr v0, !1
-        v2 = get_ptr ptr b256 a, !3
+        v2 = get_ptr ptr b256 a, ptr b256, 0, !3
         v3 = load ptr v2, !3
         v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !4
         v5 = call anon_0(v3, v4), !5
@@ -15,7 +15,7 @@ script {
 
     fn anon_0(a !6: b256, b !7: b256) -> bool {
         entry:
-        v0 = asm(lhs: a, rhs: b, sz, res) -> res, !8 {
+        v0 = asm(lhs: a, rhs: b, sz, res) -> bool res, !8 {
             addi   sz zero i32, !9
             meq    res lhs rhs sz, !10
         }

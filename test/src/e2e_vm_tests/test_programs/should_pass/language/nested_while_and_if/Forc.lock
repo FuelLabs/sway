@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'nested_while_and_if'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

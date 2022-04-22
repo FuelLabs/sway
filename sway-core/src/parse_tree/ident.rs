@@ -13,15 +13,9 @@ pub(crate) fn parse_from_pair(
     let path = config.map(|config| config.path());
     let span = {
         if pair.as_rule() != Rule::ident {
-            Span {
-                span: pair.into_inner().next().unwrap().as_span(),
-                path,
-            }
+            Span::from_pest(pair.into_inner().next().unwrap().as_span(), path)
         } else {
-            Span {
-                span: pair.as_span(),
-                path,
-            }
+            Span::from_pest(pair.as_span(), path)
         }
     };
     ok(Ident::new(span), Vec::new(), Vec::new())

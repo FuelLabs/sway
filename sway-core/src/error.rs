@@ -1,13 +1,15 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    convert_parse_tree::ConvertParseTreeError,
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
+    VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::fmt;
+use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -36,7 +38,7 @@ macro_rules! check_std_result {
 }
 
 macro_rules! assert_or_warn {
-    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {
+    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {
             use crate::error::CompileWarning;
             $warnings.push(CompileWarning {
@@ -44,7 +46,7 @@ macro_rules! assert_or_warn {
                 span: $span,
             });
         }
-    };
+    }};
 }
 
 /// Denotes a non-recoverable state
@@ -66,6 +68,25 @@ pub(crate) fn ok<T>(
         value: Some(value),
         warnings,
         errors,
+    }
+}
+
+/// Acts as the result of parsing `Declaration`s, `Expression`s, etc.
+/// Some `Expression`s need to be able to create `VariableDeclaration`s,
+/// so this struct is used to "bubble up" those declarations to a viable
+/// place in the AST.
+#[derive(Debug, Clone)]
+pub struct ParserLifter<T> {
+    pub var_decls: Vec<VariableDeclaration>,
+    pub value: T,
+}
+
+impl<T> ParserLifter<T> {
+    pub(crate) fn empty(value: T) -> Self {
+        ParserLifter {
+            var_decls: vec![],
+            value,
+        }
     }
 }
 
@@ -180,8 +201,12 @@ impl CompileWarning {
         (self.span.start(), self.span.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.span.path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.span.path_str()
     }
 
     /// Returns the line and column start and end
@@ -197,6 +222,9 @@ impl CompileWarning {
 pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
+    },
+    NonClassCaseTypeParameter {
+        name: Ident,
     },
     NonClassCaseTraitName {
         name: Ident,
@@ -245,6 +273,8 @@ pub enum Warning {
     ShadowingReservedRegister {
         reg_name: Ident,
     },
+    DeadStorageDeclaration,
+    MatchExpressionUnreachableArm,
 }
 
 impl fmt::Display for Warning {
@@ -258,6 +288,14 @@ impl fmt::Display for Warning {
                  \"{}\".",
                 struct_name,
                 to_upper_camel_case(struct_name.as_str())
+            )
+            }
+            NonClassCaseTypeParameter { name } => {
+                write!(f,
+                "Type parameter \"{}\" is not idiomatic. TypeParameters should have a ClassCase name, like \
+                 \"{}\".",
+                name,
+                to_upper_camel_case(name.as_str())
             )
             }
             NonClassCaseTraitName { name } => {
@@ -350,6 +388,9 @@ impl fmt::Display for Warning {
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
+            DeadStorageDeclaration => write!(f, "This storage declaration is never accessed and can be removed."
+            ),
+            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
     }
 }
@@ -381,8 +422,6 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
-    #[error("pattern matching algorithm failure on: {0}")]
-    PatternMatchingAlgorithmFailure(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: expected {err:?}")]
@@ -508,7 +547,7 @@ pub enum CompileError {
         given: String,
         expected: String,
     },
-    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
+    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\".")]
     NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
     UnknownTrait { span: Span, name: Ident },
@@ -529,6 +568,10 @@ pub enum CompileError {
         expected: usize,
         span: Span,
     },
+    #[error("\"{name}\" does not take type arguments.")]
+    DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("\"{name}\" needs type arguments.")]
+    NeedsTypeArguments { name: Ident, span: Span },
     #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
@@ -575,6 +618,8 @@ pub enum CompileError {
         method_name: String,
         type_name: String,
     },
+    #[error("Duplicate definitions with name \"{method_name}\".")]
+    DuplicateMethodDefinitions { method_name: String, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -668,8 +713,8 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span },
+    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -803,6 +848,8 @@ pub enum CompileError {
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span },
+    #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
+    GenericShadowsGeneric { name: String, span: Span },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
     StarImportShadowsOtherSymbol { name: String, span: Span },
     #[error(
@@ -811,6 +858,11 @@ pub enum CompileError {
          "
     )]
     MatchWrongType { expected: TypeId, span: Span },
+    #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
+    MatchExpressionNonExhaustive {
+        missing_patterns: String,
+        span: Span,
+    },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
@@ -845,6 +897,8 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error("Cannot use `if let` on a non-enum type.")]
+    IfLetNonEnum { span: Span },
     #[error(
         "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
     )]
@@ -855,6 +909,30 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
+    #[error("Storage field {name} does not exist")]
+    StorageFieldDoesNotExist { name: String, span: Span },
+    #[error("No storage has been declared")]
+    NoDeclaredStorage { span: Span },
+    #[error("Multiple storage declarations were found")]
+    MultipleStorageDeclarations { span: Span },
+    #[error("Expected identifier, found keyword \"{name}\" ")]
+    InvalidVariableName { name: String, span: Span },
+    #[error(
+        "Internal compiler error: Unexpected {decl_type} declaration found.\n\
+        Please file an issue on the repository and include the code that triggered this error."
+    )]
+    UnexpectedDeclaration { decl_type: &'static str, span: Span },
+    #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
+    ContractAddressMustBeKnown { span: Span },
+    #[error("{}", error)]
+    ConvertParseTree {
+        #[from]
+        error: ConvertParseTreeError,
+    },
+    #[error("lex error: {}", error)]
+    Lex { error: sway_parse::LexError },
+    #[error("parse error: {}", error)]
+    Parse { error: sway_parse::ParseError },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -936,8 +1014,12 @@ impl CompileError {
         (sp.start(), sp.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.internal_span().path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.internal_span().path_str()
     }
 
     pub fn internal_span(&self) -> &Span {
@@ -980,6 +1062,8 @@ impl CompileError {
             FunctionNotAPartOfInterfaceSurface { span, .. } => span,
             MissingInterfaceSurfaceMethods { span, .. } => span,
             IncorrectNumberOfTypeArguments { span, .. } => span,
+            DoesNotTakeTypeArguments { span, .. } => span,
+            NeedsTypeArguments { span, .. } => span,
             StructNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,
@@ -987,6 +1071,7 @@ impl CompileError {
             StructMissingField { span, .. } => span,
             StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
+            DuplicateMethodDefinitions { span, .. } => span,
             ModuleNotFound { span, .. } => span,
             NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,
@@ -1006,7 +1091,7 @@ impl CompileError {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
-            TypeMustBeKnown { span, .. } => span,
+            UnableToInferGeneric { span, .. } => span,
             Immediate06TooLarge { span, .. } => span,
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
@@ -1045,10 +1130,11 @@ impl CompileError {
             ArrayOutOfBounds { span, .. } => span,
             TupleOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
+            GenericShadowsGeneric { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
+            MatchExpressionNonExhaustive { span, .. } => span,
             NotAnEnum { span, .. } => span,
-            PatternMatchingAlgorithmFailure(_, span) => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
             IntegerTooLarge { span, .. } => span,
@@ -1059,9 +1145,19 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            IfLetNonEnum { span, .. } => span,
             ContractCallParamRepeated { span, .. } => span,
             UnrecognizedContractParam { span, .. } => span,
             CallParamForNonContractCallMethod { span, .. } => span,
+            StorageFieldDoesNotExist { span, .. } => span,
+            NoDeclaredStorage { span, .. } => span,
+            MultipleStorageDeclarations { span, .. } => span,
+            InvalidVariableName { span, .. } => span,
+            UnexpectedDeclaration { span, .. } => span,
+            ContractAddressMustBeKnown { span, .. } => span,
+            ConvertParseTree { error } => error.span_ref(),
+            Lex { error } => error.span_ref(),
+            Parse { error } => &error.span,
         }
     }
 

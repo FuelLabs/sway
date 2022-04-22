@@ -1,0 +1,7 @@
+[[package]]
+name = 'asm_without_return'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

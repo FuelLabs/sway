@@ -1,0 +1,133 @@
+[
+  {
+    "inputs": [],
+    "name": "get_id",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "",
+        "type": "struct ContractId"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "asset_id",
+        "type": "struct ContractId"
+      }
+    ],
+    "name": "get_this_balance",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "asset_id",
+        "type": "struct ContractId"
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "cid",
+        "type": "struct ContractId"
+      }
+    ],
+    "name": "get_balance_of_contract",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_amount",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_asset_id",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "",
+        "type": "struct ContractId"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_gas",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_global_gas",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  }
+]

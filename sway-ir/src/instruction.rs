@@ -29,11 +29,22 @@ pub enum Instruction {
     Branch(Block),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
+    /// Comparison between two values using various comparators and retuning a boolean.
+    Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
         true_block: Block,
         false_block: Block,
+    },
+    /// A contract call with a list of arguments
+    ContractCall {
+        return_type: Type,
+        name: String,
+        params: Value,
+        coins: Value,
+        asset_id: Value,
+        gas: Value,
     },
     /// Reading a specific element from an array.
     ExtractElement {
@@ -48,7 +59,11 @@ pub enum Instruction {
         indices: Vec<u64>,
     },
     /// Return a pointer as a value.
-    GetPointer(Pointer),
+    GetPointer {
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+    },
     /// Writing a specific value to an array.
     InsertElement {
         array: Value,
@@ -69,18 +84,62 @@ pub enum Instruction {
     Nop,
     /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
-    /// A cast from one pointer type to another.  Value must be either a GetPointer instruction or
-    /// another PointerCast.
-    PointerCast(Value, Type),
+    /// Reads a special register in the VM.
+    ReadRegister(Register),
     /// Return from a function.
     Ret(Value, Type),
-    /// Read a value from a storage slot.  Type of `load_val` must be a Uint(64) or B256 ptr.
-    StateLoad { load_val: Value, key: Value },
+    /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
+    StateLoadQuadWord { load_val: Value, key: Value },
+    /// Read a single word from a storage slot.
+    StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
-    /// Uint(64) or B256 ptr.
-    StateStore { stored_val: Value, key: Value },
+    /// Uint(256) ptr.
+    StateStoreQuadWord { stored_val: Value, key: Value },
+    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
+    /// Uint(64) value.
+    StateStoreWord { stored_val: Value, key: Value },
     /// Write a value to a memory pointer.
     Store { dst_val: Value, stored_val: Value },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Predicate {
+    /// Equivalence.
+    Equal,
+    // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
+}
+
+/// Special registers in the Fuel Virtual Machine.
+#[derive(Debug, Clone, Copy)]
+pub enum Register {
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    Of,
+    /// The program counter. Memory address of the current instruction.
+    Pc,
+    /// Memory address of bottom of current writable stack area.
+    Ssp,
+    /// Memory address on top of current writable stack area (points to free memory).
+    Sp,
+    /// Memory address of beginning of current call frame.
+    Fp,
+    /// Memory address below the current bottom of the heap (points to free memory).
+    Hp,
+    /// Error codes for particular operations.
+    Error,
+    /// Remaining gas globally.
+    Ggas,
+    /// Remaining gas in the context.
+    Cgas,
+    /// Received balance for this context.
+    Bal,
+    /// Pointer to the start of the currently-executing code.
+    Is,
+    /// Return value or pointer.
+    Ret,
+    /// Return value length in bytes.
+    Retl,
+    /// Flags register.
+    Flag,
 }
 
 impl Instruction {
@@ -92,8 +151,12 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
+            Instruction::Cmp(..) => Some(Type::Bool),
+            Instruction::ContractCall { return_type, .. } => Some(*return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
+            Instruction::InsertElement { array, .. } => array.get_type(context),
+            Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
                     ins.get_type(context)
@@ -101,13 +164,16 @@ impl Instruction {
                     None
                 }
             }
-            Instruction::Phi(_alts) => {
-                unimplemented!("phi get type -- I think we should put the type in the enum.")
+            Instruction::ReadRegister(_) => Some(Type::Uint(64)),
+            Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
+            Instruction::Phi(alts) => {
+                // Assuming each alt has the same type, we can take the first one. Note: `verify()`
+                // confirms the types are all the same.
+                alts.get(0).and_then(|(_, val)| val.get_type(context))
             }
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer(ptr) => Some(context.pointers[ptr.0].ty),
-            Instruction::PointerCast(_, ty) => Some(*ty),
+            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
@@ -115,10 +181,9 @@ impl Instruction {
             Instruction::Ret(..) => None,
 
             // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::InsertElement { .. } => None,
-            Instruction::InsertValue { .. } => None,
-            Instruction::StateLoad { .. } => None,
-            Instruction::StateStore { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => None,
+            Instruction::StateStoreQuadWord { .. } => None,
+            Instruction::StateStoreWord { .. } => None,
             Instruction::Store { .. } => None,
 
             // No-op is also no-type.
@@ -129,7 +194,7 @@ impl Instruction {
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
-            Instruction::GetPointer(ptr) => match ptr.get_type(context) {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -171,8 +236,24 @@ impl Instruction {
             }),
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
+            Instruction::Cmp(_, lhs_val, rhs_val) => {
+                replace(lhs_val);
+                replace(rhs_val);
+            }
             Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
-            Instruction::GetPointer(_) => (),
+            Instruction::ContractCall {
+                params,
+                coins,
+                asset_id,
+                gas,
+                ..
+            } => {
+                replace(params);
+                replace(coins);
+                replace(asset_id);
+                replace(gas);
+            }
+            Instruction::GetPointer { .. } => (),
             Instruction::InsertElement {
                 array,
                 value,
@@ -199,13 +280,20 @@ impl Instruction {
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
-            Instruction::PointerCast(..) => (),
+            Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
-            Instruction::StateLoad { load_val, key } => {
+            Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
                 replace(key);
             }
-            Instruction::StateStore { stored_val, key } => {
+            Instruction::StateLoadWord(key) => {
+                replace(key);
+            }
+            Instruction::StateStoreQuadWord { stored_val, key } => {
+                replace(key);
+                replace(stored_val);
+            }
+            Instruction::StateStoreWord { stored_val, key } => {
                 replace(key);
                 replace(stored_val);
             }
@@ -274,6 +362,7 @@ impl<'a> InstructionInserter<'a> {
         self,
         args: Vec<AsmArg>,
         body: Vec<AsmInstruction>,
+        return_type: Type,
         return_name: Option<Ident>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Value {
@@ -281,6 +370,7 @@ impl<'a> InstructionInserter<'a> {
             self.context,
             args.iter().map(|arg| arg.name.clone()).collect(),
             body,
+            return_type,
             return_name,
         );
         self.asm_block_from_asm(asm, args, span_md_idx)
@@ -330,6 +420,22 @@ impl<'a> InstructionInserter<'a> {
         call_val
     }
 
+    pub fn cmp(
+        self,
+        pred: Predicate,
+        lhs_value: Value,
+        rhs_value: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let cmp_val = Value::new_instruction(
+            self.context,
+            Instruction::Cmp(pred, lhs_value, rhs_value),
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0].instructions.push(cmp_val);
+        cmp_val
+    }
+
     pub fn conditional_branch(
         self,
         cond_value: Value,
@@ -353,6 +459,35 @@ impl<'a> InstructionInserter<'a> {
         });
         self.context.blocks[self.block.0].instructions.push(cbr_val);
         cbr_val
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn contract_call(
+        self,
+        return_type: Type,
+        name: String,
+        params: Value,
+        coins: Value,    // amount of coins to forward
+        asset_id: Value, // b256 asset ID of the coint being forwarded
+        gas: Value,      // amount of gas to forward
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let contract_call_val = Value::new_instruction(
+            self.context,
+            Instruction::ContractCall {
+                return_type,
+                name,
+                params,
+                coins,
+                asset_id,
+                gas,
+            },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(contract_call_val);
+        contract_call_val
     }
 
     pub fn extract_element(
@@ -399,9 +534,22 @@ impl<'a> InstructionInserter<'a> {
         extract_value_val
     }
 
-    pub fn get_ptr(self, ptr: Pointer, span_md_idx: Option<MetadataIndex>) -> Value {
-        let get_ptr_val =
-            Value::new_instruction(self.context, Instruction::GetPointer(ptr), span_md_idx);
+    pub fn get_ptr(
+        self,
+        base_ptr: Pointer,
+        ptr_ty: Type,
+        offset: u64,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let get_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            },
+            span_md_idx,
+        );
         self.context.blocks[self.block.0]
             .instructions
             .push(get_ptr_val);
@@ -471,16 +619,13 @@ impl<'a> InstructionInserter<'a> {
         nop_val
     }
 
-    pub fn ptr_cast(self, ptr_val: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        let ptr_cast_val = Value::new_instruction(
-            self.context,
-            Instruction::PointerCast(ptr_val, ty),
-            span_md_idx,
-        );
+    pub fn read_register(self, reg: Register, span_md_idx: Option<MetadataIndex>) -> Value {
+        let read_register_val =
+            Value::new_instruction(self.context, Instruction::ReadRegister(reg), span_md_idx);
         self.context.blocks[self.block.0]
             .instructions
-            .push(ptr_cast_val);
-        ptr_cast_val
+            .push(read_register_val);
+        read_register_val
     }
 
     pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
@@ -490,7 +635,7 @@ impl<'a> InstructionInserter<'a> {
         ret_val
     }
 
-    pub fn state_load(
+    pub fn state_load_quad_word(
         self,
         load_val: Value,
         key: Value,
@@ -498,7 +643,7 @@ impl<'a> InstructionInserter<'a> {
     ) -> Value {
         let state_load_val = Value::new_instruction(
             self.context,
-            Instruction::StateLoad { load_val, key },
+            Instruction::StateLoadQuadWord { load_val, key },
             span_md_idx,
         );
         self.context.blocks[self.block.0]
@@ -507,7 +652,16 @@ impl<'a> InstructionInserter<'a> {
         state_load_val
     }
 
-    pub fn state_store(
+    pub fn state_load_word(self, key: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+        let state_load_val =
+            Value::new_instruction(self.context, Instruction::StateLoadWord(key), span_md_idx);
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_load_val);
+        state_load_val
+    }
+
+    pub fn state_store_quad_word(
         self,
         stored_val: Value,
         key: Value,
@@ -515,7 +669,24 @@ impl<'a> InstructionInserter<'a> {
     ) -> Value {
         let state_store_val = Value::new_instruction(
             self.context,
-            Instruction::StateStore { stored_val, key },
+            Instruction::StateStoreQuadWord { stored_val, key },
+            span_md_idx,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(state_store_val);
+        state_store_val
+    }
+
+    pub fn state_store_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let state_store_val = Value::new_instruction(
+            self.context,
+            Instruction::StateStoreWord { stored_val, key },
             span_md_idx,
         );
         self.context.blocks[self.block.0]

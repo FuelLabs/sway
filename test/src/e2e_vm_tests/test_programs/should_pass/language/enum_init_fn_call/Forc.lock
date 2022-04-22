@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'enum_init_fn_call'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

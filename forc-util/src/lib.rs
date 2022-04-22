@@ -6,7 +6,7 @@ use annotate_snippets::{
 };
 use anyhow::{bail, Result};
 use std::ffi::OsStr;
-use std::io::{self, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
@@ -16,6 +16,32 @@ use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+
+/// Continually go up in the file tree until a specified file is found.
+#[allow(clippy::branches_sharing_code)]
+pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    let mut path = std::fs::canonicalize(starter_path).ok()?;
+    let empty_path = PathBuf::from("/");
+    while path != empty_path {
+        path.push(file_name);
+        if path.exists() {
+            path.pop();
+            return Some(path);
+        } else {
+            path.pop();
+            path.pop();
+        }
+    }
+    None
+}
+/// Continually go up in the file tree until a Forc manifest file is found.
+pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+/// Continually go up in the file tree until a Cargo manifest file is found.
+pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_parent_dir_with_file(starter_path, "Cargo.toml")
+}
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
@@ -52,9 +78,9 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
             it conflicts with Forc's build directory names"
         );
     }
-    if name == "test" {
+    if name.to_lowercase() == "test" {
         bail!(
-            "the name `test` cannot be used as a package name, \
+            "the name `test` cannot be used as a project name, \
             it conflicts with Sway's built-in test library"
         );
     }
@@ -78,6 +104,11 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
         bail!("the name `{name}` contains non-ASCII characters which are unsupported");
     }
     Ok(())
+}
+
+/// Simple function to convert kebab-case to snake_case.
+pub fn kebab_to_snake_case(s: &str) -> String {
+    s.replace('-', "_")
 }
 
 pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
@@ -163,73 +194,74 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
         "  Aborting due to {} {}.",
         e_len,
         if e_len > 1 { "errors" } else { "error" }
-    ))
-    .unwrap();
+    ));
 }
 
-pub fn println_red(txt: &str) -> io::Result<()> {
-    println_std_out(txt, TermColor::Red)
+pub fn println_red(txt: &str) {
+    println_std_out(txt, TermColor::Red);
 }
 
-pub fn println_green(txt: &str) -> io::Result<()> {
-    println_std_out(txt, TermColor::Green)
+pub fn println_green(txt: &str) {
+    println_std_out(txt, TermColor::Green);
 }
 
-pub fn print_blue_err(txt: &str) -> io::Result<()> {
-    print_std_err(txt, TermColor::Blue)
+pub fn print_blue_err(txt: &str) {
+    print_std_err(txt, TermColor::Blue);
 }
 
-pub fn println_yellow_err(txt: &str) -> io::Result<()> {
-    println_std_err(txt, TermColor::Yellow)
+pub fn println_yellow_err(txt: &str) {
+    println_std_err(txt, TermColor::Yellow);
 }
 
-pub fn println_red_err(txt: &str) -> io::Result<()> {
-    println_std_err(txt, TermColor::Red)
+pub fn println_red_err(txt: &str) {
+    println_std_err(txt, TermColor::Red);
 }
 
-pub fn println_green_err(txt: &str) -> io::Result<()> {
-    println_std_err(txt, TermColor::Green)
+pub fn println_green_err(txt: &str) {
+    println_std_err(txt, TermColor::Green);
 }
 
-pub fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+pub fn print_std_out(txt: &str, color: TermColor) {
     let stdout = StandardStream::stdout(ColorChoice::Always);
-    print_with_color(txt, color, stdout)
+    print_with_color(txt, color, stdout);
 }
 
-fn println_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+fn println_std_out(txt: &str, color: TermColor) {
     let stdout = StandardStream::stdout(ColorChoice::Always);
-    println_with_color(txt, color, stdout)
+    println_with_color(txt, color, stdout);
 }
 
-fn print_std_err(txt: &str, color: TermColor) -> io::Result<()> {
+fn print_std_err(txt: &str, color: TermColor) {
     let stdout = StandardStream::stderr(ColorChoice::Always);
-    print_with_color(txt, color, stdout)
+    print_with_color(txt, color, stdout);
 }
 
-fn println_std_err(txt: &str, color: TermColor) -> io::Result<()> {
+fn println_std_err(txt: &str, color: TermColor) {
     let stdout = StandardStream::stderr(ColorChoice::Always);
-    println_with_color(txt, color, stdout)
+    println_with_color(txt, color, stdout);
 }
 
-fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
+fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) {
     let mut stream = stream;
-    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
-    write!(&mut stream, "{}", txt)?;
-    stream.reset()?;
-    Ok(())
+    stream
+        .set_color(ColorSpec::new().set_fg(Some(color)))
+        .expect("internal printing error");
+    write!(&mut stream, "{}", txt).expect("internal printing error");
+    stream.reset().expect("internal printing error");
 }
 
-fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
+fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) {
     let mut stream = stream;
-    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
-    writeln!(&mut stream, "{}", txt)?;
-    stream.reset()?;
-    Ok(())
+    stream
+        .set_color(ColorSpec::new().set_fg(Some(color)))
+        .expect("internal printing error");
+    writeln!(&mut stream, "{}", txt).expect("internal printing error");
+    stream.reset().expect("internal printing error");
 }
 
 fn format_err(err: &sway_core::CompileError) {
     let input = err.internal_span().input();
-    let path = err.path();
+    let path = err.path_str();
 
     let (mut start_pos, mut end_pos) = err.span();
     if start_pos == end_pos {
@@ -249,7 +281,7 @@ fn format_err(err: &sway_core::CompileError) {
         slices: vec![Slice {
             source: input,
             line_start: start.line,
-            origin: Some(&path),
+            origin: path.as_deref(),
             fold: false,
             annotations: vec![SourceAnnotation {
                 label: &friendly_str,
@@ -262,12 +294,12 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    eprintln!("{}", DisplayList::from(snippet))
+    eprintln!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
     let input = err.span.input();
-    let path = err.path();
+    let path = err.path_str();
 
     let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
     let (mut start_pos, mut end_pos) = err.span();
@@ -288,7 +320,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         slices: vec![Slice {
             source: input,
             line_start: start.line,
-            origin: Some(&path),
+            origin: path.as_deref(),
             fold: false,
             annotations: vec![SourceAnnotation {
                 label: &friendly_str,
@@ -301,7 +333,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    eprintln!("{}", DisplayList::from(snippet))
+    eprintln!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the

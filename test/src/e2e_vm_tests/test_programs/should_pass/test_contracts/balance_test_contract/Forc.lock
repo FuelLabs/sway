@@ -1,0 +1,18 @@
+[[package]]
+name = 'balance_test_abi'
+dependencies = []
+
+[[package]]
+name = 'balance_test_contract'
+dependencies = [
+    'balance_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

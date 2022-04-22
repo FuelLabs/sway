@@ -1,0 +1,11 @@
+[[package]]
+name = 'aliased_imports'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

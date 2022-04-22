@@ -98,7 +98,7 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
     match &dec {
         Declaration::VariableDeclaration(var_dec) => handle_expression(&var_dec.body, changes),
 
-        Declaration::StructDeclaration(_) => {
+        Declaration::StructDeclaration(_) | Declaration::StorageDeclaration(_) => {
             changes.push(Change::new(&ast_node.span, ChangeType::Struct))
         }
 
@@ -132,11 +132,9 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
 
 fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
     match &expr {
-        Expression::StructExpression {
-            struct_name: _,
-            fields: _,
-            span,
-        } => changes.push(Change::new(span, ChangeType::Struct)),
+        Expression::StructExpression { span, .. } => {
+            changes.push(Change::new(span, ChangeType::Struct))
+        }
         Expression::IfExp {
             condition: _,
             then,

@@ -1,19 +1,19 @@
 script {
     fn main() -> bool {
-        local ptr { bool, { u64, { () | () | u64 } } } record
+        local ptr { bool, { u64, ( () | () | u64 ) } } record
 
         entry:
-        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }, !1
+        v0 = const { u64, ( () | () | u64 ) } { u64 undef, ( () | () | u64 ) undef }, !1
         v1 = const u64 0, !1
-        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0, !1
-        v3 = const { bool, { u64, { () | () | u64 } } } { bool undef, { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef } }, !2
+        v2 = insert_value v0, { u64, ( () | () | u64 ) }, v1, 0, !1
+        v3 = const { bool, { u64, ( () | () | u64 ) } } { bool undef, { u64, ( () | () | u64 ) } { u64 undef, ( () | () | u64 ) undef } }, !2
         v4 = const bool false, !3
-        v5 = insert_value v3, { bool, { u64, { () | () | u64 } } }, v4, 0, !2
-        v6 = insert_value v5, { bool, { u64, { () | () | u64 } } }, v2, 1, !2
-        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, !4
+        v5 = insert_value v3, { bool, { u64, ( () | () | u64 ) } }, v4, 0, !2
+        v6 = insert_value v5, { bool, { u64, ( () | () | u64 ) } }, v2, 1, !2
+        v7 = get_ptr ptr { bool, { u64, ( () | () | u64 ) } } record, ptr { bool, { u64, ( () | () | u64 ) } }, 0, !4
         store v6, ptr v7, !4
-        v8 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record, !5
-        v9 = extract_value v8, { bool, { u64, { () | () | u64 } } }, 0, !6
+        v8 = get_ptr ptr { bool, { u64, ( () | () | u64 ) } } record, ptr { bool, { u64, ( () | () | u64 ) } }, 0, !5
+        v9 = extract_value v8, { bool, { u64, ( () | () | u64 ) } }, 0, !6
         ret bool v9
     }
 }
@@ -24,4 +24,4 @@ script {
 !3 = span !0 66 71
 !4 = span !0 33 104
 !5 = span !0 109 115
-!6 = span !0 116 117
+!6 = span !0 66 71

@@ -33,10 +33,22 @@ pub struct PkgLock {
     // `Option`.
     version: Option<semver::Version>,
     source: Option<String>,
-    // Dependency string is "<name> <source_string>". The source string is included in order to be
-    // able to uniquely distinguish between multiple different versions of the same package.
-    dependencies: Vec<String>,
+    dependencies: Vec<PkgDepLine>,
 }
+
+/// `PkgDepLine` is a terse, single-line, git-diff-friendly description of a package's
+/// dependency. It is formatted like so:
+///
+/// ```ignore
+/// (<dep_name>) <pkg_name> <source_string>
+/// ```
+///
+/// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
+/// not match the package name, i.e. if the `package` field was specified for the dependency.
+///
+/// The source string is included in order to be able to uniquely distinguish between multiple
+/// different versions of the same package.
+pub type PkgDepLine = String;
 
 /// Convert the given package source to a string for use in the package lock.
 ///
@@ -74,10 +86,16 @@ impl PkgLock {
         let mut dependencies: Vec<String> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
+                let dep_name = edge.weight();
                 let dep_node = edge.target();
-                let dep = &graph[dep_node];
-                let source_string = source_to_string(&dep.source);
-                pkg_unique_string(&dep.name, source_string.as_deref())
+                let dep_pkg = &graph[dep_node];
+                let dep_name = if *dep_name != dep_pkg.name {
+                    Some(&dep_name[..])
+                } else {
+                    None
+                };
+                let source_string = source_to_string(&dep_pkg.source);
+                pkg_dep_line(dep_name, &dep_pkg.name, source_string.as_deref())
             })
             .collect();
         dependencies.sort();
@@ -123,9 +141,6 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.unique_string();
             let name = pkg.name.clone();
-            // TODO: We shouldn't use `pkg::SourcePinned` as we don't actually know the `Path`
-            // until we follow the dependency graph. Use something like a `ParsedSource` type here
-            // instead.
             let pkg_source_string = pkg.source.clone();
             let source = match &pkg_source_string {
                 None => pkg::SourcePinned::Path,
@@ -142,12 +157,15 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.unique_string();
             let node = pkg_to_node[&key];
-            for dep_key in &pkg.dependencies {
+            for dep_line in &pkg.dependencies {
+                let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
+                    .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
-                    .get(&dep_key[..])
+                    .get(dep_key)
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
-                graph.add_edge(node, dep_node, ());
+                let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
+                graph.add_edge(node, dep_node, dep_name);
             }
         }
 
@@ -169,6 +187,38 @@ fn pkg_unique_string(name: &str, source: Option<&str>) -> String {
         None => name.to_string(),
         Some(s) => format!("{} {}", name, s),
     }
+}
+
+fn pkg_dep_line(dep_name: Option<&str>, name: &str, source: Option<&str>) -> PkgDepLine {
+    let pkg_string = pkg_unique_string(name, source);
+    match dep_name {
+        None => pkg_string,
+        Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
+    }
+}
+
+// Parse the given `PkgDepLine` into its dependency name and unique string segments.
+//
+// I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
+fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<(Option<&str>, &str)> {
+    let s = pkg_dep_line.trim();
+
+    // Check for the open bracket.
+    if !s.starts_with('(') {
+        return Ok((None, s));
+    }
+
+    // If we have the open bracket, grab everything until the closing bracket.
+    let s = &s["(".len()..];
+    let mut iter = s.split(')');
+    let dep_name = iter
+        .next()
+        .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+
+    // The rest is the unique package string.
+    let s = &s[dep_name.len() + ")".len()..];
+    let pkg_str = s.trim_start();
+    Ok((Some(dep_name), pkg_str))
 }
 
 pub fn print_diff(proj_name: &str, diff: &Diff) {

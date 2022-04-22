@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.6.0"
+version = "0.10.3"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -16,9 +16,12 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.2"
-fuel-vm = "0.5"
+fuel-asm = "0.3"
+fuel-crypto = "0.4"
+fuel-vm = "0.6"
+generational-arena = "0.2"
 hex = { version = "0.4", optional = true }
+itertools = "0.10"
 lazy_static = "1.4"
 nanoid = "0.4"
 pest = { version = "3.0.4", package = "fuel-pest" }
@@ -29,9 +32,10 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ir = { version = "0.6.0", path = "../sway-ir" }
-sway-types = { version = "0.6.0", path = "../sway-types" }
-generational-arena = "0.2"
+sway-ir = { version = "0.10.3", path = "../sway-ir" }
+sway-parse = { version = "0.10.3", path = "../sway-parse" }
+sway-types = { version = "0.10.3", path = "../sway-types" }
+sway-utils = { version = "0.10.3", path = "../sway-utils" }
 thiserror = "1.0"
 
 [[bin]]

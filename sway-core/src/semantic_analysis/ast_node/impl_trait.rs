@@ -4,11 +4,9 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
+    parse_tree::{FunctionDeclaration, ImplTrait},
     semantic_analysis::*,
-    type_engine::{
-        insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
-    },
+    type_engine::*,
     CallPath, Ident,
 };
 
@@ -30,38 +28,37 @@ pub(crate) fn implementation_of_trait(
         functions,
         type_implementing_for,
         type_implementing_for_span,
-        type_arguments_span,
         block_span,
+        ..
     } = impl_trait;
-    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = check!(
+        namespace.resolve_type_without_self(&type_implementing_for),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     let type_implementing_for = look_up_type_id(type_implementing_for);
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
-    if !type_arguments.is_empty() {
-        errors.push(CompileError::Internal(
-            "Where clauses are not supported yet.",
-            type_arguments[0].clone().name_ident.span().clone(),
-        ));
+    for type_argument in type_arguments.iter() {
+        if !type_argument.trait_constraints.is_empty() {
+            errors.push(CompileError::Internal(
+                "Where clauses are not supported yet.",
+                type_argument.name_ident.span().clone(),
+            ));
+            break;
+        }
     }
     match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
-            if type_arguments.len() != tr.type_parameters.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: tr.type_parameters.len(),
-                    span: type_arguments_span,
-                })
-            }
-
             let functions_buf = check!(
                 type_check_trait_implementation(
                     &tr.interface_surface,
                     &functions,
                     &tr.methods,
-                    &tr.name,
-                    &tr.type_parameters,
+                    &trait_name,
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -119,9 +116,7 @@ pub(crate) fn implementation_of_trait(
                     &abi.interface_surface,
                     &functions,
                     &abi.methods,
-                    &abi.name,
-                    // ABIs don't have type parameters
-                    &[],
+                    &trait_name,
                     namespace,
                     crate_namespace,
                     type_implementing_for_id,
@@ -183,9 +178,8 @@ fn type_check_trait_implementation(
     interface_surface: &[TypedTraitFn],
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
-    trait_name: &Ident,
-    type_arguments: &[TypeParameter],
-    namespace: crate::semantic_analysis::NamespaceRef,
+    trait_name: &CallPath,
+    namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     _self_type: TypeId,
     build_config: &BuildConfig,
@@ -229,7 +223,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        let mut fn_decl = fn_decl.replace_self_types(self_type_id);
+        let fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
         let ix_of_thing_to_remove = match function_checklist
             .iter()
@@ -239,17 +233,13 @@ fn type_check_trait_implementation(
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
-                    trait_name: trait_name.clone(),
+                    trait_name: trait_name.suffix.clone(),
                     span: fn_decl.name.span().clone(),
                 });
                 return err(warnings, errors);
             }
         };
         function_checklist.remove(ix_of_thing_to_remove);
-
-        let type_arguments = &(*type_arguments);
-        // add generic params from impl trait into function type params
-        fn_decl.type_parameters.append(&mut type_arguments.to_vec());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -266,7 +256,7 @@ fn type_check_trait_implementation(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
                                 fn_name: fn_decl.name.clone(),
-                                trait_name: trait_name.clone(),
+                                trait_name: trait_name.suffix.clone(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },
@@ -283,26 +273,22 @@ fn type_check_trait_implementation(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match crate::type_engine::unify_with_self(
+                            let (mut new_warnings, new_errors) = unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
                                 &trait_param.type_span,
-                            ) {
-                                Ok(mut ws) => {
-                                    warnings.append(&mut ws);
-                                }
-                                Err(_e) => {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: fn_decl_param_type.friendly_type_str(),
-                                        expected: trait_param_type.friendly_type_str(),
-                                    });
-                                }
-                            }
-                            if errors.is_empty() {
+                                "",
+                            );
+                            warnings.append(&mut new_warnings);
+                            if new_errors.is_empty() {
                                 None
                             } else {
+                                errors.push(CompileError::MismatchedTypeInTrait {
+                                    span: trait_param.type_span.clone(),
+                                    given: fn_decl_param_type.friendly_type_str(),
+                                    expected: trait_param_type.friendly_type_str(),
+                                });
                                 Some(errors)
                             }
                         })
@@ -310,26 +296,22 @@ fn type_check_trait_implementation(
                         errors.append(&mut maybe_err);
                     }
 
-                    match crate::type_engine::unify_with_self(
+                    let (mut new_warnings, new_errors) = unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,
                         &fn_decl.return_type_span,
-                    ) {
-                        Ok(mut ws) => {
-                            warnings.append(&mut ws);
-                        }
-                        Err(_e) => {
-                            errors.push(CompileError::MismatchedTypeInTrait {
-                                span: fn_decl.return_type_span.clone(),
-                                expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str(),
-                            });
-                        }
-                    }
-                    if errors.is_empty() {
+                        "",
+                    );
+                    warnings.append(&mut new_warnings);
+                    if new_errors.is_empty() {
                         None
                     } else {
+                        errors.push(CompileError::MismatchedTypeInTrait {
+                            span: fn_decl.return_type_span.clone(),
+                            expected: return_type.friendly_type_str(),
+                            given: fn_decl.return_type.friendly_type_str(),
+                        });
                         Some(errors)
                     }
                 } else {
@@ -347,10 +329,24 @@ fn type_check_trait_implementation(
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
     let local_namespace: NamespaceRef = create_new_scope(namespace);
+
+    // A trait impl needs access to everything that the trait methods have access to, which is
+    // basically everything in the path where the trait is declared.
+    // First, get the path to where the trait is declared. This is a combination of the path stored
+    // in the symbols map and the path stored in the CallPath.
+    local_namespace.star_import(
+        Some(crate_namespace),
+        [
+            &trait_name.prefixes[..],
+            &local_namespace.get_canonical_path(&trait_name.suffix)[..],
+        ]
+        .concat(),
+    );
+
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
-            suffix: trait_name.clone(),
+            suffix: trait_name.suffix.clone(),
             is_absolute: false,
         },
         match resolve_type(type_implementing_for, type_implementing_for_span) {
@@ -374,7 +370,7 @@ fn type_check_trait_implementation(
                 namespace: local_namespace,
                 crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: "",
+                help_text: Default::default(),
                 self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,

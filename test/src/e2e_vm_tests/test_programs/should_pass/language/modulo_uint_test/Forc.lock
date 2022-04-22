@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'modulo_uint_test'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

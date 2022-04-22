@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'inline_if_expr_const'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

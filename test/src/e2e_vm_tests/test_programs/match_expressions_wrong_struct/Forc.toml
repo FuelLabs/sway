@@ -1,8 +1,0 @@
-[project]
-authors = ["Emily Herbert <emily.herbert@fuel.sh>"]
-license = "MIT"
-name = "match_expressions_wrong_struct"
-entry = "main.sw"
-
-[dependencies]
-core = { git = "http://github.com/FuelLabs/sway-lib-core", branch = "master" }

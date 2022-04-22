@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "caller_context_test"
+
+[dependencies]
+context_testing_abi = { path = "../../test_abis/context_testing_abi" }
+std = { path = "../../../../../../../sway-lib-std" }

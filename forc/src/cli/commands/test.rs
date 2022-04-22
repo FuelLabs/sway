@@ -2,8 +2,7 @@ use crate::ops::forc_build;
 use anyhow::Result;
 use clap::Parser;
 use std::io::{BufRead, BufReader};
-use std::process::Command as ProcessCommand;
-use std::process::Stdio;
+use std::process;
 use std::thread;
 
 /// Run Rust-based tests on current project.
@@ -17,26 +16,66 @@ use std::thread;
 pub(crate) struct Command {
     /// If specified, only run tests containing this string in their names
     pub test_name: Option<String>,
+    /// Options passed through to the `cargo test` invocation.
+    ///
+    /// E.g. Given the following:
+    ///
+    /// `forc test --cargo-test-opts="--color always"`
+    ///
+    /// The `--color always` option is forwarded to `cargo test` like so:
+    ///
+    /// `cargo test --color always`
+    #[clap(long)]
+    pub cargo_test_opts: Option<String>,
+    /// All trailing arguments following `--` are collected within this argument.
+    ///
+    /// E.g. Given the following:
+    ///
+    /// `forc test -- foo bar baz`
+    ///
+    /// The arguments `foo`, `bar` and `baz` are forwarded on to `cargo test` like so:
+    ///
+    /// `cargo test -- foo bar baz`
+    #[clap(raw = true)]
+    pub cargo_test_args: Vec<String>,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
     // Ensure the project builds before running tests.
     forc_build::build(Default::default())?;
 
-    // Cargo args setup
-    let mut args: Vec<String> = vec!["test".into()];
-    if let Some(name) = command.test_name {
-        args.push(name);
-    };
-    args.push("--color".into());
-    args.push("always".into());
-    args.push("--".into());
-    args.push("--nocapture".into());
+    let mut cmd = process::Command::new("cargo");
+    cmd.arg("test");
 
-    let mut child = ProcessCommand::new("cargo")
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+    // Pass through cargo test options.
+    let mut user_specified_color_opt = false;
+    if let Some(opts) = command.cargo_test_opts {
+        user_specified_color_opt = opts.contains("--color");
+        for opt in opts.split_whitespace() {
+            cmd.arg(&opt);
+        }
+    }
+
+    // If the coloring option wasn't specified by the user, enable it ourselves. This is useful as
+    // `cargo test`'s coloring is disabled by default when run as a child process.
+    if !user_specified_color_opt {
+        cmd.args(&["--color", "always"]);
+    }
+
+    // Pass through test name.
+    if let Some(ref name) = command.test_name {
+        cmd.arg(name);
+    }
+
+    // Pass through cargo test args.
+    if !command.cargo_test_args.is_empty() {
+        cmd.arg("--");
+        cmd.args(&command.cargo_test_args);
+    }
+
+    let mut child = cmd
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
         .spawn()
         .unwrap();
 

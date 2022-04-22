@@ -1,0 +1,7 @@
+[[package]]
+name = 'const_decl_in_library'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

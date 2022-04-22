@@ -14,9 +14,8 @@ use crate::{
     },
     type_engine::{resolve_type, TypeInfo},
 };
-use sway_types::{ident::Ident, span::Span};
-
 use petgraph::prelude::NodeIndex;
+use sway_types::{ident::Ident, span::Span};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(ast: &TypedParseTree) -> Self {
@@ -99,10 +98,7 @@ impl ControlFlowGraph {
                             errors.push(CompileError::Internal(
                                 "Attempted to construct return path error \
                                     but no source span was found.",
-                                Span {
-                                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                                    path: None,
-                                },
+                                Span::dummy(),
                             ));
                             return errors;
                         }
@@ -186,6 +182,7 @@ fn connect_declaration(
         | AbiDeclaration(_)
         | StructDeclaration(_)
         | EnumDeclaration(_)
+        | StorageDeclaration(_)
         | GenericTypeForFunctionScope { .. } => leaves.to_vec(),
         VariableDeclaration(_) | ConstantDeclaration(_) => {
             let entry_node = graph.add_node(node.into());
@@ -203,6 +200,13 @@ fn connect_declaration(
             leaves.to_vec()
         }
         Reassignment(TypedReassignment { .. }) => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            vec![entry_node]
+        }
+        StorageReassignment(_) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

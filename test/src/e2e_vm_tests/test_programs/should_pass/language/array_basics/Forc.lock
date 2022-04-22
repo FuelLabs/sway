@@ -1,0 +1,7 @@
+[[package]]
+name = 'array_basics'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

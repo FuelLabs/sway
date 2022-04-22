@@ -1,0 +1,11 @@
+[[package]]
+name = 'assert_test'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

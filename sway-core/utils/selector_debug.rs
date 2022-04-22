@@ -40,7 +40,7 @@ fn main() {
         checkee: parsed_fn_decl,
         namespace,
         crate_namespace: namespace,
-        help_text: "",
+        help_text: Default::default(),
         return_type_annotation: insert_type(TypeInfo::Unknown),
         self_type: insert_type(TypeInfo::Unknown),
         build_config: &mut BuildConfig::root_from_file_name_and_manifest_path(

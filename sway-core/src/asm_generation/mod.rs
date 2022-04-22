@@ -2,8 +2,11 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt,
 };
+use sway_types::Span;
 
-use crate::semantic_analysis::ast_node::{TypedVariableDeclaration, VariableMutability};
+use crate::semantic_analysis::ast_node::{
+    TypedStructField, TypedVariableDeclaration, VariableMutability,
+};
 use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
@@ -15,8 +18,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        ast_node::OwnedTypedStructField, read_module, TypedAstNode, TypedAstNodeContent,
-        TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -597,6 +600,11 @@ impl AsmNamespace {
                 )],
             ),
         }
+    }
+
+    /// In the
+    pub(crate) fn overwrite_data_section(&mut self, other: Self) {
+        self.data_section.value_pairs = other.data_section.value_pairs;
     }
 }
 
@@ -1296,17 +1304,24 @@ fn compile_contract_to_selectors(
             _ => {
                 // load the call frame argument into the function argument register
                 let bundled_arguments_register = register_sequencer.next();
+                let bundled_arguments_span = decl
+                    .parameters
+                    .iter()
+                    .fold(decl.parameters[0].name.span().clone(), |acc, x| {
+                        Span::join(acc, x.name.span().clone())
+                    });
 
                 // Create a new struct type that contains all the arguments. Then, for each argument,
                 // create a register for it and load it using some utilities from expression::subfield.
                 let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: "bundled_arguments".to_string(),
+                    name: Ident::new(bundled_arguments_span),
                     fields: decl
                         .parameters
                         .iter()
-                        .map(|p| OwnedTypedStructField {
-                            name: p.name.to_string(),
+                        .map(|p| TypedStructField {
+                            name: p.name.clone(),
                             r#type: p.r#type,
+                            span: p.name.span().clone(),
                         })
                         .collect::<Vec<_>>(),
                 });
@@ -1328,8 +1343,7 @@ fn compile_contract_to_selectors(
                     asm_buf.append(&mut check!(
                         convert_subfield_to_asm(
                             bundled_arguments_register.clone(),
-                            param.name.as_str(),
-                            param.type_span.clone(),
+                            &param.name,
                             arg_register.clone(),
                             &subfields_for_layout,
                             &descriptor,
@@ -1371,12 +1385,11 @@ fn load_bundled_arguments(return_register: VirtualRegister) -> Op {
 /// Given a register, load the current value of $cgas into it
 fn load_gas(return_register: VirtualRegister) -> Op {
     Op {
-        opcode: Either::Left(VirtualOp::LW(
+        opcode: Either::Left(VirtualOp::MOVE(
             return_register,
             VirtualRegister::Constant(ConstantRegister::ContextGas),
-            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
         )),
-        comment: "loading $cgas (gas) into abi function".into(),
+        comment: "move $cgas (gas) into abi function".into(),
         owning_span: None,
     }
 }
@@ -1416,23 +1429,32 @@ fn ret_or_retd_value(
             errors,
         );
     }
-    let span = sway_types::span::Span {
-        span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
-        path: None,
-    };
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.size_in_words(&span).expect(
-        "TODO(static span): Internal error: Static spans will allow for a proper error here.",
-    ) * 8;
-    if size_of_main_func_return_bytes <= 8 {
+    let main_func_ret_ty_is_copy_type = match main_func_ret_ty.is_copy_type(&func.return_type_span)
+    {
+        Ok(is_copy) => is_copy,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+    if main_func_ret_ty_is_copy_type {
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RET(return_register)),
             comment: format!("{} fn return value", func.name.as_str()),
         });
     } else {
-        // if the type is larger than one word, then we use RETD to return data
-        // RB is the size_in_bytes
+        let size_of_main_func_return_bytes =
+            match main_func_ret_ty.size_in_bytes(&func.return_type_span) {
+                Ok(sz) => sz,
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
+                }
+            };
+
+        // if the type is a reference type, then we use RETD to return data RB is the size_in_bytes
         let rb_register = register_sequencer.next();
         let size_bytes = namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
         // `return_register` is $rA

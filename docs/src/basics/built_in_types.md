@@ -1,8 +1,8 @@
 # Built-in Types
 
-Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
+Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in the underlying virtual machine, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
 
-Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred.
+Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred by the compiler.
 
 ## Primitive Types
 
@@ -41,8 +41,8 @@ The boolean type (`bool`) has two potential values: `true` or `false`. Boolean v
 
 ```sway
 fn returns_false() -> bool {
-  let boolean_value: bool = true;
-  !boolean_value
+    let boolean_value: bool = true;
+    !boolean_value
 }
 ```
 
@@ -62,8 +62,6 @@ _Compound types_ are types that group multiple values into one type. In Sway, we
 
 ## Tuple Types
 
-_note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
-
 A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
 
 ```sway
@@ -74,7 +72,7 @@ This is a tuple, denoted by parenthesized, comma-separated values. Note that the
 
 ```sway
 let x: (u64, bool) = (42, true);
-assert(x.1)
+assert(x.1);
 ```
 
 In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
@@ -113,7 +111,6 @@ To access an element in an array, use _array indexing syntax_:
 
 ```sway
 let x: [bool; 2] = [true, false];
-
 assert(x[0]);
 ```
 

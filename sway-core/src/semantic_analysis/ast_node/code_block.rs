@@ -2,14 +2,24 @@ use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
-#[derive(Clone, Debug)]
+use derivative::Derivative;
+
+#[derive(Clone, Debug, Eq, Derivative)]
+#[derivative(PartialEq)]
 pub(crate) struct TypedCodeBlock {
     pub(crate) contents: Vec<TypedAstNode>,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) whole_block_span: Span,
 }
 
 #[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
+    pub(crate) fn deterministically_aborts(&self) -> bool {
+        self.contents.iter().any(|x| x.deterministically_aborts())
+    }
+    pub fn span(&self) -> &Span {
+        &self.whole_block_span
+    }
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
@@ -76,19 +86,15 @@ impl TypedCodeBlock {
         });
 
         if let Some(return_type) = return_type {
-            match crate::type_engine::unify_with_self(
+            let (mut new_warnings, new_errors) = unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
-            ) {
-                Ok(mut ws) => {
-                    warnings.append(&mut ws);
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            };
+                help_text,
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
             // The annotation will result in a cast, so set the return type accordingly.
         }
 
@@ -98,9 +104,7 @@ impl TypedCodeBlock {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or_else(|| {
-                    crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
-                }),
+                return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new()))),
             ),
             warnings,
             errors,

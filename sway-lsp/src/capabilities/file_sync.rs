@@ -1,6 +1,6 @@
 use crate::core::session::Session;
-use lspower::lsp::{FileChangeType, FileEvent};
 use std::sync::Arc;
+use tower_lsp::lsp_types::{FileChangeType, FileEvent};
 
 pub fn handle_watched_files(session: Arc<Session>, events: Vec<FileEvent>) {
     for event in events {

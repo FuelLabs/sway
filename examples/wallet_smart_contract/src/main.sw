@@ -1,36 +1,46 @@
-// NOTE: Storage is a work in progress (see
-// https://github.com/FuelLabs/sway/pull/646), but once it is implemented,
-// declaring storage should look like this.
-
 contract;
 
-use std::*;
-use std::chain::assert;
+use std::{
+    address::Address, 
+    assert::assert, 
+    chain::auth::{AuthError, Sender, msg_sender}, 
+    constants::NATIVE_ASSET_ID, 
+    context::{call_frames::msg_asset_id, msg_amount}, 
+    contract_id::ContractId, 
+    panic::panic, 
+    result::*, 
+    token::transfer_to_output
+};
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
-// storage {
-//     balance: u64,
-// }
+storage {
+    balance: u64,
+}
 
 abi Wallet {
     fn receive_funds();
-    fn send_funds(amount_to_send: u64, recipient_address: b256);
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 
 impl Wallet for Contract {
     fn receive_funds() {
-        // if asset_id == ETH_ID {
-        //     let balance = storage.balance.write();
-        //     deref balance = balance + coins_to_forward;
-        // };
+        if (msg_asset_id()).into() == NATIVE_ASSET_ID {
+            storage.balance = storage.balance + msg_amount();
+        };
     }
 
-    fn send_funds(amount_to_send: u64, recipient_address: b256) {
-        // assert(sender() == OWNER_ADDRESS);
-        // assert(storage.balance > req.amount_to_send);
-        // storage.balance = storage.balance - req.amount_to_send;
-        // transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
+    fn send_funds(amount_to_send: u64, recipient_address: Address) {
+        let sender: Result<Sender, AuthError> = msg_sender();
+        if let Sender::Address(addr) = sender.unwrap() {
+            assert(addr.into() == OWNER_ADDRESS);
+        } else {
+            panic(0);
+        };
+
+        let current_balance = storage.balance;
+        assert(current_balance > amount_to_send);
+        storage.balance = current_balance - amount_to_send;
+        transfer_to_output(amount_to_send, ~ContractId::from(NATIVE_ASSET_ID), recipient_address);
     }
 }

@@ -39,6 +39,7 @@ pub(crate) enum VirtualOp {
     MOD(VirtualRegister, VirtualRegister, VirtualRegister),
     MODI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     MOVE(VirtualRegister, VirtualRegister),
+    MOVI(VirtualRegister, VirtualImmediate18),
     MUL(VirtualRegister, VirtualRegister, VirtualRegister),
     MULI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     NOT(VirtualRegister, VirtualRegister),
@@ -73,13 +74,13 @@ pub(crate) enum VirtualOp {
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
     MCP(VirtualRegister, VirtualRegister, VirtualRegister),
+    MCPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     MEQ(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
     ),
-    MCPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SW(VirtualRegister, VirtualRegister, VirtualImmediate12),
     BAL(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -108,6 +109,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    LOGD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
     MINT(VirtualRegister),
     RVRT(VirtualRegister),
     SLDC(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -125,7 +132,12 @@ pub(crate) enum VirtualOp {
     ECR(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
+    XIL(VirtualRegister, VirtualRegister),
+    XIS(VirtualRegister, VirtualRegister),
+    XOL(VirtualRegister, VirtualRegister),
     XOS(VirtualRegister, VirtualRegister),
+    XWL(VirtualRegister, VirtualRegister),
+    XWS(VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
@@ -154,6 +166,7 @@ impl VirtualOp {
             MOD(r1, r2, r3) => vec![r1, r2, r3],
             MODI(r1, r2, _i) => vec![r1, r2],
             MOVE(r1, r2) => vec![r1, r2],
+            MOVI(r1, _i) => vec![r1],
             MUL(r1, r2, r3) => vec![r1, r2, r3],
             MULI(r1, r2, _i) => vec![r1, r2],
             NOT(r1, r2) => vec![r1, r2],
@@ -197,6 +210,7 @@ impl VirtualOp {
             CB(r1) => vec![r1],
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
             SLDC(r1, r2, r3) => vec![r1, r2, r3],
@@ -209,7 +223,12 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
+            XIL(r1, r2) => vec![r1, r2],
+            XIS(r1, r2) => vec![r1, r2],
+            XOL(r1, r2) => vec![r1, r2],
             XOS(r1, r2) => vec![r1, r2],
+            XWL(r1, r2) => vec![r1, r2],
+            XWS(r1, r2) => vec![r1, r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
@@ -243,6 +262,7 @@ impl VirtualOp {
             MOD(_r1, r2, r3) => vec![r2, r3],
             MODI(r1, r2, _i) => vec![r1, r2],
             MOVE(_r1, r2) => vec![r2],
+            MOVI(_r1, _i) => vec![],
             MUL(_r1, r2, r3) => vec![r2, r3],
             MULI(_r1, r2, _i) => vec![r2],
             NOT(_r1, r2) => vec![r2],
@@ -286,6 +306,7 @@ impl VirtualOp {
             CB(r1) => vec![r1],
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
             SLDC(r1, r2, r3) => vec![r1, r2, r3],
@@ -298,7 +319,12 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
+            XIL(_r1, r2) => vec![r2],
+            XIS(_r1, r2) => vec![r2],
+            XOL(_r1, r2) => vec![r2],
             XOS(_r1, r2) => vec![r2],
+            XWL(_r1, r2) => vec![r2],
+            XWS(_r1, r2) => vec![r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(_r1, _imm) => vec![],
@@ -332,6 +358,7 @@ impl VirtualOp {
             MOD(r1, _r2, _r3) => vec![r1],
             MODI(r1, _r2, _i) => vec![r1],
             MOVE(r1, _r2) => vec![r1],
+            MOVI(r1, _i) => vec![r1],
             MUL(r1, _r2, _r3) => vec![r1],
             MULI(r1, _r2, _i) => vec![r1],
             NOT(r1, _r2) => vec![r1],
@@ -375,6 +402,7 @@ impl VirtualOp {
             CB(_r1) => vec![],
             LDC(_r1, _r2, _r3) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
+            LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1) => vec![],
             RVRT(_r1) => vec![],
             SLDC(_r1, _r2, _r3) => vec![],
@@ -387,7 +415,12 @@ impl VirtualOp {
             ECR(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
+            XIL(r1, _r2) => vec![r1],
+            XIS(r1, _r2) => vec![r1],
+            XOL(r1, _r2) => vec![r1],
             XOS(r1, _r2) => vec![r1],
+            XWL(r1, _r2) => vec![r1],
+            XWS(r1, _r2) => vec![r1],
             NOOP => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
@@ -529,6 +562,7 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
+            MOVI(r1, i) => Self::MOVI(update_reg(reg_to_reg_map, r1), i.clone()),
             MUL(r1, r2, r3) => Self::MUL(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -701,6 +735,12 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
             ),
+            LOGD(r1, r2, r3, r4) => Self::LOGD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
             MINT(r1) => Self::MINT(update_reg(reg_to_reg_map, r1)),
             RVRT(reg1) => Self::RVRT(update_reg(reg_to_reg_map, reg1)),
             SLDC(r1, r2, r3) => Self::SLDC(
@@ -750,7 +790,27 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
+            XIL(r1, r2) => Self::XIL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            XIS(r1, r2) => Self::XIS(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            XOL(r1, r2) => Self::XOL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
             XOS(r1, r2) => Self::XOS(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            XWL(r1, r2) => Self::XWL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            XWS(r1, r2) => Self::XWS(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
@@ -773,10 +833,7 @@ impl VirtualOp {
                     *offset_map
                         .get(&(i.value as u64))
                         .expect("new offset should be valid") as u64,
-                    crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
             ),
@@ -787,10 +844,7 @@ impl VirtualOp {
                     *offset_map
                         .get(&(i.value as u64))
                         .expect("new offset should be valid") as u64,
-                    crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
             ),
@@ -905,6 +959,7 @@ impl VirtualOp {
             MOVE(reg1, reg2) => {
                 AllocatedOpcode::MOVE(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
+            MOVI(reg1, imm) => AllocatedOpcode::MOVI(map_reg(&mapping, reg1), imm.clone()),
             MUL(reg1, reg2, reg3) => AllocatedOpcode::MUL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1072,6 +1127,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            LOGD(reg1, reg2, reg3, reg4) => AllocatedOpcode::LOGD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
             MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
             RVRT(reg1) => AllocatedOpcode::RVRT(map_reg(&mapping, reg1)),
             SLDC(reg1, reg2, reg3) => AllocatedOpcode::SLDC(
@@ -1117,8 +1178,23 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            XIL(reg1, reg2) => {
+                AllocatedOpcode::XIL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            XIS(reg1, reg2) => {
+                AllocatedOpcode::XIS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            XOL(reg1, reg2) => {
+                AllocatedOpcode::XOL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             XOS(reg1, reg2) => {
                 AllocatedOpcode::XOS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            XWL(reg1, reg2) => {
+                AllocatedOpcode::XWL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            XWS(reg1, reg2) => {
+                AllocatedOpcode::XWS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),

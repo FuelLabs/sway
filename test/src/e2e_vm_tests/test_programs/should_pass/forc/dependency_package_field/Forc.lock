@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'dependency_package_field'
+dependencies = ['(std-alt) std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

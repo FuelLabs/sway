@@ -4,18 +4,20 @@ use crate::{
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            SizeOfVariant, TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration,
-            TypedDeclaration, TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
+            TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
+            TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop,
         },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use sway_types::span::Span;
+
+use crate::semantic_analysis::TypedStorageDeclaration;
 
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
@@ -39,7 +41,11 @@ impl ControlFlowGraph {
         let dead_enum_variant_warnings = dead_nodes
             .iter()
             .filter_map(|x| match &self.graph[*x] {
-                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
+                ControlFlowGraphNode::EnumVariant {
+                    span,
+                    variant_name,
+                    is_public,
+                } if !is_public => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.to_string(),
@@ -55,12 +61,17 @@ impl ControlFlowGraph {
                 ControlFlowGraphNode::ProgramNode(node) => {
                     construct_dead_code_warning_from_node(node)
                 }
-                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
+                ControlFlowGraphNode::EnumVariant {
+                    span,
+                    variant_name,
+                    is_public,
+                } if !is_public => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.to_string(),
                     },
                 }),
+                ControlFlowGraphNode::EnumVariant { .. } => None,
                 ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::DeadMethod,
@@ -68,6 +79,10 @@ impl ControlFlowGraph {
                 ControlFlowGraphNode::StructField { span, .. } => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::StructFieldNeverRead,
+                }),
+                ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
+                    span: field_name.span().clone(),
+                    warning_content: Warning::DeadStorageDeclaration,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
             })
@@ -358,6 +373,15 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
+        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
+            &rhs.expression,
+            graph,
+            &[entry_node],
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            rhs.span.clone(),
+        ),
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
             graph,
@@ -373,6 +397,10 @@ fn connect_declaration(
             ..
         } => {
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+            Ok(leaves.to_vec())
+        }
+        StorageDeclaration(storage) => {
+            connect_storage_declaration(storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -524,9 +552,11 @@ fn connect_enum_declaration(
 ) {
     // keep a mapping of each variant
     for variant in &enum_decl.variants {
-        let variant_index = graph.add_node(variant.into());
+        let variant_index = graph.add_node(ControlFlowGraphNode::from_enum_variant(
+            variant,
+            enum_decl.visibility != Visibility::Private,
+        ));
 
-        //        graph.add_edge(entry_node, variant_index, "".into());
         graph.namespace.insert_enum(
             enum_decl.name.clone(),
             entry_node,
@@ -602,7 +632,7 @@ fn connect_expression(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: &TreeType,
-    expression_span: Span,
+    _expression_span: Span,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedExpressionVariant::*;
     match expr_variant {
@@ -708,15 +738,19 @@ fn connect_expression(
         EnumInstantiation {
             enum_decl,
             variant_name,
+            contents,
             ..
         } => {
             // connect this particular instantiation to its variants declaration
-            Ok(connect_enum_instantiation(
+            connect_enum_instantiation(
                 enum_decl,
+                contents,
                 variant_name,
                 graph,
                 leaves,
-            ))
+                exit_node,
+                tree_type,
+            )
         }
         IfExp {
             condition,
@@ -758,21 +792,8 @@ fn connect_expression(
 
             Ok([then_expr, else_expr].concat())
         }
-        CodeBlock(TypedCodeBlock { contents, .. }) => {
-            let block_entry = graph.add_node("Code block entry".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, block_entry, label.into());
-            }
-            let mut current_leaf = vec![block_entry];
-            for node in contents {
-                current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type)?.0;
-            }
-
-            let block_exit = graph.add_node("Code block exit".into());
-            for leaf in current_leaf {
-                graph.add_edge(leaf, block_exit, "".into());
-            }
-            Ok(vec![block_exit])
+        CodeBlock(a @ TypedCodeBlock { .. }) => {
+            connect_code_block(a, graph, leaves, exit_node, tree_type)
         }
         StructExpression {
             struct_name,
@@ -813,12 +834,11 @@ fn connect_expression(
         }
         StructFieldAccess {
             field_to_access,
-            field_to_access_span,
             resolved_type_of_parent,
             ..
         } => {
             let resolved_type_of_parent =
-                resolve_type(*resolved_type_of_parent, field_to_access_span)
+                resolve_type(*resolved_type_of_parent, &field_to_access.span)
                     .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
@@ -830,7 +850,7 @@ fn connect_expression(
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
-                .find_struct_field_idx(&resolved_type_of_parent, field_name)
+                .find_struct_field_idx(resolved_type_of_parent.as_str(), field_name.as_str())
             {
                 Some(ix) => *ix,
                 None => graph.add_node("external struct".into()),
@@ -931,17 +951,34 @@ fn connect_expression(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
-        EnumArgAccess { prefix, .. } => {
-            let prefix_idx = connect_expression(
-                &prefix.expression,
+        IfLet {
+            expr, then, r#else, ..
+        } => {
+            let leaves = connect_expression(
+                &expr.expression,
                 graph,
                 leaves,
                 exit_node,
-                "",
+                "if let expr",
                 tree_type,
-                prefix.span.clone(),
+                expr.span.clone(),
             )?;
-            Ok(prefix_idx)
+            let then_expr = connect_code_block(then, graph, &leaves, exit_node, tree_type)?;
+
+            let else_expr = if let Some(else_expr) = r#else {
+                connect_expression(
+                    &else_expr.expression,
+                    graph,
+                    &leaves,
+                    exit_node,
+                    "if let: else branch",
+                    tree_type,
+                    (**else_expr).span.clone(),
+                )?
+            } else {
+                vec![]
+            };
+            Ok([then_expr, else_expr].concat())
         }
         TupleElemAccess { prefix, .. } => {
             let prefix_idx = connect_expression(
@@ -955,37 +992,88 @@ fn connect_expression(
             )?;
             Ok(prefix_idx)
         }
-        SizeOf { variant } => match variant {
-            SizeOfVariant::Type(_) => Ok(vec![]),
-            SizeOfVariant::Val(exp) => {
-                let exp = connect_expression(
-                    &(*exp).expression,
-                    graph,
-                    leaves,
-                    exit_node,
-                    "size_of",
-                    tree_type,
-                    exp.span.clone(),
-                )?;
-                Ok(exp)
+        StorageAccess(fields) => {
+            let storage_node = graph
+                .namespace
+                .storage
+                .get(&fields.storage_field_name())
+                .cloned();
+            let this_ix = graph
+                .add_node(format!("storage field access: {}", fields.storage_field_name()).into());
+            for leaf in leaves {
+                storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
+                graph.add_edge(*leaf, this_ix, "".into());
             }
-        },
-        a => {
-            println!("Unimplemented: {:?}", a);
-            Err(CompileError::Unimplemented(
-                "Unimplemented dead code analysis for this.",
-                expression_span,
-            ))
+            Ok(vec![this_ix])
         }
+        TypeProperty { .. } => {
+            let node = graph.add_node("Type Property".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
+        }
+        SizeOfValue { expr } => {
+            let expr = connect_expression(
+                &(*expr).expression,
+                graph,
+                leaves,
+                exit_node,
+                "size_of",
+                tree_type,
+                expr.span.clone(),
+            )?;
+            Ok(expr)
+        }
+        AbiName(abi_name) => {
+            if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
+                // abis are treated as traits here
+                let decl = graph.namespace.find_trait(abi_name).cloned();
+                if let Some(decl_node) = decl {
+                    for leaf in leaves {
+                        graph.add_edge(*leaf, decl_node, "".into());
+                    }
+                }
+            }
+            Ok(leaves.to_vec())
+        }
+        FunctionParameter => Ok(leaves.to_vec()),
     }
+}
+
+fn connect_code_block(
+    block: &TypedCodeBlock,
+    graph: &mut ControlFlowGraph,
+    leaves: &[NodeIndex],
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
+    let contents = &block.contents;
+    let block_entry = graph.add_node("Code block entry".into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, block_entry, "".into());
+    }
+    let mut current_leaf = vec![block_entry];
+    for node in contents {
+        current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type)?.0;
+    }
+
+    let block_exit = graph.add_node("Code block exit".into());
+    for leaf in current_leaf {
+        graph.add_edge(leaf, block_exit, "".into());
+    }
+    Ok(vec![block_exit])
 }
 
 fn connect_enum_instantiation(
     enum_decl: &TypedEnumDeclaration,
+    contents: &Option<Box<TypedExpression>>,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-) -> Vec<NodeIndex> {
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
     let enum_name = &enum_decl.name;
     let (decl_ix, variant_index) = graph
         .namespace
@@ -1012,10 +1100,26 @@ fn connect_enum_instantiation(
         graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
     }
 
+    // add edge from the entry of the enum instantiation to the body of the instantiation
+    if let Some(instantiator) = contents {
+        let instantiator_contents = connect_expression(
+            &instantiator.expression,
+            graph,
+            &[enum_instantiation_entry_idx],
+            exit_node,
+            "",
+            tree_type,
+            enum_decl.span.clone(),
+        )?;
+        for leaf in instantiator_contents {
+            graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
+        }
+    }
+
     graph.add_edge(decl_ix, variant_index, "".into());
     graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
 
-    vec![enum_instantiation_exit_idx]
+    Ok(vec![enum_instantiation_exit_idx])
 }
 
 /// Given a `TypedAstNode` that we know is not reached in the graph, construct a warning
@@ -1075,4 +1179,20 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             warning_content: Warning::UnreachableCode,
         },
     })
+}
+
+fn connect_storage_declaration(
+    decl: &TypedStorageDeclaration,
+    graph: &mut ControlFlowGraph,
+    _entry_node: NodeIndex,
+    _tree_type: &TreeType,
+) {
+    let TypedStorageDeclaration { fields, .. } = decl;
+
+    let field_nodes = fields
+        .iter()
+        .map(|field| (field.clone(), graph.add_node(field.into())))
+        .collect::<Vec<_>>();
+
+    graph.namespace.insert_storage(field_nodes);
 }

@@ -1,0 +1,7 @@
+[[package]]
+name = 'contract_caller_as_type'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

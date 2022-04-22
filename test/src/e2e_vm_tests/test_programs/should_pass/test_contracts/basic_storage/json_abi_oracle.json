@@ -1,0 +1,43 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "storage_key",
+        "type": "b256"
+      }
+    ],
+    "name": "get_u64",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256"
+      },
+      {
+        "components": null,
+        "name": "value",
+        "type": "u64"
+      }
+    ],
+    "name": "store_u64",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  }
+]

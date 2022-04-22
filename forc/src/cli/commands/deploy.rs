@@ -9,9 +9,12 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile using the IR pipeline.
+    /// Whether to compile using the original (pre- IR) pipeline.
     #[clap(long)]
-    pub use_ir: bool,
+    pub use_orig_asm: bool,
+    /// Whether to compile using the original (pest based) parser.
+    #[clap(long)]
+    pub use_orig_parser: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,
@@ -47,7 +50,7 @@ pub struct Command {
 
 pub(crate) async fn exec(command: Command) -> Result<()> {
     match forc_deploy::deploy(command).await {
-        Err(e) => bail!(e.message),
+        Err(e) => bail!("{}", e),
         _ => Ok(()),
     }
 }

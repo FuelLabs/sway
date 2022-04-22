@@ -1,103 +1,65 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
-use crate::utils::cli_error::CliError;
-use forc_pkg::Manifest;
+use crate::utils::parameters::TxParameters;
+use crate::utils::SWAY_GIT_TAG;
+use anyhow::{anyhow, bail, Result};
+use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
-use sway_core::{parse, TreeType};
-use sway_utils::{constants::*, find_manifest_dir};
-use tokio::process::Child;
+use sway_core::TreeType;
 
-pub async fn run(command: RunCommand) -> Result<(), CliError> {
+pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+        std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
+    };
+    let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
+    manifest.check_program_type(TreeType::Script)?;
+
+    let input_data = &command.data.unwrap_or_else(|| "".into());
+    let data = format_hex_data(input_data);
+    let script_data = hex::decode(data).expect("Invalid hex");
+
+    let build_command = BuildCommand {
+        path: command.path,
+        use_orig_asm: command.use_orig_asm,
+        use_orig_parser: command.use_orig_parser,
+        print_finalized_asm: command.print_finalized_asm,
+        print_intermediate_asm: command.print_intermediate_asm,
+        print_ir: command.print_ir,
+        binary_outfile: command.binary_outfile,
+        debug_outfile: command.debug_outfile,
+        offline_mode: false,
+        silent_mode: command.silent_mode,
+        output_directory: command.output_directory,
+        minify_json_abi: command.minify_json_abi,
     };
 
-    match find_manifest_dir(&path_dir) {
-        Some(manifest_dir) => {
-            let manifest = Manifest::from_dir(&manifest_dir)?;
-            let project_name = &manifest.project.name;
-            let entry_string = manifest.entry_string(&manifest_dir)?;
+    let compiled = forc_build::build(build_command)?;
+    let contracts = command.contract.unwrap_or_default();
+    let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
-            // Parse the entry point string and check is it a script.
-            let parsed_result = parse(entry_string, None);
-            match parsed_result.value {
-                Some(parse_tree) => match parse_tree.tree_type {
-                    TreeType::Script => {
-                        let input_data = &command.data.unwrap_or_else(|| "".into());
-                        let data = format_hex_data(input_data);
-                        let script_data = hex::decode(data).expect("Invalid hex");
+    let tx = create_tx_with_script_and_data(
+        compiled.bytecode,
+        script_data,
+        inputs,
+        outputs,
+        TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
+    );
 
-                        let build_command = BuildCommand {
-                            path: command.path,
-                            use_ir: command.use_ir,
-                            print_finalized_asm: command.print_finalized_asm,
-                            print_intermediate_asm: command.print_intermediate_asm,
-                            print_ir: command.print_ir,
-                            binary_outfile: command.binary_outfile,
-                            debug_outfile: command.debug_outfile,
-                            offline_mode: false,
-                            silent_mode: command.silent_mode,
-                            output_directory: command.output_directory,
-                            minify_json_abi: command.minify_json_abi,
-                        };
-
-                        let compiled = forc_build::build(build_command)?;
-                        let contracts = command.contract.unwrap_or_default();
-                        let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
-
-                        let tx = create_tx_with_script_and_data(
-                            compiled.bytecode,
-                            script_data,
-                            inputs,
-                            outputs,
-                        );
-
-                        if command.dry_run {
-                            println!("{:?}", tx);
-                            Ok(())
-                        } else {
-                            let node_url = match &manifest.network {
-                                Some(network) => &network.url,
-                                _ => &command.node_url,
-                            };
-
-                            let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
-
-                            if command.kill_node {
-                                if let Some(mut child) = child {
-                                    child.kill().await.expect("Node should be killed");
-                                }
-                            }
-
-                            Ok(())
-                        }
-                    }
-                    TreeType::Contract => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_CONTRACT,
-                    )),
-                    TreeType::Predicate => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_PREDICATE,
-                    )),
-                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
-                        project_name,
-                        SWAY_SCRIPT,
-                        SWAY_LIBRARY,
-                    )),
-                },
-                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
-            }
-        }
-        None => Err(CliError::manifest_file_missing(path_dir)),
+    if command.dry_run {
+        println!("{:?}", tx);
+        Ok(vec![])
+    } else {
+        let node_url = match &manifest.network {
+            Some(network) => &network.url,
+            _ => &command.node_url,
+        };
+        try_send_tx(node_url, &tx, command.pretty_print).await
     }
 }
 
@@ -105,15 +67,12 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
-) -> Result<Option<Child>, CliError> {
+) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => {
-            send_tx(&client, tx, pretty_print).await?;
-            Ok(None)
-        }
-        Err(_) => Err(CliError::fuel_core_not_running(node_url)),
+        Ok(_) => send_tx(&client, tx, pretty_print).await,
+        Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
 
@@ -121,7 +80,7 @@ async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
     pretty_print: bool,
-) -> Result<(), CliError> {
+) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
     match client
         .submit(tx)
@@ -134,9 +93,9 @@ async fn send_tx(
             } else {
                 println!("{:?}", logs);
             }
-            Ok(())
+            Ok(logs)
         }
-        Err(e) => Err(e.to_string().into()),
+        Err(e) => bail!("{e}"),
     }
 }
 
@@ -145,10 +104,11 @@ fn create_tx_with_script_and_data(
     script_data: Vec<u8>,
     inputs: Vec<fuel_tx::Input>,
     outputs: Vec<fuel_tx::Output>,
+    tx_params: TxParameters,
 ) -> Transaction {
-    let gas_price = 0;
-    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
-    let byte_price = 0;
+    let gas_price = tx_params.gas_price;
+    let gas_limit = tx_params.gas_limit;
+    let byte_price = tx_params.byte_price;
     let maturity = 0;
     let witnesses = vec![];
 

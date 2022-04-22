@@ -1,8 +1,7 @@
 use crate::{
     error::{err, ok},
-    CallPath, CompileError, CompileResult, DelayedEnumVariantResolution, DelayedResolutionVariant,
-    DelayedStructFieldResolution, DelayedTupleVariantResolution, Expression, Ident, Literal,
-    Scrutinee, StructScrutineeField,
+    CallPath, CompileError, CompileResult, DelayedResolutionVariant, DelayedStructFieldResolution,
+    DelayedTupleVariantResolution, Expression, Ident, Literal, Scrutinee, StructScrutineeField,
 };
 
 use sway_types::span::Span;
@@ -67,9 +66,10 @@ pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<Matcher
         } => match_struct(exp, struct_name, fields, span),
         Scrutinee::EnumScrutinee {
             call_path,
-            args,
+            variable_to_assign,
             span,
-        } => match_enum(exp, call_path, args, span),
+            ..
+        } => match_enum(exp, call_path, variable_to_assign, span),
         Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
         scrutinee => {
             eprintln!("Unimplemented scrutinee: {:?}", scrutinee,);
@@ -157,40 +157,18 @@ fn match_struct(
 }
 
 fn match_enum(
-    exp: &Expression,
-    call_path: &CallPath,
-    args: &[Scrutinee],
+    _exp: &Expression,
+    _call_path: &CallPath,
+    _arg: &Ident,
     span: &Span,
 ) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut match_req_map = vec![];
-    let mut match_impl_map = vec![];
-    for (pos, arg) in args.iter().enumerate() {
-        let delayed_resolution_exp = Expression::DelayedMatchTypeResolution {
-            variant: DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
-                exp: Box::new(exp.clone()),
-                call_path: call_path.to_owned(),
-                arg_num: pos,
-            }),
-            span: span.clone(),
-        };
-        let new_matches = check!(
-            matcher(&delayed_resolution_exp, arg),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        match new_matches {
-            Some((mut new_match_req_map, mut new_match_impl_map)) => {
-                match_req_map.append(&mut new_match_req_map);
-                match_impl_map.append(&mut new_match_impl_map);
-            }
-            None => return ok(None, warnings, errors),
-        }
-    }
-
-    ok(Some((match_req_map, match_impl_map)), warnings, errors)
+    err(
+        vec![],
+        vec![CompileError::Unimplemented(
+            "Matching enums has not yet been implemented.",
+            span.clone(),
+        )],
+    )
 }
 
 fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileResult<MatcherResult> {

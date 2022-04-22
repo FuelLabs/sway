@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'ec_recover_test'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

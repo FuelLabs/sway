@@ -1,11 +1,11 @@
 use super::token::Token;
 use super::token_type::TokenType;
 use crate::{capabilities, core::token::traverse_node};
-use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_core::{parse, TreeType};
+use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
 pub struct TextDocument {

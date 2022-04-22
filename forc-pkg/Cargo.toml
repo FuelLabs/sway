@@ -1,22 +1,24 @@
 [package]
 name = "forc-pkg"
-version = "0.6.0"
+version = "0.10.3"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "Building, locking, fetching and updating sway projects as Forc packages."
+description = "Building, locking, fetching and updating Sway projects as Forc packages."
 
 [dependencies]
 anyhow = "1"
-forc-util = { version = "0.6.0", path = "../forc-util" }
+forc-util = { version = "0.10.3", path = "../forc-util" }
 git2 = "0.14"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
-sway-core = { version = "0.6.0", path = "../sway-core" }
-sway-types = { version = "0.6.0", path = "../sway-types" }
-sway-utils = { version = "0.6.0", path = "../sway-utils" }
+serde_ignored = "0.1"
+sway-core = { version = "0.10.3", path = "../sway-core" }
+sway-types = { version = "0.10.3", path = "../sway-types" }
+sway-utils = { version = "0.10.3", path = "../sway-utils" }
 toml = "0.5"
 url = { version = "2.2", features = ["serde"] }
+walkdir = "2"

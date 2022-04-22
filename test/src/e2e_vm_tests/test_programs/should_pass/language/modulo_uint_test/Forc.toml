@@ -1,0 +1,8 @@
+[project]
+authors = ["ControlCplusControlV"]
+license = "Apache-2.0"
+name = "modulo_uint_test"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }

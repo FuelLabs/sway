@@ -1,0 +1,18 @@
+[[package]]
+name = 'auth_testing_abi'
+dependencies = []
+
+[[package]]
+name = 'auth_testing_contract'
+dependencies = [
+    'auth_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

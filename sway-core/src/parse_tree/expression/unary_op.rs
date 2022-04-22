@@ -27,10 +27,7 @@ impl UnaryOp {
             _ => {
                 let errors = vec![CompileError::Internal(
                     "Attempted to parse unary op from invalid op string.",
-                    Span {
-                        span: pair.as_span(),
-                        path: config.map(|c| c.path()),
-                    },
+                    Span::from_pest(pair.as_span(), config.map(|c| c.path())),
                 )];
                 err(Vec::new(), errors)
             }
@@ -48,7 +45,7 @@ impl UnaryOp {
 
     pub fn to_fn_application(&self, arg: Expression, span: Span, op_span: Span) -> Expression {
         Expression::FunctionApplication {
-            type_arguments: Default::default(),
+            type_arguments: vec![],
             name: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),

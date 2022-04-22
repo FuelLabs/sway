@@ -7,11 +7,11 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
-        build_contract_abi_switch, build_preamble, finalized_asm::FinalizedAsm,
+        build_contract_abi_switch, build_preamble, compiler_constants, finalized_asm::FinalizedAsm,
         register_sequencer::RegisterSequencer, AbstractInstructionSet, DataId, DataSection,
         SwayAsmSet,
     },
@@ -171,9 +171,6 @@ struct AsmBuilder<'ir> {
     // Stack base register, copied from $SP at the start, but only if we have stack storage.
     stack_base_reg: Option<VirtualRegister>,
 
-    // The layouts of each aggregate; their whole size in bytes and field offsets in words.
-    type_analyzer: TypeAnalyzer,
-
     // IR context we're compiling.
     context: &'ir Context,
 
@@ -187,9 +184,13 @@ struct AsmBuilder<'ir> {
 
 #[derive(Clone, Debug)]
 pub(super) enum Storage {
-    Data(DataId),              // Const storage in the data section.
-    Register(VirtualRegister), // Storage in a register.
+    Data(DataId), // Const storage in the data section.
     Stack(u64), // Storage in the runtime stack starting at an absolute word offset.  Essentially a global.
+}
+
+pub enum StateAccessType {
+    Read,
+    Write,
 }
 
 impl<'ir> AsmBuilder<'ir> {
@@ -201,7 +202,6 @@ impl<'ir> AsmBuilder<'ir> {
             reg_map: HashMap::new(),
             ptr_map: HashMap::new(),
             stack_base_reg: None,
-            type_analyzer: TypeAnalyzer::default(),
             context,
             bytecode: Vec::new(),
         }
@@ -214,10 +214,118 @@ impl<'ir> AsmBuilder<'ir> {
     // guaranteed to be available span.
     fn empty_span() -> Span {
         let msg = "unknown source location";
-        Span {
-            span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-            path: None,
+        Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
+    }
+
+    // Handle loading the arguments of a contract call
+    fn compile_fn_args(&mut self, function: Function) {
+        // Do this only for contract methods. Contract methods have selectors.
+        if !function.has_selector(self.context) {
+            return;
         }
+
+        match function.args_iter(self.context).count() {
+            // Nothing to do if there are no arguments
+            0 => (),
+
+            // A special case for when there's only a single arg, its value (or address) is placed
+            // directly in the base register.
+            1 => {
+                let (_, val) = function.args_iter(self.context).next().unwrap();
+                let single_arg_reg = self.value_to_register(val);
+                self.read_args_value_from_frame(&single_arg_reg);
+            }
+
+            // Otherwise, the args are bundled together and pointed to by the base register.
+            _ => {
+                let args_base_reg = self.reg_seqr.next();
+                self.read_args_value_from_frame(&args_base_reg);
+
+                // Successively load each argument. The asm generated depends on the arg type size
+                // and whether the offset fits in a 12-bit immediate.
+                let mut arg_word_offset = 0;
+                for (name, val) in function.args_iter(self.context) {
+                    let current_arg_reg = self.value_to_register(val);
+                    let arg_type = val.get_type(self.context).unwrap();
+                    let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
+                    if arg_type.is_copy_type() {
+                        if arg_word_offset > compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    args_base_reg.clone(),
+                                    args_base_reg.clone(),
+                                    offs_reg.clone(),
+                                )),
+                                comment: format!("Get offset for arg {}", name),
+                                owning_span: None,
+                            });
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    current_arg_reg.clone(),
+                                    offs_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: format!("Get arg {}", name),
+                                owning_span: None,
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    current_arg_reg.clone(),
+                                    args_base_reg.clone(),
+                                    VirtualImmediate12 {
+                                        value: arg_word_offset as u16,
+                                    },
+                                )),
+                                comment: format!("Get arg {}", name),
+                                owning_span: None,
+                            });
+                        }
+                    } else if arg_word_offset * 8 > compiler_constants::TWELVE_BITS {
+                        let offs_reg = self.reg_seqr.next();
+                        self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                current_arg_reg.clone(),
+                                args_base_reg.clone(),
+                                offs_reg,
+                            )),
+                            comment: format!("Get offset or arg {}", name),
+                            owning_span: None,
+                        });
+                    } else {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADDI(
+                                current_arg_reg.clone(),
+                                args_base_reg.clone(),
+                                VirtualImmediate12 {
+                                    value: (arg_word_offset * 8) as u16,
+                                },
+                            )),
+                            comment: format!("Get address for arg {}", name),
+                            owning_span: None,
+                        });
+                    }
+
+                    arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
+                }
+            }
+        }
+    }
+
+    // Read the argument(s) base from the call frame.
+    fn read_args_value_from_frame(&mut self, reg: &VirtualRegister) {
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::LW(
+                reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::FramePointer),
+                // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+                VirtualImmediate12 { value: 74 },
+            )),
+            comment: "Base register for method parameter".into(),
+            owning_span: None,
+        });
     }
 
     fn add_locals(&mut self, function: Function) {
@@ -236,55 +344,29 @@ impl<'ir> AsmBuilder<'ir> {
             } else {
                 match ptr_content.ty {
                     Type::Unit | Type::Bool | Type::Uint(_) => {
-                        let reg = self.reg_seqr.next();
-                        self.ptr_map.insert(*ptr, Storage::Register(reg));
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+                        stack_base += 1;
                     }
                     Type::B256 => {
+                        // XXX Like strings, should we just reserve space for a pointer?
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 4;
                     }
-                    Type::String(count) => {
+                    Type::String(n) => {
+                        // Strings are always constant and used by reference, so we only store the
+                        // pointer on the stack.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                        // XXX `count` is a CHAR count, not BYTE count.  We need to count the size
-                        // of the string before allocating.  For now assuming CHAR == BYTE.
-                        stack_base += size_bytes_in_words!(count);
+                        stack_base += size_bytes_round_up_to_word_alignment!(n)
                     }
-                    Type::Array(aggregate) => {
+                    Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
                         // Store this aggregate at the current stack base.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
 
                         // Reserve space by incrementing the base.
-                        stack_base += size_bytes_in_words!(self
-                            .type_analyzer
-                            .aggregate_size(self.context, &aggregate));
-                    }
-                    Type::Struct(aggregate) => {
-                        // Store this aggregate at the current stack base.
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                        // Reserve space by incrementing the base.
-                        stack_base += size_bytes_in_words!(self
-                            .type_analyzer
-                            .aggregate_size(self.context, &aggregate));
-                    }
-                    Type::Union(aggregate) => {
-                        // Store this aggregate AND a 64bit tag at the current stack base.
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                        // Reserve space by incrementing the base.
-                        stack_base += size_bytes_in_words!(self
-                            .type_analyzer
-                            .aggregate_max_field_size(self.context, &aggregate));
-                    }
-                    Type::ContractCaller(_) => {
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                        // Reserve space for the contract address only.
-                        stack_base += 4;
-                    }
-                    Type::Contract => {
-                        unimplemented!("contract on the stack?")
+                        stack_base += size_bytes_in_words!(ir_type_size_in_bytes(
+                            self.context,
+                            &ptr_content.ty
+                        ));
                     }
                 };
             }
@@ -301,7 +383,7 @@ impl<'ir> AsmBuilder<'ir> {
 
             // It's possible (though undesirable) to have empty local data structures only.
             if stack_base != 0 {
-                if stack_base * 8 > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+                if stack_base * 8 > compiler_constants::TWENTY_FOUR_BITS {
                     todo!("Enormous stack usage for locals.");
                 }
                 let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
@@ -337,9 +419,23 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+        if function.has_selector(self.context) {
+            // Add a comment noting that this is a named contract method.
+            self.bytecode.push(Op::new_comment(format!(
+                "contract method: {}, selector: 0x{}",
+                function.get_name(self.context),
+                function
+                    .get_selector(self.context)
+                    .unwrap()
+                    .into_iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<String>()
+            )));
+        }
+
         // Compile instructions.
         self.add_locals(function);
-
+        self.compile_fn_args(function);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         for block in function.block_iter(self.context) {
@@ -379,22 +475,34 @@ impl<'ir> AsmBuilder<'ir> {
                     ));
                     return err(warnings, errors);
                 }
+                Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                    self.compile_cmp(instr_val, pred, lhs_value, rhs_value)
+                }
                 Instruction::ConditionalBranch {
                     cond_value,
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(cond_value, block, true_block, false_block),
+                Instruction::ContractCall {
+                    params,
+                    coins,
+                    asset_id,
+                    gas,
+                    ..
+                } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
                 Instruction::ExtractElement {
                     array,
                     ty,
                     index_val,
                 } => self.compile_extract_element(instr_val, array, ty, index_val),
                 Instruction::ExtractValue {
-                    aggregate,
-                    ty,
-                    indices,
-                } => self.compile_extract_value(instr_val, aggregate, ty, indices),
-                Instruction::GetPointer(ptr) => self.compile_get_pointer(instr_val, ptr),
+                    aggregate, indices, ..
+                } => self.compile_extract_value(instr_val, aggregate, indices),
+                Instruction::GetPointer {
+                    base_ptr,
+                    ptr_ty,
+                    offset,
+                } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -403,10 +511,10 @@ impl<'ir> AsmBuilder<'ir> {
                 } => self.compile_insert_element(instr_val, array, ty, value, index_val),
                 Instruction::InsertValue {
                     aggregate,
-                    ty,
                     value,
                     indices,
-                } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
+                    ..
+                } => self.compile_insert_value(instr_val, aggregate, value, indices),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
                     return err(warnings, errors),
@@ -415,10 +523,42 @@ impl<'ir> AsmBuilder<'ir> {
                 ),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
-                Instruction::PointerCast(..) => todo!(),
+                Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
-                Instruction::StateLoad { .. } => todo!(),
-                Instruction::StateStore { .. } => todo!(),
+                Instruction::StateLoadQuadWord { load_val, key } => check!(
+                    self.compile_state_access_quad_word(
+                        instr_val,
+                        load_val,
+                        key,
+                        StateAccessType::Read
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateLoadWord(key) => check!(
+                    self.compile_state_load_word(instr_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateStoreQuadWord { stored_val, key } => check!(
+                    self.compile_state_access_quad_word(
+                        instr_val,
+                        stored_val,
+                        key,
+                        StateAccessType::Write
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                Instruction::StateStoreWord { stored_val, key } => check!(
+                    self.compile_state_store_word(instr_val, stored_val, key),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
                 Instruction::Store {
                     dst_val,
                     stored_val,
@@ -586,6 +726,28 @@ impl<'ir> AsmBuilder<'ir> {
         self.bytecode.push(Op::jump_to_label(label));
     }
 
+    fn compile_cmp(
+        &mut self,
+        instr_val: &Value,
+        pred: &Predicate,
+        lhs_value: &Value,
+        rhs_value: &Value,
+    ) {
+        let lhs_reg = self.value_to_register(lhs_value);
+        let rhs_reg = self.value_to_register(rhs_value);
+        let res_reg = self.reg_seqr.next();
+        match pred {
+            Predicate::Equal => {
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment: String::new(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+        }
+        self.reg_map.insert(*instr_val, res_reg);
+    }
+
     fn compile_conditional_branch(
         &mut self,
         cond_value: &Value,
@@ -618,6 +780,41 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn compile_contract_call(
+        &mut self,
+        instr_val: &Value,
+        params: &Value,
+        coins: &Value,
+        asset_id: &Value,
+        gas: &Value,
+    ) {
+        let ra_pointer = self.value_to_register(params);
+        let coins_register = self.value_to_register(coins);
+        let asset_id_register = self.value_to_register(asset_id);
+        let gas_register = self.value_to_register(gas);
+
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::CALL(
+                ra_pointer,
+                coins_register,
+                asset_id_register,
+                gas_register,
+            )),
+            comment: "call external contract".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        // now, move the return value of the contract call to the return register.
+        // TODO validate RETL matches the expected type (this is a comment from the old codegen)
+        let instr_reg = self.reg_seqr.next();
+        self.bytecode.push(Op::unowned_register_move(
+            instr_reg.clone(),
+            VirtualRegister::Constant(ConstantRegister::ReturnValue),
+        ));
+        self.reg_map.insert(*instr_val, instr_reg);
+    }
+
     fn compile_extract_element(
         &mut self,
         instr_val: &Value,
@@ -635,9 +832,8 @@ impl<'ir> AsmBuilder<'ir> {
         // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
 
         let instr_reg = self.reg_seqr.next();
-        let elem_size = self
-            .type_analyzer
-            .ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
+        let elem_size =
+            ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
         if elem_size <= 8 {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
@@ -665,7 +861,7 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             // Value too big for a register, so we return the memory offset.
-            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if elem_size > compiler_constants::TWELVE_BITS {
                 let size_data_id = self
                     .data_section
                     .insert_data_value(&Literal::U64(elem_size));
@@ -707,22 +903,18 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_extract_value(
-        &mut self,
-        instr_val: &Value,
-        aggregate: &Value,
-        ty: &Aggregate,
-        indices: &[u64],
-    ) {
+    fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
         // Base register should pointer to some stack allocated memory.
-        let base_reg = self.value_to_register(aggregate);
-        let (extract_offset, value_size) =
-            self.type_analyzer
-                .aggregate_idcs_to_field_layout(self.context, ty, indices);
+        let base_reg = self.value_to_register(aggregate_val);
+        let ((extract_offset, _), field_type) = aggregate_idcs_to_field_layout(
+            self.context,
+            &aggregate_val.get_type(self.context).unwrap(),
+            indices,
+        );
 
         let instr_reg = self.reg_seqr.next();
-        if value_size <= 8 {
-            if extract_offset > crate::asm_generation::compiler_constants::TWELVE_BITS {
+        if field_type.is_copy_type() {
+            if extract_offset > compiler_constants::TWELVE_BITS {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     extract_offset,
@@ -776,7 +968,7 @@ impl<'ir> AsmBuilder<'ir> {
             }
         } else {
             // Value too big for a register, so we return the memory offset.
-            if extract_offset * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if extract_offset * 8 > compiler_constants::TWELVE_BITS {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     extract_offset * 8,
@@ -810,30 +1002,39 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_get_pointer(&mut self, instr_val: &Value, ptr: &Pointer) {
+    fn compile_get_pointer(
+        &mut self,
+        instr_val: &Value,
+        base_ptr: &Pointer,
+        ptr_ty: &Type,
+        offset: u64,
+    ) {
         // `get_ptr` is like a `load` except the value isn't dereferenced.
-        match self.ptr_map.get(ptr) {
+        match self.ptr_map.get(base_ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
             Some(storage) => match storage.clone() {
                 Storage::Data(_data_id) => {
                     // Not sure if we'll ever need this.
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
-                Storage::Register(var_reg) => {
-                    self.reg_map.insert(*instr_val, var_reg);
-                }
                 Storage::Stack(word_offs) => {
-                    let word_offs = word_offs * 8;
+                    let ptr_ty_size_in_bytes = ir_type_size_in_bytes(self.context, ptr_ty);
+
+                    let offset_in_bytes = word_offs * 8 + ptr_ty_size_in_bytes * offset;
                     let instr_reg = self.reg_seqr.next();
-                    if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
-                        self.number_to_reg(word_offs, &instr_reg, instr_val.get_span(self.context));
+                    if offset_in_bytes > compiler_constants::TWELVE_BITS {
+                        self.number_to_reg(
+                            offset_in_bytes,
+                            &instr_reg,
+                            instr_val.get_span(self.context),
+                        );
                     } else {
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADDI(
                                 instr_reg.clone(),
                                 self.stack_base_reg.as_ref().unwrap().clone(),
                                 VirtualImmediate12 {
-                                    value: (word_offs) as u16,
+                                    value: (offset_in_bytes) as u16,
                                 },
                             )),
                             comment: "get_ptr".into(),
@@ -861,9 +1062,8 @@ impl<'ir> AsmBuilder<'ir> {
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
 
-        let elem_size = self
-            .type_analyzer
-            .ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
+        let elem_size =
+            ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
         if elem_size <= 8 {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
@@ -895,7 +1095,7 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             // Element size is larger than 8; we switch to bytewise offsets and sizes and use MCP.
-            if elem_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if elem_size > compiler_constants::TWELVE_BITS {
                 todo!("array element size bigger than 4k")
             } else {
                 let elem_index_offs_reg = self.reg_seqr.next();
@@ -941,26 +1141,27 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_insert_value(
         &mut self,
         instr_val: &Value,
-        aggregate: &Value,
-        ty: &Aggregate,
+        aggregate_val: &Value,
         value: &Value,
         indices: &[u64],
     ) {
         // Base register should point to some stack allocated memory.
-        let base_reg = self.value_to_register(aggregate);
+        let base_reg = self.value_to_register(aggregate_val);
 
         let insert_reg = self.value_to_register(value);
-        let (insert_offs, value_size) =
-            self.type_analyzer
-                .aggregate_idcs_to_field_layout(self.context, ty, indices);
+        let ((insert_offs, value_size), _) = aggregate_idcs_to_field_layout(
+            self.context,
+            &aggregate_val.get_type(self.context).unwrap(),
+            indices,
+        );
 
         let indices_str = indices
             .iter()
             .map(|idx| format!("{}", idx))
             .collect::<Vec<String>>()
             .join(",");
-        if value_size <= 8 {
-            if insert_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+        if value.get_type(self.context).unwrap().is_copy_type() {
+            if insert_offs > compiler_constants::TWELVE_BITS {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(
                     insert_offs,
@@ -1000,7 +1201,7 @@ impl<'ir> AsmBuilder<'ir> {
             }
         } else {
             let offs_reg = self.reg_seqr.next();
-            if insert_offs * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if insert_offs * 8 > compiler_constants::TWELVE_BITS {
                 self.number_to_reg(insert_offs * 8, &offs_reg, instr_val.get_span(self.context));
             } else {
                 self.bytecode.push(Op {
@@ -1015,7 +1216,7 @@ impl<'ir> AsmBuilder<'ir> {
                     owning_span: instr_val.get_span(self.context),
                 });
             }
-            if value_size > crate::asm_generation::compiler_constants::TWELVE_BITS {
+            if value_size > compiler_constants::TWELVE_BITS {
                 let size_reg = self.reg_seqr.next();
                 self.number_to_reg(value_size, &size_reg, instr_val.get_span(self.context));
                 self.bytecode.push(Op {
@@ -1048,10 +1249,11 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
-        let load_size_in_words = size_bytes_in_words!(self
-            .type_analyzer
-            .ir_type_size_in_bytes(self.context, ptr.get_type(self.context)));
+        let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
+        let load_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
+            self.context,
+            ptr.get_type(self.context)
+        ));
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(&ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
@@ -1063,19 +1265,12 @@ impl<'ir> AsmBuilder<'ir> {
                         owning_span: instr_val.get_span(self.context),
                     });
                 }
-                Storage::Register(var_reg) => {
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), var_reg)),
-                        comment: String::new(),
-                        owning_span: instr_val.get_span(self.context),
-                    });
-                }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
                     // XXX Need to check for zero sized types?
                     if load_size_in_words == 1 {
                         // Value can fit in a register, so we load the value.
-                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
@@ -1112,7 +1307,7 @@ impl<'ir> AsmBuilder<'ir> {
                         // Value too big for a register, so we return the memory offset.  This is
                         // what LW to the data section does, via LWDataId.
                         let word_offs = word_offs * 8;
-                        if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                        if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
                                 word_offs,
@@ -1149,8 +1344,37 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
+    fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
+        let instr_reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MOVE(
+                instr_reg.clone(),
+                VirtualRegister::Constant(match reg {
+                    sway_ir::Register::Of => ConstantRegister::Overflow,
+                    sway_ir::Register::Pc => ConstantRegister::ProgramCounter,
+                    sway_ir::Register::Ssp => ConstantRegister::StackStartPointer,
+                    sway_ir::Register::Sp => ConstantRegister::StackPointer,
+                    sway_ir::Register::Fp => ConstantRegister::FramePointer,
+                    sway_ir::Register::Hp => ConstantRegister::HeapPointer,
+                    sway_ir::Register::Error => ConstantRegister::Error,
+                    sway_ir::Register::Ggas => ConstantRegister::GlobalGas,
+                    sway_ir::Register::Cgas => ConstantRegister::ContextGas,
+                    sway_ir::Register::Bal => ConstantRegister::Balance,
+                    sway_ir::Register::Is => ConstantRegister::InstructionStart,
+                    sway_ir::Register::Ret => ConstantRegister::ReturnValue,
+                    sway_ir::Register::Retl => ConstantRegister::ReturnLength,
+                    sway_ir::Register::Flag => ConstantRegister::Flags,
+                }),
+            )),
+            comment: "move register into abi function".to_owned(),
+            owning_span: instr_val.get_span(self.context),
+        });
+
+        self.reg_map.insert(*instr_val, instr_reg);
+    }
+
     fn compile_ret(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
-        if ret_type == &Type::Unit {
+        if ret_type.eq(self.context, &Type::Unit) {
             // Unit returns should always be zero, although because they can be omitted from
             // functions, the register is sometimes uninitialized. Manually return zero in this
             // case.
@@ -1163,21 +1387,19 @@ impl<'ir> AsmBuilder<'ir> {
             });
         } else {
             let ret_reg = self.value_to_register(ret_val);
-            let size_in_bytes = self
-                .type_analyzer
-                .ir_type_size_in_bytes(self.context, ret_type);
 
-            if size_in_bytes <= 8 {
+            if ret_type.is_copy_type() {
                 self.bytecode.push(Op {
                     owning_span: instr_val.get_span(self.context),
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
                     comment: "".into(),
                 });
             } else {
-                // If the type is larger than one word, then we use RETD to return data.  First put
-                // the size into the data section, then add a LW to get it, then add a RETD which
-                // uses it.
+                // If the type not a reference type then we use RETD to return data.  First put the
+                // size into the data section, then add a LW to get it, then add a RETD which uses
+                // it.
                 let size_reg = self.reg_seqr.next();
+                let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
                 let size_data_id = self
                     .data_section
                     .insert_data_value(&Literal::U64(size_in_bytes));
@@ -1196,6 +1418,195 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn offset_reg(
+        &mut self,
+        base_reg: &VirtualRegister,
+        offset_in_bytes: u64,
+        span: Option<Span>,
+    ) -> VirtualRegister {
+        let offset_reg = self.reg_seqr.next();
+        if offset_in_bytes > compiler_constants::TWELVE_BITS {
+            let offs_reg = self.reg_seqr.next();
+            self.number_to_reg(offset_in_bytes, &offs_reg, span.clone());
+            self.bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADD(
+                    offset_reg.clone(),
+                    base_reg.clone(),
+                    offs_reg,
+                )),
+                comment: "get offset".into(),
+                owning_span: span,
+            });
+        } else {
+            self.bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADDI(
+                    offset_reg.clone(),
+                    base_reg.clone(),
+                    VirtualImmediate12 {
+                        value: offset_in_bytes as u16,
+                    },
+                )),
+                comment: "get offset".into(),
+                owning_span: span,
+            });
+        }
+
+        offset_reg
+    }
+
+    fn compile_state_access_quad_word(
+        &mut self,
+        instr_val: &Value,
+        val: &Value,
+        key: &Value,
+        access_type: StateAccessType,
+    ) -> CompileResult<()> {
+        // Make sure that both val and key are pointers to B256.
+        assert!(matches!(val.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty.eq(self.context, &Type::B256));
+
+        // Expect ptr_ty here to also be b256 and offset to be whatever...
+        let val_ptr = self.resolve_ptr(val);
+        if val_ptr.value.is_none() {
+            return val_ptr.map(|_| ());
+        }
+        let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
+
+        // Expect the ptr_ty for val to also be B256
+        assert!(ptr_ty.eq(self.context, &Type::B256));
+
+        match (self.ptr_map.get(&val_ptr), self.ptr_map.get(&key_ptr)) {
+            (Some(Storage::Stack(val_offset)), Some(Storage::Stack(key_offset))) => {
+                let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                let val_offset_in_bytes = val_offset * 8 + offset * 32;
+                let key_offset_in_bytes = key_offset * 8;
+
+                let val_reg = self.offset_reg(
+                    &base_reg,
+                    val_offset_in_bytes,
+                    instr_val.get_span(self.context),
+                );
+
+                let key_reg = self.offset_reg(
+                    &base_reg,
+                    key_offset_in_bytes,
+                    instr_val.get_span(self.context),
+                );
+
+                self.bytecode.push(Op {
+                    opcode: Either::Left(match access_type {
+                        StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
+                        StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
+                    }),
+                    comment: "quad word state access".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+            _ => unreachable!("Unexpected storage locations for key and val"),
+        }
+
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
+        // Make sure that the key is a pointers to B256.
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty.eq(self.context, &Type::B256));
+
+        let load_reg = self.reg_seqr.next();
+        match self.ptr_map.get(&key_ptr) {
+            Some(Storage::Stack(key_offset)) => {
+                let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                let key_offset_in_bytes = key_offset * 8;
+
+                let key_reg = self.offset_reg(
+                    &base_reg,
+                    key_offset_in_bytes,
+                    instr_val.get_span(self.context),
+                );
+
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), key_reg)),
+                    comment: "single word state access".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+            _ => unreachable!("Unexpected storage location for key"),
+        }
+
+        self.reg_map.insert(*instr_val, load_reg);
+        ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_state_store_word(
+        &mut self,
+        instr_val: &Value,
+        store_val: &Value,
+        key: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that key is a pointer to B256.
+        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+
+        // Make sure that store_val is a U64 value.
+        assert!(matches!(
+            store_val.get_type(self.context),
+            Some(Type::Uint(64))
+        ));
+        let store_reg = self.value_to_register(store_val);
+
+        // Expect the get_ptr here to have type b256 and offset = 0???
+        let key_ptr = self.resolve_ptr(key);
+        if key_ptr.value.is_none() {
+            return key_ptr.map(|_| ());
+        }
+        let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(ptr_ty.eq(self.context, &Type::B256));
+
+        match self.ptr_map.get(&key_ptr) {
+            Some(Storage::Stack(key_offset)) => {
+                let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                let key_offset_in_bytes = key_offset * 8;
+
+                let key_reg = self.offset_reg(
+                    &base_reg,
+                    key_offset_in_bytes,
+                    instr_val.get_span(self.context),
+                );
+
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SWW(key_reg, store_reg)),
+                    comment: "single word state access".into(),
+                    owning_span: instr_val.get_span(self.context),
+                });
+            }
+            _ => unreachable!("Unexpected storage locations for key and store_val"),
+        }
+
+        ok((), Vec::new(), Vec::new())
+    }
+
     fn compile_store(
         &mut self,
         instr_val: &Value,
@@ -1206,25 +1617,19 @@ impl<'ir> AsmBuilder<'ir> {
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
-        let ptr = ptr.value.unwrap();
+        let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
         let stored_reg = self.value_to_register(stored_val);
         let is_aggregate_ptr = ptr.is_aggregate_ptr(self.context);
         match self.ptr_map.get(&ptr) {
             None => unreachable!("Bug! Trying to store to an unknown pointer."),
             Some(storage) => match storage {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
-                Storage::Register(reg) => {
-                    self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVE(reg.clone(), stored_reg)),
-                        comment: String::new(),
-                        owning_span: instr_val.get_span(self.context),
-                    });
-                }
                 Storage::Stack(word_offs) => {
                     let word_offs = *word_offs;
-                    let store_size_in_words = size_bytes_in_words!(self
-                        .type_analyzer
-                        .ir_type_size_in_bytes(self.context, ptr.get_type(self.context)));
+                    let store_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
+                        self.context,
+                        ptr.get_type(self.context)
+                    ));
                     match store_size_in_words {
                         // We can have empty sized types which we can ignore.
                         0 => (),
@@ -1249,7 +1654,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
                                 tmp_reg
                             };
-                            if word_offs > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                            if word_offs > compiler_constants::TWELVE_BITS {
                                 let offs_reg = self.reg_seqr.next();
                                 self.number_to_reg(
                                     word_offs,
@@ -1293,9 +1698,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                             // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
                             let dest_offs_reg = self.reg_seqr.next();
-                            if word_offs * 8
-                                > crate::asm_generation::compiler_constants::TWELVE_BITS
-                            {
+                            if word_offs * 8 > compiler_constants::TWELVE_BITS {
                                 self.number_to_reg(
                                     word_offs * 8,
                                     &dest_offs_reg,
@@ -1324,9 +1727,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 });
                             }
 
-                            if store_size_in_words * 8
-                                > crate::asm_generation::compiler_constants::TWELVE_BITS
-                            {
+                            if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
                                 let size_reg = self.reg_seqr.next();
                                 self.number_to_reg(
                                     store_size_in_words * 8,
@@ -1363,11 +1764,13 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<Pointer> {
+    fn resolve_ptr(&self, ptr_val: &Value) -> CompileResult<(Pointer, Type, u64)> {
         match &self.context.values[ptr_val.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer(ptr)) => {
-                ok(*ptr, Vec::new(), Vec::new())
-            }
+            ValueDatum::Instruction(Instruction::GetPointer {
+                base_ptr,
+                ptr_ty,
+                offset,
+            }) => ok((*base_ptr, *ptr_ty, *offset), Vec::new(), Vec::new()),
             _otherwise => err(
                 Vec::new(),
                 vec![CompileError::Internal(
@@ -1397,9 +1800,7 @@ impl<'ir> AsmBuilder<'ir> {
                                 let total_size = size_bytes_round_up_to_word_alignment!(
                                     self.constant_size_in_bytes(constant)
                                 );
-                                if total_size
-                                    > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS
-                                {
+                                if total_size > compiler_constants::TWENTY_FOUR_BITS {
                                     todo!("Enormous stack usage for locals.");
                                 }
 
@@ -1497,7 +1898,7 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn number_to_reg(&mut self, offset: u64, offset_reg: &VirtualRegister, span: Option<Span>) {
-        if offset > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+        if offset > compiler_constants::TWENTY_FOUR_BITS {
             todo!("Absolutely giant arrays.");
         }
 
@@ -1537,14 +1938,12 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn constant_size_in_bytes(&mut self, constant: &Constant) -> u64 {
         match &constant.value {
-            ConstantValue::Undef => self
-                .type_analyzer
-                .ir_type_size_in_bytes(self.context, &constant.ty),
+            ConstantValue::Undef => ir_type_size_in_bytes(self.context, &constant.ty),
             ConstantValue::Unit => 8,
             ConstantValue::Bool(_) => 8,
             ConstantValue::Uint(_) => 8,
             ConstantValue::B256(_) => 32,
-            ConstantValue::String(s) => s.len() as u64, // String::len() returns the byte size, not char count.
+            ConstantValue::String(_) => 8,
             ConstantValue::Array(elems) => {
                 if elems.is_empty() {
                     0
@@ -1569,14 +1968,13 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Undef => {
                 // We don't need to actually create an initialiser, but we do need to return the
                 // field size in words.
-                size_bytes_in_words!(self
-                    .type_analyzer
-                    .ir_type_size_in_bytes(self.context, &constant.ty))
+                size_bytes_in_words!(ir_type_size_in_bytes(self.context, &constant.ty))
             }
             ConstantValue::Unit
             | ConstantValue::Bool(_)
             | ConstantValue::Uint(_)
-            | ConstantValue::B256(_) => {
+            | ConstantValue::B256(_)
+            | ConstantValue::String(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -1593,7 +1991,7 @@ impl<'ir> AsmBuilder<'ir> {
                 // needs to use a MCP instruction.
                 if matches!(lit, Literal::B256(_)) {
                     let offs_reg = self.reg_seqr.next();
-                    if offs_in_words * 8 > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
                         self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADD(
@@ -1629,7 +2027,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                     4 // 32 bytes is 4 words.
                 } else {
-                    if offs_in_words > crate::asm_generation::compiler_constants::TWELVE_BITS {
+                    if offs_in_words > compiler_constants::TWELVE_BITS {
                         let offs_reg = self.reg_seqr.next();
                         self.number_to_reg(offs_in_words, &offs_reg, span.clone());
                         self.bytecode.push(Op {
@@ -1668,26 +2066,17 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             }
 
-            ConstantValue::String(_) => {
-                // These are still not properly implemented until we refactor for spans!  There's
-                // an issue on GitHub for it.
-                self.bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "strings aren't implemented!".into(),
-                    owning_span: span,
-                });
-
-                0
-            }
-
             ConstantValue::Array(items) | ConstantValue::Struct(items) => {
-                let mut cur_offs = offs_in_words;
-                for item in items {
-                    let item_size =
-                        self.initialise_constant_memory(item, start_reg, cur_offs, span.clone());
-                    cur_offs += item_size;
-                }
-                cur_offs
+                // Recurse for each item, accumulating the field offset and the final size.
+                items.iter().fold(0, |local_offs, item| {
+                    local_offs
+                        + self.initialise_constant_memory(
+                            item,
+                            start_reg,
+                            offs_in_words + local_offs,
+                            span.clone(),
+                        )
+                })
             }
         }
     }
@@ -1711,10 +2100,13 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::Bool(b) => Literal::Boolean(*b),
         ConstantValue::Uint(n) => Literal::U64(*n),
         ConstantValue::B256(bs) => Literal::B256(*bs),
-        ConstantValue::String(str) => Literal::String(crate::span::Span {
-            span: pest::Span::new(std::sync::Arc::from(str.as_str()), 0, str.len()).unwrap(),
-            path: None,
-        }),
+        ConstantValue::String(bs) => {
+            // ConstantValue::String bytes are guaranteed to be valid UTF8.
+            let s = std::str::from_utf8(bs).unwrap();
+            Literal::String(
+                crate::span::Span::new(std::sync::Arc::from(s), 0, s.len(), None).unwrap(),
+            )
+        }
         ConstantValue::Array(_) | ConstantValue::Struct(_) => {
             unreachable!("Cannot convert aggregates to a literal.")
         }
@@ -1723,128 +2115,83 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
 
 // -------------------------------------------------------------------------------------------------
 
-#[derive(Default)]
-pub struct TypeAnalyzer {
-    // The layouts of each aggregate; their whole size in bytes and field offsets in words.
-    aggregate_layouts: HashMap<Aggregate, (u64, Vec<FieldLayout>)>,
-}
-
-pub struct FieldLayout {
-    pub offset_in_words: u64, // Use words because LW/SW do.
-    pub size_in_bytes: u64,   // Use bytes because CFEI/MCP do.
-}
-
-impl TypeAnalyzer {
-    pub fn ir_type_size_in_bytes(&mut self, context: &Context, ty: &Type) -> u64 {
-        match ty {
-            Type::Unit | Type::Bool | Type::Uint(_) => 8,
-            Type::B256 => 32,
-            Type::String(n) => *n,
-            Type::Array(aggregate) | Type::Struct(aggregate) => {
-                self.analyze_aggregate(context, aggregate);
-                self.aggregate_size(context, aggregate)
+pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
+    match ty {
+        Type::Unit | Type::Bool | Type::Uint(_) => 8,
+        Type::B256 => 32,
+        Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
+        Type::Array(aggregate) => {
+            if let AggregateContent::ArrayType(el_ty, cnt) = &context.aggregates[aggregate.0] {
+                cnt * ir_type_size_in_bytes(context, el_ty)
+            } else {
+                unreachable!("Wrong content for array.")
             }
+        }
+        Type::Struct(aggregate) => {
+            if let AggregateContent::FieldTypes(field_tys) = &context.aggregates[aggregate.0] {
+                // Sum up all the field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                    .sum()
+            } else {
+                unreachable!("Wrong content for struct.")
+            }
+        }
+        Type::Union(aggregate) => {
+            if let AggregateContent::FieldTypes(field_tys) = &context.aggregates[aggregate.0] {
+                // Find the max size for field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                    .max()
+                    .unwrap_or(0)
+            } else {
+                unreachable!("Wrong content for union.")
+            }
+        }
+    }
+}
+
+// Aggregate (nested) field offset in words and size in bytes.
+pub fn aggregate_idcs_to_field_layout(
+    context: &Context,
+    ty: &Type,
+    idcs: &[u64],
+) -> ((u64, u64), Type) {
+    idcs.iter()
+        .fold(((0, 0), *ty), |((offs, _), ty), idx| match ty {
+            Type::Struct(aggregate) => {
+                let idx = *idx as usize;
+                let field_types = &context.aggregates[aggregate.0].field_types();
+                let field_type = field_types[idx];
+                let field_offs_in_bytes = field_types
+                    .iter()
+                    .take(idx)
+                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                    .sum::<u64>();
+                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+
+                (
+                    (
+                        offs + size_bytes_in_words!(field_offs_in_bytes),
+                        field_size_in_bytes,
+                    ),
+                    field_type,
+                )
+            }
+
             Type::Union(aggregate) => {
-                self.analyze_aggregate(context, aggregate);
-                self.aggregate_max_field_size(context, aggregate)
+                let idx = *idx as usize;
+                let field_type = context.aggregates[aggregate.0].field_types()[idx];
+                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+
+                // The union fields are all at offset 0.
+                ((offs, field_size_in_bytes), field_type)
             }
-            Type::ContractCaller(_) => {
-                // We only store the address.
-                32
-            }
-            Type::Contract => {
-                // A Contract is a pseudo-type of no size.
-                0
-            }
-        }
-    }
 
-    // Aggregate size in bytes.
-    pub fn aggregate_size(&mut self, context: &Context, aggregate: &Aggregate) -> u64 {
-        self.analyze_aggregate(context, aggregate);
-        self.aggregate_layouts.get(aggregate).unwrap().0
-    }
-
-    // Size of largest aggregate field in bytes.
-    pub fn aggregate_max_field_size(&mut self, context: &Context, aggregate: &Aggregate) -> u64 {
-        self.analyze_aggregate(context, aggregate);
-        self.aggregate_layouts
-            .get(aggregate)
-            .unwrap()
-            .1
-            .iter()
-            .map(|layout| layout.size_in_bytes)
-            .max()
-            .unwrap_or(0)
-    }
-
-    // Aggregate (nested) field offset in words and size in bytes.
-    pub fn aggregate_idcs_to_field_layout(
-        &mut self,
-        context: &Context,
-        aggregate: &Aggregate,
-        idcs: &[u64],
-    ) -> (u64, u64) {
-        self.analyze_aggregate(context, aggregate);
-
-        idcs.iter()
-            .fold(
-                ((0, 0), Type::Struct(*aggregate)),
-                |((offs, _), ty), idx| match ty {
-                    Type::Struct(aggregate) => {
-                        let agg_content = &context.aggregates[aggregate.0];
-                        let field_type = agg_content.field_types()[*idx as usize];
-
-                        let field_layout =
-                            &self.aggregate_layouts.get(&aggregate).unwrap().1[*idx as usize];
-
-                        (
-                            (
-                                offs + field_layout.offset_in_words,
-                                field_layout.size_in_bytes,
-                            ),
-                            field_type,
-                        )
-                    }
-                    _otherwise => panic!("Attempt to access field in non-aggregate."),
-                },
-            )
-            .0
-    }
-
-    pub fn analyze_aggregate(&mut self, context: &Context, aggregate: &Aggregate) {
-        if self.aggregate_layouts.contains_key(aggregate) {
-            return;
-        }
-
-        match &context.aggregates[aggregate.0] {
-            AggregateContent::FieldTypes(field_types) => {
-                let (total_in_words, offsets) =
-                    field_types
-                        .iter()
-                        .fold((0, Vec::new()), |(cur_offset, mut layouts), ty| {
-                            let field_size_in_bytes = self.ir_type_size_in_bytes(context, ty);
-                            layouts.push(FieldLayout {
-                                offset_in_words: cur_offset,
-                                size_in_bytes: field_size_in_bytes,
-                            });
-                            (
-                                cur_offset + size_bytes_in_words!(field_size_in_bytes),
-                                layouts,
-                            )
-                        });
-                self.aggregate_layouts
-                    .insert(*aggregate, (total_in_words * 8, offsets));
-            }
-            AggregateContent::ArrayType(el_type, count) => {
-                // Careful!  We *could* wrap the aggregate in Type::Array and call
-                // ir_type_size_in_bytes() BUT we'd then enter a recursive loop.
-                let el_size = self.ir_type_size_in_bytes(context, el_type);
-                self.aggregate_layouts
-                    .insert(*aggregate, (count * el_size, Vec::new()));
-            }
-        }
-    }
+            _otherwise => panic!("Attempt to access field in non-aggregate."),
+        })
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1896,11 +2243,12 @@ mod tests {
                 file_name: std::sync::Arc::new("".into()),
                 dir_of_code: std::sync::Arc::new("".into()),
                 manifest_path: std::sync::Arc::new("".into()),
-                use_ir: false,
+                use_orig_asm: false,
+                use_orig_parser: false,
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,
-                generated_names: std::sync::Arc::new(std::sync::Mutex::new(vec![])),
+                generated_names: Default::default(),
             },
         );
 

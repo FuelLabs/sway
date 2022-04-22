@@ -13,7 +13,7 @@ pub fn parse(input: &str) -> Result<Context, IrError> {
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod)
+    ir_builder::build_context(irmod)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -31,6 +31,9 @@ mod ir_builder {
                 = _ s:script() eoi() {
                     s
                 }
+                / _ s:contract() eoi() {
+                    s
+                }
 
             rule script() -> IrAstModule
                 = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
@@ -41,8 +44,18 @@ mod ir_builder {
                     }
                 }
 
+            rule contract() -> IrAstModule
+                = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                    IrAstModule {
+                        kind: crate::module::Kind::Contract,
+                        fn_decls,
+                        metadata
+                    }
+                }
+
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() "(" _ args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
+                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
+                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
                       locals:fn_local()*
                       blocks:block_decl()*
                   "}" _ {
@@ -52,7 +65,13 @@ mod ir_builder {
                         ret_type,
                         locals,
                         blocks,
+                        selector
                     }
+                }
+
+            rule selector_id() -> [u8; 4]
+                = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
+                    string_to_hex::<4>(s)
                 }
 
             rule fn_arg() -> (IrAstTy, String, Option<MdIdxRef>)
@@ -107,7 +126,9 @@ mod ir_builder {
                 / op_branch()
                 / op_call()
                 / op_cbr()
+                / op_cmp()
                 / op_const()
+                / op_contract_call()
                 / op_extract_element()
                 / op_extract_value()
                 / op_get_ptr()
@@ -116,17 +137,25 @@ mod ir_builder {
                 / op_load()
                 / op_nop()
                 / op_phi()
-                / op_ptr_cast()
+                / op_read_register()
                 / op_ret()
-                / op_state_load()
-                / op_state_store()
+                / op_state_load_quad_word()
+                / op_state_load_word()
+                / op_state_store_quad_word()
+                / op_state_store_word()
                 / op_store()
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
                     ops:asm_op()*
                 "}" _ {
-                    IrAstOperation::Asm(args, ret, ops, meta_idx)
+                    IrAstOperation::Asm(
+                        args,
+                        ret.clone().map(|(ty, _)| ty).unwrap_or(IrAstTy::Unit),
+                        ret.map(|(_, nm)| nm),
+                        ops,
+                        meta_idx
+                    )
                 }
 
             rule op_branch() -> IrAstOperation
@@ -144,10 +173,22 @@ mod ir_builder {
                     IrAstOperation::Cbr(cond, tblock, fblock)
                 }
 
+            rule op_cmp() -> IrAstOperation
+                = "cmp" _ p:cmp_pred() l:id() r:id() {
+                    IrAstOperation::Cmp(p, l, r)
+                }
+
             rule op_const() -> IrAstOperation
                 = "const" _ ast_ty() cv:constant() {
                     IrAstOperation::Const(cv)
                 }
+
+            rule op_contract_call() -> IrAstOperation
+                = "contract_call" _
+                ty:ast_ty() _ name:id() _
+                params:id() comma() coins:id() comma() asset_id:id() comma() gas:id() _ {
+                    IrAstOperation::ContractCall(ty, name, params, coins, asset_id, gas)
+            }
 
             rule op_extract_element() -> IrAstOperation
                 = "extract_element" _ name:id() comma() ty:ast_ty() comma() idx:id() {
@@ -160,8 +201,9 @@ mod ir_builder {
                 }
 
             rule op_get_ptr() -> IrAstOperation
-                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id() {
-                    IrAstOperation::GetPtr(name)
+                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id()
+                    comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
+                    IrAstOperation::GetPtr(name, ty, offset)
                 }
 
             rule op_insert_element() -> IrAstOperation
@@ -189,29 +231,49 @@ mod ir_builder {
                     IrAstOperation::Phi(pairs)
                 }
 
-            rule op_ptr_cast() -> IrAstOperation
-                = "ptr_cast" _ ptr() vn:id() "to" _ ptr() ty:ast_ty() {
-                    IrAstOperation::PtrCast(vn, ty)
-            }
+            rule op_read_register() -> IrAstOperation
+                = "read_register" _ r:reg_name() {
+                    IrAstOperation::ReadRegister(r)
+                }
 
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
                     IrAstOperation::Ret(ty, vn)
                 }
 
-            rule op_state_load() -> IrAstOperation
-                = "state_load" _ ptr() dst:id() comma() "key" _ key:id() {
-                    IrAstOperation::StateLoad(dst, key)
+            rule op_state_load_quad_word() -> IrAstOperation
+                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateLoadQuadWord(dst, key)
                 }
 
-            rule op_state_store() -> IrAstOperation
-                = "state_store" _ ptr() src:id() comma() "key" _ key:id() {
-                    IrAstOperation::StateStore(src, key)
+            rule op_state_load_word() -> IrAstOperation
+                = "state_load_word" _ "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateLoadWord(key)
+                }
+
+            rule op_state_store_quad_word() -> IrAstOperation
+                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateStoreQuadWord(src, key)
+                }
+
+            rule op_state_store_word() -> IrAstOperation
+                = "state_store_word" _ src:id() comma() "key" _ ptr() _ key:id() {
+                    IrAstOperation::StateStoreWord(src, key)
                 }
 
             rule op_store() -> IrAstOperation
                 = "store" _ val:id() comma() ptr() dst:id() {
                     IrAstOperation::Store(val, dst)
+                }
+
+            rule cmp_pred() -> String
+                = p:$("eq") _ {
+                    p.to_string()
+                }
+
+            rule reg_name() -> String
+                = r:$("of" / "pc" / "ssp" / "sp" / "fp" / "hp" / "err" / "ggas" / "cgas" / "bal" / "is" / "ret" / "retl" / "flag") _ {
+                    r.to_string()
                 }
 
             rule asm_arg() -> (Ident, Option<IrAstAsmArgInit>)
@@ -227,9 +289,9 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> Ident
-                = "->" _ ret:id_id() {
-                    ret
+            rule asm_ret() -> (IrAstTy, Ident)
+                = "->" _ ty:ast_ty() ret:id_id() {
+                    (ty, ret)
                 }
 
             rule asm_op() -> IrAstAsmOp
@@ -249,10 +311,7 @@ mod ir_builder {
 
             rule asm_op_arg_imm() -> Ident
                 = imm:$("i" d:decimal()) {
-                    Ident::new(Span {
-                        span: pest::Span::new(imm.into(), 0, imm.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(imm.into(), 0, imm.len(), None).unwrap())
                 }
 
             rule constant() -> IrAstConst
@@ -267,17 +326,8 @@ mod ir_builder {
                 = "()" _ { IrAstConstValue::Unit }
                 / "true" _ { IrAstConstValue::Bool(true) }
                 / "false" _ { IrAstConstValue::Bool(false) }
-                / "0x" s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<64>) _ {
-                    let mut bytes: [u8; 32] = [0; 32];
-                    let mut cur_byte: u8 = 0;
-                    for (idx, ch) in s.chars().enumerate() {
-                        cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
-                        if idx % 2 == 1 {
-                            bytes[idx / 2] = cur_byte;
-                            cur_byte = 0;
-                        }
-                    }
-                    IrAstConstValue::B256(bytes)
+                / "0x" s:$(hex_digit()*<64>) _ {
+                    IrAstConstValue::B256(string_to_hex::<32>(s))
                 }
                 / n:decimal() { IrAstConstValue::Number(n) }
                 / string_const()
@@ -285,12 +335,32 @@ mod ir_builder {
                 / struct_const()
 
             rule string_const() -> IrAstConstValue
-                = ['"'] chs:$(str_char()*) ['"'] _ {
-                    IrAstConstValue::String(chs.to_owned())
+                = ['"'] chs:str_char()* ['"'] _ {
+                    IrAstConstValue::String(chs)
                 }
 
-            rule str_char()
-                = [^ '"' | '\\'] / ['\\'] ['\\' | 't' | 'n' | 'r']
+            rule str_char() -> u8
+                // Match any of the printable characters except '"' and '\'.
+                = c:$([' ' | '!' | '#'..='[' | ']'..='~']) {
+                    *c.as_bytes().get(0).unwrap()
+                }
+                / "\\x" h:hex_digit() l:hex_digit() {
+                    (dbg!(h) << 4) | dbg!(l)
+                }
+
+            //  There may be a better way to do this, dunno.  In `str_char()` we're parsing '\xHH'
+            //  from a hex byte to a u8.  We do it by parsing each hex nybble into a u8 and then OR
+            //  them together.  In hex_digit(), to convert e.g., 'c' to 12, we match the pattern,
+            //  convert the str into a u8 iterator, take the first value which is the ascii digit,
+            //  convert the 'A'-'F' to uppercase by setting the 6th bit (0x20) and subtracting the
+            //  right offset.  Fiddly.
+            rule hex_digit() -> u8
+                = d:$(['0'..='9']) {
+                    d.as_bytes().get(0).unwrap() - b'0'
+                }
+                / d:$(['a'..='f' | 'A'..='F']) {
+                    (d.as_bytes().get(0).unwrap() | 0x20) - b'a' + 10
+                }
 
             rule array_const() -> IrAstConstValue
                 = "[" _ els:(field_or_element_const() ++ comma()) "]" _ {
@@ -319,16 +389,16 @@ mod ir_builder {
                 / "b256" _ { IrAstTy::B256 }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
-                / enum_ty()
                 / struct_ty()
+                / union_ty()
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
                     IrAstTy::Array(Box::new(ty), c)
                 }
 
-            rule enum_ty() -> IrAstTy
-                = "{" _ tys:(ast_ty() ++ ("|" _)) "}" _ {
+            rule union_ty() -> IrAstTy
+                = "(" _ tys:(ast_ty() ++ ("|" _)) ")" _ {
                     IrAstTy::Union(tys)
                 }
 
@@ -344,10 +414,7 @@ mod ir_builder {
 
             rule id_id() -> Ident
                 = !ast_ty() id:$(id_char0() id_char()*) _ {
-                    Ident::new(Span {
-                        span: pest::Span::new(id.into(), 0, id.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
             rule metadata_decl() -> (MdIdxRef, IrMetadatum)
@@ -412,7 +479,7 @@ mod ir_builder {
         context::Context,
         error::IrError,
         function::Function,
-        instruction::Instruction,
+        instruction::{Instruction, Predicate, Register},
         irtype::{Aggregate, Type},
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
@@ -434,6 +501,7 @@ mod ir_builder {
         ret_type: IrAstTy,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
+        selector: Option<[u8; 4]>,
     }
 
     #[derive(Debug)]
@@ -453,6 +521,7 @@ mod ir_builder {
     enum IrAstOperation {
         Asm(
             Vec<(Ident, Option<IrAstAsmArgInit>)>,
+            IrAstTy,
             Option<Ident>,
             Vec<IrAstAsmOp>,
             Option<MdIdxRef>,
@@ -460,19 +529,23 @@ mod ir_builder {
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
+        Cmp(String, String, String),
         Const(IrAstConst),
+        ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
-        GetPtr(String),
+        GetPtr(String, IrAstTy, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
-        PtrCast(String, IrAstTy),
+        ReadRegister(String),
         Ret(IrAstTy, String),
-        StateLoad(String, String),
-        StateStore(String, String),
+        StateLoadQuadWord(String, String),
+        StateLoadWord(String),
+        StateStoreQuadWord(String, String),
+        StateStoreWord(String, String),
         Store(String, String),
     }
 
@@ -489,7 +562,7 @@ mod ir_builder {
         Bool(bool),
         B256([u8; 32]),
         Number(u64),
-        String(String),
+        String(Vec<u8>),
         Array(IrAstTy, Vec<IrAstConst>),
         Struct(Vec<(IrAstTy, IrAstConst)>),
     }
@@ -519,7 +592,7 @@ mod ir_builder {
                 IrAstConstValue::Bool(b) => Constant::new_bool(*b),
                 IrAstConstValue::B256(bs) => Constant::new_b256(*bs),
                 IrAstConstValue::Number(n) => Constant::new_uint(64, *n),
-                IrAstConstValue::String(s) => Constant::new_string(s.clone()),
+                IrAstConstValue::String(bs) => Constant::new_string(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
                     let els: Vec<_> = els.iter().map(|cv| cv.value.as_constant(context)).collect();
                     let el_ty = el_ty.to_ir_type(context);
@@ -653,7 +726,7 @@ mod ir_builder {
             fn_decl.name,
             args.clone(),
             ret_type,
-            None,
+            fn_decl.selector,
             false,
         );
 
@@ -719,7 +792,7 @@ mod ir_builder {
         for ins in ir_block.instructions {
             let opt_ins_md_idx = ins.meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
             let ins_val = match ins.op {
-                IrAstOperation::Asm(args, return_name, ops, meta_idx) => {
+                IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                     let args = args
                         .into_iter()
                         .map(|(name, opt_init)| AsmArg {
@@ -752,9 +825,10 @@ mod ir_builder {
                         )
                         .collect();
                     let md_idx = meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
+                    let return_type = return_type.to_ir_type(context);
                     block
                         .ins(context)
-                        .asm_block(args, body, return_name, md_idx)
+                        .asm_block(args, body, return_type, return_name, md_idx)
                 }
                 IrAstOperation::Br(to_block_name) => {
                     let to_block = named_blocks.get(&to_block_name).unwrap();
@@ -786,7 +860,28 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
+                IrAstOperation::Cmp(pred_str, lhs, rhs) => block.ins(context).cmp(
+                    match pred_str.as_str() {
+                        "eq" => Predicate::Equal,
+                        _ => unreachable!("Bug in `cmp` predicate rule."),
+                    },
+                    *val_map.get(&lhs).unwrap(),
+                    *val_map.get(&rhs).unwrap(),
+                    opt_ins_md_idx,
+                ),
                 IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
+                IrAstOperation::ContractCall(return_type, name, params, coins, asset_id, gas) => {
+                    let ir_ty = return_type.to_ir_type(context);
+                    block.ins(context).contract_call(
+                        ir_ty,
+                        name,
+                        *val_map.get(&params).unwrap(),
+                        *val_map.get(&coins).unwrap(),
+                        *val_map.get(&asset_id).unwrap(),
+                        *val_map.get(&gas).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::ExtractElement(aval, ty, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).extract_element(
@@ -805,9 +900,15 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::GetPtr(src_name) => block
-                    .ins(context)
-                    .get_ptr(*ptr_map.get(&src_name).unwrap(), opt_ins_md_idx),
+                IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
+                    let ptr_ir_ty = ptr_ty.to_ir_type(context);
+                    block.ins(context).get_ptr(
+                        *ptr_map.get(&base_ptr).unwrap(),
+                        ptr_ir_ty,
+                        offset,
+                        opt_ins_md_idx,
+                    )
+                }
                 IrAstOperation::InsertElement(aval, ty, val, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).insert_element(
@@ -842,26 +943,50 @@ mod ir_builder {
                     }
                     block.get_phi(context)
                 }
-                IrAstOperation::PtrCast(value_name, ty) => {
-                    let ty = ty.to_ir_type(context);
-                    block.ins(context).ptr_cast(
-                        *val_map.get(&value_name).unwrap(),
-                        ty,
-                        opt_ins_md_idx,
-                    )
-                }
+                IrAstOperation::ReadRegister(reg_name) => block.ins(context).read_register(
+                    match reg_name.as_str() {
+                        "of" => Register::Of,
+                        "pc" => Register::Pc,
+                        "ssp" => Register::Ssp,
+                        "sp" => Register::Sp,
+                        "fp" => Register::Fp,
+                        "hp" => Register::Hp,
+                        "err" => Register::Error,
+                        "ggas" => Register::Ggas,
+                        "cgas" => Register::Cgas,
+                        "bal" => Register::Bal,
+                        "is" => Register::Is,
+                        "ret" => Register::Ret,
+                        "retl" => Register::Retl,
+                        "flag" => Register::Flag,
+                        _ => unreachable!("Guaranteed by grammar."),
+                    },
+                    opt_ins_md_idx,
+                ),
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);
                     block
                         .ins(context)
                         .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
                 }
-                IrAstOperation::StateLoad(dst, key) => block.ins(context).state_load(
-                    *val_map.get(&dst).unwrap(),
-                    *val_map.get(&key).unwrap(),
-                    opt_ins_md_idx,
-                ),
-                IrAstOperation::StateStore(src, key) => block.ins(context).state_store(
+                IrAstOperation::StateLoadQuadWord(dst, key) => {
+                    block.ins(context).state_load_quad_word(
+                        *val_map.get(&dst).unwrap(),
+                        *val_map.get(&key).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
+                IrAstOperation::StateLoadWord(key) => block
+                    .ins(context)
+                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
+                IrAstOperation::StateStoreQuadWord(src, key) => {
+                    block.ins(context).state_store_quad_word(
+                        *val_map.get(&src).unwrap(),
+                        *val_map.get(&key).unwrap(),
+                        opt_ins_md_idx,
+                    )
+                }
+                IrAstOperation::StateStoreWord(src, key) => block.ins(context).state_store_word(
                     *val_map.get(&src).unwrap(),
                     *val_map.get(&key).unwrap(),
                     opt_ins_md_idx,
@@ -940,6 +1065,19 @@ mod ir_builder {
             block.replace_instruction(context, nop, call_val)?;
         }
         Ok(())
+    }
+
+    fn string_to_hex<const N: usize>(s: &str) -> [u8; N] {
+        let mut bytes: [u8; N] = [0; N];
+        let mut cur_byte: u8 = 0;
+        for (idx, ch) in s.chars().enumerate() {
+            cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
+            if idx % 2 == 1 {
+                bytes[idx / 2] = cur_byte;
+                cur_byte = 0;
+            }
+        }
+        bytes
     }
 }
 

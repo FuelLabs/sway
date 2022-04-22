@@ -9,7 +9,7 @@ pub struct IncludeStatement {
     pub(crate) alias: Option<Ident>,
     #[allow(dead_code)]
     // this span may be used for errors in the future, although it is not right now.
-    span: Span,
+    pub(crate) span: Span,
     pub(crate) path_span: Span,
 }
 
@@ -21,10 +21,7 @@ impl IncludeStatement {
         let path = config.map(|c| c.path());
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let _include_keyword = iter.next();
         let path_to_file_raw = iter.collect::<Vec<_>>();
@@ -33,13 +30,7 @@ impl IncludeStatement {
 
         for item in path_to_file_raw {
             if item.as_rule() == Rule::file_path {
-                path_span = Some(
-                    Span {
-                        span: item.as_span(),
-                        path: path.clone(),
-                    }
-                    .trim(),
-                );
+                path_span = Some(Span::from_pest(item.as_span(), path.clone()).trim());
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = check!(
                     ident::parse_from_pair(item.into_inner().next().unwrap(), config),

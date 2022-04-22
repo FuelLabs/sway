@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'empty_method_initializer'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

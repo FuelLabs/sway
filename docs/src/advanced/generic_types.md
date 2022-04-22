@@ -7,7 +7,7 @@ starting with a generic function:
 
 ```sway
 fn noop<T>(argument: T) -> T {
-  argument
+    argument
 }
 ```
 
@@ -30,12 +30,25 @@ purely shorthand for the sake of ergonomics.
 
 ## Trait Constraints
 
+Important background to know before diving into trait constraints is that the `where` clause can be used to specify the required traits for the generic argument. So, when writing something like a `HashMap` you may
+want to specify that the generic argument implements a `Hash` trait.
+
+```sway
+fn get_hashmap_key<T>(Key : T) -> b256
+    where T: Hash
+{
+    // Code within here can then call methods associated with the Hash trait on Key
+}
+```
+
+*`where` clauses are still [work-in-progress](https://github.com/FuelLabs/sway/issues/970), so some `where` statements shown may not be fully implemented.*
+
 Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types which satisfy certain traits.
 For example, let's try to implement the successor function, `successor()`, for all numeric types.
 
 ```sway
 fn successor<T>(argument: T)
-  where T: Add
+    where T: Add
 {
     argument + 1
 }
@@ -43,7 +56,7 @@ fn successor<T>(argument: T)
 
 Run `forc build`, and you will get:
 
-```sway
+```console
 .. |
  9 |   where T: Add
 10 |   {
@@ -51,7 +64,6 @@ Run `forc build`, and you will get:
    |                ^ Mismatched types: expected type "T" but saw type "u64"
 12 |   }
 13 |
-
 ```
 
 This is because we don't know for a fact that `1`, which in this case defaulted to `1u64`, actually can be added to `T`. What if `T` is `f64`? Or `b256`? What does it mean to add `1u64` in these cases?
@@ -60,8 +72,8 @@ We can solve this problem with another trait constraint. We can only find the su
 
 ```sway
 trait Incrementable {
-  /// Returns the value to add when calculating the successor of a value.
-  fn incrementor() -> Self;
+    /// Returns the value to add when calculating the successor of a value.
+    fn incrementor() -> Self;
 }
 ```
 
@@ -69,8 +81,8 @@ Now, we can modify our `successor()` function:
 
 ```sway
 fn successor<T>(argument: T)
-  where T: Add,
-        T: Incrementable
+    where T: Add,
+          T: Incrementable
 {
     argument + ~T::incrementor()
 }
@@ -84,8 +96,8 @@ Just like functions, structs and enums can be generic. Let's take a look at the 
 
 ```sway
 enum Option<T> {
-  Some: T,
-  None: ()
+    Some: T,
+    None: (),
 }
 ```
 
@@ -93,8 +105,8 @@ Just like an unconstrained generic function, this type exists for all (∀) type
 
 ```sway
 enum Result<T, E> {
-  Ok: T,
-  Err: E
+    Ok: T,
+    Err: E,
 }
 ```
 
@@ -102,9 +114,9 @@ Both generic enums and generic structs can be trait constrained, as well. Consid
 
 ```sway
 struct Foo<T>
-  where T: Add
+    where T: Add
 {
-    field_one: T
+    field_one: T,
 }
 ```
 
@@ -114,7 +126,7 @@ Similar to Rust, Sway has what is colloquially known as the [turbofish](https://
 
 ```sway
 fn foo<T, E>(t: T) -> Result<T, E> {
-  Result::Ok(t)
+    Result::Ok(t)
 }
 ```
 
@@ -122,7 +134,7 @@ In this code example, which is admittedly asinine, you can't possibly know what 
 
 ```sway
 fn foo<T, E>(t: T) -> Result<T, E> {
-  Result::<T, MyErrorType>::Ok(t)
+    Result::Ok::<T, MyErrorType>(t)
 }
 ```
 
@@ -130,6 +142,6 @@ It is also common to see the turbofish used on the function itself:
 
 ```sway
 fn main() {
-  foo::<Bar, Baz>()
+    foo::<Bar, Baz>()
 }
 ```

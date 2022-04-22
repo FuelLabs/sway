@@ -1,5 +1,4 @@
-use lsp::{Diagnostic, DiagnosticSeverity, Position, Range};
-use lspower::lsp::{self};
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use sway_core::{CompileError, CompileWarning};
 

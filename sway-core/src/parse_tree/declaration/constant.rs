@@ -1,6 +1,6 @@
 use crate::{
     build_config::BuildConfig,
-    error::{err, ok, CompileResult, Warning},
+    error::{err, ok, CompileResult, ParserLifter, Warning},
     parse_tree::{ident, Expression, Visibility},
     parser::Rule,
     style::is_screaming_snake_case,
@@ -23,7 +23,7 @@ impl ConstantDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<ConstantDeclaration> {
+    ) -> CompileResult<ParserLifter<ConstantDeclaration>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -72,18 +72,19 @@ impl ConstantDeclaration {
         assert_or_warn!(
             is_screaming_snake_case(name.as_str()),
             warnings,
-            Span {
-                span: name_pair.as_span(),
-                path,
-            },
+            Span::from_pest(name_pair.as_span(), path),
             Warning::NonScreamingSnakeCaseConstName { name: name.clone() }
         );
+        let decl = ConstantDeclaration {
+            name,
+            type_ascription,
+            value: value.value,
+            visibility,
+        };
         ok(
-            ConstantDeclaration {
-                name,
-                type_ascription,
-                value,
-                visibility,
+            ParserLifter {
+                var_decls: vec![],
+                value: decl,
             },
             warnings,
             errors,

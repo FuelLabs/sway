@@ -1,0 +1,408 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "x",
+        "type": "u64"
+      }
+    ],
+    "name": "set_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "y",
+        "type": "b256"
+      }
+    ],
+    "name": "set_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "x",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "y",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "z",
+            "type": "b256"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "x",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "y",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "z",
+                "type": "b256"
+              }
+            ],
+            "name": "t",
+            "type": "struct T"
+          }
+        ],
+        "name": "s",
+        "type": "struct S"
+      }
+    ],
+    "name": "set_s",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "x",
+        "type": "u64"
+      }
+    ],
+    "name": "set_s_dot_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "y",
+        "type": "u64"
+      }
+    ],
+    "name": "set_s_dot_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "z",
+        "type": "b256"
+      }
+    ],
+    "name": "set_s_dot_z",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "x",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "y",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "z",
+            "type": "b256"
+          }
+        ],
+        "name": "t",
+        "type": "struct T"
+      }
+    ],
+    "name": "set_s_dot_t",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "x",
+        "type": "u64"
+      }
+    ],
+    "name": "set_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "y",
+        "type": "u64"
+      }
+    ],
+    "name": "set_s_dot_t_dot_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "z",
+        "type": "b256"
+      }
+    ],
+    "name": "set_s_dot_t_dot_z",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "x",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "y",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "z",
+            "type": "b256"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "x",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "y",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "z",
+                "type": "b256"
+              }
+            ],
+            "name": "t",
+            "type": "struct T"
+          }
+        ],
+        "name": "",
+        "type": "struct S"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_z",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "x",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "y",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "z",
+            "type": "b256"
+          }
+        ],
+        "name": "",
+        "type": "struct T"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_y",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_z",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  }
+]

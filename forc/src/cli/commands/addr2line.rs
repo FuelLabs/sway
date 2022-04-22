@@ -79,7 +79,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
 struct ReadRange {
     source: String,
-    source_start_byte: usize,
+    _source_start_byte: usize,
     source_start_line: usize,
     offset: usize,
     length: usize,
@@ -117,7 +117,7 @@ fn read_range<P: AsRef<Path>>(
     let source = context_buffer.make_contiguous().join("");
     let length = range.end - range.start;
 
-    let (source_start_line, source_start_byte, offset) = start_pos.ok_or_else(|| {
+    let (source_start_line, _source_start_byte, offset) = start_pos.ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::UnexpectedEof,
             "Source file was modified, and the mapping is now out of range",
@@ -133,7 +133,7 @@ fn read_range<P: AsRef<Path>>(
 
     Ok(ReadRange {
         source,
-        source_start_byte,
+        _source_start_byte,
         source_start_line,
         offset,
         length,

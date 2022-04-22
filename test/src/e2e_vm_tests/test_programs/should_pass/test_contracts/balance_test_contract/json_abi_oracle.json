@@ -1,0 +1,14 @@
+[
+  {
+    "inputs": [],
+    "name": "get_42",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64"
+      }
+    ],
+    "type": "function"
+  }
+]

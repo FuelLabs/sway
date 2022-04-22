@@ -3,9 +3,9 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use lspower::lsp::{Position, Range};
-use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration, WhileLoop};
 use sway_types::{ident::Ident, span::Span};
+use tower_lsp::lsp_types::{Position, Range};
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -25,7 +25,7 @@ impl Token {
             name,
             token_type,
             line_start: range.start.line,
-            length: range.end.character - range.start.character + 1,
+            length: range.end.character - range.start.character,
         }
     }
 
@@ -90,6 +90,11 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
     match node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
+        AstNodeContent::ImplicitReturnExpression(exp) => handle_expression(exp, tokens),
+        AstNodeContent::ReturnStatement(return_statement) => {
+            handle_expression(return_statement.expr, tokens)
+        }
+        AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
         // TODO
         // handle other content types
         _ => {}
@@ -116,15 +121,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         }
         Declaration::Reassignment(reassignment) => {
             let token_type = TokenType::Reassignment;
-            let token = match *reassignment.lhs {
-                // a reassignment's lhs can _only_ be a variable expression or
-                // struct field a subfield expression
-                Expression::SubfieldExpression { span, .. } => Token::from_span(span, token_type),
-                Expression::VariableExpression { name, .. } => Token::from_ident(&name, token_type),
-                _ => {
-                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
-                }
-            };
+            let token = Token::from_span(reassignment.lhs_span(), token_type);
             tokens.push(token);
 
             handle_expression(reassignment.rhs, tokens);
@@ -135,8 +132,11 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             let token = Token::from_ident(ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
-            // todo
-            // traverse methods: Vec<FunctionDeclaration<'sc>> field as well ?
+            for func_dec in trait_dec.methods {
+                for node in func_dec.body.contents {
+                    traverse_node(node, tokens);
+                }
+            }
         }
         Declaration::StructDeclaration(struct_dec) => {
             let ident = &struct_dec.name;
@@ -162,17 +162,27 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 traverse_node(node, tokens);
             }
         }
-        Expression::FunctionApplication { name, .. } => {
+        Expression::FunctionApplication {
+            name, arguments, ..
+        } => {
             let ident = name.suffix;
             let token = Token::from_ident(&ident, TokenType::FunctionApplication);
             tokens.push(token);
 
-            // TODO
-            // perform a for/in on arguments ?
+            for exp in arguments {
+                handle_expression(exp, tokens);
+            }
         }
         // TODO
         // handle other expressions
         _ => {}
+    }
+}
+
+fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {
+    handle_expression(while_loop.condition, tokens);
+    for node in while_loop.body.contents {
+        traverse_node(node, tokens);
     }
 }
 
@@ -184,7 +194,7 @@ fn get_range_from_span(span: &Span) -> Range {
     let start_character = start.1 as u32 - 1;
 
     let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 2;
+    let end_character = end.1 as u32 - 1;
 
     Range {
         start: Position::new(start_line, start_character),

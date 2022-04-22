@@ -2,6 +2,9 @@ use super::*;
 
 use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
 use std::collections::HashMap;
+use sway_types::state::StateIndex;
+
+use derivative::Derivative;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ContractCallMetadata {
@@ -9,19 +12,23 @@ pub(crate) struct ContractCallMetadata {
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Derivative)]
+#[derivative(Eq)]
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         name: CallPath,
+        #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
+        #[derivative(Eq(bound = ""))]
         selector: Option<ContractCallMetadata>,
     },
     LazyOperator {
+        #[derivative(Eq(bound = ""))]
         op: LazyOp,
         lhs: Box<TypedExpression>,
         rhs: Box<TypedExpression>,
@@ -61,15 +68,16 @@ pub(crate) enum TypedExpressionVariant {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression>,
-        field_to_access: OwnedTypedStructField,
+        field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
-        field_to_access_span: Span,
     },
-    EnumArgAccess {
-        prefix: Box<TypedExpression>,
-        //variant_to_access: TypedEnumVariant,
-        arg_num_to_access: usize,
-        resolved_type_of_parent: TypeId,
+    IfLet {
+        enum_type: TypeId,
+        expr: Box<TypedExpression>,
+        variant: TypedEnumVariant,
+        variable_to_assign: Ident,
+        then: TypedCodeBlock,
+        r#else: Option<Box<TypedExpression>>,
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
@@ -84,6 +92,9 @@ pub(crate) enum TypedExpressionVariant {
         variant_name: Ident,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
+        /// If there is an error regarding this instantiation of the enum,
+        /// use this span as it points to the call site and not the declaration.
+        instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -92,21 +103,297 @@ pub(crate) enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    SizeOf {
-        variant: SizeOfVariant,
+    #[allow(dead_code)]
+    StorageAccess(TypeCheckedStorageAccess),
+    TypeProperty {
+        property: BuiltinProperty,
+        type_id: TypeId,
+        span: Span,
     },
+    SizeOfValue {
+        expr: Box<TypedExpression>,
+    },
+    /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
+    AbiName(AbiName),
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedExpressionVariant {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
+            (
+                Self::FunctionApplication {
+                    name: l_name,
+                    arguments: l_arguments,
+                    function_body: l_function_body,
+                    ..
+                },
+                Self::FunctionApplication {
+                    name: r_name,
+                    arguments: r_arguments,
+                    function_body: r_function_body,
+                    ..
+                },
+            ) => {
+                l_name == r_name && l_arguments == r_arguments && l_function_body == r_function_body
+            }
+            (
+                Self::LazyOperator {
+                    op: l_op,
+                    lhs: l_lhs,
+                    rhs: l_rhs,
+                },
+                Self::LazyOperator {
+                    op: r_op,
+                    lhs: r_lhs,
+                    rhs: r_rhs,
+                },
+            ) => l_op == r_op && (**l_lhs) == (**r_lhs) && (**l_rhs) == (**r_rhs),
+            (
+                Self::VariableExpression { name: l_name },
+                Self::VariableExpression { name: r_name },
+            ) => l_name == r_name,
+            (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
+                l_fields == r_fields
+            }
+            (
+                Self::Array {
+                    contents: l_contents,
+                },
+                Self::Array {
+                    contents: r_contents,
+                },
+            ) => l_contents == r_contents,
+            (
+                Self::ArrayIndex {
+                    prefix: l_prefix,
+                    index: l_index,
+                },
+                Self::ArrayIndex {
+                    prefix: r_prefix,
+                    index: r_index,
+                },
+            ) => (**l_prefix) == (**r_prefix) && (**l_index) == (**r_index),
+            (
+                Self::StructExpression {
+                    struct_name: l_struct_name,
+                    fields: l_fields,
+                },
+                Self::StructExpression {
+                    struct_name: r_struct_name,
+                    fields: r_fields,
+                },
+            ) => l_struct_name == r_struct_name && l_fields.clone() == r_fields.clone(),
+            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
+            (
+                Self::IfExp {
+                    condition: l_condition,
+                    then: l_then,
+                    r#else: l_r,
+                },
+                Self::IfExp {
+                    condition: r_condition,
+                    then: r_then,
+                    r#else: r_r,
+                },
+            ) => {
+                (**l_condition) == (**r_condition)
+                    && (**l_then) == (**r_then)
+                    && if let (Some(l), Some(r)) = (l_r, r_r) {
+                        (**l) == (**r)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::AsmExpression {
+                    registers: l_registers,
+                    body: l_body,
+                    returns: l_returns,
+                    ..
+                },
+                Self::AsmExpression {
+                    registers: r_registers,
+                    body: r_body,
+                    returns: r_returns,
+                    ..
+                },
+            ) => {
+                l_registers.clone() == r_registers.clone()
+                    && l_body.clone() == r_body.clone()
+                    && l_returns == r_returns
+            }
+            (
+                Self::StructFieldAccess {
+                    prefix: l_prefix,
+                    field_to_access: l_field_to_access,
+                    resolved_type_of_parent: l_resolved_type_of_parent,
+                },
+                Self::StructFieldAccess {
+                    prefix: r_prefix,
+                    field_to_access: r_field_to_access,
+                    resolved_type_of_parent: r_resolved_type_of_parent,
+                },
+            ) => {
+                (**l_prefix) == (**r_prefix)
+                    && l_field_to_access == r_field_to_access
+                    && look_up_type_id(*l_resolved_type_of_parent)
+                        == look_up_type_id(*r_resolved_type_of_parent)
+            }
+            (
+                Self::IfLet {
+                    enum_type: l_enum_type,
+                    expr: l_expr,
+                    variant: l_variant,
+                    variable_to_assign: l_variable_to_assign,
+                    then: l_then,
+                    r#else: l_r,
+                },
+                Self::IfLet {
+                    enum_type: r_enum_type,
+                    expr: r_expr,
+                    variant: r_variant,
+                    variable_to_assign: r_variable_to_assign,
+                    then: r_then,
+                    r#else: r_r,
+                },
+            ) => {
+                look_up_type_id(*l_enum_type) == look_up_type_id(*r_enum_type)
+                    && (**l_expr) == (**r_expr)
+                    && l_variant == r_variant
+                    && l_variable_to_assign == r_variable_to_assign
+                    && l_then == r_then
+                    && if let (Some(l_r), Some(r_r)) = (l_r, r_r) {
+                        (**l_r) == (**r_r)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::TupleElemAccess {
+                    prefix: l_prefix,
+                    elem_to_access_num: l_elem_to_access_num,
+                    resolved_type_of_parent: l_resolved_type_of_parent,
+                    ..
+                },
+                Self::TupleElemAccess {
+                    prefix: r_prefix,
+                    elem_to_access_num: r_elem_to_access_num,
+                    resolved_type_of_parent: r_resolved_type_of_parent,
+                    ..
+                },
+            ) => {
+                (**l_prefix) == (**r_prefix)
+                    && l_elem_to_access_num == r_elem_to_access_num
+                    && look_up_type_id(*l_resolved_type_of_parent)
+                        == look_up_type_id(*r_resolved_type_of_parent)
+            }
+            (
+                Self::EnumInstantiation {
+                    enum_decl: l_enum_decl,
+                    variant_name: l_variant_name,
+                    tag: l_tag,
+                    contents: l_contents,
+                    ..
+                },
+                Self::EnumInstantiation {
+                    enum_decl: r_enum_decl,
+                    variant_name: r_variant_name,
+                    tag: r_tag,
+                    contents: r_contents,
+                    ..
+                },
+            ) => {
+                l_enum_decl == r_enum_decl
+                    && l_variant_name == r_variant_name
+                    && l_tag == r_tag
+                    && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
+                        (**l_contents) == (**r_contents)
+                    } else {
+                        true
+                    }
+            }
+            (
+                Self::AbiCast {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                    ..
+                },
+                Self::AbiCast {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                    ..
+                },
+            ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
+            (
+                Self::TypeProperty {
+                    property: l_prop,
+                    type_id: l_type_id,
+                    ..
+                },
+                Self::TypeProperty {
+                    property: r_prop,
+                    type_id: r_type_id,
+                    ..
+                },
+            ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
+            (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
+                l_expr == r_expr
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
-pub(crate) enum SizeOfVariant {
-    Type(TypeId),
-    Val(Box<TypedExpression>),
+pub struct TypeCheckedStorageAccess {
+    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub(crate) ix: StateIndex,
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
+    }
+    pub fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                Span::join(acc, field.span.clone())
+            })
+    }
+}
+
+/// Describes a single subfield access in the sequence when accessing a subfield within storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccessDescriptor {
+    pub(crate) name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedAsmRegisterDeclaration {
     pub(crate) initializer: Option<TypedExpression>,
     pub(crate) name: Ident,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedAsmRegisterDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
+                l == r
+            } else {
+                true
+            }
+    }
 }
 
 impl TypedAsmRegisterDeclaration {
@@ -176,15 +463,13 @@ impl TypedExpressionVariant {
                     field_to_access.name
                 )
             }
-            TypedExpressionVariant::EnumArgAccess {
-                resolved_type_of_parent,
-                arg_num_to_access,
-                ..
+            TypedExpressionVariant::IfLet {
+                enum_type, variant, ..
             } => {
                 format!(
-                    "\"{}.{}\" arg num access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    arg_num_to_access
+                    "if let {}::{}",
+                    enum_type.friendly_type_str(),
+                    variant.name.as_str()
                 )
             }
             TypedExpressionVariant::TupleElemAccess {
@@ -214,14 +499,25 @@ impl TypedExpressionVariant {
                     tag
                 )
             }
-            TypedExpressionVariant::SizeOf { variant } => match variant {
-                SizeOfVariant::Val(exp) => format!("size_of_val({:?})", exp.pretty_print()),
-                SizeOfVariant::Type(type_name) => {
-                    format!("size_of({:?})", type_name.friendly_type_str())
+            TypedExpressionVariant::StorageAccess(access) => {
+                format!("storage field {} access", access.storage_field_name())
+            }
+            TypedExpressionVariant::TypeProperty {
+                property, type_id, ..
+            } => {
+                let type_str = look_up_type_id(*type_id).friendly_type_str();
+                match property {
+                    BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
+                    BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
                 }
-            },
+            }
+            TypedExpressionVariant::SizeOfValue { expr } => {
+                format!("size_of_val({:?})", expr.pretty_print())
+            }
+            TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
         }
     }
+
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedExpressionVariant::*;
@@ -293,20 +589,19 @@ impl TypedExpressionVariant {
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
-            EnumArgAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
+            IfLet {
+                ref mut variant,
+                ref mut enum_type,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                *enum_type = if let Some(matching_id) =
+                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
                 {
                     insert_type(TypeInfo::Ref(matching_id))
                 } else {
-                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                    insert_type(look_up_type_id_raw(*enum_type))
                 };
-
-                prefix.copy_types(type_mapping);
+                variant.copy_types(type_mapping);
             }
             TupleElemAccess {
                 prefix,
@@ -334,10 +629,19 @@ impl TypedExpressionVariant {
                 };
             }
             AbiCast { address, .. } => address.copy_types(type_mapping),
-            SizeOf { variant } => match variant {
-                SizeOfVariant::Type(_) => (),
-                SizeOfVariant::Val(exp) => exp.copy_types(type_mapping),
-            },
+            // storage is never generic and cannot be monomorphized
+            StorageAccess { .. } => (),
+            TypeProperty { type_id, .. } => {
+                *type_id = if let Some(matching_id) =
+                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*type_id))
+                };
+            }
+            SizeOfValue { expr } => expr.copy_types(type_mapping),
+            AbiName(_) => (),
         }
     }
 }

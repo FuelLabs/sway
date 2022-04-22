@@ -1,0 +1,11 @@
+[[package]]
+name = 'context_testing_abi'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

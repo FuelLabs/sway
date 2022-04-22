@@ -1,0 +1,11 @@
+[[package]]
+name = 'address_test'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

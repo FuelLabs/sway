@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "nested_struct_args_contract"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }
+nested_struct_args_abi = { path = "../../test_abis/nested_struct_args_abi" }

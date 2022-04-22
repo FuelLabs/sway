@@ -1,0 +1,78 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "mint_amount",
+        "type": "u64"
+      }
+    ],
+    "name": "mint",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "burn_amount",
+        "type": "u64"
+      }
+    ],
+    "name": "burn",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "coins",
+        "type": "u64"
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "asset_id",
+        "type": "struct ContractId"
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256"
+          }
+        ],
+        "name": "c_id",
+        "type": "struct ContractId"
+      }
+    ],
+    "name": "force_transfer",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  }
+]
