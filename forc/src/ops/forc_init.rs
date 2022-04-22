@@ -87,33 +87,15 @@ pub fn init(command: InitCommand) -> Result<()> {
         Some(template) => {
             let examples_url = "https://github.com/FuelLabs/sway/tree/master/examples";
             let template_url = match template.as_str() {
-                "counter" => {
-                    Url::parse(format!("{}/hello_world", examples_url).as_str())?
-                }
-                "fizzbuzz" => {
-                    Url::parse(format!("{}/fizzbuzz", examples_url).as_str())?
-                }
-                "liquidity_pool" => {
-                    Url::parse(format!("{}/liquidity_pool", examples_url).as_str())?
-                }
-                "msg_sender" => {
-                    Url::parse(format!("{}/msg_sender", examples_url).as_str())?
-                }
-                "native_token" => {
-                    Url::parse(format!("{}/native_token", examples_url).as_str())?
-                }
-                "storage_example" => {
-                    Url::parse(format!("{}/storage_example", examples_url).as_str())?
-                }
-                "subcurrency" => {
-                    Url::parse(format!("{}/subcurrency", examples_url).as_str())?
-                }
-                "wallet_smart_contract" => {
-                    Url::parse(format!("{}/wallet_smart_contract", examples_url).as_str())?
-                }
-                "asm_return_tuple_pointer" => {
-                    Url::parse(format!("{}/asm_return_tuple_pointer", examples_url).as_str())?
-                }
+                "counter" => Url::parse(format!("{}/hello_world", examples_url).as_str())?,
+                "fizzbuzz" => Url::parse(format!("{}/fizzbuzz", examples_url).as_str())?,
+                "liquidity_pool" => Url::parse(format!("{}/liquidity_pool", examples_url).as_str())?,
+                "msg_sender" => Url::parse(format!("{}/msg_sender", examples_url).as_str())?,
+                "native_token" => Url::parse(format!("{}/native_token", examples_url).as_str())?,
+                "storage_example" => Url::parse(format!("{}/storage_example", examples_url).as_str())?,
+                "subcurrency" => Url::parse(format!("{}/subcurrency", examples_url).as_str())?,
+                "wallet_smart_contract" => Url::parse(format!("{}/wallet_smart_contract", examples_url).as_str())?,
+                "asm_return_tuple_pointer" => Url::parse(format!("{}/asm_return_tuple_pointer", examples_url).as_str())?,
                 _ => {
                     return Err(anyhow!(
                         "Unrecognized template: \n Example Templates:
