@@ -1363,29 +1363,26 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             sub_token,
             rhs,
         } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
-        Expr::Shl { shl_token, .. } => {
-            let error = ConvertParseTreeError::ShlNotImplemented {
-                span: shl_token.span(),
-            };
-            return Err(ec.error(error));
-        }
-        Expr::Shr { shr_token, .. } => {
-            let error = ConvertParseTreeError::ShrNotImplemented {
-                span: shr_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::Shl {
+            lhs,
+            shl_token,
+            rhs,
+        } => binary_op_call(ec, "lsh", shl_token.span(), span, *lhs, *rhs)?,
+        Expr::Shr {
+            lhs,
+            shr_token,
+            rhs,
+        } => binary_op_call(ec, "rsh", shr_token.span(), span, *lhs, *rhs)?,
         Expr::BitAnd {
             lhs,
             ampersand_token,
             rhs,
         } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
-        Expr::BitXor { caret_token, .. } => {
-            let error = ConvertParseTreeError::BitXorNotImplemented {
-                span: caret_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::BitXor {
+            lhs,
+            caret_token,
+            rhs,
+        } => binary_op_call(ec, "binary_xor", caret_token.span(), span, *lhs, *rhs)?,
         Expr::BitOr {
             lhs,
             pipe_token,
