@@ -87,7 +87,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         Some(template) => {
             let examples_url = "https://github.com/FuelLabs/sway/tree/master/examples";
             let template_url = match template.as_str() {
-                "counter" => Url::parse(format!("{}/hello_world", examples_url).as_str())?,
+                "counter" => Url::parse(format!("{}/counter", examples_url).as_str())?,
                 "fizzbuzz" => Url::parse(format!("{}/fizzbuzz", examples_url).as_str())?,
                 "liquidity_pool" => {
                     Url::parse(format!("{}/liquidity_pool", examples_url).as_str())?
