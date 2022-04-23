@@ -4,6 +4,7 @@ members = [
     "docstrings",
     "examples/build-all-examples",
     "forc",
+    "forc-gm",
     "forc-explore",
     "forc-fmt",
     "forc-lsp",
