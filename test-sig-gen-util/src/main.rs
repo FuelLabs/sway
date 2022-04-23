@@ -8,14 +8,14 @@ use fuel_vm::prelude::*;
 
 use anyhow::Result;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use std::str::FromStr;
 use sha3::{Digest, Keccak256};
+use std::str::FromStr;
 
 // A keccak-256 method for generating ethereum signatures
 fn keccak_hash<B>(data: B) -> Bytes32
-    where
-        B: AsRef<[u8]>,
-    {
+where
+    B: AsRef<[u8]>,
+{
     // create a Keccak256 object
     let mut hasher = Keccak256::new();
     // write input message
@@ -42,7 +42,10 @@ fn main() -> Result<()> {
     println!("Secret Key: {:?}", secret);
     println!("Public Key: {:?}", public);
     println!("Fuel Address (sha2-256): {:?}", address);
-    println!("Ethereum pubkey hash (keccak256): {:?}", ethereum_pubkeyhash);
+    println!(
+        "Ethereum pubkey hash (keccak256): {:?}",
+        ethereum_pubkeyhash
+    );
     println!("Message Hash: {:?}", e);
     println!("Signature: {:?}", sig);
 
