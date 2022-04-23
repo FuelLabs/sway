@@ -19,6 +19,8 @@ members = [
     "sway-utils",
     "test",
     "test-sig-gen-util",
+    "test-sig-gen-util-keccak",
+
 ]
 exclude = [
     "examples/fizzbuzz",

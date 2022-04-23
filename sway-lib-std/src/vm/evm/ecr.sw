@@ -36,6 +36,8 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
         Result::Err(e)
     } else {
         let pub_key = pub_key_result.unwrap();
+
+        // Note that Ethereum addresses are derived from the Keccak256 hash of the pubkey, not sha256.
         let address = hash_pair((pub_key.bytes)[0], (pub_key.bytes)[1], HashMethod::Keccak256);
 
         // Zero out first 12 bytes for ethereum address

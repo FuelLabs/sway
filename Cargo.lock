@@ -1312,7 +1312,7 @@ dependencies = [
  "rand 0.8.5",
  "secp256k1",
  "serde",
- "sha3",
+ "sha3 0.9.1",
  "thiserror",
  "tracing",
 ]
@@ -2981,6 +2981,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha3"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881bf8156c87b6301fc5ca6b27f11eeb2761224c7081e69b409d5a1951a70c86"
+dependencies = [
+ "digest 0.10.3",
+ "keccak",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3364,9 +3374,25 @@ dependencies = [
  "anyhow",
  "fuel-crypto 0.4.2",
  "fuel-tx",
+ "fuel-types",
  "fuel-vm",
  "hex",
  "secp256k1",
+ "sha3 0.10.1",
+]
+
+[[package]]
+name = "test-sig-gen-util-keccak"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fuel-crypto 0.4.2",
+ "fuel-tx",
+ "fuel-types",
+ "fuel-vm",
+ "hex",
+ "secp256k1",
+ "sha3 0.10.1",
 ]
 
 [[package]]
