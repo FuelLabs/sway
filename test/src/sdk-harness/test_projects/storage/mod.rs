@@ -9,7 +9,7 @@ abigen!(Storage, "test_projects/storage/out/debug/storage-abi.json");
 async fn get_contract_instance() -> (Storage, ContractId) {
     // Deploy the compiled contract
     let salt = Salt::from([0u8; 32]);
-    let compiled = Contract::load_sway_contract("./out/debug/storage.bin", salt).unwrap();
+    let compiled = Contract::load_sway_contract("test_projects/storage/out/debug/storage.bin", salt).unwrap();
 
     // Launch a local network and deploy the contract
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
