@@ -1,5 +1,5 @@
 use crate::cli::InitCommand;
-use crate::utils::defaults;
+use crate::utils::{defaults, SWAY_GIT_TAG};
 use anyhow::{anyhow, Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
@@ -85,25 +85,18 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     match command.template {
         Some(template) => {
-            let examples_url = "https://github.com/FuelLabs/sway/tree/master/examples";
+            let example_url =
+                format!("https://github.com/FuelLabs/sway/tree/{SWAY_GIT_TAG}/examples/{template}");
             let template_url = match template.as_str() {
-                "counter" => Url::parse(format!("{}/counter", examples_url).as_str())?,
-                "fizzbuzz" => Url::parse(format!("{}/fizzbuzz", examples_url).as_str())?,
-                "liquidity_pool" => {
-                    Url::parse(format!("{}/liquidity_pool", examples_url).as_str())?
-                }
-                "msg_sender" => Url::parse(format!("{}/msg_sender", examples_url).as_str())?,
-                "native_token" => Url::parse(format!("{}/native_token", examples_url).as_str())?,
-                "storage_example" => {
-                    Url::parse(format!("{}/storage_example", examples_url).as_str())?
-                }
-                "subcurrency" => Url::parse(format!("{}/subcurrency", examples_url).as_str())?,
-                "wallet_smart_contract" => {
-                    Url::parse(format!("{}/wallet_smart_contract", examples_url).as_str())?
-                }
-                "asm_return_tuple_pointer" => {
-                    Url::parse(format!("{}/asm_return_tuple_pointer", examples_url).as_str())?
-                }
+                "counter" => Url::parse(&example_url)?,
+                "fizzbuzz" => Url::parse(&example_url)?,
+                "liquidity_pool" => Url::parse(&example_url)?,
+                "msg_sender" => Url::parse(&example_url)?,
+                "native_token" => Url::parse(&example_url)?,
+                "storage_example" => Url::parse(&example_url)?,
+                "subcurrency" => Url::parse(&example_url)?,
+                "wallet_smart_contract" => Url::parse(&example_url)?,
+                "asm_return_tuple_pointer" => Url::parse(&example_url)?,
                 _ => {
                     return Err(anyhow!(
                         "Unrecognized template: \n Example Templates:
