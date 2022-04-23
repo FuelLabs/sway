@@ -1,44 +1,39 @@
-//! A sample `forc` plugin example.
+//! A sample `forc` plugin that greets you!
 //!
 //! Once installed and available via `PATH`, can be executed via `forc gm`.
 
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[clap(name = "forc-gm", about = "Sample Forc plugin", version)]
+#[clap(
+    name = "forc-gm",
+    about = "Sample Forc plugin that greets you!",
+    version
+)]
 struct App {
-    // Your name which Forc should greet!
-    #[clap(short = 'n', long = "name", default_value = "")]
-    pub name: String,
     #[clap(subcommand)]
     pub subcmd: Option<Subcommand>,
 }
 
 #[derive(Debug, Parser)]
 enum Subcommand {
-    // Say 'gm' to Sway Language!
-    Sway,
+    /// Say 'gm' to Fuel!
+    Fuel,
 }
 
 fn main() {
     let app = App::parse();
 
     match app.subcmd {
-        Some(Subcommand::Sway) => greet_sway(),
-        None => run(app),
+        Some(Subcommand::Fuel) => greet_fuel(),
+        None => greet(),
     }
 }
 
-fn greet_sway() {
+fn greet_fuel() {
     println!("gn from Fuel!");
 }
 
-fn run(app: App) {
-    let App { name, .. } = app;
-
-    if name.is_empty() {
-        println!("gn!");
-    } else {
-        println!("gn {}!", &name);
-    }
+fn greet() {
+    println!("gn!");
 }
