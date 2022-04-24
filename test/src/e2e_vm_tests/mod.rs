@@ -297,6 +297,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
         ),
+        (
+            "should_pass/language/primitive_type_argument",
+            ProgramState::Return(5),
+        ),
     ];
 
     let mut number_of_tests_run =
