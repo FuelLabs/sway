@@ -87,32 +87,11 @@ pub fn init(command: InitCommand) -> Result<()> {
         Some(template) => {
             let example_url =
                 format!("https://github.com/FuelLabs/sway/tree/{SWAY_GIT_TAG}/examples/{template}");
-            let template_url = match template.as_str() {
-                "asm_return_tuple_pointer"
-                | "counter"
-                | "fizzbuzz"
-                | "liquidity_pool"
-                | "msg_sender"
-                | "native_token"
-                | "storage_example"
-                | "subcurrency"
-                | "wallet_smart_contract" => Url::parse(&example_url)?,
-                _ => {
-                    return Err(anyhow!(
-                        "Unrecognized template: \n Example Templates:
-- asm_return_tuple_pointer
-- counter
-- fizzbuzz
-- liquidity_pool
-- msg_sender
-- native_token
-- storage_example
-- subcurrency
-- wallet_smart_contract"
-                    ));
-                }
-            };
-            init_from_git_template(project_name, &template_url)
+
+            let template_url = Url::parse(&example_url)?;
+
+            init_from_git_template(project_name, &template_url).map_err(|e| anyhow!("Failed to initialize project from a template with the given name \"{template}\": {e}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n"))?;
+            Ok(())
         }
         None => init_new_project(project_name),
     }
