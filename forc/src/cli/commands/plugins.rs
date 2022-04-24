@@ -1,6 +1,7 @@
 use crate::cli::PluginsCommand;
 use anyhow::Result;
 use clap::Parser;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
 /// Find all forc plugins available via `PATH`.
@@ -26,10 +27,12 @@ fn print_plugin(path: PathBuf, print_full_path: bool) {
     if print_full_path {
         println!("{}", path.display());
     } else {
-        if let Some(file_name) = path.file_name() {
-            println!("{}", file_name.to_str().unwrap());
-        } else {
-            println!("{}", path.display());
-        }
+        println!(
+            "{}",
+            path.file_name()
+                .unwrap_or_else(|| OsStr::new(""))
+                .to_str()
+                .unwrap()
+        );
     }
 }
