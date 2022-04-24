@@ -72,7 +72,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
@@ -112,7 +117,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
@@ -139,7 +149,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
@@ -222,7 +237,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
@@ -250,7 +270,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
@@ -297,7 +322,12 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Build Sway Examples
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Build Sway examples and check formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
