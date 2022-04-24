@@ -1,5 +1,4 @@
 use crate::ops::forc_build;
-use crate::utils::forc_rustc_version;
 use anyhow::Result;
 use clap::Parser;
 use std::io::{BufRead, BufReader};
@@ -42,8 +41,6 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    forc_rustc_version()?;
-
     // Ensure the project builds before running tests.
     forc_build::build(Default::default())?;
 
