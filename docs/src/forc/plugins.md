@@ -1,6 +1,6 @@
 # Plugins
 
-The Fuel ecosystem has a few plugins which can be easily installed via cargo, and anyone can write their own plugins.
+Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-lsp`, `forc-explore`), anyone can write their own!
 
 Let's install a starter plugin, `forc-gm`, and take a look at how it works underneath:
 
