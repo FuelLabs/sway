@@ -88,18 +88,19 @@ pub fn init(command: InitCommand) -> Result<()> {
             let example_url =
                 format!("https://github.com/FuelLabs/sway/tree/{SWAY_GIT_TAG}/examples/{template}");
             let template_url = match template.as_str() {
-                "counter" => Url::parse(&example_url)?,
-                "fizzbuzz" => Url::parse(&example_url)?,
-                "liquidity_pool" => Url::parse(&example_url)?,
-                "msg_sender" => Url::parse(&example_url)?,
-                "native_token" => Url::parse(&example_url)?,
-                "storage_example" => Url::parse(&example_url)?,
-                "subcurrency" => Url::parse(&example_url)?,
-                "wallet_smart_contract" => Url::parse(&example_url)?,
-                "asm_return_tuple_pointer" => Url::parse(&example_url)?,
+                "asm_return_tuple_pointer"
+                | "counter"
+                | "fizzbuzz"
+                | "liquidity_pool"
+                | "msg_sender"
+                | "native_token"
+                | "storage_example"
+                | "subcurrency"
+                | "wallet_smart_contract" => Url::parse(&example_url)?,
                 _ => {
                     return Err(anyhow!(
                         "Unrecognized template: \n Example Templates:
+- asm_return_tuple_pointer
 - counter
 - fizzbuzz
 - liquidity_pool
@@ -107,8 +108,7 @@ pub fn init(command: InitCommand) -> Result<()> {
 - native_token
 - storage_example
 - subcurrency
-- wallet_smart_contract
-- asm_return_tuple_pointer"
+- wallet_smart_contract"
                     ));
                 }
             };
