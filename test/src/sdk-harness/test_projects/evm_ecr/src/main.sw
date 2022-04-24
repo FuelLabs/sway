@@ -2,9 +2,10 @@ script;
 
 use std::b512::B512;
 use std::address::Address;
-use std::vm::evm::ecr::*;
+use std::vm::evm::ecr::ec_recover_address;
+use std::ecr::EcRecoverError;
 use std::assert::assert;
-use std::result::Result;
+use std::result::*;
 
 fn main() -> bool {
 
@@ -36,6 +37,6 @@ fn main() -> bool {
     let result : Result<Address, EcRecoverError> = ec_recover_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
-    recovered_address.value == ethereum_address.value
+    recovered_address == ethereum_address
 
 }

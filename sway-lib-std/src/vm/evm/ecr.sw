@@ -4,27 +4,8 @@ use ::address::Address;
 use ::b512::B512;
 use ::context::registers::error;
 use ::hash::{HashMethod, hash_pair};
+use ::ecr::{EcRecoverError, ec_recover};
 use ::result::*;
-
-pub enum EcRecoverError {
-    UnrecoverablePublicKey: (),
-}
-
-/// Recover the public key derived from the private key used to sign a message.
-/// Returns a `Result` to let the caller choose an error handling strategy.
-pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
-    let public_key = ~B512::new();
-    let was_error = asm(buffer: public_key.bytes, sig: signature.bytes, hash: msg_hash) {
-        ecr buffer sig hash;
-        err
-    };
-    // check the $err register to see if the `ecr` opcode succeeded
-    if was_error == 1 {
-        Result::Err(EcRecoverError::UnrecoverablePublicKey)
-    } else {
-        Result::Ok(public_key)
-    }
-}
 
 /// Recover the address derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
@@ -44,7 +25,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
         // Zero out first 12 bytes for ethereum address
         asm(r1: address) {
             mcli r1 i12;
-            }
+        };
 
         Result::Ok(~Address::from(address))
     }

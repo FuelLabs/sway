@@ -1,5 +1,5 @@
 [project]
-authors = ["Simon"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "evm_ecr"
