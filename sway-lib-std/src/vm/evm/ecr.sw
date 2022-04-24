@@ -3,8 +3,8 @@ library ecr;
 use ::address::Address;
 use ::b512::B512;
 use ::context::registers::error;
-use ::hash::{HashMethod, hash_pair};
 use ::ecr::{EcRecoverError, ec_recover};
+use ::hash::{HashMethod, hash_pair};
 use ::result::*;
 
 /// Recover the address derived from the private key used to sign a message.
