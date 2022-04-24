@@ -178,20 +178,7 @@
 <p>In this example, we show a basic liquidity pool contract minting its own native asset LP token.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    context::call_frames::{
-        contract_id,
-        msg_asset_id
-    },
-    context::msg_amount,
-    contract_id::ContractId,
-    token::{
-        mint_to_address,
-        transfer_to_output
-    }
-};
+use std::{address::Address, assert::assert, context::call_frames::{contract_id, msg_asset_id}, context::msg_amount, contract_id::ContractId, token::{mint_to_address, transfer_to_output}};
 
 abi LiquidityPool {
     fn deposit(recipient: Address);
@@ -223,19 +210,12 @@ impl LiquidityPool for Contract {
         transfer_to_output(amount_to_transfer, ~ContractId::from(BASE_TOKEN), recipient);
     }
 }
-
 </code></pre>
 <h2 id="native-token-example"><a class="header" href="#native-token-example">Native Token Example</a></h2>
 <p>In this example, we show a native token contract with more minting, burning and transferring capabilities.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    context::*,
-    contract_id::ContractId,
-    token::*
-};
+use std::{address::Address, assert::assert, context::*, contract_id::ContractId, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -289,7 +269,6 @@ impl NativeAssetToken for Contract {
         mint_to_address(amount, recipient);
     }
 }
-
 </code></pre>
 
                     </main>

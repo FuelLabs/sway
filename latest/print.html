@@ -463,7 +463,7 @@ abi TestContract {
 }
 
 storage {
-    counter: u64
+    counter: u64,
 }
 
 impl TestContract for Contract {
@@ -483,15 +483,7 @@ impl TestContract for Contract {
 <p>The following is a simple example of a subcurrency which implements a <code>mint</code> and <code>send</code> function for a token. This example does not use Fuel's native asset system (see: <a href="examples/../blockchain-development/native_assets.html">Native Assets</a>).</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address, 
-    assert::assert, 
-    chain::auth::{AuthError, Sender, msg_sender}, 
-    hash::*, 
-    panic::panic, 
-    result::*, 
-    storage::{get, store}
-};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, hash::*, panic::panic, result::*, storage::{get, store}};
 
 ////////////////////////////////////////
 // Event declarations
@@ -616,17 +608,7 @@ impl FizzBuzz for Contract {
 <p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address, 
-    assert::assert, 
-    chain::auth::{AuthError, Sender, msg_sender}, 
-    constants::NATIVE_ASSET_ID, 
-    context::{call_frames::msg_asset_id, msg_amount}, 
-    contract_id::ContractId, 
-    panic::panic, 
-    result::*, 
-    token::transfer_to_output
-};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, constants::NATIVE_ASSET_ID, context::{call_frames::msg_asset_id, msg_amount}, contract_id::ContractId, panic::panic, result::*, token::transfer_to_output};
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
@@ -1260,9 +1242,7 @@ while counter &lt; 10 {
 <p>An example is as follows:</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    storage::{get, store}
-};
+use std::storage::{get, store};
 
 abi StorageExample {
     fn store_something(amount: u64);
@@ -1316,20 +1296,7 @@ fn bar() {}
 <p>In this example, we show a basic liquidity pool contract minting its own native asset LP token.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    context::call_frames::{
-        contract_id,
-        msg_asset_id
-    },
-    context::msg_amount,
-    contract_id::ContractId,
-    token::{
-        mint_to_address,
-        transfer_to_output
-    }
-};
+use std::{address::Address, assert::assert, context::call_frames::{contract_id, msg_asset_id}, context::msg_amount, contract_id::ContractId, token::{mint_to_address, transfer_to_output}};
 
 abi LiquidityPool {
     fn deposit(recipient: Address);
@@ -1361,19 +1328,12 @@ impl LiquidityPool for Contract {
         transfer_to_output(amount_to_transfer, ~ContractId::from(BASE_TOKEN), recipient);
     }
 }
-
 </code></pre>
 <h2 id="native-token-example"><a class="header" href="#native-token-example">Native Token Example</a></h2>
 <p>In this example, we show a native token contract with more minting, burning and transferring capabilities.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    context::*,
-    contract_id::ContractId,
-    token::*
-};
+use std::{address::Address, assert::assert, context::*, contract_id::ContractId, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -1427,7 +1387,6 @@ impl NativeAssetToken for Contract {
         mint_to_address(amount, recipient);
     }
 }
-
 </code></pre>
 <h1 id="access-control"><a class="header" href="#access-control">Access Control</a></h1>
 <p>Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.</p>
@@ -1435,19 +1394,13 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to Ethereum's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address, 
-    assert::assert,
-    chain::auth::{AuthError, Sender, msg_sender}, 
-    panic::panic, 
-    result::*
-};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, panic::panic, result::*};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
 }
 
-const OWNER:b256 = 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c;
+const OWNER: b256 = 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c;
 
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -&gt; bool {
@@ -1461,7 +1414,6 @@ impl MyOwnedContract for Contract {
         true
     }
 }
-
 </code></pre>
 <p>The <code>msg_sender</code> function works as follows:</p>
 <ul>
@@ -1996,7 +1948,7 @@ abi TestContract {
 }
 
 storage {
-    counter: u64
+    counter: u64,
 }
 
 impl TestContract for Contract {
