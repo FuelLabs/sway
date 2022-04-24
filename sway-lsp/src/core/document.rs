@@ -107,6 +107,15 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
+    fn test(&self) {
+        use sway_core::CompileResult;
+
+        let text = Arc::from(self.get_text());
+        
+        // Compile to AST
+        //sway_core::compile_to_ast(text, initial_namespace, build_config)
+    }
+
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
         let text = Arc::from(self.get_text());
         let parsed_result = parse(text, None);
