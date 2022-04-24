@@ -12,6 +12,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         path,
         binary_outfile,
         use_orig_asm,
+        use_orig_parser,
         debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
@@ -24,6 +25,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let config = pkg::BuildConfig {
         use_orig_asm,
+        use_orig_parser,
         print_ir,
         print_finalized_asm,
         print_intermediate_asm,
@@ -55,8 +57,12 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
-        println!("  Creating a new `Forc.lock` file");
-        println!("    Cause: {}", e);
+        let cause = if e.to_string().contains("No such file or directory") {
+            anyhow!("lock file did not exist")
+        } else {
+            e
+        };
+        println!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);

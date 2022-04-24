@@ -25,6 +25,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/basic_func_decl",
             ProgramState::Return(1), // 1 == true
         ),
+        (
+            "should_pass/language/builtin_type_method_call",
+            ProgramState::Return(3),
+        ),
         ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
         (
             "should_pass/language/if_elseif_enum",
@@ -126,6 +130,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
+        ("should_pass/language/u64_ops", ProgramState::Return(1)),      // true
         (
             "should_pass/language/import_method_from_other_file",
             ProgramState::Return(10), // true

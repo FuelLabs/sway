@@ -33,6 +33,7 @@ serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
 sway-ir = { version = "0.10.3", path = "../sway-ir" }
+sway-parse = { version = "0.10.3", path = "../sway-parse" }
 sway-types = { version = "0.10.3", path = "../sway-types" }
 sway-utils = { version = "0.10.3", path = "../sway-utils" }
 thiserror = "1.0"

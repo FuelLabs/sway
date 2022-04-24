@@ -1,8 +1,6 @@
 contract;
 
-use std::{
-    storage::{get, store}
-};
+use std::storage::{get, store};
 
 abi StorageExample {
     fn store_something(amount: u64);

@@ -29,7 +29,7 @@ pub(crate) fn instantiate_function_application(
             let type_arguments_span = type_arguments
                 .iter()
                 .map(|x| x.span.clone())
-                .reduce(join_spans)
+                .reduce(Span::join)
                 .unwrap_or_else(|| name.span());
             errors.push(CompileError::DoesNotTakeTypeArguments {
                 name: name.suffix,
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: arguments_span,
@@ -96,7 +96,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: arguments_span,

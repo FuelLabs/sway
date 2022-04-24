@@ -29,17 +29,14 @@ impl WhileLoop {
         let _while_keyword = iter.next().unwrap();
         let condition = iter.next().unwrap();
         let body = iter.next().unwrap();
-        let whole_block_span = Span {
-            span: body.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = Span::from_pest(body.as_span(), path.clone());
 
         let condition_result = check!(
             Expression::parse_from_pair(condition.clone(), config),
-            ParserLifter::empty(error_recovery_exp(Span {
-                span: condition.as_span(),
-                path,
-            })),
+            ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                condition.as_span(),
+                path
+            ))),
             warnings,
             errors
         );

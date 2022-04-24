@@ -12,8 +12,11 @@ use crate::{
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
-use std::{collections::VecDeque, sync::RwLock};
-use sway_types::{join_spans, Ident, Span};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, RwLock},
+};
+use sway_types::{Ident, Span};
 pub type NamespaceRef = Index;
 
 pub trait NamespaceWrapper {
@@ -143,10 +146,7 @@ impl NamespaceWrapper for NamespaceRef {
             ok(fields, vec![], vec![])
         } else {
             let msg = "unknown source location";
-            let span = Span {
-                span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-                path: None,
-            };
+            let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
             err(vec![], vec![CompileError::NoDeclaredStorage { span }])
         }
     }
@@ -493,7 +493,7 @@ impl NamespaceWrapper for NamespaceRef {
             None => {
                 errors.push(CompileError::ModuleNotFound {
                     span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                        join_spans(acc, this_one.span().clone())
+                        Span::join(acc, this_one.span().clone())
                     }),
                     name: path
                         .iter()
@@ -515,7 +515,7 @@ impl NamespaceWrapper for NamespaceRef {
                 _ => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                            join_spans(acc, this_one.span().clone())
+                            Span::join(acc, this_one.span().clone())
                         }),
                         name: path
                             .iter()
