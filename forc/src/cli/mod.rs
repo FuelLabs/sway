@@ -12,10 +12,10 @@ pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
+pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
-pub use plugins::Command as PluginsCommand;
 
 mod commands;
 mod plugin;
