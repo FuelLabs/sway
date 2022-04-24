@@ -1096,7 +1096,7 @@ dependencies = [
 
 [[package]]
 name = "forc-gm"
-version = "0.0.0"
+version = "0.10.3"
 dependencies = [
  "clap 3.1.8",
 ]
