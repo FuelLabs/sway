@@ -1,7 +1,6 @@
 use crate::cli::PluginsCommand;
 use anyhow::Result;
 use clap::Parser;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 
 /// Find all forc plugins available via `PATH`.
@@ -10,7 +9,7 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 pub struct Command {
     /// Prints the absolute path to each discovered plugin.
-    #[clap(long = "verbose", short = 'v')]
+    #[clap(long = "paths", short = 'p')]
     print_full_path: bool,
 }
 
@@ -23,6 +22,12 @@ pub(crate) fn exec(command: PluginsCommand) -> Result<()> {
     Ok(())
 }
 
+/// # Panics
+///
+/// This function assumes that file names will never be empty since it is only used with
+/// paths yielded from plugin::find_all(), as well as that the file names are in valid
+/// unicode format since file names should be prefixed with `forc-`. Should one of these 2
+/// assumptions fail, this function panics.
 fn print_plugin(path: PathBuf, print_full_path: bool) {
     if print_full_path {
         println!("{}", path.display());
@@ -30,9 +35,9 @@ fn print_plugin(path: PathBuf, print_full_path: bool) {
         println!(
             "{}",
             path.file_name()
-                .unwrap_or_else(|| OsStr::new(""))
+                .expect("Failed to read file name")
                 .to_str()
-                .unwrap()
+                .expect("Failed to print file name")
         );
     }
 }
