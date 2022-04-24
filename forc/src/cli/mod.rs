@@ -15,7 +15,7 @@ use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
-use  plugins::Command as PluginsCommand;
+pub use plugins::Command as PluginsCommand;
 
 mod commands;
 mod plugin;
