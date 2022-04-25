@@ -1,12 +1,6 @@
 contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    context::*,
-    contract_id::ContractId,
-    token::*
-};
+use std::{address::Address, assert::assert, context::*, contract_id::ContractId, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -60,4 +54,3 @@ impl NativeAssetToken for Contract {
         mint_to_address(amount, recipient);
     }
 }
-

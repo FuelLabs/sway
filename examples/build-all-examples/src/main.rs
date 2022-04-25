@@ -1,6 +1,6 @@
-//! Runs `forc build` for all projects under the Sway `examples` directory.
+//! Runs `forc build` and `forc fmt --check` for all projects under the Sway `examples` directory.
 //!
-//! NOTE: This expects both `forc` and `cargo` to be available in `PATH`.
+//! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
 use std::{
     fs,
@@ -27,16 +27,24 @@ fn main() {
             continue;
         }
 
-        let output = std::process::Command::new("forc")
+        let build_output = std::process::Command::new("forc")
             .args(["build", "--path"])
             .arg(&path)
             .output()
             .expect("failed to run `forc build` for example project");
 
+        let fmt_output = std::process::Command::new("forc")
+            .args(["fmt", "--check", "--path"])
+            .arg(&path)
+            .output()
+            .expect("failed to run `forc fmt --check` for example project");
+
         // Print output on failure so we can read it in CI.
-        let success = if !output.status.success() {
-            io::stdout().write_all(&output.stdout).unwrap();
-            io::stdout().write_all(&output.stderr).unwrap();
+        let success = if !build_output.status.success() || !fmt_output.status.success() {
+            io::stdout().write_all(&build_output.stdout).unwrap();
+            io::stdout().write_all(&fmt_output.stdout).unwrap();
+            io::stdout().write_all(&build_output.stderr).unwrap();
+            io::stdout().write_all(&fmt_output.stderr).unwrap();
             false
         } else {
             true
@@ -45,7 +53,7 @@ fn main() {
         summary.push((path, success));
     }
 
-    println!("\nBuild all examples summary:");
+    println!("\nBuild and check formatting of all examples summary:");
     let mut successes = 0;
     for (path, success) in &summary {
         let (checkmark, status) = if *success {
