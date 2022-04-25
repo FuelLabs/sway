@@ -52,6 +52,29 @@ struct ContentResponse {
     url: String,
 }
 
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct GithubRepoResponse {
+    sha: String,
+    url: String,
+    // We only care about the tree here
+    tree: Vec<GithubTree>,
+    truncated: bool,
+}
+
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct GithubTree {
+    mode: String,
+    // We only care about the "path" which are files / directory names
+    path: String,
+    sha: String,
+    size: Option<usize>,
+    #[serde(rename = "type")]
+    data_type: String,
+    url: String,
+}
+
 fn print_welcome_message() {
     let read_the_docs = format!(
         "Read the Docs:\n- {}\n- {}\n- {}",
@@ -90,11 +113,60 @@ pub fn init(command: InitCommand) -> Result<()> {
 
             let template_url = Url::parse(&example_url)?;
 
-            init_from_git_template(project_name, &template_url).map_err(|e| anyhow!("Failed to initialize project from a template with the given name \"{template}\": {e}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n"))?;
-            Ok(())
+            // Latest update to be changed into the match below
+            // init_from_git_template(project_name, &template_url).map_err(|e| anyhow!("Failed to initialize project from a template with the given name \"{template}\": {e}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n"))?;
+            // Ok(())
+
+            // If the user queried an existing example then continue otherwise attempt to fetch the examples and append them
+            // to the end of the error message so that the user can see the existing examples to choose from
+            match init_from_git_template(project_name, &template_url) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    // TODO: change this to use anyhow!(), possibly without a match?
+                    let mut error_message = format!("Failed to initialize project from a template with the given name \"{template}\": {error}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n");
+                    let examples = get_sway_examples()?;
+                    for example in examples {
+                        error_message.push_str(format!("\t- {}\n", example).as_str());
+                    }
+                    println!("{}", error_message);
+                    Ok(())
+                }
+            }
         }
         None => init_new_project(project_name),
     }
+}
+
+fn get_sway_examples() -> Result<Vec<String>> {
+    // Query the main repo so that we can search for the "sha" that belongs to "examples"
+    let sway_response: GithubRepoResponse =
+        ureq::get("https://api.github.com/repos/FuelLabs/sway/git/trees/master")
+            .call()?
+            .into_json()?;
+
+    // Filter out the URL that contains the "sha" for the next request
+    let examples_url = sway_response
+        .tree
+        .iter()
+        .filter(|tree| tree.path == "examples")
+        .map(|tree| tree.url.clone())
+        .collect::<String>();
+
+    // We want to store repo names of the "examples" that we have found
+    let mut examples: Vec<String> = vec![];
+
+    if !examples_url.is_empty() {
+        let examples_response: GithubRepoResponse = ureq::get(&examples_url).call()?.into_json()?;
+
+        // Filter out the repo names under "sway/examples"
+        examples = examples_response
+            .tree
+            .iter()
+            .map(|tree| tree.path.clone())
+            .collect();
+    };
+
+    Ok(examples)
 }
 
 pub(crate) fn init_new_project(project_name: String) -> Result<()> {
