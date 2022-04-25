@@ -15,26 +15,9 @@ forc init [OPTIONS] <PROJECT_NAME>
 
 ## OPTIONS:
 
-`--contract` 
-
-The default program type, excluding all flags or adding this flag
-creates a basic contract program
-
 `-h`, `--help` 
 
 Print help information
-
-`--lib` 
-
-Adding this flag creates an empty library program
-
-`--predicate` 
-
-Adding this flag creates an empty predicate program
-
-`--script` 
-
-Adding this flag creates an empty script program
 
 `-t`, `--template` <_TEMPLATE_>
 
