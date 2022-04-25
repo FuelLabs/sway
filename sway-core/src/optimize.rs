@@ -550,10 +550,9 @@ impl FnCompiler {
                     TypedAstNodeContent::WhileLoop(twl) => {
                         self.compile_while_loop(context, twl, span_md_idx)
                     }
-                    TypedAstNodeContent::SideEffect => Err(CompileError::Internal(
-                        "unexpected side effect",
-                        ast_node.span,
-                    )),
+                    // a side effect can be () because it just impacts the type system/namespacing.
+                    // There should be no new IR generated.
+                    TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context, None)),
                 }
             })
             .collect::<Result<Vec<_>, CompileError>>()
