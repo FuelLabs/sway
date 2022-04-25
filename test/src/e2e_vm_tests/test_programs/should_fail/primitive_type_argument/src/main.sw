@@ -12,6 +12,6 @@ impl<T> S<T> {
 
 fn main() -> u64 {
   let a = S::<u64> { };
-  let b = foo::baz::ExampleStruct::<u64, bool> { a_field: 5u64, b_field: true };
+  let b = foo::baz::ExampleStruct::<bool> { a_field: 5u64 };
   return a.f();
 }
