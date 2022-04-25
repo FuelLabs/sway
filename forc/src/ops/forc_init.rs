@@ -96,7 +96,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, true, false) => Predicate,
         (false, false, false, true) => Library,
         _ => anyhow::bail!(
-            "Unrecognized program type, or multiple types detected: \
+            "Multiple types detected, please specify only one program type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library"
         ),
     };
@@ -144,7 +144,7 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
         defaults::default_tests_manifest(&neat_name),
     )?;
 
-    // Insert project based on project_type
+    // Insert src based on program_type
     match program_type {
         Contract => fs::write(
             Path::new(&project_name)
