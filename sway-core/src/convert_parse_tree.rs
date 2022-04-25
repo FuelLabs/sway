@@ -163,7 +163,7 @@ pub enum ConvertParseTreeError {
     ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
     PathsNotSupportedHere { span: Span },
-    #[error("fully specified types are not supported")]
+    #[error("Fully specified types are not supported in this position. Try importing the type and referring to it here.")]
     FullySpecifiedTypesNotSupported { span: Span },
     #[error("ContractCaller requires exactly one generic argument")]
     ContractCallerOneGenericArg { span: Span },
