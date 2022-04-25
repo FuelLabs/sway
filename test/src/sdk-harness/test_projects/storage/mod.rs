@@ -37,8 +37,7 @@ async fn can_store_and_get_u64() {
 async fn can_store_b256() {
     let (instance, id) = get_contract_instance().await;
     let n: [u8; 32] = id.into();
-    let result = instance.store_b256(n).call().await.unwrap();
-    dbg!(&result);
+    instance.store_b256(n).call().await.unwrap();
 }
 
 #[tokio::test]
