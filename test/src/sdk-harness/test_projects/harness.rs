@@ -9,6 +9,6 @@ mod option;
 mod reentrancy;
 mod registers;
 mod result;
+mod storage;
 mod token_ops;
 mod tx_fields;
-mod storage;
