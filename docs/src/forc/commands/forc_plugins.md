@@ -16,7 +16,7 @@ forc plugins [OPTIONS]
 Print help information
 
 
-'-p', '--paths'
+`-p`, `--paths` 
 
 
 Prints the absolute path to each discovered plugin
