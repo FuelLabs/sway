@@ -255,11 +255,15 @@ mod tests {
             "a::b::{c, d::e};"
         );
         assert_eq!(
+            sort_and_filter_use_expression("a::{foo,bar,};"),
+            "a::{bar, foo};"
+        );
+        assert_eq!(
             sort_and_filter_use_expression(
                 "a::{
-                foo,
-                bar,
-            };"
+    foo,
+    bar,
+};"
             ),
             "a::{bar, foo};"
         );
