@@ -94,7 +94,17 @@ fn sort_and_filter_use_expression(line: &str) -> String {
         let mut current = 0;
         for (index, separator) in line.match_indices(|c: char| c == ',' || c == '{' || c == '}') {
             if index != current {
-                buffer.push(line[current..index].to_string());
+                // Chomp all whitespace including newlines, and only push
+                // resulting token if what's left is not an empty string. This
+                // is needed to ignore trailing commas with newlines.
+                let to_push: String = line[current..index]
+                    .to_string()
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect();
+                if !to_push.is_empty() {
+                    buffer.push(to_push);
+                }
             }
             buffer.push(separator.to_string());
             current = index + separator.len();
@@ -253,6 +263,19 @@ mod tests {
         assert_eq!(
             sort_and_filter_use_expression("a::b::{c,d::{e}};"),
             "a::b::{c, d::e};"
+        );
+        assert_eq!(
+            sort_and_filter_use_expression("a::{foo,bar,};"),
+            "a::{bar, foo};"
+        );
+        assert_eq!(
+            sort_and_filter_use_expression(
+                "a::{
+    foo,
+    bar,
+};"
+            ),
+            "a::{bar, foo};"
         );
     }
 }
