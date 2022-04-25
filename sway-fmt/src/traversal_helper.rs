@@ -102,7 +102,7 @@ fn sort_and_filter_use_expression(line: &str) -> String {
                     .chars()
                     .filter(|c| !c.is_whitespace())
                     .collect();
-                if to_push.len() > 0 {
+                if !to_push.is_empty() {
                     buffer.push(to_push);
                 }
             }
