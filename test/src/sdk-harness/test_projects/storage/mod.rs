@@ -25,10 +25,27 @@ async fn get_contract_instance() -> (Storage, ContractId) {
 }
 
 #[tokio::test]
-async fn can_store_u64() {
+async fn can_store_and_get_u64() {
     let (instance, _id) = get_contract_instance().await;
     let n = 42;
     instance.store_u64(n).call().await.unwrap();
     let result = instance.get_u64().call().await.unwrap();
+    assert_eq!(result.value, n);
+}
+
+#[tokio::test]
+async fn can_store_b256() {
+    let (instance, id) = get_contract_instance().await;
+    let n: [u8; 32] = id.into();
+    let result = instance.store_b256(n).call().await.unwrap();
+    dbg!(&result);
+}
+
+#[tokio::test]
+#[ignore]
+async fn can_get_b256() {
+    let (instance, id) = get_contract_instance().await;
+    let n: [u8; 32] = id.into();
+    let result = instance.get_b256().call().await.unwrap();
     assert_eq!(result.value, n);
 }
