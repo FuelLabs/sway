@@ -254,5 +254,14 @@ mod tests {
             sort_and_filter_use_expression("a::b::{c,d::{e}};"),
             "a::b::{c, d::e};"
         );
+        assert_eq!(
+            sort_and_filter_use_expression(
+                "a::{
+                foo,
+                bar,
+            };"
+            ),
+            "a::{bar, foo};"
+        );
     }
 }
