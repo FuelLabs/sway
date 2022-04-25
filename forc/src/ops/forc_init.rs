@@ -97,7 +97,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, false, true) => Library,
         _ => anyhow::bail!(
             "Multiple types detected, please specify only one program type: \
-        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+        \n Possible Types:\n - contract\n - script\n - predicate\n - lib"
         ),
     };
 
