@@ -95,6 +95,7 @@ impl<'a> InstructionVerifier<'a> {
             if let ValueDatum::Instruction(instruction) = instruction {
                 match instruction {
                     Instruction::AsmBlock(..) => (),
+                    Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
                     Instruction::Branch(block) => self.verify_br(block)?,
                     Instruction::Call(func, args) => self.verify_call(func, args)?,
                     Instruction::Cmp(pred, lhs_value, rhs_value) => {
@@ -167,6 +168,43 @@ impl<'a> InstructionVerifier<'a> {
             }
         }
         Ok(())
+    }
+
+    fn verify_bitcast(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
+        // The to and from types must be copy-types, excluding short strings, and the same size.
+        let val_ty = match value.get_type(self.context) {
+            None => return Err(IrError::VerifyBitcastUnknownSourceType),
+            Some(ty) => ty,
+        };
+        if !val_ty.is_copy_type() {
+            return Err(IrError::VerifyBitcastFromNonCopyType(
+                val_ty.as_string(self.context),
+            ));
+        }
+        if !ty.is_copy_type() {
+            return Err(IrError::VerifyBitcastToNonCopyType(
+                val_ty.as_string(self.context),
+            ));
+        }
+        let is_valid = match val_ty {
+            Type::Unit | Type::Bool => true, // Unit or bool to any copy type works.
+            Type::Uint(from_nbits) => match ty {
+                Type::Unit | Type::Bool => true, // We can construct a unit or bool from any sized integer.
+                Type::Uint(to_nbits) => from_nbits == *to_nbits,
+                _otherwise => false,
+            },
+            Type::B256 | Type::String(_) | Type::Array(_) | Type::Union(_) | Type::Struct(_) => {
+                false
+            }
+        };
+        if !is_valid {
+            Err(IrError::VerifyBitcastBetweenInvalidTypes(
+                val_ty.as_string(self.context),
+                ty.as_string(self.context),
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     fn verify_br(&self, dest_block: &Block) -> Result<(), IrError> {
