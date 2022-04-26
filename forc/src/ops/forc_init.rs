@@ -1,10 +1,10 @@
 use crate::cli::InitCommand;
-use anyhow::{anyhow, Context, Result};
 use crate::utils::{
     defaults,
-    SWAY_GIT_TAG,
     program_type::{ProgramType, ProgramType::*},
+    SWAY_GIT_TAG,
 };
+use anyhow::{Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
@@ -109,21 +109,6 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
-    let program_type = match (
-        command.contract,
-        command.script,
-        command.predicate,
-        command.library,
-    ) {
-        (_, false, false, false) => Contract,
-        (false, true, false, false) => Script,
-        (false, false, true, false) => Predicate,
-        (false, false, false, true) => Library,
-        _ => anyhow::bail!(
-            "Multiple types detected, please specify only one program type: \
-        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
-        ),
-    };
 
     match command.template {
         Some(template) => {
@@ -156,7 +141,25 @@ pub fn init(command: InitCommand) -> Result<()> {
                 }
             }
         }
-        None => init_new_project(project_name, program_type),
+        None => {
+            let program_type = match (
+                command.contract,
+                command.script,
+                command.predicate,
+                command.library,
+            ) {
+                (_, false, false, false) => Contract,
+                (false, true, false, false) => Script,
+                (false, false, true, false) => Predicate,
+                (false, false, false, true) => Library,
+                _ => anyhow::bail!(
+                    "Multiple types detected, please specify only one program type: \
+                \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+                ),
+            };
+
+            init_new_project(project_name, program_type)
+        }
     }
 }
 
