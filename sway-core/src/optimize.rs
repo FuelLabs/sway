@@ -831,7 +831,9 @@ impl FnCompiler {
                 // Going with type for now.
                 let arg0_type = arg0.get_type(context).unwrap();
                 if arg0_type.is_copy_type() {
-                    arg0
+                    self.current_block
+                        .ins(context)
+                        .bitcast(arg0, Type::Uint(64), span_md_idx)
                 } else {
                     // Copy this value to a new location.  This is quite inefficient but we need to
                     // pass by reference rather than by value.  Optimisation passes can remove all
@@ -857,6 +859,7 @@ impl FnCompiler {
                     self.current_block.ins(context).store(arg0_ptr, arg0, None);
 
                     // NOTE: Here we're fetching the original stack pointer, cast to u64.
+                    // TODO: Instead of casting here, we should use an `ptrtoint` instruction.
                     self.current_block.ins(context).get_ptr(
                         by_reference_arg,
                         Type::Uint(64),
