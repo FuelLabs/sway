@@ -4,9 +4,9 @@ dependencies = []
 
 [[package]]
 name = 'sdk-harness'
-dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.10.4#e7676db6f4ebc7a3885f87514d16a703a99410d7']
+dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.11.0#e7676db6f4ebc7a3885f87514d16a703a99410d7']
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.10.4#e7676db6f4ebc7a3885f87514d16a703a99410d7'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.11.0#e7676db6f4ebc7a3885f87514d16a703a99410d7'
 dependencies = ['core']
