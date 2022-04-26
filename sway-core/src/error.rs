@@ -9,7 +9,7 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
+use std::{fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -197,16 +197,12 @@ impl CompileWarning {
         self.warning_content.to_string()
     }
 
-    pub fn span(&self) -> (usize, usize) {
-        (self.span.start(), self.span.end())
+    pub fn span(&self) -> Span {
+        self.span.clone()
     }
 
-    pub fn path(&self) -> Option<&Arc<PathBuf>> {
-        self.span.path()
-    }
-
-    pub fn path_str(&self) -> Option<Cow<'_, str>> {
-        self.span.path_str()
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span.path().cloned()
     }
 
     /// Returns the line and column start and end
@@ -962,11 +958,11 @@ pub enum TypeError {
 }
 
 impl TypeError {
-    pub(crate) fn internal_span(&self) -> &Span {
+    pub(crate) fn span(&self) -> Span {
         use TypeError::*;
         match self {
-            MismatchedType { span, .. } => span,
-            UnknownType { span } => span,
+            MismatchedType { span, .. } => span.clone(),
+            UnknownType { span } => span.clone(),
         }
     }
 }
@@ -1011,164 +1007,155 @@ impl CompileError {
         }
     }
 
-    pub fn span(&self) -> (usize, usize) {
-        let sp = self.internal_span();
-        (sp.start(), sp.end())
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span().path().cloned()
     }
 
-    pub fn path(&self) -> Option<&Arc<PathBuf>> {
-        self.internal_span().path()
-    }
-
-    pub fn path_str(&self) -> Option<Cow<'_, str>> {
-        self.internal_span().path_str()
-    }
-
-    pub fn internal_span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { span, .. } => span,
-            UnknownVariablePath { span, .. } => span,
-            UnknownFunction { span, .. } => span,
-            NotAVariable { span, .. } => span,
-            NotAFunction { span, .. } => span,
-            Unimplemented(_, span) => span,
-            TypeError(err) => err.internal_span(),
-            ParseFailure { span, .. } => span,
-            ParseError { span, .. } => span,
-            InvalidTopLevelItem(_, span) => span,
-            Internal(_, span) => span,
-            InternalOwned(_, span) => span,
-            UnimplementedRule(_, span) => span,
-            InvalidByteLiteralLength { span, .. } => span,
-            ExpectedExprAfterOp { span, .. } => span,
-            ExpectedOp { span, .. } => span,
-            UnexpectedWhereClause(span) => span,
-            UndeclaredGenericTypeInWhereClause { span, .. } => span,
-            MultiplePredicates(span) => span,
-            MultipleScripts(span) => span,
-            MultipleContracts(span) => span,
-            ConstrainedNonExistentType { span, .. } => span,
-            MultiplePredicateMainFunctions(span) => span,
-            NoPredicateMainFunction(span) => span,
-            PredicateMainDoesNotReturnBool(span) => span,
-            NoScriptMainFunction(span) => span,
-            MultipleScriptMainFunctions(span) => span,
-            ReassignmentToNonVariable { span, .. } => span,
-            AssignmentToNonMutable(_, span) => span,
-            TypeParameterNotInTypeScope { span, .. } => span,
-            MultipleImmediates(span) => span,
-            MismatchedTypeInTrait { span, .. } => span,
-            NotATrait { span, .. } => span,
-            UnknownTrait { span, .. } => span,
-            FunctionNotAPartOfInterfaceSurface { span, .. } => span,
-            MissingInterfaceSurfaceMethods { span, .. } => span,
-            IncorrectNumberOfTypeArguments { span, .. } => span,
-            DoesNotTakeTypeArguments { span, .. } => span,
-            NeedsTypeArguments { span, .. } => span,
-            StructNotFound { span, .. } => span,
-            DeclaredNonStructAsStruct { span, .. } => span,
-            AccessedFieldOfNonStruct { span, .. } => span,
-            MethodOnNonValue { span, .. } => span,
-            StructMissingField { span, .. } => span,
-            StructDoesNotHaveField { span, .. } => span,
-            MethodNotFound { span, .. } => span,
-            DuplicateMethodDefinitions { span, .. } => span,
-            ModuleNotFound { span, .. } => span,
-            NotATuple { span, .. } => span,
-            NotAStruct { span, .. } => span,
-            FieldNotFound { span, .. } => span,
-            SymbolNotFound { span, .. } => span,
-            ImportPrivateSymbol { span, .. } => span,
-            NoElseBranch { span, .. } => span,
-            UnqualifiedSelfType { span, .. } => span,
-            NotAType { span, .. } => span,
-            MissingEnumInstantiator { span, .. } => span,
-            PathDoesNotReturn { span, .. } => span,
-            ExpectedImplicitReturnFromBlockWithType { span, .. } => span,
-            ExpectedImplicitReturnFromBlock { span, .. } => span,
-            UnknownRegister { span, .. } => span,
-            MissingImmediate { span, .. } => span,
-            InvalidImmediateValue { span, .. } => span,
-            InvalidAssemblyMismatchedReturn { span, .. } => span,
-            UnknownEnumVariant { span, .. } => span,
-            UnrecognizedOp { span, .. } => span,
-            UnableToInferGeneric { span, .. } => span,
-            Immediate06TooLarge { span, .. } => span,
-            Immediate12TooLarge { span, .. } => span,
-            Immediate18TooLarge { span, .. } => span,
-            Immediate24TooLarge { span, .. } => span,
-            DisallowedJi { span, .. } => span,
-            DisallowedJnei { span, .. } => span,
-            DisallowedJnzi { span, .. } => span,
-            DisallowedLw { span, .. } => span,
-            IncorrectNumberOfAsmRegisters { span, .. } => span,
-            UnnecessaryImmediate { span, .. } => span,
-            AmbiguousPath { span, .. } => span,
-            UnknownType { span, .. } => span,
-            InvalidStrType { span, .. } => span,
-            TooManyInstructions { span, .. } => span,
-            FileNotFound { span, .. } => span,
-            FileCouldNotBeRead { span, .. } => span,
-            ImportMustBeLibrary { span, .. } => span,
-            MoreThanOneEnumInstantiator { span, .. } => span,
-            UnnecessaryEnumInstantiator { span, .. } => span,
-            TraitNotFound { span, .. } => span,
-            InvalidExpressionOnLhs { span, .. } => span,
-            TooManyArgumentsForFunction { span, .. } => span,
-            TooFewArgumentsForFunction { span, .. } => span,
-            InvalidAbiType { span, .. } => span,
-            NotAnAbi { span, .. } => span,
-            ImplAbiForNonContract { span, .. } => span,
-            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
-            ArgumentParameterTypeMismatch { span, .. } => span,
-            RecursiveCall { span, .. } => span,
-            RecursiveCallChain { span, .. } => span,
-            TypeWithUnknownSize { span, .. } => span,
-            InfiniteDependencies { span, .. } => span,
-            GMFromExternalContract { span, .. } => span,
-            MintFromExternalContext { span, .. } => span,
-            BurnFromExternalContext { span, .. } => span,
-            ContractStorageFromExternalContext { span, .. } => span,
-            ArrayOutOfBounds { span, .. } => span,
-            TupleOutOfBounds { span, .. } => span,
-            ShadowsOtherSymbol { span, .. } => span,
-            GenericShadowsGeneric { span, .. } => span,
-            StarImportShadowsOtherSymbol { span, .. } => span,
-            MatchWrongType { span, .. } => span,
-            MatchExpressionNonExhaustive { span, .. } => span,
-            NotAnEnum { span, .. } => span,
-            PureCalledImpure { span, .. } => span,
-            ImpureInNonContract { span, .. } => span,
-            IntegerTooLarge { span, .. } => span,
-            IntegerTooSmall { span, .. } => span,
-            IntegerContainsInvalidDigit { span, .. } => span,
-            AsteriskWithAlias { span, .. } => span,
-            AbiAsSupertrait { span, .. } => span,
-            NameDefinedMultipleTimesForTrait { span, .. } => span,
-            SupertraitImplMissing { span, .. } => span,
-            SupertraitImplRequired { span, .. } => span,
-            IfLetNonEnum { span, .. } => span,
-            ContractCallParamRepeated { span, .. } => span,
-            UnrecognizedContractParam { span, .. } => span,
-            CallParamForNonContractCallMethod { span, .. } => span,
-            StorageFieldDoesNotExist { span, .. } => span,
-            NoDeclaredStorage { span, .. } => span,
-            MultipleStorageDeclarations { span, .. } => span,
-            InvalidVariableName { span, .. } => span,
-            UnexpectedDeclaration { span, .. } => span,
-            ContractAddressMustBeKnown { span, .. } => span,
-            ConvertParseTree { error } => error.span_ref(),
-            Lex { error } => error.span_ref(),
-            Parse { error } => &error.span,
+            UnknownVariable { span, .. } => span.clone(),
+            UnknownVariablePath { span, .. } => span.clone(),
+            UnknownFunction { span, .. } => span.clone(),
+            NotAVariable { span, .. } => span.clone(),
+            NotAFunction { span, .. } => span.clone(),
+            Unimplemented(_, span) => span.clone(),
+            TypeError(err) => err.span(),
+            ParseFailure { span, .. } => span.clone(),
+            ParseError { span, .. } => span.clone(),
+            InvalidTopLevelItem(_, span) => span.clone(),
+            Internal(_, span) => span.clone(),
+            InternalOwned(_, span) => span.clone(),
+            UnimplementedRule(_, span) => span.clone(),
+            InvalidByteLiteralLength { span, .. } => span.clone(),
+            ExpectedExprAfterOp { span, .. } => span.clone(),
+            ExpectedOp { span, .. } => span.clone(),
+            UnexpectedWhereClause(span) => span.clone(),
+            UndeclaredGenericTypeInWhereClause { span, .. } => span.clone(),
+            MultiplePredicates(span) => span.clone(),
+            MultipleScripts(span) => span.clone(),
+            MultipleContracts(span) => span.clone(),
+            ConstrainedNonExistentType { span, .. } => span.clone(),
+            MultiplePredicateMainFunctions(span) => span.clone(),
+            NoPredicateMainFunction(span) => span.clone(),
+            PredicateMainDoesNotReturnBool(span) => span.clone(),
+            NoScriptMainFunction(span) => span.clone(),
+            MultipleScriptMainFunctions(span) => span.clone(),
+            ReassignmentToNonVariable { span, .. } => span.clone(),
+            AssignmentToNonMutable(_, span) => span.clone(),
+            TypeParameterNotInTypeScope { span, .. } => span.clone(),
+            MultipleImmediates(span) => span.clone(),
+            MismatchedTypeInTrait { span, .. } => span.clone(),
+            NotATrait { span, .. } => span.clone(),
+            UnknownTrait { span, .. } => span.clone(),
+            FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
+            IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
+            DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            NeedsTypeArguments { span, .. } => span.clone(),
+            StructNotFound { span, .. } => span.clone(),
+            DeclaredNonStructAsStruct { span, .. } => span.clone(),
+            AccessedFieldOfNonStruct { span, .. } => span.clone(),
+            MethodOnNonValue { span, .. } => span.clone(),
+            StructMissingField { span, .. } => span.clone(),
+            StructDoesNotHaveField { span, .. } => span.clone(),
+            MethodNotFound { span, .. } => span.clone(),
+            DuplicateMethodDefinitions { span, .. } => span.clone(),
+            ModuleNotFound { span, .. } => span.clone(),
+            NotATuple { span, .. } => span.clone(),
+            NotAStruct { span, .. } => span.clone(),
+            FieldNotFound { span, .. } => span.clone(),
+            SymbolNotFound { span, .. } => span.clone(),
+            ImportPrivateSymbol { span, .. } => span.clone(),
+            NoElseBranch { span, .. } => span.clone(),
+            UnqualifiedSelfType { span, .. } => span.clone(),
+            NotAType { span, .. } => span.clone(),
+            MissingEnumInstantiator { span, .. } => span.clone(),
+            PathDoesNotReturn { span, .. } => span.clone(),
+            ExpectedImplicitReturnFromBlockWithType { span, .. } => span.clone(),
+            ExpectedImplicitReturnFromBlock { span, .. } => span.clone(),
+            UnknownRegister { span, .. } => span.clone(),
+            MissingImmediate { span, .. } => span.clone(),
+            InvalidImmediateValue { span, .. } => span.clone(),
+            InvalidAssemblyMismatchedReturn { span, .. } => span.clone(),
+            UnknownEnumVariant { span, .. } => span.clone(),
+            UnrecognizedOp { span, .. } => span.clone(),
+            UnableToInferGeneric { span, .. } => span.clone(),
+            Immediate06TooLarge { span, .. } => span.clone(),
+            Immediate12TooLarge { span, .. } => span.clone(),
+            Immediate18TooLarge { span, .. } => span.clone(),
+            Immediate24TooLarge { span, .. } => span.clone(),
+            DisallowedJi { span, .. } => span.clone(),
+            DisallowedJnei { span, .. } => span.clone(),
+            DisallowedJnzi { span, .. } => span.clone(),
+            DisallowedLw { span, .. } => span.clone(),
+            IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
+            UnnecessaryImmediate { span, .. } => span.clone(),
+            AmbiguousPath { span, .. } => span.clone(),
+            UnknownType { span, .. } => span.clone(),
+            InvalidStrType { span, .. } => span.clone(),
+            TooManyInstructions { span, .. } => span.clone(),
+            FileNotFound { span, .. } => span.clone(),
+            FileCouldNotBeRead { span, .. } => span.clone(),
+            ImportMustBeLibrary { span, .. } => span.clone(),
+            MoreThanOneEnumInstantiator { span, .. } => span.clone(),
+            UnnecessaryEnumInstantiator { span, .. } => span.clone(),
+            TraitNotFound { span, .. } => span.clone(),
+            InvalidExpressionOnLhs { span, .. } => span.clone(),
+            TooManyArgumentsForFunction { span, .. } => span.clone(),
+            TooFewArgumentsForFunction { span, .. } => span.clone(),
+            InvalidAbiType { span, .. } => span.clone(),
+            NotAnAbi { span, .. } => span.clone(),
+            ImplAbiForNonContract { span, .. } => span.clone(),
+            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
+            ArgumentParameterTypeMismatch { span, .. } => span.clone(),
+            RecursiveCall { span, .. } => span.clone(),
+            RecursiveCallChain { span, .. } => span.clone(),
+            TypeWithUnknownSize { span, .. } => span.clone(),
+            InfiniteDependencies { span, .. } => span.clone(),
+            GMFromExternalContract { span, .. } => span.clone(),
+            MintFromExternalContext { span, .. } => span.clone(),
+            BurnFromExternalContext { span, .. } => span.clone(),
+            ContractStorageFromExternalContext { span, .. } => span.clone(),
+            ArrayOutOfBounds { span, .. } => span.clone(),
+            TupleOutOfBounds { span, .. } => span.clone(),
+            ShadowsOtherSymbol { span, .. } => span.clone(),
+            GenericShadowsGeneric { span, .. } => span.clone(),
+            StarImportShadowsOtherSymbol { span, .. } => span.clone(),
+            MatchWrongType { span, .. } => span.clone(),
+            MatchExpressionNonExhaustive { span, .. } => span.clone(),
+            NotAnEnum { span, .. } => span.clone(),
+            PureCalledImpure { span, .. } => span.clone(),
+            ImpureInNonContract { span, .. } => span.clone(),
+            IntegerTooLarge { span, .. } => span.clone(),
+            IntegerTooSmall { span, .. } => span.clone(),
+            IntegerContainsInvalidDigit { span, .. } => span.clone(),
+            AsteriskWithAlias { span, .. } => span.clone(),
+            AbiAsSupertrait { span, .. } => span.clone(),
+            NameDefinedMultipleTimesForTrait { span, .. } => span.clone(),
+            SupertraitImplMissing { span, .. } => span.clone(),
+            SupertraitImplRequired { span, .. } => span.clone(),
+            IfLetNonEnum { span, .. } => span.clone(),
+            ContractCallParamRepeated { span, .. } => span.clone(),
+            UnrecognizedContractParam { span, .. } => span.clone(),
+            CallParamForNonContractCallMethod { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { span, .. } => span.clone(),
+            NoDeclaredStorage { span, .. } => span.clone(),
+            MultipleStorageDeclarations { span, .. } => span.clone(),
+            InvalidVariableName { span, .. } => span.clone(),
+            UnexpectedDeclaration { span, .. } => span.clone(),
+            ContractAddressMustBeKnown { span, .. } => span.clone(),
+            ConvertParseTree { error } => error.span(),
+            Lex { error } => error.span(),
+            Parse { error } => error.span.clone(),
         }
     }
 
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
-            self.internal_span().start_pos().line_col().into(),
-            self.internal_span().end_pos().line_col().into(),
+            self.span().start_pos().line_col().into(),
+            self.span().end_pos().line_col().into(),
         )
     }
 }
