@@ -2,13 +2,13 @@
 resolver = "2"
 members = [
     "docstrings",
-    "scripts/build-all-examples",
     "forc",
     "forc-explore",
     "forc-fmt",
     "forc-lsp",
     "forc-pkg",
     "forc-util",
+    "scripts/build-all-examples",
     "scripts/forc-documenter",
     "sway-core",
     "sway-fmt",
