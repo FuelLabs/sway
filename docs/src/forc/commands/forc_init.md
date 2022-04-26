@@ -24,7 +24,7 @@ creates a basic contract program
 
 Print help information
 
-`--lib` 
+`--library` 
 
 Adding this flag creates an empty library program
 

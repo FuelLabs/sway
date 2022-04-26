@@ -23,7 +23,7 @@ pub struct Command {
     #[clap(long)]
     pub predicate: bool,
     /// Adding this flag creates an empty library program.
-    #[clap(long = "lib")]
+    #[clap(long)]
     pub library: bool,
     /// The name of your project
     pub project_name: String,
