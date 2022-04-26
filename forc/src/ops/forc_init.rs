@@ -87,7 +87,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         Some(template) => {
             let template_url = match template.as_str() {
                 "counter" => {
-                    Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/hello_world")?
+                    Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/counter")?
                 }
                 _ => {
                     return Err(anyhow!(
