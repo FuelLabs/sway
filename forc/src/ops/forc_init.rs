@@ -165,10 +165,11 @@ pub fn init(command: InitCommand) -> Result<()> {
 
 fn get_sway_examples() -> Result<Vec<String>> {
     // Query the main repo so that we can search for the "sha" that belongs to "examples"
-    let sway_response: GithubRepoResponse =
-        ureq::get("https://api.github.com/repos/FuelLabs/sway/git/trees/master")
-            .call()?
-            .into_json()?;
+    let sway_response: GithubRepoResponse = ureq::get(
+        format!("https://api.github.com/repos/FuelLabs/sway/git/trees/{SWAY_GIT_TAG}").as_str(),
+    )
+    .call()?
+    .into_json()?;
 
     // Filter out the URL that contains the "sha" for the next request
     let examples_url = sway_response
