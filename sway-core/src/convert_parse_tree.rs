@@ -29,24 +29,30 @@ use {
 };
 
 #[derive(Debug)]
+/// Contains any errors or warnings that were generated during the conversion into the parse tree.
+/// Typically these warnings and errors are populated as a side effect in the `From` and `Into`
+/// implementations of error types into [ErrorEmitted].
 pub struct ErrorContext {
     warnings: Vec<CompileWarning>,
     errors: Vec<CompileError>,
 }
 
+#[derive(Debug)]
+/// Represents that an error was emitted to the error context. This struct does not contain the
+/// error, rather, other errors are responsible for pushing to the [ErrorContext] in their `Into`
+/// implementations.
 pub struct ErrorEmitted {
     _priv: (),
 }
 
 impl ErrorContext {
-    /*
+    #[allow(dead_code)]
     pub fn warning<W>(&mut self, warning: W)
     where
         W: Into<CompileWarning>,
     {
         self.warnings.push(warning.into());
     }
-    */
 
     pub fn error<E>(&mut self, error: E) -> ErrorEmitted
     where
@@ -157,7 +163,7 @@ pub enum ConvertParseTreeError {
     ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
     PathsNotSupportedHere { span: Span },
-    #[error("fully specified types are not supported")]
+    #[error("Fully specified types are not supported in this position. Try importing the type and referring to it here.")]
     FullySpecifiedTypesNotSupported { span: Span },
     #[error("ContractCaller requires exactly one generic argument")]
     ContractCallerOneGenericArg { span: Span },
@@ -926,20 +932,23 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 span,
             }
         }
-        Expr::Struct { path, fields } => Expression::StructExpression {
-            struct_name: path_expr_to_call_path(ec, path)?,
-            fields: {
-                fields
-                    .into_inner()
-                    .into_iter()
-                    .map(|expr_struct_field| {
-                        expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                    })
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+        Expr::Struct { path, fields } => {
+            let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
+            Expression::StructExpression {
+                struct_name,
+                fields: {
+                    fields
+                        .into_inner()
+                        .into_iter()
+                        .map(|expr_struct_field| {
+                            expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+                        })
+                        .collect::<Result<_, _>>()?
+                },
+                type_arguments,
+                span,
+            }
+        }
         Expr::Tuple(parenthesized_expr_tuple_descriptor) => Expression::Tuple {
             fields: expr_tuple_descriptor_to_expressions(
                 ec,
@@ -1660,6 +1669,30 @@ fn path_type_segment_to_ident(
     Ok(name)
 }
 
+/// Similar to [path_type_segment_to_ident], but allows for the item to be either
+/// type arguments _or_ an ident.
+fn path_expr_segment_to_ident_or_type_argument(
+    ec: &mut ErrorContext,
+    path_expr_segment: PathExprSegment,
+) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
+    let PathExprSegment {
+        fully_qualified,
+        name,
+        generics_opt,
+    } = path_expr_segment;
+    if let Some(tilde_token) = fully_qualified {
+        let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
+            span: tilde_token.span(),
+        };
+        return Err(ec.error(error));
+    }
+    let generic_args = generics_opt.map(|(_, y)| y);
+    let type_args = match generic_args {
+        Some(x) => generic_args_to_type_arguments(ec, x)?,
+        None => Default::default(),
+    };
+    Ok((name, type_args))
+}
 fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
@@ -1909,6 +1942,54 @@ fn literal_to_literal(
         }
     };
     Ok(literal)
+}
+
+/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
+/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// turbofish.
+fn path_expr_to_call_path_type_args(
+    ec: &mut ErrorContext,
+    path_expr: PathExpr,
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+    let PathExpr {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_expr;
+    let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+    let (call_path, type_arguments) = match suffix.pop() {
+        Some((_double_colon_token, call_path_suffix)) => {
+            let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
+            for (_double_colon_token, call_path_prefix) in suffix {
+                let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
+                // note that call paths only support one set of type arguments per call path right
+                // now
+                prefixes.push(ident);
+            }
+            let (suffix, ty_args) =
+                path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
+            (
+                CallPath {
+                    prefixes,
+                    suffix,
+                    is_absolute,
+                },
+                ty_args,
+            )
+        }
+        None => {
+            let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
+            (
+                CallPath {
+                    prefixes: Default::default(),
+                    suffix,
+                    is_absolute,
+                },
+                ty_args,
+            )
+        }
+    };
+    Ok((call_path, type_arguments))
 }
 
 fn path_expr_to_call_path(
@@ -2182,16 +2263,18 @@ fn dependency_to_include_statement(dependency: Dependency) -> IncludeStatement {
     }
 }
 
-/*
-fn generic_args_to_type_parameters(generic_args: GenericArgs) -> Vec<TypeParameter> {
+#[allow(dead_code)]
+fn generic_args_to_type_parameters(
+    ec: &mut ErrorContext,
+    generic_args: GenericArgs,
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     generic_args
-    .parameters
-    .into_inner()
-    .into_iter()
-    .map(ty_to_type_parameter)
-    .collect()
+        .parameters
+        .into_inner()
+        .into_iter()
+        .map(|x| ty_to_type_parameter(ec, x))
+        .collect()
 }
-*/
 
 fn asm_register_declaration_to_asm_register_declaration(
     ec: &mut ErrorContext,
@@ -2301,32 +2384,43 @@ fn pattern_to_scrutinee(
     Ok(scrutinee)
 }
 
-/*
-fn ty_to_type_parameter(ty: Ty) -> TypeParameter {
+#[allow(dead_code)]
+fn ty_to_type_parameter(ec: &mut ErrorContext, ty: Ty) -> Result<TypeParameter, ErrorEmitted> {
     let name_ident = match ty {
-        Ty::Path(path_type) => path_type_to_ident(path_type),
+        Ty::Path(path_type) => path_type_to_ident(ec, path_type)?,
+        Ty::Infer { underscore_token } => {
+            return Ok(TypeParameter {
+                type_id: insert_type(TypeInfo::Unknown),
+                name_ident: underscore_token.into(),
+                trait_constraints: Default::default(),
+            })
+        }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
-    TypeParameter {
+    Ok(TypeParameter {
         type_id: insert_type(TypeInfo::Custom {
             name: name_ident.clone(),
             type_arguments: Vec::new(),
         }),
         name_ident,
         trait_constraints: Vec::new(),
-    }
+    })
 }
 
-fn path_type_to_ident(path_type: PathType) -> Ident {
-    let PathType { root_opt, prefix, suffix } = path_type;
+#[allow(dead_code)]
+fn path_type_to_ident(ec: &mut ErrorContext, path_type: PathType) -> Result<Ident, ErrorEmitted> {
+    let PathType {
+        root_opt,
+        prefix,
+        suffix,
+    } = path_type;
     if root_opt.is_some() || !suffix.is_empty() {
         panic!("types with paths aren't currently supported");
     }
-    path_type_segment_to_ident(prefix)
+    path_type_segment_to_ident(ec, prefix)
 }
-*/
 
 fn path_expr_to_ident(ec: &mut ErrorContext, path_expr: PathExpr) -> Result<Ident, ErrorEmitted> {
     let span = path_expr.span();
