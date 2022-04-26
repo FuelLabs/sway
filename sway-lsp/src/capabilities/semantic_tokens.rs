@@ -81,12 +81,14 @@ static TRAIT: u32 = 12;
 
 fn get_type(token_type: &TokenType) -> u32 {
     match token_type {
-        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => FUNCTION,
+        TokenType::FunctionDeclaration(_)
+        | TokenType::FunctionApplication
+        | TokenType::TraitFunction => FUNCTION,
         TokenType::Library => LIBRARY,
-        TokenType::Variable(_) => VARIABLE,
-        TokenType::Enum => ENUM,
-        TokenType::Struct(_) => STRUCT,
-        TokenType::Trait(_) => TRAIT,
+        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => VARIABLE,
+        TokenType::EnumDeclaration(_) => ENUM,
+        TokenType::StructDeclaration(_) | TokenType::StructExpression => STRUCT,
+        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => TRAIT,
         // currently we return `variable` type as default
         _ => VARIABLE,
     }

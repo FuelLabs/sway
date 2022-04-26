@@ -1,22 +1,56 @@
 use crate::utils::function::extract_fn_signature;
-use sway_core::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibility};
+use sway_core::{
+    ConstantDeclaration, EnumDeclaration, StructDeclaration, TraitDeclaration, Visibility,
+};
+use sway_types::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Library,
-    Variable(VariableDetails),
+
+    VariableDeclaration(VariableDetails),
     FunctionDeclaration(FunctionDetails),
-    FunctionApplication,
+    TraitDeclaration(TraitDetails),
+    StructDeclaration(StructDetails),
+    EnumDeclaration(EnumDetails),
     Reassignment,
-    Enum,
-    Trait(TraitDetails),
-    Struct(StructDetails),
+    ImplTrait,
+    ImplSelf, //Unused
+    AbiDeclaration,
+    ConstantDeclaration(ConstDetails),
+    StorageDeclaration, //Unused
+    TraitFunction,
+    EnumVariant,
+
+    Literal, //Unused
+    FunctionApplication,
+    LazyOperator, //Unused
+    VariableExpression,
+    Tuple,      //Unused
+    TupleIndex, //Unused
+    Array,      //Unused
+    StructExpression,
+    IfExp,         //Unused
+    MatchExp,      //Unused
+    AsmExpression, //Unused
+    MethodApplication,
+    SubfieldExpression, //Unused
+    DelineatedPath,
+    AbiCast,
+    ArrayIndex,                 //Unused
+    DelayedMatchTypeResolution, //Unused
+    StorageAccess,              //Unused
+    IfLet,                      //Unused
+    SizeOfVal,                  //Unused
+    BuiltinGetTypeProperty,     //Unused
+
+    Unknown,
 }
 
-pub fn get_function_details(func_dec: &FunctionDeclaration) -> FunctionDetails {
+pub fn get_function_details(span: &Span, visibility: Visibility) -> FunctionDetails {
     FunctionDetails {
-        signature: extract_fn_signature(func_dec),
-        visibility: func_dec.visibility,
+        signature: extract_fn_signature(span),
+        visibility,
     }
 }
 
@@ -31,6 +65,19 @@ pub fn get_trait_details(trait_dec: &TraitDeclaration) -> TraitDetails {
         visibility: trait_dec.visibility,
     }
 }
+
+pub fn get_enum_details(enum_dec: &EnumDeclaration) -> EnumDetails {
+    EnumDetails {
+        visibility: enum_dec.visibility,
+    }
+}
+
+pub fn get_const_details(const_dec: &ConstantDeclaration) -> ConstDetails {
+    ConstDetails {
+        visibility: const_dec.visibility,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionDetails {
     pub signature: String,
@@ -53,6 +100,16 @@ pub struct StructDetails {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitDetails {
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumDetails {
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConstDetails {
     pub visibility: Visibility,
 }
 

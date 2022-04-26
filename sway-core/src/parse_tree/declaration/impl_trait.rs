@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait {
-    pub(crate) trait_name: CallPath,
+    pub trait_name: CallPath,
     pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
     pub(crate) type_arguments: Vec<TypeParameter>,

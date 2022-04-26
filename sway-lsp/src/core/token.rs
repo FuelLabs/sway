@@ -1,9 +1,14 @@
 use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
-    core::token_type::{get_function_details, get_struct_details},
+    core::token_type::{
+        get_const_details, get_enum_details, get_function_details, get_struct_details,
+    },
     utils::common::extract_var_body,
 };
-use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration, WhileLoop};
+use sway_core::{
+    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, VariableDeclaration,
+    WhileLoop,
+};
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
 
@@ -63,7 +68,7 @@ impl Token {
         Token::new(
             ident.span(),
             name.into(),
-            TokenType::Variable(VariableDetails {
+            TokenType::VariableDeclaration(VariableDetails {
                 is_mutable: var_dec.is_mutable,
                 var_body,
             }),
@@ -101,6 +106,22 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
     };
 }
 
+fn handle_function_declation(function_declaration: FunctionDeclaration, tokens: &mut Vec<Token>) {
+    let ident = &function_declaration.name;
+    let token = Token::from_ident(
+        ident,
+        TokenType::FunctionDeclaration(get_function_details(
+            &function_declaration.span,
+            function_declaration.visibility,
+        )),
+    );
+    tokens.push(token);
+
+    for node in function_declaration.body.contents {
+        traverse_node(node, tokens);
+    }
+}
+
 fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
     match declaration {
         Declaration::VariableDeclaration(variable) => {
@@ -108,60 +129,93 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             handle_expression(variable.body, tokens);
         }
         Declaration::FunctionDeclaration(func_dec) => {
-            let ident = &func_dec.name;
+            handle_function_declation(func_dec, tokens);
+        }
+        Declaration::TraitDeclaration(trait_dec) => {
+            let ident = &trait_dec.name;
             let token = Token::from_ident(
                 ident,
-                TokenType::FunctionDeclaration(get_function_details(&func_dec)),
+                TokenType::TraitDeclaration(get_trait_details(&trait_dec)),
             );
             tokens.push(token);
 
-            for node in func_dec.body.contents {
-                traverse_node(node, tokens);
+            for func_dec in trait_dec.methods {
+                handle_function_declation(func_dec, tokens);
+            }
+        }
+        Declaration::StructDeclaration(struct_dec) => {
+            let ident = &struct_dec.name;
+            let token = Token::from_ident(
+                ident,
+                TokenType::StructDeclaration(get_struct_details(&struct_dec)),
+            );
+            tokens.push(token);
+        }
+        Declaration::EnumDeclaration(enum_dec) => {
+            let ident = &enum_dec.name;
+            let token = Token::from_ident(
+                ident,
+                TokenType::EnumDeclaration(get_enum_details(&enum_dec)),
+            );
+            tokens.push(token);
+
+            for variant in enum_dec.variants {
+                let ident = &variant.name;
+                let token = Token::from_ident(ident, TokenType::EnumVariant);
+                tokens.push(token);
             }
         }
         Declaration::Reassignment(reassignment) => {
             let token_type = TokenType::Reassignment;
             let token = Token::from_span(reassignment.lhs_span(), token_type);
             tokens.push(token);
-
             handle_expression(reassignment.rhs, tokens);
         }
-
-        Declaration::TraitDeclaration(trait_dec) => {
-            let ident = &trait_dec.name;
-            let token = Token::from_ident(ident, TokenType::Trait(get_trait_details(&trait_dec)));
+        Declaration::ImplTrait(impl_trait) => {
+            let ident = impl_trait.trait_name.suffix;
+            let token = Token::from_ident(&ident, TokenType::ImplTrait);
             tokens.push(token);
 
-            for func_dec in trait_dec.methods {
-                for node in func_dec.body.contents {
-                    traverse_node(node, tokens);
-                }
+            for func_dec in impl_trait.functions {
+                handle_function_declation(func_dec, tokens);
             }
         }
-        Declaration::StructDeclaration(struct_dec) => {
-            let ident = &struct_dec.name;
-            let token =
-                Token::from_ident(ident, TokenType::Struct(get_struct_details(&struct_dec)));
+        Declaration::ImplSelf(impl_self) => {
+            for func_dec in impl_self.functions {
+                handle_function_declation(func_dec, tokens);
+            }
+        }
+        Declaration::AbiDeclaration(abi_dec) => {
+            let ident = &abi_dec.name;
+            let token = Token::from_ident(ident, TokenType::AbiDeclaration);
+
+            tokens.push(token);
+
+            for func_dec in abi_dec.methods {
+                handle_function_declation(func_dec, tokens);
+            }
+
+            for train_fn in abi_dec.interface_surface {
+                let ident = &train_fn.name;
+                let token = Token::from_ident(ident, TokenType::TraitFunction);
+                tokens.push(token);
+            }
+        }
+        Declaration::ConstantDeclaration(const_dec) => {
+            let ident = &const_dec.name;
+            let token = Token::from_ident(
+                ident,
+                TokenType::ConstantDeclaration(get_const_details(&const_dec)),
+            );
             tokens.push(token);
         }
-        Declaration::EnumDeclaration(enum_dec) => {
-            let ident = enum_dec.name;
-            let token = Token::from_ident(&ident, TokenType::Enum);
-            tokens.push(token);
-        }
-        _ => {}
+        Declaration::StorageDeclaration(_storage_dec) => {}
     };
 }
 
 fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
     match exp {
-        Expression::CodeBlock { span: _, contents } => {
-            let nodes = contents.contents;
-
-            for node in nodes {
-                traverse_node(node, tokens);
-            }
-        }
+        Expression::Literal { .. } => {}
         Expression::FunctionApplication {
             name, arguments, ..
         } => {
@@ -173,9 +227,132 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(exp, tokens);
             }
         }
-        // TODO
-        // handle other expressions
-        _ => {}
+        Expression::LazyOperator { lhs, rhs, .. } => {
+            handle_expression(*lhs, tokens);
+            handle_expression(*rhs, tokens);
+        }
+        Expression::VariableExpression { name, .. } => {
+            let token = Token::from_ident(&name, TokenType::VariableExpression);
+            tokens.push(token);
+        }
+        Expression::Tuple { fields, .. } => {
+            for exp in fields {
+                handle_expression(exp, tokens);
+            }
+        }
+        Expression::TupleIndex { prefix, .. } => {
+            handle_expression(*prefix, tokens);
+        }
+        Expression::Array { contents, .. } => {
+            for exp in contents {
+                handle_expression(exp, tokens);
+            }
+        }
+        Expression::StructExpression { struct_name, .. } => {
+            let ident = struct_name.suffix;
+            let token = Token::from_ident(&ident, TokenType::StructExpression);
+            tokens.push(token);
+
+            //TODO handle struct expression fields?
+        }
+        Expression::CodeBlock { span: _, contents } => {
+            let nodes = contents.contents;
+            for node in nodes {
+                traverse_node(node, tokens);
+            }
+        }
+        Expression::IfExp {
+            condition,
+            then,
+            r#else,
+            ..
+        } => {
+            handle_expression(*condition, tokens);
+            handle_expression(*then, tokens);
+            if let Some(r#else) = r#else {
+                handle_expression(*r#else, tokens);
+            }
+        }
+        Expression::MatchExp { if_exp, .. } => {
+            handle_expression(*if_exp, tokens);
+        }
+        Expression::AsmExpression { .. } => {
+            //TODO handle asm expressions
+        }
+        Expression::MethodApplication {
+            method_name,
+            arguments,
+            ..
+        } => {
+            let ident = method_name.easy_name();
+            let token = Token::from_ident(&ident, TokenType::MethodApplication);
+            tokens.push(token);
+
+            for exp in arguments {
+                handle_expression(exp, tokens);
+            }
+
+            //TODO handle struct expression fields?
+        }
+        Expression::SubfieldExpression { prefix, .. } => {
+            handle_expression(*prefix, tokens);
+            //TODO handle subfield expressions
+        }
+        Expression::DelineatedPath {
+            call_path, args, ..
+        } => {
+            for prefix in call_path.prefixes {
+                //TODO find the correct token type for this!
+                let token = Token::from_ident(&prefix, TokenType::DelineatedPath);
+                tokens.push(token);
+            }
+
+            let ident = call_path.suffix;
+            let token = Token::from_ident(&ident, TokenType::DelineatedPath);
+            tokens.push(token);
+
+            for exp in args {
+                handle_expression(exp, tokens);
+            }
+        }
+        Expression::AbiCast {
+            abi_name, address, ..
+        } => {
+            let ident = abi_name.suffix;
+            let token = Token::from_ident(&ident, TokenType::AbiCast);
+            tokens.push(token);
+
+            handle_expression(*address, tokens);
+        }
+        Expression::ArrayIndex { prefix, index, .. } => {
+            handle_expression(*prefix, tokens);
+            handle_expression(*index, tokens);
+        }
+        Expression::DelayedMatchTypeResolution { .. } => {
+            //Should we handle this since it gets removed during type checking anyway?
+        }
+        Expression::StorageAccess { .. } => {
+            //TODO handle storage access?
+        }
+        Expression::IfLet {
+            expr, then, r#else, ..
+        } => {
+            handle_expression(*expr, tokens);
+
+            if let Some(r#else) = r#else {
+                handle_expression(*r#else, tokens);
+            }
+
+            for node in then.contents {
+                traverse_node(node, tokens);
+            }
+        }
+        Expression::SizeOfVal { exp, .. } => {
+            handle_expression(*exp, tokens);
+        }
+        Expression::BuiltinGetTypeProperty { .. } => {
+            //TODO handle built in get type property?
+        }
     }
 }
 
