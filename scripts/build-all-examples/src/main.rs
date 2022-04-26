@@ -8,11 +8,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+fn get_sway_path() -> PathBuf {
+    let mut curr_path = std::env::current_dir().unwrap();
+    loop {
+        if curr_path.ends_with("sway") {
+            return curr_path;
+        }
+        curr_path = curr_path.parent().unwrap().to_path_buf()
+    }
+}
+
 fn main() {
-    let proj_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let examples_dir = proj_dir
-        .parent()
-        .expect("failed to find examples directory");
+    let examples_dir = get_sway_path().join("examples");
 
     // Track discovered projects and whether or not they were successful.
     let mut summary: Vec<(PathBuf, bool)> = vec![];
@@ -23,6 +30,7 @@ fn main() {
             _ => continue,
         };
         let path = entry.path();
+        println!("PATH: {:?}", path);
         if !path.is_dir() || !dir_contains_forc_manifest(&path) {
             continue;
         }
