@@ -30,7 +30,6 @@ fn main() {
             _ => continue,
         };
         let path = entry.path();
-        println!("PATH: {:?}", path);
         if !path.is_dir() || !dir_contains_forc_manifest(&path) {
             continue;
         }
