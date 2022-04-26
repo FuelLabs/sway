@@ -1,6 +1,10 @@
 use crate::cli::InitCommand;
-use crate::utils::{defaults, SWAY_GIT_TAG};
 use anyhow::{anyhow, Context, Result};
+use crate::utils::{
+    defaults,
+    SWAY_GIT_TAG,
+    program_type::{ProgramType, ProgramType::*},
+};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
@@ -105,6 +109,21 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
+    let program_type = match (
+        command.contract,
+        command.script,
+        command.predicate,
+        command.library,
+    ) {
+        (_, false, false, false) => Contract,
+        (false, true, false, false) => Script,
+        (false, false, true, false) => Predicate,
+        (false, false, false, true) => Library,
+        _ => anyhow::bail!(
+            "Multiple types detected, please specify only one program type: \
+        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+        ),
+    };
 
     match command.template {
         Some(template) => {
@@ -137,7 +156,7 @@ pub fn init(command: InitCommand) -> Result<()> {
                 }
             }
         }
-        None => init_new_project(project_name),
+        None => init_new_project(project_name, program_type),
     }
 }
 
@@ -173,7 +192,7 @@ fn get_sway_examples() -> Result<Vec<String>> {
     Ok(examples)
 }
 
-pub(crate) fn init_new_project(project_name: String) -> Result<()> {
+pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) -> Result<()> {
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
     // Make a new directory for the project
@@ -183,10 +202,16 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
     fs::create_dir_all(Path::new(&project_name).join("tests"))?;
 
     // Insert default manifest file
-    fs::write(
-        Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
-        defaults::default_manifest(&neat_name),
-    )?;
+    match program_type {
+        Library => fs::write(
+            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&neat_name, constants::LIB_ENTRY),
+        )?,
+        _ => fs::write(
+            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&neat_name, constants::MAIN_ENTRY),
+        )?,
+    }
 
     // Insert default test manifest file
     fs::write(
@@ -194,11 +219,33 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         defaults::default_tests_manifest(&neat_name),
     )?;
 
-    // Insert default main function
-    fs::write(
-        Path::new(&project_name).join("src").join("main.sw"),
-        defaults::default_program(),
-    )?;
+    // Insert src based on program_type
+    match program_type {
+        Contract => fs::write(
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
+            defaults::default_contract(),
+        )?,
+        Script => fs::write(
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
+            defaults::default_script(),
+        )?,
+        Library => fs::write(
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::LIB_ENTRY),
+            defaults::default_library(&project_name),
+        )?,
+        Predicate => fs::write(
+            Path::new(&project_name)
+                .join("src")
+                .join(constants::MAIN_ENTRY),
+            defaults::default_predicate(),
+        )?,
+    }
 
     // Insert default test function
     fs::write(
@@ -212,7 +259,9 @@ pub(crate) fn init_new_project(project_name: String) -> Result<()> {
         defaults::default_gitignore(),
     )?;
 
-    println_green(&format!("Successfully created: {}", project_name));
+    println_green(&format!(
+        "Successfully created {program_type}: {project_name}",
+    ));
 
     print_welcome_message();
 
@@ -240,10 +289,10 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
         .iter()
         .any(|response| response.name == "Forc.toml");
     if !valid_sway_project {
-        return Err(anyhow!(
+        anyhow::bail!(
             "The provided github URL: {} does not contain a Forc.toml file at the root",
             example_url
-        ));
+        );
     }
 
     // Download the files and directories from the github example

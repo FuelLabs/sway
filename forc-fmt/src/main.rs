@@ -5,6 +5,7 @@ use clap::Parser;
 use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
+use std::path::PathBuf;
 use std::{fs, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_fmt::{get_formatted_data, FormattingOptions};
@@ -24,11 +25,17 @@ pub struct App {
     /// - Exits with `1` and prints a diff if formatting is required.
     #[clap(short, long)]
     pub check: bool,
+    /// Path to the project, if not specified, current working directory will be used.
+    #[clap(short, long)]
+    pub path: Option<String>,
 }
 
 fn main() -> Result<()> {
     let app = App::parse();
-    let dir = std::env::current_dir()?;
+    let dir = match app.path.clone() {
+        Some(p) => PathBuf::from(p),
+        None => std::env::current_dir()?,
+    };
     format_pkg_at_dir(app, &dir)
 }
 

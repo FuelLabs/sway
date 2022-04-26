@@ -1,12 +1,12 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_manifest(project_name: &str) -> String {
+pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
     let real_name = whoami::realname();
 
     format!(
         r#"[project]
 authors = ["{real_name}"]
-entry = "main.sw"
+entry = "{entry_type}"
 license = "Apache-2.0"
 name = "{project_name}"
 
@@ -47,7 +47,7 @@ path = "tests/harness.rs"
     )
 }
 
-pub(crate) fn default_program() -> String {
+pub(crate) fn default_contract() -> String {
     r#"contract;
 
 abi MyContract {
@@ -58,6 +58,35 @@ impl MyContract for Contract {
     fn test_function() -> bool {
         true
     }
+}
+"#
+    .into()
+}
+
+pub(crate) fn default_script() -> String {
+    r#"script;
+
+fn main() {
+
+}
+"#
+    .into()
+}
+
+pub(crate) fn default_library(project_name: &str) -> String {
+    format!(
+        "library {project_name};
+
+// anything `pub` here will be exported as a part of this library's API
+"
+    )
+}
+
+pub(crate) fn default_predicate() -> String {
+    r#"predicate;
+
+fn main() -> bool {
+    false
 }
 "#
     .into()
@@ -115,9 +144,10 @@ target
 
 #[test]
 fn parse_default_manifest() {
+    use sway_utils::constants::MAIN_ENTRY;
     println!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj")).unwrap()
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
     )
 }
 
