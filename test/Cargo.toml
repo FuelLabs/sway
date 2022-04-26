@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.41"
-forc = { version = "0.10.3", path = "../forc", features = ["test"], default-features = false }
+forc = { version = "0.10.4", path = "../forc", features = ["test"], default-features = false }
 fuel-asm = "0.3"
 fuel-tx = "0.7"
 fuel-vm = { version = "0.6", features = ["random"] }
