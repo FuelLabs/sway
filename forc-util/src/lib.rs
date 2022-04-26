@@ -265,8 +265,10 @@ fn format_err(err: &sway_core::CompileError) {
 
     let (mut start_pos, mut end_pos) = err.span();
     if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
+        // if start/pos are same we will not get that arrow pointing to code, so we add +1 char.
+        if let Some(c) = input[start_pos..].chars().next() {
+            end_pos += c.len_utf8();
+        }
     }
     let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
     let (mut start, end) = err.line_col();
