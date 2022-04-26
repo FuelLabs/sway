@@ -217,7 +217,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, &quot;./out/debug/hello_world-abi.json&quot;);
+abigen!(MyContract, &quot;./out/debug/counter-abi.json&quot;);
 
 #[tokio::test]
 async fn harness() {
@@ -228,7 +228,7 @@ async fn harness() {
     let salt = Salt::from(salt);
 
     // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract(&quot;./out/debug/hello_world.bin&quot;, salt).unwrap();
+    let compiled = Contract::load_sway_contract(&quot;./out/debug/counter.bin&quot;, salt).unwrap();
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let contract_id = Contract::deploy(&amp;compiled, &amp;provider, &amp;wallet, TxParameters::default())
         .await

@@ -391,10 +391,10 @@ fn main() {
 <p>While not directly part of the Sway toolchain, an implementation of the Fuel protocol, <a href="https://github.com/FuelLabs/fuel-core">Fuel Core</a>, is provided. Note that <a href="https://github.com/FuelLabs/fuels-rs">the SDK</a> will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.</p>
 <h1 id="a-forc-project"><a class="header" href="#a-forc-project">A Forc Project</a></h1>
 <p>To initialize a new project with Forc, use <code>forc init</code>:</p>
-<pre><code class="language-sh">forc init hello_world
+<pre><code class="language-sh">forc init my-fuel-project
 </code></pre>
 <p>Here is the project that Forc has initialized:</p>
-<pre><code class="language-console">$ cd hello_world
+<pre><code class="language-console">$ cd my-fuel-project
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
@@ -409,7 +409,7 @@ $ tree .
 authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
 entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
-name = &quot;hello_world&quot;
+name = &quot;counter&quot;
 
 [dependencies]
 std = { path = &quot;../../sway-lib-std&quot; }
@@ -434,7 +434,7 @@ add  $ds $ds $is
 ret  $zero                    ; main fn returns unit value
 .data:
 
-Compiled script &quot;hello_world&quot;.
+Compiled script &quot;my-fuel-project&quot;.
 Bytecode size is 28 bytes.
 </code></pre>
 <p>To run this script, use <code>forc run</code> (note that <code>fuel-core</code> must be running for this to work):</p>
@@ -1975,7 +1975,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, &quot;./out/debug/hello_world-abi.json&quot;);
+abigen!(MyContract, &quot;./out/debug/counter-abi.json&quot;);
 
 #[tokio::test]
 async fn harness() {
@@ -1986,7 +1986,7 @@ async fn harness() {
     let salt = Salt::from(salt);
 
     // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract(&quot;./out/debug/hello_world.bin&quot;, salt).unwrap();
+    let compiled = Contract::load_sway_contract(&quot;./out/debug/counter.bin&quot;, salt).unwrap();
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let contract_id = Contract::deploy(&amp;compiled, &amp;provider, &amp;wallet, TxParameters::default())
         .await
