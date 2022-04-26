@@ -297,6 +297,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
         ),
+        (
+            "should_pass/language/primitive_type_argument",
+            ProgramState::Return(5),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -411,6 +415,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/generics_unhelpful_error",
         "should_fail/generic_shadows_generic",
         "should_fail/different_contract_caller_types",
+        "should_fail/primitive_type_argument",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

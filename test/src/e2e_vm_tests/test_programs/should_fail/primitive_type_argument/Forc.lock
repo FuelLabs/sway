@@ -3,9 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'hello_world'
-dependencies = ['std']
-
-[[package]]
 name = 'std'
 dependencies = ['core']
+
+[[package]]
+name = 'unused_generic'
+dependencies = ['std']
