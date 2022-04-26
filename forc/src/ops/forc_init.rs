@@ -113,23 +113,27 @@ pub fn init(command: InitCommand) -> Result<()> {
 
             let template_url = Url::parse(&example_url)?;
 
-            // Latest update to be changed into the match below
-            // init_from_git_template(project_name, &template_url).map_err(|e| anyhow!("Failed to initialize project from a template with the given name \"{template}\": {e}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n"))?;
-            // Ok(())
-
             // If the user queried an existing example then continue otherwise attempt to fetch the examples and append them
             // to the end of the error message so that the user can see the existing examples to choose from
             match init_from_git_template(project_name, &template_url) {
                 Ok(()) => Ok(()),
                 Err(error) => {
-                    // TODO: change this to use anyhow!(), possibly without a match?
                     let mut error_message = format!("Failed to initialize project from a template with the given name \"{template}\": {error}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n");
-                    let examples = get_sway_examples()?;
+
+                    let examples = match get_sway_examples() {
+                        Ok(examples) => examples,
+                        Err(err) => anyhow::bail!(
+                            "{}\nFailed to fetch available examples: {}",
+                            error_message,
+                            err
+                        ),
+                    };
+
                     for example in examples {
                         error_message.push_str(format!("\t- {}\n", example).as_str());
                     }
-                    println!("{}", error_message);
-                    Ok(())
+
+                    anyhow::bail!("{}", error_message)
                 }
             }
         }
