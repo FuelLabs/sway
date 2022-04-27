@@ -229,7 +229,10 @@ name = &quot;wallet_contract&quot;
 <pre><code class="language-toml">wallet_lib = { path = &quot;../wallet_lib&quot; }
 </code></pre>
 <p>Now, open up <code>main.sw</code> in <code>wallet_contract/src</code> and copy and paste the following code:</p>
-<pre><code class="language-sway">impl Wallet for Contract {
+<pre><code class="language-sway">contract;
+use wallet_lib::Wallet;
+
+impl Wallet for Contract {
     fn receive_funds() {
     }
 
