@@ -1,3 +1,3 @@
 library vm;
 
-dep evm/lib;
+dep evm/mod;
