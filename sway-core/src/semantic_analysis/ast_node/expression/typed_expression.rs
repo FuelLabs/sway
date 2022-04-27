@@ -43,6 +43,8 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
+    /// If this expression deterministically_aborts 100% of the time, this function returns
+    /// `true`. Used in dead-code and control-flow analysis.
     pub(crate) fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
         match &self.expression {
