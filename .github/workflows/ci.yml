@@ -464,6 +464,7 @@ jobs:
   build-publish-master-image:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
