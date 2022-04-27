@@ -127,7 +127,7 @@ jobs:
       - name: Build test project
         run: forc build --path test-proj
       - name: Run test project's test suite
-        run: forc test --path test-proj
+        run: cd test-proj && forc test
 
   cargo-build-workspace:
     needs: cancel-previous-runs
