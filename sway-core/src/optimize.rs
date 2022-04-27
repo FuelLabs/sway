@@ -342,6 +342,9 @@ fn compile_fn_with_args(
         || compiler.current_block == compiler.function.get_entry_block(context)
         || compiler.current_block.num_predecessors(context) > 0
     {
+        if ret_type.eq(context, &Type::Unit) {
+            ret_val = Constant::get_unit(context, None);
+        }
         compiler
             .current_block
             .ins(context)
