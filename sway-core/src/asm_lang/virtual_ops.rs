@@ -476,7 +476,7 @@ impl VirtualOp {
                         .chain(next_op.into_iter())
                         .collect()
                 }
-            },
+            }
             JNZI(_, i) => {
                 // Two possible successors: the next instruction as well as the instruction
                 // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
@@ -659,10 +659,7 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
-            JNZI(r1, i) => Self::JNZI(
-                update_reg(reg_to_reg_map, r1),
-                i.clone(),
-            ),
+            JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
             RETD(r1, r2) => Self::RETD(
                 update_reg(reg_to_reg_map, r1),
@@ -1069,10 +1066,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            JNZI(reg1, imm) => AllocatedOpcode::JNZI(
-                map_reg(&mapping, reg1),
-                imm.clone(),
-            ),
+            JNZI(reg1, imm) => AllocatedOpcode::JNZI(map_reg(&mapping, reg1), imm.clone()),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
             RETD(reg1, reg2) => {
                 AllocatedOpcode::RETD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
