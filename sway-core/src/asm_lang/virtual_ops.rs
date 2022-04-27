@@ -57,6 +57,7 @@ pub(crate) enum VirtualOp {
     CTMV(VirtualRegister, VirtualRegister),
     JI(VirtualImmediate24),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    JNZI(VirtualRegister, VirtualImmediate18),
     RET(VirtualRegister),
     RETD(VirtualRegister, VirtualRegister),
     CFEI(VirtualImmediate24),
@@ -184,6 +185,7 @@ impl VirtualOp {
             CTMV(r1, r2) => vec![r1, r2],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
+            JNZI(r1, _i) => vec![r1],
             RET(r1) => vec![r1],
             RETD(r1, r2) => vec![r1, r2],
             CFEI(_imm) => vec![],
@@ -280,6 +282,7 @@ impl VirtualOp {
             CTMV(_r1, r2) => vec![r2],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
+            JNZI(r1, _i) => vec![r1],
             RET(r1) => vec![r1],
             RETD(r1, r2) => vec![r1, r2],
             CFEI(_imm) => vec![],
@@ -376,6 +379,7 @@ impl VirtualOp {
             CTMV(r1, _r2) => vec![r1],
             JI(_im) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
+            JNZI(_r1, _i) => vec![],
             RET(_r1) => vec![],
             RETD(_r1, _r2) => vec![],
             CFEI(_imm) => vec![],
@@ -461,6 +465,19 @@ impl VirtualOp {
                 }
             }
             JNEI(_, _, i) => {
+                // Two possible successors: the next instruction as well as the instruction
+                // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
+                // `ops` that corresponds to the offset specified.
+                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
+                    vec![].into_iter().chain(next_op.into_iter()).collect()
+                } else {
+                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
+                        .into_iter()
+                        .chain(next_op.into_iter())
+                        .collect()
+                }
+            },
+            JNZI(_, i) => {
                 // Two possible successors: the next instruction as well as the instruction
                 // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
                 // `ops` that corresponds to the offset specified.
@@ -640,6 +657,10 @@ impl VirtualOp {
             JNEI(r1, r2, i) => Self::JNEI(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            JNZI(r1, i) => Self::JNZI(
+                update_reg(reg_to_reg_map, r1),
                 i.clone(),
             ),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
@@ -848,6 +869,17 @@ impl VirtualOp {
                 )
                 .unwrap(),
             ),
+            JNZI(r1, i) => Self::JNZI(
+                r1.clone(),
+                VirtualImmediate18::new(
+                    *offset_map
+                        .get(&(i.value as u64))
+                        .expect("new offset should be valid") as u64,
+                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
+                )
+                .unwrap(),
+            ),
+
             _ => self.clone(),
         }
     }
@@ -1035,6 +1067,10 @@ impl VirtualOp {
             JNEI(reg1, reg2, imm) => AllocatedOpcode::JNEI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
+            JNZI(reg1, imm) => AllocatedOpcode::JNZI(
+                map_reg(&mapping, reg1),
                 imm.clone(),
             ),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
