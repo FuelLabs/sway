@@ -2,8 +2,9 @@ use crate::cli::InitCommand;
 use crate::utils::{
     defaults,
     program_type::{ProgramType, ProgramType::*},
+    SWAY_GIT_TAG,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
@@ -55,6 +56,29 @@ struct ContentResponse {
     url: String,
 }
 
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct GithubRepoResponse {
+    sha: String,
+    url: String,
+    // We only care about the tree here
+    tree: Vec<GithubTree>,
+    truncated: bool,
+}
+
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct GithubTree {
+    mode: String,
+    // We only care about the "path" which are files / directory names
+    path: String,
+    sha: String,
+    size: Option<usize>,
+    #[serde(rename = "type")]
+    data_type: String,
+    url: String,
+}
+
 fn print_welcome_message() {
     let read_the_docs = format!(
         "Read the Docs:\n- {}\n- {}\n- {}",
@@ -85,36 +109,91 @@ fn print_welcome_message() {
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;
-    let program_type = match (
-        command.contract,
-        command.script,
-        command.predicate,
-        command.library,
-    ) {
-        (_, false, false, false) => Contract,
-        (false, true, false, false) => Script,
-        (false, false, true, false) => Predicate,
-        (false, false, false, true) => Library,
-        _ => anyhow::bail!(
-            "Multiple types detected, please specify only one program type: \
-        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
-        ),
-    };
 
     match command.template {
         Some(template) => {
-            let template_url = match template.as_str() {
-                "counter" => {
-                    Url::parse("https://github.com/FuelLabs/sway/tree/master/examples/counter")?
+            let example_url =
+                format!("https://github.com/FuelLabs/sway/tree/{SWAY_GIT_TAG}/examples/{template}");
+
+            let template_url = Url::parse(&example_url)?;
+
+            // If the user queried an existing example then continue otherwise attempt to fetch the examples and append them
+            // to the end of the error message so that the user can see the existing examples to choose from
+            match init_from_git_template(project_name, &template_url) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    let mut error_message = format!("Failed to initialize project from a template with the given name \"{template}\": {error}.\n  Note: If you are attempting to initialize this project from a Sway example, please ensure the template name matches one of the available examples.\n");
+
+                    let examples = match get_sway_examples() {
+                        Ok(examples) => examples,
+                        Err(err) => anyhow::bail!(
+                            "{}\nFailed to fetch available examples: {}",
+                            error_message,
+                            err
+                        ),
+                    };
+
+                    for example in examples {
+                        error_message.push_str(format!("\t- {}\n", example).as_str());
+                    }
+
+                    anyhow::bail!("{}", error_message)
                 }
-                _ => {
-                    bail!("Unrecognized template: \n Example Templates:\n - counter");
-                }
-            };
-            init_from_git_template(project_name, &template_url)
+            }
         }
-        None => init_new_project(project_name, program_type),
+        None => {
+            let program_type = match (
+                command.contract,
+                command.script,
+                command.predicate,
+                command.library,
+            ) {
+                (_, false, false, false) => Contract,
+                (false, true, false, false) => Script,
+                (false, false, true, false) => Predicate,
+                (false, false, false, true) => Library,
+                _ => anyhow::bail!(
+                    "Multiple types detected, please specify only one program type: \
+                \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+                ),
+            };
+
+            init_new_project(project_name, program_type)
+        }
     }
+}
+
+fn get_sway_examples() -> Result<Vec<String>> {
+    // Query the main repo so that we can search for the "sha" that belongs to "examples"
+    let sway_response: GithubRepoResponse = ureq::get(
+        format!("https://api.github.com/repos/FuelLabs/sway/git/trees/{SWAY_GIT_TAG}").as_str(),
+    )
+    .call()?
+    .into_json()?;
+
+    // Filter out the URL that contains the "sha" for the next request
+    let examples_url = sway_response
+        .tree
+        .iter()
+        .filter(|tree| tree.path == "examples")
+        .map(|tree| tree.url.clone())
+        .collect::<String>();
+
+    // We want to store repo names of the "examples" that we have found
+    let mut examples: Vec<String> = vec![];
+
+    if !examples_url.is_empty() {
+        let examples_response: GithubRepoResponse = ureq::get(&examples_url).call()?.into_json()?;
+
+        // Filter out the repo names under "sway/examples"
+        examples = examples_response
+            .tree
+            .iter()
+            .map(|tree| tree.path.clone())
+            .collect();
+    };
+
+    Ok(examples)
 }
 
 pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) -> Result<()> {
@@ -214,7 +293,7 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
         .iter()
         .any(|response| response.name == "Forc.toml");
     if !valid_sway_project {
-        bail!(
+        anyhow::bail!(
             "The provided github URL: {} does not contain a Forc.toml file at the root",
             example_url
         );
