@@ -13,7 +13,8 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
         virtual_register::*,
-        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     error::*,
     parse_tree::Literal,
@@ -365,7 +366,8 @@ impl RegisterPool {
 fn label_is_used(buf: &[Op], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
-        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotEq(_, _, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotZero(_, ref l)) if label == l => true,
         _ => false,
     })
 }

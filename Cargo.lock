@@ -3303,10 +3303,10 @@ dependencies = [
 name = "sway-types"
 version = "0.11.0"
 dependencies = [
- "fuel-asm 0.3.0",
+ "fuel-asm 0.4.0",
  "fuel-crypto 0.4.2",
  "fuel-pest",
- "fuel-tx 0.7.0",
+ "fuel-tx 0.9.0",
  "lazy_static",
  "serde",
 ]
