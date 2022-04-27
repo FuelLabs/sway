@@ -53,22 +53,17 @@ pub type InterferenceGraph =
 pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<VirtualRegister>> {
     // Hash maps that will reprsent the live_in and live_out tables. The key of each hash map is
     // simply the index of each instruction in the `ops` vector.
-    let mut live_in: HashMap<usize, BTreeSet<VirtualRegister>> = HashMap::new();
-    let mut live_out: HashMap<usize, BTreeSet<VirtualRegister>> = HashMap::new();
-    for i in 0..ops.len() {
-        live_in.insert(i, BTreeSet::new());
-        live_out.insert(i, BTreeSet::new());
-    }
+    let mut live_in: HashMap<usize, BTreeSet<VirtualRegister>> =
+        HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
+    let mut live_out: HashMap<usize, BTreeSet<VirtualRegister>> =
+        HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
 
     // Simple mapping between the actual offset of an instruction and its index in the `ops`
     // vector.
-    let mut offset_to_ix: HashMap<u64, usize> = HashMap::new();
-    for (ix, op) in ops.iter().enumerate() {
-        offset_to_ix.insert(op.offset, ix);
-    }
+    let offset_to_ix = HashMap::from_iter(ops.iter().enumerate().map(|(idx, op)| (op.offset, idx)));
 
-    let mut modified: bool;
-    while {
+    let mut modified = false;
+    while !modified {
         modified = false;
         // Iterate in reverse topological order of the CFG (which is basically the same as the
         // reverse order of `ops`. This makes the outer `while` loop converge faster.
@@ -112,8 +107,7 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
             // Did anything change in this iteration?
             modified |= (prev_live_in_op != *live_in_op) || (prev_live_out_op != *live_out_op);
         }
-        modified
-    } {}
+    }
 
     live_out
 }
