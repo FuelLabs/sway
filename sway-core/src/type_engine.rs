@@ -1,16 +1,16 @@
 use crate::error::*;
-
-use sway_types::span::Span;
-
 use std::iter::FromIterator;
+use sway_types::span::Span;
 
 mod engine;
 mod integer_bits;
 mod type_info;
+mod unresolved_type_check;
 pub use engine::*;
 pub use integer_bits::*;
 use sway_types::Property;
 pub use type_info::*;
+pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
 
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;

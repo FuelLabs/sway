@@ -465,6 +465,24 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    // the IR pipeline relies on type information being fully resolved.
+    // If type information is found to still be generic or unresolved inside of
+    // IR, this is considered an internal compiler error. To resolve this situation,
+    // we need to explicitly ensure all types are resolved before going into IR.
+    //
+    // We _could_ introduce a new type here that uses TypeInfo instead of TypeId and throw away
+    // the engine, since we don't need inference for IR. That'd be a _lot_ of copy-pasted code,
+    // though, so instead, we are just going to do a pass and throw any unresolved generics as
+    // errors and then hold as a runtime invariant that none of the types will be unresolved in the
+    // IR phase.
+
+    check!(
+        ast.finalize_types(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     let mut ir = match optimize::compile_ast(ast) {
         Ok(ir) => ir,
         Err(e) => {

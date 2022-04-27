@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'sdk-harness'
+name = 'insufficient_type_info'
 dependencies = ['std']
 
 [[package]]

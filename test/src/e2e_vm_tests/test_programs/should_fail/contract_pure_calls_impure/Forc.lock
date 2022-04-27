@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'valid_impurity'
-dependencies = ['core']
+dependencies = []

@@ -86,6 +86,41 @@ impl TypedParseTree {
         }
     }
 
+    /// Ensures there are no unresolved types or types awaiting resolution in the AST.
+    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+        use TypedParseTree::*;
+        // Get all of the entry points for this tree type. For libraries, that's everything
+        // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
+        let errors: Vec<_> = match self {
+            Library { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_public())
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Script { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_main_function(TreeType::Script))
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Predicate { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_main_function(TreeType::Predicate))
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Contract { abi_entries, .. } => abi_entries
+                .iter()
+                .map(TypedAstNode::from)
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+        };
+
+        if errors.is_empty() {
+            ok((), vec![], errors)
+        } else {
+            err(vec![], errors)
+        }
+    }
+
     pub(crate) fn type_check(
         parsed: ParseTree,
         new_namespace: NamespaceRef,
