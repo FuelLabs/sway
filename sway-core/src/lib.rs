@@ -496,7 +496,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // a selector.
     let mut functions_to_inline_to = Vec::new();
     for (idx, fc) in &ir.functions {
-        if (matches!(tree_type, TreeType::Script | TreeType::Predicate) && fc.name == "main")
+        if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
             || (tree_type == TreeType::Contract && fc.selector.is_some())
         {
             functions_to_inline_to.push(::sway_ir::function::Function(idx));
