@@ -350,7 +350,7 @@ pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
 
-pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
+pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
 }
 

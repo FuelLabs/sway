@@ -1,13 +1,18 @@
+use std::any::Any;
+
 use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
     core::token_type::{
         get_const_details, get_enum_details, get_function_details, get_struct_details,
+        get_struct_field_details,
     },
     utils::common::extract_var_body,
 };
+use sway_core::parse_tree::MethodName;
+use sway_core::type_engine::TypeInfo;
 use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, VariableDeclaration,
-    WhileLoop,
+    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
+    VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
@@ -106,6 +111,25 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
     };
 }
 
+fn handle_custom_type_as_struct(type_info: &TypeInfo, tokens: &mut Vec<Token>) {
+    //TODO perhaps better logic to ensure that TypeInfo::Custom is infact referencing a Struct
+    if let TypeInfo::Custom { name, .. } = type_info {
+        let token = Token::from_ident(name, TokenType::Struct);
+        tokens.push(token);
+    }
+}
+
+fn handle_function_parameter(parameter: &FunctionParameter, tokens: &mut Vec<Token>) {
+    let ident = &parameter.name;
+    let name = ident.as_str();
+
+    tokens.push(Token::new(
+        ident.span(),
+        name.into(),
+        TokenType::FunctionParameter,
+    ));
+}
+
 fn handle_function_declation(function_declaration: FunctionDeclaration, tokens: &mut Vec<Token>) {
     let ident = &function_declaration.name;
     let token = Token::from_ident(
@@ -116,6 +140,12 @@ fn handle_function_declation(function_declaration: FunctionDeclaration, tokens: 
         )),
     );
     tokens.push(token);
+
+    for param in function_declaration.parameters {
+        handle_function_parameter(&param, tokens);
+    }
+
+    handle_custom_type_as_struct(&function_declaration.return_type, tokens);
 
     for node in function_declaration.body.contents {
         traverse_node(node, tokens);
@@ -150,6 +180,14 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
                 TokenType::StructDeclaration(get_struct_details(&struct_dec)),
             );
             tokens.push(token);
+
+            for field in struct_dec.fields {
+                let token = Token::from_ident(
+                    &field.name,
+                    TokenType::StructField(get_struct_field_details(ident)),
+                );
+                tokens.push(token);
+            }
         }
         Declaration::EnumDeclaration(enum_dec) => {
             let ident = &enum_dec.name;
@@ -181,6 +219,8 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             }
         }
         Declaration::ImplSelf(impl_self) => {
+            handle_custom_type_as_struct(&impl_self.type_implementing_for, tokens);
+
             for func_dec in impl_self.functions {
                 handle_function_declation(func_dec, tokens);
             }
@@ -199,6 +239,10 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
                 let ident = &train_fn.name;
                 let token = Token::from_ident(ident, TokenType::TraitFunction);
                 tokens.push(token);
+
+                for param in train_fn.parameters {
+                    handle_function_parameter(&param, tokens);
+                }
             }
         }
         Declaration::ConstantDeclaration(const_dec) => {
@@ -248,12 +292,23 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(exp, tokens);
             }
         }
-        Expression::StructExpression { struct_name, .. } => {
+        Expression::StructExpression {
+            struct_name,
+            fields,
+            ..
+        } => {
             let ident = struct_name.suffix;
-            let token = Token::from_ident(&ident, TokenType::StructExpression);
+            let token = Token::from_ident(&ident, TokenType::Struct);
             tokens.push(token);
 
-            //TODO handle struct expression fields?
+            for field in fields {
+                let token = Token::from_ident(
+                    &field.name,
+                    TokenType::StructExpressionField(get_struct_field_details(&ident)),
+                );
+                tokens.push(token);
+                handle_expression(field.value, tokens);
+            }
         }
         Expression::CodeBlock { span: _, contents } => {
             let nodes = contents.contents;
@@ -282,6 +337,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::MethodApplication {
             method_name,
             arguments,
+            contract_call_params,
             ..
         } => {
             let ident = method_name.easy_name();
@@ -292,7 +348,21 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(exp, tokens);
             }
 
-            //TODO handle struct expression fields?
+            //TODO handle methods from imported modules
+            if let MethodName::FromType { type_name, .. } = &method_name {
+                if let Some(type_name) = type_name {
+                    handle_custom_type_as_struct(type_name, tokens);
+                }
+            }
+
+            for field in contract_call_params {
+                let token = Token::from_ident(
+                    &field.name,
+                    TokenType::StructExpressionField(get_struct_field_details(&ident)),
+                );
+                tokens.push(token);
+                handle_expression(field.value, tokens);
+            }
         }
         Expression::SubfieldExpression { prefix, .. } => {
             handle_expression(*prefix, tokens);

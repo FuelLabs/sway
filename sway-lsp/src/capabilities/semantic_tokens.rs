@@ -74,6 +74,7 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
 // these values should reflect indexes in `token_types`
 static FUNCTION: u32 = 1;
 static LIBRARY: u32 = 3;
+static PARAMETER: u32 = 5;
 static VARIABLE: u32 = 9;
 static ENUM: u32 = 10;
 static STRUCT: u32 = 11;
@@ -85,9 +86,10 @@ fn get_type(token_type: &TokenType) -> u32 {
         | TokenType::FunctionApplication
         | TokenType::TraitFunction => FUNCTION,
         TokenType::Library => LIBRARY,
+        TokenType::FunctionParameter => PARAMETER,
         TokenType::VariableDeclaration(_) | TokenType::VariableExpression => VARIABLE,
         TokenType::EnumDeclaration(_) => ENUM,
-        TokenType::StructDeclaration(_) | TokenType::StructExpression => STRUCT,
+        TokenType::StructDeclaration(_) | TokenType::Struct => STRUCT,
         TokenType::TraitDeclaration(_) | TokenType::ImplTrait => TRAIT,
         // currently we return `variable` type as default
         _ => VARIABLE,

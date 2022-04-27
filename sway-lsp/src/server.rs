@@ -247,6 +247,32 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
+    #[tokio::test]
+    async fn open_example() {
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        messages.next().await.unwrap();
+
+        let sway_program = include_str!("../../examples/native_token/src/main.sw");
+        let uri = load_test_sway_file(SWAY_PROGRAM);
+
+        // send "textDocument/didOpen" notification for `uri`
+        did_open_notification(&mut service, &uri, sway_program).await;
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
+    }
+
     // Simple sway script used for testing LSP capabilites
     const SWAY_PROGRAM: &str = r#"script;
 

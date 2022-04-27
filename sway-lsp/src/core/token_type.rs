@@ -2,7 +2,7 @@ use crate::utils::function::extract_fn_signature;
 use sway_core::{
     ConstantDeclaration, EnumDeclaration, StructDeclaration, TraitDeclaration, Visibility,
 };
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -15,35 +15,37 @@ pub enum TokenType {
     EnumDeclaration(EnumDetails),
     Reassignment,
     ImplTrait,
-    ImplSelf, //Unused
+    //ImplSelf, //Unused
     AbiDeclaration,
     ConstantDeclaration(ConstDetails),
-    StorageDeclaration, //Unused
+    //StorageDeclaration, //Unused
     TraitFunction,
     EnumVariant,
 
-    Literal, //Unused
+    //Literal, //Unused
     FunctionApplication,
-    LazyOperator, //Unused
+    //LazyOperator, //Unused
     VariableExpression,
-    Tuple,      //Unused
-    TupleIndex, //Unused
-    Array,      //Unused
-    StructExpression,
-    IfExp,         //Unused
-    MatchExp,      //Unused
-    AsmExpression, //Unused
+    //Tuple,      //Unused
+    //TupleIndex, //Unused
+    //Array,      //Unused
+    Struct,
+    //IfExp,         //Unused
+    //MatchExp,      //Unused
+    //AsmExpression, //Unused
     MethodApplication,
-    SubfieldExpression, //Unused
+    //SubfieldExpression, //Unused
     DelineatedPath,
     AbiCast,
-    ArrayIndex,                 //Unused
-    DelayedMatchTypeResolution, //Unused
-    StorageAccess,              //Unused
-    IfLet,                      //Unused
-    SizeOfVal,                  //Unused
-    BuiltinGetTypeProperty,     //Unused
-
+    //ArrayIndex,                 //Unused
+    //DelayedMatchTypeResolution, //Unused
+    //StorageAccess,              //Unused
+    //IfLet,                      //Unused
+    //SizeOfVal,                  //Unused
+    //BuiltinGetTypeProperty,     //Unused
+    StructField(StructFieldDetails),
+    StructExpressionField(StructFieldDetails),
+    FunctionParameter,
     Unknown,
 }
 
@@ -57,6 +59,12 @@ pub fn get_function_details(span: &Span, visibility: Visibility) -> FunctionDeta
 pub fn get_struct_details(struct_dec: &StructDeclaration) -> StructDetails {
     StructDetails {
         visibility: struct_dec.visibility,
+    }
+}
+
+pub fn get_struct_field_details(ident: &Ident) -> StructFieldDetails {
+    StructFieldDetails {
+        parent_ident: ident.clone(),
     }
 }
 
@@ -117,6 +125,12 @@ pub struct ConstDetails {
 pub struct VariableDetails {
     pub is_mutable: bool,
     pub var_body: VarBody,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructFieldDetails {
+    // Used for looking up the parent struct that the field is a part of
+    pub parent_ident: Ident,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

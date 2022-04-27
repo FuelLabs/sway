@@ -43,9 +43,7 @@ fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
         TokenType::TraitDeclaration(_) | TokenType::ImplTrait => {
             Some(CompletionItemKind::INTERFACE)
         }
-        TokenType::StructDeclaration(_) | TokenType::StructExpression => {
-            Some(CompletionItemKind::STRUCT)
-        }
+        TokenType::StructDeclaration(_) | TokenType::Struct => Some(CompletionItemKind::STRUCT),
         TokenType::EnumDeclaration(_) | TokenType::EnumVariant => Some(CompletionItemKind::ENUM),
         TokenType::ConstantDeclaration(_) => Some(CompletionItemKind::CONSTANT),
         TokenType::Library => Some(CompletionItemKind::MODULE),
