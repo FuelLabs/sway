@@ -4,3 +4,7 @@ description = "Runs `forc build` for all projects under the Sway `examples` dire
 version = "0.0.0"
 edition = "2021"
 publish = false
+
+[dependencies]
+anyhow = "1.0.41"
+clap = { version = "3.1", features = ["env", "derive"] }
