@@ -3382,20 +3382,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-sig-gen-util-keccak"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "fuel-crypto 0.4.2",
- "fuel-tx",
- "fuel-types",
- "fuel-vm",
- "hex",
- "secp256k1",
- "sha3 0.10.1",
-]
-
-[[package]]
 name = "text-size"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

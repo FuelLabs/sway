@@ -1,6 +1,6 @@
 script;
 
-use std::address::Address;
+use std::vm::evm::eth_address::EthAddress;
 use std::assert::assert;
 use std::b512::B512;
 use std::ecr::EcRecoverError;
@@ -19,11 +19,9 @@ fn main() -> bool {
     Signature: 82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166c07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4
    */
 
-    // Get the expected ethereum pubkeyhash
+    // Get the expected ethereum pubkeyhash and address
     let pubkey: B512 = ~B512::from(0x1d152307c6b72b0ed0418b0e70cd80e7f5295b8d86f5722d3f5213fbd2394f36, 0xb7ce9c3e45905178455900b44abb308f3ef480481a4b2ee3f70aca157fde396a);
-    let ethereum_pubkeyhash: Address = ~Address::from(0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1);
-    // Manually zero the first 12 bytes.
-    let ethereum_address: Address = ~Address::from(0x000000000000000000000000a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1);
+    let ethereum_address: EthAddress = ~EthAddress::from(0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1);
 
     let msg_hash = 0x8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e;
 
@@ -33,7 +31,7 @@ fn main() -> bool {
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // recover the address:
-    let result: Result<Address, EcRecoverError> = ec_recover_address(signature, msg_hash);
+    let result: Result<EthAddress, EcRecoverError> = ec_recover_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
     recovered_address == ethereum_address
