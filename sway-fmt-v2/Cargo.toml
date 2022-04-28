@@ -1,0 +1,15 @@
+[package]
+name = "sway-fmt-v2"
+version = "0.11.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Sway sway-fmt."
+
+[dependencies]
+ropey = "1.2"
+sway-parse = { version = "0.11.0", path = "../sway-parse" }
+sway-types = { version = "0.11.0", path = "../sway-types" }
+thiserror = "1.0.30"

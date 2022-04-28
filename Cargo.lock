@@ -3218,6 +3218,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-fmt-v2"
+version = "0.11.0"
+dependencies = [
+ "ropey",
+ "sway-parse",
+ "sway-types",
+ "thiserror",
+]
+
+[[package]]
 name = "sway-ir"
 version = "0.11.0"
 dependencies = [
