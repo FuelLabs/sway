@@ -12,7 +12,7 @@ forc run [OPTIONS] [NODE_URL]
 URL of the Fuel Client Node
 
 [env: FUEL_NODE_URL=]
-[default: http://127.0.0.1:4000]
+[default: 127.0.0.1:4000]
 
 
 ## OPTIONS:
