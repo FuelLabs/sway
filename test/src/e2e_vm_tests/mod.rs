@@ -455,6 +455,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/double_underscore_var",
         "should_fail/double_underscore_struct",
         "should_fail/double_underscore_enum",
+        "should_fail/assign_to_field_of_non_mutable_struct",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
