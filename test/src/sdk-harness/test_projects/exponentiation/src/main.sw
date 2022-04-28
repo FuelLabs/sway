@@ -17,9 +17,9 @@ fn main() -> bool {
     assert(100.pow(8) == 10000000000000000);
     assert(100.pow(9) == 1000000000000000000);
     assert(100.pow(10) == max_u64); // 100000000000000000000 int literal out of range, `$of` should be set to `1`
-    assert(2.pow(0) == 0); // ?
-    assert(0.pow(1) == 0); // ?
-    assert(0.pow(2) == 0); // ?
+    assert(2.pow(0) == 1);
+    assert(0.pow(1) == 0);
+    assert(0.pow(2) == 0);
 
     // u32
     assert(2u32.pow(2u32) == 4u32);
@@ -27,9 +27,9 @@ fn main() -> bool {
     assert(42u32.pow(2u32) == 1764u32);
     assert(100u32.pow(4u32) == 100000000u32);
     assert(100u32.pow(5u32) == max_u32); // 10000000000 int literal out of range, `$of` should be set to `1`
-    assert(2u32.pow(0u32) == 0u32); // ?
-    assert(0u32.pow(1u32) == 0u32); // ?
-    assert(0u32.pow(2u32) == 0u32); // ?
+    assert(2u32.pow(0u32) == 1u32);
+    assert(0u32.pow(1u32) == 0u32);
+    assert(0u32.pow(2u32) == 0u32);
 
     // u16
     assert(2u16.pow(2u16) == 4u16);
@@ -38,9 +38,9 @@ fn main() -> bool {
     assert(20u16.pow(3u16) == 8000u16);
     assert(15u16.pow(4u16) == 50625u16);
     assert(42u16.pow(3u16) == max_u16); // 74088 int literal out of range, `$of` should be set to `1`
-    assert(2u16.pow(0u16) == 0u16); // ?
-    assert(0u16.pow(1u16) == 0u16); // ?
-    assert(0u16.pow(2u16) == 0u16); // ?
+    assert(2u16.pow(0u16) == 1u16);
+    assert(0u16.pow(1u16) == 0u16);
+    assert(0u16.pow(2u16) == 0u16);
 
     // u8
     assert(2u8.pow(2u8) == 4u8);
@@ -53,9 +53,9 @@ fn main() -> bool {
     assert(4u8.pow(4u8) == max_u8);  // int literal out of range, `$of` should be set to `1`
     assert(5u8.pow(4u8) == max_u8);  // int literal out of range, `$of` should be set to `1`
     assert(10u8.pow(3u8) == max_u8); // int literal out of range, `$of` should be set to `1`
-    assert(2u8.pow(0u8) == 0u8); // ?
-    assert(0u8.pow(1u8) == 0u8); // ?
-    assert(0u8.pow(2u8) == 0u8); // ?
+    assert(2u8.pow(0u8) == 1u8);
+    assert(0u8.pow(1u8) == 0u8);
+    assert(0u8.pow(2u8) == 0u8);
 
 
     true
