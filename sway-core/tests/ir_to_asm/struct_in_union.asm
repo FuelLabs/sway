@@ -20,16 +20,18 @@ mcpi $r1 $r0 i8               ; store struct field value
 lw   $r1 $r2 i0               ; extract_value @ 0
 lw   $r0 data_1               ; literal instantiation
 eq   $r0 $r1 $r0
-jnei $r0 $one i29
+jnzi $r0 i23
+ji   i30
 addi $r1 $r2 i8               ; extract address
 addi $r0 $r3 i0               ; get_ptr
 lw   $r0 $r1 i0               ; load for store
 sw   $r3 $r0 i0               ; store value
 addi $r0 $r3 i0               ; get_ptr
 lw   $r0 $r0 i0               ; extract_value @ 0
-ji   i30
+ji   i31
 lw   $r0 data_2               ; literal instantiation
 ret  $r0
+noop                          ; word-alignment of data section
 .data:
 data_0 .u64 0x2a
 data_1 .u64 0x01
