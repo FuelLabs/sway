@@ -10,5 +10,6 @@ impl<T> S<T> {
 
 fn main() -> u64 {
   let a = S::<u64> { };
+  // the `<T>` on line 5 should be known, since we associated it with the type above.
   return a.f();
 }

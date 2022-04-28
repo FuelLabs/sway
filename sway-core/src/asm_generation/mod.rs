@@ -1315,6 +1315,7 @@ fn compile_contract_to_selectors(
                 // create a register for it and load it using some utilities from expression::subfield.
                 let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
                     name: Ident::new(bundled_arguments_span),
+                    type_parameters: Default::default(),
                     fields: decl
                         .parameters
                         .iter()

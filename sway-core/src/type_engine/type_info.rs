@@ -41,10 +41,13 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
+        type_parameters: Vec<TypeId>,
+        fields: Vec<TypedStructField>,
         variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
         name: Ident,
+        type_parameters: Vec<TypeId>,
         fields: Vec<TypedStructField>,
     },
     Boolean,
