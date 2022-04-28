@@ -62,8 +62,8 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
     // vector.
     let offset_to_ix = HashMap::from_iter(ops.iter().enumerate().map(|(idx, op)| (op.offset, idx)));
 
-    let mut modified = false;
-    while !modified {
+    let mut modified = true;
+    while modified {
         modified = false;
         // Iterate in reverse topological order of the CFG (which is basically the same as the
         // reverse order of `ops`. This makes the outer `while` loop converge faster.
