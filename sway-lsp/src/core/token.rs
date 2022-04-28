@@ -89,14 +89,23 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        !matches!(
+        // !matches!(
+        //     self.token_type,
+        //     TokenType::Reassignment | TokenType::FunctionApplication
+        // )
+
+        matches!(
             self.token_type,
-            TokenType::Reassignment | TokenType::FunctionApplication
+            TokenType::VariableDeclaration(_) | TokenType::FunctionDeclaration(_)
+            | TokenType::TraitDeclaration(_) | TokenType::StructDeclaration(_)
+            | TokenType::EnumDeclaration(_) | TokenType::AbiDeclaration
+            | TokenType::ConstantDeclaration(_)
         )
     }
 }
 
 pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
+    eprintln!("node {:#?}", node);
     match node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
@@ -377,10 +386,9 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 tokens.push(token);
             }
 
-            let ident = call_path.suffix;
-            let token = Token::from_ident(&ident, TokenType::DelineatedPath);
+            let token = Token::from_ident(&call_path.suffix, TokenType::DelineatedPath);
             tokens.push(token);
-
+            
             for exp in args {
                 handle_expression(exp, tokens);
             }
@@ -423,6 +431,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::BuiltinGetTypeProperty { .. } => {
             //TODO handle built in get type property?
         }
+        _ => ()
     }
 }
 
