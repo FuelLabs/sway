@@ -6,11 +6,11 @@ name = "tests"
 version = "0.0.0"
 
 [dependencies]
-fuel-core = { version = "0.5", default-features = false }
+fuel-core = { version = "0.6", default-features = false }
 fuel-gql-client = { version = "0.5", default-features = false }
-fuel-tx = "0.7"
+fuel-tx = "0.9"
 fuel-types = "0.3"
-fuel-vm = "0.6"
+fuel-vm = "0.8"
 fuels-abigen-macro = "0.8"
 fuels-contract = "0.8"
 fuels-core = "0.8"

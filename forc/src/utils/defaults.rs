@@ -31,7 +31,7 @@ version = "0.1.0"
 
 [dependencies]
 fuel-gql-client = {{ version = "0.5", default-features = false }}
-fuel-tx = "0.7"
+fuel-tx = "0.9"
 fuels-abigen-macro = "0.9"
 fuels-contract = "0.9"
 fuels-core = "0.9"
