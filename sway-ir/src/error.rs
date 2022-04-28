@@ -20,6 +20,10 @@ pub enum IrError {
     VerifyAccessValueInvalidIndices,
     VerifyAccessValueOnNonStruct,
     VerifyArgumentValueIsNotArgument(String),
+    VerifyBitcastUnknownSourceType,
+    VerifyBitcastFromNonCopyType(String),
+    VerifyBitcastToNonCopyType(String),
+    VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBranchToMissingBlock(String),
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
@@ -107,6 +111,22 @@ impl fmt::Display for IrError {
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
                 "Verification failed: Argument specifier for function '{callee}' is not an argument value."
+            ),
+            IrError::VerifyBitcastUnknownSourceType => write!(
+                f,
+                "Verification failed: Bitcast unable to determine source type."
+            ),
+            IrError::VerifyBitcastFromNonCopyType(ty) => write!(
+                f,
+                "Verification failed: Bitcast cannot be from a {ty}."
+            ),
+            IrError::VerifyBitcastToNonCopyType(ty) => write!(
+                f,
+                "Verification failed: Bitcast cannot be to a {ty}."
+            ),
+            IrError::VerifyBitcastBetweenInvalidTypes(from_ty, to_ty) => write!(
+                f,
+                "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
             ),
             IrError::VerifyBranchToMissingBlock(label) => {
                 write!(

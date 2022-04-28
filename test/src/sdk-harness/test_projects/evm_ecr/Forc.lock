@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'hello_world'
+name = 'evm_ecr'
 dependencies = ['std']
 
 [[package]]

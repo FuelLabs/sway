@@ -465,6 +465,7 @@ impl<'ir> AsmBuilder<'ir> {
                         errors
                     )
                 }
+                Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
                 Instruction::Branch(to_block) => self.compile_branch(block, to_block),
                 Instruction::Call(..) => {
                     errors.push(CompileError::Internal(
@@ -717,6 +718,38 @@ impl<'ir> AsmBuilder<'ir> {
         self.bytecode.append(&mut inline_ops);
 
         ok((), warnings, errors)
+    }
+
+    fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
+        let val_reg = self.value_to_register(bitcast_val);
+        let reg = if let Type::Bool = to_type {
+            // This may not be necessary if we just treat a non-zero value as 'true'.
+            let res_reg = self.reg_seqr.next();
+            self.bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::EQ(
+                    res_reg.clone(),
+                    val_reg,
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "convert to inversed boolean".into(),
+                owning_span: instr_val.get_span(self.context),
+            });
+            self.bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::XORI(
+                    res_reg.clone(),
+                    res_reg.clone(),
+                    VirtualImmediate12 { value: 1 },
+                )),
+                comment: "invert boolean".into(),
+                owning_span: instr_val.get_span(self.context),
+            });
+            res_reg
+        } else {
+            // This is a no-op, although strictly speaking Unit should probably be compiled as
+            // a zero.
+            val_reg
+        };
+        self.reg_map.insert(*instr_val, reg);
     }
 
     fn compile_branch(&mut self, from_block: &Block, to_block: &Block) {

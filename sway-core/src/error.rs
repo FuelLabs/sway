@@ -713,7 +713,7 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    #[error("Cannot infer type for type parameter \"{ty}\". Insufficient type information provided. Try annotating its type.")]
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },

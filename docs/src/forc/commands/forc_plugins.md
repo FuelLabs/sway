@@ -1,11 +1,11 @@
 # forc-plugins
 Find all forc plugins available via `PATH`.
 
-Prints the absolute path to each discovered plugin on a new line.
+Prints information about each discovered plugin.
 
 
 ## USAGE:
-forc plugins
+forc plugins [OPTIONS]
 
 
 ## OPTIONS:
@@ -14,3 +14,9 @@ forc plugins
 
 
 Print help information
+
+
+`-p`, `--paths` 
+
+
+Prints the absolute path to each discovered plugin
