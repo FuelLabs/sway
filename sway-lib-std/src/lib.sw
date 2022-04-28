@@ -18,6 +18,6 @@ dep block;
 dep token;
 dep ecr;
 dep reentrancy;
-dep vm/lib;
+dep vm/mod;
 
 use core::*;
