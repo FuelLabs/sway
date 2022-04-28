@@ -1257,8 +1257,7 @@ fn build_contract_abi_switch(
         // jump to the function label if the selector was equal
         asm_buf.push(Op {
             // if the comparison result is _not_ equal to 0, then it was indeed equal.
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-                VirtualRegister::Constant(ConstantRegister::Zero),
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(
                 comparison_result_register,
                 label,
             )),

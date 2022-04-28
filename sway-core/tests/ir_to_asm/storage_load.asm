@@ -8,10 +8,10 @@ add  $$ds $$ds $is
 lw   $r1 $fp i73              ; load input function selector
 lw   $r0 data_3               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i14            ; jump to selected function
+jnzi $r0 i14                  ; jump to selected function
 lw   $r0 data_4               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i28            ; jump to selected function
+jnzi $r0 i28                  ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 move $r2 $sp                  ; save locals base register
 cfei i40                      ; allocate 40 bytes for all locals
