@@ -253,7 +253,7 @@ pub enum Warning {
         name: Ident,
     },
     ShadowsOtherSymbol {
-        name: String,
+        name: Ident,
     },
     OverridingTraitImplementation,
     DeadDeclaration,
@@ -262,7 +262,7 @@ pub enum Warning {
     DeadTrait,
     UnreachableCode,
     DeadEnumVariant {
-        variant_name: String,
+        variant_name: Ident,
     },
     DeadMethod,
     StructFieldNeverRead,
@@ -396,15 +396,14 @@ impl fmt::Display for Warning {
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariable { var_name: String, span: Span },
+    UnknownVariable { var_name: Ident },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariablePath { var_name: Ident, span: Span },
     #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
-        name: String,
-        span: Span,
+        name: Ident,
         what_it_is: &'static str,
     },
     #[error(
@@ -412,8 +411,7 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: String,
-        span: Span,
+        name: crate::parse_tree::CallPath,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
@@ -515,15 +513,15 @@ pub enum CompileError {
         kind: &'static str,
         span: Span,
     },
-    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(String, Span),
+    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
+    AssignmentToNonMutable { name: Ident },
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
     )]
     TypeParameterNotInTypeScope {
-        name: String,
+        name: Ident,
         span: Span,
         comma_separated_generic_params: String,
         fn_name: Ident,
@@ -610,8 +608,7 @@ pub enum CompileError {
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
-        span: Span,
-        method_name: String,
+        method_name: Ident,
         type_name: String,
     },
     #[error("Duplicate definitions with name \"{method_name}\".")]
@@ -643,13 +640,12 @@ pub enum CompileError {
     FieldNotFound {
         field_name: Ident,
         available_fields: String,
-        struct_name: String,
-        span: Span,
+        struct_name: Ident,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span, name: String },
+    SymbolNotFound { name: Ident },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { span: Span, name: String },
+    ImportPrivateSymbol { name: Ident },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -768,7 +764,7 @@ pub enum CompileError {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
     #[error("Cannot find trait \"{name}\" in this scope.")]
-    TraitNotFound { name: String, span: Span },
+    TraitNotFound { name: crate::parse_tree::CallPath },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -845,11 +841,11 @@ pub enum CompileError {
         span: Span,
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
-    ShadowsOtherSymbol { name: String, span: Span },
+    ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
-    GenericShadowsGeneric { name: String, span: Span },
+    GenericShadowsGeneric { name: Ident },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
-    StarImportShadowsOtherSymbol { name: String, span: Span },
+    StarImportShadowsOtherSymbol { name: Ident },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -883,7 +879,7 @@ pub enum CompileError {
     },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
-        supertrait_name: String,
+        supertrait_name: crate::parse_tree::CallPath,
         type_name: String,
         span: Span,
     },
@@ -891,8 +887,8 @@ pub enum CompileError {
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
-        supertrait_name: String,
-        trait_name: String,
+        supertrait_name: crate::parse_tree::CallPath,
+        trait_name: Ident,
         span: Span,
     },
     #[error("Cannot use `if let` on a non-enum type.")]
@@ -908,13 +904,13 @@ pub enum CompileError {
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: String, span: Span },
+    StorageFieldDoesNotExist { name: Ident },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
-    InvalidVariableName { name: String, span: Span },
+    InvalidVariableName { name: Ident },
     #[error(
         "Internal compiler error: Unexpected {decl_type} declaration found.\n\
         Please file an issue on the repository and include the code that triggered this error."
@@ -1014,11 +1010,11 @@ impl CompileError {
     pub fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { span, .. } => span.clone(),
+            UnknownVariable { var_name } => var_name.span().clone(),
             UnknownVariablePath { span, .. } => span.clone(),
             UnknownFunction { span, .. } => span.clone(),
-            NotAVariable { span, .. } => span.clone(),
-            NotAFunction { span, .. } => span.clone(),
+            NotAVariable { name, .. } => name.span().clone(),
+            NotAFunction { name, .. } => name.span(),
             Unimplemented(_, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseFailure { span, .. } => span.clone(),
@@ -1042,7 +1038,7 @@ impl CompileError {
             NoScriptMainFunction(span) => span.clone(),
             MultipleScriptMainFunctions(span) => span.clone(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
-            AssignmentToNonMutable(_, span) => span.clone(),
+            AssignmentToNonMutable { name } => name.span().clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),
@@ -1059,14 +1055,14 @@ impl CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { span, .. } => span.clone(),
+            MethodNotFound { method_name, .. } => method_name.span().clone(),
             DuplicateMethodDefinitions { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
-            FieldNotFound { span, .. } => span.clone(),
-            SymbolNotFound { span, .. } => span.clone(),
-            ImportPrivateSymbol { span, .. } => span.clone(),
+            FieldNotFound { field_name, .. } => field_name.span().clone(),
+            SymbolNotFound { name, .. } => name.span().clone(),
+            ImportPrivateSymbol { name } => name.span().clone(),
             NoElseBranch { span, .. } => span.clone(),
             UnqualifiedSelfType { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -1100,7 +1096,7 @@ impl CompileError {
             ImportMustBeLibrary { span, .. } => span.clone(),
             MoreThanOneEnumInstantiator { span, .. } => span.clone(),
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
-            TraitNotFound { span, .. } => span.clone(),
+            TraitNotFound { name } => name.span(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
@@ -1119,9 +1115,9 @@ impl CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             TupleOutOfBounds { span, .. } => span.clone(),
-            ShadowsOtherSymbol { span, .. } => span.clone(),
-            GenericShadowsGeneric { span, .. } => span.clone(),
-            StarImportShadowsOtherSymbol { span, .. } => span.clone(),
+            ShadowsOtherSymbol { name } => name.span().clone(),
+            GenericShadowsGeneric { name } => name.span().clone(),
+            StarImportShadowsOtherSymbol { name } => name.span().clone(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
@@ -1139,10 +1135,10 @@ impl CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { name } => name.span().clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
-            InvalidVariableName { span, .. } => span.clone(),
+            InvalidVariableName { name } => name.span().clone(),
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
