@@ -1095,6 +1095,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-gm"
+version = "0.11.0"
+dependencies = [
+ "clap 3.1.8",
+]
+
+[[package]]
 name = "forc-lsp"
 version = "0.11.0"
 dependencies = [
