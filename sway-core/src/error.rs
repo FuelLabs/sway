@@ -611,8 +611,6 @@ pub enum CompileError {
         method_name: Ident,
         type_name: String,
     },
-    #[error("Duplicate definitions with name \"{method_name}\".")]
-    DuplicateMethodDefinitions { method_name: String, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -871,12 +869,6 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
-    NameDefinedMultipleTimesForTrait {
-        fn_name: String,
-        trait_name: String,
-        span: Span,
-    },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
         supertrait_name: crate::parse_tree::CallPath,
@@ -1056,7 +1048,6 @@ impl CompileError {
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
             MethodNotFound { method_name, .. } => method_name.span().clone(),
-            DuplicateMethodDefinitions { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
@@ -1128,7 +1119,6 @@ impl CompileError {
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
             AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
-            NameDefinedMultipleTimesForTrait { span, .. } => span.clone(),
             SupertraitImplMissing { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             IfLetNonEnum { span, .. } => span.clone(),
