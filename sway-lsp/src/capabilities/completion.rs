@@ -44,7 +44,9 @@ fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
             Some(CompletionItemKind::INTERFACE)
         }
         TokenType::StructDeclaration(_) | TokenType::Struct => Some(CompletionItemKind::STRUCT),
-        TokenType::EnumDeclaration(_) | TokenType::EnumVariant => Some(CompletionItemKind::ENUM),
+        TokenType::EnumDeclaration(_) | TokenType::EnumVariant | TokenType::EnumApplication => {
+            Some(CompletionItemKind::ENUM)
+        }
         TokenType::ConstantDeclaration(_) => Some(CompletionItemKind::CONSTANT),
         TokenType::Library => Some(CompletionItemKind::MODULE),
         TokenType::Reassignment => Some(CompletionItemKind::OPERATOR),

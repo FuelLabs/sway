@@ -89,23 +89,21 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        // !matches!(
-        //     self.token_type,
-        //     TokenType::Reassignment | TokenType::FunctionApplication
-        // )
-
         matches!(
             self.token_type,
-            TokenType::VariableDeclaration(_) | TokenType::FunctionDeclaration(_)
-            | TokenType::TraitDeclaration(_) | TokenType::StructDeclaration(_)
-            | TokenType::EnumDeclaration(_) | TokenType::AbiDeclaration
-            | TokenType::ConstantDeclaration(_)
+            TokenType::VariableDeclaration(_)
+                | TokenType::FunctionDeclaration(_)
+                | TokenType::TraitDeclaration(_)
+                | TokenType::StructDeclaration(_)
+                | TokenType::EnumDeclaration(_)
+                | TokenType::AbiDeclaration
+                | TokenType::ConstantDeclaration(_)
+                | TokenType::StorageFieldDeclaration
         )
     }
 }
 
 pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
-    eprintln!("node {:#?}", node);
     match node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
         AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
@@ -118,14 +116,6 @@ pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
         // handle other content types
         _ => {}
     };
-}
-
-fn handle_custom_type_as_struct(type_info: &TypeInfo, tokens: &mut Vec<Token>) {
-    //TODO perhaps better logic to ensure that TypeInfo::Custom is infact referencing a Struct
-    if let TypeInfo::Custom { name, .. } = type_info {
-        let token = Token::from_ident(name, TokenType::Struct);
-        tokens.push(token);
-    }
 }
 
 fn handle_function_parameter(parameter: &FunctionParameter, tokens: &mut Vec<Token>) {
@@ -154,10 +144,28 @@ fn handle_function_declation(function_declaration: FunctionDeclaration, tokens: 
         handle_function_parameter(&param, tokens);
     }
 
-    handle_custom_type_as_struct(&function_declaration.return_type, tokens);
+    handle_custom_type(&function_declaration.return_type, tokens);
 
     for node in function_declaration.body.contents {
         traverse_node(node, tokens);
+    }
+}
+
+fn handle_custom_type(type_info: &TypeInfo, tokens: &mut Vec<Token>) {
+    if let TypeInfo::Custom { name, .. } = type_info {
+        //Iterate through the tokens and find the first token that has the same name as the custom type.
+        //Extract the token type of the found token, this should help determine if the custom type
+        //is a struct or an enum.
+        let found_token = tokens.iter().find(|token| token.name == name.as_str());
+        if let Some(token_type) = found_token.map(|token| &token.token_type) {
+            if let TokenType::StructDeclaration(_) = token_type {
+                let token = Token::from_ident(name, TokenType::Struct);
+                tokens.push(token);
+            } else if let TokenType::EnumDeclaration(_) = token_type {
+                let token = Token::from_ident(name, TokenType::EnumApplication);
+                tokens.push(token);
+            }
+        }
     }
 }
 
@@ -228,7 +236,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             }
         }
         Declaration::ImplSelf(impl_self) => {
-            handle_custom_type_as_struct(&impl_self.type_implementing_for, tokens);
+            handle_custom_type(&impl_self.type_implementing_for, tokens);
 
             for func_dec in impl_self.functions {
                 handle_function_declation(func_dec, tokens);
@@ -252,6 +260,8 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
                 for param in train_fn.parameters {
                     handle_function_parameter(&param, tokens);
                 }
+
+                handle_custom_type(&train_fn.return_type, tokens);
             }
         }
         Declaration::ConstantDeclaration(const_dec) => {
@@ -262,7 +272,13 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             );
             tokens.push(token);
         }
-        Declaration::StorageDeclaration(_storage_dec) => {}
+        Declaration::StorageDeclaration(storage_dec) => {
+            for field in storage_dec.fields {
+                let ident = &field.name;
+                let token = Token::from_ident(ident, TokenType::StorageFieldDeclaration);
+                tokens.push(token);
+            }
+        }
     };
 }
 
@@ -360,7 +376,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle methods from imported modules
             if let MethodName::FromType { type_name, .. } = &method_name {
                 if let Some(type_name) = type_name {
-                    handle_custom_type_as_struct(type_name, tokens);
+                    handle_custom_type(type_name, tokens);
                 }
             }
 
@@ -375,7 +391,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         }
         Expression::SubfieldExpression { prefix, .. } => {
             handle_expression(*prefix, tokens);
-            //TODO handle subfield expressions
+            //TODO handle field_to_access?
         }
         Expression::DelineatedPath {
             call_path, args, ..
@@ -388,7 +404,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
 
             let token = Token::from_ident(&call_path.suffix, TokenType::DelineatedPath);
             tokens.push(token);
-            
+
             for exp in args {
                 handle_expression(exp, tokens);
             }
@@ -409,8 +425,11 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::DelayedMatchTypeResolution { .. } => {
             //Should we handle this since it gets removed during type checking anyway?
         }
-        Expression::StorageAccess { .. } => {
-            //TODO handle storage access?
+        Expression::StorageAccess { field_names, .. } => {
+            for field in field_names {
+                let token = Token::from_ident(&field, TokenType::StorageAccess);
+                tokens.push(token);
+            }
         }
         Expression::IfLet {
             expr, then, r#else, ..
@@ -431,7 +450,6 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::BuiltinGetTypeProperty { .. } => {
             //TODO handle built in get type property?
         }
-        _ => ()
     }
 }
 

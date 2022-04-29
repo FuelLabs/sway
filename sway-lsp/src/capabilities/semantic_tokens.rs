@@ -88,7 +88,7 @@ fn get_type(token_type: &TokenType) -> u32 {
         TokenType::Library => LIBRARY,
         TokenType::FunctionParameter => PARAMETER,
         TokenType::VariableDeclaration(_) | TokenType::VariableExpression => VARIABLE,
-        TokenType::EnumDeclaration(_) => ENUM,
+        TokenType::EnumDeclaration(_) | TokenType::EnumApplication => ENUM,
         TokenType::StructDeclaration(_) | TokenType::Struct => STRUCT,
         TokenType::TraitDeclaration(_) | TokenType::ImplTrait => TRAIT,
         // currently we return `variable` type as default

@@ -141,7 +141,7 @@ impl Supertrait {
 pub struct TraitFn {
     pub name: Ident,
     pub parameters: Vec<FunctionParameter>,
-    pub(crate) return_type: TypeInfo,
+    pub return_type: TypeInfo,
     pub(crate) return_type_span: Span,
 }
 

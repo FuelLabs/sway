@@ -40,7 +40,7 @@ fn get_kind(token_type: &TokenType) -> SymbolKind {
         | TokenType::TraitFunction => SymbolKind::FUNCTION,
         TokenType::TraitDeclaration(_) | TokenType::ImplTrait => SymbolKind::INTERFACE,
         TokenType::StructDeclaration(_) | TokenType::Struct => SymbolKind::STRUCT,
-        TokenType::EnumDeclaration(_) => SymbolKind::ENUM,
+        TokenType::EnumDeclaration(_) | TokenType::EnumApplication => SymbolKind::ENUM,
         TokenType::ConstantDeclaration(_) => SymbolKind::CONSTANT,
         TokenType::Library => SymbolKind::MODULE,
         TokenType::Reassignment => SymbolKind::OPERATOR,

@@ -15,34 +15,20 @@ pub enum TokenType {
     EnumDeclaration(EnumDetails),
     Reassignment,
     ImplTrait,
-    //ImplSelf, //Unused
     AbiDeclaration,
     ConstantDeclaration(ConstDetails),
-    //StorageDeclaration, //Unused
     TraitFunction,
     EnumVariant,
+    StorageFieldDeclaration,
 
-    //Literal, //Unused
     FunctionApplication,
-    //LazyOperator, //Unused
     VariableExpression,
-    //Tuple,      //Unused
-    //TupleIndex, //Unused
-    //Array,      //Unused
     Struct,
-    //IfExp,         //Unused
-    //MatchExp,      //Unused
-    //AsmExpression, //Unused
     MethodApplication,
-    //SubfieldExpression, //Unused
     DelineatedPath,
     AbiCast,
-    //ArrayIndex,                 //Unused
-    //DelayedMatchTypeResolution, //Unused
-    //StorageAccess,              //Unused
-    //IfLet,                      //Unused
-    //SizeOfVal,                  //Unused
-    //BuiltinGetTypeProperty,     //Unused
+    StorageAccess,
+    EnumApplication,
     StructField(StructFieldDetails),
     StructExpressionField(StructFieldDetails),
     FunctionParameter,
