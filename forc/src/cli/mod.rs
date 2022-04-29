@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, init, json_abi, parse_bytecode, plugins, run,
-    test, update,
+    addr2line, build, clean, completions, deploy, init, json_abi, list, parse_bytecode, plugins,
+    run, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -11,6 +11,7 @@ pub use completions::Command as CompletionsCommand;
 pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
+pub use list::Command as ListCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
@@ -56,6 +57,7 @@ enum Forc {
     /// ```
     #[clap(external_subcommand)]
     Plugin(Vec<String>),
+    List(ListCommand),
 }
 
 pub async fn run_cli() -> Result<()> {
@@ -81,5 +83,6 @@ pub async fn run_cli() -> Result<()> {
                 .ok_or_else(|| anyhow!("plugin exit status unknown"))?;
             std::process::exit(code);
         }
+        Forc::List(command) => list::exec(command),
     }
 }
