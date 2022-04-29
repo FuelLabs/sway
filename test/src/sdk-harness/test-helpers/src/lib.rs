@@ -6,7 +6,6 @@ use fuels_contract::script::Script;
 use fuels_signers::provider::Provider;
 use std::fs::read;
 
-
 /// Helper function to reduce boilerplate code in tests.
 /// Used to run a script which returns a boolean value.
 pub async fn script_runner(bin_path: &str) -> u64 {
