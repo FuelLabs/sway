@@ -74,19 +74,13 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
 /// these values should reflect indexes in `token_types`
 #[repr(u32)]
 enum TokenTypeIndex {
-    _Class,         // 0
-    Function,       // 1
-    _Keyword,       // 2
-    Namespace,      // 3
-    _Operator,      // 4
-    Parameter,      // 5
-    _String,        // 6
-    _Type,          // 7
-    _TypeParameter, // 8
-    Variable,       // 9
-    Enum,           // 10
-    Struct,         // 11
-    Interface,      // 12
+    Function = 1,
+    Namespace = 3,
+    Parameter = 5,
+    Variable = 9,
+    Enum = 10,
+    Struct = 11,
+    Interface = 12,
 }
 
 fn get_type(token_type: &TokenType) -> u32 {
