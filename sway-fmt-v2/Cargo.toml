@@ -13,3 +13,4 @@ ropey = "1.2"
 sway-parse = { version = "0.11.0", path = "../sway-parse" }
 sway-types = { version = "0.11.0", path = "../sway-types" }
 thiserror = "1.0.30"
+anyhow = "1.0.57"

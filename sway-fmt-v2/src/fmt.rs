@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use sway_parse::Item;
-use thiserror::Error;
 
 pub use crate::error::FormatterError;
 
@@ -9,9 +8,10 @@ pub struct Formatter {
     pub align_fields: bool,
     pub tab_size: u32,
 }
+
 impl Formatter {
     pub fn format(&self, src: Arc<str>) -> Result<String, FormatterError> {
-        let items = sway_parse::parse_file(file.clone(), todo!())?.items;
+        let items = sway_parse::parse_file(src, None)?.items;
         Ok(items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
