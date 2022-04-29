@@ -991,6 +991,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "filecheck"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fe00b427b7c4835f8b82170eb7b9a63634376b63d73b9a9093367e82570bbaa"
+dependencies = [
+ "regex",
+ "thiserror",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3221,10 +3231,9 @@ dependencies = [
 name = "sway-ir"
 version = "0.11.0"
 dependencies = [
- "fuel-pest",
+ "filecheck",
  "generational-arena",
  "peg",
- "prettydiff",
  "sway-types",
 ]
 
