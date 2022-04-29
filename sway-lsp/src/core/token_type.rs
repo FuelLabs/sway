@@ -35,6 +35,7 @@ pub enum TokenType {
     Unknown,
 }
 
+/// Expects a span from either a FunctionDeclaration or a TypedFunctionDeclaration
 pub fn get_function_details(span: &Span, visibility: Visibility) -> FunctionDetails {
     FunctionDetails {
         signature: extract_fn_signature(span),
