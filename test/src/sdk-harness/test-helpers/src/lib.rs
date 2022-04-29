@@ -1,7 +1,7 @@
 //! util & helper functions to support working with the Rust SDK (fuels-rs)
 
 use fuel_core::service::Config;
-use fuel_tx::Transaction;
+use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
 use fuels_contract::script::Script;
 use fuels_signers::provider::Provider;
 use std::fs::read;
@@ -15,7 +15,7 @@ pub async fn script_runner(bin_path: &str) -> u64 {
 
     let tx = Transaction::Script {
         gas_price: 0,
-        gas_limit: 1_000_000,
+        gas_limit: MAX_GAS_PER_TX,
         maturity: 0,
         byte_price: 0,
         receipts_root: Default::default(),
