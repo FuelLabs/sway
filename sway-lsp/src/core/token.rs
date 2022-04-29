@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
     core::token_type::{
@@ -374,10 +372,12 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
 
             //TODO handle methods from imported modules
-            if let MethodName::FromType { type_name, .. } = &method_name {
-                if let Some(type_name) = type_name {
-                    handle_custom_type(type_name, tokens);
-                }
+            if let MethodName::FromType {
+                type_name: Some(type_name),
+                ..
+            } = &method_name
+            {
+                handle_custom_type(type_name, tokens);
             }
 
             for field in contract_call_params {
