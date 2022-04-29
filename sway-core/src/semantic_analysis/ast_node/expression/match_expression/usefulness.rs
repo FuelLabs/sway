@@ -1,10 +1,3 @@
-mod constructor_factory;
-mod matrix;
-mod patstack;
-mod pattern;
-mod range;
-mod witness_report;
-
 use sway_types::Span;
 
 use crate::{
@@ -12,10 +5,7 @@ use crate::{
     CompileError, CompileResult, MatchCondition,
 };
 
-use self::{
-    constructor_factory::ConstructorFactory, matrix::Matrix, patstack::PatStack, pattern::Pattern,
-    witness_report::WitnessReport,
-};
+use super::{witness_report::WitnessReport, matrix::Matrix, constructor_factory::ConstructorFactory, pattern::Pattern, patstack::PatStack};
 
 /// Given the arms of a match expression, checks to see if the arms are
 /// exhaustive and checks to see if each arm is reachable.
