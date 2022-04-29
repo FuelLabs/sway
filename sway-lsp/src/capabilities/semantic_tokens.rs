@@ -71,28 +71,39 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
     }
 }
 
-// these values should reflect indexes in `token_types`
-static FUNCTION: u32 = 1;
-static LIBRARY: u32 = 3;
-static PARAMETER: u32 = 5;
-static VARIABLE: u32 = 9;
-static ENUM: u32 = 10;
-static STRUCT: u32 = 11;
-static TRAIT: u32 = 12;
+/// these values should reflect indexes in `token_types`
+#[repr(u32)]
+enum TokenTypeIndex {
+    _Class,         // 0
+    Function,       // 1
+    _Keyword,       // 2
+    Namespace,      // 3
+    _Operator,      // 4
+    Parameter,      // 5
+    _String,        // 6
+    _Type,          // 7
+    _TypeParameter, // 8
+    Variable,       // 9
+    Enum,           // 10
+    Struct,         // 11
+    Interface,      // 12
+}
 
 fn get_type(token_type: &TokenType) -> u32 {
     match token_type {
         TokenType::FunctionDeclaration(_)
         | TokenType::FunctionApplication
-        | TokenType::TraitFunction => FUNCTION,
-        TokenType::Library => LIBRARY,
-        TokenType::FunctionParameter => PARAMETER,
-        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => VARIABLE,
-        TokenType::EnumDeclaration(_) => ENUM,
-        TokenType::StructDeclaration(_) | TokenType::Struct => STRUCT,
-        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => TRAIT,
+        | TokenType::TraitFunction => TokenTypeIndex::Function as u32,
+        TokenType::Library => TokenTypeIndex::Namespace as u32,
+        TokenType::FunctionParameter => TokenTypeIndex::Parameter as u32,
+        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => {
+            TokenTypeIndex::Variable as u32
+        }
+        TokenType::EnumDeclaration(_) => TokenTypeIndex::Enum as u32,
+        TokenType::StructDeclaration(_) | TokenType::Struct => TokenTypeIndex::Struct as u32,
+        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => TokenTypeIndex::Interface as u32,
         // currently we return `variable` type as default
-        _ => VARIABLE,
+        _ => TokenTypeIndex::Variable as u32,
     }
 }
 
