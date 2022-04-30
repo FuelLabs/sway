@@ -21,6 +21,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        locked,
     } = command;
 
     let config = pkg::BuildConfig {
@@ -57,7 +58,11 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+        println!("Error is: {}", e);
         let cause = if e.to_string().contains("No such file or directory") {
+            if locked {
+                panic!("Foo");
+            }
             anyhow!("lock file did not exist")
         } else {
             e
