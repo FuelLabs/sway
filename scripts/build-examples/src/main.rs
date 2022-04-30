@@ -2,6 +2,7 @@
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::{
     fs,
@@ -19,15 +20,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Builds Sway examples given their paths. Runs for all examples under /examples if no paths are specified.
+    /// Builds Sway examples
     Build(BuildCommand),
 }
 
 #[derive(Parser)]
+#[clap(arg_required_else_help = true)]
 struct BuildCommand {
-    /// Paths of Sway examples to build (default: all examples under /examples)
+    /// Specify paths of Sway examples to build
     #[clap(long = "paths", short = 'p', multiple_values = true)]
-    pub paths: Option<Vec<String>>,
+    pub paths: Vec<String>,
+    /// Builds all Sway examples under /examples
+    #[clap(long = "all", short = 'a')]
+    pub all: bool,
 }
 
 fn get_sway_path() -> PathBuf {
@@ -104,16 +109,12 @@ fn report_summary(summary: Vec<(PathBuf, bool)>) {
     }
 }
 
-fn build_examples(command: BuildCommand) {
-    let BuildCommand { paths } = command;
+fn build_examples(command: BuildCommand) -> Result<()> {
+    let BuildCommand { paths, all } = command;
 
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
-    if let Some(paths) = paths {
-        for path in paths {
-            summary.push(build_and_generate_result(PathBuf::from(path)))
-        }
-    } else {
+    if all {
         let examples_dir = get_sway_path().join("examples");
 
         for res in fs::read_dir(examples_dir).expect("Failed to read examples directory") {
@@ -124,17 +125,23 @@ fn build_examples(command: BuildCommand) {
 
             summary.push(build_and_generate_result(path))
         }
+    } else {
+        for path in paths {
+            summary.push(build_and_generate_result(PathBuf::from(path)))
+        }
     }
 
     report_summary(summary);
+    Ok(())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build(command) => build_examples(command),
+        Commands::Build(command) => build_examples(command)?,
     }
+    Ok(())
 }
 
 // Check if the given directory contains `Forc.toml` at its root.
