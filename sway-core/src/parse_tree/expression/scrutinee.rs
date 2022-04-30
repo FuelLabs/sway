@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use crate::{
     error::{err, ok},
     parse_tree::ident,
-    BuildConfig, CallPath, CompileError, CompileResult, Literal, Rule,
+    BuildConfig, CallPath, CompileError, CompileResult, Literal, Rule, TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -45,9 +45,9 @@ pub enum Scrutinee {
 
 #[derive(Debug, Clone)]
 pub struct StructScrutineeField {
-    pub field: Ident,
-    pub scrutinee: Option<Scrutinee>,
-    pub span: Span,
+    pub(crate) field: Ident,
+    pub(crate) scrutinee: Option<Scrutinee>,
+    pub(crate) span: Span,
 }
 
 impl Scrutinee {
@@ -74,21 +74,6 @@ impl Scrutinee {
             errors
         );
         ok(scrutinee, warnings, errors)
-    }
-
-    /// If this is an enum scrutinee, returns the name of the inner value that should be
-    /// assigned to upon successful destructuring.
-    /// Should only be used when destructuring enums via `if let`
-    pub fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
-        match self {
-            Scrutinee::EnumScrutinee {
-                variable_to_assign, ..
-            } => ok(variable_to_assign, vec![], vec![]),
-            _ => err(
-                vec![],
-                vec![CompileError::IfLetNonEnum { span: self.span() }],
-            ),
-        }
     }
 
     pub fn parse_from_pair_inner(
@@ -296,5 +281,54 @@ impl Scrutinee {
 
         let scrutinee = Scrutinee::Tuple { elems, span };
         ok(scrutinee, warnings, errors)
+    }
+
+    /// If this is an enum scrutinee, returns the name of the inner value that should be
+    /// assigned to upon successful destructuring.
+    /// Should only be used when destructuring enums via `if let`
+    pub(crate) fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
+        match self {
+            Scrutinee::EnumScrutinee {
+                variable_to_assign, ..
+            } => ok(variable_to_assign, vec![], vec![]),
+            _ => err(
+                vec![],
+                vec![CompileError::IfLetNonEnum { span: self.span() }],
+            ),
+        }
+    }
+
+    pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
+        match self {
+            Scrutinee::Unit { .. } => vec![TypeInfo::Tuple(vec![])],
+            Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],
+            Scrutinee::Variable { .. } => vec![TypeInfo::Unknown],
+            Scrutinee::StructScrutinee {
+                struct_name,
+                fields,
+                ..
+            } => {
+                let name = vec![TypeInfo::Custom {
+                    name: struct_name.clone(),
+                    type_arguments: vec![],
+                }];
+                let fields = fields
+                    .iter()
+                    .flat_map(|StructScrutineeField { scrutinee, .. }| match scrutinee {
+                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo(),
+                        None => vec![],
+                    })
+                    .collect::<Vec<TypeInfo>>();
+                vec![name, fields].concat()
+            }
+            Scrutinee::EnumScrutinee { call_path, .. } => vec![TypeInfo::Custom {
+                name: call_path.prefixes.last().unwrap().clone(),
+                type_arguments: vec![],
+            }],
+            Scrutinee::Tuple { elems, .. } => elems
+                .iter()
+                .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo())
+                .collect::<Vec<TypeInfo>>(),
+        }
     }
 }

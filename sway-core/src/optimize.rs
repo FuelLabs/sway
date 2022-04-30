@@ -683,7 +683,7 @@ impl FnCompiler {
             TypedExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, fields, span_md_idx)
             }
-            TypedExpressionVariant::TupleElemAccess {
+            TypedExpressionVariant::TupleIndexAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,

@@ -980,7 +980,7 @@ fn connect_expression(
             };
             Ok([then_expr, else_expr].concat())
         }
-        TupleElemAccess { prefix, .. } => {
+        TupleIndexAccess { prefix, .. } => {
             let prefix_idx = connect_expression(
                 &prefix.expression,
                 graph,

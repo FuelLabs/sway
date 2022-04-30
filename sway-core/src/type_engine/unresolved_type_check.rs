@@ -154,7 +154,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                 }
                 buf
             }
-            TupleElemAccess {
+            TupleIndexAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..

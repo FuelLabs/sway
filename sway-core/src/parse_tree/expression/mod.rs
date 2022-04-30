@@ -4,7 +4,7 @@ use crate::{
     parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
     type_engine::{IntegerBits, TypeInfo},
-    AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
+    CodeBlock, TypeArgument, VariableDeclaration,
 };
 
 use sway_types::{ident::Ident, Span};
@@ -17,7 +17,6 @@ use std::collections::VecDeque;
 mod asm;
 mod match_branch;
 mod match_condition;
-mod matcher;
 mod method_name;
 mod scrutinee;
 mod unary_op;
@@ -25,7 +24,6 @@ pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
-use matcher::matcher;
 pub(crate) use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
@@ -84,8 +82,8 @@ pub enum Expression {
         span: Span,
     },
     MatchExp {
-        if_exp: Box<Expression>,
-        cases_covered: Vec<MatchCondition>,
+        value: Box<Expression>,
+        branches: Vec<MatchBranch>,
         span: Span,
     },
     // separated into other struct for parsing reasons
@@ -146,16 +144,6 @@ pub enum Expression {
     ArrayIndex {
         prefix: Box<Expression>,
         index: Box<Expression>,
-        span: Span,
-    },
-    /// This variant serves as a stand-in for parsing-level match expression desugaring.
-    /// Because types cannot be known at parsing-time, a desugared struct or enum gets
-    /// special cased into this variant. During type checking, this variant is removed
-    /// as is replaced with the corresponding field or argument access (given that the
-    /// expression inside of the delayed resolution has the appropriate struct or enum
-    /// type)
-    DelayedMatchTypeResolution {
-        variant: DelayedResolutionVariant,
         span: Span,
     },
     StorageAccess {
@@ -249,31 +237,6 @@ pub(crate) fn error_recovery_exp(span: Span) -> Expression {
 }
 
 impl Expression {
-    pub(crate) fn core_ops_eq(arguments: Vec<Expression>, span: Span) -> Expression {
-        Expression::MethodApplication {
-            method_name: MethodName::FromType {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("ops", span.clone()),
-                    ],
-                    suffix: Op {
-                        op_variant: OpVariant::Equals,
-                        span: span.clone(),
-                    }
-                    .to_var_name(),
-                    is_absolute: true,
-                },
-                type_name: None,
-                type_name_span: None,
-            },
-            contract_call_params: vec![],
-            arguments,
-            type_arguments: vec![],
-            span,
-        }
-    }
-
     pub(crate) fn core_ops(op: Op, arguments: Vec<Expression>, span: Span) -> Expression {
         Expression::MethodApplication {
             method_name: MethodName::FromType {
@@ -315,7 +278,6 @@ impl Expression {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
-            DelayedMatchTypeResolution { span, .. } => span,
             StorageAccess { span, .. } => span,
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
@@ -536,7 +498,10 @@ impl Expression {
             },
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
-                let primary_expression_result = check!(
+                let ParserLifter {
+                    mut var_decls,
+                    value,
+                } = check!(
                     Expression::parse_from_pair(expr_iter.next().unwrap(), config),
                     ParserLifter::empty(error_recovery_exp(span.clone())),
                     warnings,
@@ -544,7 +509,7 @@ impl Expression {
                 );
                 let mut branches = Vec::new();
                 for exp in expr_iter {
-                    let res = check!(
+                    branches.push(check!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
                             condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
@@ -556,27 +521,26 @@ impl Expression {
                         },
                         warnings,
                         errors
-                    );
-                    branches.push(res);
+                    ));
                 }
-                let primary_expression = primary_expression_result.value;
-                let (if_exp, var_decl_name, cases_covered) = check!(
-                    desugar_match_expression(&primary_expression, branches, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let mut var_decls = primary_expression_result.var_decls;
+                // create a variable that assigns the value in a VariableDeclaration
+                let var_decl_span = value.span();
+                let var_decl_name = ident::random_name(var_decl_span.clone(), config);
                 var_decls.push(VariableDeclaration {
-                    name: var_decl_name,
+                    name: var_decl_name.clone(),
                     type_ascription: TypeInfo::Unknown,
                     type_ascription_span: None,
                     is_mutable: false,
-                    body: primary_expression,
+                    body: value,
                 });
+                // use that variable as the new value of the match expression
+                let var_decl_exp = Expression::VariableExpression {
+                    name: var_decl_name,
+                    span: var_decl_span,
+                };
                 let exp = Expression::MatchExp {
-                    if_exp: Box::new(if_exp),
-                    cases_covered,
+                    value: Box::new(var_decl_exp),
+                    branches,
                     span,
                 };
                 ParserLifter {
@@ -1821,292 +1785,6 @@ fn arrange_by_order_of_operations(
     }
 
     ok(expression_result_stack[0].clone(), warnings, errors)
-}
-
-struct MatchedBranch {
-    result: Expression,
-    match_req_map: Vec<(Expression, Expression)>,
-    match_impl_map: Vec<(Ident, Expression)>,
-    branch_span: Span,
-}
-
-/// This algorithm desugars match expressions to if statements.
-///
-/// Given the following example:
-///
-/// ```ignore
-/// struct Point {
-///     x: u64,
-///     y: u64
-/// }
-///
-/// let p = Point {
-///     x: 42,
-///     y: 24
-/// };
-///
-/// match p {
-///     Point { x, y: 5 } => { x },
-///     Point { x, y: 24 } => { x },
-///     _ => 0
-/// }
-/// ```
-///
-/// The resulting if statement would look roughly like this:
-///
-/// ```ignore
-/// let NEW_NAME = p;
-/// if NEW_NAME.y==5 {
-///     let x = 42;
-///     x
-/// } else if NEW_NAME.y==42 {
-///     let x = 42;
-///     x
-/// } else {
-///     0
-/// }
-/// ```
-///
-/// The steps of the algorithm can roughly be broken down into:
-///
-/// 0. Create a VariableDeclaration that assigns the primary expression to a variable.
-/// 1. Assemble the "matched branches."
-/// 2. Assemble the possibly nested giant if statement using the matched branches.
-///     2a. Assemble the conditional that goes in the if primary expression.
-///     2b. Assemble the statements that go inside of the body of the if expression
-///     2c. Assemble the giant if statement.
-/// 3. Return!
-pub(crate) fn desugar_match_expression(
-    primary_expression: &Expression,
-    branches: Vec<MatchBranch>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<(Expression, Ident, Vec<MatchCondition>)> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
-
-    // 0. Create a VariableDeclaration that assigns the primary expression to a variable.
-    let var_decl_span = primary_expression.span();
-    let var_decl_name = ident::random_name(var_decl_span.clone(), config);
-    let var_decl_exp = Expression::VariableExpression {
-        name: var_decl_name.clone(),
-        span: var_decl_span,
-    };
-
-    // 1. Assemble the "matched branches."
-    let mut matched_branches = vec![];
-    for MatchBranch {
-        condition,
-        result,
-        span: branch_span,
-    } in branches.iter()
-    {
-        let matches = match condition {
-            MatchCondition::CatchAll(_) => Some((vec![], vec![])),
-            MatchCondition::Scrutinee(scrutinee) => check!(
-                matcher(&var_decl_exp, scrutinee),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-        };
-        match matches {
-            Some((match_req_map, match_impl_map)) => {
-                matched_branches.push(MatchedBranch {
-                    result: result.to_owned(),
-                    match_req_map,
-                    match_impl_map,
-                    branch_span: branch_span.to_owned(),
-                });
-            }
-            None => {
-                let errors = vec![CompileError::Internal("found None", branch_span.clone())];
-                let exp = Expression::Tuple {
-                    fields: vec![],
-                    span: branch_span.clone(),
-                };
-                return ok((exp, var_decl_name, vec![]), vec![], errors);
-            }
-        }
-    }
-
-    // 2. Assemble the possibly nested giant if statement using the matched branches.
-    let mut if_statement = None;
-    for MatchedBranch {
-        result,
-        match_req_map,
-        match_impl_map,
-        branch_span,
-    } in matched_branches.iter().rev()
-    {
-        // 2a. Assemble the conditional that goes in the if primary expression.
-        let mut conditional = None;
-        for (left_req, right_req) in match_req_map.iter() {
-            let joined_span = Span::join(left_req.clone().span(), right_req.clone().span());
-            let condition = Expression::core_ops_eq(
-                vec![left_req.to_owned(), right_req.to_owned()],
-                joined_span,
-            );
-            match conditional {
-                None => {
-                    conditional = Some(condition);
-                }
-                Some(the_conditional) => {
-                    conditional = Some(Expression::LazyOperator {
-                        op: crate::LazyOp::And,
-                        lhs: Box::new(the_conditional.clone()),
-                        rhs: Box::new(condition.clone()),
-                        span: Span::join(the_conditional.span(), condition.span()),
-                    });
-                }
-            }
-        }
-
-        // 2b. Assemble the statements that go inside of the body of the if expression
-        let mut code_block_stmts = vec![];
-        let mut code_block_stmts_span = None;
-        for (left_impl, right_impl) in match_impl_map.iter() {
-            let decl = Declaration::VariableDeclaration(VariableDeclaration {
-                name: left_impl.clone(),
-                is_mutable: false,
-                body: right_impl.clone(),
-                type_ascription: TypeInfo::Unknown,
-                type_ascription_span: None,
-            });
-            let new_span = Span::join(left_impl.span().clone(), right_impl.span());
-            code_block_stmts.push(AstNode {
-                content: AstNodeContent::Declaration(decl),
-                span: new_span.clone(),
-            });
-            code_block_stmts_span = match code_block_stmts_span {
-                None => Some(new_span),
-                Some(old_span) => Some(Span::join(old_span, new_span)),
-            };
-        }
-        match result {
-            Expression::CodeBlock {
-                contents:
-                    CodeBlock {
-                        contents,
-                        whole_block_span,
-                    },
-                span: _,
-            } => {
-                let mut contents = contents.clone();
-                code_block_stmts.append(&mut contents);
-                code_block_stmts_span = match code_block_stmts_span {
-                    None => Some(whole_block_span.clone()),
-                    Some(old_span) => Some(Span::join(old_span, whole_block_span.clone())),
-                };
-            }
-            result => {
-                code_block_stmts.push(AstNode {
-                    content: AstNodeContent::Expression(result.clone()),
-                    span: result.span(),
-                });
-                code_block_stmts_span = match code_block_stmts_span {
-                    None => Some(result.span()),
-                    Some(old_span) => Some(Span::join(old_span, result.span())),
-                };
-            }
-        }
-        let code_block_stmts_span = match code_block_stmts_span {
-            None => branch_span.clone(),
-            Some(span) => span,
-        };
-        let code_block = Expression::CodeBlock {
-            contents: CodeBlock {
-                contents: code_block_stmts.clone(),
-                whole_block_span: code_block_stmts_span.clone(),
-            },
-            span: code_block_stmts_span,
-        };
-
-        // 2c. Assemble the giant if statement.
-        match if_statement {
-            None => {
-                if_statement = match conditional {
-                    None => Some(code_block),
-                    Some(conditional) => Some(Expression::IfExp {
-                        condition: Box::new(conditional.clone()),
-                        then: Box::new(code_block.clone()),
-                        r#else: None,
-                        span: Span::join(conditional.span(), code_block.span()),
-                    }),
-                };
-            }
-            Some(Expression::CodeBlock {
-                contents: right_block,
-                span: exp_span,
-            }) => {
-                let right = Expression::CodeBlock {
-                    contents: right_block,
-                    span: exp_span,
-                };
-                if_statement = match conditional {
-                    None => Some(Expression::IfExp {
-                        condition: Box::new(Expression::Literal {
-                            value: Literal::Boolean(true),
-                            span: branch_span.clone(),
-                        }),
-                        then: Box::new(code_block.clone()),
-                        r#else: Some(Box::new(right.clone())),
-                        span: Span::join(code_block.clone().span(), right.clone().span()),
-                    }),
-                    Some(the_conditional) => Some(Expression::IfExp {
-                        condition: Box::new(the_conditional),
-                        then: Box::new(code_block.clone()),
-                        r#else: Some(Box::new(right.clone())),
-                        span: Span::join(code_block.clone().span(), right.clone().span()),
-                    }),
-                };
-            }
-            Some(Expression::IfExp {
-                condition,
-                then,
-                r#else,
-                span: exp_span,
-            }) => {
-                if_statement = Some(Expression::IfExp {
-                    condition: Box::new(conditional.unwrap()),
-                    then: Box::new(code_block.clone()),
-                    r#else: Some(Box::new(Expression::IfExp {
-                        condition,
-                        then,
-                        r#else,
-                        span: exp_span.clone(),
-                    })),
-                    span: Span::join(code_block.clone().span(), exp_span),
-                });
-            }
-            Some(if_statement) => {
-                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
-                errors.push(CompileError::Unimplemented(
-                    "this desugared if expression pattern is not implemented",
-                    if_statement.span(),
-                ));
-                // construct unit expression for error recovery
-                let exp = Expression::Tuple {
-                    fields: vec![],
-                    span: if_statement.span(),
-                };
-                return ok((exp, var_decl_name, vec![]), warnings, errors);
-            }
-        }
-    }
-
-    // 3. Return!
-    let cases_covered = branches
-        .into_iter()
-        .map(|x| x.condition)
-        .collect::<Vec<_>>();
-    match if_statement {
-        None => err(vec![], vec![]),
-        Some(if_statement) => ok(
-            (if_statement, var_decl_name, cases_covered),
-            warnings,
-            errors,
-        ),
-    }
 }
 
 fn parse_if_let(

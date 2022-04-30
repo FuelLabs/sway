@@ -852,12 +852,6 @@ pub enum CompileError {
     GenericShadowsGeneric { name: String, span: Span },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
     StarImportShadowsOtherSymbol { name: String, span: Span },
-    #[error(
-        "Match expression arm has mismatched types.\n\
-         expected: {expected}\n\
-         "
-    )]
-    MatchWrongType { expected: TypeId, span: Span },
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,
@@ -957,6 +951,17 @@ pub enum TypeError {
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
 }
 
 impl TypeError {
@@ -965,6 +970,7 @@ impl TypeError {
         match self {
             MismatchedType { span, .. } => span,
             UnknownType { span } => span,
+            MatchArmScrutineeWrongType { span, .. } => span,
         }
     }
 }
@@ -1132,7 +1138,6 @@ impl CompileError {
             ShadowsOtherSymbol { span, .. } => span,
             GenericShadowsGeneric { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,
-            MatchWrongType { span, .. } => span,
             MatchExpressionNonExhaustive { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PureCalledImpure { span, .. } => span,

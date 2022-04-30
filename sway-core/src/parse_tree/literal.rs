@@ -112,6 +112,7 @@ impl Literal {
             B256(_) => ResolvedType::B256,
         }
     }
+
     pub(crate) fn parse_from_pair(
         lit: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -261,6 +262,21 @@ impl Literal {
             Err(compile_err) => err(Vec::new(), vec![compile_err]),
         }
     }
+
+    pub(crate) fn to_typeinfo(&self) -> TypeInfo {
+        match self {
+            Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
+            Literal::Numeric(_) => TypeInfo::Numeric,
+            Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+            Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+            Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+            Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            Literal::Boolean(_) => TypeInfo::Boolean,
+            Literal::Byte(_) => TypeInfo::Byte,
+            Literal::B256(_) => TypeInfo::B256,
+        }
+    }
+
     /// Converts a literal to a big-endian representation. This is padded to words.
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         use Literal::*;

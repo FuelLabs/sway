@@ -79,7 +79,7 @@ pub(crate) enum TypedExpressionVariant {
         then: TypedCodeBlock,
         r#else: Option<Box<TypedExpression>>,
     },
-    TupleElemAccess {
+    TupleIndexAccess {
         prefix: Box<TypedExpression>,
         elem_to_access_num: usize,
         resolved_type_of_parent: TypeId,
@@ -273,13 +273,13 @@ impl PartialEq for TypedExpressionVariant {
                     }
             }
             (
-                Self::TupleElemAccess {
+                Self::TupleIndexAccess {
                     prefix: l_prefix,
                     elem_to_access_num: l_elem_to_access_num,
                     resolved_type_of_parent: l_resolved_type_of_parent,
                     ..
                 },
-                Self::TupleElemAccess {
+                Self::TupleIndexAccess {
                     prefix: r_prefix,
                     elem_to_access_num: r_elem_to_access_num,
                     resolved_type_of_parent: r_resolved_type_of_parent,
@@ -472,7 +472,7 @@ impl TypedExpressionVariant {
                     variant.name.as_str()
                 )
             }
-            TypedExpressionVariant::TupleElemAccess {
+            TypedExpressionVariant::TupleIndexAccess {
                 resolved_type_of_parent,
                 elem_to_access_num,
                 ..
@@ -603,7 +603,7 @@ impl TypedExpressionVariant {
                 };
                 variant.copy_types(type_mapping);
             }
-            TupleElemAccess {
+            TupleIndexAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..

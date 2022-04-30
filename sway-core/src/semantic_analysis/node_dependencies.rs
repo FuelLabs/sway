@@ -356,7 +356,13 @@ impl Dependencies {
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
-            Expression::MatchExp { if_exp, .. } => self.gather_from_expr(if_exp),
+            Expression::MatchExp {
+                value, branches, ..
+            } => self
+                .gather_from_expr(value)
+                .gather_from_iter(branches.iter(), |deps, branch| {
+                    deps.gather_from_match_branch(branch)
+                }),
             Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
             Expression::Array { contents, .. } => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
@@ -406,12 +412,25 @@ impl Dependencies {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
             Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }
+    }
+
+    fn gather_from_match_branch(self, branch: &MatchBranch) -> Self {
+        let MatchBranch {
+            condition, result, ..
+        } = branch;
+        (match condition {
+            MatchCondition::CatchAll(_) => self,
+            MatchCondition::Scrutinee(scrutinee) => self.gather_from_iter(
+                scrutinee.gather_approximate_typeinfo().iter(),
+                |deps, type_info| deps.gather_from_typeinfo(type_info),
+            ),
+        })
+        .gather_from_expr(result)
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {

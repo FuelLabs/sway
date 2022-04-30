@@ -253,7 +253,7 @@ pub(crate) fn convert_expression_to_asm(
         ),
         // tuples are treated like mini structs, so we can use the same method that
         // struct field access uses
-        TypedExpressionVariant::TupleElemAccess {
+        TypedExpressionVariant::TupleIndexAccess {
             resolved_type_of_parent,
             prefix,
             elem_to_access_span,

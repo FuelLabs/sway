@@ -14,13 +14,3 @@ pub enum MethodName {
     /// Represents a method lookup that does not contain any types in the path
     FromModule { method_name: Ident },
 }
-
-impl MethodName {
-    /// To be used for error messages and debug strings
-    pub(crate) fn easy_name(&self) -> Ident {
-        match self {
-            MethodName::FromType { call_path, .. } => call_path.suffix.clone(),
-            MethodName::FromModule { method_name, .. } => method_name.clone(),
-        }
-    }
-}

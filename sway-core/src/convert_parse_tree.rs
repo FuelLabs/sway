@@ -1,7 +1,8 @@
+use crate::ident;
+
 use {
     crate::{
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        parse_tree::desugar_match_expression,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
@@ -60,28 +61,6 @@ impl ErrorContext {
     {
         self.errors.push(error.into());
         ErrorEmitted { _priv: () }
-    }
-
-    pub fn warnings<I, W>(&mut self, warnings: I)
-    where
-        I: IntoIterator<Item = W>,
-        W: Into<CompileWarning>,
-    {
-        self.warnings
-            .extend(warnings.into_iter().map(|warning| warning.into()));
-    }
-
-    pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
-    where
-        I: IntoIterator<Item = E>,
-        E: Into<CompileError>,
-    {
-        let mut emitted_opt = None;
-        self.errors.extend(errors.into_iter().map(|error| {
-            emitted_opt = Some(ErrorEmitted { _priv: () });
-            error.into()
-        }));
-        emitted_opt
     }
 }
 
@@ -995,29 +974,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         }
         Expr::If(if_expr) => if_expr_to_expression(ec, if_expr)?,
         Expr::Match {
-            condition,
-            branches,
-            ..
+            value, branches, ..
         } => {
-            let condition = expr_to_expression(ec, *condition)?;
+            let value = expr_to_expression(ec, *value)?;
+            let var_decl_span = value.span();
+            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+            let var_decl_exp = Expression::VariableExpression {
+                name: var_decl_name.clone(),
+                span: var_decl_span,
+            };
             let branches = {
                 branches
                     .into_inner()
                     .into_iter()
                     .map(|match_branch| match_branch_to_match_branch(ec, match_branch))
                     .collect::<Result<_, _>>()?
-            };
-            let desugar_result = desugar_match_expression(&condition, branches, None);
-            let CompileResult {
-                value,
-                warnings,
-                errors,
-            } = desugar_result;
-            ec.warnings(warnings);
-            let error_emitted_opt = ec.errors(errors);
-            let (if_exp, var_decl_name, cases_covered) = match value {
-                Some(stuff) => stuff,
-                None => return Err(error_emitted_opt.unwrap()),
             };
             Expression::CodeBlock {
                 contents: CodeBlock {
@@ -1029,7 +1000,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                     type_ascription: TypeInfo::Unknown,
                                     type_ascription_span: None,
                                     is_mutable: false,
-                                    body: condition,
+                                    body: value,
                                 },
                             )),
                             span: span.clone(),
@@ -1037,8 +1008,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         AstNode {
                             content: AstNodeContent::ImplicitReturnExpression(
                                 Expression::MatchExp {
-                                    if_exp: Box::new(if_exp),
-                                    cases_covered,
+                                    value: Box::new(var_decl_exp),
+                                    branches,
                                     span: span.clone(),
                                 },
                             ),

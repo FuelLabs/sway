@@ -5,7 +5,10 @@ use crate::{
     CompileError, CompileResult, MatchCondition,
 };
 
-use super::{witness_report::WitnessReport, matrix::Matrix, constructor_factory::ConstructorFactory, pattern::Pattern, patstack::PatStack};
+use super::{
+    constructor_factory::ConstructorFactory, matrix::Matrix, patstack::PatStack, pattern::Pattern,
+    witness_report::WitnessReport,
+};
 
 /// Given the arms of a match expression, checks to see if the arms are
 /// exhaustive and checks to see if each arm is reachable.
