@@ -793,15 +793,12 @@ impl<'ir> AsmBuilder<'ir> {
 
         let cond_reg = self.value_to_register(cond_value);
 
-        let false_label = self.block_to_label(false_block);
-        self.bytecode.push(Op::jump_if_not_equal(
-            cond_reg,
-            VirtualRegister::Constant(ConstantRegister::One),
-            false_label,
-        ));
-
         let true_label = self.block_to_label(true_block);
-        self.bytecode.push(Op::jump_to_label(true_label));
+        self.bytecode
+            .push(Op::jump_if_not_zero(cond_reg, true_label));
+
+        let false_label = self.block_to_label(false_block);
+        self.bytecode.push(Op::jump_to_label(false_label));
     }
 
     fn compile_branch_to_phi_value(&mut self, from_block: &Block, to_block: &Block) {

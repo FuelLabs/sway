@@ -2,8 +2,8 @@
 
 use fuel_core::service::Config;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
-use fuels_contract::script::Script;
-use fuels_signers::provider::Provider;
+use fuels::contract::script::Script;
+use fuels::prelude::*;
 use std::fs::read;
 
 /// Helper function to reduce boilerplate code in tests.
