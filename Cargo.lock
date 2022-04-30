@@ -1179,9 +1179,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-gql-client"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14867a012d015ae9a7c93e4616e2d5c92c9e8bff046bedd3f3534e44bad40121"
+checksum = "81e00a846684c7d1328c2669161fa697e638418236c3306686e9f02bf99c0992"
 dependencies = [
  "anyhow",
  "chrono",
