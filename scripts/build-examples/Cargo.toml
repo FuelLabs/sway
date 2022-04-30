@@ -1,6 +1,6 @@
 [package]
 name = "build-examples"
-description = "Runs `forc build` for all projects under the Sway `examples` directory."
+description = "Runs `forc build` and `forc fmt --check` on Sway projects specified by path or within Sway `examples` directory."
 version = "0.0.0"
 edition = "2021"
 publish = false

@@ -1,4 +1,4 @@
-//! Runs `forc build` and `forc fmt --check` for all projects under the Sway `examples` directory.
+//! Runs `forc build` and `forc fmt --check` on Sway projects specified by path or within Sway `examples` directory.
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
