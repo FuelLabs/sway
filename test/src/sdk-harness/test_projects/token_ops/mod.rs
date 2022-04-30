@@ -99,7 +99,7 @@ async fn can_force_transfer() {
 
     fuelcoin_instance
         .force_transfer_coins(coins, asset_id.clone(), target.clone())
-        .set_contracts(&[fuelcoin_id, balance_id])
+        .set_contracts(&[balance_id])
         .call()
         .await
         .unwrap();
