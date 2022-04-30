@@ -1,9 +1,9 @@
 use fuel_tx::{Bytes32, ContractId, Salt};
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::consts::VM_TX_MEMORY;
-use fuels_abigen_macro::abigen;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels_abigen_macro::abigen;
 
 abigen!(
     TxContractTest,

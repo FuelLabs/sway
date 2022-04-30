@@ -1,8 +1,8 @@
 use fuel_tx::{ContractId, Salt};
 use fuels::prelude::*;
-use fuels_abigen_macro::abigen;
-use fuels::test_helpers;
 use fuels::signers::wallet::Wallet;
+use fuels::test_helpers;
+use fuels_abigen_macro::abigen;
 
 abigen!(
     AuthContract,

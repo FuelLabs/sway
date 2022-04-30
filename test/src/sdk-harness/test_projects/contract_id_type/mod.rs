@@ -1,9 +1,9 @@
 use fuel_core::service::Config;
-use fuel_tx::{Receipt, Transaction};
-use std::fs::read;
 use fuel_tx::ContractId;
-use fuels::prelude::*;
+use fuel_tx::{Receipt, Transaction};
 use fuels::contract::script::Script;
+use fuels::prelude::*;
+use std::fs::read;
 
 #[tokio::test]
 async fn contract_id_eq_implementation() {

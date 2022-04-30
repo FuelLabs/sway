@@ -1,8 +1,8 @@
 use fuel_core::service::Config;
-use std::fs::read;
 use fuel_tx::Transaction;
-use fuels::prelude::*;
 use fuels::contract::script::Script;
+use fuels::prelude::*;
+use std::fs::read;
 
 async fn execute_script(bin_path: &str) -> u64 {
     let bin = read(bin_path);

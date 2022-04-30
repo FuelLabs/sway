@@ -1,8 +1,8 @@
-use fuel_vm::consts::VM_MAX_RAM;
 use fuel_tx::Salt;
-use fuels_abigen_macro::abigen;
+use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
 use fuels::test_helpers;
+use fuels_abigen_macro::abigen;
 
 abigen!(
     TestRegistersContract,

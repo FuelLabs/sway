@@ -1,7 +1,7 @@
-use fuel_vm::consts::VM_MAX_RAM;
 use fuel_tx::{ContractId, Salt};
-use fuels_abigen_macro::abigen;
+use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
+use fuels_abigen_macro::abigen;
 
 abigen!(
     TestContextContract,

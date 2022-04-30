@@ -1,7 +1,7 @@
 use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId, Salt};
-use fuels_abigen_macro::abigen;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels_abigen_macro::abigen;
 
 abigen!(
     AttackerContract,
