@@ -30,7 +30,7 @@ name = "{project_name}"
 version = "0.1.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.6.3", default-features = false }}
+fuel-gql-client = {{ version = "0.6", default-features = false }}
 fuel-tx = "0.9"
 fuels-abigen-macro = "0.10"
 fuels = "0.10"

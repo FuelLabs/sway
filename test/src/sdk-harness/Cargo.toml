@@ -6,8 +6,8 @@ name = "tests"
 version = "0.0.0"
 
 [dependencies]
-fuel-core = { version = "0.6.3", default-features = false }
-fuel-gql-client = { version = "0.6.3", default-features = false }
+fuel-core = { version = "0.6", default-features = false }
+fuel-gql-client = { version = "0.6", default-features = false }
 fuel-tx = "0.9"
 fuel-types = "0.3"
 fuel-vm = "0.8"
