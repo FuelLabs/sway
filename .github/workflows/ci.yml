@@ -373,6 +373,7 @@ jobs:
   notify-slack-on-failure:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
