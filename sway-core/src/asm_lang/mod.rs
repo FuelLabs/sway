@@ -252,7 +252,7 @@ impl Op {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg1` is not equal to zero.
+    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
