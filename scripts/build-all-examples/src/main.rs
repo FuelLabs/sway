@@ -2,7 +2,7 @@
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use std::{
     fs,
     io::{self, Write},
