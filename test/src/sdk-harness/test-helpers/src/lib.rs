@@ -1,12 +1,15 @@
+//! util & helper functions to support working with the Rust SDK (fuels-rs)
+
 use fuel_core::service::Config;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
 use fuels::contract::script::Script;
 use fuels::prelude::*;
-use hex;
+use std::fs::read;
 
-#[tokio::test]
-async fn run_valid() {
-    let bin = std::fs::read("test_projects/logging/out/debug/logging.bin");
+/// Helper function to reduce boilerplate code in tests.
+/// Used to run a script which returns a boolean value.
+pub async fn script_runner(bin_path: &str) -> u64 {
+    let bin = read(bin_path);
     let client = Provider::launch(Config::local_node()).await.unwrap();
 
     let tx = Transaction::Script {
@@ -15,7 +18,7 @@ async fn run_valid() {
         maturity: 0,
         byte_price: 0,
         receipts_root: Default::default(),
-        script: bin.unwrap(),
+        script: bin.unwrap(), // Here we pass the compiled script into the transaction
         script_data: vec![],
         inputs: vec![],
         outputs: vec![],
@@ -26,8 +29,5 @@ async fn run_valid() {
     let script = Script::new(tx);
     let receipts = script.call(&client).await.unwrap();
 
-    let correct_hex =
-        hex::decode("ef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a");
-
-    assert!(correct_hex.unwrap() == receipts[0].data().unwrap());
+    receipts[0].val().unwrap()
 }

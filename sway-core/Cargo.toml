@@ -16,9 +16,9 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.3"
+fuel-asm = "0.4"
 fuel-crypto = "0.4"
-fuel-vm = "0.6"
+fuel-vm = "0.8"
 generational-arena = "0.2"
 hex = { version = "0.4", optional = true }
 itertools = "0.10"
