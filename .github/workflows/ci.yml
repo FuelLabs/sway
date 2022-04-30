@@ -81,7 +81,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin build-examples build
 
   build-mdbook:
     needs: cancel-previous-runs
