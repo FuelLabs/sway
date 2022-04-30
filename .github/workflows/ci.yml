@@ -81,7 +81,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
 
   build-mdbook:
     needs: cancel-previous-runs
@@ -126,7 +126,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
@@ -158,7 +158,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -246,7 +246,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
@@ -279,7 +279,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -331,7 +331,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all
+          args: --bin build-examples build --all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:

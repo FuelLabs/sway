@@ -31,8 +31,8 @@ struct BuildCommand {
     #[clap(long = "paths", short = 'p', multiple_values = true)]
     pub paths: Vec<String>,
     /// Builds all Sway examples under /examples
-    #[clap(long = "all", short = 'a')]
-    pub all: bool,
+    #[clap(long = "all-examples")]
+    pub all_examples: bool,
 }
 
 fn get_sway_path() -> PathBuf {
@@ -110,11 +110,14 @@ fn report_summary(summary: Vec<(PathBuf, bool)>) {
 }
 
 fn build_examples(command: BuildCommand) -> Result<()> {
-    let BuildCommand { paths, all } = command;
+    let BuildCommand {
+        paths,
+        all_examples,
+    } = command;
 
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
-    if all {
+    if all_examples {
         let examples_dir = get_sway_path().join("examples");
 
         for res in fs::read_dir(examples_dir).expect("Failed to read examples directory") {
