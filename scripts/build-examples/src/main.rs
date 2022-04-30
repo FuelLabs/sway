@@ -19,11 +19,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    BuildExamples(BuildExamplesCommand),
+    /// Builds Sway examples given their paths. Runs for all examples under /examples if no paths are specified.
+    Build(BuildCommand),
 }
 
 #[derive(Parser)]
-struct BuildExamplesCommand {
+struct BuildCommand {
+    /// Paths of Sway examples to build (default: all examples under /examples)
     #[clap(long = "paths", short = 'p', multiple_values = true)]
     pub paths: Option<Vec<String>>,
 }
@@ -102,8 +104,8 @@ fn report_summary(summary: Vec<(PathBuf, bool)>) {
     }
 }
 
-fn build_examples(command: BuildExamplesCommand) {
-    let BuildExamplesCommand { paths } = command;
+fn build_examples(command: BuildCommand) {
+    let BuildCommand { paths } = command;
 
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
@@ -131,7 +133,7 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::BuildExamples(command) => build_examples(command),
+        Commands::Build(command) => build_examples(command),
     }
 }
 
