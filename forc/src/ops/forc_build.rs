@@ -1,5 +1,5 @@
 use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
 use std::{
@@ -58,11 +58,14 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
-        println!("Error is: {}", e);
+        if locked {
+            bail!(
+                "The lock file {} needs to be updated but --locked was passed to prevent this.",
+                lock_path.to_string_lossy()
+            );
+        }
+
         let cause = if e.to_string().contains("No such file or directory") {
-            if locked {
-                panic!("Foo");
-            }
             anyhow!("lock file did not exist")
         } else {
             e
