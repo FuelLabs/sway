@@ -7,7 +7,7 @@ use crate::{
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
         },
-        create_new_scope, NamespaceWrapper, TypeCheckArguments,
+        create_new_scope, NamespaceWrapper, TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
     },
     type_engine::*,
     Ident, TypeParameter,
@@ -35,6 +35,18 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+impl From<&TypedFunctionDeclaration> for TypedAstNode {
+    fn from(o: &TypedFunctionDeclaration) -> Self {
+        let span = o.span.clone();
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                o.clone(),
+            )),
+            span,
+        }
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -5,6 +5,7 @@ members = [
     "forc",
     "forc-explore",
     "forc-fmt",
+    "forc-gm",
     "forc-lsp",
     "forc-pkg",
     "forc-util",

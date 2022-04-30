@@ -1,7 +1,3 @@
 [[package]]
 name = 'asm_missing_return'
-dependencies = ['core']
-
-[[package]]
-name = 'core'
 dependencies = []

@@ -66,12 +66,6 @@ fn capabilities() -> ServerCapabilities {
             trigger_characters: None,
             ..Default::default()
         }),
-        rename_provider: Some(OneOf::Right(RenameOptions {
-            prepare_provider: Some(true),
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: Some(true),
-            },
-        })),
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec![],
             ..Default::default()
