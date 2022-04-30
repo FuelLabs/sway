@@ -1,4 +1,4 @@
-//! Runs `forc build` or `forc fmt --check` on Sway projects specified by path or within Sway `examples` directory.
+//! Runs `forc build` or `forc fmt --check` on Sway projects specified by paths or within Sway `examples` directory.
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
@@ -11,7 +11,7 @@ use std::{
 };
 
 #[derive(Parser)]
-#[clap(name = "build-all-examples", about = "Forc Examples Builder")]
+#[clap(name = "examples-checker", about = "Forc Examples Checker")]
 #[clap(group(
         ArgGroup::new("run").required(true).args(&["paths", "all-examples"])))]
 struct Cli {
@@ -98,7 +98,7 @@ fn run_forc_fmt(path: PathBuf) -> (PathBuf, bool) {
 }
 
 fn print_summary(summary: Vec<(PathBuf, bool)>, command_kind: CommandKind) {
-    println!("\n{} Summary:", command_kind);
+    println!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
     for (path, success) in &summary {
         let (checkmark, status) = if *success {
