@@ -429,7 +429,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "build-all-examples"
+name = "build-examples"
 version = "0.0.0"
 dependencies = [
  "anyhow",
