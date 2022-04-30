@@ -77,11 +77,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
     needs: cancel-previous-runs
@@ -122,11 +127,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
@@ -154,11 +164,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check formatting for Sway examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -242,11 +257,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
@@ -275,11 +295,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -327,11 +352,16 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-examples build --all-examples
+          args: --bin examples-checker build --all-examples
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:
