@@ -17,6 +17,9 @@
 //     x
 // }
 
+// regex: VAR=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
 script {
     fn a(b: bool) -> u64 {
         local ptr u64 x
@@ -41,6 +44,11 @@ script {
         ret u64 v5
     }
 
+// 'b' is passed to a() and used for the CBR, so check below that the value we pass to a() is
+// inlined and used for CBR and the two blocks in a() too, and then followed by what's after the
+// call.
+
+// check: fn main
     fn main() -> u64 {
         local mut ptr u64 x
 
@@ -48,8 +56,18 @@ script {
         v0 = get_ptr mut ptr u64 x, ptr u64, 0
         v1 = const u64 0
         store v1, ptr v0
+
+// check: $(arg=$VAR) = const bool true
         v2 = const bool true
+
+// not: call
         v3 = call a(v2)
+
+// check: cbr $arg, $(t=$ID), $(f=$ID)
+// check: $t:
+// check: $f:
+
+// check: get_ptr mut ptr u64 x, ptr u64, 0
         v4 = get_ptr mut ptr u64 x, ptr u64, 0
         store v3, ptr v4
         v5 = get_ptr mut ptr u64 x, ptr u64, 0

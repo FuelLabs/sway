@@ -36,7 +36,15 @@ script {
         v6 = const b256 0x0102030405060708010203040506070801020304050607080102030405060708
         v7 = insert_value v5, { b256, { bool, u64 } }, v6, 0
         v8 = insert_value v7, { b256, { bool, u64 } }, v4, 1
+
+// * There should be no insert_values remaining, they're all const.
+// not: insert_value
+
         v9 = get_ptr ptr { b256, { bool, u64 } } record, ptr { b256, { bool, u64 } }, 0
+
+// * Instead just a populated const struct.
+// check: const { b256, { bool, u64 } } { b256 0x0102030405060708010203040506070801020304050607080102030405060708, { bool, u64 } { bool true, u64 76 } }
+
         store v8, ptr v9
         v10 = get_ptr ptr { b256, { bool, u64 } } record, ptr { b256, { bool, u64 } }, 0
         v11 = extract_value v10, { b256, { bool, u64 } }, 1
