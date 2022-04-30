@@ -9,7 +9,7 @@ members = [
     "forc-lsp",
     "forc-pkg",
     "forc-util",
-    "scripts/build-examples",
+    "scripts/examples-checker",
     "scripts/forc-documenter",
     "sway-core",
     "sway-fmt",
