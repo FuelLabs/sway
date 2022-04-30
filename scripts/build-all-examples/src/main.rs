@@ -2,8 +2,7 @@
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
-use anyhow::anyhow;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::{
     fs,
     io::{self, Write},
@@ -23,9 +22,9 @@ enum Commands {
     BuildExamples(BuildExamplesCommand),
 }
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 struct BuildExamplesCommand {
-    #[clap(long)]
+    #[clap(long = "paths", short = 'p', multiple_values = true)]
     pub paths: Option<Vec<String>>,
 }
 
@@ -39,9 +38,8 @@ fn get_sway_path() -> PathBuf {
     }
 }
 
-fn build_and_report_result(entry: fs::DirEntry) -> (PathBuf, bool) {
+fn build_and_generate_result(path: PathBuf) -> (PathBuf, bool) {
     let success = false;
-    let path = entry.path();
 
     if !path.is_dir() || !dir_contains_forc_manifest(&path) {
         return (path, success);
@@ -73,26 +71,67 @@ fn build_and_report_result(entry: fs::DirEntry) -> (PathBuf, bool) {
     (path, success)
 }
 
-fn build_examples(command: BuildExamplesCommand) {
-    let BuildExamplesCommand { paths } = command;
-    let paths_vec = Vec::from(paths);
-
-    let mut summary: Vec<(PathBuf, bool)> = vec![];
-    for res in fs::read_dir(paths).expect("failed to walk examples directory") {
-        let entry = match res {
-            Ok(entry) => entry,
-            _ => continue,
+fn report_summary(summary: Vec<(PathBuf, bool)>) {
+    println!("\nBuild and check formatting of all examples summary:");
+    let mut successes = 0;
+    for (path, success) in &summary {
+        let (checkmark, status) = if *success {
+            ("[✓]", "succeeded")
+        } else {
+            ("[x]", "failed")
         };
-        summary.push(build_and_report_result(entry))
+        println!("  {}: {} {}!", checkmark, path.display(), status);
+        if *success {
+            successes += 1;
+        }
+    }
+    let failures = summary.len() - successes;
+    let successes_str = if successes == 1 {
+        "success"
+    } else {
+        "successes"
+    };
+    let failures_str = if failures == 1 { "failure" } else { "failures" };
+    println!(
+        "{} {}, {} {}",
+        successes, successes_str, failures, failures_str
+    );
+
+    if failures > 0 {
+        std::process::exit(1);
     }
 }
 
-fn main() -> Result<(), anyhow::Error> {
+fn build_examples(command: BuildExamplesCommand) {
+    let BuildExamplesCommand { paths } = command;
+
+    let mut summary: Vec<(PathBuf, bool)> = vec![];
+
+    if let Some(paths) = paths {
+        for path in paths {
+            summary.push(build_and_generate_result(PathBuf::from(path)))
+        }
+    } else {
+        let examples_dir = get_sway_path().join("examples");
+
+        for res in fs::read_dir(examples_dir).expect("Failed to read examples directory") {
+            let path = match res {
+                Ok(entry) => entry.path(),
+                _ => continue,
+            };
+
+            summary.push(build_and_generate_result(path))
+        }
+    }
+
+    report_summary(summary);
+}
+
+fn main() {
     let cli = Cli::parse();
-    let examples_dir = get_sway_path().join("examples");
 
     match cli.command {
-        Commands::BuildExamples(command) => build_examples(command)?,
+        Commands::BuildExamples(command) => build_examples(command),
     }
 }
 
