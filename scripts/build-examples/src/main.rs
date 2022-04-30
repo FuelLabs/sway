@@ -1,9 +1,9 @@
-//! Runs `forc build` and `forc fmt --check` on Sway projects specified by path or within Sway `examples` directory.
+//! Runs `forc build` or `forc fmt --check` on Sway projects specified by path or within Sway `examples` directory.
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{ArgEnum, ArgGroup, Parser};
 use std::{
     fs,
     io::{self, Write},
@@ -12,27 +12,47 @@ use std::{
 
 #[derive(Parser)]
 #[clap(name = "build-all-examples", about = "Forc Examples Builder")]
+#[clap(group(
+        ArgGroup::new("run").required(true).args(&["paths", "all-examples"])))]
 struct Cli {
-    /// the command to run
-    #[clap(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Builds Sway examples
-    Build(BuildCommand),
-}
-
-#[derive(Parser)]
-#[clap(arg_required_else_help = true)]
-struct BuildCommand {
-    /// Specify paths of Sway examples to build
+    /// Targets all Sway examples found at the paths listed
     #[clap(long = "paths", short = 'p', multiple_values = true)]
     pub paths: Vec<String>,
-    /// Builds all Sway examples under /examples
+
+    /// Targets all Sway examples under /examples
     #[clap(long = "all-examples")]
     pub all_examples: bool,
+
+    /// Forc command to run on examples
+    #[clap(arg_enum)]
+    command_kind: CommandKind,
+}
+
+#[derive(ArgEnum, Clone, PartialEq, Eq)]
+enum CommandKind {
+    Build,
+    Fmt,
+}
+
+impl std::fmt::Display for CommandKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            CommandKind::Build => write!(f, "build"),
+            CommandKind::Fmt => write!(f, "fmt"),
+        }
+    }
+}
+
+// Check if the given directory contains `Forc.toml` at its root.
+fn dir_contains_forc_manifest(path: &Path) -> bool {
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn get_sway_path() -> PathBuf {
@@ -45,31 +65,22 @@ fn get_sway_path() -> PathBuf {
     }
 }
 
-fn build_and_generate_result(path: PathBuf) -> (PathBuf, bool) {
+fn run_forc_command(path: PathBuf, cmd_args: Vec<&str>) -> (PathBuf, bool) {
     let success = false;
 
     if !path.is_dir() || !dir_contains_forc_manifest(&path) {
         return (path, success);
     }
 
-    let build_output = std::process::Command::new("forc")
-        .args(["build", "--path"])
+    let output = std::process::Command::new("forc")
+        .args(cmd_args)
         .arg(&path)
         .output()
-        .expect("failed to run `forc build` for example project");
+        .expect("failed to run command for example project");
 
-    let fmt_output = std::process::Command::new("forc")
-        .args(["fmt", "--check", "--path"])
-        .arg(&path)
-        .output()
-        .expect("failed to run `forc fmt --check` for example project");
-
-    // Print output on failure so we can read it in CI.
-    let success = if !build_output.status.success() || !fmt_output.status.success() {
-        io::stdout().write_all(&build_output.stdout).unwrap();
-        io::stdout().write_all(&fmt_output.stdout).unwrap();
-        io::stdout().write_all(&build_output.stderr).unwrap();
-        io::stdout().write_all(&fmt_output.stderr).unwrap();
+    let success = if !output.status.success() {
+        io::stdout().write_all(&output.stdout).unwrap();
+        io::stdout().write_all(&output.stderr).unwrap();
         false
     } else {
         true
@@ -78,8 +89,16 @@ fn build_and_generate_result(path: PathBuf) -> (PathBuf, bool) {
     (path, success)
 }
 
-fn report_summary(summary: Vec<(PathBuf, bool)>) {
-    println!("\nBuild and check formatting of all examples summary:");
+fn run_forc_build(path: PathBuf) -> (PathBuf, bool) {
+    run_forc_command(path, vec!["build", "--path"])
+}
+
+fn run_forc_fmt(path: PathBuf) -> (PathBuf, bool) {
+    run_forc_command(path, vec!["fmt", "--check", "--path"])
+}
+
+fn print_summary(summary: Vec<(PathBuf, bool)>, command_kind: CommandKind) {
+    println!("\n{} Summary:", command_kind);
     let mut successes = 0;
     for (path, success) in &summary {
         let (checkmark, status) = if *success {
@@ -109,12 +128,7 @@ fn report_summary(summary: Vec<(PathBuf, bool)>) {
     }
 }
 
-fn build_examples(command: BuildCommand) -> Result<()> {
-    let BuildCommand {
-        paths,
-        all_examples,
-    } = command;
-
+fn exec(paths: Vec<String>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
     if all_examples {
@@ -126,35 +140,32 @@ fn build_examples(command: BuildCommand) -> Result<()> {
                 _ => continue,
             };
 
-            summary.push(build_and_generate_result(path))
+            let res: (PathBuf, bool) = if command_kind == CommandKind::Build {
+                run_forc_build(path)
+            } else {
+                run_forc_fmt(path)
+            };
+
+            summary.push(res);
         }
     } else {
         for path in paths {
-            summary.push(build_and_generate_result(PathBuf::from(path)))
+            let res: (PathBuf, bool) = if command_kind == CommandKind::Build {
+                run_forc_build(PathBuf::from(path))
+            } else {
+                run_forc_fmt(PathBuf::from(path))
+            };
+
+            summary.push(res);
         }
     }
 
-    report_summary(summary);
+    print_summary(summary, command_kind);
     Ok(())
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    match cli.command {
-        Commands::Build(command) => build_examples(command)?,
-    }
+    exec(cli.paths, cli.all_examples, cli.command_kind)?;
     Ok(())
-}
-
-// Check if the given directory contains `Forc.toml` at its root.
-fn dir_contains_forc_manifest(path: &Path) -> bool {
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
-                return true;
-            }
-        }
-    }
-    false
 }
