@@ -8,7 +8,7 @@ members = [
     "forc-lsp",
     "forc-pkg",
     "forc-util",
-    "scripts/build-all-examples",
+    "scripts/build-examples",
     "scripts/forc-documenter",
     "sway-core",
     "sway-fmt",

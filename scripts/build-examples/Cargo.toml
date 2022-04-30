@@ -1,5 +1,5 @@
 [package]
-name = "build-all-examples"
+name = "build-examples"
 description = "Runs `forc build` for all projects under the Sway `examples` directory."
 version = "0.0.0"
 edition = "2021"
