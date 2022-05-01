@@ -65,11 +65,10 @@ fn get_sway_path() -> PathBuf {
     }
 }
 
+/// Returns true if command ran successfully, false otherwise.
 fn run_forc_command(path: &Path, cmd_args: &[&str]) -> bool {
-    let success = false;
-
-    if !path.is_dir() || !dir_contains_forc_manifest(&path) {
-        return success;
+    if !path.is_dir() || !dir_contains_forc_manifest(path) {
+        return false;
     }
 
     let output = std::process::Command::new("forc")
@@ -78,15 +77,13 @@ fn run_forc_command(path: &Path, cmd_args: &[&str]) -> bool {
         .output()
         .expect("failed to run command for example project");
 
-    let success = if !output.status.success() {
+    if !output.status.success() {
         io::stdout().write_all(&output.stdout).unwrap();
         io::stdout().write_all(&output.stderr).unwrap();
         false
     } else {
         true
-    };
-
-    success
+    }
 }
 
 fn run_forc_build(path: &Path) -> bool {
@@ -128,7 +125,7 @@ fn print_summary(summary: &Vec<(PathBuf, bool)>, command_kind: CommandKind) {
     }
 }
 
-fn exec<'a>(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
+fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
     if all_examples {
