@@ -53,7 +53,7 @@ pub(crate) fn runs_on_node(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        node_url: "127.0.0.1:4000".into(),
+        node_url: "http://127.0.0.1:4000".into(),
         use_orig_asm,
         use_orig_parser,
         silent_mode: !verbose,

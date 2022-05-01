@@ -8,13 +8,13 @@ add  $$ds $$ds $is
 lw   $r0 $fp i73              ; load input function selector
 lw   $r1 data_2               ; load fn selector for comparison
 eq   $r1 $r0 $r1              ; function selector comparison
-jnei $zero $r1 i17            ; jump to selected function
+jnzi $r1 i17                  ; jump to selected function
 lw   $r1 data_3               ; load fn selector for comparison
 eq   $r1 $r0 $r1              ; function selector comparison
-jnei $zero $r1 i19            ; jump to selected function
+jnzi $r1 i19                  ; jump to selected function
 lw   $r1 data_4               ; load fn selector for comparison
 eq   $r0 $r0 $r1              ; function selector comparison
-jnei $zero $r0 i22            ; jump to selected function
+jnzi $r0 i22                  ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 lw   $r0 $fp i74              ; Base register for method parameter
 ret  $r0

@@ -198,8 +198,8 @@ pub(crate) fn create_interference_graph(
 /// * When two registers are coalesced, a new node with a new virtual register (generated using the
 ///   register sequencer) is created in the interference graph.
 /// * When a MOVE instruction is removed, the offset of each subsequent instruction has to be
-///   updated, as well as the immediate values for some or all jump instructions (`ji` and `jnei`
-///   for now).
+/// updated, as well as the immediate values for some or all jump instructions (`ji`, `jnei`, and
+/// `jnzi for now).
 ///
 pub(crate) fn coalesce_registers(
     ops: &[RealizedOp],

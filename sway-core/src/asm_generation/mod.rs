@@ -13,7 +13,8 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
         virtual_register::*,
-        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate24, VirtualOp,
+        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     error::*,
     parse_tree::Literal,
@@ -235,6 +236,7 @@ impl AbstractInstructionSet {
                 // these ops will end up being exactly one op, so the counter goes up one
                 Either::Right(OrganizationalOp::Jump(..))
                 | Either::Right(OrganizationalOp::JumpIfNotEq(..))
+                | Either::Right(OrganizationalOp::JumpIfNotZero(..))
                 | Either::Left(_) => {
                     counter += 1;
                 }
@@ -285,6 +287,18 @@ impl AbstractInstructionSet {
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JNEI(r1, r2, imm),
+                            owning_span,
+                            comment,
+                            offset,
+                        });
+                    }
+                    OrganizationalOp::JumpIfNotZero(r1, ref lab) => {
+                        let imm = VirtualImmediate18::new_unchecked(
+                            *label_namespace.get(lab).unwrap(),
+                            "Programs with more than 2^18 labels are unsupported right now",
+                        );
+                        realized_ops.push(RealizedOp {
+                            opcode: VirtualOp::JNZI(r1, imm),
                             owning_span,
                             comment,
                             offset,
@@ -352,7 +366,8 @@ impl RegisterPool {
 fn label_is_used(buf: &[Op], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
-        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotEq(_, _, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotZero(_, ref l)) if label == l => true,
         _ => false,
     })
 }
@@ -1242,8 +1257,7 @@ fn build_contract_abi_switch(
         // jump to the function label if the selector was equal
         asm_buf.push(Op {
             // if the comparison result is _not_ equal to 0, then it was indeed equal.
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-                VirtualRegister::Constant(ConstantRegister::Zero),
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(
                 comparison_result_register,
                 label,
             )),
