@@ -93,11 +93,6 @@ Whether to compile using the original (pre- IR) pipeline
 
 Whether to compile using the original (pest based) parser
 
-`--locked` 
-
-
-Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs to be updated, Forc will exit with an error
-
 ## EXAMPLES:
 
 Compile the sway files of the current project.
