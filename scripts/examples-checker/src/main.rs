@@ -17,7 +17,7 @@ use std::{
 struct Cli {
     /// Targets all Sway examples found at the paths listed
     #[clap(long = "paths", short = 'p', multiple_values = true)]
-    pub paths: Vec<String>,
+    pub paths: Vec<PathBuf>,
 
     /// Targets all Sway examples under /examples
     #[clap(long = "all-examples")]
@@ -65,11 +65,11 @@ fn get_sway_path() -> PathBuf {
     }
 }
 
-fn run_forc_command(path: PathBuf, cmd_args: Vec<&str>) -> (PathBuf, bool) {
+fn run_forc_command(path: &Path, cmd_args: &[&str]) -> bool {
     let success = false;
 
     if !path.is_dir() || !dir_contains_forc_manifest(&path) {
-        return (path, success);
+        return success;
     }
 
     let output = std::process::Command::new("forc")
@@ -86,21 +86,21 @@ fn run_forc_command(path: PathBuf, cmd_args: Vec<&str>) -> (PathBuf, bool) {
         true
     };
 
-    (path, success)
+    success
 }
 
-fn run_forc_build(path: PathBuf) -> (PathBuf, bool) {
-    run_forc_command(path, vec!["build", "--path"])
+fn run_forc_build(path: &Path) -> bool {
+    run_forc_command(path, &["build", "--path"])
 }
 
-fn run_forc_fmt(path: PathBuf) -> (PathBuf, bool) {
-    run_forc_command(path, vec!["fmt", "--check", "--path"])
+fn run_forc_fmt(path: &Path) -> bool {
+    run_forc_command(path, &["fmt", "--check", "--path"])
 }
 
-fn print_summary(summary: Vec<(PathBuf, bool)>, command_kind: CommandKind) {
+fn print_summary(summary: &Vec<(PathBuf, bool)>, command_kind: CommandKind) {
     println!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
-    for (path, success) in &summary {
+    for (path, success) in summary {
         let (checkmark, status) = if *success {
             ("[✓]", "succeeded")
         } else {
@@ -128,7 +128,7 @@ fn print_summary(summary: Vec<(PathBuf, bool)>, command_kind: CommandKind) {
     }
 }
 
-fn exec(paths: Vec<String>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
+fn exec<'a>(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
     let mut summary: Vec<(PathBuf, bool)> = vec![];
 
     if all_examples {
@@ -140,27 +140,27 @@ fn exec(paths: Vec<String>, all_examples: bool, command_kind: CommandKind) -> Re
                 _ => continue,
             };
 
-            let res: (PathBuf, bool) = if command_kind == CommandKind::Build {
-                run_forc_build(path)
+            let success: bool = if command_kind == CommandKind::Build {
+                run_forc_build(&path)
             } else {
-                run_forc_fmt(path)
+                run_forc_fmt(&path)
             };
 
-            summary.push(res);
+            summary.push((path, success));
         }
     } else {
         for path in paths {
-            let res: (PathBuf, bool) = if command_kind == CommandKind::Build {
-                run_forc_build(PathBuf::from(path))
+            let success: bool = if command_kind == CommandKind::Build {
+                run_forc_build(&path)
             } else {
-                run_forc_fmt(PathBuf::from(path))
+                run_forc_fmt(&path)
             };
 
-            summary.push(res);
+            summary.push((path, success));
         }
     }
 
-    print_summary(summary, command_kind);
+    print_summary(&summary, command_kind);
     Ok(())
 }
 
