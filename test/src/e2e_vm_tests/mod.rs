@@ -154,7 +154,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(42),
         ),
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true
-        ("should_pass/language/booleans_test", ProgramState::Return(0)), // false
+        (
+            "should_pass/language/booleans_test",
+            ProgramState::Return(0),
+        ), // false
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         (
             "should_pass/language/abort_control_flow",

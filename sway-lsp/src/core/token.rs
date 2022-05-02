@@ -6,8 +6,8 @@ use crate::{
     },
     utils::common::extract_var_body,
 };
-use sway_core::parse_tree::MethodName;
 use sway_core::type_engine::TypeInfo;
+use sway_core::{parse_tree::MethodName, MatchCondition, Scrutinee};
 use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
     VariableDeclaration, WhileLoop,
@@ -351,8 +351,16 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(*r#else, tokens);
             }
         }
-        Expression::MatchExp { if_exp, .. } => {
-            handle_expression(*if_exp, tokens);
+        Expression::MatchExp {
+            value, branches, ..
+        } => {
+            handle_expression(*value, tokens);
+            for branch in branches {
+                if let MatchCondition::Scrutinee(scrutinee) = branch.condition {
+                    handle_scrutinee(scrutinee, tokens);
+                }
+                handle_expression(branch.result, tokens);
+            }
         }
         Expression::AsmExpression { .. } => {
             //TODO handle asm expressions
@@ -422,9 +430,6 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             handle_expression(*prefix, tokens);
             handle_expression(*index, tokens);
         }
-        Expression::DelayedMatchTypeResolution { .. } => {
-            //Should we handle this since it gets removed during type checking anyway?
-        }
         Expression::StorageAccess { field_names, .. } => {
             for field in field_names {
                 let token = Token::from_ident(&field, TokenType::StorageAccess);
@@ -451,6 +456,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle built in get type property?
         }
     }
+}
+
+fn handle_scrutinee(_scrutinee: Scrutinee, _tokens: &mut Vec<Token>) {
+    // TODO: handle scrutinees here
 }
 
 fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {

@@ -5,14 +5,14 @@ use {
         error::{err, ok, CompileError, CompileResult, CompileWarning},
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
-        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
-        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
-        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
-        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-        SwayParseTree, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter,
-        UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
+        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
+        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MatchCondition,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, SwayParseTree, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     nanoid::nanoid,
     std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
@@ -2316,7 +2316,7 @@ fn pattern_to_match_condition(
     let match_condition = match pattern {
         Pattern::Wildcard { underscore_token } => {
             let span = underscore_token.span();
-            MatchCondition::CatchAll(CatchAll { span })
+            MatchCondition::CatchAll(span)
         }
         _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
     };
@@ -2333,18 +2333,16 @@ fn pattern_to_scrutinee(
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
             return Err(ec.error(error));
         }
-        Pattern::Var { name, .. } => {
-            match name.as_str() {
-                "true" => Scrutinee::Literal {
-                    value: Literal::Boolean(true),
-                    span,
-                },
-                "false" => Scrutinee::Literal {
-                    value: Literal::Boolean(false),
-                    span,
-                },
-                _ => Scrutinee::Variable { name, span },
-            }
+        Pattern::Var { name, .. } => match name.as_str() {
+            "true" => Scrutinee::Literal {
+                value: Literal::Boolean(true),
+                span,
+            },
+            "false" => Scrutinee::Literal {
+                value: Literal::Boolean(false),
+                span,
+            },
+            _ => Scrutinee::Variable { name, span },
         },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,

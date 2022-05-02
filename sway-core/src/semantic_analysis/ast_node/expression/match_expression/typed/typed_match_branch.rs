@@ -1,3 +1,5 @@
+use sway_types::Span;
+
 use crate::{
     error::{err, ok},
     semantic_analysis::{
@@ -15,6 +17,8 @@ use super::matcher::{matcher, MatchReqMap};
 pub(crate) struct TypedMatchBranch {
     pub(crate) conditions: MatchReqMap,
     pub(crate) result: TypedExpression,
+    #[allow(dead_code)]
+    span: Span,
 }
 
 impl TypedMatchBranch {
@@ -38,7 +42,9 @@ impl TypedMatchBranch {
         } = arguments;
 
         let MatchBranch {
-            condition, result, ..
+            condition,
+            result,
+            span: branch_span,
         } = branch;
 
         // calculate the requirements map and the declarations map
@@ -145,6 +151,7 @@ impl TypedMatchBranch {
         let branch = TypedMatchBranch {
             conditions: match_req_map,
             result: new_result,
+            span: branch_span,
         };
         ok((branch, condition), warnings, errors)
     }

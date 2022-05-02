@@ -22,10 +22,9 @@ mod scrutinee;
 mod unary_op;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
-pub(crate) use match_condition::CatchAll;
-pub(crate) use match_condition::MatchCondition;
-pub(crate) use method_name::MethodName;
-pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
+pub use match_condition::MatchCondition;
+pub use method_name::MethodName;
+pub use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
@@ -512,7 +511,7 @@ impl Expression {
                     branches.push(check!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
-                            condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
+                            condition: MatchCondition::CatchAll(span.clone()),
                             result: Expression::Tuple {
                                 fields: vec![],
                                 span: span.clone(),

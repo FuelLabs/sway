@@ -20,6 +20,7 @@ pub(crate) enum TypedScrutineeVariant {
     Literal(Literal),
     Variable(Ident),
     StructScrutinee {
+        #[allow(dead_code)]
         struct_name: Ident,
         fields: Vec<TypedStructScrutineeField>,
     },
@@ -46,11 +47,6 @@ impl TypedScrutinee {
         let mut warnings = vec![];
         let mut errors = vec![];
         let typed_scrutinee = match scrutinee {
-            Scrutinee::Unit { span } => TypedScrutinee {
-                variant: TypedScrutineeVariant::Tuple(vec![]),
-                type_id: insert_type(TypeInfo::Tuple(vec![])),
-                span,
-            },
             Scrutinee::Literal { value, span } => TypedScrutinee {
                 variant: TypedScrutineeVariant::Literal(value.clone()),
                 type_id: insert_type(value.to_typeinfo()),

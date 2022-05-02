@@ -16,8 +16,10 @@ use super::typed_match_branch::TypedMatchBranch;
 
 #[derive(Debug)]
 pub(crate) struct TypedMatchExpression {
+    #[allow(dead_code)]
     value: TypedExpression,
     branches: Vec<TypedMatchBranch>,
+    #[allow(dead_code)]
     span: Span,
 }
 
@@ -119,7 +121,10 @@ impl TypedMatchExpression {
         let mut typed_if_exp: Option<TypedExpression> = None;
 
         // for every branch of the match expression, in reverse
-        for TypedMatchBranch { conditions, result } in branches.into_iter().rev() {
+        for TypedMatchBranch {
+            conditions, result, ..
+        } in branches.into_iter().rev()
+        {
             // create the conditional that will act as the conditional for the if statement, in reverse
             let mut conditional: Option<TypedExpression> = None;
             for (left_req, right_req) in conditions.into_iter().rev() {

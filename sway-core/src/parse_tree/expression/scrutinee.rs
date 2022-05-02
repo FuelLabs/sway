@@ -16,9 +16,6 @@ use pest::iterators::Pair;
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
-    Unit {
-        span: Span,
-    },
     Literal {
         value: Literal,
         span: Span,
@@ -45,16 +42,22 @@ pub enum Scrutinee {
 
 #[derive(Debug, Clone)]
 pub struct StructScrutineeField {
-    pub(crate) field: Ident,
+    pub field: Ident,
     pub(crate) scrutinee: Option<Scrutinee>,
     pub(crate) span: Span,
+}
+
+pub(crate) fn error_recovery_scrutinee(span: Span) -> Scrutinee {
+    Scrutinee::Tuple {
+        elems: vec![],
+        span,
+    }
 }
 
 impl Scrutinee {
     pub fn span(&self) -> Span {
         match self {
             Scrutinee::Literal { span, .. } => span.clone(),
-            Scrutinee::Unit { span } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
@@ -122,14 +125,8 @@ impl Scrutinee {
                     scrutinee.as_str(),
                     scrutinee.as_rule()
                 );
-                errors.push(CompileError::UnimplementedRule(
-                    a,
-                    Span::from_pest(scrutinee.as_span(), path.clone()),
-                ));
-                // construct unit expression for error recovery
-                Scrutinee::Unit {
-                    span: Span::from_pest(scrutinee.as_span(), path),
-                }
+                errors.push(CompileError::UnimplementedRule(a, span.clone()));
+                error_recovery_scrutinee(span)
             }
         };
         ok(parsed, warnings, errors)
@@ -144,7 +141,8 @@ impl Scrutinee {
         let mut errors = vec![];
         let scrutinee = Literal::parse_from_pair(scrutinee, config)
             .map(|(value, span)| Scrutinee::Literal { value, span })
-            .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
+            .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Tuple {
+                elems: vec![],
                 span: span.clone(),
             });
         ok(scrutinee, warnings, errors)
@@ -162,8 +160,8 @@ impl Scrutinee {
                 name,
                 span: span.clone(),
             })
-            .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
-                span: span.clone(),
+            .unwrap_or_else(&mut warnings, &mut errors, || {
+                error_recovery_scrutinee(span)
             });
         ok(scrutinee, warnings, errors)
     }
@@ -203,7 +201,7 @@ impl Scrutinee {
                         let field_scrutinee = field_scrutinee.into_inner().next().unwrap();
                         let field_scrutinee = check!(
                             Scrutinee::parse_from_pair(field_scrutinee, config),
-                            Scrutinee::Unit { span: span.clone() },
+                            error_recovery_scrutinee(span.clone()),
                             warnings,
                             errors
                         );
@@ -300,7 +298,6 @@ impl Scrutinee {
 
     pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
         match self {
-            Scrutinee::Unit { .. } => vec![TypeInfo::Tuple(vec![])],
             Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],
             Scrutinee::Variable { .. } => vec![TypeInfo::Unknown],
             Scrutinee::StructScrutinee {

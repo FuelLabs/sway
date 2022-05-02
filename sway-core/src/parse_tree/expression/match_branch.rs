@@ -1,4 +1,4 @@
-use crate::{build_config::BuildConfig, error::*, parser::Rule, CatchAll, CodeBlock};
+use crate::{build_config::BuildConfig, error::*, parser::Rule, CodeBlock};
 
 use sway_types::{span, Span};
 
@@ -9,8 +9,8 @@ use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch {
-    pub(crate) condition: MatchCondition,
-    pub(crate) result: Expression,
+    pub condition: MatchCondition,
+    pub result: Expression,
     pub(crate) span: span::Span,
 }
 
@@ -33,10 +33,9 @@ impl MatchBranch {
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
+                let e_span = span::Span::from_pest(e.as_span(), path.clone());
                 match e.as_rule() {
-                    Rule::catch_all => MatchCondition::CatchAll(CatchAll {
-                        span: span::Span::from_pest(e.as_span(), path.clone()),
-                    }),
+                    Rule::catch_all => MatchCondition::CatchAll(e_span),
                     Rule::scrutinee => {
                         let scrutinee = check!(
                             Scrutinee::parse_from_pair(e, config),
@@ -58,9 +57,7 @@ impl MatchBranch {
                             span::Span::from_pest(e.as_span(), path.clone()),
                         ));
                         // construct unit expression for error recovery
-                        MatchCondition::CatchAll(CatchAll {
-                            span: span::Span::from_pest(e.as_span(), path.clone()),
-                        })
+                        MatchCondition::CatchAll(e_span)
                     }
                 }
             }
