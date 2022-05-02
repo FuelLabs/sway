@@ -77,11 +77,36 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
+
+  forc-fmt-check-sway-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Check Sway examples formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
     needs: cancel-previous-runs
@@ -101,6 +126,33 @@ jobs:
           else
             rm tmp.txt && exit 0
           fi
+
+  build-forc-test-project:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Initialize test project
+        run: forc init test-proj
+      - name: Build test project
+        run: forc build --path test-proj
+      - name: Run test project's test suite
+        run: cd test-proj && forc test
 
   cargo-build-workspace:
     needs: cancel-previous-runs
@@ -122,11 +174,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
@@ -154,11 +206,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -200,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.5.0
+        image: ghcr.io/fuellabs/fuel-core:v0.6.3
         ports:
           - 4000:4000
     steps:
@@ -222,7 +274,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.5.0
+        image: ghcr.io/fuellabs/fuel-core:v0.6.3
         ports:
           - 4000:4000
     steps:
@@ -242,11 +294,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
@@ -275,11 +327,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -327,11 +379,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc-fmt
-      - name: Build Sway examples and check formatting
+      - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin build-all-examples
+          args: --bin examples-checker build --all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:
@@ -346,6 +398,7 @@ jobs:
   notify-slack-on-failure:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
@@ -376,6 +429,7 @@ jobs:
     # Only do this job if publishing a release
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
@@ -437,6 +491,7 @@ jobs:
   build-publish-master-image:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
