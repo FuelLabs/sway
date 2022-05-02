@@ -34,14 +34,22 @@ pub fn to_completion_items(tokens: &[Token]) -> Vec<CompletionItem> {
 
 fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
     match token_type {
-        TokenType::Enum => Some(CompletionItemKind::ENUM),
-        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => {
-            Some(CompletionItemKind::FUNCTION)
+        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => {
+            Some(CompletionItemKind::VARIABLE)
         }
+        TokenType::FunctionDeclaration(_)
+        | &TokenType::FunctionApplication
+        | TokenType::TraitFunction => Some(CompletionItemKind::FUNCTION),
+        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => {
+            Some(CompletionItemKind::INTERFACE)
+        }
+        TokenType::StructDeclaration(_) | TokenType::Struct => Some(CompletionItemKind::STRUCT),
+        TokenType::EnumDeclaration(_) | TokenType::EnumVariant | TokenType::EnumApplication => {
+            Some(CompletionItemKind::ENUM)
+        }
+        TokenType::ConstantDeclaration(_) => Some(CompletionItemKind::CONSTANT),
         TokenType::Library => Some(CompletionItemKind::MODULE),
-        TokenType::Struct(_) => Some(CompletionItemKind::STRUCT),
-        TokenType::Variable(_) => Some(CompletionItemKind::VARIABLE),
-        TokenType::Trait(_) => Some(CompletionItemKind::INTERFACE),
+        TokenType::Reassignment => Some(CompletionItemKind::OPERATOR),
         _ => None,
     }
 }

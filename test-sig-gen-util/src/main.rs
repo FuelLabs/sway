@@ -8,7 +8,20 @@ use fuel_vm::prelude::*;
 
 use anyhow::Result;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
+use sha3::{Digest, Keccak256};
 use std::str::FromStr;
+
+// A keccak-256 method for generating ethereum signatures
+fn keccak_hash<B>(data: B) -> Bytes32
+where
+    B: AsRef<[u8]>,
+{
+    // create a Keccak256 object
+    let mut hasher = Keccak256::new();
+    // write input message
+    hasher.update(data);
+    <[u8; Bytes32::LEN]>::from(hasher.finalize()).into()
+}
 
 fn main() -> Result<()> {
     let secp = Secp256k1::new();
@@ -19,6 +32,7 @@ fn main() -> Result<()> {
     let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
     // 64 byte fuel address is the sha-256 hash of the public key.
     let address = Hasher::hash(&public[..]);
+    let ethereum_pubkeyhash = keccak_hash(&public[..]);
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let e = Hasher::hash(&message[..]);
@@ -27,7 +41,11 @@ fn main() -> Result<()> {
 
     println!("Secret Key: {:?}", secret);
     println!("Public Key: {:?}", public);
-    println!("Fuel Address: {:?}", address);
+    println!("Fuel Address (sha2-256): {:?}", address);
+    println!(
+        "Ethereum pubkey hash (keccak256): {:?}",
+        ethereum_pubkeyhash
+    );
     println!("Message Hash: {:?}", e);
     println!("Signature: {:?}", sig);
 

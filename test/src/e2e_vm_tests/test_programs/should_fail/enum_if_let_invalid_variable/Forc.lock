@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'enum_if_let_invalid_variable'
-dependencies = ['core']
+dependencies = []

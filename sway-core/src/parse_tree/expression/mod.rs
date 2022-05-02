@@ -26,7 +26,7 @@ pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
 use matcher::matcher;
-pub(crate) use method_name::MethodName;
+pub use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
@@ -236,8 +236,8 @@ impl LazyOp {
 
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
-    pub(crate) name: Ident,
-    pub(crate) value: Expression,
+    pub name: Ident,
+    pub value: Expression,
     pub(crate) span: Span,
 }
 

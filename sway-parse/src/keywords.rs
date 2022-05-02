@@ -80,6 +80,16 @@ macro_rules! define_token (
             pub fn span(&self) -> Span {
                 self.span.clone()
             }
+
+            pub fn ident(&self) -> Ident {
+                Ident::new(self.span())
+            }
+        }
+
+        impl From<$ty_name> for Ident {
+            fn from(o: $ty_name) -> Ident {
+                o.ident()
+            }
         }
 
         impl Peek for $ty_name {

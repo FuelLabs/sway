@@ -19,5 +19,6 @@ dep token;
 dep ecr;
 dep reentrancy;
 dep b256_ops;
+dep vm/mod;
 
 use core::*;

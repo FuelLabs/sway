@@ -21,7 +21,7 @@ These tests can be run using `forc test` which will look for Rust tests under th
 For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated `src/main.sw` or in a new file in `src`. In the case of the latter, update the `entry` field in `Forc.toml` to point at the new contract.
 
 ```sway
-{{#include ../../../examples/hello_world/src/main.sw}}
+{{#include ../../../examples/counter/src/main.sw}}
 ```
 
 Our `tests/harness.rs` file could look like:
@@ -38,7 +38,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, "./out/debug/hello_world-abi.json");
+abigen!(MyContract, "./out/debug/counter-abi.json");
 
 #[tokio::test]
 async fn harness() {
@@ -49,7 +49,7 @@ async fn harness() {
     let salt = Salt::from(salt);
 
     // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract("./out/debug/hello_world.bin", salt).unwrap();
+    let compiled = Contract::load_sway_contract("./out/debug/counter.bin", salt).unwrap();
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await

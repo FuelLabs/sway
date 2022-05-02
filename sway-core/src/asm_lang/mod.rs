@@ -252,6 +252,15 @@ impl Op {
         }
     }
 
+    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
+    pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
     pub(crate) fn parse_opcode(
         name: &Ident,
         args: &[VirtualRegister],
@@ -567,6 +576,15 @@ impl Op {
                         errors
                     );
                     VirtualOp::JNEI(r1, r2, imm)
+                }
+                "jnzi" => {
+                    let (r1, imm) = check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JNZI(r1, imm)
                 }
                 "ret" => {
                     let r1 = check!(
@@ -1373,6 +1391,7 @@ impl fmt::Display for Op {
                 CTMV(a, b) => format!("ctmv {} {}", a, b),
                 JI(a) => format!("ji {}", a),
                 JNEI(a, b, c) => format!("jnei {} {} {}", a, b, c),
+                JNZI(a, b) => format!("jnzi {} {}", a, b),
                 RET(a) => format!("ret {}", a),
                 RETD(a, b) => format!("retd {} {}", a, b),
                 CFEI(a) => format!("cfei {}", a),
@@ -1432,6 +1451,7 @@ impl fmt::Display for Op {
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
+                JumpIfNotZero(reg0, label) => format!("jnzi {} {}", reg0, label),
                 OrganizationalOp::DataSectionOffsetPlaceholder => {
                     "data section offset placeholder".into()
                 }
@@ -1461,8 +1481,10 @@ pub(crate) enum OrganizationalOp {
     Comment,
     // Jumps to a label
     Jump(Label),
-    // Jumps to a label
+    // Jumps to a label if the two registers are different
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
+    // Jumps to a label if the register is not equal to zero
+    JumpIfNotZero(VirtualRegister, Label),
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
 }
@@ -1477,6 +1499,7 @@ impl fmt::Display for OrganizationalOp {
                 Jump(lab) => format!("ji  {}", lab),
                 Comment => "".into(),
                 JumpIfNotEq(r1, r2, lab) => format!("jnei {} {} {}", r1, r2, lab),
+                JumpIfNotZero(r1, lab) => format!("jnzi {} {}", r1, lab),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
             }
@@ -1490,6 +1513,7 @@ impl OrganizationalOp {
         (match self {
             Label(_) | Comment | Jump(_) | DataSectionOffsetPlaceholder => vec![],
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
+            JumpIfNotZero(r1, _) => vec![r1],
         })
         .into_iter()
         .collect()

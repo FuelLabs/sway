@@ -20,9 +20,9 @@ pub struct FunctionDeclaration {
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,
-    pub(crate) parameters: Vec<FunctionParameter>,
+    pub parameters: Vec<FunctionParameter>,
     pub span: Span,
-    pub(crate) return_type: TypeInfo,
+    pub return_type: TypeInfo,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) return_type_span: Span,
 }
@@ -193,8 +193,8 @@ impl FunctionDeclaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunctionParameter {
-    pub(crate) name: Ident,
+pub struct FunctionParameter {
+    pub name: Ident,
     pub(crate) type_id: TypeId,
     pub(crate) type_span: Span,
 }
