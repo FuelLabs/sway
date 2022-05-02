@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait {
-    pub(crate) trait_name: CallPath,
+    pub trait_name: CallPath,
     pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
     pub(crate) type_arguments: Vec<TypeParameter>,
@@ -22,7 +22,7 @@ pub struct ImplTrait {
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
 pub struct ImplSelf {
-    pub(crate) type_implementing_for: TypeInfo,
+    pub type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
