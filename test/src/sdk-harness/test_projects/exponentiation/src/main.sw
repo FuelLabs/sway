@@ -3,15 +3,6 @@ script;
 use std::{ assert::assert, math::* };
 use std::panic::panic;
 
-fn require(s: bool, r: u64) {
-    if ! s {
-        panic(r);
-    };
-}
-
-const EXPONENTIATION_FAILURE = 11;
-const OTHER_ERROR = 42;
-
 
 fn main() -> bool {
     let max_u64 = 18446744073709551615u64;
@@ -20,9 +11,7 @@ fn main() -> bool {
     let max_u8 = 255u8;
 
     // u64
-    require(2.pow(2) == 4, EXPONENTIATION_FAILURE);
-
-    // assert(2.pow(2) == 4);
+    assert(2.pow(2) == 4);
     // assert(2.pow(3) == 8);
     // assert(42.pow(2) == 1764);
     // assert(42.pow(3) == 74088);
