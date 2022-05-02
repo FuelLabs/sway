@@ -1,0 +1,12 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'escrow'
+dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.11.0#95816e4e41aae1d3425ba6ff5e7266076d8400fa']
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.11.0#95816e4e41aae1d3425ba6ff5e7266076d8400fa'
+dependencies = ['core']
