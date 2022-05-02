@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use sway_parse::Item;
 use sway_core::BuildConfig;
+use sway_parse::Item;
 
 pub use crate::error::FormatterError;
 
@@ -11,7 +11,11 @@ pub struct Formatter {
 }
 
 impl Formatter {
-    pub fn format(&self, src: Arc<str>, config: Option<&BuildConfig>) -> Result<String, FormatterError> {
+    pub fn format(
+        &self,
+        src: Arc<str>,
+        config: Option<&BuildConfig>,
+    ) -> Result<String, FormatterError> {
         let path = config.map(|config| config.path());
         let items = sway_parse::parse_file(src, path)?.items;
         Ok(items
