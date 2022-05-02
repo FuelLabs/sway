@@ -75,13 +75,10 @@ fn to_bytecode_mut(
             .iter()
             .fold(0, |acc, item| match &item.opcode {
                 AllocatedOpcode::LWDataId(_reg, data_label)
-                    if {
-                        let ty = data_section
-                            .type_of_data(data_label)
-                            .expect("data label references non existent data -- internal error");
-
-                        !ty.is_copy_type()
-                    } =>
+                    if data_section
+                        .type_of_data(data_label)
+                        .expect("data label references non existent data -- internal error")
+                        .is_copy_type() =>
                 {
                     acc + 8
                 }

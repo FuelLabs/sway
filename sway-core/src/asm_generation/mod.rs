@@ -227,7 +227,7 @@ impl AbstractInstructionSet {
                     let type_of_data = data_section.type_of_data(data_id).expect(
                         "Internal miscalculation in data section -- data id did not match up to any actual data",
                     );
-                    counter += if !type_of_data.is_copy_type() { 2 } else { 1 };
+                    counter += if type_of_data.is_copy_type() { 1 } else { 2 };
                 }
                 // these ops will end up being exactly one op, so the counter goes up one
                 Either::Right(OrganizationalOp::Jump(..))
