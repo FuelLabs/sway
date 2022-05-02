@@ -80,7 +80,7 @@ fn to_bytecode_mut(
                             .type_of_data(data_label)
                             .expect("data label references non existent data -- internal error");
 
-                        ty.stack_size_of() > 1 || matches!(ty, crate::types::ResolvedType::Str(_))
+                        !ty.is_copy_type()
                     } =>
                 {
                     acc + 8
