@@ -1,6 +1,6 @@
 library ecr;
 
-use eth_address::EthAddress;
+use ::eth_address::EthAddress;
 use ::b512::B512;
 use ::context::registers::error;
 use ::ecr::{EcRecoverError, ec_recover};
