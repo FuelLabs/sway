@@ -1,7 +1,7 @@
 use fuel_core::service::Config;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Receipt, Transaction};
-use fuels_contract::script::Script;
-use fuels_signers::provider::Provider;
+use fuels::contract::script::Script;
+use fuels::prelude::*;
 
 #[tokio::test]
 async fn run_valid() {
