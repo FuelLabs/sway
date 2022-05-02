@@ -2,7 +2,7 @@
 //!
 //! NOTE: This expects `forc`, `forc-fmt`, and `cargo` to be available in `PATH`.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{ArgEnum, ArgGroup, Parser};
 use std::{
     fs,
@@ -37,8 +37,8 @@ enum CommandKind {
 impl std::fmt::Display for CommandKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            CommandKind::Build => write!(f, "build"),
-            CommandKind::Fmt => write!(f, "fmt"),
+            CommandKind::Build => write!(f, "forc build"),
+            CommandKind::Fmt => write!(f, "forc fmt --check"),
         }
     }
 }
@@ -94,7 +94,7 @@ fn run_forc_fmt(path: &Path) -> bool {
     run_forc_command(path, &["fmt", "--check", "--path"])
 }
 
-fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) {
+fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Result<()> {
     println!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
     for (path, success) in summary {
@@ -121,8 +121,10 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) {
     );
 
     if failures > 0 {
-        std::process::exit(1);
+        return Err(anyhow!("{} failed to run for some examples", command_kind));
     }
+
+    Ok(())
 }
 
 fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
@@ -157,7 +159,7 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
         }
     }
 
-    print_summary(&summary, command_kind);
+    print_summary(&summary, command_kind)?;
     Ok(())
 }
 
