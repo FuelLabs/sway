@@ -118,11 +118,24 @@ impl Parse for TypeField {
 
 #[derive(Clone, Debug)]
 pub enum FnArgs {
-    Static(Punctuated<TypeField, CommaToken>),
+    Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
         self_token: SelfToken,
-        args_opt: Option<(CommaToken, Punctuated<TypeField, CommaToken>)>,
+        args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct FnArg {
+    pub pattern: Pattern,
+    pub colon_token: ColonToken,
+    pub ty: Ty,
+}
+
+impl FnArg {
+    pub fn span(&self) -> Span {
+        Span::join(self.pattern.span(), self.ty.span())
+    }
 }
 
 impl ParseToEnd for FnArgs {
@@ -159,6 +172,19 @@ impl ParseToEnd for FnArgs {
                 Ok((fn_args, consumed))
             }
         }
+    }
+}
+
+impl Parse for FnArg {
+    fn parse(parser: &mut Parser) -> ParseResult<FnArg> {
+        let pattern = parser.parse()?;
+        let colon_token = parser.parse()?;
+        let ty = parser.parse()?;
+        Ok(FnArg {
+            pattern,
+            colon_token,
+            ty,
+        })
     }
 }
 

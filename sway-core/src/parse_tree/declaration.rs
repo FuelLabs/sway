@@ -12,10 +12,10 @@ mod type_parameter;
 mod variable;
 
 pub(crate) use abi::*;
-pub(crate) use constant::*;
+pub use constant::*;
 pub use function::*;
 pub(crate) use impl_trait::*;
-pub(crate) use r#enum::*;
+pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub(crate) use reassignment::*;

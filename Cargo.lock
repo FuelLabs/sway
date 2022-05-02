@@ -429,10 +429,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "build-all-examples"
-version = "0.0.0"
-
-[[package]]
 name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -969,6 +965,14 @@ name = "event-listener"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
+
+[[package]]
+name = "examples-checker"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap 3.1.8",
+]
 
 [[package]]
 name = "extension-trait"

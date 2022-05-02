@@ -34,12 +34,17 @@ fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
 
 fn get_kind(token_type: &TokenType) -> SymbolKind {
     match token_type {
-        TokenType::Enum => SymbolKind::ENUM,
-        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => SymbolKind::FUNCTION,
+        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => SymbolKind::VARIABLE,
+        TokenType::FunctionDeclaration(_)
+        | TokenType::FunctionApplication
+        | TokenType::TraitFunction => SymbolKind::FUNCTION,
+        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => SymbolKind::INTERFACE,
+        TokenType::StructDeclaration(_) | TokenType::Struct => SymbolKind::STRUCT,
+        TokenType::EnumDeclaration(_) | TokenType::EnumApplication => SymbolKind::ENUM,
+        TokenType::ConstantDeclaration(_) => SymbolKind::CONSTANT,
         TokenType::Library => SymbolKind::MODULE,
-        TokenType::Struct(_) => SymbolKind::STRUCT,
-        TokenType::Variable(_) => SymbolKind::VARIABLE,
-        TokenType::Trait(_) => SymbolKind::INTERFACE,
         TokenType::Reassignment => SymbolKind::OPERATOR,
+        // currently we return `variable` type as default
+        _ => SymbolKind::VARIABLE,
     }
 }

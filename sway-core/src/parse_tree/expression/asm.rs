@@ -100,7 +100,7 @@ impl AsmExpression {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmOp {
+pub struct AsmOp {
     pub(crate) op_name: Ident,
     pub(crate) op_args: Vec<Ident>,
     pub(crate) span: Span,
@@ -136,7 +136,7 @@ impl PartialEq for AsmOp {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct AsmRegister {
+pub struct AsmRegister {
     pub(crate) name: String,
 }
 
