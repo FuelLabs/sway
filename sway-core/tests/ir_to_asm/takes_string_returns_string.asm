@@ -8,10 +8,10 @@ add  $$ds $$ds $is
 lw   $r1 $fp i73              ; load input function selector
 lw   $r0 data_2               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i14            ; jump to selected function
+jnzi $r0 i14                  ; jump to selected function
 lw   $r0 data_3               ; load fn selector for comparison
 eq   $r0 $r1 $r0              ; function selector comparison
-jnei $zero $r0 i17            ; jump to selected function
+jnzi $r0 i17                  ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 lw   $r1 $fp i74              ; Base register for method parameter
 lw   $r0 data_0               ; loading size for RETD
