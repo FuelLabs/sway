@@ -56,9 +56,9 @@ pub fn get_word_from_b256(val: b256, offset: u64) -> u64 {
 // Get 4 words from a single b256 value.
 pub fn decompose(val: b256) -> (u64, u64, u64, u64) {
     let w1 = get_word_from_b256(val, 0);
-    let w2 = get_word_from_b256(val, 1);
-    let w3 = get_word_from_b256(val, 2);
-    let w4 = get_word_from_b256(val, 3);
+    let w2 = get_word_from_b256(val, 8);
+    let w3 = get_word_from_b256(val, 16);
+    let w4 = get_word_from_b256(val, 24);
     (w1, w2, w3, w4)
 }
 
