@@ -94,7 +94,7 @@ fn run_forc_fmt(path: &Path) -> bool {
     run_forc_command(path, &["fmt", "--check", "--path"])
 }
 
-fn print_summary(summary: &Vec<(PathBuf, bool)>, command_kind: CommandKind) {
+fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) {
     println!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
     for (path, success) in summary {
