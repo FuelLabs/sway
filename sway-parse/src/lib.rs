@@ -64,7 +64,7 @@ use std::{path::PathBuf, sync::Arc};
 pub enum ParseFileError {
     #[error(transparent)]
     Lex(LexError),
-    #[error("Unable to parse: {}", .0.iter().map(|x| format!("{}", x.kind)).collect::<Vec<String>>().join("\n"))]
+    #[error("Unable to parse: {}", .0.iter().map(|x| x.kind.to_string()).collect::<Vec<String>>().join("\n"))]
     Parse(Vec<ParseError>),
 }
 
