@@ -86,14 +86,29 @@ fn main() -> u64 {
     };
     // should fail
     let foo = match p {
-        Point { x: 3, y } => { y },
-        Point { x: 3, y: 4 } => { 24 },
+        Point { x, y: 5 } => { y },
+        Point { x, y: 6 } => { 24 },
     };
     // should succeed
     let foo = match p {
         Point { x: 3, y } => { y },
         Point { x: 3, y: 4 } => { 24 },
         Point { x, y } => { x },
+    };
+    // should succeed
+    let foo = match p {
+        Point { x: 3, y: 4 } => { 24 },
+        Point { x: _, y: _ } => { 0 },
+    };
+    // should fail
+    let foo = match p {
+        Point { x: 3, y: 4 } => { 24 },
+        Point { x: 10, y: _ } => { 0 },
+    };
+    // should fail
+    let foo = match p {
+        Point { x: 3, y: 4 } => { 24 },
+        Point { x: _, y: 10 } => { 0 },
     };
     // should succeed
     let foo = match p {

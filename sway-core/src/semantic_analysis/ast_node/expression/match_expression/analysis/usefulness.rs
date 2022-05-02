@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, MatchCondition,
+    CompileError, CompileResult, Scrutinee,
 };
 
 use super::{
@@ -195,9 +195,9 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    arms: Vec<MatchCondition>,
+    arms: Vec<Scrutinee>,
     span: Span,
-) -> CompileResult<(WitnessReport, Vec<(MatchCondition, bool)>)> {
+) -> CompileResult<(WitnessReport, Vec<(Scrutinee, bool)>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
@@ -206,7 +206,7 @@ pub(crate) fn check_match_expression_usefulness(
     match arms.split_first() {
         Some((first_arm, arms_rest)) => {
             let pat = check!(
-                Pattern::from_match_condition(first_arm.clone()),
+                Pattern::from_scrutinee(first_arm.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -215,7 +215,7 @@ pub(crate) fn check_match_expression_usefulness(
             arms_reachability.push((first_arm.clone(), true));
             for arm in arms_rest.iter() {
                 let pat = check!(
-                    Pattern::from_match_condition(arm.clone()),
+                    Pattern::from_scrutinee(arm.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

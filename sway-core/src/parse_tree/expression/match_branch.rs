@@ -4,12 +4,11 @@ use sway_types::Span;
 
 use pest::iterators::Pair;
 
-use super::scrutinee::Scrutinee;
-use super::{Expression, MatchCondition};
+use super::{scrutinee::Scrutinee, Expression};
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch {
-    pub condition: MatchCondition,
+    pub scrutinee: Scrutinee,
     pub result: Expression,
     pub(crate) span: Span,
 }
@@ -21,7 +20,7 @@ impl MatchBranch {
         let mut errors = Vec::new();
         let span = Span::from_pest(pair.as_span(), path.clone());
         let mut branch = pair.clone().into_inner();
-        let condition = match branch.next() {
+        let scrutinee = match branch.next() {
             Some(o) => o,
             None => {
                 errors.push(CompileError::Internal(
@@ -31,35 +30,14 @@ impl MatchBranch {
                 return err(warnings, errors);
             }
         };
-        let condition = match condition.into_inner().next() {
+        let scrutinee = match scrutinee.into_inner().next() {
             Some(e) => {
-                let e_span = Span::from_pest(e.as_span(), path.clone());
-                match e.as_rule() {
-                    Rule::catch_all => MatchCondition::CatchAll(e_span),
-                    Rule::scrutinee => {
-                        let scrutinee = check!(
-                            Scrutinee::parse_from_pair(e, config),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        MatchCondition::Scrutinee(scrutinee)
-                    }
-                    a => {
-                        eprintln!(
-                            "Unimplemented condition: {:?} ({:?}) ({:?})",
-                            a,
-                            e.as_str(),
-                            e.as_rule()
-                        );
-                        errors.push(CompileError::UnimplementedRule(
-                            a,
-                            Span::from_pest(e.as_span(), path.clone()),
-                        ));
-                        // construct unit expression for error recovery
-                        MatchCondition::CatchAll(e_span)
-                    }
-                }
+                check!(
+                    Scrutinee::parse_from_pair(e, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
             None => {
                 errors.push(CompileError::Internal(
@@ -106,7 +84,7 @@ impl MatchBranch {
         };
         ok(
             MatchBranch {
-                condition,
+                scrutinee,
                 result,
                 span,
             },

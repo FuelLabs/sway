@@ -1,4 +1,4 @@
-use std::{fmt, slice::Iter, vec::IntoIter};
+use std::{cmp::Ordering, fmt, slice::Iter, vec::IntoIter};
 
 use itertools::Itertools;
 use sway_types::Span;
@@ -12,7 +12,7 @@ use super::{pattern::Pattern, range::Range};
 
 /// A `PatStack` is a `Vec<Pattern>` that is implemented with special methods
 /// particular to the match exhaustivity algorithm.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PatStack {
     pats: Vec<Pattern>,
 }
@@ -351,6 +351,13 @@ impl PatStack {
         flattened
     }
 
+    /// Orders a `PatStack` into a human-readable order.
+    pub(crate) fn sort(self) -> PatStack {
+        let mut sorted = self.pats;
+        sorted.sort();
+        PatStack::from(sorted)
+    }
+
     /// Returns the given `PatStack` with wildcard patterns filtered out.
     pub(crate) fn filter_out_wildcards(&self) -> PatStack {
         let mut pats = PatStack::empty();
@@ -483,6 +490,19 @@ impl PatStack {
         output.reverse();
         ok(output, warnings, errors)
     }
+
+    /// Orders a `PatStack` into a human-readable order.
+    ///
+    /// For error reporting only.
+    pub(crate) fn remove_duplicates(self) -> PatStack {
+        let mut new_pats = vec![];
+        for pat in self.pats.into_iter() {
+            if !new_pats.contains(&pat) {
+                new_pats.push(pat);
+            }
+        }
+        PatStack::from(new_pats)
+    }
 }
 
 impl From<Vec<Pattern>> for PatStack {
@@ -495,9 +515,25 @@ impl fmt::Display for PatStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = self
             .flatten()
+            .sort()
+            .remove_duplicates()
             .into_iter()
             .map(|x| format!("{}", x))
             .join(", ");
         write!(f, "{}", s)
+    }
+}
+
+impl std::cmp::Ord for PatStack {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let sorted_self = self.clone().sort();
+        let sorted_other = other.clone().sort();
+        sorted_self.pats.cmp(&sorted_other.pats)
+    }
+}
+
+impl std::cmp::PartialOrd for PatStack {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

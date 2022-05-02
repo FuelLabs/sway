@@ -421,15 +421,12 @@ impl Dependencies {
 
     fn gather_from_match_branch(self, branch: &MatchBranch) -> Self {
         let MatchBranch {
-            condition, result, ..
+            scrutinee, result, ..
         } = branch;
-        (match condition {
-            MatchCondition::CatchAll(_) => self,
-            MatchCondition::Scrutinee(scrutinee) => self.gather_from_iter(
-                scrutinee.gather_approximate_typeinfo().iter(),
-                |deps, type_info| deps.gather_from_typeinfo(type_info),
-            ),
-        })
+        self.gather_from_iter(
+            scrutinee.gather_approximate_typeinfo().iter(),
+            |deps, type_info| deps.gather_from_typeinfo(type_info),
+        )
         .gather_from_expr(result)
     }
 

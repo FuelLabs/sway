@@ -7,7 +7,7 @@ use crate::{
     utils::common::extract_var_body,
 };
 use sway_core::type_engine::TypeInfo;
-use sway_core::{parse_tree::MethodName, MatchCondition, Scrutinee};
+use sway_core::{parse_tree::MethodName, Scrutinee};
 use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
     VariableDeclaration, WhileLoop,
@@ -356,9 +356,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         } => {
             handle_expression(*value, tokens);
             for branch in branches {
-                if let MatchCondition::Scrutinee(scrutinee) = branch.condition {
-                    handle_scrutinee(scrutinee, tokens);
-                }
+                handle_scrutinee(branch.scrutinee, tokens);
                 handle_expression(branch.result, tokens);
             }
         }

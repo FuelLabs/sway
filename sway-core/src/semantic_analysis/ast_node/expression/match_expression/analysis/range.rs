@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     fmt::{self, Debug},
     ops::Sub,
 };
@@ -563,5 +564,52 @@ where
         }
         builder.push(']');
         write!(f, "{}", builder)
+    }
+}
+
+/// Checks to see if two ranges are greater than or equal to one another.
+impl<T> std::cmp::Ord for Range<T>
+where
+    T: Debug
+        + fmt::Display
+        + Eq
+        + Ord
+        + PartialEq
+        + PartialOrd
+        + Clone
+        + MyMath<T>
+        + Sub<Output = T>
+        + Into<u64>,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.first.cmp(&other.first), self.last.cmp(&other.last)) {
+            (Ordering::Less, Ordering::Less) => Ordering::Less,
+            (Ordering::Less, Ordering::Equal) => Ordering::Less,
+            (Ordering::Less, Ordering::Greater) => Ordering::Less,
+            (Ordering::Equal, Ordering::Less) => Ordering::Less,
+            (Ordering::Equal, Ordering::Equal) => Ordering::Equal,
+            (Ordering::Equal, Ordering::Greater) => Ordering::Greater,
+            (Ordering::Greater, Ordering::Less) => Ordering::Greater,
+            (Ordering::Greater, Ordering::Equal) => Ordering::Greater,
+            (Ordering::Greater, Ordering::Greater) => Ordering::Greater,
+        }
+    }
+}
+
+impl<T> std::cmp::PartialOrd for Range<T>
+where
+    T: Debug
+        + fmt::Display
+        + Eq
+        + Ord
+        + PartialEq
+        + PartialOrd
+        + Clone
+        + MyMath<T>
+        + Sub<Output = T>
+        + Into<u64>,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

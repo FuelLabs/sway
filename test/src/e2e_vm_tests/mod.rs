@@ -150,7 +150,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         ("should_pass/stdlib/assert_test", ProgramState::Return(1)), // true
         (
-            "should_pass/language/match_expressions",
+            "should_pass/language/match_expressions_simple",
             ProgramState::Return(42),
         ),
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true

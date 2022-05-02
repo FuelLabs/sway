@@ -1,11 +1,11 @@
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
 use itertools::Itertools;
 use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal, MatchCondition, Scrutinee, StructScrutineeField,
+    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
 };
 
 use super::{patstack::PatStack, range::Range};
@@ -95,7 +95,7 @@ use super::{patstack::PatStack, range::Range};
 ///
 /// This idea of semantic categorization is used in the match exhaustivity
 /// algorithm.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Pattern {
     Wildcard,
     U8(Range<u8>),
@@ -113,19 +113,12 @@ pub(crate) enum Pattern {
 }
 
 impl Pattern {
-    /// Converts a `MatchCondition` to a `Pattern`.
-    pub(crate) fn from_match_condition(match_condition: MatchCondition) -> CompileResult<Self> {
-        match match_condition {
-            MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, vec![], vec![]),
-            MatchCondition::Scrutinee(scrutinee) => Pattern::from_scrutinee(scrutinee),
-        }
-    }
-
     /// Converts a `Scrutinee` to a `Pattern`.
-    fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match scrutinee {
+            Scrutinee::CatchAll { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Variable { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Literal { value, .. } => match value {
                 Literal::U8(x) => ok(Pattern::U8(Range::from_single(x)), warnings, errors),
@@ -633,7 +626,102 @@ impl fmt::Display for Pattern {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl std::cmp::Ord for Pattern {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Pattern::Wildcard, Pattern::Wildcard) => Ordering::Equal,
+            (Pattern::Wildcard, _) => Ordering::Greater,
+            (_, Pattern::Wildcard) => Ordering::Less,
+            (Pattern::U8(x), Pattern::U8(y)) => x.cmp(y),
+            (Pattern::U8(_), _) => Ordering::Less,
+            (Pattern::U16(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::U16(x), Pattern::U16(y)) => x.cmp(y),
+            (Pattern::U16(_), _) => Ordering::Less,
+            (Pattern::U32(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::U32(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::U32(x), Pattern::U32(y)) => x.cmp(y),
+            (Pattern::U32(_), _) => Ordering::Less,
+            (Pattern::U64(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::U64(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::U64(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::U64(x), Pattern::U64(y)) => x.cmp(y),
+            (Pattern::U64(_), _) => Ordering::Less,
+            (Pattern::B256(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::B256(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::B256(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::B256(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::B256(x), Pattern::B256(y)) => x.cmp(y),
+            (Pattern::B256(_), _) => Ordering::Less,
+            (Pattern::Boolean(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::Boolean(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::Boolean(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::Boolean(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::Boolean(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::Boolean(x), Pattern::Boolean(y)) => x.cmp(y),
+            (Pattern::Boolean(_), _) => Ordering::Less,
+            (Pattern::Byte(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::Byte(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::Byte(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::Byte(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::Byte(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::Byte(_), Pattern::Boolean(_)) => Ordering::Greater,
+            (Pattern::Byte(x), Pattern::Byte(y)) => x.cmp(y),
+            (Pattern::Byte(_), _) => Ordering::Less,
+            (Pattern::Numeric(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::Boolean(_)) => Ordering::Greater,
+            (Pattern::Numeric(_), Pattern::Byte(_)) => Ordering::Greater,
+            (Pattern::Numeric(x), Pattern::Numeric(y)) => x.cmp(y),
+            (Pattern::Numeric(_), _) => Ordering::Less,
+            (Pattern::String(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::Boolean(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::Byte(_)) => Ordering::Greater,
+            (Pattern::String(_), Pattern::Numeric(_)) => Ordering::Greater,
+            (Pattern::String(x), Pattern::String(y)) => x.cmp(y),
+            (Pattern::String(_), _) => Ordering::Less,
+            (Pattern::Struct(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::Boolean(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::Byte(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::Numeric(_)) => Ordering::Greater,
+            (Pattern::Struct(_), Pattern::String(_)) => Ordering::Greater,
+            (Pattern::Struct(x), Pattern::Struct(y)) => x.cmp(y),
+            (Pattern::Struct(_), _) => Ordering::Less,
+            (Pattern::Tuple(_), Pattern::U8(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::U16(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::U32(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::U64(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::B256(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::Boolean(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::Byte(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::Numeric(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::String(_)) => Ordering::Greater,
+            (Pattern::Tuple(_), Pattern::Struct(_)) => Ordering::Greater,
+            (Pattern::Tuple(x), Pattern::Tuple(y)) => x.cmp(y),
+            (Pattern::Tuple(_), Pattern::Or(_)) => Ordering::Less,
+            (Pattern::Or(x), Pattern::Or(y)) => x.cmp(y),
+            (Pattern::Or(_), _) => Ordering::Greater,
+        }
+    }
+}
+
+impl std::cmp::PartialOrd for Pattern {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct StructPattern {
     struct_name: Ident,
     fields: Vec<(String, Pattern)>,
@@ -671,7 +759,7 @@ impl fmt::Display for StructPattern {
         }
         let s: String = match start_of_wildcard_tail {
             Some(start_of_wildcard_tail) => {
-                let (front, _) = self.fields.split_at(start_of_wildcard_tail);
+                let (front, rest) = self.fields.split_at(start_of_wildcard_tail);
                 let mut inner_builder = front
                     .iter()
                     .map(|(name, field)| {
@@ -682,7 +770,9 @@ impl fmt::Display for StructPattern {
                         inner_builder
                     })
                     .join(", ");
-                inner_builder.push_str(", ...");
+                if !rest.is_empty() {
+                    inner_builder.push_str(", ...");
+                }
                 inner_builder
             }
             None => self
@@ -700,5 +790,20 @@ impl fmt::Display for StructPattern {
         builder.push_str(&s);
         builder.push_str(" }");
         write!(f, "{}", builder)
+    }
+}
+
+impl std::cmp::Ord for StructPattern {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.struct_name.cmp(&other.struct_name) {
+            Ordering::Equal => self.fields.cmp(&other.fields),
+            res => res,
+        }
+    }
+}
+
+impl std::cmp::PartialOrd for StructPattern {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

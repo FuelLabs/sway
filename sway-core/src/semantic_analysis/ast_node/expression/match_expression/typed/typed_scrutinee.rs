@@ -17,6 +17,7 @@ pub(crate) struct TypedScrutinee {
 
 #[derive(Debug, Clone)]
 pub(crate) enum TypedScrutineeVariant {
+    CatchAll,
     Literal(Literal),
     Variable(Ident),
     StructScrutinee {
@@ -47,6 +48,11 @@ impl TypedScrutinee {
         let mut warnings = vec![];
         let mut errors = vec![];
         let typed_scrutinee = match scrutinee {
+            Scrutinee::CatchAll { span } => TypedScrutinee {
+                variant: TypedScrutineeVariant::CatchAll,
+                type_id: insert_type(TypeInfo::Unknown),
+                span,
+            },
             Scrutinee::Literal { value, span } => TypedScrutinee {
                 variant: TypedScrutineeVariant::Literal(value.clone()),
                 type_id: insert_type(value.to_typeinfo()),

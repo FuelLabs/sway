@@ -8,7 +8,7 @@ use crate::{
         TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedVariableDeclaration,
         VariableMutability,
     },
-    CompileResult, MatchBranch, MatchCondition, NamespaceWrapper, TypedDeclaration,
+    CompileResult, MatchBranch, NamespaceWrapper, Scrutinee, TypedDeclaration,
 };
 
 use super::matcher::{matcher, MatchReqMap};
@@ -24,7 +24,7 @@ pub(crate) struct TypedMatchBranch {
 impl TypedMatchBranch {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, (&TypedExpression, MatchBranch)>,
-    ) -> CompileResult<(Self, MatchCondition)> {
+    ) -> CompileResult<(Self, Scrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -42,29 +42,24 @@ impl TypedMatchBranch {
         } = arguments;
 
         let MatchBranch {
-            condition,
+            scrutinee,
             result,
             span: branch_span,
         } = branch;
 
         // calculate the requirements map and the declarations map
-        let (match_req_map, match_decl_map) = match &condition {
-            MatchCondition::CatchAll(_) => (vec![], vec![]),
-            MatchCondition::Scrutinee(scrutinee) => {
-                let typed_scrutinee = check!(
-                    TypedScrutinee::type_check(scrutinee.clone(), namespace, self_type),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                check!(
-                    matcher(typed_value, typed_scrutinee, namespace),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
-        };
+        let typed_scrutinee = check!(
+            TypedScrutinee::type_check(scrutinee.clone(), namespace, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let (match_req_map, match_decl_map) = check!(
+            matcher(typed_value, typed_scrutinee, namespace),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // create a new namespace for this branch
         let branch_namespace = create_new_scope(namespace);
@@ -153,6 +148,6 @@ impl TypedMatchBranch {
             result: new_result,
             span: branch_span,
         };
-        ok((branch, condition), warnings, errors)
+        ok((branch, scrutinee), warnings, errors)
     }
 }

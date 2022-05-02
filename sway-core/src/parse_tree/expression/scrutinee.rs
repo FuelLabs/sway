@@ -16,6 +16,9 @@ use pest::iterators::Pair;
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
+    CatchAll {
+        span: Span,
+    },
     Literal {
         value: Literal,
         span: Span,
@@ -62,14 +65,14 @@ impl Scrutinee {
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
+            Scrutinee::CatchAll { span } => span.clone(),
         }
     }
 
     pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut scrutinees = pair.into_inner();
-        let scrutinee = scrutinees.next().unwrap();
+        let scrutinee = pair.into_inner().next().unwrap();
         let scrutinee = check!(
             Scrutinee::parse_from_pair_inner(scrutinee, config),
             return err(warnings, errors),
@@ -88,6 +91,7 @@ impl Scrutinee {
         let mut warnings = Vec::new();
         let span = Span::from_pest(scrutinee.as_span(), path.clone());
         let parsed = match scrutinee.as_rule() {
+            Rule::catch_all => Scrutinee::CatchAll { span },
             Rule::literal_value => check!(
                 Self::parse_from_pair_literal(scrutinee, config, span),
                 return err(warnings, errors),
@@ -326,6 +330,7 @@ impl Scrutinee {
                 .iter()
                 .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo())
                 .collect::<Vec<TypeInfo>>(),
+            Scrutinee::CatchAll { .. } => vec![TypeInfo::Unknown],
         }
     }
 }

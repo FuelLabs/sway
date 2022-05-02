@@ -9,7 +9,7 @@ use crate::{
         IsConstant, TypeCheckArguments, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
-    CompileResult, LazyOp, Literal, MatchBranch, MatchCondition, NamespaceRef, TypeInfo,
+    CompileResult, LazyOp, Literal, MatchBranch, NamespaceRef, Scrutinee, TypeInfo,
 };
 
 use super::typed_match_branch::TypedMatchBranch;
@@ -27,7 +27,7 @@ impl TypedMatchExpression {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, (TypedExpression, Vec<MatchBranch>)>,
         span: Span,
-    ) -> CompileResult<(Self, Vec<MatchCondition>)> {
+    ) -> CompileResult<(Self, Vec<Scrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -46,13 +46,13 @@ impl TypedMatchExpression {
 
         // type check all of the branches
         let mut typed_branches = vec![];
-        let mut conditions = vec![];
+        let mut scrutinees = vec![];
         match branches.split_first() {
             None => unimplemented!(),
             Some((first_branch, rest_of_branches)) => {
                 // type check the first branch first, so that we can use the return type
                 // from the first branch to type check the other branches
-                let (typed_first_branch, condition) = check!(
+                let (typed_first_branch, scrutinee) = check!(
                     TypedMatchBranch::type_check(TypeCheckArguments {
                         checkee: (&typed_value, first_branch.clone()),
                         namespace,
@@ -71,10 +71,10 @@ impl TypedMatchExpression {
                 );
                 let new_return_type_annotation = typed_first_branch.result.return_type;
                 typed_branches.push(typed_first_branch);
-                conditions.push(condition);
+                scrutinees.push(scrutinee);
                 // type check the rest of the branches
                 for branch in rest_of_branches.iter() {
-                    let (typed_branch, condition) = check!(
+                    let (typed_branch, scrutinee) = check!(
                         TypedMatchBranch::type_check(TypeCheckArguments {
                             checkee: (&typed_value, branch.clone()),
                             namespace,
@@ -93,7 +93,7 @@ impl TypedMatchExpression {
                         errors
                     );
                     typed_branches.push(typed_branch);
-                    conditions.push(condition);
+                    scrutinees.push(scrutinee);
                 }
             }
         }
@@ -103,7 +103,7 @@ impl TypedMatchExpression {
             branches: typed_branches,
             span,
         };
-        ok((exp, conditions), warnings, errors)
+        ok((exp, scrutinees), warnings, errors)
     }
 
     pub(crate) fn convert_to_typed_if_expression(

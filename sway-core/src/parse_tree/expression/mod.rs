@@ -16,13 +16,11 @@ use std::collections::VecDeque;
 
 mod asm;
 mod match_branch;
-mod match_condition;
 mod method_name;
 mod scrutinee;
 mod unary_op;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
-pub use match_condition::MatchCondition;
 pub use method_name::MethodName;
 pub use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
@@ -511,7 +509,7 @@ impl Expression {
                     branches.push(check!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
-                            condition: MatchCondition::CatchAll(span.clone()),
+                            scrutinee: Scrutinee::CatchAll { span: span.clone() },
                             result: Expression::Tuple {
                                 fields: vec![],
                                 span: span.clone(),

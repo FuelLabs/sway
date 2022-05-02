@@ -3,5 +3,5 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'match_expressions'
+name = 'match_expressions_simple'
 dependencies = ['core']

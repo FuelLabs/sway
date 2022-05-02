@@ -111,6 +111,8 @@ impl fmt::Display for WitnessReport {
         };
         let s = witnesses
             .flatten()
+            .sort()
+            .remove_duplicates()
             .into_iter()
             .map(|x| format!("`{}`", x))
             .join(", ");

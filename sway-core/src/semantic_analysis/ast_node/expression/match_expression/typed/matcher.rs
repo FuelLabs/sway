@@ -80,6 +80,7 @@ pub(crate) fn matcher(
         return err(warnings, errors);
     }
     match variant {
+        TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
         TypedScrutineeVariant::StructScrutinee { fields, .. } => {
