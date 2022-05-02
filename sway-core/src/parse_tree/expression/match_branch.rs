@@ -1,6 +1,6 @@
 use crate::{build_config::BuildConfig, error::*, parser::Rule, CodeBlock};
 
-use sway_types::{span, Span};
+use sway_types::Span;
 
 use pest::iterators::Pair;
 
@@ -11,7 +11,7 @@ use super::{Expression, MatchCondition};
 pub struct MatchBranch {
     pub condition: MatchCondition,
     pub result: Expression,
-    pub(crate) span: span::Span,
+    pub(crate) span: Span,
 }
 
 impl MatchBranch {
@@ -19,21 +19,21 @@ impl MatchBranch {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = span::Span::from_pest(pair.as_span(), path.clone());
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    span::Span::from_pest(pair.as_span(), path),
+                    Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
-                let e_span = span::Span::from_pest(e.as_span(), path.clone());
+                let e_span = Span::from_pest(e.as_span(), path.clone());
                 match e.as_rule() {
                     Rule::catch_all => MatchCondition::CatchAll(e_span),
                     Rule::scrutinee => {
@@ -54,7 +54,7 @@ impl MatchBranch {
                         );
                         errors.push(CompileError::UnimplementedRule(
                             a,
-                            span::Span::from_pest(e.as_span(), path.clone()),
+                            Span::from_pest(e.as_span(), path.clone()),
                         ));
                         // construct unit expression for error recovery
                         MatchCondition::CatchAll(e_span)
@@ -64,7 +64,7 @@ impl MatchBranch {
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match condition parsing.",
-                    span::Span::from_pest(pair.as_span(), path),
+                    Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
@@ -74,14 +74,14 @@ impl MatchBranch {
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    span::Span::from_pest(pair.as_span(), path),
+                    Span::from_pest(pair.as_span(), path),
                 ));
                 return err(warnings, errors);
             }
         };
         let result = match result.as_rule() {
             Rule::code_block => {
-                let span = span::Span::from_pest(result.as_span(), path);
+                let span = Span::from_pest(result.as_span(), path);
                 Expression::CodeBlock {
                     contents: check!(
                         CodeBlock::parse_from_pair(result, config),
