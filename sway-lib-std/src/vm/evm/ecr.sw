@@ -1,10 +1,10 @@
 library ecr;
 
-use ::eth_address::EthAddress;
 use ::b512::B512;
 use ::context::registers::error;
 use ::ecr::{EcRecoverError, ec_recover};
-use ::hash::{HashMethod, hash_pair};
+use ::eth_address::EthAddress;
+use ::hash::{HashMethod, hash_value, hash_pair};
 use ::result::*;
 
 /// Recover the ethereum address derived from the private key used to sign a message.
@@ -24,5 +24,3 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<EthAddress,
         Result::Ok(~EthAddress::from(pubkey_hash))
     }
 }
-
-

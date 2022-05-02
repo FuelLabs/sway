@@ -28,7 +28,6 @@ pub trait From {
 /// Functions for casting between the b256 and Address types.
 impl From for EthAddress {
     fn from(bits: b256) -> EthAddress {
-
         // An ethereum address is only 20 bytes, so the first 12 are set to zero
         asm(r1: bits) {
             mcli r1 i12;

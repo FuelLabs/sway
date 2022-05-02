@@ -18,10 +18,10 @@ fn main() -> bool {
     Message Hash: 8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e
     Signature: 82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166c07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4
    */
-    
+
     // Get the expected ethereum address
-    // !!! This `EthAddress::from` operation causes `MemoryOverflow` !!!
-    //let ethereum_address = ~EthAddress::from(0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1);
+    let pubkeyhash = 0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1;
+    let ethereum_address = ~EthAddress::from(pubkeyhash);
 
     let msg_hash = 0x8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e;
 
@@ -29,13 +29,10 @@ fn main() -> bool {
     let sig_hi = 0x82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166;
     let sig_lo = 0xc07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4;
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
-    
+
     // recover the address:
-    // !!! `ec_recover_address` uses `EthAddress::from`, but does NOT cause a MemoryOverflow !!!
     let result: Result<EthAddress, EcRecoverError> = ec_recover_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
-    //recovered_address == ethereum_address
-    recovered_address.value == 0x000000000000000000000000a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1
-    
+    recovered_address == ethereum_address
 }
