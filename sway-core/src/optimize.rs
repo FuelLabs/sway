@@ -2260,7 +2260,7 @@ fn get_struct_name_and_field_index(
     resolve_type(field_type, field_name.span())
         .ok()
         .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields } => Some((
+            TypeInfo::Struct { name, fields, .. } => Some((
                 name.as_str().to_owned(),
                 fields
                     .iter()

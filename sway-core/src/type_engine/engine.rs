@@ -187,21 +187,35 @@ impl Engine {
                 Enum {
                     name: a_name,
                     variant_types: a_variants,
+                    type_parameters: a_parameters,
                 },
                 Enum {
                     name: b_name,
                     variant_types: b_variants,
+                    type_parameters: b_parameters,
                 },
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_variants.len() == b_variants.len() {
+                if a_name == b_name
+                    && a_variants.len() == b_variants.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) =
+                                self.unify(a.type_id, b.type_id, &a.span(), help_text.clone());
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,

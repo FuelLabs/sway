@@ -348,6 +348,7 @@ impl TypedStructDeclaration {
         insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
+            type_parameters: self.type_parameters.clone(),
         })
     }
 }
@@ -499,6 +500,7 @@ impl TypedEnumDeclaration {
         insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
+            type_parameters: self.type_parameters.clone(),
         })
     }
 }
