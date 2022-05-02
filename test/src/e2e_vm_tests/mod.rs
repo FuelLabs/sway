@@ -305,6 +305,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/generic-type-inference",
             ProgramState::Return(0),
         ),
+        (
+            "should_pass/language/ret_small_string",
+            ProgramState::Return(0),
+        ),
     ];
 
     let mut number_of_tests_run =

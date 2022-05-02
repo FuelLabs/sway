@@ -35,7 +35,7 @@ pub enum ResolvedType {
         from: Box<ResolvedType>,
         to: Box<ResolvedType>,
     },
-    // used for recovering from errors in the ast
+    /// used for recovering from errors in the ast
     ErrorRecovery,
 }
 
