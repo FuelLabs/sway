@@ -2293,7 +2293,19 @@ fn pattern_to_scrutinee(
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
             return Err(ec.error(error));
         }
-        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
+        Pattern::Var { name, .. } => {
+            match name.as_str() {
+                "true" => Scrutinee::Literal {
+                    value: Literal::Boolean(true),
+                    span,
+                },
+                "false" => Scrutinee::Literal {
+                    value: Literal::Boolean(false),
+                    span,
+                },
+                _ => Scrutinee::Variable { name, span },
+            }
+        },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,

@@ -11,6 +11,7 @@ use crate::{
 
 use super::matcher::{matcher, MatchReqMap};
 
+#[derive(Debug)]
 pub(crate) struct TypedMatchBranch {
     pub(crate) conditions: MatchReqMap,
     pub(crate) result: TypedExpression,

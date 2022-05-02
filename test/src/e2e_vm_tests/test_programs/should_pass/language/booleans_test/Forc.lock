@@ -1,0 +1,7 @@
+[[package]]
+name = 'booleans_test'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+dependencies = []

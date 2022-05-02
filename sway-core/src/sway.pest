@@ -138,15 +138,15 @@ binary_byte      = @{"0b" ~ ("1"|"0"|"_")*}
 hex_byte         = @{"0x" ~ hex_digit*}
 hex_digit        =  {"a"|"b"|"c"|"d"|"e"|"f"|"A"|"B"|"C"|"D"|"E"|"F"|"_"|ASCII_DIGIT}
 
-match_expression =  {"match" ~ expr ~ "{" ~ match_branch+ ~ "}"}
-match_branch     =  {match_scrutinee ~ "=>" ~ (code_block|expr) ~ ","}
-match_scrutinee  =  {scrutinee|catch_all}
-catch_all        =  {"_"}
-scrutinee        =  {enum_scrutinee|struct_scrutinee|tuple_scrutinee|literal_value|ident}
-struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
-struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
-struct_scrutinee_field = {ident ~ field_scrutinee?}
-field_scrutinee  =  {":" ~ scrutinee}
+match_expression        =  {match_keyword ~ expr ~ "{" ~ match_branch+ ~ "}"}
+match_branch            =  {match_condition ~ "=>" ~ (code_block|expr) ~ ","}
+match_condition         =  {scrutinee|catch_all}
+catch_all               =  {"_"}
+scrutinee               =  {enum_scrutinee|struct_scrutinee|tuple_scrutinee|literal_value|ident}
+struct_scrutinee        =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
+struct_scrutinee_fields =  {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
+struct_scrutinee_field  =  {ident ~ field_scrutinee?}
+field_scrutinee         =  {":" ~ scrutinee}
 
 // this doesn't support nested destructuring -- that is TBD
 enum_scrutinee   =  {call_path_ ~ "(" ~ (ident|"_") ~ ")"}

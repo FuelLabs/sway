@@ -14,6 +14,7 @@ use crate::{
 
 use super::typed_match_branch::TypedMatchBranch;
 
+#[derive(Debug)]
 pub(crate) struct TypedMatchExpression {
     value: TypedExpression,
     branches: Vec<TypedMatchBranch>,
