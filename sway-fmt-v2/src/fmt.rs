@@ -11,6 +11,13 @@ pub struct Formatter {
 }
 
 impl Formatter {
+    pub fn default() -> Self {
+        Self {
+            align_fields: true,
+            tab_size: 4,
+        }
+    }
+
     pub fn format(
         &self,
         src: Arc<str>,
@@ -30,14 +37,5 @@ impl Formatter {
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n"))
-    }
-}
-
-impl Formatter {
-    pub fn default() -> Self {
-        Self {
-            align_fields: true,
-            tab_size: 4,
-        }
     }
 }
