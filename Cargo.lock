@@ -3224,8 +3224,6 @@ dependencies = [
 name = "sway-fmt-v2"
 version = "0.11.0"
 dependencies = [
- "anyhow",
- "ropey",
  "sway-core",
  "sway-parse",
  "sway-types",
