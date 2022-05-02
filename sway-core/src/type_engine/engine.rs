@@ -135,7 +135,7 @@ impl Engine {
             }
 
             (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name == r_name =>
+                if l_name.as_str() == r_name.as_str() =>
             {
                 (vec![], vec![])
             }
@@ -207,6 +207,7 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    /*
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
@@ -216,6 +217,7 @@ impl Engine {
                             warnings.extend(new_warnings);
                             errors.extend(new_errors);
                         });
+                    */
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
