@@ -224,8 +224,8 @@ impl LazyOp {
 
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
-    pub(crate) name: Ident,
-    pub(crate) value: Expression,
+    pub name: Ident,
+    pub value: Expression,
     pub(crate) span: Span,
 }
 

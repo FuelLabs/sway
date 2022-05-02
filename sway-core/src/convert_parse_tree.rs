@@ -18,11 +18,11 @@ use {
     std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
-        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArgs,
-        FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken, Instruction,
-        Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemStorage, ItemStruct, ItemTrait,
-        ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment, PathType,
-        PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
+        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
+        FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
+        Instruction, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemStorage, ItemStruct,
+        ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment,
+        PathType, PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
         QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree,
     },
     sway_types::{Ident, Span},
@@ -134,6 +134,8 @@ pub enum ConvertParseTreeError {
     StructPatternsNotSupportedHere { span: Span },
     #[error("wildcard patterns not supported in this position")]
     WildcardPatternsNotSupportedHere { span: Span },
+    #[error("tuple patterns not supported in this position")]
+    TuplePatternsNotSupportedHere { span: Span },
     #[error("constructor patterns require a single argument")]
     ConstructorPatternOneArg { span: Span },
     #[error("mutable bindings are not supported in this position")]
@@ -187,6 +189,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span,
             ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span,
             ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span,
+            ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span,
             ConvertParseTreeError::ConstructorPatternOneArg { span } => span,
             ConvertParseTreeError::MutableBindingsNotSupportedHere { span } => span,
             ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span,
@@ -702,7 +705,7 @@ fn fn_args_to_function_parameters(
     let function_parameters = match fn_args {
         FnArgs::Static(args) => args
             .into_iter()
-            .map(|type_field| type_field_to_function_parameter(ec, type_field))
+            .map(|fn_arg| fn_arg_to_function_parameter(ec, fn_arg))
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
@@ -715,7 +718,7 @@ fn fn_args_to_function_parameters(
             }];
             if let Some((_comma_token, args)) = args_opt {
                 for arg in args {
-                    let function_parameter = type_field_to_function_parameter(ec, arg)?;
+                    let function_parameter = fn_arg_to_function_parameter(ec, arg)?;
                     function_parameters.push(function_parameter);
                 }
             }
@@ -1496,14 +1499,51 @@ fn statement_to_ast_nodes(
     Ok(ast_nodes)
 }
 
-fn type_field_to_function_parameter(
+fn fn_arg_to_function_parameter(
     ec: &mut ErrorContext,
-    type_field: TypeField,
+    fn_arg: FnArg,
 ) -> Result<FunctionParameter, ErrorEmitted> {
-    let type_span = type_field.ty.span();
+    let type_span = fn_arg.ty.span();
+    let pat_span = fn_arg.pattern.span();
+    let name = match fn_arg.pattern {
+        Pattern::Wildcard { .. } => {
+            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Var { mutable, name } => {
+            if let Some(mut_token) = mutable {
+                let error = ConvertParseTreeError::MutableBindingsNotSupportedHere {
+                    span: mut_token.span(),
+                };
+                return Err(ec.error(error));
+            }
+            name
+        }
+        Pattern::Literal(..) => {
+            let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Constant(..) => {
+            let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Constructor { .. } => {
+            let error =
+                ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Struct { .. } => {
+            let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Tuple(..) => {
+            let error = ConvertParseTreeError::TuplePatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+    };
     let function_parameter = FunctionParameter {
-        name: type_field.name,
-        type_id: insert_type(ty_to_type_info(ec, type_field.ty)?),
+        name,
+        type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
     Ok(function_parameter)
