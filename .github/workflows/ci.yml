@@ -22,7 +22,7 @@ jobs:
           access_token: ${{ github.token }}
 
   build-and-publish-forc-binary:
-    if: github.event_name == 'release' && github.event.action == 'published'
+    # if: github.event_name == 'release' && github.event.action == 'published'
     name: Forc Binary - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     needs: cancel-previous-runs
