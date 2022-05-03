@@ -1,5 +1,5 @@
 use crate::cli::PluginsCommand;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -24,13 +24,18 @@ pub(crate) fn exec(command: PluginsCommand) -> Result<()> {
 
     println!("Installed Plugins:");
     for path in crate::cli::plugin::find_all() {
-        print_plugin(path, print_full_path, describe);
+        println!("{}", print_plugin(path, print_full_path, describe)?);
     }
     Ok(())
 }
 
+/// Find a plugin's description
+///
+/// Given a plugin name, returns the description included in the `-h` opt. Returns
+/// a generic description if a description cannot be found
 fn parse_description_for_plugin(plugin: &str) -> String {
     use std::process::Command;
+    let default_description = "No description found for this plugin.";
     let proc = Command::new(plugin)
         .arg("-h")
         .output()
@@ -40,11 +45,22 @@ fn parse_description_for_plugin(plugin: &str) -> String {
     stdout
         .split('\n')
         .nth(1)
-        .unwrap_or("No description found for this plugin.")
+        .map(|x| if x.is_empty() { default_description } else { x })
+        .unwrap()
         .to_owned()
 }
 
-fn format_print_description(path: PathBuf, print_full_path: bool, describe: bool) -> String {
+/// # Panics
+///
+/// Format a given plugin's line to stdout
+///
+/// Formatting is based on a combination of `print_full_path` and `describe`. Will
+/// panic if there is a problem retrieving a plugin's name or path
+fn format_print_description(
+    path: PathBuf,
+    print_full_path: bool,
+    describe: bool,
+) -> Result<String> {
     let display = if print_full_path {
         path.display().to_string()
     } else {
@@ -58,10 +74,10 @@ fn format_print_description(path: PathBuf, print_full_path: bool, describe: bool
     let description = parse_description_for_plugin(&display);
 
     if describe {
-        return format!("  {} \t\t{}", display, description);
+        Ok(format!("  {} \t\t{}", display, description))
+    } else {
+        Ok(display)
     }
-
-    display
 }
 
 /// # Panics
@@ -70,9 +86,7 @@ fn format_print_description(path: PathBuf, print_full_path: bool, describe: bool
 /// paths yielded from plugin::find_all(), as well as that the file names are in valid
 /// unicode format since file names should be prefixed with `forc-`. Should one of these 2
 /// assumptions fail, this function panics.
-fn print_plugin(path: PathBuf, print_full_path: bool, describe: bool) {
-    println!(
-        "{}",
-        format_print_description(path, print_full_path, describe)
-    )
+fn print_plugin(path: PathBuf, print_full_path: bool, describe: bool) -> Result<String> {
+    format_print_description(path, print_full_path, describe)
+        .map_err(|e| anyhow!("Could not get plugin info: {}", e))
 }
