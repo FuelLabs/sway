@@ -713,7 +713,7 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    #[error("Cannot infer type for type parameter \"{ty}\". Insufficient type information provided. Try annotating its type.")]
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
@@ -723,12 +723,14 @@ pub enum CompileError {
     Immediate18TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span },
-    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span },
     #[error(
         "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
     )]
     DisallowedJi { span: Span },
+    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnei { span: Span },
+    #[error("The opcode \"jnzi\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnzi { span: Span },
     #[error(
         "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
     )]
@@ -1096,8 +1098,9 @@ impl CompileError {
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
             Immediate24TooLarge { span, .. } => span,
-            DisallowedJnei { span, .. } => span,
             DisallowedJi { span, .. } => span,
+            DisallowedJnei { span, .. } => span,
+            DisallowedJnzi { span, .. } => span,
             DisallowedLw { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
             UnnecessaryImmediate { span, .. } => span,

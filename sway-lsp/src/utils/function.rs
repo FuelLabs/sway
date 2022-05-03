@@ -1,6 +1,7 @@
-use sway_core::FunctionDeclaration;
+use sway_types::Span;
 
-pub(crate) fn extract_fn_signature(func_dec: &FunctionDeclaration) -> String {
-    let value = func_dec.span.as_str();
+/// Expects a span from either a FunctionDeclaration or a TypedFunctionDeclaration
+pub(crate) fn extract_fn_signature(span: &Span) -> String {
+    let value = span.as_str();
     value.split('{').take(1).map(|v| v.trim()).collect()
 }

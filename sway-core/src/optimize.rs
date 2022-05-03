@@ -342,6 +342,9 @@ fn compile_fn_with_args(
         || compiler.current_block == compiler.function.get_entry_block(context)
         || compiler.current_block.num_predecessors(context) > 0
     {
+        if ret_type.eq(context, &Type::Unit) {
+            ret_val = Constant::get_unit(context, None);
+        }
         compiler
             .current_block
             .ins(context)
@@ -2099,13 +2102,29 @@ impl FnCompiler {
                     Type::Uint(_) | Type::Bool => {
                         // These types fit in a word. use state_store_word/state_load_word
                         match access_type {
-                            StateAccessType::Read => self
-                                .current_block
-                                .ins(context)
-                                .state_load_word(key_ptr_val, span_md_idx),
+                            StateAccessType::Read => {
+                                // `state_load_word` always returns a `u64`. Cast the result back
+                                // to the right type before returning
+                                let load_val = self
+                                    .current_block
+                                    .ins(context)
+                                    .state_load_word(key_ptr_val, span_md_idx);
+                                self.current_block.ins(context).bitcast(
+                                    load_val,
+                                    *r#type,
+                                    span_md_idx,
+                                )
+                            }
                             StateAccessType::Write => {
-                                self.current_block.ins(context).state_store_word(
+                                // `state_store_word` requires a `u64`. Cast the value to store to
+                                // `u64` first before actually storing.
+                                let rhs_u64 = self.current_block.ins(context).bitcast(
                                     rhs.expect("expecting a rhs for write"),
+                                    Type::Uint(64),
+                                    span_md_idx,
+                                );
+                                self.current_block.ins(context).state_store_word(
+                                    rhs_u64,
                                     key_ptr_val,
                                     span_md_idx,
                                 );

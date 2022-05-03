@@ -48,6 +48,7 @@
     - [forc run](./forc/commands/forc_run.md)
     - [forc test](./forc/commands/forc_test.md)
     - [forc update](./forc/commands/forc_update.md)
+  - [Plugins](./forc/plugins.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
 - [Advanced Concepts](./advanced/index.md)

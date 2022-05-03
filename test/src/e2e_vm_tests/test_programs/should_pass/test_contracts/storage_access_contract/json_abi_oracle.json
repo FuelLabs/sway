@@ -70,6 +70,26 @@
                 "components": null,
                 "name": "z",
                 "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "boolean",
+                "type": "bool"
+              },
+              {
+                "components": null,
+                "name": "int8",
+                "type": "u8"
+              },
+              {
+                "components": null,
+                "name": "int16",
+                "type": "u16"
+              },
+              {
+                "components": null,
+                "name": "int32",
+                "type": "u32"
               }
             ],
             "name": "t",
@@ -81,6 +101,78 @@
       }
     ],
     "name": "set_s",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "boolean",
+        "type": "bool"
+      }
+    ],
+    "name": "set_boolean",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int8",
+        "type": "u8"
+      }
+    ],
+    "name": "set_int8",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int16",
+        "type": "u16"
+      }
+    ],
+    "name": "set_int16",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int32",
+        "type": "u32"
+      }
+    ],
+    "name": "set_int32",
     "outputs": [
       {
         "components": null,
@@ -162,6 +254,26 @@
             "components": null,
             "name": "z",
             "type": "b256"
+          },
+          {
+            "components": null,
+            "name": "boolean",
+            "type": "bool"
+          },
+          {
+            "components": null,
+            "name": "int8",
+            "type": "u8"
+          },
+          {
+            "components": null,
+            "name": "int16",
+            "type": "u16"
+          },
+          {
+            "components": null,
+            "name": "int32",
+            "type": "u32"
           }
         ],
         "name": "t",
@@ -233,6 +345,78 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "components": null,
+        "name": "boolean",
+        "type": "bool"
+      }
+    ],
+    "name": "set_s_dot_t_dot_boolean",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int8",
+        "type": "u8"
+      }
+    ],
+    "name": "set_s_dot_t_dot_int8",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int16",
+        "type": "u16"
+      }
+    ],
+    "name": "set_s_dot_t_dot_int16",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "int32",
+        "type": "u32"
+      }
+    ],
+    "name": "set_s_dot_t_dot_int32",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "get_x",
     "outputs": [
@@ -293,6 +477,26 @@
                 "components": null,
                 "name": "z",
                 "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "boolean",
+                "type": "bool"
+              },
+              {
+                "components": null,
+                "name": "int8",
+                "type": "u8"
+              },
+              {
+                "components": null,
+                "name": "int16",
+                "type": "u16"
+              },
+              {
+                "components": null,
+                "name": "int32",
+                "type": "u32"
               }
             ],
             "name": "t",
@@ -301,6 +505,54 @@
         ],
         "name": "",
         "type": "struct S"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_boolean",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_int8",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u8"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_int16",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u16"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_int32",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u32"
       }
     ],
     "type": "function"
@@ -361,6 +613,26 @@
             "components": null,
             "name": "z",
             "type": "b256"
+          },
+          {
+            "components": null,
+            "name": "boolean",
+            "type": "bool"
+          },
+          {
+            "components": null,
+            "name": "int8",
+            "type": "u8"
+          },
+          {
+            "components": null,
+            "name": "int16",
+            "type": "u16"
+          },
+          {
+            "components": null,
+            "name": "int32",
+            "type": "u32"
           }
         ],
         "name": "",
@@ -401,6 +673,54 @@
         "components": null,
         "name": "",
         "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_boolean",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_int8",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u8"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_int16",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u16"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_s_dot_t_dot_int32",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u32"
       }
     ],
     "type": "function"
