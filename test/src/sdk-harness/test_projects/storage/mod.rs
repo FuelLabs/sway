@@ -1,7 +1,7 @@
 use fuel_tx::{ContractId, Salt};
 use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::util::test_helpers;
+use fuels::prelude::*;
+use fuels::test_helpers;
 
 // Load abi from json
 abigen!(Storage, "test_projects/storage/out/debug/storage-abi.json");
@@ -41,7 +41,6 @@ async fn can_store_b256() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn can_get_b256() {
     let (instance, id) = get_contract_instance().await;
     let n: [u8; 32] = id.into();
