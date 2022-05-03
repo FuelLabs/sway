@@ -54,79 +54,79 @@ jobs:
             target: x86_64-pc-windows-msvc
             arch: amd64
             svm_target_platform: macosx-amd64
-      steps:
-        - name: Checkout sources
-          uses: actions/checkout@v2
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
 
-        - name: Install toolchain
-          uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-            toolchain: stable
-            target: ${{ matrix.job.target }}
-            override: true
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
 
-        - uses: Swatinem/rust-cache@v1
-          with:
-            cache-on-failure: true
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
 
-        - name: Apple M1 setup
-          if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
-          run: |
-            echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-            echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+      - name: Apple M1 setup
+        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        run: |
+          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
 
-        - name: Linux ARM setup
-          if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
-          run: |
-            sudo apt-get update -y
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      - name: Linux ARM setup
+        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
-        - name: Install Forc
-          uses: actions-rs/cargo@v1
-          with:
-            command: install
-            args: --debug --path ./forc
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
 
-        - name: Initialize project
-          run: forc init forc-bins
+      - name: Initialize project
+        run: forc init forc-bins
 
-        - name: Build release
-          env:
-            SVM_TARGET_PLATFORM: ${{ matrix.job.svm_target_platform }}
-          run: forc build --path ./forc-bins
+      - name: Build release
+        env:
+          SVM_TARGET_PLATFORM: ${{ matrix.job.svm_target_platform }}
+        run: forc build --path ./forc-bins
 
-        # - name: Archive binaries
-        #   uses: actions/upload-release-asset@v1
-        #   env:
-        #     PLATFORM_NAME: ${{ matrix.job.platform }}
-        #     TARGET: ${{ matrix.job.target }}
-        #     ARCH: ${{ matrix.job.arch }}
-        #     VERSION_NAME: ${{ needs.prepare.outputs.tag_name }}
-        #   run: |
-        #     if [ "$PLATFORM_NAME" == "linux" ]; then
-        #       echo "ASSET_FILENAME=forc_${{ VERSION_NAME }}_${{ PLATFORM_NAME }}_${{ ARCH}.tar.gz" >> $GITHUB_ENV
-        #       tar -czvf $ASSET_FILENAME -C forc-bins/out/debug
-        #     elif [ "$PLATFORM_NAME" == "darwin" ]; then
-        #       echo "ASSET_FILENAME=forc_${{ VERSION_NAME }}_${{ PLATFORM_NAME }}_${{ ARCH}.tar.gz" >> $GITHUB_ENV
-        #       # We need to use gtar here otherwise the archive is corrupt.
-        #       # See: https://github.com/actions/virtual-environments/issues/2619
-        #       gtar -czvf $ASSET_FILENAME -C forc-bins/out/debug
-        #     else
-        #       echo "ASSET_FILENAME=forc_${VERSION_NAME}_${PLATFORM_NAME}_${ARCH}.zip" >> $GITHUB_ENV
-        #       cd forc-bins/out/debug
-        #       7z a -tzip $ASSET_FILENAME
-        #       mv $ASSET_FILENAME ../../../
-        #     fi
-        #   shell: bash
-        #   env:
-        #     GITHUB_TOKEN: ${{ github.token }}
-        #   with:
-        #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-        #     asset_path: forc-bins/out/debug/forc-bins.bin
-        #     asset_name: $ASSET_FILENAME
-        #     asset_content_type: application/gzip
+      # - name: Archive binaries
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     PLATFORM_NAME: ${{ matrix.job.platform }}
+      #     TARGET: ${{ matrix.job.target }}
+      #     ARCH: ${{ matrix.job.arch }}
+      #     VERSION_NAME: ${{ needs.prepare.outputs.tag_name }}
+      #   run: |
+      #     if [ "$PLATFORM_NAME" == "linux" ]; then
+      #       echo "ASSET_FILENAME=forc_${{ VERSION_NAME }}_${{ PLATFORM_NAME }}_${{ ARCH}.tar.gz" >> $GITHUB_ENV
+      #       tar -czvf $ASSET_FILENAME -C forc-bins/out/debug
+      #     elif [ "$PLATFORM_NAME" == "darwin" ]; then
+      #       echo "ASSET_FILENAME=forc_${{ VERSION_NAME }}_${{ PLATFORM_NAME }}_${{ ARCH}.tar.gz" >> $GITHUB_ENV
+      #       # We need to use gtar here otherwise the archive is corrupt.
+      #       # See: https://github.com/actions/virtual-environments/issues/2619
+      #       gtar -czvf $ASSET_FILENAME -C forc-bins/out/debug
+      #     else
+      #       echo "ASSET_FILENAME=forc_${VERSION_NAME}_${PLATFORM_NAME}_${ARCH}.zip" >> $GITHUB_ENV
+      #       cd forc-bins/out/debug
+      #       7z a -tzip $ASSET_FILENAME
+      #       mv $ASSET_FILENAME ../../../
+      #     fi
+      #   shell: bash
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: forc-bins/out/debug/forc-bins.bin
+      #     asset_name: $ASSET_FILENAME
+      #     asset_content_type: application/gzip
 
   build-sway-lib-core:
     needs: cancel-previous-runs
