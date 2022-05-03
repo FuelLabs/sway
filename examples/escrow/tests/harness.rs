@@ -1,7 +1,10 @@
-use fuel_tx::{ContractId, Salt};
+use fuels::{
+    prelude::{Contract, TxParameters, LocalWallet, CallParameters},
+    signers::Signer,
+    test_helpers,
+};
 use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::{util::test_helpers, LocalWallet, Signer};
+use fuel_tx::{ContractId, Salt, AssetId};
 
 abigen!(Escrow, "out/debug/escrow-abi.json");
 abigen!(Asset, "tests/artifacts/asset/out/debug/asset-abi.json");
@@ -10,11 +13,12 @@ abigen!(Asset, "tests/artifacts/asset/out/debug/asset-abi.json");
 // TODO: update tests to reflect contract
 
 struct Metadata {
-    contract: Escrow,
+    escrow: Escrow,
+    asset: Option<Asset>,
     wallet: LocalWallet
 }
 
-async fn setup() -> (Metadata, Metadata, Metadata, asset_mod::Asset, ContractId) {
+async fn setup() -> (Metadata, Metadata, Metadata, ContractId) {
     // Deploy the compiled contract
     let salt = Salt::from([0u8; 32]);
     let compiled_escrow = Contract::load_sway_contract("./out/debug/escrow.bin", salt).unwrap();
@@ -34,51 +38,49 @@ async fn setup() -> (Metadata, Metadata, Metadata, asset_mod::Asset, ContractId)
         .unwrap();
 
     let deployer = Metadata {
-        contract: Escrow::new(escrow_id.to_string(), provider.clone(), deployer_wallet.clone()),
+        escrow: Escrow::new(escrow_id.to_string(), provider.clone(), deployer_wallet.clone()),
+        asset: Some(Asset::new(asset_id.to_string(), provider.clone(), deployer_wallet.clone())),
         wallet: deployer_wallet.clone()
     };
 
     let buyer = Metadata {
-        contract: Escrow::new(escrow_id.to_string(), provider.clone(), buyer_wallet.clone()),
+        escrow: Escrow::new(escrow_id.to_string(), provider.clone(), buyer_wallet.clone()),
+        asset: None,
         wallet: buyer_wallet
     };
 
     let seller = Metadata {
-        contract: Escrow::new(escrow_id.to_string(), provider.clone(), seller_wallet.clone()),
+        escrow: Escrow::new(escrow_id.to_string(), provider.clone(), seller_wallet.clone()),
+        asset: None,
         wallet: seller_wallet
     };
 
-    let asset = Asset::new(asset_id.to_string(), provider.clone(), deployer_wallet.clone());
-
-    (deployer, buyer, seller, asset, asset_id)
+    (deployer, buyer, seller, asset_id)
 }
 
 #[tokio::test]
 async fn constructor() {
     let amount: u64 = 100;
-    let (deployer, buyer, seller, _, asset_id) = setup().await;
-
-    let thing = deployer.contract.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await;
-    println!("{:#?}", thing);
+    let (deployer, buyer, seller, asset_id) = setup().await;
     
-    assert!(thing.unwrap().value);
+    assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 }
 
-// #[tokio::test]
-// async fn deposit() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
-
-//     // Calldata
-//     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
+#[tokio::test]
+async fn deposit() {
+    let amount: u64 = 100;
+    let (deployer, buyer, seller, asset_id) = setup().await;
     
-//     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+    // Init conditions
+    assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+    assert!(deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap().value);
 
-//     // Test
-//     assert!(buyer.contract.deposit {gas, asset_id, amount} ().call().await.unwrap().value);
-// }
+    // Test
+    let tx_params = TxParameters::new(None, Some(1_000_000), None, None);    
+    let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+
+    assert!(buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap().value);
+}
 
 // #[tokio::test]
 // #[should_panic(expected = "RESERV00")]
@@ -88,10 +90,9 @@ async fn constructor() {
 
 //     // Specify calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Panic
-//     buyer.contract.deposit {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -102,13 +103,12 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 
 //     // Should panic
-//     buyer.contract.deposit {gas, asset_id, amount: amount + 1} ().call().await.unwrap();
+//     buyer.escrow.deposit {gas, asset_id, amount: amount + 1} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -119,13 +119,12 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 
 //     // Should panic
-//     deployer.contract.deposit {gas, asset_id, amount} ().call().await.unwrap();
+//     deployer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -136,35 +135,31 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
-//     assert!(buyer.contract.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
 
 //     // Should panic
-//     buyer.contract.deposit {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
 // async fn approve() {
-//     // TODO: add transfer code into function and complete test by checking transfer?
     
 //     let amount: u64 = 100;
 //     let (deployer, buyer, seller) = setup().await;
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
-//     assert!(buyer.contract.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
-//     assert!(seller.contract.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+//     assert!(seller.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
 
 //     // Test
-//     assert!(buyer.contract.approve().call().await.unwrap().value);
-//     assert!(seller.contract.approve().call().await.unwrap().value);
+//     assert!(buyer.escrow.approve().call().await.unwrap().value);
+//     assert!(seller.escrow.approve().call().await.unwrap().value);
 // }
 
 // #[tokio::test]
@@ -175,10 +170,9 @@ async fn constructor() {
 
 //     // Specify calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Panic
-//     buyer.contract.approve {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -189,14 +183,13 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 //     // Can add deposit assertion here, not neccessary though
 
 //     // Should panic
-//     deployer.contract.approve {gas, asset_id, amount} ().call().await.unwrap();
+//     deployer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -207,13 +200,12 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 
 //     // Should panic
-//     buyer.contract.approve {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -224,15 +216,13 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
-//     assert!(buyer.contract.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
-//     assert!(buyer.contract.approve {gas, asset_id, amount: amount} ().call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+//     assert!(buyer.escrow.approve {gas, asset_id, amount: amount} ().call().await.unwrap().value);
 
 //     // Should panic
-//     buyer.contract.approve {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -244,15 +234,14 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
-//     assert!(buyer.contract.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
 //     // Can add approve assertion here, not neccessary though
 
 //     // Test
-//     assert!(buyer.contract.withdraw().call().await.unwrap().value);
+//     assert!(buyer.escrow.withdraw().call().await.unwrap().value);
 // }
 
 // #[tokio::test]
@@ -263,10 +252,9 @@ async fn constructor() {
 
 //     // Specify calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Panic
-//     buyer.contract.withdraw {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -277,14 +265,13 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 //     // Can add deposit assertion here, not neccessary though
 
 //     // Should panic
-//     deployer.contract.withdraw {gas, asset_id, amount} ().call().await.unwrap();
+//     deployer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
 // }
 
 // #[tokio::test]
@@ -295,11 +282,10 @@ async fn constructor() {
 
 //     // Calldata
 //     let gas = 5000;
-//     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     
 //     // Init conditions
-//     assert!(deployer.contract.constructor(buyer.address, seller.address, &amount).call().await.unwrap().value);
+//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
 
 //     // Should panic
-//     buyer.contract.withdraw {gas, asset_id, amount} ().call().await.unwrap();
+//     buyer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
 // }

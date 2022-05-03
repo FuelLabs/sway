@@ -44,13 +44,13 @@ impl Escrow for Contract {
 
     fn constructor(buyer: Address, seller: Address, asset: ContractId, asset_amount: u64) -> bool {
         // assert(storage.state == State::Void);
-        // assert(storage.state == 0);
+        assert(storage.state == 0);
 
-        // storage.asset_amount = asset_amount;
-        // storage.buyer = User { address: buyer, approved: false, deposited: false };
-        // storage.seller = User { address: seller, approved: false, deposited: false };
-        // storage.asset = asset;
-        // storage.state = 1;
+        storage.asset_amount = asset_amount;
+        storage.buyer = User { address: buyer, approved: false, deposited: false };
+        storage.seller = User { address: seller, approved: false, deposited: false };
+        storage.asset = asset;
+        storage.state = 1;
         // storage.state = State::Pending;
 
         true
