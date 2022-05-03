@@ -149,6 +149,8 @@ jobs:
           args: --debug --path ./forc-fmt
       - name: Initialize test project
         run: forc init test-proj
+      - name: Update project manifest to use local sway-lib-std
+        run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
       - name: Build test project
         run: forc build --path test-proj
       - name: Run test project's test suite
