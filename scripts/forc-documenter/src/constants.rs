@@ -61,18 +61,7 @@ We can try this command with the initial project created using `forc init`, with
 ```sh
 forc init --template counter counter
 cd counter
-```
-
-```
-$ forc build -o obj
-  Creating a new `Forc.lock` file. (Cause: missing path info for dependency: std)
-    Adding core
-    Adding std git+https://github.com/fuellabs/sway?tag=v0.11.0#95816e4e41aae1d3425ba6ff5e7266076d8400fa
-   Created new lock file at /Users/user/Projects/fuel/counter/Forc.lock
-  Compiled library "core".
-  Compiled library "std".
-  Compiled contract "counter".
-  Bytecode size is 256 bytes.
+forc build -o obj
 ```
 
 ```console
