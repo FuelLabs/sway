@@ -34,12 +34,14 @@ fn main() {
         FunctionDeclaration::parse_from_pair(parsed_fn_decl.next().unwrap(), Default::default())
             .unwrap(&mut warnings, &mut errors);
 
-    let root_namespace = Namespace::default();
-    let mut namespace = root_namespace.clone();
+    let init_ns = Namespace::default();
+    let mut root_ns = init_ns.clone();
+    let mod_path = &[];
     let res = TypedFunctionDeclaration::type_check(TypeCheckArguments {
         checkee: parsed_fn_decl,
-        namespace: &mut namespace,
-        crate_namespace: &root_namespace,
+        init: &init_ns,
+        root: &mut root_ns,
+        mod_path,
         help_text: Default::default(),
         return_type_annotation: insert_type(TypeInfo::Unknown),
         self_type: insert_type(TypeInfo::Unknown),

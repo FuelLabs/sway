@@ -2679,9 +2679,14 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
+        let init = Namespace::default();
+        let mut root = init.clone();
+        let mod_path = &[];
         TypedParseTree::type_check(
             parse_tree.tree,
-            Namespace::default(),
+            &init,
+            &mut root,
+            mod_path,
             &program_type,
             &build_config,
             &mut dead_code_graph,

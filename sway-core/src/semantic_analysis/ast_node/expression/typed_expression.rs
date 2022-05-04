@@ -2701,8 +2701,9 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace = Namespace::default();
-        let root_namespace = Namespace::default();
+        let init = Namespace::default();
+        let mut root = init.clone();
+        let mod_path = &[];
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
@@ -2719,8 +2720,9 @@ mod tests {
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
-            namespace: &mut namespace,
-            crate_namespace: &root_namespace,
+            init: &init,
+            root: &mut root,
+            mod_path,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,
