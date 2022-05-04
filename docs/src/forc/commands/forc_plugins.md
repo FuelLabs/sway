@@ -10,6 +10,12 @@ forc plugins [OPTIONS]
 
 ## OPTIONS:
 
+`-d`, `--describe` 
+
+
+Prints the long description associated with each listed plugin
+
+
 `-h`, `--help` 
 
 
