@@ -41,7 +41,7 @@ impl TypedCodeBlock {
         } = arguments;
 
         // Create a temp namespace for this code block.
-        let mut temp_root = root.clone();
+        let mut scoped_root = root.clone();
         let evaluated_contents = other
             .contents
             .iter()
@@ -49,7 +49,7 @@ impl TypedCodeBlock {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
                     init,
-                    root: &mut temp_root,
+                    root: &mut scoped_root,
                     mod_path,
                     return_type_annotation: type_annotation,
                     help_text,

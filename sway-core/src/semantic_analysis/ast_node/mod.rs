@@ -499,8 +499,8 @@ impl TypedAstNode {
                                     break;
                                 }
                             }
-                            let mut temp_root = root.clone();
-                            let impl_namespace = &mut temp_root[mod_path];
+                            let mut scoped_root = root.clone();
+                            let impl_namespace = &mut scoped_root[mod_path];
                             for type_parameter in type_parameters.iter() {
                                 impl_namespace.insert_symbol(
                                     type_parameter.name_ident.clone(),
@@ -510,7 +510,7 @@ impl TypedAstNode {
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id = check!(
-                                temp_root
+                                scoped_root
                                     .resolve_type_without_self(mod_path, &type_implementing_for),
                                 return err(warnings, errors),
                                 warnings,
@@ -540,7 +540,7 @@ impl TypedAstNode {
                                 let args = TypeCheckArguments {
                                     checkee: fn_decl,
                                     init,
-                                    root: &mut temp_root,
+                                    root: &mut scoped_root,
                                     mod_path,
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: "",
@@ -1278,8 +1278,8 @@ fn type_check_trait_decl(
     );
 
     // A temporary namespace as we check the trait.
-    let mut temp_root = root.clone();
-    let trait_namespace = &mut temp_root[mod_path];
+    let mut scoped_root = root.clone();
+    let trait_namespace = &mut scoped_root[mod_path];
 
     // Recursively handle supertraits: make their interfaces and methods available to this trait
     check!(
@@ -1308,7 +1308,7 @@ fn type_check_trait_decl(
         type_check_trait_methods(
             trait_decl.methods.clone(),
             init,
-            &mut temp_root,
+            &mut scoped_root,
             mod_path,
             insert_type(TypeInfo::SelfType),
             build_config,

@@ -334,7 +334,7 @@ fn type_check_trait_implementation(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut temp_root = root.clone();
+    let mut scoped_root = root.clone();
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
@@ -342,12 +342,12 @@ fn type_check_trait_implementation(
     // in the symbols map and the path stored in the CallPath.
     let trait_path = [
         &trait_name.prefixes[..],
-        temp_root.get_canonical_path(&trait_name.suffix),
+        scoped_root.get_canonical_path(&trait_name.suffix),
     ]
     .concat();
-    temp_root.star_import(&trait_path, mod_path);
+    scoped_root.star_import(&trait_path, mod_path);
 
-    temp_root.insert_trait_implementation(
+    scoped_root.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.suffix.clone(),
@@ -372,7 +372,7 @@ fn type_check_trait_implementation(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
                 init,
-                root: &mut temp_root,
+                root: &mut scoped_root,
                 mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),

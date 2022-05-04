@@ -935,11 +935,11 @@ impl TypedExpression {
 
         // put the variable and type of the enum variants inner type into a temporary namespace for
         // the "then" branch, but not the else branch.
-        let mut temp_root = root.clone();
+        let mut scoped_root = root.clone();
 
         // calculate the return type of the variable by checking the enum variant's return type
 
-        temp_root[mod_path].insert_symbol(
+        scoped_root[mod_path].insert_symbol(
             variable_to_assign.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: variable_to_assign.clone(),
@@ -962,7 +962,7 @@ impl TypedExpression {
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: then,
                 init,
-                root: &mut temp_root,
+                root: &mut scoped_root,
                 mod_path,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "Because the return value of this expression is used, all branches of `if let` expression must return this type",

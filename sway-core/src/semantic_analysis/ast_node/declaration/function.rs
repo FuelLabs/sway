@@ -100,12 +100,12 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // insert parameters and generic type declarations into namespace
-        let mut temp_root = root.clone();
+        let mut scoped_root = root.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
-                temp_root[mod_path]
+                scoped_root[mod_path]
                     .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
@@ -118,7 +118,7 @@ impl TypedFunctionDeclaration {
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
                     None => check!(
-                        temp_root.resolve_type_with_self(
+                        scoped_root.resolve_type_with_self(
                             mod_path,
                             look_up_type_id(parameter.type_id),
                             self_type,
@@ -132,7 +132,7 @@ impl TypedFunctionDeclaration {
                 };
         });
 
-        let namespace = &mut temp_root[mod_path];
+        let namespace = &mut scoped_root[mod_path];
         for FunctionParameter { name, type_id, .. } in parameters.clone() {
             namespace.insert_symbol(
                 name.clone(),
@@ -154,7 +154,7 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => check!(
-                temp_root.resolve_type_with_self(
+                scoped_root.resolve_type_with_self(
                     mod_path,
                     return_type,
                     self_type,
@@ -173,7 +173,7 @@ impl TypedFunctionDeclaration {
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
                 init,
-                root: &mut temp_root,
+                root: &mut scoped_root,
                 mod_path,
                 return_type_annotation: return_type,
                 help_text:
