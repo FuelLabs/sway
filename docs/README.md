@@ -6,7 +6,7 @@ Install `mdbook` and then open a new terminal session in order to run the subseq
 
 ```sh
 cargo install mdbook
-``
+```
 
 To build book:
 
