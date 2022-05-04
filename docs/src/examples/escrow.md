@@ -3,6 +3,7 @@
 The following code is an example of what an Escrow contract may look like in Sway.
 
 To fetch a template run
+
 ```bash
 forc init --template escrow <name_of_your_escrow_project>
 ```
