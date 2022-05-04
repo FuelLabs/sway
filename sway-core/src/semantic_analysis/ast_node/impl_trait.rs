@@ -14,8 +14,8 @@ use sway_types::span::Span;
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -52,6 +52,7 @@ pub(crate) fn implementation_of_trait(
     match root
         .get_call_path(mod_path, &trait_name)
         .ok(&mut warnings, &mut errors)
+        .cloned()
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
             let functions_buf = check!(
@@ -182,8 +183,8 @@ fn type_check_trait_implementation(
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
     trait_name: &CallPath,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     _self_type: TypeId,
     build_config: &BuildConfig,

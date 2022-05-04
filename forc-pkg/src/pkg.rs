@@ -17,8 +17,8 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, Namespace,
-    TreeType, TypedParseTree,
+    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
+    CompileAstResult, CompileError, TreeType, TypedParseTree,
 };
 use sway_utils::constants;
 use url::Url;
@@ -954,18 +954,18 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, Namespace>,
+    namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
     compilation_order: &[NodeIx],
     node: NodeIx,
-) -> Namespace {
+) -> namespace::Module {
     use petgraph::visit::{Dfs, Walker};
 
     // Find all nodes that are a dependency of this one with a depth-first search.
     let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
 
     // In order of compilation, accumulate dependency namespace refs.
-    let mut namespace = Namespace::default();
+    let mut namespace = namespace::Module::default();
     for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
         if dep_node == node {
             break;
@@ -978,7 +978,7 @@ pub fn dependency_namespace(
             .collect();
         for dep_name in dep_names {
             let dep_name = kebab_to_snake_case(dep_name);
-            namespace.insert_module(dep_name.to_string(), dep_namespace.clone());
+            namespace.insert_submodule(dep_name.to_string(), dep_namespace.clone());
         }
     }
 
@@ -1007,9 +1007,9 @@ pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
-    namespace: Namespace,
+    namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(Compiled, Option<Namespace>)> {
+) -> Result<(Compiled, Option<namespace::Root>)> {
     let entry_path = manifest.entry_path();
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
@@ -1088,7 +1088,7 @@ pub fn build(
         let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace);
+            namespace_map.insert(node, namespace.into());
         }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;

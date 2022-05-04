@@ -22,37 +22,73 @@ use std::{
 type ModuleName = String;
 type TraitName = CallPath;
 type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
-type ModuleMap = im::OrdMap<ModuleName, Namespace>;
 type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
 type UseAliases = im::HashMap<String, Ident>;
 
 pub type Path = [Ident];
 pub type PathBuf = Vec<Ident>;
 
-/// A namespace represents all items that exist either within some lexical scope via declaration or
-/// importing.
-///
-/// The namespace is constructed during type checking.
+/// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Namespace {
-    // This is a BTreeMap because we rely on its ordering being consistent. See
-    // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
-    // order.
+    /// An ordered map from `Ident`s to their associated typed declarations.
     symbols: SymbolMap,
     implemented_traits: TraitMap,
-    // Any other modules within this scope, where a module is a namespace associated with an identifier.
-    // This is a BTreeMap because we rely on its ordering being consistent. See
-    // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
-    // order.
-    modules: ModuleMap,
+    /// Represents the absolute path from which a symbol was imported.
+    ///
+    /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
+    /// path `foo::bar::Baz`.
     use_synonyms: UseSynonyms,
-    /// Represents an alternative name for a symbol.
+    /// Represents an alternative name for an imported symbol.
+    ///
+    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
+    /// alias for `bar`.
     use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     declared_storage: Option<TypedStorageDeclaration>,
 }
 
+/// A single `Module` within a Sway project.
+///
+/// A `Module` is most commonly associated with an individual file of Sway code, e.g. a top-level
+/// script/predicate/contract file or some library dependency whether introduced via `dep` or the
+/// `[dependencies]` table of a `forc` manifest.
+///
+/// A `Module` contains a single namespace with all items that exist within the lexical scope via
+/// declaration or importing, along with a map of each of its submodules.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Module {
+    /// Submodules of the current module represented as an ordered map from each submodule's name
+    /// to the associated `Module`.
+    ///
+    /// Submodules are normally introduced in Sway code with the `dep foo;` syntax where `foo` is
+    /// some library dependency that we include as a submodule.
+    ///
+    /// Note that we *require* this map to be ordered to produce deterministic results.
+    submodules: im::OrdMap<ModuleName, Module>,
+    /// The set of names in this module.
+    namespace: Namespace,
+}
+
+/// The root module, from which all other modules can be accessed.
+///
+/// This is equivalent to the "crate root" of a Rust crate.
+///
+/// We use a custom type for the `Root` in order to ensure that methods that only work with
+/// canonical paths, or that use canonical paths internally, are *only* called from the root. This
+/// normally includes methods that first lookup some canonical path via `use_synonyms` before using
+/// that canonical path to look up the type declaration.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Root {
+    module: Module,
+}
+
 impl Namespace {
+    /// Immutable access to the inner symbol map.
+    pub fn symbols(&self) -> &SymbolMap {
+        &self.symbols
+    }
+
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
@@ -80,15 +116,17 @@ impl Namespace {
         ok((), vec![], vec![])
     }
 
+    // TODO: Remove in favour of `symbols`. If `symbols` isn't a good enough name, let's rename the
+    // `symbols` map to `symbol_declarations` or something.
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
-        self.symbols.values()
+        self.symbols().values()
     }
 
-    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace> {
-        self.modules.values()
-    }
-
-    pub(crate) fn insert(&mut self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(
+        &mut self,
+        name: Ident,
+        item: TypedDeclaration,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
@@ -112,6 +150,13 @@ impl Namespace {
         }
         self.symbols.insert(name, item);
         ok((), warnings, errors)
+    }
+
+    pub(crate) fn check_symbol(&self, name: &Ident) -> CompileResult<&TypedDeclaration> {
+        match self.symbols.get(name) {
+            Some(decl) => ok(decl, vec![], vec![]),
+            None => err(vec![], vec![symbol_not_found(name)]),
+        }
     }
 
     pub(crate) fn insert_trait_implementation(
@@ -143,10 +188,6 @@ impl Namespace {
             errors
         );
         ok((), warnings, errors)
-    }
-
-    pub fn insert_module(&mut self, module_name: String, module: Namespace) {
-        self.modules.insert(module_name, module);
     }
 
     pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
@@ -204,382 +245,8 @@ impl Namespace {
         }
     }
 
-    /// Used for calls that look like this:
-    ///
-    /// `foo::bar::function`
-    ///
-    /// where `foo` and `bar` are the prefixes and `function` is the suffix.
-    ///
-    /// The given `mod_path` is a path to the module in which we're retrieving the symbol. If the
-    /// call path has no prefix path, we look up the synonym within the given module to find the
-    /// symbol's absolute path that we can use with `self`.
-    pub(crate) fn get_call_path(
-        &self,
-        mod_path: &Path,
-        symbol: &CallPath,
-    ) -> CompileResult<TypedDeclaration> {
-        if symbol.prefixes.is_empty() {
-            if let Some(path) = self[mod_path].use_synonyms.get(&symbol.suffix) {
-                return self.get_name_from_path(path, &symbol.suffix);
-            }
-        }
-        self[mod_path].get_name_from_path(&symbol.prefixes, &symbol.suffix)
-    }
-
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
         self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
-    }
-
-    pub(crate) fn get_name_from_path(
-        &self,
-        path: &[Ident],
-        name: &Ident,
-    ) -> CompileResult<TypedDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let module = check!(
-            self.find_module_relative(path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        match module.symbols.get(name) {
-            Some(decl) => ok(decl.clone(), warnings, errors),
-            None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: name.clone(),
-                });
-                err(warnings, errors)
-            }
-        }
-    }
-
-    pub(crate) fn find_module_relative(&self, path: &[Ident]) -> CompileResult<&Namespace> {
-        let mut errors = vec![];
-        let warnings = vec![];
-        let mut mod_ns = self;
-        for ident in path.iter() {
-            match mod_ns.modules.get(ident.as_str()) {
-                Some(ns) => mod_ns = ns,
-                None => {
-                    errors.push(module_not_found(path));
-                    return err(warnings, errors);
-                }
-            }
-        }
-        ok(mod_ns, warnings, errors)
-    }
-
-    pub(crate) fn find_module_relative_mut(
-        &mut self,
-        path: &[Ident],
-    ) -> CompileResult<&mut Namespace> {
-        let mut errors = vec![];
-        let warnings = vec![];
-        let mut mod_ns = self;
-        for ident in path.iter() {
-            match mod_ns.modules.get_mut(ident.as_str()) {
-                Some(ns) => mod_ns = ns,
-                None => {
-                    errors.push(module_not_found(path));
-                    return err(warnings, errors);
-                }
-            }
-        }
-        ok(mod_ns, warnings, errors)
-    }
-
-    /// This function either returns a struct (i.e. custom type), `None`, denoting the type that is
-    /// being looked for is actually a generic, not-yet-resolved type.
-    ///
-    /// If a self type is given and anything on this ref chain refers to self, update the chain.
-    pub(crate) fn resolve_type_with_self(
-        &mut self,
-        mod_path: &Path,
-        ty: TypeInfo,
-        self_type: TypeId,
-        span: Span,
-        enforce_type_args: bool,
-    ) -> CompileResult<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_id = match ty {
-            TypeInfo::Custom {
-                ref name,
-                type_arguments,
-            } => {
-                let mut new_type_arguments = vec![];
-                for type_argument in type_arguments.into_iter() {
-                    let new_type_id = check!(
-                        self.resolve_type_with_self(
-                            mod_path,
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            type_argument.span.clone(),
-                            enforce_type_args
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                    let type_argument = TypeArgument {
-                        type_id: new_type_id,
-                        span: type_argument.span,
-                    };
-                    new_type_arguments.push(type_argument);
-                }
-                match self
-                    .get_symbol(mod_path, name)
-                    .ok(&mut warnings, &mut errors)
-                {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize(
-                                    &mut self[mod_path],
-                                    &new_type_arguments,
-                                    Some(self_type)
-                                ),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
-                    }
-                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(
-                                    &mut self[mod_path],
-                                    &new_type_arguments,
-                                    Some(self_type)
-                                ),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
-                    }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        insert_type(TypeInfo::UnknownGeneric { name })
-                    }
-                    _ => {
-                        errors.push(CompileError::UnknownType { span });
-                        return err(warnings, errors);
-                    }
-                }
-            }
-            TypeInfo::SelfType => self_type,
-            TypeInfo::Ref(id) => id,
-            o => insert_type(o),
-        };
-        ok(type_id, warnings, errors)
-    }
-
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        mod_path: &Path,
-        ty: &TypeInfo,
-    ) -> CompileResult<TypeId> {
-        let ty = ty.clone();
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_id = match ty {
-            TypeInfo::Custom {
-                name,
-                type_arguments,
-            } => match self
-                .get_symbol(mod_path, &name)
-                .ok(&mut warnings, &mut errors)
-            {
-                Some(TypedDeclaration::StructDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            self.resolve_type_without_self(
-                                mod_path,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
-                            decl.monomorphize(&mut self[mod_path], &new_type_arguments, None),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
-                    }
-                }
-                Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            self.resolve_type_without_self(
-                                mod_path,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
-                            decl.monomorphize_with_type_arguments(
-                                &mut self[mod_path],
-                                &new_type_arguments,
-                                None
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
-                    }
-                }
-                _ => insert_type(TypeInfo::Unknown),
-            },
-            TypeInfo::Ref(id) => id,
-            o => insert_type(o),
-        };
-        ok(type_id, warnings, errors)
-    }
-
-    /// Get the `symbol` within the module at the given `mod_path`.
-    pub(crate) fn get_symbol(
-        &self,
-        mod_path: &Path,
-        symbol: &Ident,
-    ) -> CompileResult<TypedDeclaration> {
-        let true_symbol = self[mod_path]
-            .use_aliases
-            .get(symbol.as_str())
-            .unwrap_or(symbol);
-        match self[mod_path].use_synonyms.get(symbol) {
-            None => self.get_name_from_path(mod_path, true_symbol),
-            Some(path) => self.get_name_from_path(path, true_symbol),
-        }
-    }
-
-    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
-    /// in the namespace. Requires `args_buf` because of some special casing for the standard
-    /// library where we pull the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not found.
-    ///
-    /// This method should only be called on the root namespace. `mod_path` is the current module,
-    /// `method_path` is assumed to be absolute.
-    pub(crate) fn find_method_for_type(
-        &mut self,
-        mod_path: &Path,
-        r#type: TypeId,
-        method_path: &Path,
-        self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression>,
-    ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let mut root_methods = self.get_methods_for_type(r#type);
-        let local_methods = self[mod_path].get_methods_for_type(r#type);
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
-
-        // Ensure there's a module for the given method prefix.
-        check!(
-            self.find_module_relative(method_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // This is a hack and I don't think it should be used.  We check the local namespace first,
-        // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = check!(
-            self.resolve_type_with_self(
-                method_prefix,
-                look_up_type_id(r#type),
-                self_type,
-                method_name.span().clone(),
-                false
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
-        let mut ns_methods = self[method_prefix].get_methods_for_type(r#type);
-
-        // TODO
-        // Here we collect function declarations for the given type from the current module, the
-        // module in which the method was implemented, and the root. Perhaps we should instead have
-        // a root-level map that always stores all inherent methods for each type, seeing as
-        // inherent methods are always accessible?
-        let mut methods = local_methods;
-        methods.append(&mut ns_methods);
-        // TODO: Make sure we actually want this?
-        methods.append(&mut root_methods);
-
-        match methods
-            .into_iter()
-            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
-        {
-            Some(o) => ok(o, warnings, errors),
-            None => {
-                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
-                    != Some(TypeInfo::ErrorRecovery)
-                {
-                    errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.clone(),
-                        type_name: r#type.friendly_type_str(),
-                    });
-                }
-                err(warnings, errors)
-            }
-        }
     }
 
     /// Given a declaration that may refer to a variable which contains a struct, find that
@@ -710,18 +377,62 @@ impl Namespace {
         }
         ok((symbol, parent_rover), warnings, errors)
     }
+}
 
-    pub(crate) fn find_enum(
-        &self,
-        mod_path: &Path,
-        enum_name: &Ident,
-    ) -> Option<TypedEnumDeclaration> {
-        match self.get_symbol(mod_path, enum_name) {
-            CompileResult {
-                value: Some(TypedDeclaration::EnumDeclaration(inner)),
-                ..
-            } => Some(inner),
-            _ => None,
+impl Module {
+    /// Immutable access to this module's submodules.
+    pub fn submodules(&self) -> &im::OrdMap<ModuleName, Module> {
+        &self.submodules
+    }
+
+    /// Insert a submodule into this `Module`.
+    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
+        self.submodules.insert(name, submodule);
+    }
+
+    /// Lookup the submodule at the given path.
+    pub fn submodule(&self, path: &Path) -> Option<&Module> {
+        let mut module = self;
+        for ident in path.iter() {
+            match module.submodules.get(ident.as_str()) {
+                Some(ns) => module = ns,
+                None => return None,
+            }
+        }
+        Some(module)
+    }
+
+    /// Unique access to the submodule at the given path.
+    pub fn submodule_mut(&mut self, path: &Path) -> Option<&mut Module> {
+        let mut module = self;
+        for ident in path.iter() {
+            match module.submodules.get_mut(ident.as_str()) {
+                Some(ns) => module = ns,
+                None => return None,
+            }
+        }
+        Some(module)
+    }
+
+    /// Lookup the submodule at the given path.
+    ///
+    /// This should be used rather than `Index` when we don't yet know whether the module exists.
+    pub(crate) fn check_submodule(&self, path: &[Ident]) -> CompileResult<&Module> {
+        match self.submodule(path) {
+            None => err(vec![], vec![module_not_found(path)]),
+            Some(module) => ok(module, vec![], vec![]),
+        }
+    }
+
+    /// Find the submodule at the given path relative to this module and return mutable access to
+    /// it.
+    ///
+    /// This should be used rather than `IndexMut` when we don't yet know whether the module
+    /// exists.
+    pub(crate) fn check_submodule_mut(&mut self, path: &[Ident]) -> CompileResult<&mut Module> {
+        match self.submodule_mut(path) {
+            None => err(vec![], vec![module_not_found(path)]),
+            Some(module) => ok(module, vec![], vec![]),
         }
     }
 
@@ -729,11 +440,13 @@ impl Namespace {
     /// `dst` module.
     ///
     /// This is used when an import path contains an asterisk.
+    ///
+    /// Paths are assumed to be relative to `self`.
     pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
-            self.find_module_relative(src),
+            self.check_submodule(src),
             return err(warnings, errors),
             warnings,
             errors
@@ -771,7 +484,7 @@ impl Namespace {
 
     /// Pull a single item from a `src` module and import it into the `dst` module.
     ///
-    /// The item we want to import is basically the last item in path because this is a self
+    /// The item we want to import is basically the last item in path because this is a `self`
     /// import.
     pub(crate) fn self_import(
         &mut self,
@@ -796,7 +509,7 @@ impl Namespace {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
-            self.find_module_relative(src),
+            self.check_submodule(src),
             return err(warnings, errors),
             warnings,
             errors
@@ -816,7 +529,7 @@ impl Namespace {
                     ..
                 }) = decl
                 {
-                    self[dst].insert(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                    self[dst].insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
                     return ok((), warnings, errors);
                 }
                 let a = decl.return_type().value;
@@ -872,30 +585,403 @@ impl Namespace {
         ok((), warnings, errors)
     }
 
-    /// Lookup the module at the given path.
-    pub fn module(&self, path: &Path) -> Option<&Namespace> {
-        self.find_module_relative(path).ok(&mut vec![], &mut vec![])
-    }
-
-    /// Unique access to the module at the given path.
-    pub fn module_mut(&mut self, path: &Path) -> Option<&mut Namespace> {
-        self.find_module_relative_mut(path)
-            .ok(&mut vec![], &mut vec![])
+    // TODO: Remove this in favour of using `check_module` and `check_symbol`.
+    /// Lookup the symbol with the given `name` from within the given module `path` relative to
+    /// `self`.
+    pub(crate) fn get_name_from_path(
+        &self,
+        path: &[Ident],
+        name: &Ident,
+    ) -> CompileResult<&TypedDeclaration> {
+        self.check_submodule(path)
+            .flat_map(|module| module.check_symbol(name))
     }
 }
 
-impl<'a> std::ops::Index<&'a Path> for Namespace {
-    type Output = Namespace;
+impl Root {
+    /// Used for calls that look like this:
+    ///
+    /// `foo::bar::function`
+    ///
+    /// where `foo` and `bar` are the prefixes and `function` is the suffix.
+    ///
+    /// The given `mod_path` is a path to the module in which we're retrieving the symbol. If the
+    /// call path has no prefix path, we look up the synonym within the given module to find the
+    /// symbol's absolute path that we can use with `self`.
+    pub(crate) fn get_call_path(
+        &self,
+        mod_path: &Path,
+        symbol: &CallPath,
+    ) -> CompileResult<&TypedDeclaration> {
+        if symbol.prefixes.is_empty() {
+            if let Some(path) = self[mod_path].use_synonyms.get(&symbol.suffix) {
+                return self.get_name_from_path(path, &symbol.suffix);
+            }
+        }
+        self[mod_path].get_name_from_path(&symbol.prefixes, &symbol.suffix)
+    }
+
+    /// Get the `symbol` within the module at the given `mod_path`.
+    pub(crate) fn get_symbol(
+        &self,
+        mod_path: &Path,
+        symbol: &Ident,
+    ) -> CompileResult<&TypedDeclaration> {
+        let true_symbol = self[mod_path]
+            .use_aliases
+            .get(symbol.as_str())
+            .unwrap_or(symbol);
+        match self[mod_path].use_synonyms.get(symbol) {
+            None => self.get_name_from_path(mod_path, true_symbol),
+            Some(path) => self.get_name_from_path(path, true_symbol),
+        }
+    }
+
+    pub(crate) fn find_enum(
+        &self,
+        mod_path: &Path,
+        enum_name: &Ident,
+    ) -> Option<&TypedEnumDeclaration> {
+        match self.get_symbol(mod_path, enum_name) {
+            CompileResult {
+                value: Some(TypedDeclaration::EnumDeclaration(inner)),
+                ..
+            } => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// This function either returns a struct (i.e. custom type), `None`, denoting the type that is
+    /// being looked for is actually a generic, not-yet-resolved type.
+    ///
+    /// If a self type is given and anything on this ref chain refers to self, update the chain.
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        mod_path: &Path,
+        ty: TypeInfo,
+        self_type: TypeId,
+        span: Span,
+        enforce_type_args: bool,
+    ) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_id = match ty {
+            TypeInfo::Custom {
+                ref name,
+                type_arguments,
+            } => {
+                let mut new_type_arguments = vec![];
+                for type_argument in type_arguments.into_iter() {
+                    let new_type_id = check!(
+                        self.resolve_type_with_self(
+                            mod_path,
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            type_argument.span.clone(),
+                            enforce_type_args
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                    let type_argument = TypeArgument {
+                        type_id: new_type_id,
+                        span: type_argument.span,
+                    };
+                    new_type_arguments.push(type_argument);
+                }
+                match self
+                    .get_symbol(mod_path, name)
+                    .ok(&mut warnings, &mut errors)
+                    .cloned()
+                {
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
+                        if enforce_type_args
+                            && new_type_arguments.is_empty()
+                            && !decl.type_parameters.is_empty()
+                        {
+                            errors.push(CompileError::NeedsTypeArguments {
+                                name: name.clone(),
+                                span: name.span().clone(),
+                            });
+                            return err(warnings, errors);
+                        }
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = check!(
+                                decl.monomorphize(
+                                    &mut self[mod_path],
+                                    &new_type_arguments,
+                                    Some(self_type)
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            new_decl.type_id()
+                        } else {
+                            decl.type_id()
+                        }
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        if enforce_type_args
+                            && new_type_arguments.is_empty()
+                            && !decl.type_parameters.is_empty()
+                        {
+                            errors.push(CompileError::NeedsTypeArguments {
+                                name: name.clone(),
+                                span: name.span().clone(),
+                            });
+                            return err(warnings, errors);
+                        }
+                        if !decl.type_parameters.is_empty() {
+                            let new_decl = check!(
+                                decl.monomorphize_with_type_arguments(
+                                    &mut self[mod_path],
+                                    &new_type_arguments,
+                                    Some(self_type)
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            new_decl.type_id()
+                        } else {
+                            decl.type_id()
+                        }
+                    }
+                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
+                        insert_type(TypeInfo::UnknownGeneric { name })
+                    }
+                    _ => {
+                        errors.push(CompileError::UnknownType { span });
+                        return err(warnings, errors);
+                    }
+                }
+            }
+            TypeInfo::SelfType => self_type,
+            TypeInfo::Ref(id) => id,
+            o => insert_type(o),
+        };
+        ok(type_id, warnings, errors)
+    }
+
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        mod_path: &Path,
+        ty: &TypeInfo,
+    ) -> CompileResult<TypeId> {
+        let ty = ty.clone();
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_id = match ty {
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => match self
+                .get_symbol(mod_path, &name)
+                .ok(&mut warnings, &mut errors)
+                .cloned()
+            {
+                Some(TypedDeclaration::StructDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            self.resolve_type_without_self(
+                                mod_path,
+                                &look_up_type_id(type_argument.type_id),
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
+                    }
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize(&mut self[mod_path], &new_type_arguments, None),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
+                    } else {
+                        decl.type_id()
+                    }
+                }
+                Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                    let mut new_type_arguments = vec![];
+                    for type_argument in type_arguments.into_iter() {
+                        let new_type_id = check!(
+                            self.resolve_type_without_self(
+                                mod_path,
+                                &look_up_type_id(type_argument.type_id),
+                            ),
+                            insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                        let type_argument = TypeArgument {
+                            type_id: new_type_id,
+                            span: type_argument.span,
+                        };
+                        new_type_arguments.push(type_argument);
+                    }
+                    if !decl.type_parameters.is_empty() {
+                        let new_decl = check!(
+                            decl.monomorphize_with_type_arguments(
+                                &mut self[mod_path],
+                                &new_type_arguments,
+                                None
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
+                    } else {
+                        decl.type_id()
+                    }
+                }
+                _ => insert_type(TypeInfo::Unknown),
+            },
+            TypeInfo::Ref(id) => id,
+            o => insert_type(o),
+        };
+        ok(type_id, warnings, errors)
+    }
+
+    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
+    /// in the namespace. Requires `args_buf` because of some special casing for the standard
+    /// library where we pull the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not found.
+    ///
+    /// This method should only be called on the root namespace. `mod_path` is the current module,
+    /// `method_path` is assumed to be absolute.
+    pub(crate) fn find_method_for_type(
+        &mut self,
+        mod_path: &Path,
+        r#type: TypeId,
+        method_path: &Path,
+        self_type: TypeId,
+        args_buf: &VecDeque<TypedExpression>,
+    ) -> CompileResult<TypedFunctionDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut root_methods = self.get_methods_for_type(r#type);
+        let local_methods = self[mod_path].get_methods_for_type(r#type);
+        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
+
+        // Ensure there's a module for the given method prefix.
+        check!(
+            self.check_submodule(method_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // This is a hack and I don't think it should be used.  We check the local namespace first,
+        // but if nothing turns up then we try the namespace where the type itself is declared.
+        let r#type = check!(
+            self.resolve_type_with_self(
+                method_prefix,
+                look_up_type_id(r#type),
+                self_type,
+                method_name.span().clone(),
+                false
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        let mut ns_methods = self[method_prefix].get_methods_for_type(r#type);
+
+        // TODO
+        // Here we collect function declarations for the given type from the current module, the
+        // module in which the method was implemented, and the root. Perhaps we should instead have
+        // a root-level map that always stores all inherent methods for each type, seeing as
+        // inherent methods are always accessible?
+        let mut methods = local_methods;
+        methods.append(&mut ns_methods);
+        // TODO: Make sure we actually want this?
+        methods.append(&mut root_methods);
+
+        match methods
+            .into_iter()
+            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
+        {
+            Some(o) => ok(o, warnings, errors),
+            None => {
+                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
+                    != Some(TypeInfo::ErrorRecovery)
+                {
+                    errors.push(CompileError::MethodNotFound {
+                        method_name: method_name.clone(),
+                        type_name: r#type.friendly_type_str(),
+                    });
+                }
+                err(warnings, errors)
+            }
+        }
+    }
+}
+
+impl std::ops::Deref for Module {
+    type Target = Namespace;
+    fn deref(&self) -> &Self::Target {
+        &self.namespace
+    }
+}
+
+impl std::ops::DerefMut for Module {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.namespace
+    }
+}
+
+impl std::ops::Deref for Root {
+    type Target = Module;
+    fn deref(&self) -> &Self::Target {
+        &self.module
+    }
+}
+
+impl std::ops::DerefMut for Root {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.module
+    }
+}
+
+impl<'a> std::ops::Index<&'a Path> for Module {
+    type Output = Module;
     fn index(&self, path: &'a Path) -> &Self::Output {
-        self.module(path)
+        self.submodule(path)
             .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
     }
 }
 
-impl<'a> std::ops::IndexMut<&'a Path> for Namespace {
+impl<'a> std::ops::IndexMut<&'a Path> for Module {
     fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
-        self.module_mut(path)
+        self.submodule_mut(path)
             .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+    }
+}
+
+impl From<Module> for Root {
+    fn from(module: Module) -> Self {
+        Root { module }
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<Module> for Root {
+    fn into(self) -> Module {
+        self.module
     }
 }
 
@@ -1023,5 +1109,11 @@ fn module_not_found(path: &[Ident]) -> CompileError {
             .map(|x| x.as_str())
             .collect::<Vec<_>>()
             .join("::"),
+    }
+}
+
+fn symbol_not_found(name: &Ident) -> CompileError {
+    CompileError::SymbolNotFound {
+        name: name.clone(),
     }
 }

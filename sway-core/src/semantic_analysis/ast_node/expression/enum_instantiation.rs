@@ -13,8 +13,8 @@ pub(crate) fn instantiate_enum(
     enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     self_type: TypeId,
     build_config: &BuildConfig,
@@ -44,13 +44,13 @@ pub(crate) fn instantiate_enum(
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
-    let namespace = &mut root[mod_path];
+    let module = &mut root[mod_path];
     let new_decl = match (
         enum_decl.type_parameters.is_empty(),
         type_arguments.is_empty(),
     ) {
         (true, true) => enum_decl,
-        (false, true) => enum_decl.monomorphize(namespace),
+        (false, true) => enum_decl.monomorphize(module),
         (true, false) => {
             errors.push(CompileError::DoesNotTakeTypeArguments {
                 name: enum_decl.name.clone(),
@@ -60,7 +60,7 @@ pub(crate) fn instantiate_enum(
         }
         (false, false) => {
             let module = check!(
-                namespace.find_module_relative_mut(module_path),
+                module.check_submodule_mut(module_path),
                 return err(warnings, errors),
                 warnings,
                 errors,

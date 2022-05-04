@@ -4,7 +4,7 @@ use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::parser::{Rule, SwayParser};
-use crate::semantic_analysis::{Namespace, TCOpts};
+use crate::semantic_analysis::TCOpts;
 use pest::iterators::Pairs;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
@@ -16,8 +16,8 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     self_type: TypeId,
     build_config: &BuildConfig,
@@ -408,8 +408,8 @@ pub(crate) fn type_check_method_application(
 fn re_parse_expression(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph,

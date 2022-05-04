@@ -8,11 +8,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::Purity,
-    semantic_analysis::{
-        ast_node::Mode,
-        namespace::{self, Namespace},
-        TypeCheckArguments,
-    },
+    semantic_analysis::{ast_node::Mode, namespace, TypeCheckArguments},
     type_engine::*,
     AstNode, ParseTree,
 };
@@ -31,24 +27,24 @@ pub enum TreeType {
 pub enum TypedParseTree {
     Script {
         main_function: TypedFunctionDeclaration,
-        namespace: Namespace,
+        namespace: namespace::Root,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration,
-        namespace: Namespace,
+        namespace: namespace::Root,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: Namespace,
+        namespace: namespace::Root,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: Namespace,
+        namespace: namespace::Root,
         all_nodes: Vec<TypedAstNode>,
     },
 }
@@ -67,7 +63,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn namespace(&self) -> &Namespace {
+    pub fn namespace(&self) -> &namespace::Root {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -77,7 +73,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn into_namespace(self) -> Namespace {
+    pub fn into_namespace(self) -> namespace::Root {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -142,8 +138,8 @@ impl TypedParseTree {
     ///   type-checking.
     pub(crate) fn type_check(
         parsed: ParseTree,
-        init: &Namespace,
-        root: &mut Namespace,
+        init: &namespace::Module,
+        root: &mut namespace::Root,
         mod_path: &namespace::Path,
         tree_type: &TreeType,
         build_config: &BuildConfig,
@@ -185,8 +181,8 @@ impl TypedParseTree {
 
     fn type_check_nodes(
         nodes: Vec<AstNode>,
-        init: &Namespace,
-        root: &mut Namespace,
+        init: &namespace::Module,
+        root: &mut namespace::Root,
         mod_path: &namespace::Path,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -223,7 +219,7 @@ impl TypedParseTree {
     fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode>,
         span: Span,
-        namespace: Namespace,
+        namespace: namespace::Root,
         tree_type: &TreeType,
         warnings: Vec<CompileWarning>,
         mut errors: Vec<CompileError>,
@@ -335,7 +331,7 @@ impl TypedParseTree {
 ///
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
-    root: &Namespace,
+    root: &namespace::Root,
     mod_path: &namespace::Path,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
@@ -352,8 +348,7 @@ fn check_supertraits(
                 ..
             } = root.get_call_path(mod_path, trait_name)
             {
-                let supertraits = tr.supertraits;
-                for supertrait in &supertraits {
+                for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
                             trait_name: search_node_trait_name,

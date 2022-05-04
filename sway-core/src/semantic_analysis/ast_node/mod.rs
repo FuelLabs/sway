@@ -227,35 +227,37 @@ impl TypedAstNode {
         let mut errors = Vec::new();
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr =
-            |root: &mut Namespace, mod_path: &namespace::Path, type_ascription: TypeInfo, value| {
-                let type_id = check!(
-                    root.resolve_type_with_self(
-                        mod_path,
-                        type_ascription,
-                        self_type,
-                        node.span.clone(),
-                        false
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                );
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: value,
-                    init,
-                    root,
+        let mut type_check_ascribed_expr = |root: &mut namespace::Root,
+                                            mod_path: &namespace::Path,
+                                            type_ascription: TypeInfo,
+                                            value| {
+            let type_id = check!(
+                root.resolve_type_with_self(
                     mod_path,
-                    return_type_annotation: type_id,
-                    help_text: "This declaration's type annotation  does \
-                     not match up with the assigned expression's type.",
+                    type_ascription,
                     self_type,
-                    build_config,
-                    dead_code_graph,
-                    mode: Mode::NonAbi,
-                    opts,
-                })
-            };
+                    node.span.clone(),
+                    false
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            );
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: value,
+                init,
+                root,
+                mod_path,
+                return_type_annotation: type_id,
+                help_text: "This declaration's type annotation  does \
+                     not match up with the assigned expression's type.",
+                self_type,
+                build_config,
+                dead_code_graph,
+                mode: Mode::NonAbi,
+                opts,
+            })
+        };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
@@ -347,7 +349,7 @@ impl TypedAstNode {
                                     const_decl_origin: false,
                                     type_ascription,
                                 });
-                            root[mod_path].insert(name, typed_var_decl.clone());
+                            root[mod_path].insert_symbol(name, typed_var_decl.clone());
                             typed_var_decl
                         }
                         Declaration::ConstantDeclaration(ConstantDeclaration {
@@ -380,7 +382,7 @@ impl TypedAstNode {
                                     const_decl_origin: true,
                                     type_ascription: insert_type(type_ascription),
                                 });
-                            root[mod_path].insert(name, typed_const_decl.clone());
+                            root[mod_path].insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
@@ -389,7 +391,7 @@ impl TypedAstNode {
                             );
 
                             let _ = check!(
-                                root[mod_path].insert(e.name, decl.clone()),
+                                root[mod_path].insert_symbol(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -415,7 +417,7 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            root[mod_path].insert(
+                            root[mod_path].insert_symbol(
                                 decl.name.clone(),
                                 TypedDeclaration::FunctionDeclaration(decl.clone()),
                             );
@@ -500,7 +502,7 @@ impl TypedAstNode {
                             let mut temp_root = root.clone();
                             let impl_namespace = &mut temp_root[mod_path];
                             for type_parameter in type_parameters.iter() {
-                                impl_namespace.insert(
+                                impl_namespace.insert_symbol(
                                     type_parameter.name_ident.clone(),
                                     type_parameter.into(),
                                 );
@@ -613,7 +615,7 @@ impl TypedAstNode {
 
                             // insert struct into namespace
                             let _ = check!(
-                                root[mod_path].insert(
+                                root[mod_path].insert_symbol(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
                                 ),
@@ -664,7 +666,7 @@ impl TypedAstNode {
                                 name: name.clone(),
                                 span,
                             });
-                            root[mod_path].insert(name, decl.clone());
+                            root[mod_path].insert_symbol(name, decl.clone());
                             decl
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
@@ -848,8 +850,8 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -928,7 +930,7 @@ fn import_new_file(
     // problem with the current approach is that `root` may also have been modified.
     //let dep_ns = init.clone();
     let dep_ns = init.clone();
-    root[mod_path].insert_module(dep_name.to_string(), dep_ns);
+    root[mod_path].insert_submodule(dep_name.to_string(), dep_ns);
     let dep_mod_path: Vec<_> = mod_path.iter().chain(Some(&dep_name)).cloned().collect();
 
     // Type-check the module, populating its namespace.
@@ -990,7 +992,7 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match root.get_symbol(mod_path, &name).value {
+                    let thing_to_reassign = match root.get_symbol(mod_path, &name).cloned().value {
                         Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
                             is_mutable,
@@ -1180,7 +1182,7 @@ fn reassignment(
 /// which is meant to be the namespace of the subtrait in question
 fn handle_supertraits(
     supertraits: &[Supertrait],
-    root: &mut Namespace,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     trait_namespace: &mut Namespace,
 ) -> CompileResult<()> {
@@ -1191,6 +1193,7 @@ fn handle_supertraits(
         match root
             .get_call_path(mod_path, &supertrait.name)
             .ok(&mut warnings, &mut errors)
+            .cloned()
         {
             Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
                 ref interface_surface,
@@ -1317,13 +1320,13 @@ fn type_check_trait_decl(
         supertraits: trait_decl.supertraits.to_vec(),
         visibility: trait_decl.visibility,
     });
-    root[mod_path].insert(trait_decl.name, typed_trait_decl.clone());
+    root[mod_path].insert_symbol(trait_decl.name, typed_trait_decl.clone());
     ok(typed_trait_decl, warnings, errors)
 }
 
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
-    root: &mut Namespace,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut warnings = vec![];
@@ -1384,8 +1387,8 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
-    init: &Namespace,
-    root: &mut Namespace,
+    init: &namespace::Module,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
     self_type: TypeId,
     build_config: &BuildConfig,
@@ -1424,7 +1427,7 @@ fn type_check_trait_methods(
                     warnings,
                     errors,
                 );
-                root[mod_path].insert(
+                root[mod_path].insert_symbol(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                         name: name.clone(),
@@ -1564,7 +1567,7 @@ fn type_check_trait_methods(
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
-    root: &mut Namespace,
+    root: &mut namespace::Root,
     mod_path: &namespace::Path,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];

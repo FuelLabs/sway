@@ -51,7 +51,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: &Namespace,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -66,7 +66,7 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: &Namespace,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -85,10 +85,10 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: &Namespace,
+    module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
-    for decl in namespace.get_all_declared_symbols() {
+    for decl in module_ns.get_all_declared_symbols() {
         let decl_name_value = match decl {
             TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                 name,
@@ -119,11 +119,12 @@ fn compile_constants(
         }
     }
 
-    for ns in namespace
-        .get_all_imported_modules()
-        .filter(|&ns| ns != namespace)
+    for submodule_ns in module_ns
+        .submodules()
+        .values()
+        .filter(|&submod| submod != module_ns)
     {
-        compile_constants(context, module, ns, true)?;
+        compile_constants(context, module, submodule_ns, true)?;
     }
 
     Ok(())
@@ -2523,7 +2524,7 @@ mod tests {
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
         parser::{Rule, SwayParser},
-        semantic_analysis::{Namespace, TreeType, TypedParseTree},
+        semantic_analysis::{namespace, TreeType, TypedParseTree},
     };
     use pest::Parser;
 
@@ -2679,8 +2680,8 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
-        let init = Namespace::default();
-        let mut root = init.clone();
+        let init = namespace::Module::default();
+        let mut root = namespace::Root::from(init.clone());
         let mod_path = &[];
         TypedParseTree::type_check(
             parse_tree.tree,

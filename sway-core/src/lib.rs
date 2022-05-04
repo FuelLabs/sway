@@ -33,7 +33,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
-    namespace, Namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
@@ -191,7 +191,7 @@ pub enum CompilationResult {
     },
     Library {
         name: Ident,
-        namespace: Box<Namespace>,
+        namespace: Box<namespace::Root>,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -256,7 +256,7 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 
 pub fn compile_to_ast(
     input: Arc<str>,
-    initial_namespace: Namespace,
+    initial_namespace: namespace::Module,
     build_config: &BuildConfig,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -287,7 +287,7 @@ pub fn compile_to_ast(
     // The initial namespace is used to initialise the project's root namespace as well as its
     // submodules. It includes library dependencies (as modules), and eventually should include the
     // std prelude.
-    let mut root = initial_namespace.clone();
+    let mut root = namespace::Root::from(initial_namespace.clone());
     // Path into the root of the module undergoing type-checking. We start with the `root` itself.
     let mod_path = &[];
 
@@ -340,7 +340,7 @@ pub fn compile_to_ast(
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
-    initial_namespace: Namespace,
+    initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompilationResult {
     let ast_res = compile_to_ast(input, initial_namespace, &build_config);
@@ -493,7 +493,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
 /// bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
-    initial_namespace: Namespace,
+    initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
