@@ -7,6 +7,7 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 description = "A sample `forc` plugin."
+publish = false
 
 [dependencies]
 clap = { version = "3.1", features = ["derive"] }
