@@ -1808,21 +1808,27 @@ be used</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
 <h2 id="examples-3"><a class="header" href="#examples-3">EXAMPLES:</a></h2>
-<p>Example with the initial project created using <code>forc init</code>:</p>
-<pre><code class="language-console">$ forc build -o obj
-Compiled script &quot;my-fuel-project&quot;.
-Bytecode size is 28 bytes.
+<p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
+<pre><code class="language-sh">forc init --template counter counter
+cd counter
+forc build -o obj
 </code></pre>
-<pre><code class="language-console">my-second-project$ forc parse-bytecode obj
+<pre><code class="language-console">counter$ forc parse-bytecode obj
 
- half-word  byte  op               raw                notes
-         0  0     JI(4)            [144, 0, 0, 4]     conditionally jumps to byte 16
-         1  4     NOOP             [71, 0, 0, 0]
-         2  8     Undefined        [0, 0, 0, 0]       data section offset lo (0)
-         3  12    Undefined        [0, 0, 0, 28]      data section offset hi (28)
-         4  16    LW(46, 12, 1)    [93, 184, 192, 1]
-         5  20    ADD(46, 46, 12)  [16, 186, 227, 0]
-         6  24    RET(0)           [36, 0, 0, 0]
+  half-word   byte   op                   raw           notes
+          0   0      JI(4)                90 00 00 04   conditionally jumps to byte 16
+          1   4      NOOP                 47 00 00 00
+          2   8      Undefined            00 00 00 00   data section offset lo (0)
+          3   12     Undefined            00 00 00 c8   data section offset hi (200)
+          4   16     LW(63, 12, 1)        5d fc c0 01
+          5   20     ADD(63, 63, 12)      10 ff f3 00
+         ...
+         ...
+         ...
+         60   240    Undefined            00 00 00 00
+         61   244    Undefined            fa f9 0d d3
+         62   248    Undefined            00 00 00 00
+         63   252    Undefined            00 00 00 c8
 </code></pre>
 <h1 id="forc-plugins"><a class="header" href="#forc-plugins">forc-plugins</a></h1>
 <p>Find all forc plugins available via <code>PATH</code>.</p>
