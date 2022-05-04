@@ -10,7 +10,7 @@ abigen!(Escrow, "out/debug/escrow-abi.json");
 abigen!(Asset, "tests/artifacts/asset/out/debug/asset-abi.json");
 
 // TODO: if contract storage is exposed then testing should be updated to validate state instead of only the return from a function
-// TODO: update tests to reflect contract
+// TODO: fix tests so that they mint and send to address correctly
 
 struct Metadata {
     escrow: Escrow,
@@ -58,234 +58,283 @@ async fn setup() -> (Metadata, Metadata, Metadata, ContractId) {
     (deployer, buyer, seller, asset_id)
 }
 
-#[tokio::test]
-async fn constructor() {
-    let amount: u64 = 100;
-    let (deployer, buyer, seller, asset_id) = setup().await;
+mod constructor {
+
+    use super::*;
+
+    #[tokio::test]
+    async fn initializes() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
     
-    assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+        assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+    }
+
 }
 
-#[tokio::test]
-async fn deposit() {
-    let amount: u64 = 100;
-    let (deployer, buyer, seller, asset_id) = setup().await;
-    
-    // Init conditions
-    assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-    assert!(deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap().value);
+mod deposit {
 
-    // Test
-    let tx_params = TxParameters::new(None, Some(1_000_000), None, None);    
-    let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+    use super::*;
 
-    assert!(buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap().value);
+    #[tokio::test]
+    async fn deposits() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
+        
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+
+        // TODO: these should be equal but instead it panics because it does not send the coins. This applies to all subsequent tests
+        // assert_eq!(
+        //     buyer.wallet
+        //         .get_spendable_coins(&AssetId::from(*asset_id), amount)
+        //         .await
+        //         .unwrap()[0]
+        //         .amount,
+        //     amount.into()
+        // );
+
+        // TODO: add 2 assertions
+        //       - 1) buyer has asset amount
+        //       - 2) contract does not have asset amount
+
+        // Test
+        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);    
+        let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+
+        assert!(buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap().value);
+
+        // TODO: add 2 assertions
+        //       - 1) buyer no longer has asset amount
+        //       - 2) contract has asset amount
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_with_incorrect_state() {
+        let (_, buyer, _, _) = setup().await;
+
+        // Should panic
+        buyer.escrow.deposit().call().await.unwrap();
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_with_incorrect_asset() {
+        todo!();
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_with_incorrect_asset_amount() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
+
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+        
+        // Should panic
+        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);    
+        let call_params = CallParameters::new(Some(amount-1), Some(AssetId::from(*asset_id)));
+        buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap();
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_sender_is_not_the_correct_address() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
+
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, deployer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+        
+        // Should panic
+        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);    
+        let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+        deployer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap();
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_already_deposited() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
+
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount*2, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+        
+        let tx_params1 = TxParameters::new(None, Some(1_000_000), None, None);
+        let tx_params2 = TxParameters::new(None, Some(1_000_000), None, None);
+
+        let call_params1 = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+        let call_params2 = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+
+        buyer.escrow.deposit().tx_params(tx_params1).call_params(call_params1).call().await.unwrap();
+
+        // Should panic
+        buyer.escrow.deposit().tx_params(tx_params2).call_params(call_params2).call().await.unwrap();
+    }
+
 }
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn deposit_panics_with_incorrect_state() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+mod approve {
 
-//     // Specify calldata
-//     let gas = 5000;
-    
-//     // Panic
-//     buyer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
-// }
+    use super::*;
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn deposit_panics_with_incorrect_asset_amount() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+    #[tokio::test]
+    async fn approves() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.as_ref().unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, seller.wallet.address()).append_variable_outputs(1).call().await.unwrap();
+        
+        let tx_params1 = TxParameters::new(None, Some(1_000_000), None, None);
+        let tx_params2 = TxParameters::new(None, Some(1_000_000), None, None);
 
-//     // Should panic
-//     buyer.escrow.deposit {gas, asset_id, amount: amount + 1} ().call().await.unwrap();
-// }
+        let call_params1 = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+        let call_params2 = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn deposit_panics_when_sender_is_not_the_correct_address() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        buyer.escrow.deposit().tx_params(tx_params1).call_params(call_params1).call().await.unwrap();
+        seller.escrow.deposit().tx_params(tx_params2).call_params(call_params2).call().await.unwrap();
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+        // TODO: add 2 assertions
+        //       - 1) buyer & seller no longer has asset amount
+        //       - 2) contract has asset 2*amount
 
-//     // Should panic
-//     deployer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
-// }
+        // Test
+        assert!(buyer.escrow.approve().call().await.unwrap().value);
+        assert!(seller.escrow.approve().append_variable_outputs(2).call().await.unwrap().value);
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn deposit_panics_when_already_deposited() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // TODO: add 2 assertions
+        //       - 1) buyer & seller each have their asset amount back
+        //       - 2) contract has no asset amount
+    }
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_with_incorrect_state() {
+        let (_, buyer, _, _) = setup().await;
+        
+        // Should panic
+        buyer.escrow.approve().call().await.unwrap();
+    }
 
-//     // Should panic
-//     buyer.escrow.deposit {gas, asset_id, amount} ().call().await.unwrap();
-// }
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_sender_is_not_the_correct_address() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
+        
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
 
-// #[tokio::test]
-// async fn approve() {
-    
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Should panic
+        deployer.escrow.approve().call().await.unwrap();
+    }
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
-//     assert!(seller.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_not_deposited() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-//     // Test
-//     assert!(buyer.escrow.approve().call().await.unwrap().value);
-//     assert!(seller.escrow.approve().call().await.unwrap().value);
-// }
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn approve_panics_with_incorrect_state() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Should panic
+        buyer.escrow.approve().call().await.unwrap();
+    }
 
-//     // Specify calldata
-//     let gas = 5000;
-    
-//     // Panic
-//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
-// }
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_already_approved() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn approve_panics_when_sender_is_not_the_correct_address() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-//     // Can add deposit assertion here, not neccessary though
+        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);
+        let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+        buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap();
+        buyer.escrow.approve().call().await.unwrap();
 
-//     // Should panic
-//     deployer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
-// }
+        // Should panic
+        buyer.escrow.approve().call().await.unwrap();
+    }
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn approve_panics_when_not_deposited() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+}
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
+mod withdraw {
 
-//     // Should panic
-//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
-// }
+    use super::*;
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn approve_panics_when_already_approved() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+    #[tokio::test]
+    async fn withdraws() {    
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
-//     assert!(buyer.escrow.approve {gas, asset_id, amount: amount} ().call().await.unwrap().value);
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
+        deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
 
-//     // Should panic
-//     buyer.escrow.approve {gas, asset_id, amount} ().call().await.unwrap();
-// }
+        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);
+        let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
+        buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap();
+        
+        // TODO: add 2 assertions
+        //       - 1) buyer no longer has asset amount
+        //       - 2) contract has asset amount 
 
-// #[tokio::test]
-// async fn withdraw() {
-//     // TODO: add transfer code into function and complete test by checking transfer?
-    
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Test
+        assert!(buyer.escrow.withdraw().append_variable_outputs(1).call().await.unwrap().value);
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-//     assert!(buyer.escrow.deposit {gas, asset_id, amount: &amount} ().call().await.unwrap().value);
-//     // Can add approve assertion here, not neccessary though
+        // TODO: add 2 assertions
+        //       - 1) buyer has their asset amount back
+        //       - 2) contract no longer has asset amount
+    }
 
-//     // Test
-//     assert!(buyer.escrow.withdraw().call().await.unwrap().value);
-// }
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_with_incorrect_state() {
+        let (_, buyer, _, _) = setup().await;
+        
+        // Should panic
+        buyer.escrow.withdraw().call().await.unwrap();
+    }
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn withdraw_panics_with_incorrect_state() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_sender_is_not_the_correct_address() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-//     // Specify calldata
-//     let gas = 5000;
-    
-//     // Panic
-//     buyer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
-// }
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn withdraw_panics_when_sender_is_not_the_correct_address() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Should panic
+        deployer.escrow.withdraw().call().await.unwrap();
+    }
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-//     // Can add deposit assertion here, not neccessary though
+    #[tokio::test]
+    #[should_panic(expected = "RESERV00")]
+    async fn panics_when_not_deposited() {
+        let amount: u64 = 100;
+        let (deployer, buyer, seller, asset_id) = setup().await;
 
-//     // Should panic
-//     deployer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
-// }
+        // Init conditions
+        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
 
-// #[tokio::test]
-// #[should_panic(expected = "RESERV00")]
-// async fn withdraw_panics_when_not_deposited() {
-//     let amount: u64 = 100;
-//     let (deployer, buyer, seller) = setup().await;
+        // Should panic
+        buyer.escrow.withdraw().call().await.unwrap();
+    }
 
-//     // Calldata
-//     let gas = 5000;
-    
-//     // Init conditions
-//     assert!(deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap().value);
-
-//     // Should panic
-//     buyer.escrow.withdraw {gas, asset_id, amount} ().call().await.unwrap();
-// }
+}
