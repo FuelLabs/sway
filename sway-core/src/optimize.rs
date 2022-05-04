@@ -119,11 +119,7 @@ fn compile_constants(
         }
     }
 
-    for submodule_ns in module_ns
-        .submodules()
-        .values()
-        .filter(|&submod| submod != module_ns)
-    {
+    for submodule_ns in module_ns.submodules().values() {
         compile_constants(context, module, submodule_ns, true)?;
     }
 
