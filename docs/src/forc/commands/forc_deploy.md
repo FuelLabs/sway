@@ -20,6 +20,13 @@ If set, outputs source file mapping in JSON format
 Print help information
 
 
+`--locked` 
+
+
+Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error
+
+
 `--minify-json-abi` 
 
 
