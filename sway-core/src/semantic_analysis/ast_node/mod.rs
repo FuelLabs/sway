@@ -992,34 +992,39 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match root.get_symbol(mod_path, &name).cloned().value {
-                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable,
-                            name,
-                            ..
-                        })) => {
-                            if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
-                            }
+                    let thing_to_reassign =
+                        match root.resolve_symbol(mod_path, &name).cloned().value {
+                            Some(TypedDeclaration::VariableDeclaration(
+                                TypedVariableDeclaration {
+                                    body,
+                                    is_mutable,
+                                    name,
+                                    ..
+                                },
+                            )) => {
+                                if !is_mutable.is_mutable() {
+                                    errors.push(CompileError::AssignmentToNonMutable {
+                                        name: name.clone(),
+                                    });
+                                }
 
-                            body
-                        }
-                        Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
-                                name: name.clone(),
-                                kind: o.friendly_name(),
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownVariable {
-                                var_name: name.clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                                body
+                            }
+                            Some(o) => {
+                                errors.push(CompileError::ReassignmentToNonVariable {
+                                    name: name.clone(),
+                                    kind: o.friendly_name(),
+                                    span,
+                                });
+                                return err(warnings, errors);
+                            }
+                            None => {
+                                errors.push(CompileError::UnknownVariable {
+                                    var_name: name.clone(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        };
                     // the RHS is a ref type to the LHS
                     let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
                     // type check the reassignment
@@ -1191,7 +1196,7 @@ fn handle_supertraits(
 
     for supertrait in supertraits.iter() {
         match root
-            .get_call_path(mod_path, &supertrait.name)
+            .resolve_call_path(mod_path, &supertrait.name)
             .ok(&mut warnings, &mut errors)
             .cloned()
         {

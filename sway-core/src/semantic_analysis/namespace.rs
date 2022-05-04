@@ -5,8 +5,7 @@ use crate::{
 
 use crate::semantic_analysis::{
     ast_node::{
-        TypedEnumDeclaration, TypedExpression, TypedStorageDeclaration, TypedStructField,
-        TypedVariableDeclaration,
+        TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
     },
     declaration::{TypedStorageField, VariableMutability},
     TypeCheckedStorageAccess,
@@ -584,71 +583,48 @@ impl Module {
 
         ok((), warnings, errors)
     }
-
-    // TODO: Remove this in favour of using `check_module` and `check_symbol`.
-    /// Lookup the symbol with the given `name` from within the given module `path` relative to
-    /// `self`.
-    pub(crate) fn get_name_from_path(
-        &self,
-        path: &[Ident],
-        name: &Ident,
-    ) -> CompileResult<&TypedDeclaration> {
-        self.check_submodule(path)
-            .flat_map(|module| module.check_symbol(name))
-    }
 }
 
 impl Root {
-    /// Used for calls that look like this:
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
     ///
-    /// `foo::bar::function`
-    ///
-    /// where `foo` and `bar` are the prefixes and `function` is the suffix.
-    ///
-    /// The given `mod_path` is a path to the module in which we're retrieving the symbol. If the
-    /// call path has no prefix path, we look up the synonym within the given module to find the
-    /// symbol's absolute path that we can use with `self`.
-    pub(crate) fn get_call_path(
+    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    pub(crate) fn resolve_call_path(
         &self,
         mod_path: &Path,
-        symbol: &CallPath,
+        call_path: &CallPath,
     ) -> CompileResult<&TypedDeclaration> {
-        if symbol.prefixes.is_empty() {
-            if let Some(path) = self[mod_path].use_synonyms.get(&symbol.suffix) {
-                return self.get_name_from_path(path, &symbol.suffix);
-            }
-        }
-        self[mod_path].get_name_from_path(&symbol.prefixes, &symbol.suffix)
+        let symbol_path: Vec<_> = mod_path
+            .iter()
+            .chain(&call_path.prefixes)
+            .cloned()
+            .collect();
+        self.resolve_symbol(&symbol_path, &call_path.suffix)
     }
 
-    /// Get the `symbol` within the module at the given `mod_path`.
-    pub(crate) fn get_symbol(
+    /// Given a path to a module and the identifier of a symbol within that module, resolve its
+    /// declaration.
+    ///
+    /// If the symbol is within the given module's namespace via import, we recursively traverse
+    /// imports until we find the original declaration.
+    pub(crate) fn resolve_symbol(
         &self,
         mod_path: &Path,
         symbol: &Ident,
     ) -> CompileResult<&TypedDeclaration> {
-        let true_symbol = self[mod_path]
-            .use_aliases
-            .get(symbol.as_str())
-            .unwrap_or(symbol);
-        match self[mod_path].use_synonyms.get(symbol) {
-            None => self.get_name_from_path(mod_path, true_symbol),
-            Some(path) => self.get_name_from_path(path, true_symbol),
-        }
-    }
-
-    pub(crate) fn find_enum(
-        &self,
-        mod_path: &Path,
-        enum_name: &Ident,
-    ) -> Option<&TypedEnumDeclaration> {
-        match self.get_symbol(mod_path, enum_name) {
-            CompileResult {
-                value: Some(TypedDeclaration::EnumDeclaration(inner)),
-                ..
-            } => Some(inner),
-            _ => None,
-        }
+        self.check_submodule(mod_path).flat_map(|module| {
+            let true_symbol = self[mod_path]
+                .use_aliases
+                .get(symbol.as_str())
+                .unwrap_or(symbol);
+            match module.use_synonyms.get(symbol) {
+                Some(src_path) if mod_path != src_path => {
+                    self.resolve_symbol(src_path, true_symbol)
+                }
+                _ => module.check_symbol(true_symbol),
+            }
+        })
     }
 
     /// This function either returns a struct (i.e. custom type), `None`, denoting the type that is
@@ -691,7 +667,7 @@ impl Root {
                     new_type_arguments.push(type_argument);
                 }
                 match self
-                    .get_symbol(mod_path, name)
+                    .resolve_symbol(mod_path, name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -778,7 +754,7 @@ impl Root {
                 name,
                 type_arguments,
             } => match self
-                .get_symbol(mod_path, &name)
+                .resolve_symbol(mod_path, &name)
                 .ok(&mut warnings, &mut errors)
                 .cloned()
             {

@@ -69,6 +69,16 @@ impl TypedDeclaration {
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
     }
+
+    /// Attempt to retrieve the declaration as an enum declaration.
+    ///
+    /// Returns `None` if `self` is not of variant `EnumDeclaration`.
+    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
+        match self {
+            TypedDeclaration::EnumDeclaration(ref decl) => Some(decl),
+            _ => None,
+        }
+    }
 }
 
 impl TypedDeclaration {

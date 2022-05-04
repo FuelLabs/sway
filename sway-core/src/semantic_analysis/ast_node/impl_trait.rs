@@ -50,7 +50,7 @@ pub(crate) fn implementation_of_trait(
         }
     }
     match root
-        .get_call_path(mod_path, &trait_name)
+        .resolve_call_path(mod_path, &trait_name)
         .ok(&mut warnings, &mut errors)
         .cloned()
     {

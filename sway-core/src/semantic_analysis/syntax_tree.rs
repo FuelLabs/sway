@@ -346,7 +346,7 @@ fn check_supertraits(
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
                 ..
-            } = root.get_call_path(mod_path, trait_name)
+            } = root.resolve_call_path(mod_path, trait_name)
             {
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
@@ -366,8 +366,8 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                root.get_call_path(mod_path, search_node_trait_name),
-                                root.get_call_path(mod_path, &supertrait.name),
+                                root.resolve_call_path(mod_path, search_node_trait_name),
+                                root.resolve_call_path(mod_path, &supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (type_implementing_for
