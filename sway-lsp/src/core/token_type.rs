@@ -1,22 +1,45 @@
 use crate::utils::function::extract_fn_signature;
-use sway_core::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibility};
+use sway_core::{
+    ConstantDeclaration, EnumDeclaration, StructDeclaration, TraitDeclaration, Visibility,
+};
+use sway_types::{Ident, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Library,
-    Variable(VariableDetails),
+
+    VariableDeclaration(VariableDetails),
     FunctionDeclaration(FunctionDetails),
-    FunctionApplication,
+    TraitDeclaration(TraitDetails),
+    StructDeclaration(StructDetails),
+    EnumDeclaration(EnumDetails),
     Reassignment,
-    Enum,
-    Trait(TraitDetails),
-    Struct(StructDetails),
+    ImplTrait,
+    AbiDeclaration,
+    ConstantDeclaration(ConstDetails),
+    TraitFunction,
+    EnumVariant,
+    StorageFieldDeclaration,
+
+    FunctionApplication,
+    VariableExpression,
+    Struct,
+    MethodApplication,
+    DelineatedPath,
+    AbiCast,
+    StorageAccess,
+    EnumApplication,
+    StructField(StructFieldDetails),
+    StructExpressionField(StructFieldDetails),
+    FunctionParameter,
+    Unknown,
 }
 
-pub fn get_function_details(func_dec: &FunctionDeclaration) -> FunctionDetails {
+/// Expects a span from either a FunctionDeclaration or a TypedFunctionDeclaration
+pub fn get_function_details(span: &Span, visibility: Visibility) -> FunctionDetails {
     FunctionDetails {
-        signature: extract_fn_signature(func_dec),
-        visibility: func_dec.visibility,
+        signature: extract_fn_signature(span),
+        visibility,
     }
 }
 
@@ -26,11 +49,30 @@ pub fn get_struct_details(struct_dec: &StructDeclaration) -> StructDetails {
     }
 }
 
+pub fn get_struct_field_details(ident: &Ident) -> StructFieldDetails {
+    StructFieldDetails {
+        parent_ident: ident.clone(),
+    }
+}
+
 pub fn get_trait_details(trait_dec: &TraitDeclaration) -> TraitDetails {
     TraitDetails {
         visibility: trait_dec.visibility,
     }
 }
+
+pub fn get_enum_details(enum_dec: &EnumDeclaration) -> EnumDetails {
+    EnumDetails {
+        visibility: enum_dec.visibility,
+    }
+}
+
+pub fn get_const_details(const_dec: &ConstantDeclaration) -> ConstDetails {
+    ConstDetails {
+        visibility: const_dec.visibility,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionDetails {
     pub signature: String,
@@ -57,9 +99,25 @@ pub struct TraitDetails {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumDetails {
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConstDetails {
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableDetails {
     pub is_mutable: bool,
     pub var_body: VarBody,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructFieldDetails {
+    // Used for looking up the parent struct that the field is a part of
+    pub parent_ident: Ident,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

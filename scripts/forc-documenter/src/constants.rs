@@ -1,7 +1,7 @@
 pub const SUBHEADERS: &[&str] = &["USAGE:", "ARGS:", "OPTIONS:", "SUBCOMMANDS:"];
 pub const INDEX_HEADER: &str = "Here are a list of commands available to forc:\n\n";
 
-pub static RUN_WRITE_DOCS_MESSAGE: &str = "please run `cargo run --bin forc-documenter write-docs`";
+pub static RUN_WRITE_DOCS_MESSAGE: &str = "please run `cargo run --bin forc-documenter write-docs`. If you have made local changes to any forc native commands, please install forc from path first: `cargo install --path ./forc`, then run the command.";
 
 pub static EXAMPLES_HEADER: &str = "\n## EXAMPLES:\n";
 pub static FORC_INIT_EXAMPLE: &str = r#"
@@ -56,24 +56,30 @@ You can find an example within our [fuels-rs book](https://fuellabs.github.io/fu
 "#;
 
 pub static FORC_PARSE_BYTECODE_EXAMPLE: &str = r#"
-Example with the initial project created using `forc init`:
+We can try this command with the initial project created using `forc init`, with the counter template:
 
-```console
-$ forc build -o obj
-Compiled script "my-fuel-project".
-Bytecode size is 28 bytes.
+```sh
+forc init --template counter counter
+cd counter
+forc build -o obj
 ```
 
 ```console
-my-second-project$ forc parse-bytecode obj
+counter$ forc parse-bytecode obj
 
- half-word  byte  op               raw                notes
-         0  0     JI(4)            [144, 0, 0, 4]     conditionally jumps to byte 16
-         1  4     NOOP             [71, 0, 0, 0]
-         2  8     Undefined        [0, 0, 0, 0]       data section offset lo (0)
-         3  12    Undefined        [0, 0, 0, 28]      data section offset hi (28)
-         4  16    LW(46, 12, 1)    [93, 184, 192, 1]
-         5  20    ADD(46, 46, 12)  [16, 186, 227, 0]
-         6  24    RET(0)           [36, 0, 0, 0]
+  half-word   byte   op                   raw           notes
+          0   0      JI(4)                90 00 00 04   conditionally jumps to byte 16
+          1   4      NOOP                 47 00 00 00
+          2   8      Undefined            00 00 00 00   data section offset lo (0)
+          3   12     Undefined            00 00 00 c8   data section offset hi (200)
+          4   16     LW(63, 12, 1)        5d fc c0 01
+          5   20     ADD(63, 63, 12)      10 ff f3 00
+         ...
+         ...
+         ...
+         60   240    Undefined            00 00 00 00
+         61   244    Undefined            fa f9 0d d3
+         62   248    Undefined            00 00 00 00
+         63   252    Undefined            00 00 00 c8
 ```
 "#;

@@ -41,7 +41,7 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        FnArgs, FnSignature, Item, TypeField,
+        FnArg, FnArgs, FnSignature, Item, TypeField,
     },
     keywords::{DoubleColonToken, ImpureToken, PubToken},
     literal::{LitInt, LitIntType, Literal},

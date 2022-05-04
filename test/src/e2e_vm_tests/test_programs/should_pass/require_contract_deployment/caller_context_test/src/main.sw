@@ -5,7 +5,7 @@ use context_testing_abi::*;
 fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
-    let other_contract_id = ~ContractId::from(0xea6bc06273b6d7d27de596827cfa73cd31f4d3ac4fd6c8c3b21b59223eb4d287);
+    let other_contract_id = ~ContractId::from(0xbd42dbc4ed9d68906a44285ccf697f9b077cd79a8dfe5dc710fd9ffeae9d25a0);
     let native_asset_id = ~ContractId::from(NATIVE_ASSET_ID);
 
     let test_contract = abi(ContextTesting, other_contract_id.into());

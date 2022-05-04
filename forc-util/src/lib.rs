@@ -263,22 +263,19 @@ fn format_err(err: &sway_core::CompileError) {
     let input = err.internal_span().input();
     let path = err.path_str();
 
-    let (mut start_pos, mut end_pos) = err.span();
-    if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
-    }
     let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
-    let (mut start, end) = err.line_col();
-    let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
-    let snippet = Snippet {
-        title: Some(Annotation {
+
+    let (mut start_pos, mut end_pos) = err.span();
+    let (snippet_title, snippet_slices) = if start_pos < end_pos {
+        let title = Some(Annotation {
             label: None,
             id: None,
             annotation_type: AnnotationType::Error,
-        }),
-        footer: vec![],
-        slices: vec![Slice {
+        });
+
+        let (mut start, end) = err.line_col();
+        let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
+        let slices = vec![Slice {
             source: input,
             line_start: start.line,
             origin: path.as_deref(),
@@ -288,7 +285,24 @@ fn format_err(err: &sway_core::CompileError) {
                 annotation_type: AnnotationType::Error,
                 range: (start_pos, end_pos),
             }],
-        }],
+        }];
+
+        (title, slices)
+    } else {
+        (
+            Some(Annotation {
+                label: Some(friendly_str.as_str()),
+                id: None,
+                annotation_type: AnnotationType::Error,
+            }),
+            Vec::new(),
+        )
+    };
+
+    let snippet = Snippet {
+        title: snippet_title,
+        footer: vec![],
+        slices: snippet_slices,
         opt: FormatOptions {
             color: true,
             ..Default::default()
