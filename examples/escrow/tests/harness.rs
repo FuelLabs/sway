@@ -40,7 +40,7 @@ async fn setup() -> (Metadata, Metadata, Metadata, ContractId) {
     let deployer = Metadata {
         escrow: Escrow::new(escrow_id.to_string(), provider.clone(), deployer_wallet.clone()),
         asset: Some(Asset::new(asset_id.to_string(), provider.clone(), deployer_wallet.clone())),
-        wallet: deployer_wallet.clone()
+        wallet: deployer_wallet
     };
 
     let buyer = Metadata {
@@ -247,25 +247,6 @@ mod approve {
 
         // Init conditions
         deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
-
-        // Should panic
-        buyer.escrow.approve().call().await.unwrap();
-    }
-
-    #[tokio::test]
-    #[should_panic(expected = "RESERV00")]
-    async fn panics_when_already_approved() {
-        let amount: u64 = 100;
-        let (deployer, buyer, seller, asset_id) = setup().await;
-
-        // Init conditions
-        deployer.escrow.constructor(buyer.wallet.address(), seller.wallet.address(), asset_id, amount).call().await.unwrap();
-        deployer.asset.unwrap().mint_and_send_to_address(amount, buyer.wallet.address()).append_variable_outputs(1).call().await.unwrap();
-
-        let tx_params = TxParameters::new(None, Some(1_000_000), None, None);
-        let call_params = CallParameters::new(Some(amount), Some(AssetId::from(*asset_id)));
-        buyer.escrow.deposit().tx_params(tx_params).call_params(call_params).call().await.unwrap();
-        buyer.escrow.approve().call().await.unwrap();
 
         // Should panic
         buyer.escrow.approve().call().await.unwrap();

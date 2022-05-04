@@ -94,12 +94,12 @@ impl Escrow for Contract {
             assert(address == storage.buyer.address || address == storage.seller.address);
 
             if address == storage.buyer.address {
-                assert(storage.buyer.deposited && !storage.buyer.approved);
+                assert(storage.buyer.deposited);
 
                 storage.buyer.approved = true;
             } 
             else if address == storage.seller.address {
-                assert(storage.seller.deposited && !storage.seller.approved);
+                assert(storage.seller.deposited);
 
                 storage.seller.approved = true;
             }

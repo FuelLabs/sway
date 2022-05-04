@@ -12,6 +12,7 @@
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
+  - [Escrow Smart Contract](./examples/escrow.md)
 - [Program Types](./sway-program-types/index.md)
   - [Contracts](./sway-program-types/smart_contracts.md)
   - [Libraries](./sway-program-types/libraries.md)
