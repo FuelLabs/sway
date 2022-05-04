@@ -42,12 +42,18 @@ fn parse_description_for_plugin(plugin: &str) -> String {
         .expect("Could not get plugin description.");
 
     let stdout = String::from_utf8_lossy(&proc.stdout);
-    stdout
-        .split('\n')
-        .nth(1)
-        .map(|x| if x.is_empty() { default_description } else { x })
-        .unwrap()
-        .to_owned()
+
+    // If the plugin doesn't support a -h flag
+    match stdout.split('\n').nth(1) {
+        Some(x) => {
+            if x.is_empty() {
+                default_description.to_owned()
+            } else {
+                x.to_owned()
+            }
+        }
+        None => default_description.to_owned(),
+    }
 }
 
 /// # Panics
