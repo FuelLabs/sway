@@ -3,7 +3,7 @@
 pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
     let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
         Ok(author) => author,
-        _ => whoami::realname()
+        _ => whoami::realname(),
     };
 
     format!(
@@ -24,7 +24,7 @@ name = "{project_name}"
 pub(crate) fn default_tests_manifest(project_name: &str) -> String {
     let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
         Ok(author) => author,
-        _ => whoami::realname()
+        _ => whoami::realname(),
     };
 
     format!(
