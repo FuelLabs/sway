@@ -32,7 +32,7 @@ let v = storage.var1;
 
 Notes:
 
-* The only types currently supported by the syntax above are integers, booleans, and structs.
+* The only types currently supported by the syntax above are integers, Booleans, and structs.
 * The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
 * Storage, in general, is still work-in-progress and so, its use model may change in the future.
 
