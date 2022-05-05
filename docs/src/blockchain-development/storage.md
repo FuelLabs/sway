@@ -6,6 +6,29 @@ Put in conventional programming terms, contract storage is like saving data to a
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
+## Storage Accesses Via the `storage` Keyword
+Declaring variables in storage requires a `storage` declaration that contains a list of all your variables and their types as follows:
+```sway
+storage {
+    var1: Type1,
+    var2: Type2,
+    ...
+}
+```
+To write into a storage variable, you need to use the `storage` keyword as follows:
+```sway
+storage.var1 = v;
+```
+To read a storage variable, you also need to use the `storage` keyword as follows:
+```sway
+let v = storage.var1;
+```
+
+Notes:
+* The only types currently supported by the syntax above are integers, booleans, and structs.
+* The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
+* Storage, in general, is still work-in-progress and so, its use model may change in the future.
+
 ## Manual Storage Management
 
 Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
