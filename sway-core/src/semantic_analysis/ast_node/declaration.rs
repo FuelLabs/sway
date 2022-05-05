@@ -269,66 +269,115 @@ impl PartialEq for TypedStructDeclaration {
 
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(
-        &self,
+        self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: bool,
         namespace: &NamespaceRef,
-        type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
+        call_site_span: Option<&Span>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
             .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if !type_arguments.is_empty() {
-            if type_mapping.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: type_mapping.len(),
+            .unwrap_or(self.span.clone());
+        match (self.type_parameters.is_empty(), type_arguments.is_empty()) {
+            (true, true) => ok(self, warnings, errors),
+            (false, true) => {
+                let type_mapping = insert_type_parameters(&self.type_parameters);
+                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
+                ok(new_decl, warnings, errors)
+            }
+            (true, false) => {
+                if enforce_type_arguments {
+                    errors.push(CompileError::NeedsTypeArguments {
+                        name: self.name.clone(),
+                        span: call_site_span.unwrap_or(self.name.span()).clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: self.name,
                     span: type_arguments_span,
                 });
-                return err(warnings, errors);
+                err(warnings, errors)
             }
-            for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter())
-            {
-                match self_type {
-                    Some(self_type) => {
-                        let (mut new_warnings, new_errors) = unify_with_self(
-                            *interim_type,
-                            type_argument.type_id,
+            (false, false) => {
+                let mut type_arguments = type_arguments;
+                for type_argument in type_arguments.iter_mut() {
+                    let type_id = match self_type {
+                        Some(self_type) => namespace.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
                             self_type,
                             &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                    }
-                    None => {
-                        let (mut new_warnings, new_errors) = unify(
-                            *interim_type,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                            enforce_type_arguments,
+                        ),
+                        None => namespace
+                            .resolve_type_without_self(&look_up_type_id(type_argument.type_id)),
+                    };
+                    type_argument.type_id = check!(
+                        type_id,
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or(self.span.clone());
+                if self.type_parameters.len() != type_arguments.len() {
+                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                        given: type_arguments.len(),
+                        expected: self.type_parameters.len(),
+                        span: type_arguments_span,
+                    });
+                    return err(warnings, errors);
+                }
+                let type_mapping = insert_type_parameters(&self.type_parameters);
+                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
+                for ((_, interim_type), type_argument) in
+                    type_mapping.iter().zip(type_arguments.iter())
+                {
+                    match self_type {
+                        Some(self_type) => {
+                            let (mut new_warnings, new_errors) = unify_with_self(
+                                *interim_type,
+                                type_argument.type_id,
+                                self_type,
+                                &type_argument.span,
+                                "Type argument is not assignable to generic type parameter.",
+                            );
+                            warnings.append(&mut new_warnings);
+                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        }
+                        None => {
+                            let (mut new_warnings, new_errors) = unify(
+                                *interim_type,
+                                type_argument.type_id,
+                                &type_argument.span,
+                                "Type argument is not assignable to generic type parameter.",
+                            );
+                            warnings.append(&mut new_warnings);
+                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        }
                     }
                 }
+                ok(new_decl, warnings, errors)
             }
         }
-        ok(new_decl, warnings, errors)
     }
 
     fn monomorphize_inner(
-        &self,
-        namespace: &NamespaceRef,
+        self,
         type_mapping: &[(TypeParameter, usize)],
+        namespace: &NamespaceRef,
     ) -> Self {
         let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
+        let mut new_decl = self;
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
@@ -393,6 +442,34 @@ impl TypedStructField {
             None => insert_type(look_up_type_id_raw(self.r#type)),
         };
     }
+
+    pub(crate) fn expect_field_from_fields<'a>(
+        struct_name: &'a Ident,
+        fields: &'a [TypedStructField],
+        field_to_access: &'a Ident,
+    ) -> CompileResult<&'a TypedStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match fields
+            .iter()
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    span: field_to_access.span().clone(),
+                    available_fields: fields
+                        .iter()
+                        .map(|TypedStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: struct_name.to_string(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq)]
@@ -417,69 +494,116 @@ impl PartialEq for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        Self::monomorphize_inner(self, namespace, &type_mapping)
-    }
-
-    pub(crate) fn monomorphize_with_type_arguments(
-        &self,
-        namespace: &crate::semantic_analysis::NamespaceRef,
-        type_arguments: &[TypeArgument],
+    pub(crate) fn monomorphize(
+        self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: bool,
+        namespace: &NamespaceRef,
         self_type: Option<TypeId>,
+        call_site_span: Option<&Span>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
-        let type_arguments_span = type_arguments
-            .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if type_mapping.len() != type_arguments.len() {
-            errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                given: type_arguments.len(),
-                expected: type_mapping.len(),
-                span: type_arguments_span,
-            });
-            return err(warnings, errors);
-        }
-        for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-            match self_type {
-                Some(self_type) => {
-                    let (mut new_warnings, new_errors) = unify_with_self(
-                        *interim_type,
-                        type_argument.type_id,
-                        self_type,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        match (self.type_parameters.is_empty(), type_arguments.is_empty()) {
+            (true, true) => ok(self, warnings, errors),
+            (false, true) => {
+                if enforce_type_arguments {
+                    errors.push(CompileError::NeedsTypeArguments {
+                        name: self.name.clone(),
+                        span: call_site_span.unwrap_or(self.name.span()).clone(),
+                    });
+                    return err(warnings, errors);
                 }
-                None => {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
+                let type_mapping = insert_type_parameters(&self.type_parameters);
+                let new_decl = self.monomorphize_inner(namespace, &type_mapping);
+                ok(new_decl, warnings, errors)
+            }
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or(self.span.clone());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: self.name,
+                    span: type_arguments_span,
+                });
+                err(warnings, errors)
+            }
+            (false, false) => {
+                let mut type_arguments = type_arguments;
+                for type_argument in type_arguments.iter_mut() {
+                    let type_id = match self_type {
+                        Some(self_type) => namespace.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                        ),
+                        None => namespace
+                            .resolve_type_without_self(&look_up_type_id(type_argument.type_id)),
+                    };
+                    type_argument.type_id = check!(
+                        type_id,
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
                     );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
                 }
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or(self.span.clone());
+                if self.type_parameters.len() != type_arguments.len() {
+                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                        given: type_arguments.len(),
+                        expected: self.type_parameters.len(),
+                        span: type_arguments_span,
+                    });
+                    return err(warnings, errors);
+                }
+                let type_mapping = insert_type_parameters(&self.type_parameters);
+                let new_decl = self.monomorphize_inner(namespace, &type_mapping);
+                for ((_, interim_type), type_argument) in
+                    type_mapping.iter().zip(type_arguments.iter())
+                {
+                    match self_type {
+                        Some(self_type) => {
+                            let (mut new_warnings, new_errors) = unify_with_self(
+                                *interim_type,
+                                type_argument.type_id,
+                                self_type,
+                                &type_argument.span,
+                                "Type argument is not assignable to generic type parameter.",
+                            );
+                            warnings.append(&mut new_warnings);
+                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        }
+                        None => {
+                            let (mut new_warnings, new_errors) = unify(
+                                *interim_type,
+                                type_argument.type_id,
+                                &type_argument.span,
+                                "Type argument is not assignable to generic type parameter.",
+                            );
+                            warnings.append(&mut new_warnings);
+                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                        }
+                    }
+                }
+                ok(new_decl, warnings, errors)
             }
         }
-        ok(new_decl, warnings, errors)
     }
 
     fn monomorphize_inner(
-        &self,
+        self,
         namespace: &NamespaceRef,
         type_mapping: &[(TypeParameter, usize)],
     ) -> Self {
         let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
+        let mut new_decl = self;
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
@@ -500,6 +624,13 @@ impl TypedEnumDeclaration {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
         })
+    }
+
+    pub(crate) fn get_variant(self, variant_name: String) -> Option<TypedEnumVariant> {
+        self.variants
+            .iter()
+            .cloned()
+            .find(|x| x.name.as_str() == variant_name.as_str())
     }
 }
 #[derive(Debug, Clone, Eq)]

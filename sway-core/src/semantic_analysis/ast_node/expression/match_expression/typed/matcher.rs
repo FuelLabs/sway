@@ -6,8 +6,8 @@ use crate::{
         },
         IsConstant, TypedExpression, TypedExpressionVariant,
     },
-    type_engine::unify,
-    CallPath, CompileError, CompileResult, Ident, Literal, NamespaceRef,
+    type_engine::{unify, TypeId},
+    CompileError, CompileResult, Ident, Literal, NamespaceRef,
 };
 
 use sway_types::span::Span;
@@ -83,13 +83,24 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee { fields, .. } => {
-            match_struct(exp, fields, namespace)
+        TypedScrutineeVariant::StructScrutinee(fields) => {
+            match_struct(exp, fields, type_id, namespace)
         }
         TypedScrutineeVariant::EnumScrutinee {
-            call_path,
-            variable_to_assign,
-        } => match_enum(exp, call_path, variable_to_assign, span),
+            enum_name,
+            variant_name,
+            variant_type_id,
+            variant_tag,
+            value,
+        } => match_enum(
+            exp,
+            enum_name,
+            variant_name,
+            variant_type_id,
+            variant_tag,
+            *value,
+            span,
+        ),
         TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
     }
 }
@@ -125,6 +136,7 @@ fn match_variable(
 fn match_struct(
     exp: &TypedExpression,
     fields: Vec<TypedStructScrutineeField>,
+    struct_type_id: TypeId,
     namespace: NamespaceRef,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
@@ -166,18 +178,27 @@ fn match_struct(
 }
 
 fn match_enum(
-    _exp: &TypedExpression,
-    _call_path: CallPath,
-    _arg: Ident,
+    exp: &TypedExpression,
+    enum_name: Ident,
+    variant_name: Ident,
+    variant_type_id: TypeId,
+    variant_tag: usize,
+    value: TypedScrutinee,
     span: Span,
 ) -> CompileResult<MatcherResult> {
-    err(
-        vec![],
-        vec![CompileError::Unimplemented(
-            "Matching enums has not yet been implemented.",
-            span,
-        )],
-    )
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut match_req_map = vec![];
+    let mut match_decl_map = vec![];
+
+    let unsafe_downcast = TypedExpression {
+        expression: todo!(),
+        return_type: todo!(),
+        is_constant: todo!(),
+        span,
+    };
+
+    ok((match_req_map, match_decl_map), warnings, errors)
 }
 
 fn match_tuple(

@@ -752,6 +752,7 @@ fn connect_expression(
                 tree_type,
             )
         }
+        UnsafeDowncast { .. } => unimplemented!(),
         IfExp {
             condition,
             then,

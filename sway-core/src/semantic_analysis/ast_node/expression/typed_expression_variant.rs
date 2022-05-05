@@ -71,6 +71,11 @@ pub(crate) enum TypedExpressionVariant {
         field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
     },
+    UnsafeDowncast {
+        value: Box<TypedExpression>,
+        enum_type_id: TypeId,
+        variant_tag: usize,
+    },
     IfLet {
         enum_type: TypeId,
         expr: Box<TypedExpression>,
@@ -463,6 +468,7 @@ impl TypedExpressionVariant {
                     field_to_access.name
                 )
             }
+            TypedExpressionVariant::UnsafeDowncast { value, .. } => unimplemented!(),
             TypedExpressionVariant::IfLet {
                 enum_type, variant, ..
             } => {
@@ -589,6 +595,7 @@ impl TypedExpressionVariant {
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
+            UnsafeDowncast { .. } => unimplemented!(),
             IfLet {
                 ref mut variant,
                 ref mut enum_type,

@@ -578,6 +578,11 @@ pub enum CompileError {
     )]
     StructNotFound { name: Ident, span: Span },
     #[error(
+        "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
+         it?"
+    )]
+    EnumNotFound { name: Ident, span: Span },
+    #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
@@ -843,7 +848,7 @@ pub enum CompileError {
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
-    TupleOutOfBounds {
+    TupleIndexOutOfBounds {
         index: usize,
         count: usize,
         span: Span,
@@ -1073,6 +1078,7 @@ impl CompileError {
             DoesNotTakeTypeArguments { span, .. } => span,
             NeedsTypeArguments { span, .. } => span,
             StructNotFound { span, .. } => span,
+            EnumNotFound { span, .. } => span,
             DeclaredNonStructAsStruct { span, .. } => span,
             AccessedFieldOfNonStruct { span, .. } => span,
             MethodOnNonValue { span, .. } => span,
@@ -1137,7 +1143,7 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
-            TupleOutOfBounds { span, .. } => span,
+            TupleIndexOutOfBounds { span, .. } => span,
             ShadowsOtherSymbol { span, .. } => span,
             GenericShadowsGeneric { span, .. } => span,
             StarImportShadowsOtherSymbol { span, .. } => span,

@@ -2334,35 +2334,25 @@ fn pattern_to_scrutinee(
             value: literal_to_literal(ec, literal)?,
             span,
         },
-        Pattern::Constant(path_expr) => Scrutinee::EnumScrutinee {
-            call_path: path_expr_to_call_path(ec, path_expr)?,
-            variable_to_assign: Ident::new_no_span("_"),
-            span,
-        },
+        Pattern::Constant(path_expr) => {
+            unimplemented!(); // TODO figure out what this case is
+                              // Scrutinee::EnumScrutinee {
+                              //     call_path: path_expr_to_call_path(ec, path_expr)?,
+                              //     variable_to_assign: Ident::new_no_span("_"),
+                              //     span,
+                              // }
+        }
         Pattern::Constructor { path, args } => {
-            let arg = match iter_to_array(args.into_inner()) {
+            let value = match iter_to_array(args.into_inner()) {
                 Some([arg]) => arg,
                 None => {
                     let error = ConvertParseTreeError::ConstructorPatternOneArg { span };
                     return Err(ec.error(error));
                 }
             };
-            let variable_to_assign = match arg {
-                Pattern::Var { mutable, name } => {
-                    if mutable.is_some() {
-                        let error = ConvertParseTreeError::MutableBindingsNotSupportedHere { span };
-                        return Err(ec.error(error));
-                    }
-                    name
-                }
-                _ => {
-                    let error = ConvertParseTreeError::ConstructorPatternSubPatterns { span };
-                    return Err(ec.error(error));
-                }
-            };
             Scrutinee::EnumScrutinee {
                 call_path: path_expr_to_call_path(ec, path)?,
-                variable_to_assign,
+                value: Box::new(pattern_to_scrutinee(ec, value)?),
                 span,
             }
         }

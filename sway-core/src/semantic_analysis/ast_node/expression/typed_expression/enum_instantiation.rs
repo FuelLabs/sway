@@ -12,66 +12,37 @@ use crate::type_engine::{look_up_type_id, TypeId};
 pub(crate) fn instantiate_enum(
     module: Index,
     enum_decl: TypedEnumDeclaration,
-    enum_field_name: Ident,
+    call_path: CallPath,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: NamespaceRef,
     crate_namespace: NamespaceRef,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    let instantiation_span = enum_field_name.span();
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let mut type_arguments = type_arguments;
-    for type_argument in type_arguments.iter_mut() {
-        type_argument.type_id = check!(
-            namespace.resolve_type_with_self(
-                look_up_type_id(type_argument.type_id),
-                self_type,
-                type_argument.span.clone(),
-                true,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-    }
+    let instantiation_span = call_path.span();
+    let enum_field_name = call_path.suffix;
 
-    // if this is a generic enum, i.e. it has some type
-    // parameters, monomorphize it before unifying the
-    // types
-    let new_decl = match (
-        enum_decl.type_parameters.is_empty(),
-        type_arguments.is_empty(),
-    ) {
-        (true, true) => enum_decl,
-        (false, true) => enum_decl.monomorphize(&namespace),
-        (true, false) => {
-            errors.push(CompileError::DoesNotTakeTypeArguments {
-                name: enum_decl.name.clone(),
-                span: enum_decl.span,
-            });
-            return err(warnings, errors);
-        }
-        (false, false) => {
-            check!(
-                enum_decl.monomorphize_with_type_arguments(
-                    &module,
-                    &type_arguments,
-                    Some(self_type)
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-    };
+    // monomorphize the enum definition with the type arguments
+    let enum_decl = check!(
+        enum_decl.monomorphize(
+            type_arguments,
+            false,
+            &module,
+            Some(self_type),
+            Some(&instantiation_span)
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    let (enum_field_type, tag, variant_name) = match new_decl
+    let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
         .iter()
         .find(|x| x.name.as_str() == enum_field_name.as_str())
@@ -79,7 +50,7 @@ pub(crate) fn instantiate_enum(
         Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
-                enum_name: new_decl.name.clone(),
+                enum_name: enum_decl.name.clone(),
                 variant_name: enum_field_name.clone(),
                 span: enum_field_name.span().clone(),
             });
@@ -93,11 +64,11 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_field_type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: new_decl.type_id(),
+                return_type: enum_decl.type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
-                    enum_decl: new_decl,
+                    enum_decl,
                     variant_name,
                     instantiation_span: instantiation_span.clone(),
                 },
@@ -131,11 +102,11 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: new_decl.type_id(),
+                    return_type: enum_decl.type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl: new_decl,
+                        enum_decl,
                         variant_name,
                         instantiation_span: instantiation_span.clone(),
                     },

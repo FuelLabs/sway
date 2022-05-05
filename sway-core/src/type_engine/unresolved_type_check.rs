@@ -131,6 +131,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .into_iter(),
                 )
                 .collect(),
+            UnsafeDowncast { value, .. } => value.check_for_unresolved_types(),
             IfLet {
                 enum_type,
                 expr,

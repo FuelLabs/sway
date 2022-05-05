@@ -170,7 +170,7 @@ impl EnumVariant {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 check!(
-                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, false),
+                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, &span, false),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,

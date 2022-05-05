@@ -49,7 +49,7 @@ pub(crate) fn implementation_of_trait(
         }
     }
     match namespace
-        .get_call_path(&trait_name)
+        .get_decl_from_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {

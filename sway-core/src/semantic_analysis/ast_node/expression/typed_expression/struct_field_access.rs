@@ -3,7 +3,7 @@ use sway_types::{Ident, Span};
 use crate::{
     error::{err, ok},
     semantic_analysis::{IsConstant, TypedExpression, TypedExpressionVariant, TypedStructField},
-    CompileError, CompileResult, NamespaceRef, NamespaceWrapper,
+    CompileResult, NamespaceRef, NamespaceWrapper,
 };
 
 pub(crate) fn instantiate_struct_field_access(
@@ -15,29 +15,21 @@ pub(crate) fn instantiate_struct_field_access(
     let mut warnings = vec![];
     let mut errors = vec![];
     let (fields, struct_name) = check!(
-        namespace.get_struct_type_fields(parent.return_type, parent.span.as_str(), &parent.span),
+        namespace.expect_struct_fields_from_type_id(
+            parent.return_type,
+            parent.span.as_str(),
+            &parent.span
+        ),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let field = if let Some(field) = fields
-        .iter()
-        .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
-    {
-        field
-    } else {
-        errors.push(CompileError::FieldNotFound {
-            span: field_to_access.span().clone(),
-            available_fields: fields
-                .iter()
-                .map(|TypedStructField { name, .. }| name.to_string())
-                .collect::<Vec<_>>()
-                .join("\n"),
-            field_name: field_to_access.clone(),
-            struct_name: struct_name.to_string(),
-        });
-        return err(warnings, errors);
-    };
+    let field = check!(
+        TypedStructField::expect_field_from_fields(&struct_name, &fields, &field_to_access),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     let exp = TypedExpression {
         expression: TypedExpressionVariant::StructFieldAccess {

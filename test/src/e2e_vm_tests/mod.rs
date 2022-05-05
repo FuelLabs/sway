@@ -153,6 +153,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_simple",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/match_expressions_enums",
+            ProgramState::Return(42),
+        ),
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true
         (
             "should_pass/language/booleans_test",
@@ -400,7 +404,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/array_bad_index",
         "should_fail/name_shadowing",
         "should_fail/match_expressions_wrong_struct",
-        "should_fail/match_expressions_enums",
         "should_fail/pure_calls_impure",
         "should_fail/nested_impure",
         "should_fail/predicate_calls_impure",

@@ -324,7 +324,7 @@ fn check_supertraits(
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
                 ..
-            } = namespace.get_call_path(trait_name)
+            } = namespace.get_decl_from_call_path(trait_name)
             {
                 let supertraits = tr.supertraits;
                 for supertrait in &supertraits {
@@ -345,8 +345,8 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                namespace.get_call_path(search_node_trait_name),
-                                namespace.get_call_path(&supertrait.name),
+                                namespace.get_decl_from_call_path(search_node_trait_name),
+                                namespace.get_decl_from_call_path(&supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (type_implementing_for

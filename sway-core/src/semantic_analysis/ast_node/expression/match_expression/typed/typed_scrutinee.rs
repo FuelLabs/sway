@@ -2,10 +2,9 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::ast_node::expression::typed_expression::monomorphize_with_type_arguments,
+    semantic_analysis::TypedStructField,
     type_engine::{insert_type, TypeId},
-    CallPath, CompileError, CompileResult, Literal, NamespaceRef, NamespaceWrapper, Scrutinee,
-    TypeArgument, TypeInfo, TypedDeclaration,
+    CompileResult, Literal, NamespaceRef, NamespaceWrapper, Scrutinee, TypeArgument, TypeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -20,14 +19,14 @@ pub(crate) enum TypedScrutineeVariant {
     CatchAll,
     Literal(Literal),
     Variable(Ident),
-    StructScrutinee {
-        #[allow(dead_code)]
-        struct_name: Ident,
-        fields: Vec<TypedStructScrutineeField>,
-    },
+    StructScrutinee(Vec<TypedStructScrutineeField>),
     EnumScrutinee {
-        call_path: CallPath,
-        variable_to_assign: Ident,
+        #[allow(dead_code)]
+        enum_name: Ident,
+        variant_name: Ident,
+        variant_type_id: TypeId,
+        variant_tag: usize,
+        value: Box<TypedScrutinee>,
     },
     Tuple(Vec<TypedScrutinee>),
 }
@@ -68,31 +67,35 @@ impl TypedScrutinee {
                 fields,
                 span,
             } => {
-                let struct_decl = match namespace.get_symbol(&struct_name).value {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        check!(
-                            monomorphize_with_type_arguments(
-                                CallPath::from(struct_name.clone()),
-                                decl,
-                                vec!(),
-                                namespace,
-                                self_type
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
-                    _ => {
-                        errors.push(CompileError::StructNotFound {
-                            name: struct_name.clone(),
-                            span,
-                        });
-                        return err(warnings, errors);
-                    }
-                };
+                // grab the struct definition
+                let struct_decl = check!(
+                    namespace.expect_struct_decl_from_name(&struct_name),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // monomorphize the struct definition
+                let struct_decl = check!(
+                    struct_decl.monomorphize(vec!(), false, &namespace, Some(self_type), None),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // type check the fields
                 let mut typed_fields = vec![];
                 for field in fields.into_iter() {
+                    // ensure that the struct definition has this field
+                    let _ = check!(
+                        TypedStructField::expect_field_from_fields(
+                            &struct_decl.name,
+                            &struct_decl.fields,
+                            &field.field
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    // type check the nested scrutinee
                     let typed_scrutinee = match field.scrutinee {
                         None => None,
                         Some(scrutinee) => Some(check!(
@@ -109,26 +112,64 @@ impl TypedScrutinee {
                     });
                 }
                 TypedScrutinee {
-                    variant: TypedScrutineeVariant::StructScrutinee {
-                        struct_name,
-                        fields: typed_fields,
-                    },
+                    variant: TypedScrutineeVariant::StructScrutinee(typed_fields),
                     type_id: struct_decl.type_id(),
                     span,
                 }
             }
             Scrutinee::EnumScrutinee {
                 call_path,
-                variable_to_assign,
+                value,
                 span,
-            } => TypedScrutinee {
-                variant: TypedScrutineeVariant::EnumScrutinee {
-                    call_path,
-                    variable_to_assign,
-                },
-                type_id: insert_type(TypeInfo::Unknown),
-                span,
-            },
+            } => {
+                unimplemented!()
+                /*
+                let enum_name = call_path.prefixes.last().unwrap().clone();
+                let variant_name = call_path.suffix;
+                let enum_decl = match namespace.get_decl_from_symbol(&enum_name).value {
+                    Some(TypedDeclaration::EnumDeclaration(enum_decl)) => {
+                        enum_decl.monomorphize(&namespace)
+                    }
+                    _ => {
+                        errors.push(CompileError::EnumNotFound {
+                            name: enum_name.clone(),
+                            span,
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let type_id = enum_decl.type_id();
+                let (variant_name, variant_type_id, variant_tag) =
+                    match enum_decl.get_variant(variant_name.to_string()) {
+                        Some(o) => (o.name.clone(), o.tag, o.r#type),
+                        None => {
+                            errors.push(CompileError::UnknownEnumVariant {
+                                enum_name,
+                                variant_name,
+                                span,
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                let typed_value = check!(
+                    TypedScrutinee::type_check(*value, namespace, self_type),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedScrutinee {
+                    variant: TypedScrutineeVariant::EnumScrutinee {
+                        enum_name,
+                        variant_name,
+                        variant_type_id,
+                        variant_tag,
+                        value: Box::new(typed_value),
+                    },
+                    type_id,
+                    span,
+                }
+                */
+            }
             Scrutinee::Tuple { elems, span } => {
                 let mut typed_elems = vec![];
                 for elem in elems.into_iter() {

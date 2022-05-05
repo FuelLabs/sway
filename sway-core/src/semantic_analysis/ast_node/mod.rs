@@ -230,12 +230,7 @@ impl TypedAstNode {
                                             type_ascription: TypeInfo,
                                             value| {
             let type_id = check!(
-                namespace.resolve_type_with_self(
-                    type_ascription,
-                    self_type,
-                    node.span.clone(),
-                    false
-                ),
+                namespace.resolve_type_with_self(type_ascription, self_type, &node.span, false),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
@@ -305,7 +300,7 @@ impl TypedAstNode {
                                 .resolve_type_with_self(
                                     type_ascription,
                                     self_type,
-                                    type_ascription_span.clone(),
+                                    &type_ascription_span,
                                     true,
                                 )
                                 .value
@@ -586,7 +581,7 @@ impl TypedAstNode {
                                         }
                                         None => check!(
                                             namespace.resolve_type_with_self(
-                                                r#type, self_type, type_span, false
+                                                r#type, self_type, &type_span, false
                                             ),
                                             insert_type(TypeInfo::ErrorRecovery),
                                             warnings,
@@ -924,38 +919,41 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
-                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable,
-                            name,
-                            ..
-                        })) => {
-                            if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable(
-                                    name.as_str().to_string(),
-                                    span.clone(),
-                                ));
-                            }
+                    let thing_to_reassign =
+                        match namespace.clone().get_decl_from_symbol(&name).value {
+                            Some(TypedDeclaration::VariableDeclaration(
+                                TypedVariableDeclaration {
+                                    body,
+                                    is_mutable,
+                                    name,
+                                    ..
+                                },
+                            )) => {
+                                if !is_mutable.is_mutable() {
+                                    errors.push(CompileError::AssignmentToNonMutable(
+                                        name.as_str().to_string(),
+                                        span.clone(),
+                                    ));
+                                }
 
-                            body
-                        }
-                        Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
-                                name: name.clone(),
-                                kind: o.friendly_name(),
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownVariable {
-                                var_name: name.as_str().to_string(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                                body
+                            }
+                            Some(o) => {
+                                errors.push(CompileError::ReassignmentToNonVariable {
+                                    name: name.clone(),
+                                    kind: o.friendly_name(),
+                                    span,
+                                });
+                                return err(warnings, errors);
+                            }
+                            None => {
+                                errors.push(CompileError::UnknownVariable {
+                                    var_name: name.as_str().to_string(),
+                                    span: name.span().clone(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        };
                     // the RHS is a ref type to the LHS
                     let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
                     // type check the reassignment
@@ -1049,7 +1047,7 @@ fn reassignment(
                     });
 
                     let (ty_of_field, _ty_of_parent) = check!(
-                        namespace.find_subfield_type(
+                        namespace.expect_subfield_type_from_subfield_exp(
                             names_vec
                                 .iter()
                                 .map(|ReassignmentLhs { name, .. }| name.clone())
@@ -1122,7 +1120,7 @@ fn handle_supertraits(
 
     for supertrait in supertraits.iter() {
         match namespace
-            .get_call_path(&supertrait.name)
+            .get_decl_from_call_path(&supertrait.name)
             .ok(&mut warnings, &mut errors)
         {
             Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
@@ -1281,7 +1279,7 @@ fn type_check_interface_surface(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
                                     crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    type_span.clone(),
+                                    &type_span,
                                     true
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
@@ -1296,7 +1294,7 @@ fn type_check_interface_surface(
                     namespace.resolve_type_with_self(
                         return_type,
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                        return_type_span,
+                        &return_type_span,
                         true
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
@@ -1343,7 +1341,7 @@ fn type_check_trait_methods(
                     function_namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                        name.span().clone(),
+                        name.span(),
                         true
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
@@ -1421,7 +1419,7 @@ fn type_check_trait_methods(
                             function_namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
-                                type_span.clone(),
+                                &type_span,
                                 true
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
@@ -1439,7 +1437,7 @@ fn type_check_trait_methods(
             function_namespace.resolve_type_with_self(
                 return_type,
                 self_type,
-                return_type_span.clone(),
+                &return_type_span,
                 true,
             ),
             insert_type(TypeInfo::ErrorRecovery),
@@ -1520,7 +1518,7 @@ fn convert_trait_methods_to_dummy_funcs(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),
                                     crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    type_span.clone(),
+                                    type_span,
                                     true
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
@@ -1536,7 +1534,7 @@ fn convert_trait_methods_to_dummy_funcs(
                     namespace.resolve_type_with_self(
                         return_type.clone(),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
-                        return_type_span.clone(),
+                        return_type_span,
                         true
                     ),
                     insert_type(TypeInfo::ErrorRecovery),

@@ -120,7 +120,7 @@ impl TypedFunctionDeclaration {
                         namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
                             self_type,
-                            parameter.type_span.clone(),
+                            &parameter.type_span,
                             true
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
@@ -151,12 +151,7 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => check!(
-                namespace.resolve_type_with_self(
-                    return_type,
-                    self_type,
-                    return_type_span.clone(),
-                    true
-                ),
+                namespace.resolve_type_with_self(return_type, self_type, &return_type_span, true),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,

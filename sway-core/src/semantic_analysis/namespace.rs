@@ -177,7 +177,7 @@ impl Namespace {
         }
     }
 
-    pub(crate) fn get_tuple_elems(
+    pub(crate) fn expect_tuple_type_args_from_type_id(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,

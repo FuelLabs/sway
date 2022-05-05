@@ -3,9 +3,7 @@ use crate::{
     asm_lang::*,
     parse_tree::{BuiltinProperty, CallPath, Literal},
     semantic_analysis::{
-        ast_node::{
-            TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant,
-        },
+        ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
     type_engine::*,
@@ -321,6 +319,11 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
+        TypedExpressionVariant::UnsafeDowncast {
+            value,
+            enum_type_id,
+            variant_tag,
+        } => unimplemented!(),
         TypedExpressionVariant::IfLet {
             enum_type,
             variant,
@@ -328,17 +331,7 @@ pub(crate) fn convert_expression_to_asm(
             r#else,
             variable_to_assign,
             expr,
-        } => convert_if_let_to_asm(
-            expr,
-            *enum_type,
-            variant,
-            then,
-            r#else,
-            variable_to_assign,
-            return_register,
-            namespace,
-            register_sequencer,
-        ),
+        } => unimplemented!(),
         TypedExpressionVariant::TypeProperty {
             property, type_id, ..
         } => match property {
@@ -627,131 +620,4 @@ pub(crate) fn convert_abi_fn_to_asm(
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done
     ok(asm_buf, warnings, errors)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn convert_if_let_to_asm(
-    expr: &TypedExpression,
-    _enum_type: TypeId,
-    variant: &TypedEnumVariant,
-    then: &TypedCodeBlock,
-    r#else: &Option<Box<TypedExpression>>,
-    variable_to_assign: &Ident,
-    return_register: &VirtualRegister,
-    namespace: &mut AsmNamespace,
-    register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<Vec<Op>> {
-    // 1. evaluate the expression
-    // 2. load the expected tag into a register ($rA)
-    // 3. compare the tag to the first word of the expression's returned value
-    // 4. grab a register for `variable_to_assign`, insert it into the asm namespace
-    // 5. if the tags are equal, load the returned value from byte 1..end into `variable_to_assign`
-    // 5.5 if they are not equal, jump to the label in 7
-    // 6. evaluate the then branch with that variable in scope
-    // 7. insert a jump label for the else branch
-    // 8. evaluate the else branch, if any
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut buf = vec![];
-    // 1.
-    let expr_return_register = register_sequencer.next();
-    let mut expr_buf = check!(
-        convert_expression_to_asm(&*expr, namespace, &expr_return_register, register_sequencer),
-        vec![],
-        warnings,
-        errors
-    );
-    buf.append(&mut expr_buf);
-    // load the tag from the evaluated value
-    // as this is an enum we know the value in the register is a pointer
-    // we can therefore read a word from the register and move it into another register
-    let received_tag_register = register_sequencer.next();
-    buf.push(Op {
-        opcode: Either::Left(VirtualOp::LW(
-            received_tag_register.clone(),
-            expr_return_register.clone(),
-            VirtualImmediate12::new_unchecked(0, "infallible"),
-        )),
-        comment: "load received enum tag".into(),
-        owning_span: Some(expr.span.clone()),
-    });
-    // 2.
-    let expected_tag_register = register_sequencer.next();
-    let expected_tag_label = namespace.insert_data_value(&Literal::U64(variant.tag as u64));
-    buf.push(Op {
-        opcode: either::Either::Left(VirtualOp::LWDataId(
-            expected_tag_register.clone(),
-            expected_tag_label,
-        )),
-        comment: "load enum tag for if let".into(),
-        owning_span: Some(expr.span.clone()),
-    });
-    let label_for_else_branch = register_sequencer.get_label();
-    // 3 - 5
-    buf.push(Op {
-        opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-            expected_tag_register,
-            received_tag_register,
-            label_for_else_branch.clone(),
-        )),
-        comment: "jump to if let's else branch".into(),
-        owning_span: Some(expr.span.clone()),
-    });
-    // 6.
-    // put the destructured variable into the namespace for the then branch, but not otherwise
-    let mut then_branch_asm_namespace = namespace.clone();
-    let variable_to_assign_register = register_sequencer.next();
-    then_branch_asm_namespace.insert_variable(
-        variable_to_assign.clone(),
-        variable_to_assign_register.clone(),
-    );
-    // load the word that is at the expr return register + 1 word
-    // + 1 word is to account for the enum tag
-    buf.push(Op {
-        opcode: Either::Left(VirtualOp::LW(
-            variable_to_assign_register,
-            expr_return_register,
-            VirtualImmediate12::new_unchecked(1, "infallible"),
-        )),
-        owning_span: Some(then.span().clone()),
-        comment: "Load destructured value into register".into(),
-    });
-
-    // 6
-    buf.append(&mut check!(
-        convert_code_block_to_asm(
-            then,
-            &mut then_branch_asm_namespace,
-            register_sequencer,
-            Some(return_register)
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    ));
-
-    // add the data section from the then branch back to the main one
-
-    namespace.overwrite_data_section(then_branch_asm_namespace);
-
-    let label_for_after_else_branch = register_sequencer.get_label();
-    if let Some(r#else) = r#else {
-        buf.push(Op::jump_to_label_comment(
-            label_for_after_else_branch.clone(),
-            "jump to after the else branch",
-        ));
-
-        buf.push(Op::unowned_jump_label(label_for_else_branch));
-
-        buf.append(&mut check!(
-            convert_expression_to_asm(r#else, namespace, return_register, register_sequencer),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
-
-        buf.push(Op::unowned_jump_label(label_for_after_else_branch));
-    }
-
-    ok(buf, warnings, errors)
 }

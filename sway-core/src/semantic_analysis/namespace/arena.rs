@@ -20,16 +20,11 @@ use sway_types::{Ident, Span};
 pub type NamespaceRef = Index;
 
 pub trait NamespaceWrapper {
-    /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
-    /// being looked for is actually a generic, not-yet-resolved type.
-    ///
-    /// If a self type is given and anything on this ref chain refers to self, update the chain.
-    #[allow(clippy::result_unit_err)]
     fn resolve_type_with_self(
         &self,
         ty: TypeInfo,
         self_type: TypeId,
-        span: Span,
+        span: &Span,
         enforce_type_args: bool,
     ) -> CompileResult<TypeId>;
     fn resolve_type_without_self(&self, ty: &TypeInfo) -> CompileResult<TypeId>;
@@ -82,27 +77,40 @@ pub trait NamespaceWrapper {
         new_type: TypeInfo,
         type_mapping: &[(TypeParameter, usize)],
     );
-    fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
+    fn get_decl_from_path_and_name(
+        &self,
+        path: &[Ident],
+        name: &Ident,
+    ) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
     /// `foo::bar::function`
     /// where `foo` and `bar` are the prefixes
     /// and `function` is the suffix
-    fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration>;
-    fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration>;
+    fn get_decl_from_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration>;
+    fn get_decl_from_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration>;
     fn get_canonical_path(&self, symbol: &Ident) -> Vec<Ident>;
-    fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration>;
+    fn find_enum_decl_from_name(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration>;
+    fn expect_enum_decl_from_name(&self, enum_name: &Ident) -> CompileResult<TypedEnumDeclaration>;
+    fn expect_enum_decl_from_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<TypedEnumDeclaration>;
+    fn expect_struct_decl_from_name(
+        &self,
+        struct_name: &Ident,
+    ) -> CompileResult<TypedStructDeclaration>;
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid
     /// e.g. foo.bar.baz
     /// is foo a struct? does it contain a field bar? is foo.bar a struct? does foo.bar contain a
     /// field baz? this is the problem this function addresses
-    fn get_struct_type_fields(
+    fn expect_struct_fields_from_type_id(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<(Vec<TypedStructField>, Ident)>;
-    fn get_tuple_elems(
+    fn expect_tuple_type_args_from_type_id(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
@@ -110,7 +118,10 @@ pub trait NamespaceWrapper {
     ) -> CompileResult<Vec<TypeArgument>>;
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
-    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)>;
+    fn expect_subfield_type_from_subfield_exp(
+        &self,
+        subfield_exp: &[Ident],
+    ) -> CompileResult<(TypeId, TypeId)>;
     fn apply_storage_load(
         &self,
         field: Vec<Ident>,
@@ -132,12 +143,15 @@ impl NamespaceWrapper for NamespaceRef {
             *self,
         )
     }
+
     fn set_storage_declaration(&self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         write_module(|ns| ns.set_storage_declaration(decl), *self)
     }
+
     fn has_storage_declared(&self) -> bool {
         read_module(move |ns| ns.declared_storage.is_some(), *self)
     }
+
     fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>> {
         if let Some(fields) = read_module(
             |ns| ns.declared_storage.as_ref().map(|x| x.fields.clone()),
@@ -150,10 +164,15 @@ impl NamespaceWrapper for NamespaceRef {
             err(vec![], vec![CompileError::NoDeclaredStorage { span }])
         }
     }
+
     fn insert_module_ref(&self, module_name: String, ix: NamespaceRef) {
         write_module(|ns| ns.insert_module(module_name, ix), *self)
     }
-    fn find_subfield_type(&self, subfield_exp: &[Ident]) -> CompileResult<(TypeId, TypeId)> {
+
+    fn expect_subfield_type_from_subfield_exp(
+        &self,
+        subfield_exp: &[Ident],
+    ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.iter().peekable();
@@ -183,8 +202,11 @@ impl NamespaceWrapper for NamespaceRef {
             warnings,
             errors
         );
-        let mut type_fields =
-            self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
+        let mut type_fields = self.expect_struct_fields_from_type_id(
+            symbol,
+            first_ident.as_str(),
+            first_ident.span(),
+        );
         warnings.append(&mut type_fields.warnings);
         errors.append(&mut type_fields.errors);
         let (mut fields, struct_name): (Vec<TypedStructField>, Ident) = match type_fields.value {
@@ -235,7 +257,7 @@ impl NamespaceWrapper for NamespaceRef {
         ok((symbol, parent_rover), warnings, errors)
     }
 
-    fn get_tuple_elems(
+    fn expect_tuple_type_args_from_type_id(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
@@ -243,13 +265,13 @@ impl NamespaceWrapper for NamespaceRef {
     ) -> CompileResult<Vec<TypeArgument>> {
         let debug_string = debug_string.into();
         read_module(
-            |ns| ns.get_tuple_elems(ty, debug_string.clone(), debug_span),
+            |ns| ns.expect_tuple_type_args_from_type_id(ty, debug_string.clone(), debug_span),
             *self,
         )
     }
 
     /// Returns a tuple of all of the fields of a struct and the struct's name.
-    fn get_struct_type_fields(
+    fn expect_struct_fields_from_type_id(
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
@@ -272,13 +294,83 @@ impl NamespaceWrapper for NamespaceRef {
         }
     }
 
-    fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
-        match self.get_symbol(enum_name) {
+    fn expect_enum_decl_from_name(&self, enum_name: &Ident) -> CompileResult<TypedEnumDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let res = check!(
+            self.get_decl_from_symbol(enum_name),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match res {
+            TypedDeclaration::EnumDeclaration(enum_decl) => ok(enum_decl, warnings, errors),
+            _ => {
+                errors.push(CompileError::EnumNotFound {
+                    name: enum_name.clone(),
+                    span: enum_name.span().clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    fn expect_enum_decl_from_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<TypedEnumDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let res = check!(
+            self.get_decl_from_call_path(call_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match res {
+            TypedDeclaration::EnumDeclaration(enum_decl) => ok(enum_decl, warnings, errors),
+            _ => {
+                errors.push(CompileError::EnumNotFound {
+                    name: call_path.suffix.clone(),
+                    span: call_path.span().clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    fn find_enum_decl_from_name(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
+        match self.get_decl_from_symbol(enum_name) {
             CompileResult {
                 value: Some(TypedDeclaration::EnumDeclaration(inner)),
                 ..
             } => Some(inner),
             _ => None,
+        }
+    }
+
+    fn expect_struct_decl_from_name(
+        &self,
+        struct_name: &Ident,
+    ) -> CompileResult<TypedStructDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self.get_decl_from_symbol(struct_name).value {
+            Some(TypedDeclaration::StructDeclaration(decl)) => ok(decl, warnings, errors),
+            Some(_) => {
+                errors.push(CompileError::DeclaredNonStructAsStruct {
+                    name: struct_name.clone(),
+                    span: struct_name.span().clone(),
+                });
+                err(warnings, errors)
+            }
+            None => {
+                errors.push(CompileError::StructNotFound {
+                    name: struct_name.clone(),
+                    span: struct_name.span().clone(),
+                });
+                err(warnings, errors)
+            }
         }
     }
 
@@ -289,7 +381,7 @@ impl NamespaceWrapper for NamespaceRef {
         )
     }
 
-    fn get_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
+    fn get_decl_from_symbol(&self, symbol: &Ident) -> CompileResult<TypedDeclaration> {
         let (path, true_symbol) = read_module(
             |m| {
                 let empty = vec![];
@@ -302,10 +394,10 @@ impl NamespaceWrapper for NamespaceRef {
             },
             *self,
         );
-        self.get_name_from_path(&path, &true_symbol)
+        self.get_decl_from_path_and_name(&path, &true_symbol)
     }
 
-    fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
+    fn get_decl_from_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
         read_module(
             |m| {
                 let path = if symbol.prefixes.is_empty() {
@@ -315,13 +407,17 @@ impl NamespaceWrapper for NamespaceRef {
                 } else {
                     &symbol.prefixes
                 };
-                self.get_name_from_path(path, &symbol.suffix)
+                self.get_decl_from_path_and_name(path, &symbol.suffix)
             },
             *self,
         )
     }
 
-    fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration> {
+    fn get_decl_from_path_and_name(
+        &self,
+        path: &[Ident],
+        name: &Ident,
+    ) -> CompileResult<TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -445,7 +541,7 @@ impl NamespaceWrapper for NamespaceRef {
             namespace.resolve_type_with_self(
                 look_up_type_id(r#type),
                 self_type,
-                method_name.span().clone(),
+                method_name.span(),
                 false
             ),
             insert_type(TypeInfo::ErrorRecovery),
@@ -679,8 +775,8 @@ impl NamespaceWrapper for NamespaceRef {
         &self,
         ty: TypeInfo,
         self_type: TypeId,
-        span: Span,
-        enforce_type_args: bool,
+        span: &Span,
+        enforce_type_arguments: bool,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -689,82 +785,45 @@ impl NamespaceWrapper for NamespaceRef {
                 ref name,
                 type_arguments,
             } => {
-                let mut new_type_arguments = vec![];
-                for type_argument in type_arguments.into_iter() {
-                    let new_type_id = check!(
-                        Self::resolve_type_with_self(
-                            self,
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            type_argument.span.clone(),
-                            enforce_type_args
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                    let type_argument = TypeArgument {
-                        type_id: new_type_id,
-                        span: type_argument.span,
-                    };
-                    new_type_arguments.push(type_argument);
-                }
-                match self.get_symbol(name).ok(&mut warnings, &mut errors) {
+                match self
+                    .get_decl_from_symbol(name)
+                    .ok(&mut warnings, &mut errors)
+                {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize(self, &new_type_arguments, Some(self_type)),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                enforce_type_arguments,
+                                &self,
+                                Some(self_type),
+                                Some(span)
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(
-                                    self,
-                                    &new_type_arguments,
-                                    Some(self_type)
-                                ),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                enforce_type_arguments,
+                                &self,
+                                Some(self_type),
+                                Some(span)
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.type_id()
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => {
-                        errors.push(CompileError::UnknownType { span });
+                        errors.push(CompileError::UnknownType { span: span.clone() });
                         return err(warnings, errors);
                     }
                 }
@@ -784,66 +843,27 @@ impl NamespaceWrapper for NamespaceRef {
             TypeInfo::Custom {
                 name,
                 type_arguments,
-            } => match self.get_symbol(&name).ok(&mut warnings, &mut errors) {
+            } => match self
+                .get_decl_from_symbol(&name)
+                .ok(&mut warnings, &mut errors)
+            {
                 Some(TypedDeclaration::StructDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            Self::resolve_type_without_self(
-                                self,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
-                            decl.monomorphize(self, &new_type_arguments, None),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
-                    }
+                    let new_decl = check!(
+                        decl.monomorphize(type_arguments, false, &self, None, None),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    new_decl.type_id()
                 }
                 Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            Self::resolve_type_without_self(
-                                self,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
-                            decl.monomorphize_with_type_arguments(self, &new_type_arguments, None),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
-                    }
+                    let new_decl = check!(
+                        decl.monomorphize(type_arguments, false, &self, None, None),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    new_decl.type_id()
                 }
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),
             },

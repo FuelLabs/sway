@@ -34,7 +34,7 @@ pub enum Scrutinee {
     },
     EnumScrutinee {
         call_path: CallPath,
-        variable_to_assign: Ident,
+        value: Box<Scrutinee>,
         span: Span,
     },
     Tuple {
@@ -233,30 +233,27 @@ impl Scrutinee {
     fn parse_from_pair_enum(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = pair.as_span();
-        let span = Span::from_pest(span, config.map(|x| x.path()));
+        let span = Span::from_pest(pair.as_span(), config.map(|x| x.path()));
         let mut iter = pair.into_inner();
-        let enum_scrutinee_component_pair = iter.next().expect("guaranteed by grammar");
-        let assignment_for_value_pair = iter.next().expect("guaranteed by grammar");
-        let variable_to_assign = check!(
-            ident::parse_from_pair(assignment_for_value_pair, config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
+        let call_path_pair = iter.next().expect("guaranteed by grammar");
         let call_path = check!(
-            CallPath::parse_from_pair(enum_scrutinee_component_pair, config),
+            CallPath::parse_from_pair(call_path_pair, config),
             return err(warnings, errors),
             warnings,
             errors
         );
-
+        let value_pair = iter.next().expect("guaranteed by grammar");
+        let value = check!(
+            Scrutinee::parse_from_pair(value_pair, config),
+            error_recovery_scrutinee(span.clone()),
+            warnings,
+            errors
+        );
         ok(
             Scrutinee::EnumScrutinee {
                 call_path,
+                value: Box::new(value),
                 span,
-                variable_to_assign,
             },
             warnings,
             errors,
@@ -289,15 +286,7 @@ impl Scrutinee {
     /// assigned to upon successful destructuring.
     /// Should only be used when destructuring enums via `if let`
     pub(crate) fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
-        match self {
-            Scrutinee::EnumScrutinee {
-                variable_to_assign, ..
-            } => ok(variable_to_assign, vec![], vec![]),
-            _ => err(
-                vec![],
-                vec![CompileError::IfLetNonEnum { span: self.span() }],
-            ),
-        }
+        unimplemented!()
     }
 
     pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {

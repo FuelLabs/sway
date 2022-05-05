@@ -3,9 +3,9 @@ mod function_application;
 mod if_expression;
 mod lazy_operator;
 mod method_application;
-mod struct_expression;
 mod struct_field_access;
 mod tuple_index_access;
+mod unsafe_downcast;
 
 use std::collections::{HashMap, VecDeque};
 
@@ -17,7 +17,6 @@ use self::{
 
 pub(crate) use self::{
     if_expression::instantiate_if_expression, lazy_operator::instantiate_lazy_operator,
-    struct_expression::monomorphize_with_type_arguments,
     struct_field_access::instantiate_struct_field_access,
     tuple_index_access::instantiate_tuple_index_access,
 };
@@ -116,6 +115,7 @@ impl TypedExpression {
                         .unwrap_or(false)
                 }) || body_deterministically_aborts
             }
+            UnsafeDowncast { value, .. } => value.deterministically_aborts(),
             IfExp {
                 condition,
                 then,
@@ -183,6 +183,7 @@ impl TypedExpression {
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
             TypedExpressionVariant::LazyOperator { .. }
+            | TypedExpressionVariant::UnsafeDowncast { .. }
             | TypedExpressionVariant::Literal(_)
             | TypedExpressionVariant::Tuple { .. }
             | TypedExpressionVariant::Array { .. }
@@ -612,7 +613,7 @@ impl TypedExpression {
             namespace.resolve_type_with_self(
                 look_up_type_id(typed_expression.return_type),
                 self_type,
-                expr_span.clone(),
+                &expr_span,
                 false
             ),
             insert_type(TypeInfo::ErrorRecovery),
@@ -673,7 +674,7 @@ impl TypedExpression {
         namespace: NamespaceRef,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let exp = match namespace.get_symbol(&name).value {
+        let exp = match namespace.get_decl_from_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
             })) => TypedExpression {
@@ -735,7 +736,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let function_declaration = check!(
-            namespace.get_call_path(&name),
+            namespace.get_decl_from_call_path(&name),
             return err(warnings, errors),
             warnings,
             errors
@@ -1265,7 +1266,7 @@ impl TypedExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span, false),
+            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, &asm_span, false),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -1329,6 +1330,8 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
+
+        // find the module that the symbol is in
         let module = check!(
             namespace.find_module_relative(&call_path.prefixes),
             return err(warnings, errors),
@@ -1336,43 +1339,31 @@ impl TypedExpression {
             errors
         );
 
-        let decl = match module.clone().get_symbol(&call_path.suffix).value {
-            Some(TypedDeclaration::StructDeclaration(decl)) => decl,
-            Some(_) => {
-                errors.push(CompileError::DeclaredNonStructAsStruct {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
-            }
-            None => {
-                errors.push(CompileError::StructNotFound {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
-            }
-        };
+        // find the struct definition from the name
+        let struct_decl = check!(
+            module.expect_struct_decl_from_name(&call_path.suffix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-        // if this is a generic struct, i.e. it has some type
-        // parameters, monomorphize it before unifying the
-        // types
-        let mut new_decl = check!(
-            monomorphize_with_type_arguments(call_path, decl, type_arguments, module, self_type),
+        // monomorphize the struct definition
+        let mut struct_decl = check!(
+            struct_decl.monomorphize(type_arguments, false, &namespace, Some(self_type), None),
             return err(warnings, errors),
             warnings,
             errors
         );
 
         // match up the names with their type annotations from the declaration
-        for def_field in new_decl.fields.iter_mut() {
+        for def_field in struct_decl.fields.iter_mut() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
-                            struct_name: new_decl.name.clone(),
+                            struct_name: struct_decl.name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -1416,21 +1407,21 @@ impl TypedExpression {
 
         // check that there are no extra fields
         for field in fields {
-            if !new_decl.fields.iter().any(|x| x.name == field.name) {
+            if !struct_decl.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: new_decl.name.clone(),
+                    struct_name: struct_decl.name.clone(),
                     span: field.span,
                 });
             }
         }
         let expression = TypedExpressionVariant::StructExpression {
-            struct_name: new_decl.name.clone(),
+            struct_name: struct_decl.name.clone(),
             fields: typed_fields_buf,
         };
         let exp = TypedExpression {
             expression,
-            return_type: new_decl.type_id(),
+            return_type: struct_decl.type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -1645,7 +1636,8 @@ impl TypedExpression {
             let enum_name = enum_name[0].clone();
             let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
-            let enum_module_combined_result = namespace.and_then(|ns| ns.find_enum(&enum_name));
+            let enum_module_combined_result =
+                namespace.and_then(|ns| ns.find_enum_decl_from_name(&enum_name));
             (enum_module_combined_result, namespace)
         };
 
@@ -1657,14 +1649,14 @@ impl TypedExpression {
                 errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
-            (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
+            (Some(module), None) => match module.get_decl_from_symbol(&call_path.suffix).value {
                 Some(decl) => match decl {
                     TypedDeclaration::EnumDeclaration(enum_decl) => {
                         check!(
                             instantiate_enum(
                                 module,
                                 enum_decl,
-                                call_path.suffix,
+                                call_path,
                                 args,
                                 type_arguments,
                                 namespace,
@@ -1717,7 +1709,7 @@ impl TypedExpression {
                 instantiate_enum(
                     enum_module_combined_result_module.unwrap(),
                     enum_decl,
-                    call_path.suffix,
+                    call_path,
                     args,
                     type_arguments,
                     namespace,
@@ -1782,7 +1774,7 @@ impl TypedExpression {
         );
         // look up the call path and get the declaration it references
         let abi = check!(
-            namespace.get_call_path(&abi_name),
+            namespace.get_decl_from_call_path(&abi_name),
             return err(warnings, errors),
             warnings,
             errors
@@ -1808,7 +1800,7 @@ impl TypedExpression {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
                         let decl = check!(
-                            namespace.get_call_path(&abi_name),
+                            namespace.get_decl_from_call_path(&abi_name),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -2127,7 +2119,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let type_id = check!(
-            namespace.resolve_type_with_self(type_name, self_type, type_span, true),
+            namespace.resolve_type_with_self(type_name, self_type, &type_span, true),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -2274,12 +2266,14 @@ fn check_enum_scrutinee_type(
     call_path: &CallPath,
     namespace: NamespaceRef,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
+    unimplemented!()
+    /*
     let mut warnings = vec![];
     let mut errors = vec![];
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
     let decl: TypedDeclaration = check!(
-        namespace.get_call_path(&call_path),
+        namespace.get_decl_from_call_path(&call_path),
         return err(warnings, errors),
         warnings,
         errors
@@ -2315,6 +2309,7 @@ fn check_enum_scrutinee_type(
             err(warnings, errors)
         }
     }
+    */
 }
 
 #[cfg(test)]
