@@ -1,11 +1,14 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
 pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
-    let real_name = whoami::realname();
+    let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
+        Ok(author) => author,
+        _ => whoami::realname()
+    };
 
     format!(
         r#"[project]
-authors = ["{real_name}"]
+authors = ["{author}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
 name = "{project_name}"
@@ -19,11 +22,14 @@ name = "{project_name}"
 /// It includes necessary packages to make the Rust-based
 /// tests work.
 pub(crate) fn default_tests_manifest(project_name: &str) -> String {
-    let real_name = whoami::realname();
+    let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
+        Ok(author) => author,
+        _ => whoami::realname()
+    };
 
     format!(
         r#"[project]
-authors = ["{real_name}"]
+authors = ["{author}"]
 edition = "2021"
 license = "Apache-2.0"
 name = "{project_name}"
