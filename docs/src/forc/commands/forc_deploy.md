@@ -77,18 +77,6 @@ Whether to compile to bytecode (false) or to print out the IR (true)
 
 Silent mode. Don't output any warnings or errors to the command line
 
-
-`--use-orig-asm` 
-
-
-Whether to compile using the original (pre- IR) pipeline
-
-
-`--use-orig-parser` 
-
-
-Whether to compile using the original (pest based) parser
-
 ## EXAMPLES:
 
 You can use `forc deploy`, which triggers a contract deployment transaction and sends it to a running node.

@@ -22,10 +22,7 @@ members = [
     "test-sig-gen-util",
 ]
 exclude = [
-    "examples/fizzbuzz",
-    "examples/hello_world",
-    "examples/subcurrency",
-    "examples/wallet_smart_contract",
+    "examples/*"
 ]
 
 [profile.dev.package.sway-lsp]
