@@ -1,7 +1,7 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
 pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
-    let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
+    let author = match std::env::var(sway_utils::FORC_INIT_MANIFEST_AUTHOR) {
         Ok(author) => author,
         _ => whoami::realname(),
     };
@@ -22,7 +22,7 @@ name = "{project_name}"
 /// It includes necessary packages to make the Rust-based
 /// tests work.
 pub(crate) fn default_tests_manifest(project_name: &str) -> String {
-    let author = match std::env::var("FORC_INIT_MANIFEST_AUTHOR") {
+    let author = match std::env::var(sway_utils::FORC_INIT_MANIFEST_AUTHOR) {
         Ok(author) => author,
         _ => whoami::realname(),
     };
