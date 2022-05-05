@@ -93,7 +93,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     let child_success = match child.try_wait() {
         Ok(Some(returned_status)) => returned_status.success(),
         Ok(None) => child.wait().unwrap().success(),
-        Err(_e) => false,
+        Err(_) => false,
     };
 
     match child_success {
