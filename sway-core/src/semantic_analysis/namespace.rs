@@ -29,7 +29,7 @@ pub type PathBuf = Vec<Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Namespace {
+pub struct Items {
     /// An ordered map from `Ident`s to their associated typed declarations.
     symbols: SymbolMap,
     implemented_traits: TraitMap,
@@ -63,10 +63,10 @@ pub struct Module {
     /// Submodules are normally introduced in Sway code with the `dep foo;` syntax where `foo` is
     /// some library dependency that we include as a submodule.
     ///
-    /// Note that we *require* this map to be ordered to produce deterministic results.
+    /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     submodules: im::OrdMap<ModuleName, Module>,
     /// The set of names in this module.
-    namespace: Namespace,
+    items: Items,
 }
 
 /// The root module, from which all other modules can be accessed.
@@ -82,7 +82,39 @@ pub struct Root {
     module: Module,
 }
 
-impl Namespace {
+/// A wrapper around the set of namespace items passed through type checking.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Namespace {
+    /// An immutable namespace that consists of the names that should always be present, no matter
+    /// what module or scope we are currently checking.
+    ///
+    /// These include external library dependencies and (when it's added) the `std` prelude.
+    ///
+    /// This is passed through type-checking in order to initialise the namespace of each submodule
+    /// within the project.
+    init: Module,
+    /// The `root` of the project namespace.
+    ///
+    /// From the root, the entirety of the project's namespace can always be accessed.
+    ///
+    /// The root is initialised from the `init` namespace before type-checking begins.
+    root: Root,
+    /// An absolute path from the `root` that represents the current module being checked.
+    ///
+    /// E.g. when type-checking the root module, this is equal to `[]`. When type-checking a
+    /// submodule of the root called "foo", this would be equal to `[foo]`.
+    mod_path: PathBuf,
+}
+
+/// The namespace wrapper for a submodule.
+///
+/// This acts as a session type, used briefly during `import_new_file` in order to
+pub struct SubmoduleNamespace<'a> {
+    namespace: &'a mut Namespace,
+    original_mod_path: PathBuf,
+}
+
+impl Items {
     /// Immutable access to the inner symbol map.
     pub fn symbols(&self) -> &SymbolMap {
         &self.symbols
@@ -505,6 +537,13 @@ impl Module {
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
+        println!(
+            "import {:?} {:?} to {:?}",
+            src.iter().map(|i| i.as_str()).collect::<Vec<_>>(),
+            item.as_str(),
+            dst.iter().map(|i| i.as_str()).collect::<Vec<_>>(),
+        );
+
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -907,16 +946,139 @@ impl Root {
     }
 }
 
+impl Namespace {
+    /// Initialise the namespace at its root from the given initial namespace.
+    pub fn init_root(init: Module) -> Self {
+        let root = Root::from(init.clone());
+        let mod_path = vec![];
+        Self {
+            init,
+            root,
+            mod_path,
+        }
+    }
+
+    /// A reference to the path of the module currently being type-checked.
+    pub fn mod_path(&self) -> &Path {
+        &self.mod_path
+    }
+
+    /// A reference to the root of the project namespace.
+    pub fn root(&self) -> &Root {
+        &self.root
+    }
+
+    /// Access to the current [Module], i.e. the module at the inner `mod_path`.
+    ///
+    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
+    /// to call any [Module] methods.
+    pub fn module(&self) -> &Module {
+        &self.root.module[&self.mod_path]
+    }
+
+    /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
+    ///
+    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
+    /// to call any [Module] methods.
+    pub fn module_mut(&mut self) -> &mut Module {
+        &mut self.root.module[&self.mod_path]
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
+        self.root.resolve_symbol(&self.mod_path, symbol)
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<&TypedDeclaration> {
+        self.root.resolve_call_path(&self.mod_path, call_path)
+    }
+
+    /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        ty: TypeInfo,
+        self_type: TypeId,
+        span: Span,
+        enforce_type_args: bool,
+    ) -> CompileResult<TypeId> {
+        self.root
+            .resolve_type_with_self(&self.mod_path, ty, self_type, span, enforce_type_args)
+    }
+
+    /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.
+    pub(crate) fn find_method_for_type(
+        &mut self,
+        r#type: TypeId,
+        method_path: &Path,
+        self_type: TypeId,
+        args_buf: &VecDeque<TypedExpression>,
+    ) -> CompileResult<TypedFunctionDeclaration> {
+        self.root
+            .find_method_for_type(&self.mod_path, r#type, method_path, self_type, args_buf)
+    }
+
+    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
+    pub(crate) fn resolve_type_without_self(&mut self, ty: &TypeInfo) -> CompileResult<TypeId> {
+        self.root.resolve_type_without_self(&self.mod_path, ty)
+    }
+
+    /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
+    pub(crate) fn star_import(&mut self, src: &Path) -> CompileResult<()> {
+        self.root.star_import(src, &self.mod_path)
+    }
+
+    /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
+    pub(crate) fn self_import(&mut self, src: &Path, alias: Option<Ident>) -> CompileResult<()> {
+        self.root.self_import(src, &self.mod_path, alias)
+    }
+
+    /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
+    pub(crate) fn item_import(
+        &mut self,
+        src: &Path,
+        item: &Ident,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        self.root.item_import(src, item, &self.mod_path, alias)
+    }
+
+    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
+    ///
+    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
+    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
+    /// back to the original path so that we can continue type-checking the current module after
+    /// finishing with the dependency.
+    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+        let init = self.init.clone();
+        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        let submod_path: Vec<_> = self
+            .mod_path
+            .iter()
+            .cloned()
+            .chain(Some(dep_name))
+            .collect();
+        let original_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        SubmoduleNamespace {
+            namespace: self,
+            original_mod_path,
+        }
+    }
+}
+
 impl std::ops::Deref for Module {
-    type Target = Namespace;
+    type Target = Items;
     fn deref(&self) -> &Self::Target {
-        &self.namespace
+        &self.items
     }
 }
 
 impl std::ops::DerefMut for Module {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.namespace
+        &mut self.items
     }
 }
 
@@ -930,6 +1092,32 @@ impl std::ops::Deref for Root {
 impl std::ops::DerefMut for Root {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.module
+    }
+}
+
+impl std::ops::Deref for Namespace {
+    type Target = Module;
+    fn deref(&self) -> &Self::Target {
+        self.module()
+    }
+}
+
+impl std::ops::DerefMut for Namespace {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.module_mut()
+    }
+}
+
+impl<'a> std::ops::Deref for SubmoduleNamespace<'a> {
+    type Target = Namespace;
+    fn deref(&self) -> &Self::Target {
+        self.namespace
+    }
+}
+
+impl<'a> std::ops::DerefMut for SubmoduleNamespace<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.namespace
     }
 }
 
@@ -954,10 +1142,24 @@ impl From<Module> for Root {
     }
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<Module> for Root {
-    fn into(self) -> Module {
-        self.module
+impl From<Root> for Module {
+    fn from(root: Root) -> Self {
+        root.module
+    }
+}
+
+impl From<Namespace> for Root {
+    fn from(namespace: Namespace) -> Self {
+        namespace.root
+    }
+}
+
+impl<'a> Drop for SubmoduleNamespace<'a> {
+    fn drop(&mut self) {
+        // Replace the submodule path with the original module path.
+        // This ensures that the namespace's module path is reset when ownership over it is
+        // relinquished from the SubmoduleNamespace.
+        self.namespace.mod_path = std::mem::take(&mut self.original_mod_path);
     }
 }
 

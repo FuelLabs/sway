@@ -7,7 +7,8 @@ use sway_core::{
     parse_tree::declaration::FunctionDeclaration,
     semantic_analysis::{
         ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},
-        namespace, TypeCheckArguments,
+        namespace::{self, Namespace},
+        TypeCheckArguments,
     },
     type_engine::*,
     BuildConfig, Rule, SwayParser,
@@ -34,14 +35,10 @@ fn main() {
         FunctionDeclaration::parse_from_pair(parsed_fn_decl.next().unwrap(), Default::default())
             .unwrap(&mut warnings, &mut errors);
 
-    let init_ns = namespace::Module::default();
-    let mut root_ns = namespace::Root::from(init_ns.clone());
-    let mod_path = &[];
+    let mut namespace = Namespace::init_root(namespace::Module::default());
     let res = TypedFunctionDeclaration::type_check(TypeCheckArguments {
         checkee: parsed_fn_decl,
-        init: &init_ns,
-        root: &mut root_ns,
-        mod_path,
+        namespace: &mut namespace,
         help_text: Default::default(),
         return_type_annotation: insert_type(TypeInfo::Unknown),
         self_type: insert_type(TypeInfo::Unknown),

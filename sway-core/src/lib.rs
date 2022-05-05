@@ -33,7 +33,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
-    namespace, TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    namespace::{self, Namespace},
+    TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
@@ -284,22 +285,14 @@ pub fn compile_to_ast(
         namespace: Default::default(),
     };
 
-    // The initial namespace is used to initialise the project's root namespace as well as its
-    // submodules. It includes library dependencies (as modules), and eventually should include the
-    // std prelude.
-    let mut root = namespace::Root::from(initial_namespace.clone());
-    // Path into the root of the module undergoing type-checking. We start with the `root` itself.
-    let mod_path = &[];
-
+    let mut namespace = Namespace::init_root(initial_namespace);
     let CompileResult {
         value: typed_parse_tree_result,
         warnings: new_warnings,
         errors: new_errors,
     } = TypedParseTree::type_check(
         parse_tree.tree,
-        &initial_namespace,
-        &mut root,
-        mod_path,
+        &mut namespace,
         &parse_tree.tree_type,
         &build_config.clone(),
         &mut dead_code_graph,

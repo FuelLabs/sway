@@ -13,9 +13,7 @@ pub(crate) fn instantiate_enum(
     enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    init: &namespace::Module,
-    root: &mut namespace::Root,
-    mod_path: &namespace::Path,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -28,8 +26,7 @@ pub(crate) fn instantiate_enum(
     let mut type_arguments = type_arguments;
     for type_argument in type_arguments.iter_mut() {
         type_argument.type_id = check!(
-            root.resolve_type_with_self(
-                mod_path,
+            namespace.resolve_type_with_self(
                 look_up_type_id(type_argument.type_id),
                 self_type,
                 type_argument.span.clone(),
@@ -44,13 +41,12 @@ pub(crate) fn instantiate_enum(
     // if this is a generic enum, i.e. it has some type
     // parameters, monomorphize it before unifying the
     // types
-    let module = &mut root[mod_path];
     let new_decl = match (
         enum_decl.type_parameters.is_empty(),
         type_arguments.is_empty(),
     ) {
         (true, true) => enum_decl,
-        (false, true) => enum_decl.monomorphize(module),
+        (false, true) => enum_decl.monomorphize(namespace),
         (true, false) => {
             errors.push(CompileError::DoesNotTakeTypeArguments {
                 name: enum_decl.name.clone(),
@@ -60,7 +56,7 @@ pub(crate) fn instantiate_enum(
         }
         (false, false) => {
             let module = check!(
-                module.check_submodule_mut(enum_module_path),
+                namespace.check_submodule_mut(enum_module_path),
                 return err(warnings, errors),
                 warnings,
                 errors,
@@ -118,9 +114,7 @@ pub(crate) fn instantiate_enum(
             let typed_expr = check!(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
-                    init,
-                    root,
-                    mod_path,
+                    namespace,
                     return_type_annotation: enum_field_type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,

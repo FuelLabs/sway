@@ -12,9 +12,7 @@ pub(crate) fn instantiate_function_application(
     name: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    init: &namespace::Module,
-    root: &mut namespace::Root,
-    mod_path: &namespace::Path,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -42,8 +40,7 @@ pub(crate) fn instantiate_function_application(
             let mut type_arguments = type_arguments;
             for type_argument in type_arguments.iter_mut() {
                 type_argument.type_id = check!(
-                    root.resolve_type_with_self(
-                        mod_path,
+                    namespace.resolve_type_with_self(
                         look_up_type_id(type_argument.type_id),
                         self_type,
                         type_argument.span.clone(),
@@ -119,9 +116,7 @@ pub(crate) fn instantiate_function_application(
         .map(|(arg, param)| {
             let args = TypeCheckArguments {
                 checkee: arg.clone(),
-                init,
-                root,
-                mod_path,
+                namespace,
                 return_type_annotation: param.r#type,
                 help_text: "The argument that has been provided to this function's type does \
                     not match the declared type of the parameter in the function \

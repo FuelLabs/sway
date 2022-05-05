@@ -2520,7 +2520,10 @@ mod tests {
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
         parser::{Rule, SwayParser},
-        semantic_analysis::{namespace, TreeType, TypedParseTree},
+        semantic_analysis::{
+            namespace::{self, Namespace},
+            TreeType, TypedParseTree,
+        },
     };
     use pest::Parser;
 
@@ -2676,14 +2679,10 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
-        let init = namespace::Module::default();
-        let mut root = namespace::Root::from(init.clone());
-        let mod_path = &[];
+        let mut namespace = Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
             parse_tree.tree,
-            &init,
-            &mut root,
-            mod_path,
+            &mut namespace,
             &program_type,
             &build_config,
             &mut dead_code_graph,
