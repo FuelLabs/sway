@@ -169,33 +169,7 @@
                     <main>
                         <h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
-<p>Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.</p>
-<pre><code class="language-sway">contract;
-
-use std::hash::*;
-use std::storage::*;
-
-abi Store {
-    fn store(x: u64, y: b256);
-}
-
-// Storage slot domain separator for a primitive
-const STORAGE_SLOT_PRIMITIVE: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-// Storage slot domain separator for a mapping
-const STORAGE_SLOT_MAPPING: b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
-
-impl Store for Contract {
-    fn store(x: u64, y: b256) {
-        // Compute storage slot for primitive and store `x`
-        let storage_slot_primitive = hash_value(STORAGE_SLOT_PRIMITIVE, HashMethod::Sha256);
-        store(storage_slot_primitive, x);
-
-        // Compute mapping slot for `y` and store `x`
-        let storage_slot_mapping = hash_pair(STORAGE_SLOT_MAPPING, y, HashMethod::Sha256);
-        store(storage_slot_mapping, x);
-    }
-}
-</code></pre>
+<p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="../blockchain-development/storage.html#manual-storage-management">manual storage management</a>. Moreover, storage mappings have to be managed manually for now as shown in the <a href="../examples/subcurrency.html">Subcurrency</a> example.</p>
 <h2 id="serialization-and-deserialization"><a class="header" href="#serialization-and-deserialization">Serialization and Deserialization</a></h2>
 <p>Serialization/encoding of structures (Solidity's <code>abi.encode()</code> and <code>abi.encodePacked()</code>) is not yet implemented. Therefore, hashing an encoded struct is not possible without some manual work.</p>
 <p>Serializing arbitrary structures can be accomplished manually by composition of recursive <code>hash_pair()</code> invocations. See the above example for hashing a pair of values.</p>

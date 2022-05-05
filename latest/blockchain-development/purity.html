@@ -169,19 +169,8 @@
                     <main>
                         <h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
 <p>A function is <em>pure</em> if it does not access any <a href="./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
-<p>Functions are pure by default but can be opted in to impurity via the <code>impure</code> keyword<sup class="footnote-reference"><a href="#1">1</a></sup>:</p>
-<pre><code class="language-sway">// an impure function
-impure fn foo() {
-    does_something_with_storage();
-}
-
-// a pure function, as there is no impure specification.
-fn bar() {}
-</code></pre>
+<p>In Sway, functions are pure by default but can be opted in to impurity via function annotations which are currently work-in-progress.</p>
 <p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
-<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
-<p>This may be changed in the future to an annotation, like <code>#[impure]</code>, or something else. Don't get too attached to this keyword.</p>
-</div>
 
                     </main>
 
