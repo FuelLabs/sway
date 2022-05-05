@@ -127,6 +127,40 @@ jobs:
             rm tmp.txt && exit 0
           fi
 
+  build-forc-test-project:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Install Forc fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc-fmt
+      - name: Initialize test project
+        run: forc init test-proj
+      - name: Update project forc manifest to use local sway-lib-std
+        run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
+      - name: Update project cargo manifest with workspace
+        run: |
+          echo "
+          
+          [workspace]" >> test-proj/Cargo.toml
+      - name: Build test project
+        run: forc build --path test-proj
+      - name: Run test project's test suite
+        run: cd test-proj && forc test
+
   cargo-build-workspace:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
@@ -371,6 +405,7 @@ jobs:
   notify-slack-on-failure:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
@@ -401,6 +436,7 @@ jobs:
     # Only do this job if publishing a release
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
@@ -462,6 +498,7 @@ jobs:
   build-publish-master-image:
     needs:
       [
+        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-core,
         build-sway-lib-std,
@@ -498,6 +535,15 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          # Key is named differently to avoid collision
+          key: ${{ runner.os }}-multi-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-multi-buildx
 
       - name: Log in to the ghcr.io registry
         uses: docker/login-action@v1
