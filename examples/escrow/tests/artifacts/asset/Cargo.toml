@@ -1,9 +1,9 @@
 [project]
-authors = ["Braqzen"]
-edition = "2021"
-license = "Apache-2.0"
 name = "asset"
 version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
 fuel-gql-client = { version = "0.6", default-features = false }

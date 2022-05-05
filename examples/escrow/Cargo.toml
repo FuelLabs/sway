@@ -1,9 +1,9 @@
 [project]
-authors = ["Braqzen"]
-edition = "2021"
-license = "Apache-2.0"
 name = "escrow"
 version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+license = "Apache-2.0"
 
 [workspace]
 
