@@ -184,22 +184,27 @@ $ tree .
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <p>For additional information on dependency management, see: <a href="../forc/dependencies.html">here</a>.</p>
 <pre><code class="language-toml">[project]
-authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
+authors = [&quot;User&quot;]
 entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
-name = &quot;counter&quot;
+name = &quot;my-fuel-project&quot;
 
 [dependencies]
-std = { path = &quot;../../sway-lib-std&quot; }
 </code></pre>
 <p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
-<pre><code class="language-sway">script;
+<pre><code class="language-sway">contract;
 
-fn main() {
+abi MyContract {
+    fn test_function() -&gt; bool;
+}
 
+impl MyContract for Contract {
+    fn test_function() -&gt; bool {
+        true
+    }
 }
 </code></pre>
-<p>The project is a <em>script</em>, one of four different project types. For additional information on different project types, see <a href="../sway-program-types/index.html">here</a>.</p>
+<p>The project is a <em>contract</em>, one of four different project types. For additional information on different project types, see <a href="../sway-program-types/index.html">here</a>.</p>
 <p>We now compile our project with <code>forc build</code>, passing the flag <code>--print-finalized-asm</code> to view the generated assembly:</p>
 <pre><code class="language-console">$ forc build --print-finalized-asm
 .program:
@@ -208,18 +213,29 @@ noop
 DATA_SECTION_OFFSET[0..32]
 DATA_SECTION_OFFSET[32..64]
 lw   $ds $is 1
-add  $ds $ds $is
-ret  $zero                    ; main fn returns unit value
+add  $$ds $$ds $is
+lw   $r1 $fp i73              ; load input function selector
+lw   $r0 data_1               ; load fn selector for comparison
+eq   $r0 $r1 $r0              ; function selector comparison
+jnzi $r0 i11                  ; jump to selected function
+rvrt $zero                    ; revert if no selectors matched
+lw   $r0 data_0               ; literal instantiation
+ret  $r0
 .data:
+data_0 .bool 0x01
+data_1 .u32 0x2151bd4b
 
-Compiled script &quot;my-fuel-project&quot;.
-Bytecode size is 28 bytes.
+  Compiled contract &quot;my-fuel-project&quot;.
+  Bytecode size is 68 bytes.
 </code></pre>
-<p>To run this script, use <code>forc run</code> (note that <code>fuel-core</code> must be running for this to work):</p>
-<pre><code class="language-console">$ forc run
-Bytecode size is 28 bytes.
-[Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
+<p>To test this contract, use <code>forc test</code>:</p>
+<pre><code class="language-console">$ forc test
+running 1 test
+test can_get_contract_id ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 </code></pre>
+<p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 
                     </main>
 
