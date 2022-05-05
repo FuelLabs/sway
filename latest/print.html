@@ -1593,10 +1593,6 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the generated IR (true)</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
-<p><code>--use-orig-asm</code> </p>
-<p>Whether to compile using the original (pre- IR) pipeline</p>
-<p><code>--use-orig-parser</code> </p>
-<p>Whether to compile using the original (pest based) parser</p>
 <h2 id="examples"><a class="header" href="#examples">EXAMPLES:</a></h2>
 <p>Compile the sway files of the current project.</p>
 <pre><code class="language-console">$ forc build
@@ -1728,10 +1724,6 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
-<p><code>--use-orig-asm</code> </p>
-<p>Whether to compile using the original (pre- IR) pipeline</p>
-<p><code>--use-orig-parser</code> </p>
-<p>Whether to compile using the original (pest based) parser</p>
 <h2 id="examples-1"><a class="header" href="#examples-1">EXAMPLES:</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
@@ -1891,10 +1883,6 @@ JSON output will be &quot;minified&quot;, i.e. all on one line without whitespac
 <p>Pretty-print the outputs from the node</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
-<p><code>--use-orig-asm</code> </p>
-<p>Whether to compile using the original (pre- IR) pipeline</p>
-<p><code>--use-orig-parser</code> </p>
-<p>Whether to compile using the original (pest based) parser</p>
 <h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
 <p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
 <code>forc init</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
