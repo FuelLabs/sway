@@ -200,7 +200,7 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            instantiate_function_application_from_method_application(
+            instantiate_function_application_simple(
                 CallPath {
                     prefixes: vec![],
                     suffix: method_name,
@@ -254,7 +254,7 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            instantiate_function_application_from_method_application(
+            instantiate_function_application_simple(
                 call_path,
                 contract_call_params_map,
                 args_buf,

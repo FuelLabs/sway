@@ -11,7 +11,7 @@ use std::collections::{HashMap, VecDeque};
 
 use self::{
     enum_instantiation::instantiate_enum, function_application::instantiate_function_application,
-    function_application::instantiate_function_application_from_method_application,
+    function_application::instantiate_function_application_simple,
     method_application::resolve_method_name, method_application::type_check_method_application,
 };
 
@@ -262,7 +262,7 @@ impl TypedExpression {
             warnings,
             errors
         );
-        instantiate_function_application_from_method_application(
+        instantiate_function_application_simple(
             call_path,
             HashMap::new(),
             arguments,
@@ -721,23 +721,12 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let function_declaration = check!(
-            namespace.get_decl_from_call_path(&name),
+        let typed_function_decl = check!(
+            namespace.expect_function_decl_from_call_path(&name),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_function_decl = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => decl,
-            _ => {
-                errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str().to_string(),
-                    span: name.span(),
-                    what_it_is: function_declaration.friendly_name(),
-                });
-                return err(warnings, errors);
-            }
-        };
         instantiate_function_application(
             typed_function_decl,
             name,

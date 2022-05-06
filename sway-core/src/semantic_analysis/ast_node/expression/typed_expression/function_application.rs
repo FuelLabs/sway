@@ -8,7 +8,7 @@ use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
-    typed_function_decl: TypedFunctionDeclaration,
+    function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
@@ -24,10 +24,10 @@ pub(crate) fn instantiate_function_application(
 
     // if this is a generic function, monomorphize its internal types
     let typed_function_decl = match (
-        typed_function_decl.type_parameters.is_empty(),
+        function_decl.type_parameters.is_empty(),
         type_arguments.is_empty(),
     ) {
-        (true, true) => typed_function_decl,
+        (true, true) => function_decl,
         (true, false) => {
             let type_arguments_span = type_arguments
                 .iter()
@@ -56,7 +56,7 @@ pub(crate) fn instantiate_function_application(
                 );
             }
             check!(
-                typed_function_decl.monomorphize(type_arguments, self_type),
+                function_decl.monomorphize(type_arguments, self_type),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -113,16 +113,16 @@ pub(crate) fn instantiate_function_application(
     )
 }
 
-pub(crate) fn instantiate_function_application_from_method_application(
+pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: VecDeque<TypedExpression>,
-    method: TypedFunctionDeclaration,
+    function_decl: TypedFunctionDeclaration,
     selector: Option<ContractCallMetadata>,
     is_constant: IsConstant,
     span: Span,
 ) -> CompileResult<TypedExpression> {
-    let args_and_names = method
+    let args_and_names = function_decl
         .parameters
         .iter()
         .zip(arguments.into_iter())
@@ -132,7 +132,7 @@ pub(crate) fn instantiate_function_application_from_method_application(
         call_path,
         contract_call_params,
         args_and_names,
-        method,
+        function_decl,
         selector,
         is_constant,
         span,

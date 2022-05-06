@@ -166,8 +166,8 @@ impl TypedMatchExpression {
                     check!(
                         instantiate_if_expression(
                             conditional,
-                            result,
-                            None,
+                            result.clone(),
+                            Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
                             insert_type(TypeInfo::Unknown), // TODO: figure out if this argument matters or not
                             self_type

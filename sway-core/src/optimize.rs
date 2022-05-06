@@ -1193,8 +1193,144 @@ impl FnCompiler {
         context: &mut Context,
         exp: Box<TypedExpression>,
     ) -> Result<Value, CompileError> {
-        unimplemented!()
+        let tag_span_md_idx = MetadataIndex::from_span(context, &exp.span);
+        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+            Type::Struct(aggregate) => aggregate,
+            _ => {
+                return Err(CompileError::Internal("Expected enum type here.", exp.span));
+            }
+        };
+        let exp = self.compile_expression(context, *exp)?;
+        Ok(self.current_block.ins(context).extract_value(
+            exp,
+            enum_aggregate,
+            vec![0],
+            tag_span_md_idx,
+        ))
     }
+
+    /*
+        #[allow(clippy::too_many_arguments)]
+    fn compile_if_let(
+        &mut self,
+        context: &mut Context,
+        enum_type: TypeId,
+        ast_expr: Box<TypedExpression>,
+        variant: TypedEnumVariant,
+        variable_to_assign: Ident,
+        ast_then: TypedCodeBlock,
+        ast_else: Option<Box<TypedExpression>>,
+    ) -> Result<Value, CompileError> {
+        // Similar to a regular `if` expression we create the different blocks in order, being
+        // careful to track the 'current' block as it evolves.
+        //
+        // Instead of a condition we have to match the expression result with the enum variant (by
+        // comparing the tags), and then assign the variant to a local variable, which is scoped to
+        // the `then' block.
+        let cond_span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
+        let enum_aggregate = if let Type::Struct(aggregate) =
+            convert_resolved_typeid(context, &enum_type, &ast_expr.span)?
+        {
+            aggregate
+        } else {
+            return Err(CompileError::Internal(
+                "Enum type for `if let` is not an enum.",
+                ast_expr.span,
+            ));
+        };
+        let matched_value = self.compile_expression(context, *ast_expr)?;
+        let matched_tag_value = self.current_block.ins(context).extract_value(
+            matched_value,
+            enum_aggregate,
+            vec![0],
+            cond_span_md_idx,
+        );
+        let variant_tag = variant.tag as u64;
+        let variant_tag_value = Constant::get_uint(context, 64, variant_tag, cond_span_md_idx);
+        let cond_value = self.current_block.ins(context).cmp(
+            Predicate::Equal,
+            matched_tag_value,
+            variant_tag_value,
+            cond_span_md_idx,
+        );
+        let entry_block = self.current_block;
+
+        // The true/then block, with a variable referring to the matched value.
+        let true_block_begin = self.function.create_block(context, None);
+        self.current_block = true_block_begin;
+
+        // See compile_var_decl() for details.  Copied from there, essentially.  We're still making
+        // a copy of the value into a local variable, which is probably wasteful.  But an
+        // optimisation pass is probably the best way to fix that.
+        let var_span_md_idx = MetadataIndex::from_span(context, variable_to_assign.span());
+        let variable_type = enum_aggregate
+            .get_field_type(context, &[1, variant_tag])
+            .ok_or_else(|| {
+                CompileError::Internal(
+                    "Unable to get type of enum variant from its tag.",
+                    variable_to_assign.span().clone(),
+                )
+            })?;
+        let var_init_value = self.current_block.ins(context).extract_value(
+            matched_value,
+            enum_aggregate,
+            vec![1, variant_tag],
+            var_span_md_idx,
+        );
+        let local_name = self
+            .lexical_map
+            .enter_scope()
+            .insert(variable_to_assign.as_str().to_owned());
+        let variable_ptr = self
+            .function
+            .new_local_ptr(context, local_name, variable_type, false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let variable_ptr_ty = *variable_ptr.get_type(context);
+        let variable_ptr_val = self.current_block.ins(context).get_ptr(
+            variable_ptr,
+            variable_ptr_ty,
+            0,
+            var_span_md_idx,
+        );
+        self.current_block
+            .ins(context)
+            .store(variable_ptr_val, var_init_value, var_span_md_idx);
+        let true_value = self.compile_code_block(context, ast_then)?;
+        let true_block_end = self.current_block;
+        self.lexical_map.leave_scope();
+
+        // The optional false/else block.  Does not have access to the variable.
+        let false_block_begin = self.function.create_block(context, None);
+        self.current_block = false_block_begin;
+        let false_value = match ast_else {
+            None => Constant::get_unit(context, None),
+            Some(expr) => self.compile_expression(context, *expr)?,
+        };
+        let false_block_end = self.current_block;
+
+        // Branch from the top to each of the true/false blocks and then merge from them to a final
+        // block.
+        entry_block.ins(context).conditional_branch(
+            cond_value,
+            true_block_begin,
+            false_block_begin,
+            None,
+            cond_span_md_idx,
+        );
+
+        let merge_block = self.function.create_block(context, None);
+        true_block_end
+            .ins(context)
+            .branch(merge_block, Some(true_value), None);
+        false_block_end
+            .ins(context)
+            .branch(merge_block, Some(false_value), None);
+
+        self.current_block = merge_block;
+        Ok(merge_block.get_phi(context))
+    }
+
+    */
 
     // ---------------------------------------------------------------------------------------------
 

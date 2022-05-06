@@ -101,6 +101,10 @@ pub trait NamespaceWrapper {
         &self,
         struct_name: &Ident,
     ) -> CompileResult<TypedStructDeclaration>;
+    fn expect_function_decl_from_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<TypedFunctionDeclaration>;
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid
     /// e.g. foo.bar.baz
@@ -299,13 +303,13 @@ impl NamespaceWrapper for NamespaceRef {
     fn expect_enum_decl_from_name(&self, enum_name: &Ident) -> CompileResult<TypedEnumDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let res = check!(
+        let decl = check!(
             self.get_decl_from_symbol(enum_name),
             return err(warnings, errors),
             warnings,
             errors
         );
-        match res {
+        match decl {
             TypedDeclaration::EnumDeclaration(enum_decl) => ok(enum_decl, warnings, errors),
             _ => {
                 errors.push(CompileError::EnumNotFound {
@@ -323,18 +327,43 @@ impl NamespaceWrapper for NamespaceRef {
     ) -> CompileResult<TypedEnumDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let res = check!(
+        let decl = check!(
             self.get_decl_from_call_path(call_path),
             return err(warnings, errors),
             warnings,
             errors
         );
-        match res {
+        match decl {
             TypedDeclaration::EnumDeclaration(enum_decl) => ok(enum_decl, warnings, errors),
             _ => {
                 errors.push(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
                     span: call_path.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    fn expect_function_decl_from_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<TypedFunctionDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let decl = check!(
+            self.get_decl_from_call_path(call_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match decl {
+            TypedDeclaration::FunctionDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::NotAFunction {
+                    name: call_path.span().as_str().to_string(),
+                    span: call_path.span(),
+                    what_it_is: decl.friendly_name(),
                 });
                 err(warnings, errors)
             }
