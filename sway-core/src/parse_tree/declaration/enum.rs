@@ -4,8 +4,8 @@ use crate::{
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
     semantic_analysis::{
-        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
-        NamespaceRef, NamespaceWrapper,
+        ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+        insert_type_parameters, NamespaceRef, NamespaceWrapper,
     },
     style::is_upper_camel_case,
     type_engine::*,

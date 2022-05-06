@@ -3,11 +3,12 @@ use crate::{
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
+            instantiate_unsafe_downcast,
         },
-        IsConstant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
-    type_engine::{unify, TypeId},
-    CompileError, CompileResult, Ident, Literal, NamespaceRef,
+    type_engine::unify,
+    CompileResult, Ident, Literal, NamespaceRef,
 };
 
 use sway_types::span::Span;
@@ -83,24 +84,10 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee(fields) => {
-            match_struct(exp, fields, type_id, namespace)
+        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
+        TypedScrutineeVariant::EnumScrutinee { variant, value } => {
+            match_enum(exp, variant, *value, span, namespace)
         }
-        TypedScrutineeVariant::EnumScrutinee {
-            enum_name,
-            variant_name,
-            variant_type_id,
-            variant_tag,
-            value,
-        } => match_enum(
-            exp,
-            enum_name,
-            variant_name,
-            variant_type_id,
-            variant_tag,
-            *value,
-            span,
-        ),
         TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
     }
 }
@@ -136,7 +123,6 @@ fn match_variable(
 fn match_struct(
     exp: &TypedExpression,
     fields: Vec<TypedStructScrutineeField>,
-    struct_type_id: TypeId,
     namespace: NamespaceRef,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
@@ -179,25 +165,21 @@ fn match_struct(
 
 fn match_enum(
     exp: &TypedExpression,
-    enum_name: Ident,
-    variant_name: Ident,
-    variant_type_id: TypeId,
-    variant_tag: usize,
-    value: TypedScrutinee,
+    variant: TypedEnumVariant,
+    scrutinee: TypedScrutinee,
     span: Span,
+    namespace: NamespaceRef,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut match_req_map = vec![];
-    let mut match_decl_map = vec![];
-
-    let unsafe_downcast = TypedExpression {
-        expression: todo!(),
-        return_type: todo!(),
-        is_constant: todo!(),
-        span,
-    };
-
+    let (mut match_req_map, unsafe_downcast) = instantiate_unsafe_downcast(exp, variant, span);
+    let (mut new_match_req_map, match_decl_map) = check!(
+        matcher(&unsafe_downcast, scrutinee, namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    match_req_map.append(&mut new_match_req_map);
     ok((match_req_map, match_decl_map), warnings, errors)
 }
 
@@ -212,14 +194,14 @@ fn match_tuple(
     let mut match_req_map = vec![];
     let mut match_decl_map = vec![];
     for (pos, elem) in elems.into_iter().enumerate() {
-        let tuple_index = check!(
+        let tuple_index_access = check!(
             instantiate_tuple_index_access(exp.clone(), pos, span.clone(), span.clone(), namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
         let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(&tuple_index, elem, namespace),
+            matcher(&tuple_index_access, elem, namespace),
             return err(warnings, errors),
             warnings,
             errors

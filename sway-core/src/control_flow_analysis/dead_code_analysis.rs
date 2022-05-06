@@ -752,7 +752,24 @@ fn connect_expression(
                 tree_type,
             )
         }
-        UnsafeDowncast { .. } => unimplemented!(),
+        UnsafeDowncast { exp, .. } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "",
+            tree_type,
+            exp.span.clone(),
+        ),
+        EnumTag { exp } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "",
+            tree_type,
+            exp.span.clone(),
+        ),
         IfExp {
             condition,
             then,

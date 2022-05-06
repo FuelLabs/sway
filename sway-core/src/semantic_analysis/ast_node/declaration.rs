@@ -1,4 +1,20 @@
-use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
+mod create_type_id;
+mod function;
+mod monomorphize;
+mod storage;
+mod variable;
+pub(crate) use create_type_id::CreateTypeId;
+pub use function::*;
+pub(crate) use monomorphize::Monomorphize;
+pub use storage::*;
+pub use variable::*;
+
+use self::monomorphize::MonomorphizeHelper;
+
+use super::{
+    impl_trait::Mode, insert_type_parameters, CopyTypes, TypeMapping, TypedCodeBlock,
+    TypedExpression,
+};
 use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
     Ident, NamespaceRef, NamespaceWrapper,
@@ -8,13 +24,6 @@ use sway_types::{Property, Span};
 
 use derivative::Derivative;
 use std::hash::{Hash, Hasher};
-
-mod function;
-mod storage;
-mod variable;
-pub use function::*;
-pub use storage::*;
-pub use variable::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -42,10 +51,10 @@ pub enum TypedDeclaration {
     StorageReassignment(TypeCheckedStorageReassignment),
 }
 
-impl TypedDeclaration {
+impl CopyTypes for TypedDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
@@ -267,137 +276,34 @@ impl PartialEq for TypedStructDeclaration {
     }
 }
 
-impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(
-        self,
-        type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: bool,
-        namespace: &NamespaceRef,
-        self_type: Option<TypeId>,
-        call_site_span: Option<&Span>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_arguments_span = type_arguments
-            .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or(self.span.clone());
-        match (self.type_parameters.is_empty(), type_arguments.is_empty()) {
-            (true, true) => ok(self, warnings, errors),
-            (false, true) => {
-                let type_mapping = insert_type_parameters(&self.type_parameters);
-                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
-                ok(new_decl, warnings, errors)
-            }
-            (true, false) => {
-                if enforce_type_arguments {
-                    errors.push(CompileError::NeedsTypeArguments {
-                        name: self.name.clone(),
-                        span: call_site_span.unwrap_or(self.name.span()).clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                errors.push(CompileError::DoesNotTakeTypeArguments {
-                    name: self.name,
-                    span: type_arguments_span,
-                });
-                err(warnings, errors)
-            }
-            (false, false) => {
-                let mut type_arguments = type_arguments;
-                for type_argument in type_arguments.iter_mut() {
-                    let type_id = match self_type {
-                        Some(self_type) => namespace.resolve_type_with_self(
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            &type_argument.span,
-                            enforce_type_arguments,
-                        ),
-                        None => namespace
-                            .resolve_type_without_self(&look_up_type_id(type_argument.type_id)),
-                    };
-                    type_argument.type_id = check!(
-                        type_id,
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or(self.span.clone());
-                if self.type_parameters.len() != type_arguments.len() {
-                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
-                        expected: self.type_parameters.len(),
-                        span: type_arguments_span,
-                    });
-                    return err(warnings, errors);
-                }
-                let type_mapping = insert_type_parameters(&self.type_parameters);
-                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
-                for ((_, interim_type), type_argument) in
-                    type_mapping.iter().zip(type_arguments.iter())
-                {
-                    match self_type {
-                        Some(self_type) => {
-                            let (mut new_warnings, new_errors) = unify_with_self(
-                                *interim_type,
-                                type_argument.type_id,
-                                self_type,
-                                &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                        None => {
-                            let (mut new_warnings, new_errors) = unify(
-                                *interim_type,
-                                type_argument.type_id,
-                                &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                    }
-                }
-                ok(new_decl, warnings, errors)
-            }
-        }
-    }
-
-    fn monomorphize_inner(
-        self,
-        type_mapping: &[(TypeParameter, usize)],
-        namespace: &NamespaceRef,
-    ) -> Self {
-        let old_type_id = self.type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedStructDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.fields
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
     }
+}
 
-    pub(crate) fn type_id(&self) -> TypeId {
+impl CreateTypeId for TypedStructDeclaration {
+    fn type_id(&self) -> TypeId {
         insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
         })
+    }
+}
+
+impl MonomorphizeHelper for TypedStructDeclaration {
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -427,6 +333,15 @@ impl PartialEq for TypedStructField {
     }
 }
 
+impl CopyTypes for TypedStructField {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.r#type)),
+        };
+    }
+}
+
 impl TypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
@@ -434,13 +349,6 @@ impl TypedStructField {
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
-        };
     }
 
     pub(crate) fn expect_field_from_fields<'a>(
@@ -493,6 +401,37 @@ impl PartialEq for TypedEnumDeclaration {
     }
 }
 
+impl CopyTypes for TypedEnumDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedEnumDeclaration {
+    fn type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
+        })
+    }
+}
+
+impl MonomorphizeHelper for TypedEnumDeclaration {
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+}
+
 impl TypedEnumDeclaration {
     pub(crate) fn monomorphize(
         self,
@@ -510,12 +449,12 @@ impl TypedEnumDeclaration {
                 if enforce_type_arguments {
                     errors.push(CompileError::NeedsTypeArguments {
                         name: self.name.clone(),
-                        span: call_site_span.unwrap_or(self.name.span()).clone(),
+                        span: call_site_span.unwrap_or_else(|| self.name.span()).clone(),
                     });
                     return err(warnings, errors);
                 }
                 let type_mapping = insert_type_parameters(&self.type_parameters);
-                let new_decl = self.monomorphize_inner(namespace, &type_mapping);
+                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
                 ok(new_decl, warnings, errors)
             }
             (true, false) => {
@@ -523,7 +462,7 @@ impl TypedEnumDeclaration {
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
-                    .unwrap_or(self.span.clone());
+                    .unwrap_or_else(|| self.span.clone());
                 errors.push(CompileError::DoesNotTakeTypeArguments {
                     name: self.name,
                     span: type_arguments_span,
@@ -554,7 +493,7 @@ impl TypedEnumDeclaration {
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
-                    .unwrap_or(self.span.clone());
+                    .unwrap_or_else(|| self.span.clone());
                 if self.type_parameters.len() != type_arguments.len() {
                     errors.push(CompileError::IncorrectNumberOfTypeArguments {
                         given: type_arguments.len(),
@@ -564,7 +503,7 @@ impl TypedEnumDeclaration {
                     return err(warnings, errors);
                 }
                 let type_mapping = insert_type_parameters(&self.type_parameters);
-                let new_decl = self.monomorphize_inner(namespace, &type_mapping);
+                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
                 for ((_, interim_type), type_argument) in
                     type_mapping.iter().zip(type_arguments.iter())
                 {
@@ -597,11 +536,7 @@ impl TypedEnumDeclaration {
         }
     }
 
-    fn monomorphize_inner(
-        self,
-        namespace: &NamespaceRef,
-        type_mapping: &[(TypeParameter, usize)],
-    ) -> Self {
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &NamespaceRef) -> Self {
         let old_type_id = self.type_id();
         let mut new_decl = self;
         new_decl.copy_types(type_mapping);
@@ -613,24 +548,28 @@ impl TypedEnumDeclaration {
         new_decl
     }
 
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
-        })
-    }
-
-    pub(crate) fn get_variant(self, variant_name: String) -> Option<TypedEnumVariant> {
-        self.variants
+    pub(crate) fn expect_variant_from_name(
+        self,
+        variant_name: &Ident,
+    ) -> CompileResult<TypedEnumVariant> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .variants
             .iter()
             .cloned()
             .find(|x| x.name.as_str() == variant_name.as_str())
+        {
+            Some(variant) => ok(variant, warnings, errors),
+            None => {
+                errors.push(CompileError::UnknownEnumVariant {
+                    enum_name: self.name,
+                    variant_name: variant_name.clone(),
+                    span: self.span,
+                });
+                err(warnings, errors)
+            }
+        }
     }
 }
 #[derive(Debug, Clone, Eq)]
@@ -663,8 +602,8 @@ impl PartialEq for TypedEnumVariant {
     }
 }
 
-impl TypedEnumVariant {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedEnumVariant {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
@@ -673,7 +612,9 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
+}
 
+impl TypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.to_string(),
@@ -690,8 +631,8 @@ pub struct TypedConstantDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-impl TypedConstantDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedConstantDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.value.copy_types(type_mapping);
     }
 }
@@ -711,8 +652,8 @@ pub struct TypedTraitDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-impl TypedTraitDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedTraitDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.interface_surface
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -763,8 +704,8 @@ pub struct TypedReassignment {
     pub(crate) rhs: TypedExpression,
 }
 
-impl TypedReassignment {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedReassignment {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
         self.lhs
             .iter_mut()
@@ -780,8 +721,8 @@ impl TypedReassignment {
     }
 }
 
-impl TypedTraitFn {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedTraitFn {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.return_type = if let Some(matching_id) =
             look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
         {
@@ -790,6 +731,9 @@ impl TypedTraitFn {
             insert_type(look_up_type_id_raw(self.return_type))
         };
     }
+}
+
+impl TypedTraitFn {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.

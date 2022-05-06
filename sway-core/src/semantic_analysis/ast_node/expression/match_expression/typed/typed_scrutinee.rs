@@ -1,5 +1,8 @@
 use sway_types::{Ident, Span};
 
+use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
+use crate::semantic_analysis::ast_node::declaration::Monomorphize;
+use crate::semantic_analysis::TypedEnumVariant;
 use crate::{
     error::{err, ok},
     semantic_analysis::TypedStructField,
@@ -21,11 +24,7 @@ pub(crate) enum TypedScrutineeVariant {
     Variable(Ident),
     StructScrutinee(Vec<TypedStructScrutineeField>),
     EnumScrutinee {
-        #[allow(dead_code)]
-        enum_name: Ident,
-        variant_name: Ident,
-        variant_type_id: TypeId,
-        variant_tag: usize,
+        variant: TypedEnumVariant,
         value: Box<TypedScrutinee>,
     },
     Tuple(Vec<TypedScrutinee>),
@@ -122,35 +121,32 @@ impl TypedScrutinee {
                 value,
                 span,
             } => {
-                unimplemented!()
-                /*
+                // grab the enum name and variant name from the call path
                 let enum_name = call_path.prefixes.last().unwrap().clone();
                 let variant_name = call_path.suffix;
-                let enum_decl = match namespace.get_decl_from_symbol(&enum_name).value {
-                    Some(TypedDeclaration::EnumDeclaration(enum_decl)) => {
-                        enum_decl.monomorphize(&namespace)
-                    }
-                    _ => {
-                        errors.push(CompileError::EnumNotFound {
-                            name: enum_name.clone(),
-                            span,
-                        });
-                        return err(warnings, errors);
-                    }
-                };
-                let type_id = enum_decl.type_id();
-                let (variant_name, variant_type_id, variant_tag) =
-                    match enum_decl.get_variant(variant_name.to_string()) {
-                        Some(o) => (o.name.clone(), o.tag, o.r#type),
-                        None => {
-                            errors.push(CompileError::UnknownEnumVariant {
-                                enum_name,
-                                variant_name,
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                // grab the enum definition
+                let enum_decl = check!(
+                    namespace.expect_enum_decl_from_name(&enum_name), // TODO: edit this so that it is found via call_path
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // monomorphize the enum definition
+                let enum_decl = check!(
+                    enum_decl.monomorphize(vec!(), false, &namespace, Some(self_type), None),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let enum_type_id = enum_decl.type_id();
+                // check to see if the variant exists and grab it if it does
+                let variant = check!(
+                    enum_decl.expect_variant_from_name(&variant_name),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // type check the nested scrutinee
                 let typed_value = check!(
                     TypedScrutinee::type_check(*value, namespace, self_type),
                     return err(warnings, errors),
@@ -159,16 +155,12 @@ impl TypedScrutinee {
                 );
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::EnumScrutinee {
-                        enum_name,
-                        variant_name,
-                        variant_type_id,
-                        variant_tag,
+                        variant,
                         value: Box::new(typed_value),
                     },
-                    type_id,
+                    type_id: enum_type_id,
                     span,
                 }
-                */
             }
             Scrutinee::Tuple { elems, span } => {
                 let mut typed_elems = vec![];

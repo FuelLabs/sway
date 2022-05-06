@@ -1,6 +1,10 @@
 use crate::{
-    constants::*, error::*, semantic_analysis::TypedExpression, type_engine::TypeId,
-    type_engine::*, Ident, TypeParameter, Visibility,
+    constants::*,
+    error::*,
+    semantic_analysis::{CopyTypes, TypeMapping, TypedExpression},
+    type_engine::TypeId,
+    type_engine::*,
+    Ident, Visibility,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,8 +75,8 @@ impl PartialEq for TypedVariableDeclaration {
     }
 }
 
-impl TypedVariableDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedVariableDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_ascription =
             match look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping) {
                 Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),

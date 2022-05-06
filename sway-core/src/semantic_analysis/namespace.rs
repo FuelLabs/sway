@@ -1,6 +1,6 @@
 use crate::{
     error::*, type_engine::*, CallPath, CompileResult, Ident, TypeArgument, TypeInfo,
-    TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use crate::semantic_analysis::{
@@ -13,6 +13,8 @@ use std::collections::{BTreeMap, HashMap};
 
 pub mod arena;
 pub use arena::*;
+
+use super::{CopyTypes, TypeMapping};
 
 type ModuleName = String;
 type TraitName = CallPath;
@@ -158,7 +160,7 @@ impl Namespace {
         &mut self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &TypeMapping,
     ) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.

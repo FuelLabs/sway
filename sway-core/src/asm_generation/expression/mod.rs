@@ -319,19 +319,9 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        TypedExpressionVariant::UnsafeDowncast {
-            value,
-            enum_type_id,
-            variant_tag,
-        } => unimplemented!(),
-        TypedExpressionVariant::IfLet {
-            enum_type,
-            variant,
-            then,
-            r#else,
-            variable_to_assign,
-            expr,
-        } => unimplemented!(),
+        TypedExpressionVariant::UnsafeDowncast { .. } => unimplemented!(),
+        TypedExpressionVariant::EnumTag { .. } => unimplemented!(),
+        TypedExpressionVariant::IfLet { .. } => unimplemented!(),
         TypedExpressionVariant::TypeProperty {
             property, type_id, ..
         } => match property {

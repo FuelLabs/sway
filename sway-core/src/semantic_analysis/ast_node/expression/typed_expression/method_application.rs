@@ -347,7 +347,7 @@ fn re_parse_expression(
 
 pub(crate) fn resolve_method_name(
     method_name: &MethodName,
-    args_buf: VecDeque<TypedExpression>,
+    arguments: VecDeque<TypedExpression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
     namespace: NamespaceRef,
@@ -367,7 +367,7 @@ pub(crate) fn resolve_method_name(
                 (Some(type_name), Some(type_name_span)) => {
                     (type_name.clone(), type_name_span.clone())
                 }
-                _ => args_buf
+                _ => arguments
                     .get(0)
                     .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
                     .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
@@ -417,15 +417,15 @@ pub(crate) fn resolve_method_name(
                 &call_path.prefixes[..],
                 from_module,
                 self_type,
-                &args_buf,
+                &arguments,
             )
         }
         MethodName::FromModule { method_name } => {
-            let ty = args_buf
+            let ty = arguments
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf)
+            namespace.find_method_for_type(ty, method_name, &[], None, self_type, &arguments)
         }
     }
 }

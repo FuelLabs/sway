@@ -1,6 +1,10 @@
 use crate::{
-    build_config::BuildConfig, error::*, parse_tree::ident, type_engine::*, CompileError, Rule,
-    TypedDeclaration,
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::ident,
+    semantic_analysis::{CopyTypes, TypeMapping},
+    type_engine::*,
+    CompileError, Rule, TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -45,6 +49,15 @@ impl From<&TypeParameter> for TypedDeclaration {
         TypedDeclaration::GenericTypeForFunctionScope {
             name: n.name_ident.clone(),
         }
+    }
+}
+
+impl CopyTypes for TypeParameter {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.type_id)),
+        };
     }
 }
 
@@ -138,13 +151,6 @@ impl TypeParameter {
             });
         }
         ok(buf, warnings, errors)
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.type_id)),
-        };
     }
 }
 

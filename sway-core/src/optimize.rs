@@ -628,19 +628,11 @@ impl FnCompiler {
                 then,
                 r#else,
             } => self.compile_if(context, *condition, *then, r#else),
-            TypedExpressionVariant::UnsafeDowncast {
-                value,
-                enum_type_id,
-                variant_tag,
-            } => self.compile_unsafe_downcast(context, value, enum_type_id, variant_tag),
-            TypedExpressionVariant::IfLet {
-                enum_type,
-                expr,
-                variant,
-                variable_to_assign,
-                then,
-                r#else,
-            } => unimplemented!(),
+            TypedExpressionVariant::UnsafeDowncast { exp, variant_tag } => {
+                self.compile_unsafe_downcast(context, exp, variant_tag)
+            }
+            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
+            TypedExpressionVariant::IfLet { .. } => unimplemented!(),
             TypedExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -1170,22 +1162,21 @@ impl FnCompiler {
     fn compile_unsafe_downcast(
         &mut self,
         context: &mut Context,
-        value: Box<TypedExpression>,
-        enum_type_id: TypeId,
+        exp: Box<TypedExpression>,
         variant_tag: usize,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
-        let enum_aggregate = match convert_resolved_typeid(context, &enum_type_id, &value.span)? {
+        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal(
                     "Enum type for `if let` is not an enum.",
-                    value.span,
+                    exp.span,
                 ));
             }
         };
         // compile the expression to asm
-        let compiled_value = self.compile_expression(context, *value)?;
+        let compiled_value = self.compile_expression(context, *exp)?;
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -1193,6 +1184,16 @@ impl FnCompiler {
             vec![1, variant_tag as u64],
             None,
         ))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_enum_tag(
+        &mut self,
+        context: &mut Context,
+        exp: Box<TypedExpression>,
+    ) -> Result<Value, CompileError> {
+        unimplemented!()
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -2088,10 +2089,6 @@ impl FnCompiler {
 //
 // NOTE: ALL symbols should be represented in this data structure to be sure that we
 // don't accidentally ignore (i.e., neglect to shadow with) a new binding.
-//
-// A further complication is although we have enter_scope() and leave_scope() to potentially add
-// and remove shadowing symbols, the re-use of symbol names can't be allowed, so all names are
-// reserved even when they're not 'currently' valid.
 
 struct LexicalMap {
     symbol_map: Vec<HashMap<String, String>>,
@@ -2112,17 +2109,6 @@ impl LexicalMap {
             symbol_map: vec![root_symbol_map],
             reserved_sybols,
         }
-    }
-
-    fn enter_scope(&mut self) -> &mut Self {
-        self.symbol_map.push(HashMap::new());
-        self
-    }
-
-    fn leave_scope(&mut self) -> &mut Self {
-        assert!(self.symbol_map.len() > 1);
-        self.symbol_map.pop();
-        self
     }
 
     fn get(&self, symbol: &str) -> Option<&String> {

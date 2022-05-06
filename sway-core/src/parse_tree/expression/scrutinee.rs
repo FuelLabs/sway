@@ -282,13 +282,6 @@ impl Scrutinee {
         ok(scrutinee, warnings, errors)
     }
 
-    /// If this is an enum scrutinee, returns the name of the inner value that should be
-    /// assigned to upon successful destructuring.
-    /// Should only be used when destructuring enums via `if let`
-    pub(crate) fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
-        unimplemented!()
-    }
-
     pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
         match self {
             Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],

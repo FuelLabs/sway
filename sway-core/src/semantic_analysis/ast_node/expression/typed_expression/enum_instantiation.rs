@@ -3,6 +3,7 @@ use generational_arena::Index;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
+use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
 use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
 use crate::type_engine::{look_up_type_id, TypeId};
 
@@ -42,35 +43,26 @@ pub(crate) fn instantiate_enum(
         errors
     );
 
-    let (enum_field_type, tag, variant_name) = match enum_decl
-        .variants
-        .iter()
-        .find(|x| x.name.as_str() == enum_field_name.as_str())
-    {
-        Some(o) => (o.r#type, o.tag, o.name.clone()),
-        None => {
-            errors.push(CompileError::UnknownEnumVariant {
-                enum_name: enum_decl.name.clone(),
-                variant_name: enum_field_name.clone(),
-                span: enum_field_name.span().clone(),
-            });
-            return err(warnings, errors);
-        }
-    };
+    let enum_variant = check!(
+        enum_decl.clone().expect_variant_from_name(&enum_field_name),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], look_up_type_id(enum_field_type)) {
+    match (&args[..], look_up_type_id(enum_variant.r#type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
                 return_type: enum_decl.type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
-                    tag,
+                    tag: enum_variant.tag,
                     contents: None,
                     enum_decl,
-                    variant_name,
-                    instantiation_span: instantiation_span.clone(),
+                    variant_name: enum_variant.name,
+                    instantiation_span,
                 },
                 is_constant: IsConstant::No,
                 span: enum_field_name.span().clone(),
@@ -84,7 +76,7 @@ pub(crate) fn instantiate_enum(
                     checkee: single_expr.clone(),
                     namespace,
                     crate_namespace,
-                    return_type_annotation: enum_field_type,
+                    return_type_annotation: enum_variant.r#type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
                     build_config,
@@ -104,11 +96,11 @@ pub(crate) fn instantiate_enum(
                 TypedExpression {
                     return_type: enum_decl.type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
-                        tag,
+                        tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
-                        variant_name,
-                        instantiation_span: instantiation_span.clone(),
+                        variant_name: enum_variant.name,
+                        instantiation_span,
                     },
                     is_constant: IsConstant::No,
                     span: enum_field_name.span().clone(),

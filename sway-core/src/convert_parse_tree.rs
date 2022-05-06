@@ -2334,7 +2334,7 @@ fn pattern_to_scrutinee(
             value: literal_to_literal(ec, literal)?,
             span,
         },
-        Pattern::Constant(path_expr) => {
+        Pattern::Constant(_path_expr) => {
             unimplemented!(); // TODO figure out what this case is
                               // Scrutinee::EnumScrutinee {
                               //     call_path: path_expr_to_call_path(ec, path_expr)?,

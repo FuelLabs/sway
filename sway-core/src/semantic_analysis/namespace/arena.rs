@@ -1,3 +1,5 @@
+use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
+use crate::semantic_analysis::ast_node::declaration::Monomorphize;
 use crate::{
     error::*,
     semantic_analysis::{ast_node::*, declaration::TypedStorageField},
@@ -8,7 +10,7 @@ use crate::{
         *,
     },
     type_engine::*,
-    CallPath, TypeArgument, TypeParameter, Visibility,
+    CallPath, TypeArgument, Visibility,
 };
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
@@ -75,7 +77,7 @@ pub trait NamespaceWrapper {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &TypeMapping,
     );
     fn get_decl_from_path_and_name(
         &self,
@@ -332,7 +334,7 @@ impl NamespaceWrapper for NamespaceRef {
             _ => {
                 errors.push(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
-                    span: call_path.span().clone(),
+                    span: call_path.span(),
                 });
                 err(warnings, errors)
             }
@@ -446,7 +448,7 @@ impl NamespaceWrapper for NamespaceRef {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &TypeMapping,
     ) {
         write_module(
             move |ns| ns.copy_methods_to_type(old_type.clone(), new_type, type_mapping),
@@ -794,7 +796,7 @@ impl NamespaceWrapper for NamespaceRef {
                             decl.monomorphize(
                                 type_arguments,
                                 enforce_type_arguments,
-                                &self,
+                                self,
                                 Some(self_type),
                                 Some(span)
                             ),
@@ -809,7 +811,7 @@ impl NamespaceWrapper for NamespaceRef {
                             decl.monomorphize(
                                 type_arguments,
                                 enforce_type_arguments,
-                                &self,
+                                self,
                                 Some(self_type),
                                 Some(span)
                             ),
@@ -849,7 +851,7 @@ impl NamespaceWrapper for NamespaceRef {
             {
                 Some(TypedDeclaration::StructDeclaration(decl)) => {
                     let new_decl = check!(
-                        decl.monomorphize(type_arguments, false, &self, None, None),
+                        decl.monomorphize(type_arguments, false, self, None, None),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -858,7 +860,7 @@ impl NamespaceWrapper for NamespaceRef {
                 }
                 Some(TypedDeclaration::EnumDeclaration(decl)) => {
                     let new_decl = check!(
-                        decl.monomorphize(type_arguments, false, &self, None, None),
+                        decl.monomorphize(type_arguments, false, self, None, None),
                         return err(warnings, errors),
                         warnings,
                         errors

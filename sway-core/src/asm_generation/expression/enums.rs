@@ -5,6 +5,7 @@ use crate::asm_lang::{
     ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     VirtualRegister,
 };
+use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
 use crate::{
     error::*,
     semantic_analysis::ast_node::{TypedEnumDeclaration, TypedExpression},
