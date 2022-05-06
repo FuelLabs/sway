@@ -1,6 +1,6 @@
 library u128;
 
-// U128 represented as two components of a base-(2**64) number : (upper, lower) , where value = upper^(2^64) + lower
+// U128 represented as two components of a base-(2**64) number : (upper, lower) , where value = (2**64)**upper + lower
 pub struct U128 {
     upper: u64,
     lower: u64,
@@ -25,6 +25,7 @@ impl From for U128 {
             lower: l,
         }
     }
+
 }
 
 /// Methods on the U128 type
@@ -68,6 +69,21 @@ impl U128 {
         U128 {
             upper: upper,
             lower: lower,
+        }
+    }
+
+    fn mul(self, other: U128) -> U128 {
+        
+        U128 {
+            upper: 0,
+            lower: 0,
+        }
+    }
+
+    fn div(self, other: U128) -> U128{
+        U128 {
+            upper: 0,
+            lower: 0,
         }
     }
 }
