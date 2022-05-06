@@ -1,6 +1,6 @@
 library u128;
 
-// U128 represented as two components of a base-(2**64) number : (upper, lower) , where value = (2**64)**upper + lower
+// U128 represented as two components of a base-(2**64) number : (upper, lower) , where value = (2**64)^upper + lower
 pub struct U128 {
     upper: u64,
     lower: u64,
@@ -43,7 +43,7 @@ impl U128 {
         let mut upper = self.upper + other.upper;
 
         // If overflow has occurred in the lower component addition, carry
-        if lower <= self.lower && other.lower != 0 {
+        if lower <= self.lower {
             upper = upper + 1;
         };
 
@@ -73,7 +73,6 @@ impl U128 {
     }
 
     fn mul(self, other: U128) -> U128 {
-        
         U128 {
             upper: 0,
             lower: 0,
