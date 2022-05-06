@@ -3,7 +3,7 @@ library token;
 
 use ::address::Address;
 use ::contract_id::ContractId;
-use ::panic::panic;
+use ::revert::revert;
 use ::tx::*;
 use ::context::call_frames::contract_id;
 
@@ -54,7 +54,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     let mut output_found = false;
 
     // If an output of type `OutputVariable` is found, check if its `amount` is
-    // zero. As one cannot transfer zero coins to an output without a panic, a
+    // zero. As one cannot transfer zero coins to an output without a revert, a
     // variable output with a value of zero is by definition unused.
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
@@ -69,7 +69,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     }
 
     if !output_found {
-        panic(0);
+        revert(0);
     } else {
         asm(r1: recipient.value, r2: output_index, r3: amount, r4: asset_id.value) {
             tro r1 r2 r3 r4;
