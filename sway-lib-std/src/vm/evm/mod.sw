@@ -1,4 +1,4 @@
 library evm;
 
-dep eth_address;
+dep evm_address;
 dep ecr;

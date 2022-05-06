@@ -4,7 +4,7 @@ use std::assert::assert;
 use std::b512::B512;
 use std::ecr::EcRecoverError;
 use std::result::*;
-use std::vm::evm::eth_address::EthAddress;
+use std::vm::evm::evm_address::EvmAddress;
 use std::vm::evm::ecr::ec_recover_address;
 
 fn main() -> bool {
@@ -21,7 +21,7 @@ fn main() -> bool {
 
     // Get the expected ethereum address
     let pubkeyhash = 0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1;
-    let ethereum_address = ~EthAddress::from(pubkeyhash);
+    let ethereum_address = ~EvmAddress::from(pubkeyhash);
 
     let msg_hash = 0x8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e;
 
@@ -31,7 +31,7 @@ fn main() -> bool {
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // recover the address:
-    let result: Result<EthAddress, EcRecoverError> = ec_recover_address(signature, msg_hash);
+    let result: Result<EvmAddress, EcRecoverError> = ec_recover_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
     recovered_address == ethereum_address
