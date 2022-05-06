@@ -24,7 +24,7 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
     if !errors.is_empty() {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
-        errors.sort_by(|lhs, rhs| lhs.span().0.cmp(&rhs.span().0));
+        errors.sort_by_key(|err| err.span().start());
         err(Vec::new(), errors)
     } else {
         // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
