@@ -3,13 +3,13 @@
 To initialize a new project with Forc, use `forc init`:
 
 ```sh
-forc init hello_world
+forc init my-fuel-project
 ```
 
 Here is the project that Forc has initialized:
 
 ```console
-$ cd hello_world
+$ cd my-fuel-project
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
@@ -21,8 +21,10 @@ $ tree .
 
 `Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
 
+For additional information on dependency management, see: [here](../forc/dependencies.md).
+
 ```toml
-{{#include ../../../examples/hello_world/Forc.toml}}
+{{#include ../../../examples/counter/Forc.toml}}
 ```
 
 Here are the contents of the only Sway file in the project, and the main entry point, `src/main.sw`:
@@ -51,7 +53,7 @@ add  $ds $ds $is
 ret  $zero                    ; main fn returns unit value
 .data:
 
-Compiled script "hello_world".
+Compiled script "my-fuel-project".
 Bytecode size is 28 bytes.
 ```
 

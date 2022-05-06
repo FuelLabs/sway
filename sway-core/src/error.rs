@@ -1,6 +1,7 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    convert_parse_tree::ConvertParseTreeError,
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
@@ -8,7 +9,7 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::fmt;
+use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -200,8 +201,12 @@ impl CompileWarning {
         (self.span.start(), self.span.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.span.path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.span.path_str()
     }
 
     /// Returns the line and column start and end
@@ -708,7 +713,7 @@ pub enum CompileError {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
-    #[error("Generic type \"{ty}\" was unable to be inferred. Insufficient type information provided. Try annotating its type.")]
+    #[error("Cannot infer type for type parameter \"{ty}\". Insufficient type information provided. Try annotating its type.")]
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
@@ -718,12 +723,14 @@ pub enum CompileError {
     Immediate18TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span },
-    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span },
     #[error(
         "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
     )]
     DisallowedJi { span: Span },
+    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnei { span: Span },
+    #[error("The opcode \"jnzi\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnzi { span: Span },
     #[error(
         "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
     )]
@@ -919,6 +926,15 @@ pub enum CompileError {
     UnexpectedDeclaration { decl_type: &'static str, span: Span },
     #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
     ContractAddressMustBeKnown { span: Span },
+    #[error("{}", error)]
+    ConvertParseTree {
+        #[from]
+        error: ConvertParseTreeError,
+    },
+    #[error("{}", error)]
+    Lex { error: sway_parse::LexError },
+    #[error("{}", error)]
+    Parse { error: sway_parse::ParseError },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1000,8 +1016,12 @@ impl CompileError {
         (sp.start(), sp.end())
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
         self.internal_span().path()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.internal_span().path_str()
     }
 
     pub fn internal_span(&self) -> &Span {
@@ -1078,8 +1098,9 @@ impl CompileError {
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
             Immediate24TooLarge { span, .. } => span,
-            DisallowedJnei { span, .. } => span,
             DisallowedJi { span, .. } => span,
+            DisallowedJnei { span, .. } => span,
+            DisallowedJnzi { span, .. } => span,
             DisallowedLw { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
             UnnecessaryImmediate { span, .. } => span,
@@ -1137,6 +1158,9 @@ impl CompileError {
             InvalidVariableName { span, .. } => span,
             UnexpectedDeclaration { span, .. } => span,
             ContractAddressMustBeKnown { span, .. } => span,
+            ConvertParseTree { error } => error.span_ref(),
+            Lex { error } => error.span_ref(),
+            Parse { error } => &error.span,
         }
     }
 

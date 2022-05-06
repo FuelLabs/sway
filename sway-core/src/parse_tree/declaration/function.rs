@@ -20,9 +20,9 @@ pub struct FunctionDeclaration {
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,
-    pub(crate) parameters: Vec<FunctionParameter>,
+    pub parameters: Vec<FunctionParameter>,
     pub span: Span,
-    pub(crate) return_type: TypeInfo,
+    pub return_type: TypeInfo,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) return_type_span: Span,
 }
@@ -54,7 +54,6 @@ impl FunctionDeclaration {
             Purity::Pure
         };
         let _fn_keyword = signature.next().unwrap();
-
         let name = check!(
             ident::parse_from_pair(signature.next().unwrap(), config),
             return err(warnings, errors),
@@ -90,10 +89,7 @@ impl FunctionDeclaration {
                 _ => {
                     errors.push(CompileError::Internal(
                         "Unexpected token while parsing function signature.",
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        Span::from_pest(pair.as_span(), path.clone()),
                     ));
                 }
             }
@@ -128,16 +124,13 @@ impl FunctionDeclaration {
             warnings,
             errors
         );
-
-        let return_type_span = Span {
-            span: if let Some(ref pair) = return_type_pair {
-                pair.as_span()
-            } else {
-                /* if this has no return type, just use the fn params as the span. */
-                parameters_span
-            },
-            path: path.clone(),
+        let pest_span = if let Some(ref pair) = return_type_pair {
+            pair.as_span()
+        } else {
+            /* if this has no return type, just use the fn params as the span. */
+            parameters_span
         };
+        let return_type_span = Span::from_pest(pest_span, path.clone());
         let return_type = match return_type_pair {
             Some(ref pair) => check!(
                 TypeInfo::parse_from_pair(pair.clone(), config),
@@ -149,10 +142,7 @@ impl FunctionDeclaration {
         };
 
         let body = parts.next().unwrap();
-        let whole_block_span = Span {
-            span: body.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = Span::from_pest(body.as_span(), path.clone());
         let body = check!(
             CodeBlock::parse_from_pair(body, config),
             crate::CodeBlock {
@@ -171,10 +161,7 @@ impl FunctionDeclaration {
                 return_type_span,
                 visibility,
                 body,
-                span: Span {
-                    span: pair.as_span(),
-                    path,
-                },
+                span: Span::from_pest(pair.as_span(), path),
                 return_type,
                 type_parameters,
             },
@@ -206,8 +193,8 @@ impl FunctionDeclaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunctionParameter {
-    pub(crate) name: Ident,
+pub struct FunctionParameter {
+    pub name: Ident,
     pub(crate) type_id: TypeId,
     pub(crate) type_span: Span,
 }
@@ -223,18 +210,10 @@ impl FunctionParameter {
         let mut pairs_buf = Vec::new();
         for pair in pairs {
             if pair.as_str().trim() == "self" {
-                let type_span = Span {
-                    span: pair.as_span(),
-                    path: path.clone(),
-                };
+                let type_span = Span::from_pest(pair.as_span(), path.clone());
                 let type_id = insert_type(TypeInfo::SelfType);
-                let name = Ident::new_with_override(
-                    "self",
-                    Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
-                );
+                let name =
+                    Ident::new_with_override("self", Span::from_pest(pair.as_span(), path.clone()));
                 pairs_buf.push(FunctionParameter {
                     name,
                     type_id,
@@ -251,10 +230,7 @@ impl FunctionParameter {
                 errors
             );
             let type_pair = parts.next().unwrap();
-            let type_span = Span {
-                span: type_pair.as_span(),
-                path: path.clone(),
-            };
+            let type_span = Span::from_pest(type_pair.as_span(), path.clone());
             let type_id = insert_type(check!(
                 TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,

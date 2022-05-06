@@ -19,14 +19,14 @@ use pest::iterators::Pair;
 pub struct EnumDeclaration {
     pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) variants: Vec<EnumVariant>,
+    pub variants: Vec<EnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct EnumVariant {
-    pub(crate) name: Ident,
+pub struct EnumVariant {
+    pub name: Ident,
     pub(crate) r#type: TypeInfo,
     pub(crate) tag: usize,
     pub(crate) span: Span,
@@ -69,10 +69,7 @@ impl EnumDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let path = config.map(|c| c.path());
-        let whole_enum_span = Span {
-            span: decl_inner.as_span(),
-            path,
-        };
+        let whole_enum_span = Span::from_pest(decl_inner.as_span(), path);
         let inner = decl_inner.into_inner();
         let mut visibility = Visibility::Private;
         let mut enum_name = None;
@@ -202,10 +199,7 @@ impl EnumVariant {
         if let Some(decl_inner) = decl_inner {
             let fields = decl_inner.into_inner().collect::<Vec<_>>();
             for i in (0..fields.len()).step_by(2) {
-                let variant_span = Span {
-                    span: fields[i].as_span(),
-                    path: config.map(|c| c.path()),
-                };
+                let variant_span = Span::from_pest(fields[i].as_span(), config.map(|c| c.path()));
                 let name = check!(
                     ident::parse_from_pair(fields[i].clone(), config),
                     return err(warnings, errors),

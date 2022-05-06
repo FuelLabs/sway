@@ -59,10 +59,7 @@ fn to_bytecode_mut(
         println!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
-            Span {
-                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                path: None,
-            },
+            Span::new(" ".into(), 0, 0, None).unwrap(),
         ));
         return err(vec![], errors);
     }
@@ -78,11 +75,10 @@ fn to_bytecode_mut(
             .iter()
             .fold(0, |acc, item| match &item.opcode {
                 AllocatedOpcode::LWDataId(_reg, data_label)
-                    if data_section
+                    if !data_section
                         .type_of_data(data_label)
                         .expect("data label references non existent data -- internal error")
-                        .stack_size_of()
-                        > 1 =>
+                        .is_copy_type() =>
                 {
                     acc + 8
                 }

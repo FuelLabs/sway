@@ -1,0 +1,11 @@
+[[package]]
+name = 'import_trailing_comma'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

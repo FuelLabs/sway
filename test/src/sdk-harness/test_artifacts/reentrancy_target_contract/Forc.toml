@@ -1,0 +1,10 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "reentrancy_target_contract"
+
+[dependencies]
+std = { path = "../../../../../sway-lib-std" }
+reentrancy_attacker_abi = { path = "../reentrancy_attacker_abi"}
+reentrancy_target_abi = { path = "../reentrancy_target_abi"}

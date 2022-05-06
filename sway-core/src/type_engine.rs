@@ -1,16 +1,16 @@
 use crate::error::*;
-
-use sway_types::span::Span;
-
 use std::iter::FromIterator;
+use sway_types::span::Span;
 
 mod engine;
 mod integer_bits;
 mod type_info;
+mod unresolved_type_check;
 pub use engine::*;
 pub use integer_bits::*;
 use sway_types::Property;
 pub use type_info::*;
+pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
 
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
@@ -62,7 +62,7 @@ fn generic_enum_resolution() {
     use crate::Ident;
     let engine = Engine::default();
 
-    let sp = Span::empty();
+    let sp = Span::dummy();
 
     let variant_types = vec![TypedEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
@@ -113,7 +113,7 @@ fn generic_enum_resolution() {
 fn basic_numeric_unknown() {
     let engine = Engine::default();
 
-    let sp = Span::empty();
+    let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
     let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
@@ -123,14 +123,14 @@ fn basic_numeric_unknown() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.resolve_type(id, &sp).unwrap(),
+        engine.resolve_type(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs() {
     let engine = Engine::default();
-    let sp = Span::empty();
+    let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
     let id2 = engine.insert_type(TypeInfo::Ref(id));
@@ -142,14 +142,14 @@ fn chain_of_refs() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.resolve_type(id3, &sp).unwrap(),
+        engine.resolve_type(id3, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs_2() {
     let engine = Engine::default();
-    let sp = Span::empty();
+    let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
     let id2 = engine.insert_type(TypeInfo::Ref(id));
@@ -161,7 +161,7 @@ fn chain_of_refs_2() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.resolve_type(id3, &sp).unwrap(),
+        engine.resolve_type(id3, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
@@ -187,36 +187,36 @@ fn parse_str_type(raw: &str, span: Span) -> CompileResult<TypeInfo> {
 
 #[test]
 fn test_str_parse() {
-    match parse_str_type("str[20]", Span::empty()).value {
+    match parse_str_type("str[20]", Span::dummy()).value {
         Some(value) if value == TypeInfo::Str(20) => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[]", Span::empty()).value {
+    match parse_str_type("str[]", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[ab]", Span::empty()).value {
+    match parse_str_type("str[ab]", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str [ab]", Span::empty()).value {
+    match parse_str_type("str [ab]", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
 
-    match parse_str_type("not even a str[ type", Span::empty()).value {
+    match parse_str_type("not even a str[ type", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("", Span::empty()).value {
+    match parse_str_type("", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("20", Span::empty()).value {
+    match parse_str_type("20", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("[20]", Span::empty()).value {
+    match parse_str_type("[20]", Span::dummy()).value {
         None => (),
         _ => panic!("failed test"),
     }

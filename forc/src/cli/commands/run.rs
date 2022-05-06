@@ -18,12 +18,16 @@ pub struct Command {
     #[clap(long)]
     pub use_orig_asm: bool,
 
+    /// Whether to compile using the original (pest based) parser.
+    #[clap(long)]
+    pub use_orig_parser: bool,
+
     /// Only craft transaction and print it out.
     #[clap(long)]
     pub dry_run: bool,
 
     /// URL of the Fuel Client Node
-    #[clap(env = "FUEL_NODE_URL", default_value = "127.0.0.1:4000")]
+    #[clap(env = "FUEL_NODE_URL", default_value = "http://127.0.0.1:4000")]
     pub node_url: String,
 
     /// Kill Fuel Node Client after running the code.

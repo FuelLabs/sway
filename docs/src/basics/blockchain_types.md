@@ -2,7 +2,7 @@
 
 Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.
 
-These are provided via the standard library ([`lib-std`](https://github.com/FuelLabs/sway-lib-std)) which both add a degree of type-safety, as well as make the intention of the developer more clear.
+These are provided via the standard library ([`lib-std`](https://github.com/FuelLabs/sway/tree/master/sway-lib-std)) which both add a degree of type-safety, as well as make the intention of the developer more clear.
 
 ## `Address` Type
 

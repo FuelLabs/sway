@@ -5,7 +5,9 @@ use clap::Parser;
 use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
+use std::path::PathBuf;
 use std::{fs, path::Path, sync::Arc};
+use sway_core::BuildConfig;
 use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
@@ -23,11 +25,17 @@ pub struct App {
     /// - Exits with `1` and prints a diff if formatting is required.
     #[clap(short, long)]
     pub check: bool,
+    /// Path to the project, if not specified, current working directory will be used.
+    #[clap(short, long)]
+    pub path: Option<String>,
 }
 
 fn main() -> Result<()> {
     let app = App::parse();
-    let dir = std::env::current_dir()?;
+    let dir = match app.path.clone() {
+        Some(p) => PathBuf::from(p),
+        None => std::env::current_dir()?,
+    };
     format_pkg_at_dir(app, &dir)
 }
 
@@ -35,8 +43,8 @@ fn main() -> Result<()> {
 fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
-            let mut manifest_file = path.clone();
-            manifest_file.push(constants::MANIFEST_FILE_NAME);
+            let manifest_path = path.clone();
+            let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
             let files = get_sway_files(path);
             let mut contains_edits = false;
 
@@ -45,7 +53,15 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                     // todo read options from manifest file
                     let formatting_options = FormattingOptions::default();
                     let file_content: Arc<str> = Arc::from(file_content);
-                    match get_formatted_data(file_content.clone(), formatting_options) {
+                    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+                        file.clone(),
+                        manifest_path.clone(),
+                    );
+                    match get_formatted_data(
+                        file_content.clone(),
+                        formatting_options,
+                        Some(&build_config),
+                    ) {
                         Ok((_, formatted_content)) => {
                             if app.check {
                                 if *file_content != *formatted_content {

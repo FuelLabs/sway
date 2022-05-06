@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'generics_unhelpful_error'
-dependencies = ['core']
+dependencies = []

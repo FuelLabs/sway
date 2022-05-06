@@ -41,6 +41,24 @@ _This information is not vital if you are new to the language, or programming in
 
 Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.
 
+## Tuples
+
+Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums. An example of a tuple declaration is provided below.
+
+```sway
+let my_tuple: (u64, bool, u64) = (100, false, 10000);
+```
+
+The values within this tuple can then be accessed with a `.` syntax in order of the type, starting at an index of 0 like shown in the example provided below.
+
+```sway
+let x: u64 = my_tuple.0;
+let y: bool = my_tuple.1;
+```
+
+Tuples can also contain tuples within themselves, and be used in destructing syntax to declare multiple values at once.
+
+Common usecases for tuples are returning multiple values from a function, packing parameters into a function, or storing a series of related values.
 ## Enums
 
 _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at _enum declaration syntax_:

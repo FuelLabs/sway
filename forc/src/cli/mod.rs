@@ -12,6 +12,7 @@ pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
+pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
@@ -31,6 +32,7 @@ struct Opt {
 enum Forc {
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
+    #[clap(visible_alias = "b")]
     Build(BuildCommand),
     Clean(CleanCommand),
     #[clap(after_help = completions::COMPLETIONS_HELP)]
@@ -39,13 +41,11 @@ enum Forc {
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
+    #[clap(visible_alias = "t")]
     Test(TestCommand),
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
-    /// Find all forc plugins available via `PATH`.
-    ///
-    /// Prints the absolute path to each discovered plugin on a new line.
-    Plugins,
+    Plugins(PluginsCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -68,7 +68,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Deploy(command) => deploy::exec(command).await,
         Forc::Init(command) => init::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
-        Forc::Plugins => plugins::exec(),
+        Forc::Plugins(command) => plugins::exec(command),
         Forc::Run(command) => run::exec(command).await,
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,

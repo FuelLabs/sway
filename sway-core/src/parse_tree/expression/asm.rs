@@ -27,10 +27,7 @@ impl AsmExpression {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Self>> {
         let path = config.map(|c| c.path());
-        let whole_block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = Span::from_pest(pair.as_span(), path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -64,10 +61,7 @@ impl AsmExpression {
                             warnings,
                             errors
                         ),
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        Span::from_pest(pair.as_span(), path.clone()),
                     ));
                 }
                 Rule::type_name => {
@@ -106,7 +100,7 @@ impl AsmExpression {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmOp {
+pub struct AsmOp {
     pub(crate) op_name: Ident,
     pub(crate) op_args: Vec<Ident>,
     pub(crate) span: Span,
@@ -142,7 +136,7 @@ impl PartialEq for AsmOp {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct AsmRegister {
+pub struct AsmRegister {
     pub(crate) name: String,
 }
 
@@ -169,10 +163,7 @@ impl AsmOp {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let opcode = check!(
             ident::parse_from_pair(iter.next().unwrap(), config),
@@ -186,16 +177,11 @@ impl AsmOp {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    args.push(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    immediate_value =
+                        Some(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 _ => unreachable!(),
             }
@@ -278,13 +264,18 @@ fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
     let mut errors = vec![];
 
     match op.as_str().to_lowercase().as_str() {
+        "ji" => {
+            errors.push(CompileError::DisallowedJi {
+                span: op.span().clone(),
+            });
+        }
         "jnei" => {
             errors.push(CompileError::DisallowedJnei {
                 span: op.span().clone(),
             });
         }
-        "ji" => {
-            errors.push(CompileError::DisallowedJi {
+        "jnzi" => {
+            errors.push(CompileError::DisallowedJnzi {
                 span: op.span().clone(),
             });
         }

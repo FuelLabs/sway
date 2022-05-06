@@ -12,7 +12,7 @@ forc run [OPTIONS] [NODE_URL]
 URL of the Fuel Client Node
 
 [env: FUEL_NODE_URL=]
-[default: 127.0.0.1:4000]
+[default: http://127.0.0.1:4000]
 
 
 ## OPTIONS:
@@ -133,3 +133,9 @@ Silent mode. Don't output any warnings or errors to the command line
 
 
 Whether to compile using the original (pre- IR) pipeline
+
+
+`--use-orig-parser` 
+
+
+Whether to compile using the original (pest based) parser

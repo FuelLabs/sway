@@ -124,6 +124,7 @@ mod ir_builder {
             rule operation() -> IrAstOperation
                 = op_asm()
                 / op_branch()
+                / op_bitcast()
                 / op_call()
                 / op_cbr()
                 / op_cmp()
@@ -156,6 +157,11 @@ mod ir_builder {
                         ops,
                         meta_idx
                     )
+                }
+
+            rule op_bitcast() -> IrAstOperation
+                = "bitcast" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::BitCast(val, ty)
                 }
 
             rule op_branch() -> IrAstOperation
@@ -311,10 +317,7 @@ mod ir_builder {
 
             rule asm_op_arg_imm() -> Ident
                 = imm:$("i" d:decimal()) {
-                    Ident::new(Span {
-                        span: pest::Span::new(imm.into(), 0, imm.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(imm.into(), 0, imm.len(), None).unwrap())
                 }
 
             rule constant() -> IrAstConst
@@ -417,10 +420,7 @@ mod ir_builder {
 
             rule id_id() -> Ident
                 = !ast_ty() id:$(id_char0() id_char()*) _ {
-                    Ident::new(Span {
-                        span: pest::Span::new(id.into(), 0, id.len()).unwrap(),
-                        path: None,
-                    })
+                    Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
             rule metadata_decl() -> (MdIdxRef, IrMetadatum)
@@ -532,6 +532,7 @@ mod ir_builder {
             Vec<IrAstAsmOp>,
             Option<MdIdxRef>,
         ),
+        BitCast(String, IrAstTy),
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
@@ -835,6 +836,12 @@ mod ir_builder {
                     block
                         .ins(context)
                         .asm_block(args, body, return_type, return_name, md_idx)
+                }
+                IrAstOperation::BitCast(val, ty) => {
+                    let to_ty = ty.to_ir_type(context);
+                    block
+                        .ins(context)
+                        .bitcast(*val_map.get(&val).unwrap(), to_ty, opt_ins_md_idx)
                 }
                 IrAstOperation::Br(to_block_name) => {
                     let to_block = named_blocks.get(&to_block_name).unwrap();

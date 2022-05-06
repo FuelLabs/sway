@@ -2,29 +2,27 @@
 resolver = "2"
 members = [
     "docstrings",
-    "examples/build-all-examples",
     "forc",
     "forc-explore",
     "forc-fmt",
+    "forc-gm",
     "forc-lsp",
     "forc-pkg",
     "forc-util",
-    "parser",
+    "scripts/examples-checker",
+    "scripts/forc-documenter",
     "sway-core",
     "sway-fmt",
     "sway-ir",
     "sway-lsp",
+    "sway-parse",
     "sway-types",
     "sway-utils",
     "test",
     "test-sig-gen-util",
-    "scripts/forc-documenter"
 ]
 exclude = [
-    "examples/fizzbuzz",
-    "examples/hello_world",
-    "examples/subcurrency",
-    "examples/wallet_smart_contract",
+    "examples/*"
 ]
 
 [profile.dev.package.sway-lsp]

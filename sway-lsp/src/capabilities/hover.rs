@@ -41,7 +41,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
 
 fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
     let value = match &token.token_type {
-        TokenType::Variable(var_details) => {
+        TokenType::VariableDeclaration(var_details) => {
             let var_type = match &var_details.var_body {
                 VarBody::FunctionCall(fn_name) => get_var_type_from_fn(fn_name, documents),
                 VarBody::Type(var_type) => var_type.clone(),
@@ -56,17 +56,21 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
             )
         }
         TokenType::FunctionDeclaration(func_details) => func_details.signature.clone(),
-        TokenType::Struct(struct_details) => format!(
+        TokenType::StructDeclaration(struct_details) => format!(
             "{}struct {}",
             extract_visibility(&struct_details.visibility),
             &token.name
         ),
-        TokenType::Trait(trait_details) => format!(
+        TokenType::TraitDeclaration(trait_details) => format!(
             "{}trait {}",
             extract_visibility(&trait_details.visibility),
             &token.name
         ),
-        TokenType::Enum => format!("enum {}", &token.name),
+        TokenType::EnumDeclaration(enum_details) => format!(
+            "{}enum {}",
+            extract_visibility(&enum_details.visibility),
+            &token.name
+        ),
         _ => token.name.clone(),
     };
 

@@ -43,6 +43,8 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
+    /// If this expression deterministically_aborts 100% of the time, this function returns
+    /// `true`. Used in dead-code and control-flow analysis.
     pub(crate) fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
         match &self.expression {
@@ -1361,7 +1363,7 @@ impl TypedExpression {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(join_spans)
+                    .reduce(Span::join)
                     .unwrap_or_else(|| call_path.suffix.span().clone());
                 errors.push(CompileError::DoesNotTakeTypeArguments {
                     name: call_path.suffix,
@@ -2411,6 +2413,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::TypeProperty {
                 property: builtin,
                 type_id,
+                span: span.clone(),
             },
             return_type,
             is_constant: IsConstant::No,
@@ -2425,8 +2428,6 @@ impl TypedExpression {
         new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let pest_span = span.clone().span;
-        let path = span.clone().path;
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
@@ -2437,8 +2438,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2448,8 +2448,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2459,8 +2458,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2470,8 +2468,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2482,8 +2479,7 @@ impl TypedExpression {
                         Literal::handle_parse_int_error(
                             e,
                             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                            pest_span,
-                            path,
+                            span.clone(),
                         )
                     }),
                     insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
@@ -2606,6 +2602,7 @@ mod tests {
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
             use_orig_asm: false,
+            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
@@ -2636,24 +2633,19 @@ mod tests {
 
     #[test]
     fn test_array_type_check_non_homogeneous_0() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::U64(0),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2669,24 +2661,19 @@ mod tests {
 
     #[test]
     fn test_array_type_check_non_homogeneous_1() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::U64(0),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2709,28 +2696,23 @@ mod tests {
 
     #[test]
     fn test_array_type_check_bad_count() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2746,14 +2728,9 @@ mod tests {
 
     #[test]
     fn test_array_type_check_empty() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         let expr = Expression::Array {
             contents: Vec::new(),
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check(

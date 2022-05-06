@@ -89,6 +89,7 @@ pub(crate) enum AllocatedOpcode {
     CTMV(AllocatedRegister, AllocatedRegister),
     JI(VirtualImmediate24),
     JNEI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JNZI(AllocatedRegister, VirtualImmediate18),
     RET(AllocatedRegister),
     RETD(AllocatedRegister, AllocatedRegister),
     CFEI(VirtualImmediate24),
@@ -219,6 +220,7 @@ impl fmt::Display for AllocatedOp {
             CTMV(a, b)      => format!("ctmv {} {}", a, b),
             JI(a)           => format!("ji   {}", a),
             JNEI(a, b, c)   => format!("jnei {} {} {}", a, b, c),
+            JNZI(a, b)      => format!("jnzi {} {}", a, b),
             RET(a)          => format!("ret  {}", a),
             RETD(a, b)      => format!("retd  {} {}", a, b),
             CFEI(a)         => format!("cfei {}", a),
@@ -330,6 +332,7 @@ impl AllocatedOp {
             CTMV(a, b)      => VmOp::CTMV(a.to_register_id(), b.to_register_id()),
             JI  (a)         => VmOp::JI  (a.value),
             JNEI(a, b, c)   => VmOp::JNEI(a.to_register_id(), b.to_register_id(), c.value),
+            JNZI(a, b)      => VmOp::JNZI(a.to_register_id(), b.value),
             RET (a)         => VmOp::RET (a.to_register_id()),
             RETD(a, b)      => VmOp::RETD (a.to_register_id(), b.to_register_id()),
             CFEI(a)         => VmOp::CFEI(a.value),
@@ -399,10 +402,7 @@ fn realize_lw(
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.offset_to_id(data_id) as u64;
     let offset_words = offset_bytes / 8;
-    let offset = match VirtualImmediate12::new(offset_words, Span {
-        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-        path: None
-    }) {
+    let offset = match VirtualImmediate12::new(offset_words, Span::new(" ".into(), 0, 0, None).unwrap()) {
         Ok(value) => value,
         Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
     };
@@ -412,7 +412,7 @@ fn realize_lw(
     let type_of_data = data_section.type_of_data(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
-    if type_of_data.stack_size_of() > 1 {
+    if !type_of_data.is_copy_type() {
         // load the pointer itself into the register
         // `offset_to_data_section` is in bytes. We want a byte
         // address here

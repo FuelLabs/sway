@@ -10,10 +10,7 @@ use crate::{
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{
-    span::{join_spans, Span},
-    state::StateIndex,
-};
+use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
 use std::sync::Arc;
@@ -97,6 +94,35 @@ impl std::fmt::Display for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
+    pub(crate) fn is_public(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            Declaration(decl) => decl.visibility().is_public(),
+            ReturnStatement(_)
+            | Expression(_)
+            | WhileLoop(_)
+            | SideEffect
+            | ImplicitReturnExpression(_) => false,
+        }
+    }
+
+    /// Naive check to see if this node is a function declaration of a function called `main` if
+    /// the [TreeType] is Script or Predicate.
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+        match &self {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                        TypedFunctionDeclaration { name, .. },
+                    )),
+                ..
+            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
+                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            }
+            _ => false,
+        }
+    }
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -1359,7 +1385,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1569,7 +1595,7 @@ impl TypeCheckedStorageReassignment {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                join_spans(acc, field.span.clone())
+                Span::join(acc, field.span.clone())
             })
     }
     pub fn names(&self) -> Vec<Ident> {

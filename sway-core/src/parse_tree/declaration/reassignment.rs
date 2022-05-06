@@ -6,10 +6,7 @@ use crate::{
     parser::Rule,
 };
 
-use sway_types::{
-    span::{join_spans, Span},
-    Ident,
-};
+use sway_types::{span::Span, Ident};
 
 use pest::iterators::Pair;
 
@@ -43,7 +40,7 @@ impl Reassignment {
             },
             ReassignmentTarget::StorageField(ref idents) => {
                 idents.iter().fold(idents[0].span().clone(), |acc, ident| {
-                    join_spans(acc, ident.span().clone())
+                    Span::join(acc, ident.span().clone())
                 })
             }
         }
@@ -53,10 +50,7 @@ impl Reassignment {
         config: Option<&BuildConfig>,
     ) -> CompileResult<ParserLifter<Reassignment>> {
         let path = config.map(|c| c.path());
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut iter = pair.into_inner();
@@ -179,10 +173,7 @@ fn parse_simple_variable_reassignment(
     let body = iter.next().unwrap();
     let body_result = check!(
         Expression::parse_from_pair(body.clone(), config),
-        ParserLifter::empty(error_recovery_exp(Span {
-            span: body.as_span(),
-            path
-        })),
+        ParserLifter::empty(error_recovery_exp(Span::from_pest(body.as_span(), path))),
         warnings,
         errors
     );
@@ -200,10 +191,7 @@ fn parse_subfield_reassignment(
     let mut iter = pair.into_inner();
     let lhs = iter.next().expect("guaranteed by grammar");
     let rhs = iter.next().expect("guaranteed by grammar");
-    let rhs_span = Span {
-        span: rhs.as_span(),
-        path: path.clone(),
-    };
+    let rhs_span = Span::from_pest(rhs.as_span(), path.clone());
     let body_result = check!(
         Expression::parse_from_pair(rhs, config),
         ParserLifter::empty(error_recovery_exp(rhs_span)),
@@ -232,10 +220,7 @@ fn parse_subfield_reassignment(
     for name_part in name_parts {
         let expr = Expression::SubfieldExpression {
             prefix: Box::new(expr_result.value.clone()),
-            span: Span {
-                span: name_part.as_span(),
-                path: path.clone(),
-            },
+            span: Span::from_pest(name_part.as_span(), path.clone()),
             field_to_access: check!(
                 ident::parse_from_pair(name_part, config),
                 continue,
@@ -272,16 +257,11 @@ fn parse_subfield_path_ensure_only_var(
             );
             errors.push(CompileError::UnimplementedRule(
                 a,
-                Span {
-                    span: item.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
-            let exp_result = ParserLifter::empty(error_recovery_exp(Span {
-                span: item.as_span(),
-                path,
-            }));
+            let exp_result =
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(item.as_span(), path)));
             ok(exp_result, warnings, errors)
         }
     }
@@ -315,17 +295,11 @@ fn parse_call_item_ensure_only_var(
                 warnings,
                 errors
             ),
-            span: Span {
-                span: item.as_span(),
-                path,
-            },
+            span: Span::from_pest(item.as_span(), path),
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
+                span: Span::from_pest(item.as_span(), path),
             });
             return err(warnings, errors);
         }

@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'missing_fn_arguments'
-dependencies = ['core']
+dependencies = []
