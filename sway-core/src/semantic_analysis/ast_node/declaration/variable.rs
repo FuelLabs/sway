@@ -91,11 +91,7 @@ pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
             if *x == name.as_str() {
                 Some(err(
                     vec![],
-                    [CompileError::InvalidVariableName {
-                        name: x.to_string(),
-                        span: name.span().clone(),
-                    }]
-                    .to_vec(),
+                    [CompileError::InvalidVariableName { name: name.clone() }].to_vec(),
                 ))
             } else {
                 None
