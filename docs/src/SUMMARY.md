@@ -27,6 +27,7 @@
   - [Comments and Logging](./basics/comments_and_logging.md)
   - [Control Flow](./basics/control_flow.md)
 - [Blockchain Development with Sway](./blockchain-development/index.md)
+  - [Hashing and Cryptography](./blockchain-development/hashing_and_cryptography.md)
   - [Contract Storage](./blockchain-development/storage.md)
   - [Function Purity](./blockchain-development/purity.md)
   - [Identifiers](./blockchain-development/identifiers.md)
