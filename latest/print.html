@@ -1206,6 +1206,57 @@ fn main() {
 <pre><code class="language-sway">let my_data = if some_bool &lt; 10 { foo() } else { bar() };
 </code></pre>
 <p>Note that all branches of the <code>if</code> expression must return a value of the same type.</p>
+<h3 id="match-expressions"><a class="header" href="#match-expressions"><code>match</code> expressions</a></h3>
+<p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions.</p>
+<pre><code class="language-sway">script;
+
+fn foo() {
+    // do something
+}
+fn bar() {
+    // do something
+}
+
+fn main() -&gt; u64 {
+    let x = 5;
+
+    // Match as an expression.
+    let a = match 8 {
+        7 =&gt; {
+            4
+        },
+        9 =&gt; {
+            5
+        },
+        8 =&gt; {
+            6
+        },
+        _ =&gt; {
+            100
+        },
+    };
+
+    // Match as a statement for control flow.
+    match x {
+        5 =&gt; {
+            foo()
+        },
+        _ =&gt; {
+            bar()
+        },
+    };
+
+    // Match as expression used for a return.
+    match 42 {
+        0 =&gt; {
+            24
+        },
+        foo =&gt; {
+            foo
+        },
+    }
+}
+</code></pre>
 <h2 id="loops"><a class="header" href="#loops">Loops</a></h2>
 <h3 id="while"><a class="header" href="#while"><code>while</code></a></h3>
 <p>Loops in Sway are currently limited to <code>while</code> loops. This is what they look like:</p>
