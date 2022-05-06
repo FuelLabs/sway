@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "asm_return_tuple_pointer"
 
 [dependencies]
+std = { path = "../../sway-lib-std" }

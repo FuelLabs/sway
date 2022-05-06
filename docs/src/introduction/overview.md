@@ -96,6 +96,9 @@ wallet_lib = { path = "../wallet_lib" }
 Now, open up `main.sw` in `wallet_contract/src` and copy and paste the following code:
 
 ```sway
+contract;
+use wallet_lib::Wallet;
+
 impl Wallet for Contract {
     fn receive_funds() {
     }

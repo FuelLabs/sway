@@ -94,6 +94,35 @@ impl std::fmt::Display for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
+    pub(crate) fn is_public(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            Declaration(decl) => decl.visibility().is_public(),
+            ReturnStatement(_)
+            | Expression(_)
+            | WhileLoop(_)
+            | SideEffect
+            | ImplicitReturnExpression(_) => false,
+        }
+    }
+
+    /// Naive check to see if this node is a function declaration of a function called `main` if
+    /// the [TreeType] is Script or Predicate.
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+        match &self {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                        TypedFunctionDeclaration { name, .. },
+                    )),
+                ..
+            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
+                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            }
+            _ => false,
+        }
+    }
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
