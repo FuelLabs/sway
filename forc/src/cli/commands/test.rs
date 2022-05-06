@@ -1,5 +1,5 @@
 use crate::ops::forc_build;
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process;
@@ -98,6 +98,6 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
     match child_success {
         true => Ok(()),
-        false => Err(anyhow! {"child test process failed"}),
+        false => bail!("child test process failed"),
     }
 }
