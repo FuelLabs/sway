@@ -94,6 +94,35 @@ impl std::fmt::Display for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
+    pub(crate) fn is_public(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            Declaration(decl) => decl.visibility().is_public(),
+            ReturnStatement(_)
+            | Expression(_)
+            | WhileLoop(_)
+            | SideEffect
+            | ImplicitReturnExpression(_) => false,
+        }
+    }
+
+    /// Naive check to see if this node is a function declaration of a function called `main` if
+    /// the [TreeType] is Script or Predicate.
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+        match &self {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                        TypedFunctionDeclaration { name, .. },
+                    )),
+                ..
+            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
+                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            }
+            _ => false,
+        }
+    }
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -903,10 +932,7 @@ fn reassignment(
                             ..
                         })) => {
                             if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable(
-                                    name.as_str().to_string(),
-                                    span.clone(),
-                                ));
+                                errors.push(CompileError::AssignmentToNonMutable { name });
                             }
 
                             body
@@ -921,8 +947,7 @@ fn reassignment(
                         }
                         None => {
                             errors.push(CompileError::UnknownVariable {
-                                var_name: name.as_str().to_string(),
-                                span: name.span().clone(),
+                                var_name: name.clone(),
                             });
                             return err(warnings, errors);
                         }
@@ -1139,8 +1164,7 @@ fn handle_supertraits(
                 })
             }
             _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.span().as_str().to_string(),
-                span: supertrait.name.span().clone(),
+                name: supertrait.name.clone(),
             }),
         }
     }
@@ -1369,7 +1393,7 @@ fn type_check_trait_methods(
                     }
                 }) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.to_string(),
+                        name: name.clone(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_name.clone(),
@@ -1636,8 +1660,7 @@ fn reassign_storage_subfield(
         Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
-                name: first_field.as_str().to_string(),
-                span: first_field.span().clone(),
+                name: first_field.clone(),
             });
             return err(warnings, errors);
         }
@@ -1685,8 +1708,7 @@ fn reassign_storage_subfield(
                 errors.push(CompileError::FieldNotFound {
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
-                    struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),
-                    span: field.span().clone(),
+                    struct_name: type_checked_buf.last().unwrap().name.clone(),
                 });
                 return err(warnings, errors);
             }

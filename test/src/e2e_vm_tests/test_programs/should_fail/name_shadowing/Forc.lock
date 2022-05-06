@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'name_shadowing'
-dependencies = ['core']
+dependencies = []

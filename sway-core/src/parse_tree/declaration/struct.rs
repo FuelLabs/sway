@@ -14,15 +14,15 @@ use pest::iterators::Pair;
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
     pub name: Ident,
-    pub(crate) fields: Vec<StructField>,
+    pub fields: Vec<StructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructField {
-    pub(crate) name: Ident,
+pub struct StructField {
+    pub name: Ident,
     pub(crate) r#type: TypeInfo,
     pub(crate) span: Span,
     pub(crate) type_span: Span,

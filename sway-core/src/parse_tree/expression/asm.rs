@@ -100,7 +100,7 @@ impl AsmExpression {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmOp {
+pub struct AsmOp {
     pub(crate) op_name: Ident,
     pub(crate) op_args: Vec<Ident>,
     pub(crate) span: Span,
@@ -136,7 +136,7 @@ impl PartialEq for AsmOp {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct AsmRegister {
+pub struct AsmRegister {
     pub(crate) name: String,
 }
 
@@ -264,13 +264,18 @@ fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
     let mut errors = vec![];
 
     match op.as_str().to_lowercase().as_str() {
+        "ji" => {
+            errors.push(CompileError::DisallowedJi {
+                span: op.span().clone(),
+            });
+        }
         "jnei" => {
             errors.push(CompileError::DisallowedJnei {
                 span: op.span().clone(),
             });
         }
-        "ji" => {
-            errors.push(CompileError::DisallowedJi {
+        "jnzi" => {
+            errors.push(CompileError::DisallowedJnzi {
                 span: op.span().clone(),
             });
         }

@@ -4,7 +4,7 @@ use nested_struct_args_abi::*;
 use std::assert::assert;
 
 fn main() -> bool {
-    let contract_id = 0xd7d2c1536ae34f2fea108e6c303f72d7fe96ab91e0f206b055fd734bc27e3608;
+    let contract_id = 0x7d2a7d9a5cf7d86cad139bbdacc687329767479e25fb703581e8e697579fbb1e;
     let caller = abi(NestedStructArgs, contract_id);
 
     let param_one = StructOne { inn: Inner { foo : 42 } };

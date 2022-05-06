@@ -14,10 +14,10 @@ pub struct Command {
     #[clap(short, long)]
     pub path: Option<String>,
     /// Whether to compile using the original (pre- IR) pipeline.
-    #[clap(long)]
+    #[clap(long, hide = true)]
     pub use_orig_asm: bool,
     /// Whether to compile using the original (pest based) parser.
-    #[clap(long)]
+    #[clap(long, hide = true)]
     pub use_orig_parser: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
