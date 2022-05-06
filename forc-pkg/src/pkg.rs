@@ -964,7 +964,7 @@ pub fn dependency_namespace(
     // Find all nodes that are a dependency of this one with a depth-first search.
     let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
 
-    // In order of compilation, accumulate dependency namespace refs.
+    // In order of compilation, accumulate dependency namespaces as submodules.
     let mut namespace = namespace::Module::default();
     for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
         if dep_node == node {
