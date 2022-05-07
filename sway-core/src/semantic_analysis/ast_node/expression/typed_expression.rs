@@ -1383,6 +1383,7 @@ impl TypedExpression {
                         errors
                     );
                 }
+                // perform the monomorphization
                 check!(
                     decl.monomorphize(&module, &type_arguments, Some(self_type)),
                     return err(warnings, errors),
