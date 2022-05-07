@@ -823,105 +823,46 @@ fn import_new_file(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let canonical_path = build_config
+        .dir_of_code
+        .iter()
+        .chain(statement.path_span.as_str().split("/").map(AsRef::as_ref))
+        .collect::<std::path::PathBuf>()
+        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
-    let mut canonical_path = (*build_config.dir_of_code).clone();
-    canonical_path.push(statement.path_span.as_str());
-    canonical_path.set_extension(crate::constants::DEFAULT_FILE_EXTENSION);
-
-    let file_name = match canonical_path.strip_prefix(build_config.manifest_path.parent().unwrap())
-    {
+    let manifest_dir = build_config.manifest_path.parent().unwrap();
+    let file_name = match canonical_path.strip_prefix(manifest_dir) {
         Ok(file_name) => Arc::new(file_name.to_path_buf()),
-        Err(_) => return err(warnings, errors),
+        Err(_) => return err(vec![], vec![]),
     };
 
-    let res = if canonical_path.exists() {
-        std::fs::read_to_string(&*canonical_path)
-    } else {
-        errors.push(CompileError::FileNotFound {
-            span: statement.path_span.clone(),
+    if !canonical_path.exists() {
+        let err = CompileError::FileNotFound {
             file_path: canonical_path.to_string_lossy().to_string(),
-        });
-        return ok((), warnings, errors);
-    };
+            span: statement.path_span.clone(),
+        };
+        return ok((), vec![], vec![err]);
+    }
 
-    let file_as_string: Arc<str> = match res {
+    let file_str: Arc<str> = match std::fs::read_to_string(&canonical_path) {
         Ok(s) => Arc::from(s),
         Err(e) => {
-            errors.push(CompileError::FileCouldNotBeRead {
+            let err = CompileError::FileCouldNotBeRead {
                 span: statement.path_span.clone(),
                 file_path: canonical_path.to_string_lossy().to_string(),
                 stringified_error: e.to_string(),
-            });
-            return ok((), warnings, errors);
+            };
+            return ok((), vec![], vec![err]);
         }
     };
 
     let mut dep_config = build_config.clone();
-    let dep_path = {
-        canonical_path.pop();
-        canonical_path
-    };
+    let dep_path = canonical_path.parent().unwrap();
     dep_config.file_name = file_name;
-    dep_config.dir_of_code = Arc::new(dep_path);
+    dep_config.dir_of_code = Arc::new(dep_path.to_owned());
 
-    // Parse the file.
-    let parse_tree = check!(
-        crate::parse(file_as_string.clone(), Some(&dep_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // Check we have a library, and retrieve the name.
-    let library_name = match &parse_tree.tree_type {
-        TreeType::Library { name } => name.clone(),
-        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            errors.push(CompileError::ImportMustBeLibrary {
-                span: Span::new(file_as_string, 0, 0, Some(dep_config.path())).unwrap(),
-            });
-            return err(warnings, errors);
-        }
-    };
-
-    // Fetch the name for the dep library module.
-    let dep_name = match statement.alias {
-        Some(ref alias) => alias.clone(),
-        None => library_name,
-    };
-
-    let mut dep_namespace = namespace.enter_submodule(dep_name);
-
-    // Type-check the module, populating its namespace.
-    let typed_parse_tree = check!(
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            &mut dep_namespace,
-            &parse_tree.tree_type,
-            &dep_config,
-            dead_code_graph,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // look for return path errors
-    let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
-    errors.append(&mut graph.analyze_return_paths());
-
-    // The dead code will be analyzed later wholistically with the rest of the program
-    // since we can't tell what is dead and what isn't just from looking at this file
-    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
-        &typed_parse_tree,
-        &parse_tree.tree_type,
-        dead_code_graph,
-    ) {
-        errors.push(e)
-    };
-
-    ok((), warnings, errors)
+    let alias = statement.alias.as_ref();
+    crate::compile_inner_dependency(file_str, alias, dep_config, namespace, dead_code_graph)
 }
 
 fn reassignment(

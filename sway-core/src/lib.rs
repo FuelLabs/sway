@@ -255,6 +255,81 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
+/// For internal compiler use.
+/// Compiles an included file and creates its control flow and dead code graphs.
+/// These graphs are merged into the parent program's graphs for accurate analysis.
+///
+/// TODO -- there is _so_ much duplicated code and messiness in this file around the
+/// different types of compilation and stuff. After we get to a good state with the MVP,
+/// clean up the types here with the power of hindsight
+pub(crate) fn compile_inner_dependency(
+    input: Arc<str>,
+    alias: Option<&Ident>,
+    dep_build_config: BuildConfig,
+    parent_namespace: &mut Namespace,
+    dead_code_graph: &mut ControlFlowGraph,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    // Parse the file.
+    let parse_tree = check!(
+        crate::parse(input.clone(), Some(&dep_build_config)),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Check we have a library, and retrieve the name.
+    let library_name = match &parse_tree.tree_type {
+        TreeType::Library { name } => name.clone(),
+        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+            errors.push(CompileError::ImportMustBeLibrary {
+                span: span::Span::new(input, 0, 0, Some(dep_build_config.path())).unwrap(),
+            });
+            return err(warnings, errors);
+        }
+    };
+
+    // Fetch the name for the dep library module.
+    let dep_name = match alias {
+        Some(alias) => alias.clone(),
+        None => library_name,
+    };
+
+    let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
+
+    // Type-check the module, populating its namespace.
+    let typed_parse_tree = check!(
+        TypedParseTree::type_check(
+            parse_tree.tree,
+            &mut dep_namespace,
+            &parse_tree.tree_type,
+            &dep_build_config,
+            dead_code_graph,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // look for return path errors
+    let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
+    errors.append(&mut graph.analyze_return_paths());
+
+    // The dead code will be analyzed later wholistically with the rest of the program
+    // since we can't tell what is dead and what isn't just from looking at this file
+    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
+        &typed_parse_tree,
+        &parse_tree.tree_type,
+        dead_code_graph,
+    ) {
+        errors.push(e)
+    };
+
+    ok((), warnings, errors)
+}
+
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
