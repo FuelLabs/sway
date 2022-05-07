@@ -85,7 +85,7 @@ impl TypedStructDeclaration {
     fn monomorphize_inner(
         &self,
         namespace: &NamespaceRef,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &[(TypeParameter, TypeId)],
     ) -> Self {
         let old_type_id = self.type_id();
         let mut new_decl = self.clone();

@@ -80,7 +80,7 @@ pub trait NamespaceWrapper {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &[(TypeParameter, TypeId)],
     );
     fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<TypedDeclaration>;
     /// Used for calls that look like this:
@@ -345,7 +345,7 @@ impl NamespaceWrapper for NamespaceRef {
         &self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &[(TypeParameter, TypeId)],
     ) {
         write_module(
             move |ns| ns.copy_methods_to_type(old_type.clone(), new_type, type_mapping),

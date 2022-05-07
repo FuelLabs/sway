@@ -1,5 +1,8 @@
 use crate::error::*;
-use std::iter::FromIterator;
+use std::{
+    fmt::{Debug, Display},
+    iter::FromIterator,
+};
 use sway_types::span::Span;
 
 mod engine;
@@ -13,8 +16,33 @@ pub use type_info::*;
 pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
 
 /// A identifier to uniquely refer to our type terms
-pub type TypeId = usize;
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub struct TypeId(usize);
 
+impl std::ops::Deref for TypeId {
+    type Target = usize;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for TypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
+    }
+}
+
+impl Debug for TypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
+    }
+}
+
+impl From<usize> for TypeId {
+    fn from(o: usize) -> Self {
+        TypeId(o)
+    }
+}
 pub(crate) trait JsonAbiString {
     fn json_abi_str(&self) -> String;
 }
