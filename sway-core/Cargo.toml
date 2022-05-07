@@ -19,6 +19,7 @@ either = "1.6"
 fuel-asm = "0.4"
 fuel-crypto = "0.4"
 fuel-vm = "0.8"
+fuels-types = "0.10"
 generational-arena = "0.2"
 hex = { version = "0.4", optional = true }
 itertools = "0.10"
