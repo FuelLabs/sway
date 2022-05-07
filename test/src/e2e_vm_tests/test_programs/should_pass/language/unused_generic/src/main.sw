@@ -5,6 +5,20 @@ struct S<T> { }
 impl<T> S<T> {
 // todo: how can we take the type from the _instance_ and apply it back to the decl? i know we will need to monomorphize the decl....hm...
 // plan: when we create `a` below, we monomorphize the struct declarations and all the impl stuff using the type parameters
+
+// update:
+// The issue is that the T in impl<T> cannot be specified or resolved
+// in reality, we should be updating that T when the struct is instantiated and potentially monomorphizing the trait
+
+// TODO
+// validate that trait fns are indeed monomorphized
+// figure out what happens if you update a type via type annotation that is higher up in the ref chain
+// e.g. if you have:
+// 1 -> Unknown
+// 2 -> Ref(1)
+// 3 -> Ref(2)
+// 4 -> Ref(3)
+// and you update 2 to be u64, does 1 get updated? It should.
   fn f(self) -> u64 {
     size_of::<T>()
   }

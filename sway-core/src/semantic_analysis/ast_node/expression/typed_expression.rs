@@ -2413,6 +2413,7 @@ impl TypedExpression {
             warnings,
             errors,
         );
+        dbg!(&type_id);
         let return_type = match builtin {
             BuiltinProperty::SizeOfType => {
                 insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
