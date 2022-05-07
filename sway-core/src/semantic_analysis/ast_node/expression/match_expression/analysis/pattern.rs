@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, fmt};
 
 use itertools::Itertools;
-use sway_types::{Ident, Span};
+use sway_types::Span;
 
 use crate::{
     error::{err, ok},
@@ -108,6 +108,7 @@ pub(crate) enum Pattern {
     Numeric(Range<u64>),
     String(String),
     Struct(StructPattern),
+    Enum(EnumPattern),
     Tuple(PatStack),
     Or(PatStack),
 }
@@ -117,21 +118,19 @@ impl Pattern {
     pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        match scrutinee {
-            Scrutinee::CatchAll { .. } => ok(Pattern::Wildcard, warnings, errors),
-            Scrutinee::Variable { .. } => ok(Pattern::Wildcard, warnings, errors),
+        let pat = match scrutinee {
+            Scrutinee::CatchAll { .. } => Pattern::Wildcard,
+            Scrutinee::Variable { .. } => Pattern::Wildcard,
             Scrutinee::Literal { value, .. } => match value {
-                Literal::U8(x) => ok(Pattern::U8(Range::from_single(x)), warnings, errors),
-                Literal::U16(x) => ok(Pattern::U16(Range::from_single(x)), warnings, errors),
-                Literal::U32(x) => ok(Pattern::U32(Range::from_single(x)), warnings, errors),
-                Literal::U64(x) => ok(Pattern::U64(Range::from_single(x)), warnings, errors),
-                Literal::B256(x) => ok(Pattern::B256(x), warnings, errors),
-                Literal::Boolean(b) => ok(Pattern::Boolean(b), warnings, errors),
-                Literal::Byte(x) => ok(Pattern::Byte(Range::from_single(x)), warnings, errors),
-                Literal::Numeric(x) => {
-                    ok(Pattern::Numeric(Range::from_single(x)), warnings, errors)
-                }
-                Literal::String(s) => ok(Pattern::String(s.as_str().to_string()), warnings, errors),
+                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
+                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
+                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
+                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+                Literal::B256(x) => Pattern::B256(x),
+                Literal::Boolean(b) => Pattern::Boolean(b),
+                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
+                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+                Literal::String(s) => Pattern::String(s.as_str().to_string()),
             },
             Scrutinee::StructScrutinee {
                 struct_name,
@@ -154,11 +153,10 @@ impl Pattern {
                     };
                     new_fields.push((field.as_str().to_string(), f));
                 }
-                let pat = Pattern::Struct(StructPattern {
-                    struct_name,
+                Pattern::Struct(StructPattern {
+                    struct_name: struct_name.to_string(),
                     fields: new_fields,
-                });
-                ok(pat, warnings, errors)
+                })
             }
             Scrutinee::Tuple { elems, .. } => {
                 let mut new_elems = PatStack::empty();
@@ -170,16 +168,26 @@ impl Pattern {
                         errors
                     ));
                 }
-                ok(Pattern::Tuple(new_elems), warnings, errors)
+                Pattern::Tuple(new_elems)
             }
-            Scrutinee::EnumScrutinee { span, .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "enum exhaustivity checking",
-                    span,
-                ));
-                err(warnings, errors)
+            Scrutinee::EnumScrutinee {
+                call_path, value, ..
+            } => {
+                let enum_name = call_path.prefixes.last().unwrap().to_string();
+                let variant_name = call_path.suffix.to_string();
+                Pattern::Enum(EnumPattern {
+                    enum_name,
+                    variant_name,
+                    value: Box::new(check!(
+                        Pattern::from_scrutinee(*value),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )),
+                })
             }
-        }
+        };
+        ok(pat, warnings, errors)
     }
 
     /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
@@ -429,6 +437,41 @@ impl Pattern {
                     errors
                 )
             }
+            Pattern::Enum(enum_pattern) => {
+                if args.len() != 1 {
+                    errors.push(CompileError::Internal(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                let serialized_args = check!(
+                    args.serialize_multi_patterns(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut pats: PatStack = PatStack::empty();
+                for args in serialized_args.into_iter() {
+                    let arg = check!(
+                        args.first(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    pats.push(Pattern::Enum(EnumPattern {
+                        enum_name: enum_pattern.enum_name.clone(),
+                        variant_name: enum_pattern.variant_name.clone(),
+                        value: Box::new(arg),
+                    }));
+                }
+                check!(
+                    Pattern::from_pat_stack(pats, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
             Pattern::Tuple(elems) => {
                 if elems.len() != args.len() {
                     errors.push(CompileError::Internal(
@@ -479,6 +522,7 @@ impl Pattern {
             Pattern::Numeric(_) => 0,
             Pattern::String(_) => 0,
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
+            Pattern::Enum(_) => 1,
             Pattern::Tuple(elems) => elems.len(),
             Pattern::Wildcard => unreachable!(),
             Pattern::Or(_) => unreachable!(),
@@ -520,11 +564,11 @@ impl Pattern {
             (Pattern::U16(a), Pattern::U16(b)) => a == b,
             (Pattern::U32(a), Pattern::U32(b)) => a == b,
             (Pattern::U64(a), Pattern::U64(b)) => a == b,
-            (Pattern::B256(x), Pattern::B256(y)) => x == y,
-            (Pattern::Boolean(x), Pattern::Boolean(y)) => x == y,
+            (Pattern::B256(a), Pattern::B256(b)) => a == b,
+            (Pattern::Boolean(a), Pattern::Boolean(b)) => a == b,
             (Pattern::Byte(a), Pattern::Byte(b)) => a == b,
             (Pattern::Numeric(a), Pattern::Numeric(b)) => a == b,
-            (Pattern::String(x), Pattern::String(y)) => x == y,
+            (Pattern::String(a), Pattern::String(b)) => a == b,
             (
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name1,
@@ -535,6 +579,18 @@ impl Pattern {
                     fields: fields2,
                 }),
             ) => struct_name1 == struct_name2 && fields1.len() == fields2.len(),
+            (
+                Pattern::Enum(EnumPattern {
+                    enum_name: enum_name1,
+                    variant_name: variant_name1,
+                    ..
+                }),
+                Pattern::Enum(EnumPattern {
+                    enum_name: enum_name2,
+                    variant_name: variant_name2,
+                    ..
+                }),
+            ) => enum_name1 == enum_name2 && variant_name1 == variant_name2,
             (Pattern::Tuple(elems1), Pattern::Tuple(elems2)) => elems1.len() == elems2.len(),
             (Pattern::Or(_), Pattern::Or(_)) => unreachable!(),
             _ => false,
@@ -575,6 +631,7 @@ impl Pattern {
                 .map(|(_, field)| field.to_owned())
                 .collect::<Vec<_>>()
                 .into(),
+            Pattern::Enum(EnumPattern { value, .. }) => PatStack::from_pattern((**value).clone()),
             Pattern::Tuple(elems) => elems.to_owned(),
             _ => PatStack::empty(),
         };
@@ -597,6 +654,25 @@ impl Pattern {
             pat => PatStack::from_pattern(pat.to_owned()),
         }
     }
+
+    fn discriminant_value(&self) -> usize {
+        match self {
+            Pattern::Wildcard => 0,
+            Pattern::U8(_) => 1,
+            Pattern::U16(_) => 2,
+            Pattern::U32(_) => 3,
+            Pattern::U64(_) => 4,
+            Pattern::B256(_) => 5,
+            Pattern::Boolean(_) => 6,
+            Pattern::Byte(_) => 7,
+            Pattern::Numeric(_) => 8,
+            Pattern::String(_) => 9,
+            Pattern::Struct(_) => 10,
+            Pattern::Enum(_) => 11,
+            Pattern::Tuple(_) => 12,
+            Pattern::Or(_) => 13,
+        }
+    }
 }
 
 impl fmt::Display for Pattern {
@@ -613,6 +689,7 @@ impl fmt::Display for Pattern {
             Pattern::Byte(range) => format!("{}", range),
             Pattern::String(s) => s.clone(),
             Pattern::Struct(struct_pattern) => format!("{}", struct_pattern),
+            Pattern::Enum(enum_pattern) => format!("{}", enum_pattern),
             Pattern::Tuple(elems) => {
                 let mut builder = String::new();
                 builder.push('(');
@@ -630,87 +707,20 @@ impl std::cmp::Ord for Pattern {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (Pattern::Wildcard, Pattern::Wildcard) => Ordering::Equal,
-            (Pattern::Wildcard, _) => Ordering::Greater,
-            (_, Pattern::Wildcard) => Ordering::Less,
             (Pattern::U8(x), Pattern::U8(y)) => x.cmp(y),
-            (Pattern::U8(_), _) => Ordering::Less,
-            (Pattern::U16(_), Pattern::U8(_)) => Ordering::Greater,
             (Pattern::U16(x), Pattern::U16(y)) => x.cmp(y),
-            (Pattern::U16(_), _) => Ordering::Less,
-            (Pattern::U32(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::U32(_), Pattern::U16(_)) => Ordering::Greater,
             (Pattern::U32(x), Pattern::U32(y)) => x.cmp(y),
-            (Pattern::U32(_), _) => Ordering::Less,
-            (Pattern::U64(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::U64(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::U64(_), Pattern::U32(_)) => Ordering::Greater,
             (Pattern::U64(x), Pattern::U64(y)) => x.cmp(y),
-            (Pattern::U64(_), _) => Ordering::Less,
-            (Pattern::B256(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::B256(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::B256(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::B256(_), Pattern::U64(_)) => Ordering::Greater,
             (Pattern::B256(x), Pattern::B256(y)) => x.cmp(y),
-            (Pattern::B256(_), _) => Ordering::Less,
-            (Pattern::Boolean(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::Boolean(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::Boolean(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::Boolean(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::Boolean(_), Pattern::B256(_)) => Ordering::Greater,
             (Pattern::Boolean(x), Pattern::Boolean(y)) => x.cmp(y),
-            (Pattern::Boolean(_), _) => Ordering::Less,
-            (Pattern::Byte(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::Byte(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::Byte(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::Byte(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::Byte(_), Pattern::B256(_)) => Ordering::Greater,
-            (Pattern::Byte(_), Pattern::Boolean(_)) => Ordering::Greater,
             (Pattern::Byte(x), Pattern::Byte(y)) => x.cmp(y),
-            (Pattern::Byte(_), _) => Ordering::Less,
-            (Pattern::Numeric(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::B256(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::Boolean(_)) => Ordering::Greater,
-            (Pattern::Numeric(_), Pattern::Byte(_)) => Ordering::Greater,
             (Pattern::Numeric(x), Pattern::Numeric(y)) => x.cmp(y),
-            (Pattern::Numeric(_), _) => Ordering::Less,
-            (Pattern::String(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::B256(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::Boolean(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::Byte(_)) => Ordering::Greater,
-            (Pattern::String(_), Pattern::Numeric(_)) => Ordering::Greater,
             (Pattern::String(x), Pattern::String(y)) => x.cmp(y),
-            (Pattern::String(_), _) => Ordering::Less,
-            (Pattern::Struct(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::B256(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::Boolean(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::Byte(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::Numeric(_)) => Ordering::Greater,
-            (Pattern::Struct(_), Pattern::String(_)) => Ordering::Greater,
             (Pattern::Struct(x), Pattern::Struct(y)) => x.cmp(y),
-            (Pattern::Struct(_), _) => Ordering::Less,
-            (Pattern::Tuple(_), Pattern::U8(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::U16(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::U32(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::U64(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::B256(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::Boolean(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::Byte(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::Numeric(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::String(_)) => Ordering::Greater,
-            (Pattern::Tuple(_), Pattern::Struct(_)) => Ordering::Greater,
+            (Pattern::Enum(x), Pattern::Enum(y)) => x.cmp(y),
             (Pattern::Tuple(x), Pattern::Tuple(y)) => x.cmp(y),
-            (Pattern::Tuple(_), Pattern::Or(_)) => Ordering::Less,
             (Pattern::Or(x), Pattern::Or(y)) => x.cmp(y),
-            (Pattern::Or(_), _) => Ordering::Greater,
+            (x, y) => x.discriminant_value().cmp(&y.discriminant_value()),
         }
     }
 }
@@ -723,19 +733,19 @@ impl std::cmp::PartialOrd for Pattern {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct StructPattern {
-    struct_name: Ident,
+    struct_name: String,
     fields: Vec<(String, Pattern)>,
 }
 
 impl StructPattern {
-    pub(crate) fn new(struct_name: Ident, fields: Vec<(String, Pattern)>) -> Self {
+    pub(crate) fn new(struct_name: String, fields: Vec<(String, Pattern)>) -> Self {
         StructPattern {
             struct_name,
             fields,
         }
     }
 
-    pub(crate) fn struct_name(&self) -> &Ident {
+    pub(crate) fn struct_name(&self) -> &String {
         &self.struct_name
     }
 
@@ -805,5 +815,49 @@ impl std::cmp::Ord for StructPattern {
 impl std::cmp::PartialOrd for StructPattern {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct EnumPattern {
+    pub(crate) enum_name: String,
+    pub(crate) variant_name: String,
+    pub(crate) value: Box<Pattern>,
+}
+
+impl std::cmp::Ord for EnumPattern {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (
+            self.enum_name.cmp(&other.enum_name),
+            self.variant_name.cmp(&other.variant_name),
+            (*self.value).cmp(&*other.value),
+        ) {
+            (Ordering::Less, _, _) => Ordering::Less,
+            (Ordering::Greater, _, _) => Ordering::Greater,
+            (Ordering::Equal, Ordering::Less, _) => Ordering::Less,
+            (Ordering::Equal, Ordering::Equal, Ordering::Less) => Ordering::Less,
+            (Ordering::Equal, Ordering::Equal, Ordering::Equal) => Ordering::Equal,
+            (Ordering::Equal, Ordering::Equal, Ordering::Greater) => Ordering::Greater,
+            (Ordering::Equal, Ordering::Greater, _) => Ordering::Greater,
+        }
+    }
+}
+
+impl std::cmp::PartialOrd for EnumPattern {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl fmt::Display for EnumPattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut builder = String::new();
+        builder.push_str(self.enum_name.as_str());
+        builder.push_str("::");
+        builder.push_str(self.variant_name.as_str());
+        builder.push('(');
+        builder.push_str(&format!("{}", self.value));
+        builder.push(')');
+        write!(f, "{}", builder)
     }
 }

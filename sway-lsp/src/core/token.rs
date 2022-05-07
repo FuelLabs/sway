@@ -456,7 +456,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
     }
 }
 
-fn handle_scrutinee(_scrutinee: Scrutinee, _tokens: &mut Vec<Token>) {
+fn handle_scrutinee(_scrutinee: Scrutinee, _tokens: &mut [Token]) {
     // TODO: handle scrutinees here
 }
 

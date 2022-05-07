@@ -968,6 +968,7 @@ impl TypedExpression {
             warnings,
             errors
         );
+        let type_id = typed_value.return_type;
 
         // type check the match expression and create a TypedMatchExpression object
         let (typed_match_expression, cases_covered) = check!(
@@ -991,28 +992,28 @@ impl TypedExpression {
             errors
         );
 
-        // // check to see if the match expression is exhaustive and if all match arms are reachable
-        // let (witness_report, arms_reachability) = check!(
-        //     check_match_expression_usefulness(cases_covered, span.clone()),
-        //     return err(warnings, errors),
-        //     warnings,
-        //     errors
-        // );
-        // for (arm, reachable) in arms_reachability.into_iter() {
-        //     if !reachable {
-        //         warnings.push(CompileWarning {
-        //             span: arm.span(),
-        //             warning_content: Warning::MatchExpressionUnreachableArm,
-        //         });
-        //     }
-        // }
-        // if witness_report.has_witnesses() {
-        //     errors.push(CompileError::MatchExpressionNonExhaustive {
-        //         missing_patterns: format!("{}", witness_report),
-        //         span,
-        //     });
-        //     return err(warnings, errors);
-        // }
+        // check to see if the match expression is exhaustive and if all match arms are reachable
+        let (witness_report, arms_reachability) = check!(
+            check_match_expression_usefulness(type_id, cases_covered, span.clone()),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for (arm, reachable) in arms_reachability.into_iter() {
+            if !reachable {
+                warnings.push(CompileWarning {
+                    span: arm.span(),
+                    warning_content: Warning::MatchExpressionUnreachableArm,
+                });
+            }
+        }
+        if witness_report.has_witnesses() {
+            errors.push(CompileError::MatchExpressionNonExhaustive {
+                missing_patterns: format!("{}", witness_report),
+                span,
+            });
+            return err(warnings, errors);
+        }
 
         // desugar the typed match expression to a typed if expression
         let typed_if_exp = check!(
