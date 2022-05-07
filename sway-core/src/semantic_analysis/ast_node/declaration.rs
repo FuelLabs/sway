@@ -3,11 +3,10 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
     Ident, NamespaceRef, NamespaceWrapper,
 };
-
-use sway_types::{Property, Span};
-
 use derivative::Derivative;
+use fuels_types::Property;
 use std::hash::{Hash, Hasher};
+use sway_types::Span;
 
 mod function;
 mod storage;

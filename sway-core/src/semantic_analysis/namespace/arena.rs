@@ -162,8 +162,7 @@ impl NamespaceWrapper for NamespaceRef {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: first_ident.as_str().to_string(),
-                    span: first_ident.span().clone(),
+                    var_name: first_ident.clone(),
                 });
                 return err(warnings, errors);
             }
@@ -208,9 +207,8 @@ impl NamespaceWrapper for NamespaceRef {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name: struct_name.to_string(),
+                            struct_name,
                             available_fields: available_fields.join(", "),
-                            span: ident.span().clone(),
                         });
                         return err(warnings, errors);
                     }
@@ -333,10 +331,7 @@ impl NamespaceWrapper for NamespaceRef {
         match read_module(|module| module.symbols.get(name).cloned(), module) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: name.as_str().to_string(),
-                    span: name.span().clone(),
-                });
+                errors.push(CompileError::SymbolNotFound { name: name.clone() });
                 err(warnings, errors)
             }
         }
@@ -405,8 +400,7 @@ impl NamespaceWrapper for NamespaceRef {
                 for symbol in symbols {
                     if m.use_synonyms.contains_key(&symbol) {
                         errors.push(CompileError::StarImportShadowsOtherSymbol {
-                            name: symbol.as_str().to_string(),
-                            span: symbol.span().clone(),
+                            name: symbol.clone(),
                         });
                     }
                     m.use_synonyms.insert(symbol, path.clone());
@@ -471,9 +465,8 @@ impl NamespaceWrapper for NamespaceRef {
                     != Some(TypeInfo::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.as_str().to_string(),
+                        method_name: method_name.clone(),
                         type_name: r#type.friendly_type_str(),
-                        span: method_name.span().clone(),
                     });
                 }
                 err(warnings, errors)
@@ -556,10 +549,7 @@ impl NamespaceWrapper for NamespaceRef {
         match read_module(|namespace| namespace.symbols.get(item).cloned(), namespace) {
             Some(decl) => {
                 if decl.visibility() != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol {
-                        name: item.as_str().to_string(),
-                        span: item.span().clone(),
-                    });
+                    errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
                 if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -590,8 +580,7 @@ impl NamespaceWrapper for NamespaceRef {
                             Some(alias) => {
                                 if m.use_synonyms.contains_key(&alias) {
                                     errors.push(CompileError::ShadowsOtherSymbol {
-                                        name: alias.as_str().to_string(),
-                                        span: alias.span().clone(),
+                                        name: alias.clone(),
                                     });
                                 }
                                 m.use_synonyms.insert(alias.clone(), path.clone());
@@ -601,8 +590,7 @@ impl NamespaceWrapper for NamespaceRef {
                             None => {
                                 if m.use_synonyms.contains_key(item) {
                                     errors.push(CompileError::ShadowsOtherSymbol {
-                                        name: item.as_str().to_string(),
-                                        span: item.span().clone(),
+                                        name: item.clone(),
                                     });
                                 }
                                 m.use_synonyms.insert(item.clone(), path.clone());
@@ -613,10 +601,7 @@ impl NamespaceWrapper for NamespaceRef {
                 );
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: item.as_str().to_string(),
-                    span: item.span().clone(),
-                });
+                errors.push(CompileError::SymbolNotFound { name: item.clone() });
                 return err(warnings, errors);
             }
         };
