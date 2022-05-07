@@ -13,3 +13,6 @@ sway-lib-std/Forc.lock
 
 # Forc's build directory
 out
+
+# Don't include lock files generated for example test harnesses.
+examples/*/Cargo.lock
