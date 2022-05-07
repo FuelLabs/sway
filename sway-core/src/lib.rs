@@ -274,7 +274,7 @@ pub(crate) fn compile_inner_dependency(
 
     // Parse the file.
     let parse_tree = check!(
-        crate::parse(input.clone(), Some(&dep_build_config)),
+        parse(input.clone(), Some(&dep_build_config)),
         return err(warnings, errors),
         warnings,
         errors
@@ -448,7 +448,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: Box::new(parse_tree.into_namespace()),
+                    namespace: Box::new(parse_tree.into_namespace().into()),
                 },
             }
         }

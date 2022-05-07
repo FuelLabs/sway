@@ -53,8 +53,8 @@ pub struct Items {
 /// script/predicate/contract file or some library dependency whether introduced via `dep` or the
 /// `[dependencies]` table of a `forc` manifest.
 ///
-/// A `Module` contains a single namespace with all items that exist within the lexical scope via
-/// declaration or importing, along with a map of each of its submodules.
+/// A `Module` contains a set of all items that exist within the lexical scope via declaration or
+/// importing, along with a map of each of its submodules.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
@@ -65,7 +65,7 @@ pub struct Module {
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     submodules: im::OrdMap<ModuleName, Module>,
-    /// The set of names in this module.
+    /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
 }
 
@@ -76,13 +76,13 @@ pub struct Module {
 /// We use a custom type for the `Root` in order to ensure that methods that only work with
 /// canonical paths, or that use canonical paths internally, are *only* called from the root. This
 /// normally includes methods that first lookup some canonical path via `use_synonyms` before using
-/// that canonical path to look up the type declaration.
+/// that canonical path to look up the symbol declaration.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Root {
     module: Module,
 }
 
-/// A wrapper around the set of namespace items passed through type checking.
+/// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Namespace {
     /// An immutable namespace that consists of the names that should always be present, no matter
@@ -106,12 +106,16 @@ pub struct Namespace {
     mod_path: PathBuf,
 }
 
-/// The namespace wrapper for a submodule.
+/// A namespace session type representing the type-checking of a submodule.
 ///
-/// This acts as a session type, used briefly during `import_new_file` in order to
+/// This type allows for re-using the parent's `Namespace` in order to provide access to the
+/// `root` and `init` throughout type-checking of the submodule, but with an updated `mod_path` to
+/// represent the submodule's path. When dropped, the `SubmoduleNamespace` reset's the
+/// `Namespace`'s `mod_path` to the parent module path so that type-checking of the parent may
+/// continue.
 pub struct SubmoduleNamespace<'a> {
     namespace: &'a mut Namespace,
-    original_mod_path: PathBuf,
+    parent_mod_path: PathBuf,
 }
 
 impl Items {
@@ -147,8 +151,6 @@ impl Items {
         ok((), vec![], vec![])
     }
 
-    // TODO: Remove in favour of `symbols`. If `symbols` isn't a good enough name, let's rename the
-    // `symbols` map to `symbol_declarations` or something.
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols().values()
     }
@@ -186,7 +188,10 @@ impl Items {
     pub(crate) fn check_symbol(&self, name: &Ident) -> CompileResult<&TypedDeclaration> {
         match self.symbols.get(name) {
             Some(decl) => ok(decl, vec![], vec![]),
-            None => err(vec![], vec![symbol_not_found(name)]),
+            None => err(
+                vec![],
+                vec![CompileError::SymbolNotFound { name: name.clone() }],
+            ),
         }
     }
 
@@ -875,7 +880,6 @@ impl Root {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut root_methods = self.get_methods_for_type(r#type);
         let local_methods = self[mod_path].get_methods_for_type(r#type);
         let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
 
@@ -903,15 +907,8 @@ impl Root {
         );
         let mut ns_methods = self[method_prefix].get_methods_for_type(r#type);
 
-        // TODO
-        // Here we collect function declarations for the given type from the current module, the
-        // module in which the method was implemented, and the root. Perhaps we should instead have
-        // a root-level map that always stores all inherent methods for each type, seeing as
-        // inherent methods are always accessible?
         let mut methods = local_methods;
         methods.append(&mut ns_methods);
-        // TODO: Make sure we actually want this?
-        methods.append(&mut root_methods);
 
         match methods
             .into_iter()
@@ -1048,10 +1045,10 @@ impl Namespace {
             .cloned()
             .chain(Some(dep_name))
             .collect();
-        let original_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         SubmoduleNamespace {
             namespace: self,
-            original_mod_path,
+            parent_mod_path,
         }
     }
 }
@@ -1146,7 +1143,7 @@ impl<'a> Drop for SubmoduleNamespace<'a> {
         // Replace the submodule path with the original module path.
         // This ensures that the namespace's module path is reset when ownership over it is
         // relinquished from the SubmoduleNamespace.
-        self.namespace.mod_path = std::mem::take(&mut self.original_mod_path);
+        self.namespace.mod_path = std::mem::take(&mut self.parent_mod_path);
     }
 }
 
@@ -1275,8 +1272,4 @@ fn module_not_found(path: &[Ident]) -> CompileError {
             .collect::<Vec<_>>()
             .join("::"),
     }
-}
-
-fn symbol_not_found(name: &Ident) -> CompileError {
-    CompileError::SymbolNotFound { name: name.clone() }
 }

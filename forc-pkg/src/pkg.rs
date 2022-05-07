@@ -1036,7 +1036,7 @@ pub fn compile(
                     let bytecode = vec![];
                     let lib_namespace = parse_tree.namespace().clone();
                     let compiled = Compiled { json_abi, bytecode };
-                    Ok((compiled, Some(lib_namespace)))
+                    Ok((compiled, Some(lib_namespace.into())))
                 }
 
                 // For all other program types, we'll compile the bytecode.

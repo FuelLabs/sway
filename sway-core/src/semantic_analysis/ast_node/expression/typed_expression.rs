@@ -870,11 +870,9 @@ impl TypedExpression {
             warnings,
             errors
         ));
-
         // put the variable and type of the enum variants inner type into a temporary namespace for
         // the "then" branch, but not the else branch.
         let mut then_namespace = namespace.clone();
-
         // calculate the return type of the variable by checking the enum variant's return type
 
         then_namespace.insert_symbol(
@@ -944,7 +942,6 @@ impl TypedExpression {
                 let r#else = check!(
                     TypedExpression::type_check(TypeCheckArguments {
                         checkee: *expr,
-                        // TODO: Shouldn't this be an `else` namespace?
                         namespace,
                         return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text:
@@ -1711,13 +1708,6 @@ impl TypedExpression {
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
 
-        // Short-hand for the `SymbolNotFound` error.
-        fn symbol_not_found(call_path_suffix: &Ident) -> CompileError {
-            CompileError::SymbolNotFound {
-                name: call_path_suffix.clone(),
-            }
-        }
-
         // First, check if this could be a module. We check first so that we can check for
         // ambiguity in the following enum check.
         let is_module = namespace
@@ -1777,7 +1767,9 @@ impl TypedExpression {
             let decl = match namespace.resolve_call_path(&call_path).value {
                 Some(decl) => decl.clone(),
                 None => {
-                    errors.push(symbol_not_found(&call_path.suffix));
+                    errors.push(CompileError::SymbolNotFound {
+                        name: call_path.suffix.clone(),
+                    });
                     return err(warnings, errors);
                 }
             };
@@ -1832,7 +1824,9 @@ impl TypedExpression {
 
         // If prefix is neither a module or enum, there's nothing to be found.
         } else {
-            errors.push(symbol_not_found(&call_path.suffix));
+            errors.push(CompileError::SymbolNotFound {
+                name: call_path.suffix.clone(),
+            });
             return err(warnings, errors);
         };
 

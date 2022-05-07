@@ -31,24 +31,24 @@ pub enum TreeType {
 pub enum TypedParseTree {
     Script {
         main_function: TypedFunctionDeclaration,
-        namespace: namespace::Root,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration,
-        namespace: namespace::Root,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: namespace::Root,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: namespace::Root,
+        namespace: namespace::Module,
         all_nodes: Vec<TypedAstNode>,
     },
 }
@@ -67,7 +67,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn namespace(&self) -> &namespace::Root {
+    pub fn namespace(&self) -> &namespace::Module {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -77,7 +77,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn into_namespace(self) -> namespace::Root {
+    pub fn into_namespace(self) -> namespace::Module {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -158,7 +158,7 @@ impl TypedParseTree {
         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
-            namespace.root().clone(),
+            namespace,
             tree_type,
             warnings,
             errors,
@@ -201,7 +201,7 @@ impl TypedParseTree {
     fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode>,
         span: Span,
-        namespace: namespace::Root,
+        namespace: &Namespace,
         tree_type: &TreeType,
         warnings: Vec<CompileWarning>,
         mut errors: Vec<CompileError>,
@@ -211,8 +211,7 @@ impl TypedParseTree {
 
         // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
         // then B is also implemented for type T
-        // Note that we're checking supertraits from the root, so we pass an empty module path.
-        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+        errors.append(&mut check_supertraits(&all_nodes, namespace));
 
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
@@ -244,6 +243,7 @@ impl TypedParseTree {
         }
 
         // Perform other validation based on the tree type.
+        let namespace = namespace.module().clone();
         let typed_parse_tree = match tree_type {
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
@@ -313,11 +313,9 @@ impl TypedParseTree {
 ///
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
-    root: &namespace::Root,
+    namespace: &Namespace,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
-    // We check supertraits from the root, so set `&[]` as our mod_path.
-    let mod_path = &[];
     for node in typed_tree_nodes {
         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
             trait_name,
@@ -329,7 +327,7 @@ fn check_supertraits(
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
                 ..
-            } = root.resolve_call_path(mod_path, trait_name)
+            } = namespace.resolve_call_path(trait_name)
             {
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
@@ -349,8 +347,8 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                root.resolve_call_path(mod_path, search_node_trait_name),
-                                root.resolve_call_path(mod_path, &supertrait.name),
+                                namespace.resolve_call_path(search_node_trait_name),
+                                namespace.resolve_call_path(&supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (type_implementing_for
