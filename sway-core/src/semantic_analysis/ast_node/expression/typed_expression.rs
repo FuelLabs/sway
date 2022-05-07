@@ -196,7 +196,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let expr_span = other.span();
-        let res = match dbg!(other) {
+        let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression { name, span, .. } => {
                 Self::type_check_variable_expression(name, span, namespace)
@@ -1395,11 +1395,6 @@ impl TypedExpression {
                             },
                             arg,
                         )| {
-                            println!(
-                                "Changing {:?} to {:?}",
-                                look_up_type_id(*type_id),
-                                look_up_type_id(arg.type_id)
-                            );
                             *type_id = arg.type_id;
                         },
                     );
@@ -2420,9 +2415,9 @@ impl TypedExpression {
         );
         let return_type = match builtin {
             BuiltinProperty::SizeOfType => {
-                crate::type_engine::insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
             }
-            BuiltinProperty::IsRefType => crate::type_engine::insert_type(TypeInfo::Boolean),
+            BuiltinProperty::IsRefType => insert_type(TypeInfo::Boolean),
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::TypeProperty {

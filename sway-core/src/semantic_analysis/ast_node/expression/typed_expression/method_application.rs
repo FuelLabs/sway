@@ -23,8 +23,6 @@ pub(crate) fn type_check_method_application(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    println!("in method app");
-    dbg!(&arguments.get(0));
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
@@ -55,7 +53,6 @@ pub(crate) fn type_check_method_application(
             ref type_name,
             ref type_name_span,
         } => {
-            println!("from type");
             let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
                 (Some(type_name), Some(type_name_span)) => {
                     (type_name.clone(), type_name_span.clone())
@@ -119,29 +116,17 @@ pub(crate) fn type_check_method_application(
             )
         }
         MethodName::FromModule { ref method_name } => {
-            println!("from module");
             let ty = args_buf
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            let real = look_up_type_id(ty);
-            if let TypeInfo::Struct {
-                type_parameters, ..
-            } = real
-            {
-                type_parameters.into_iter().for_each(|x| {
-                    dbg!(look_up_type_id(x.type_id));
-                })
-            }
 
-            let res = check!(
+            check!(
                 namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors
-            );
-            dbg!(&res);
-            res
+            )
         }
     };
     let contract_caller = if method.is_contract_call {

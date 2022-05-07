@@ -22,7 +22,6 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    dbg!(look_up_type_id(self_type));
     // if this is a generic function, monomorphize its internal types
     let typed_function_decl = match (decl.type_parameters.is_empty(), type_arguments.is_empty()) {
         (true, true) => decl,
