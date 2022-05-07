@@ -537,13 +537,6 @@ impl Module {
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
-        println!(
-            "import {:?} {:?} to {:?}",
-            src.iter().map(|i| i.as_str()).collect::<Vec<_>>(),
-            item.as_str(),
-            dst.iter().map(|i| i.as_str()).collect::<Vec<_>>(),
-        );
-
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
