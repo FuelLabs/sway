@@ -54,7 +54,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     let mut output_found = false;
 
     // If an output of type `OutputVariable` is found, check if its `amount` is
-    // zero. As one cannot transfer zero coins to an output without a revert, a
+    // zero. As one cannot transfer zero coins to an output without a panic, a
     // variable output with a value of zero is by definition unused.
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
