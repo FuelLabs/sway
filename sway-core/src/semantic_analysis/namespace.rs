@@ -383,7 +383,7 @@ impl Items {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name: ident.clone(),
-                            struct_name: struct_name.clone(),
+                            struct_name,
                             available_fields: available_fields.join(", "),
                         });
                         return err(warnings, errors);
@@ -549,9 +549,7 @@ impl Module {
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 if decl.visibility() != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol {
-                        name: item.clone(),
-                    });
+                    errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
                 if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -588,18 +586,14 @@ impl Module {
                     }
                     None => {
                         if dst_ns.use_synonyms.contains_key(item) {
-                            errors.push(CompileError::ShadowsOtherSymbol {
-                                name: item.clone(),
-                            });
+                            errors.push(CompileError::ShadowsOtherSymbol { name: item.clone() });
                         }
                         dst_ns.use_synonyms.insert(item.clone(), src.to_vec());
                     }
                 };
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: item.clone(),
-                });
+                errors.push(CompileError::SymbolNotFound { name: item.clone() });
                 return err(warnings, errors);
             }
         };
@@ -1284,7 +1278,5 @@ fn module_not_found(path: &[Ident]) -> CompileError {
 }
 
 fn symbol_not_found(name: &Ident) -> CompileError {
-    CompileError::SymbolNotFound {
-        name: name.clone(),
-    }
+    CompileError::SymbolNotFound { name: name.clone() }
 }

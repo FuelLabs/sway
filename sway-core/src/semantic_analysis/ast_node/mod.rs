@@ -826,7 +826,7 @@ fn import_new_file(
     let canonical_path = build_config
         .dir_of_code
         .iter()
-        .chain(statement.path_span.as_str().split("/").map(AsRef::as_ref))
+        .chain(statement.path_span.as_str().split('/').map(AsRef::as_ref))
         .collect::<std::path::PathBuf>()
         .with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
@@ -894,9 +894,7 @@ fn reassignment(
                             ..
                         })) => {
                             if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable {
-                                    name: name.clone(),
-                                });
+                                errors.push(CompileError::AssignmentToNonMutable { name });
                             }
 
                             body
