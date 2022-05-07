@@ -196,7 +196,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let expr_span = other.span();
-        let res = match other {
+        let res = match dbg!(other) {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression { name, span, .. } => {
                 Self::type_check_variable_expression(name, span, namespace)
@@ -1383,6 +1383,26 @@ impl TypedExpression {
                         errors
                     );
                 }
+                let mut decl = decl.clone();
+                // associate the type arguments with the parameters in the struct decl
+                decl.type_parameters
+                    .iter_mut()
+                    .zip(type_arguments.iter())
+                    .for_each(
+                        |(
+                            TypeParameter {
+                                ref mut type_id, ..
+                            },
+                            arg,
+                        )| {
+                            println!(
+                                "Changing {:?} to {:?}",
+                                look_up_type_id(*type_id),
+                                look_up_type_id(arg.type_id)
+                            );
+                            *type_id = arg.type_id;
+                        },
+                    );
                 // perform the monomorphization
                 check!(
                     decl.monomorphize(&module, &type_arguments, Some(self_type)),
