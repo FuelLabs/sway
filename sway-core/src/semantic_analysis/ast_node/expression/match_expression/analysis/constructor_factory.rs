@@ -541,7 +541,7 @@ impl ConstructorFactory {
                     all_variants.insert(variant.name.to_string().clone());
                 }
                 let mut variant_tracker: HashSet<String> = HashSet::new();
-                variant_tracker.insert(enum_pattern.variant_name.to_string());
+                variant_tracker.insert(enum_pattern.variant_name);
                 for pat in rest.iter() {
                     match pat {
                         Pattern::Enum(enum_pattern2) => {
