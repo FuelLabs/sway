@@ -4,7 +4,7 @@ use std::address::Address;
 use std::assert::assert;
 use std::b512::B512;
 use std::ecr::*;
-use std::panic::panic;
+use std::revert::revert;
 use std::result::Result;
 
 fn main() -> bool {
@@ -37,7 +37,7 @@ fn main() -> bool {
     if let Result::Ok(a) = address_result {
         assert(a.value == address.value);
     } else {
-        panic(0);
+        revert(0);
     };
 
     // recover the public key:
@@ -45,7 +45,7 @@ fn main() -> bool {
     if let Result::Ok(p) = pubkey_result {
         assert(p == pubkey);
     } else {
-        panic(0);
+        revert(0);
     };
 
     /////////////////////////////////////////
