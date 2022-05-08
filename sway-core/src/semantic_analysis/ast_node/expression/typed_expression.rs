@@ -1001,7 +1001,6 @@ impl TypedExpression {
             warnings,
             errors
         );
-        println!("{:#?}", typed_if_exp);
 
         ok(typed_if_exp, warnings, errors)
     }
