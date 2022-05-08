@@ -104,6 +104,7 @@ fn generic_enum_resolution() {
     let ty_1 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
+        type_parameters: vec![],
     });
 
     let variant_types = vec![TypedEnumVariant {
@@ -116,6 +117,7 @@ fn generic_enum_resolution() {
     let ty_2 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
+        type_parameters: vec![],
     });
 
     // Unify them together...
@@ -125,6 +127,7 @@ fn generic_enum_resolution() {
     if let TypeInfo::Enum {
         name,
         variant_types,
+        ..
     } = engine.look_up_type_id(ty_1)
     {
         assert_eq!(name.as_str(), "Result");

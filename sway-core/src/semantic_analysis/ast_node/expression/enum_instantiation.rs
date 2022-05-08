@@ -58,6 +58,23 @@ pub(crate) fn instantiate_enum(
             return err(warnings, errors);
         }
         (false, false) => {
+            let mut enum_decl = enum_decl.clone();
+            // associate the type arguments with the parameters in the struct decl
+            enum_decl
+                .type_parameters
+                .iter_mut()
+                .zip(type_arguments.iter())
+                .for_each(
+                    |(
+                        TypeParameter {
+                            ref mut type_id, ..
+                        },
+                        arg,
+                    )| {
+                        *type_id = arg.type_id;
+                    },
+                );
+            // perform the monomorphization
             check!(
                 enum_decl.monomorphize_with_type_arguments(
                     &module,
