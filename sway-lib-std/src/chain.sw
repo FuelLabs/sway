@@ -1,7 +1,7 @@
 library chain;
 dep chain/auth;
 
-use ::panic::panic;
+use ::revert::revert;
 
 // When generics land, these will be generic.
 pub fn log_b256(value: b256) {
