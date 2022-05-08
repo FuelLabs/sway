@@ -1,7 +1,7 @@
 //! Configuration options related to rewriting a list.
 use serde::{Deserialize, Serialize};
 
-use crate::config::fundamentals::IndentStyle;
+use super::fundamentals::IndentStyle;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lists {

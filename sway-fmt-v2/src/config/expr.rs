@@ -1,4 +1,7 @@
+//! Configuration options related to formatting expressions.
 use serde::{Deserialize, Serialize};
+
+use super::items::ItemsLayout;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Expressions {
@@ -18,6 +21,12 @@ pub struct Expressions {
     pub match_block_trailing_comma: bool,
     /// Determines whether leading pipes are emitted on match arms.
     pub match_arm_leading_pipe: MatchArmLeadingPipe,
+    /// Force multiline closure bodies and match arms to be wrapped in a block.
+    pub force_multiline_blocks: bool,
+    /// Control the layout of arguments in a function.
+    pub fn_args_layout: ItemsLayout,
+    /// Put single-expression functions on a single line.
+    pub fn_single_line: bool,
 }
 
 /////PUNCTUATION/////

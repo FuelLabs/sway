@@ -1,5 +1,7 @@
-use crate::config::lists::ListTactic;
+//! Configuration options related to item formatting.
 use serde::{Deserialize, Serialize};
+
+use super::lists::ListTactic;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Items {
@@ -9,6 +11,8 @@ pub struct Items {
     pub blank_lines_upper_bound: usize,
     /// Minimum number of blank lines which must be put between items.
     pub blank_lines_lower_bound: usize,
+    /// Put empty-body functions and impls on a single line.
+    pub empty_item_single_line: bool,
 }
 
 /// Preference of how items are displayed.

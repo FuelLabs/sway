@@ -1,3 +1,4 @@
+//! Configuration options related to re-ordering imports, modules and items.
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

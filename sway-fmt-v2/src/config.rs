@@ -8,3 +8,4 @@ mod lists;
 mod literals;
 mod manifest;
 mod ordering;
+mod user_def;

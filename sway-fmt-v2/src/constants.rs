@@ -14,7 +14,7 @@ pub const DEFAULT_TAB_SPACES: usize = 4;
 pub const DEFAULT_FN_CALL_WIDTH: usize = 60;
 /// Default max width of the args of a function-like attributes before falling back to vertical formatting.
 pub const DEFAULT_ATTR_FN_LIKE_WIDTH: usize = 70;
-/// Default max width in the body of a struct lit before falling back to vertical formatting.
+/// Default max width in the body of a struct literal before falling back to vertical formatting.
 pub const DEFAULT_STRUCT_LIT_WIDTH: usize = 18;
 /// Default max width in the body of a struct variant before falling back to vertical formatting.
 pub const DEFAULT_STRUCT_VAR_WIDTH: usize = 35;
@@ -35,6 +35,13 @@ pub const DEFAULT_BLANK_LINES_UPPER_BOUND: usize = 1;
 pub const DEFAULT_BLANK_LINES_LOWER_BOUND: usize = 0;
 /// Write an items and its attribute on the same line if their combined width is below a threshold.
 pub const DEFAULT_INLINE_ATTR_WIDTH: usize = 0;
+
+/////USER_DEFINED_STRUCTURES/////
+
+/// Default max threshold for aligning struct fields.
+pub const DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD: usize = 0;
+/// Default max threshold for aligning enum variants.
+pub const DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD: usize = 0;
 
 /////COMMENTS/////
 

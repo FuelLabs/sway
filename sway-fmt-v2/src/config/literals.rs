@@ -1,3 +1,4 @@
+//! Configuration options related to formatting literals.
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

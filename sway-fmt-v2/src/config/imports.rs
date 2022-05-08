@@ -1,3 +1,4 @@
+//! Configuration options related to formatting imports.
 use serde::{Deserialize, Serialize};
 
 use super::{fundamentals::IndentStyle, lists::ListTactic};

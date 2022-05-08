@@ -1,3 +1,4 @@
+//! Basic configuration options.
 use serde::{Deserialize, Serialize};
 
 /// Basic styling preferences.
