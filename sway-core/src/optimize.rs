@@ -1179,7 +1179,6 @@ impl FnCompiler {
         };
         // compile the expression to asm
         let compiled_value = self.compile_expression(context, *exp)?;
-        println!("\n\n#2\n\n{:?}", compiled_value.get_type(context));
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -1204,7 +1203,6 @@ impl FnCompiler {
             }
         };
         let exp = self.compile_expression(context, *exp)?;
-        println!("\n\n#1\n\n{:?}", exp.get_type(context));
         Ok(self.current_block.ins(context).extract_value(
             exp,
             enum_aggregate,
