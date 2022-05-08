@@ -459,7 +459,8 @@ impl FnCompiler {
         context: &mut Context,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
-        ast_block
+        self.lexical_map.enter_scope();
+        let value = ast_block
             .contents
             .into_iter()
             .map(|ast_node| {
@@ -561,7 +562,9 @@ impl FnCompiler {
             .collect::<Result<Vec<_>, CompileError>>()
             .map(|vals| vals.last().cloned())
             .transpose()
-            .unwrap_or_else(|| Ok(Constant::get_unit(context, None)))
+            .unwrap_or_else(|| Ok(Constant::get_unit(context, None)));
+        self.lexical_map.leave_scope();
+        value
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1176,6 +1179,7 @@ impl FnCompiler {
         };
         // compile the expression to asm
         let compiled_value = self.compile_expression(context, *exp)?;
+        println!("\n\n#2\n\n{:?}", compiled_value.get_type(context));
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -1200,6 +1204,7 @@ impl FnCompiler {
             }
         };
         let exp = self.compile_expression(context, *exp)?;
+        println!("\n\n#1\n\n{:?}", exp.get_type(context));
         Ok(self.current_block.ins(context).extract_value(
             exp,
             enum_aggregate,
@@ -2289,6 +2294,17 @@ impl LexicalMap {
             .insert(new_symbol, local_symbol.clone());
         self.reserved_sybols.push(local_symbol.clone());
         local_symbol
+    }
+
+    fn enter_scope(&mut self) -> &mut Self {
+        self.symbol_map.push(HashMap::new());
+        self
+    }
+
+    fn leave_scope(&mut self) -> &mut Self {
+        assert!(self.symbol_map.len() > 1);
+        self.symbol_map.pop();
+        self
     }
 }
 

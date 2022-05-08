@@ -16,8 +16,6 @@ use super::typed_match_branch::TypedMatchBranch;
 
 #[derive(Debug)]
 pub(crate) struct TypedMatchExpression {
-    #[allow(dead_code)]
-    value: TypedExpression,
     branches: Vec<TypedMatchBranch>,
     return_type_id: TypeId,
     #[allow(dead_code)]
@@ -71,7 +69,6 @@ impl TypedMatchExpression {
         }
 
         let exp = TypedMatchExpression {
-            value: typed_value,
             branches: typed_branches,
             return_type_id: return_type_annotation,
             span,
