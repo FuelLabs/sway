@@ -10,3 +10,12 @@ pub fn assert(a: bool) {
         ()
     }
 }
+
+/// wrapper for `assert` that allows passing a custom revert value `v` if condition `c` is not true.
+pub fn require(c: bool, v: u64) {
+    if !c {
+        revert(v)
+    } else {
+        ()
+    }
+}
