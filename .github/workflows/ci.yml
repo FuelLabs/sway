@@ -305,7 +305,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     needs: cancel-previous-runs
