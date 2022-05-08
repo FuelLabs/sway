@@ -72,13 +72,13 @@ pub enum Heuristics {
     Default,
 }
 
-impl Density {
+impl ItemsLayout {
     pub fn to_list_tactic(self, len: usize) -> ListTactic {
         match self {
-            Density::Compressed => ListTactic::Mixed,
-            Density::Tall => ListTactic::HorizontalVertical,
-            Density::Vertical if len == 1 => ListTactic::Horizontal,
-            Density::Vertical => ListTactic::Vertical,
+            ItemsLayout::Compressed => ListTactic::Mixed,
+            ItemsLayout::Tall => ListTactic::HorizontalVertical,
+            ItemsLayout::Vertical if len == 1 => ListTactic::Horizontal,
+            ItemsLayout::Vertical => ListTactic::Vertical,
         }
     }
 }
