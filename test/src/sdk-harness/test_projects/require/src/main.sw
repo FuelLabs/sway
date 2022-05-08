@@ -3,7 +3,6 @@ script;
 use std::assert::require;
 
 fn main() -> bool {
-
     const MY_CUSTOM_ERROR_MESSAGE = 100;
 
     let a = 5;
