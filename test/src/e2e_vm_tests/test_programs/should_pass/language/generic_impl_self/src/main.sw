@@ -105,10 +105,13 @@ impl<T> Option<T> {
   }
 
   fn to_result(self) -> Result<T> {
-    if let Option::Some(value) = self {
-      ~Result::ok::<T>(value)
-    } else {
-      ~Result::err::<T>(99u8)
+    match self {
+      Option::Some(value) => {
+        ~Result::ok(value)
+      },
+      Option::None => {
+        ~Result::err::<T>(99u8)
+      }
     }
   }
 }

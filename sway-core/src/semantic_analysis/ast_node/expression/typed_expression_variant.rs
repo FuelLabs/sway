@@ -73,19 +73,10 @@ pub(crate) enum TypedExpressionVariant {
     },
     UnsafeDowncast {
         exp: Box<TypedExpression>,
-        variant_tag: usize,
+        variant: TypedEnumVariant,
     },
     EnumTag {
         exp: Box<TypedExpression>,
-    },
-    #[allow(dead_code)]
-    IfLet {
-        enum_type: TypeId,
-        expr: Box<TypedExpression>,
-        variant: TypedEnumVariant,
-        variable_to_assign: Ident,
-        then: TypedCodeBlock,
-        r#else: Option<Box<TypedExpression>>,
     },
     TupleIndexAccess {
         prefix: Box<TypedExpression>,
@@ -250,35 +241,6 @@ impl PartialEq for TypedExpressionVariant {
                     && l_field_to_access == r_field_to_access
                     && look_up_type_id(*l_resolved_type_of_parent)
                         == look_up_type_id(*r_resolved_type_of_parent)
-            }
-            (
-                Self::IfLet {
-                    enum_type: l_enum_type,
-                    expr: l_expr,
-                    variant: l_variant,
-                    variable_to_assign: l_variable_to_assign,
-                    then: l_then,
-                    r#else: l_r,
-                },
-                Self::IfLet {
-                    enum_type: r_enum_type,
-                    expr: r_expr,
-                    variant: r_variant,
-                    variable_to_assign: r_variable_to_assign,
-                    then: r_then,
-                    r#else: r_r,
-                },
-            ) => {
-                look_up_type_id(*l_enum_type) == look_up_type_id(*r_enum_type)
-                    && (**l_expr) == (**r_expr)
-                    && l_variant == r_variant
-                    && l_variable_to_assign == r_variable_to_assign
-                    && l_then == r_then
-                    && if let (Some(l_r), Some(r_r)) = (l_r, r_r) {
-                        (**l_r) == (**r_r)
-                    } else {
-                        true
-                    }
             }
             (
                 Self::TupleIndexAccess {
@@ -489,20 +451,6 @@ impl CopyTypes for TypedExpressionVariant {
             EnumTag { exp: value } => {
                 value.copy_types(type_mapping);
             }
-            IfLet {
-                ref mut variant,
-                ref mut enum_type,
-                ..
-            } => {
-                *enum_type = if let Some(matching_id) =
-                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*enum_type))
-                };
-                variant.copy_types(type_mapping);
-            }
             TupleIndexAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
@@ -605,15 +553,17 @@ impl TypedExpressionVariant {
                     field_to_access.name
                 )
             }
-            TypedExpressionVariant::UnsafeDowncast { .. } => unimplemented!(),
-            TypedExpressionVariant::EnumTag { .. } => unimplemented!(),
-            TypedExpressionVariant::IfLet {
-                enum_type, variant, ..
-            } => {
+            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!(
-                    "if let {}::{}",
-                    enum_type.friendly_type_str(),
-                    variant.name.as_str()
+                    "({} as {})",
+                    look_up_type_id(exp.return_type).friendly_type_str(),
+                    variant.name
+                )
+            }
+            TypedExpressionVariant::EnumTag { exp } => {
+                format!(
+                    "({} as tag)",
+                    look_up_type_id(exp.return_type).friendly_type_str(),
                 )
             }
             TypedExpressionVariant::TupleIndexAccess {

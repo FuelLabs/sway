@@ -29,19 +29,25 @@ impl<T> Option<T> {
 
     /// Returns `true` if the result is [`Some`].
     fn is_some(self) -> bool {
-        if let Option::Some(t) = self {
-            true
-        } else {
-            false
+        match self {
+            Option::Some(_) => {
+                true
+            },
+            Option::None => {
+                false
+            }
         }
     }
 
     /// Returns `true` if the result is [`None`].
     fn is_none(self) -> bool {
-        if let Option::Some(t) = self {
-            false
-        } else {
-            true
+        match self {
+            Option::Some(_) => {
+                false
+            },
+            Option::None => {
+                true
+            }
         }
     }
 
@@ -51,10 +57,13 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the [`None`]
     /// case explicitly.
     fn unwrap(self) -> T {
-        if let Option::Some(inner_value) = self {
-            inner_value
-        } else {
-            panic(0);
+        match self {
+            Option::Some(inner_value) => {
+                inner_value
+            },
+            Option::None => {
+                panic(0)
+            }
         }
     }
 }

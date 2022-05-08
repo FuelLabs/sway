@@ -413,7 +413,6 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }

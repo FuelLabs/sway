@@ -4,7 +4,7 @@ use crate::{
     parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
     parser::Rule,
     type_engine::{IntegerBits, TypeInfo},
-    CodeBlock, TypeArgument, VariableDeclaration,
+    CodeBlock, TypeArgument,
 };
 
 use sway_types::{ident::Ident, Span};
@@ -147,13 +147,6 @@ pub enum Expression {
         field_names: Vec<Ident>,
         span: Span,
     },
-    IfLet {
-        scrutinee: Scrutinee,
-        expr: Box<Expression>,
-        then: CodeBlock,
-        r#else: Option<Box<Expression>>,
-        span: Span,
-    },
     SizeOfVal {
         exp: Box<Expression>,
         span: Span,
@@ -276,7 +269,6 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             StorageAccess { span, .. } => span,
-            IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             BuiltinGetTypeProperty { span, .. } => span,
         })
@@ -493,58 +485,7 @@ impl Expression {
                     errors
                 ),
             },
-            Rule::match_expression => {
-                let mut expr_iter = expr.into_inner();
-                let ParserLifter {
-                    mut var_decls,
-                    value,
-                } = check!(
-                    Expression::parse_from_pair(expr_iter.next().unwrap(), config),
-                    ParserLifter::empty(error_recovery_exp(span.clone())),
-                    warnings,
-                    errors
-                );
-                let mut branches = Vec::new();
-                for exp in expr_iter {
-                    branches.push(check!(
-                        MatchBranch::parse_from_pair(exp, config),
-                        MatchBranch {
-                            scrutinee: Scrutinee::CatchAll { span: span.clone() },
-                            result: Expression::Tuple {
-                                fields: vec![],
-                                span: span.clone(),
-                            },
-                            span: span.clone()
-                        },
-                        warnings,
-                        errors
-                    ));
-                }
-                // create a variable that assigns the value in a VariableDeclaration
-                let var_decl_span = value.span();
-                let var_decl_name = ident::random_name(var_decl_span.clone(), config);
-                var_decls.push(VariableDeclaration {
-                    name: var_decl_name.clone(),
-                    type_ascription: TypeInfo::Unknown,
-                    type_ascription_span: None,
-                    is_mutable: false,
-                    body: value,
-                });
-                // use that variable as the new value of the match expression
-                let var_decl_exp = Expression::VariableExpression {
-                    name: var_decl_name,
-                    span: var_decl_span,
-                };
-                let exp = Expression::MatchExp {
-                    value: Box::new(var_decl_exp),
-                    branches,
-                    span,
-                };
-                ParserLifter {
-                    var_decls,
-                    value: exp,
-                }
-            }
+            Rule::match_expression => unimplemented!(),
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner().peekable();
                 let struct_name = expr_iter.next().unwrap();
@@ -1177,12 +1118,7 @@ impl Expression {
                 warnings,
                 errors
             ),
-            Rule::if_let_exp => check!(
-                parse_if_let(expr, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
+            Rule::if_let_exp => unimplemented!(),
             Rule::built_in_expr => check!(
                 parse_built_in_expr(expr, config),
                 return err(warnings, errors),
@@ -1782,102 +1718,4 @@ fn arrange_by_order_of_operations(
     }
 
     ok(expression_result_stack[0].clone(), warnings, errors)
-}
-
-fn parse_if_let(
-    expr: Pair<Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<ParserLifter<Expression>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let path = config.map(|c| c.path());
-
-    let span = Span::from_pest(expr.as_span(), path.clone());
-
-    let mut if_exp_pairs = expr.into_inner();
-
-    let _let_keyword = if_exp_pairs.next();
-    let scrutinee_pair = if_exp_pairs.next().expect("guaranteed by grammar");
-    let expr_pair = if_exp_pairs.next().expect("guaranteed by grammar");
-    let then_branch_pair = if_exp_pairs.next().expect("guaranteed by grammar");
-    let maybe_else_branch_pair = if_exp_pairs.next(); // not expect because this could be None and be valid
-
-    let scrutinee = check!(
-        Scrutinee::parse_from_pair(scrutinee_pair, config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    let ParserLifter {
-        mut var_decls,
-        value: expr,
-    } = check!(
-        Expression::parse_from_pair(expr_pair, config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    let then_branch_span = Span::from_pest(then_branch_pair.as_span(), path.clone());
-
-    let then = check!(
-        CodeBlock::parse_from_pair(then_branch_pair, config),
-        crate::CodeBlock {
-            contents: Vec::new(),
-            whole_block_span: then_branch_span,
-        },
-        warnings,
-        errors
-    );
-
-    let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
-        let else_span = Span::from_pest(else_branch.as_span(), path);
-        match else_branch.as_rule() {
-            Rule::code_block => {
-                let block = check!(
-                    CodeBlock::parse_from_pair(else_branch.clone(), config),
-                    CodeBlock {
-                        contents: Vec::new(),
-                        whole_block_span: else_span.clone(),
-                    },
-                    warnings,
-                    errors
-                );
-                let exp = Expression::CodeBlock {
-                    contents: block,
-                    span: else_span,
-                };
-                Some(Box::new(exp))
-            }
-            Rule::if_let_exp => {
-                let ParserLifter {
-                    var_decls: mut var_decls2,
-                    value: r#else,
-                } = check!(
-                    parse_if_let(else_branch.clone(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                var_decls.append(&mut var_decls2);
-                Some(Box::new(r#else))
-            }
-            _ => unreachable!("guaranteed by grammar"),
-        }
-    } else {
-        None
-    };
-    let exp = Expression::IfLet {
-        scrutinee,
-        expr: Box::new(expr),
-        then,
-        r#else: maybe_else_branch,
-        span,
-    };
-    let result = ParserLifter {
-        var_decls,
-        value: exp,
-    };
-    ok(result, warnings, errors)
 }

@@ -967,35 +967,6 @@ fn connect_expression(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
-        IfLet {
-            expr, then, r#else, ..
-        } => {
-            let leaves = connect_expression(
-                &expr.expression,
-                graph,
-                leaves,
-                exit_node,
-                "if let expr",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            let then_expr = connect_code_block(then, graph, &leaves, exit_node, tree_type)?;
-
-            let else_expr = if let Some(else_expr) = r#else {
-                connect_expression(
-                    &else_expr.expression,
-                    graph,
-                    &leaves,
-                    exit_node,
-                    "if let: else branch",
-                    tree_type,
-                    (**else_expr).span.clone(),
-                )?
-            } else {
-                vec![]
-            };
-            Ok([then_expr, else_expr].concat())
-        }
         TupleIndexAccess { prefix, .. } => {
             let prefix_idx = connect_expression(
                 &prefix.expression,

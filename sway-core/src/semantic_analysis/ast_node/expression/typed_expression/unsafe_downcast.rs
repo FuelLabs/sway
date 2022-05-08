@@ -30,13 +30,13 @@ pub(crate) fn instantiate_unsafe_downcast(
             expression: TypedExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
             return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             is_constant: IsConstant::No,
-            span: variant.span.clone(),
+            span: exp.span.clone(),
         },
     )];
     let unsafe_downcast = TypedExpression {
         expression: TypedExpressionVariant::UnsafeDowncast {
             exp: Box::new(exp.clone()),
-            variant_tag: variant.tag,
+            variant: variant.clone(),
         },
         return_type: variant.r#type,
         is_constant: IsConstant::No,

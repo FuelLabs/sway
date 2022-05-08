@@ -8,7 +8,8 @@ use crate::{
         TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedVariableDeclaration,
         VariableMutability,
     },
-    CompileResult, MatchBranch, NamespaceWrapper, Scrutinee, TypedDeclaration,
+    type_engine::{insert_type, unify_with_self},
+    CompileResult, MatchBranch, NamespaceWrapper, Scrutinee, TypeInfo, TypedDeclaration,
 };
 
 use super::matcher::{matcher, MatchReqMap};
@@ -47,13 +48,15 @@ impl TypedMatchBranch {
             span: branch_span,
         } = branch;
 
-        // calculate the requirements map and the declarations map
+        // type check the scrutinee
         let typed_scrutinee = check!(
             TypedScrutinee::type_check(scrutinee.clone(), namespace, self_type),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
             matcher(typed_value, typed_scrutinee, namespace),
             return err(warnings, errors),
@@ -62,7 +65,7 @@ impl TypedMatchBranch {
         );
 
         // create a new namespace for this branch
-        let branch_namespace = create_new_scope(namespace);
+        let namespace = create_new_scope(namespace);
 
         // for every item in the declarations map, create a variable declaration,
         // insert it into the branch namespace, and add it to a block of code statements
@@ -77,7 +80,7 @@ impl TypedMatchBranch {
                 type_ascription,
                 const_decl_origin: false,
             });
-            branch_namespace.insert(left_decl, var_decl.clone());
+            namespace.insert(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {
                 content: TypedAstNodeContent::Declaration(var_decl),
                 span,
@@ -88,9 +91,9 @@ impl TypedMatchBranch {
         let typed_result = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: result,
-                namespace: branch_namespace,
+                namespace,
                 crate_namespace,
-                return_type_annotation,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text,
                 self_type,
                 build_config,
@@ -102,6 +105,19 @@ impl TypedMatchBranch {
             warnings,
             errors
         );
+
+        // unify the return type from the typed result with the type annotation
+        if !typed_result.deterministically_aborts() {
+            let (mut new_warnings, new_errors) = unify_with_self(
+                typed_result.return_type,
+                return_type_annotation,
+                self_type,
+                &typed_result.span,
+                help_text,
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
 
         // if the typed branch result is a code block, then add the contents
         // of that code block to the block of code statements that we are already

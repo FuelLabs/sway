@@ -21,6 +21,46 @@ enum Data<T> {
     Three: T
 }
 
+pub enum Option<T> {
+    Some: T,
+    None: (),
+}
+
+impl<T> Option<T> {
+    fn is_some(self) -> bool {
+        match self {
+            Option::Some(_) => {
+                true
+            },
+            Option::None => {
+                false
+            }
+        }
+    }
+
+    fn is_none(self) -> bool {
+        match self {
+            Option::Some(_) => {
+                false
+            },
+            Option::None => {
+                true
+            }
+        }
+    }
+
+    fn unwrap(self) -> T {
+        match self {
+            Option::Some(inner_value) => {
+                inner_value
+            },
+            Option::None => {
+                0
+            }
+        }
+    }
+}
+
 fn main() -> u64 {
     let a = X::Y(42);
     let b = match a {
@@ -70,8 +110,15 @@ fn main() -> u64 {
         Data::Two(Point { x: 7u8, y: 8u8 }) => { 6 },
         Data::One(Point { x, y }) => { 7 },
     };
+    let l = if let Data::Two(Point { x, y }) = j {
+        1
+    } else {
+        0
+    };
+    let m = Option::Some(4);
+    let n = Option::None::<u64>();
 
-    if b == 42 && c == 24 && e == 4 && g == 2 && i == 4 && k == 5 {
+    if b == 42 && c == 24 && e == 4 && g == 2 && i == 4 && k == 5 && l == 1 && m.unwrap() == 4 && n.unwrap() == 0 {
         42
     } else {
         0

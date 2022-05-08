@@ -105,7 +105,6 @@ where
                     return err(warnings, errors);
                 }
                 let type_mapping = insert_type_parameters(self.type_parameters());
-                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
                 for ((_, interim_type), type_argument) in
                     type_mapping.iter().zip(type_arguments.iter())
                 {
@@ -133,6 +132,7 @@ where
                         }
                     }
                 }
+                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
                 ok(new_decl, warnings, errors)
             }
         }

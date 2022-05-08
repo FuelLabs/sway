@@ -321,7 +321,6 @@ pub(crate) fn convert_expression_to_asm(
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         TypedExpressionVariant::UnsafeDowncast { .. } => unimplemented!(),
         TypedExpressionVariant::EnumTag { .. } => unimplemented!(),
-        TypedExpressionVariant::IfLet { .. } => unimplemented!(),
         TypedExpressionVariant::TypeProperty {
             property, type_id, ..
         } => match property {

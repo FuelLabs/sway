@@ -145,16 +145,6 @@ impl TypedExpression {
                             .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
-            IfLet {
-                expr, then, r#else, ..
-            } => {
-                expr.deterministically_aborts()
-                    || (then.deterministically_aborts()
-                        && r#else
-                            .as_ref()
-                            .map(|x| x.deterministically_aborts())
-                            .unwrap_or(false))
-            }
             AbiName(_) => false,
         }
     }
@@ -174,18 +164,6 @@ impl TypedExpression {
                 buf.append(&mut then.gather_return_statements());
                 if let Some(ref r#else) = r#else {
                     buf.append(&mut r#else.gather_return_statements());
-                }
-                buf
-            }
-            TypedExpressionVariant::IfLet {
-                expr, then, r#else, ..
-            } => {
-                let mut buf = expr.gather_return_statements();
-                for node in &then.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                if let Some(ref r#else) = r#else {
-                    buf.append(&mut r#else.gather_return_statements())
                 }
                 buf
             }
@@ -546,7 +524,6 @@ impl TypedExpression {
                 },
                 &expr_span,
             ),
-            Expression::IfLet { .. } => unimplemented!(),
             Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
                 TypeCheckArguments {
                     checkee: *exp,

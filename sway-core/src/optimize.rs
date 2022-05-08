@@ -628,11 +628,10 @@ impl FnCompiler {
                 then,
                 r#else,
             } => self.compile_if(context, *condition, *then, r#else),
-            TypedExpressionVariant::UnsafeDowncast { exp, variant_tag } => {
-                self.compile_unsafe_downcast(context, exp, variant_tag)
+            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+                self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
-            TypedExpressionVariant::IfLet { .. } => unimplemented!(),
             TypedExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -1163,7 +1162,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         exp: Box<TypedExpression>,
-        variant_tag: usize,
+        variant: TypedEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
         let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
@@ -1181,7 +1180,7 @@ impl FnCompiler {
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
             enum_aggregate,
-            vec![1, variant_tag as u64],
+            vec![1, variant.tag as u64],
             None,
         ))
     }

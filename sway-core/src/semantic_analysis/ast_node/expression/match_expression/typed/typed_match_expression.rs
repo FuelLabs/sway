@@ -9,7 +9,7 @@ use crate::{
         IsConstant, TypeCheckArguments, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
-    CompileResult, LazyOp, Literal, MatchBranch, NamespaceRef, Scrutinee, TypeInfo,
+    CompileError, CompileResult, LazyOp, Literal, MatchBranch, NamespaceRef, Scrutinee, TypeInfo,
 };
 
 use super::typed_match_branch::TypedMatchBranch;
@@ -19,6 +19,7 @@ pub(crate) struct TypedMatchExpression {
     #[allow(dead_code)]
     value: TypedExpression,
     branches: Vec<TypedMatchBranch>,
+    return_type_id: TypeId,
     #[allow(dead_code)]
     span: Span,
 }
@@ -40,67 +41,39 @@ impl TypedMatchExpression {
             build_config,
             dead_code_graph,
             opts,
-            help_text,
             mode,
+            ..
         } = arguments;
 
         // type check all of the branches
         let mut typed_branches = vec![];
         let mut scrutinees = vec![];
-        match branches.split_first() {
-            None => unimplemented!(),
-            Some((first_branch, rest_of_branches)) => {
-                // type check the first branch first, so that we can use the return type
-                // from the first branch to type check the other branches
-                let (typed_first_branch, scrutinee) = check!(
-                    TypedMatchBranch::type_check(TypeCheckArguments {
-                        checkee: (&typed_value, first_branch.clone()),
-                        namespace,
-                        crate_namespace,
-                        return_type_annotation,
-                        help_text,
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        mode,
-                        opts,
-                    }),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let new_return_type_annotation = typed_first_branch.result.return_type;
-                typed_branches.push(typed_first_branch);
-                scrutinees.push(scrutinee);
-                // type check the rest of the branches
-                for branch in rest_of_branches.iter() {
-                    let (typed_branch, scrutinee) = check!(
-                        TypedMatchBranch::type_check(TypeCheckArguments {
-                            checkee: (&typed_value, branch.clone()),
-                            namespace,
-                            crate_namespace,
-                            return_type_annotation: new_return_type_annotation,
-                            help_text:
-                                "all branches of a match statement must return the same type",
-                            self_type,
-                            build_config,
-                            dead_code_graph,
-                            mode,
-                            opts,
-                        }),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    typed_branches.push(typed_branch);
-                    scrutinees.push(scrutinee);
-                }
-            }
+        for branch in branches.into_iter() {
+            let (typed_branch, scrutinee) = check!(
+                TypedMatchBranch::type_check(TypeCheckArguments {
+                    checkee: (&typed_value, branch),
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation,
+                    help_text: "all branches of a match statement must return the same type",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    mode,
+                    opts,
+                }),
+                continue,
+                warnings,
+                errors
+            );
+            typed_branches.push(typed_branch);
+            scrutinees.push(scrutinee);
         }
 
         let exp = TypedMatchExpression {
             value: typed_value,
             branches: typed_branches,
+            return_type_id: return_type_annotation,
             span,
         };
         ok((exp, scrutinees), warnings, errors)
@@ -169,7 +142,7 @@ impl TypedMatchExpression {
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
-                            insert_type(TypeInfo::Unknown), // TODO: figure out if this argument matters or not
+                            self.return_type_id, // TODO: figure out if this argument matters or not
                             self_type
                         ),
                         continue,
@@ -184,14 +157,13 @@ impl TypedMatchExpression {
                         is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
-                    let return_type = prev_if_exp.return_type;
                     check!(
                         instantiate_if_expression(
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            return_type,
+                            self.return_type_id,
                             self_type
                         ),
                         continue,
@@ -200,14 +172,13 @@ impl TypedMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), Some(conditional)) => {
-                    let return_type = prev_if_exp.return_type;
                     check!(
                         instantiate_if_expression(
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            return_type,
+                            self.return_type_id,
                             self_type
                         ),
                         continue,
@@ -219,10 +190,15 @@ impl TypedMatchExpression {
         }
 
         // return!
-        let typed_if_exp = match typed_if_exp {
-            None => unimplemented!(),
-            Some(typed_if_exp) => typed_if_exp,
-        };
-        ok(typed_if_exp, warnings, errors)
+        match typed_if_exp {
+            None => {
+                errors.push(CompileError::Internal(
+                    "unable to convert match exp to if exp",
+                    self.span,
+                ));
+                err(warnings, errors)
+            }
+            Some(typed_if_exp) => ok(typed_if_exp, warnings, errors),
+        }
     }
 }

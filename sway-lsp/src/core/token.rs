@@ -434,19 +434,6 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 tokens.push(token);
             }
         }
-        Expression::IfLet {
-            expr, then, r#else, ..
-        } => {
-            handle_expression(*expr, tokens);
-
-            if let Some(r#else) = r#else {
-                handle_expression(*r#else, tokens);
-            }
-
-            for node in then.contents {
-                traverse_node(node, tokens);
-            }
-        }
         Expression::SizeOfVal { exp, .. } => {
             handle_expression(*exp, tokens);
         }

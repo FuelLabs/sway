@@ -133,29 +133,6 @@ impl UnresolvedTypeCheck for TypedExpression {
                 .collect(),
             UnsafeDowncast { exp, .. } => exp.check_for_unresolved_types(),
             EnumTag { exp } => exp.check_for_unresolved_types(),
-            IfLet {
-                enum_type,
-                expr,
-                then,
-                r#else,
-                ..
-            } => {
-                let mut buf = enum_type
-                    .check_for_unresolved_types()
-                    .into_iter()
-                    .chain(expr.check_for_unresolved_types().into_iter())
-                    .chain(
-                        then.contents
-                            .iter()
-                            .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                            .into_iter(),
-                    )
-                    .collect::<Vec<_>>();
-                if let Some(el) = r#else {
-                    buf.append(&mut el.check_for_unresolved_types());
-                }
-                buf
-            }
             TupleIndexAccess {
                 prefix,
                 resolved_type_of_parent,
