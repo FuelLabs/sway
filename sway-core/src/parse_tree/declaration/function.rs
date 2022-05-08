@@ -7,7 +7,8 @@ use crate::{
     CodeBlock, Rule,
 };
 
-use sway_types::{ident::Ident, span::Span, Function, Property};
+use fuels_types::{Function, Property};
+use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
 

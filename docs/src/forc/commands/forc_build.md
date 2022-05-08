@@ -81,18 +81,6 @@ Whether to compile to bytecode (false) or to print out the generated IR (true)
 
 Silent mode. Don't output any warnings or errors to the command line
 
-
-`--use-orig-asm` 
-
-
-Whether to compile using the original (pre- IR) pipeline
-
-
-`--use-orig-parser` 
-
-
-Whether to compile using the original (pest based) parser
-
 ## EXAMPLES:
 
 Compile the sway files of the current project.

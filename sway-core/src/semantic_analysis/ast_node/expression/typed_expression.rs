@@ -650,16 +650,14 @@ impl TypedExpression {
             },
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
-                    name: name.span().as_str().to_string(),
-                    span: name.span().clone(),
+                    name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
                 error_recovery_expr(name.span().clone())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: name.span().as_str().trim().to_string(),
-                    span: name.span().clone(),
+                    var_name: name.clone(),
                 });
                 error_recovery_expr(name.span().clone())
             }
@@ -694,8 +692,7 @@ impl TypedExpression {
             TypedDeclaration::FunctionDeclaration(decl) => decl,
             _ => {
                 errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str().to_string(),
-                    span: name.span(),
+                    name,
                     what_it_is: function_declaration.friendly_name(),
                 });
                 return err(warnings, errors);
@@ -1516,14 +1513,13 @@ impl TypedExpression {
             field
         } else {
             errors.push(CompileError::FieldNotFound {
-                span: field_to_access.span().clone(),
                 available_fields: fields
                     .iter()
                     .map(|TypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.clone(),
-                struct_name: struct_name.to_string(),
+                struct_name,
             });
             return err(warnings, errors);
         };
@@ -1811,8 +1807,7 @@ impl TypedExpression {
                 },
                 None => {
                     errors.push(CompileError::SymbolNotFound {
-                        name: call_path.suffix.as_str().to_string(),
-                        span: call_path.suffix.span().clone(),
+                        name: call_path.suffix.clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -1837,8 +1832,7 @@ impl TypedExpression {
             ),
             (None, None) => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: call_path.suffix.as_str().to_string(),
-                    span: call_path.suffix.span().clone(),
+                    name: call_path.suffix,
                 });
                 return err(warnings, errors);
             }

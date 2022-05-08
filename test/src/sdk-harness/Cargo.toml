@@ -18,7 +18,7 @@ rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [dev-dependencies]
-test-helpers = { path = "./test-helpers"}
+test-helpers = { path = "./test_helpers"}
 
 [[test]]
 harness = true
