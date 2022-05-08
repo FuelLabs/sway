@@ -10,9 +10,15 @@ enum Sale {
     Check: u64,
 }
 
-struct Point {
-    x: u64,
-    y: u64,
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+enum Data<T> {
+    One: T,
+    Two: T,
+    Three: T
 }
 
 fn main() -> u64 {
@@ -41,8 +47,31 @@ fn main() -> u64 {
         Point { x: 1, y } => { 1 },
         Point { x, y } => { 2 },
     };
+    let h = Data::One(true);
+    let i = match h {
+        Data::Two(true) => { 0 },
+        Data::Three(false) => { 1 },
+        Data::Two(false) => { 2 },
+        Data::Three(_) => { 3 },
+        Data::One(true) => { 4 },
+        Data::One(false) => { 5 },
+    };
+    let j = Data::Two(Point {
+        x: 7u8,
+        y: 8u8
+    });
+    let k = match j {
+        Data::One(Point { x: 7u8, y: 8u8 }) => { 0 },
+        Data::Three(Point { x: 7u8, y: 8u8 }) => { 1 },
+        Data::Two(Point { x: 0u8, y }) => { 2 },
+        Data::Three(_) => { 3 },
+        Data::One(Point { x: _, y: 8u8 }) => { 4 },
+        Data::Two(Point { x, y }) => { 5 },
+        Data::Two(Point { x: 7u8, y: 8u8 }) => { 6 },
+        Data::One(Point { x, y }) => { 7 },
+    };
 
-    if b == 42 && c == 24 && e == 4 && g == 2 {
+    if b == 42 && c == 24 && e == 4 && g == 2 && i == 4 && k == 5 {
         42
     } else {
         0
