@@ -502,7 +502,7 @@ impl TestContract for Contract {
 <p>The following is a simple example of a subcurrency which implements a <code>mint</code> and <code>send</code> function for a token. This example does not use Fuel's native asset system (see: <a href="examples/../blockchain-development/native_assets.html">Native Assets</a>).</p>
 <pre><code class="language-sway">contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, hash::*, panic::panic, result::*, storage::{get, store}};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, hash::*, result::*, revert::revert, storage::{get, store}};
 
 ////////////////////////////////////////
 // Event declarations
@@ -562,7 +562,7 @@ impl Token for Contract {
         let sender = if let Sender::Address(addr) = sender.unwrap() {
             assert(addr.into() == MINTER);
         } else {
-            panic(0);
+            revert(0);
         };
 
         // Increase the balance of receiver
@@ -576,7 +576,7 @@ impl Token for Contract {
         let sender = if let Sender::Address(addr) = sender.unwrap() {
             addr
         } else {
-            panic(0);
+            revert(0);
         };
 
         // Reduce the balance of sender
@@ -627,7 +627,7 @@ impl FizzBuzz for Contract {
 <p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
 <pre><code class="language-sway">contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, constants::NATIVE_ASSET_ID, context::{call_frames::msg_asset_id, msg_amount}, contract_id::ContractId, panic::panic, result::*, token::transfer_to_output};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, constants::NATIVE_ASSET_ID, context::{call_frames::msg_asset_id, msg_amount}, contract_id::ContractId, result::*, revert::revert, token::transfer_to_output};
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
@@ -652,7 +652,7 @@ impl Wallet for Contract {
         if let Sender::Address(addr) = sender.unwrap() {
             assert(addr.into() == OWNER_ADDRESS);
         } else {
-            panic(0);
+            revert(0);
         };
 
         let current_balance = storage.balance;
@@ -1331,7 +1331,7 @@ fn main() {
 
 use std::result::Result;
 use std::b512::B512;
-use std::panic::panic;
+use std::revert::revert;
 use std::chain::log_b256;
 use std::ecr::{EcRecoverError, ec_recover, ec_recover_address};
 
@@ -1350,7 +1350,7 @@ fn main() {
     if let Result::Ok(address) = result_address {
         log_b256(address.value);
     } else {
-        panic(0);
+        revert(0);
     };
 }
 </code></pre>
@@ -1525,7 +1525,7 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to Ethereum's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, panic::panic, result::*};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, result::*, revert::revert};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
@@ -1539,7 +1539,7 @@ impl MyOwnedContract for Contract {
         if let Sender::Address(addr) = sender.unwrap() {
             assert(addr.into() == OWNER);
         } else {
-            panic(0);
+            revert(0);
         };
 
         true
