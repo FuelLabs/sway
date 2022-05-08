@@ -1,9 +1,16 @@
 //! Configuration options related to rewriting a list.
+use serde::{Deserialize, Serialize};
 
-use crate::config::IndentStyle;
+use crate::config::fundamentals::IndentStyle;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Lists {
+    /// How to handle trailing commas for lists.
+    trailing_comma: SeparatorTactic, // Default Vertical
+}
 
 /// The definitive formatting tactic for lists.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
@@ -22,6 +29,7 @@ impl DefinitiveListTactic {
 /// Formatting tactic for lists. This will be cast down to a
 /// `DefinitiveListTactic` depending on the number and length of the items and
 /// their comments.
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ListTactic {
     /// One item per row.
     Vertical,
@@ -35,6 +43,7 @@ pub enum ListTactic {
     Mixed,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub enum SeparatorTactic {
     Always,
     Never,
@@ -52,6 +61,7 @@ impl SeparatorTactic {
 }
 
 /// Where to put separator.
+#[derive(PartialEq)]
 pub enum SeparatorPlace {
     Front,
     Back,
