@@ -359,13 +359,13 @@ fn check_supertraits(
                         // but we don't have a way today to point to two separate locations in the
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
-                            supertrait_name: supertrait.name.to_string(),
+                            supertrait_name: supertrait.name.clone(),
                             type_name: type_implementing_for.friendly_type_str(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
-                            supertrait_name: supertrait.name.to_string(),
-                            trait_name: tr.name.to_string(),
+                            supertrait_name: supertrait.name.clone(),
+                            trait_name: tr.name.clone(),
                             span: tr.name.span().clone(),
                         });
                     }

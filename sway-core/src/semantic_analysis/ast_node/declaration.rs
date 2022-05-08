@@ -19,11 +19,10 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
     Ident, NamespaceRef, NamespaceWrapper,
 };
-
-use sway_types::{Property, Span};
-
 use derivative::Derivative;
+use fuels_types::Property;
 use std::hash::{Hash, Hasher};
+use sway_types::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -365,14 +364,13 @@ impl TypedStructField {
             Some(field) => ok(field, warnings, errors),
             None => {
                 errors.push(CompileError::FieldNotFound {
-                    span: field_to_access.span().clone(),
                     available_fields: fields
                         .iter()
                         .map(|TypedStructField { name, .. }| name.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     field_name: field_to_access.clone(),
-                    struct_name: struct_name.to_string(),
+                    struct_name: struct_name.clone(),
                 });
                 err(warnings, errors)
             }

@@ -83,23 +83,15 @@ impl Namespace {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
                 | TypedDeclaration::StructDeclaration { .. } => {
-                    errors.push(CompileError::ShadowsOtherSymbol {
-                        span: name.span().clone(),
-                        name: name.as_str().to_string(),
-                    });
+                    errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
                 TypedDeclaration::GenericTypeForFunctionScope { .. } => {
-                    errors.push(CompileError::GenericShadowsGeneric {
-                        span: name.span().clone(),
-                        name: name.as_str().to_string(),
-                    });
+                    errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {
                     warnings.push(CompileWarning {
                         span: name.span().clone(),
-                        warning_content: Warning::ShadowsOtherSymbol {
-                            name: name.span().as_str().to_string(),
-                        },
+                        warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
                     });
                 }
             }

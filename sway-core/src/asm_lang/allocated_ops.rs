@@ -412,7 +412,7 @@ fn realize_lw(
     let type_of_data = data_section.type_of_data(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
-    if type_of_data.stack_size_of() > 1 {
+    if !type_of_data.is_copy_type() {
         // load the pointer itself into the register
         // `offset_to_data_section` is in bytes. We want a byte
         // address here

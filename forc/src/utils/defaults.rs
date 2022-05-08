@@ -5,10 +5,10 @@ pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
 
     format!(
         r#"[project]
+name = "{project_name}"
 authors = ["{real_name}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
-name = "{project_name}"
 
 [dependencies]
 "#
@@ -23,17 +23,17 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
 
     format!(
         r#"[project]
+name = "{project_name}"
+version = "0.1.0"
 authors = ["{real_name}"]
 edition = "2021"
 license = "Apache-2.0"
-name = "{project_name}"
-version = "0.1.0"
 
 [dependencies]
 fuel-gql-client = {{ version = "0.6", default-features = false }}
 fuel-tx = "0.9"
-fuels-abigen-macro = "0.10"
 fuels = "0.10"
+fuels-abigen-macro = "0.10"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 

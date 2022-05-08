@@ -7,8 +7,8 @@ mod integer_bits;
 mod type_info;
 mod unresolved_type_check;
 pub use engine::*;
+use fuels_types::Property;
 pub use integer_bits::*;
-use sway_types::Property;
 pub use type_info::*;
 pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
 

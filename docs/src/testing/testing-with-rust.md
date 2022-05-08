@@ -29,34 +29,34 @@ Our `tests/harness.rs` file could look like:
 <!--TODO add test here once examples are tested-->
 
 ```rust,ignore
-use fuel_tx::Salt;
+use fuel_tx::{ContractId, Salt};
+use fuels::prelude::*;
+use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
-use fuels_contract::contract::Contract;
-use fuels_contract::parameters::TxParameters;
-use fuels_signers::util::test_helpers::setup_test_provider_and_wallet;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
-// Generate Rust bindings from our contract JSON ABI
-abigen!(MyContract, "./out/debug/counter-abi.json");
+// Load abi from json
+abigen!(MyContract, "out/debug/my-fuel-project-abi.json");
 
-#[tokio::test]
-async fn harness() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    // Build the contract
-    let salt: [u8; 32] = rng.gen();
-    let salt = Salt::from(salt);
+async fn get_contract_instance() -> (MyContract, ContractId) {
+    // Deploy the compiled contract
+    let salt = Salt::from([0u8; 32]);
+    let compiled = Contract::load_sway_contract("./out/debug/my-fuel-project.bin", salt).unwrap();
 
     // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract("./out/debug/counter.bin", salt).unwrap();
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+
+    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
         .unwrap();
-    println!("Contract deployed @ {:x}", contract_id);
 
-    let contract_instance = MyContract::new(contract_id.to_string(), provider, wallet);
+    let instance = MyContract::new(id.to_string(), provider, wallet);
+
+    (instance, id)
+}
+
+#[tokio::test]
+async fn can_get_contract_id() {
+    let (contract_instance, _id) = get_contract_instance().await;
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
@@ -76,6 +76,7 @@ async fn harness() {
         .unwrap();
 
     assert_eq!(52, result.value);
+    // Now you have an instance of your contract you can use to test each function
 }
 ```
 
