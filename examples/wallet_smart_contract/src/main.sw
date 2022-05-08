@@ -1,6 +1,6 @@
 contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, constants::NATIVE_ASSET_ID, context::{call_frames::msg_asset_id, msg_amount}, contract_id::ContractId, revert::revert, result::*, token::transfer_to_output};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, constants::NATIVE_ASSET_ID, context::{call_frames::msg_asset_id, msg_amount}, contract_id::ContractId, result::*, revert::revert, token::transfer_to_output};
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
