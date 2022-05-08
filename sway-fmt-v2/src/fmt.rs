@@ -10,6 +10,12 @@ pub struct Formatter {
     pub tab_size: u32,
 }
 
+pub type FormattedCode = String;
+
+pub trait Format {
+    fn format(&self, formatter: &Formatter) -> FormattedCode;
+}
+
 impl Formatter {
     pub fn default() -> Self {
         Self {
@@ -30,7 +36,7 @@ impl Formatter {
             .map(|item| -> Result<String, FormatterError> {
                 use Item::*;
                 Ok(match item {
-                    Use(use_stmt) => todo!("Format me!"),
+                    Use(use_stmt) => use_stmt.format(&self),
                     // don't format if we don't have a formatter for this `Item`
                     otherwise => otherwise.span().as_str().to_string(),
                 })

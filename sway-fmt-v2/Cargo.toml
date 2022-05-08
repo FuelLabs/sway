@@ -9,7 +9,8 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway sway-fmt."
 
 [dependencies]
-sway-core = { version = "0.11.0", path = "../sway-core" }
-sway-parse = { version = "0.11.0", path = "../sway-parse" }
-sway-types = { version = "0.11.0", path = "../sway-types" }
+serde = { version = "1.0", features = ["derive"] }
+sway-core = { version = "0.12.0", path = "../sway-core" }
+sway-parse = { version = "0.12.0", path = "../sway-parse" }
+sway-types = { version = "0.12.0", path = "../sway-types" }
 thiserror = "1.0.30"
