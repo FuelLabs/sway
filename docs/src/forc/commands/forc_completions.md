@@ -19,6 +19,7 @@ Print help information
 ## EXAMPLES:
 
 DISCUSSION:
+
     Enable tab completion for Bash, Fish, Zsh, or PowerShell
     The script is output on `stdout`, allowing one to re-direct the
     output to the file of their choosing. Where you place the file
