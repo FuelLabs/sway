@@ -200,7 +200,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
     );
 
     if dry_run {
-        if check_index_diffs(index_file, &new_summary_contents).is_err() {
+        if check_index_diffs(index_file, &new_index_contents).is_err() {
             failed = true;
         }
         if check_summary_diffs(&existing_summary_contents, &new_summary_contents).is_err() {
