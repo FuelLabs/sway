@@ -1,11 +1,11 @@
 library assert;
 
-use ::panic::panic;
+use ::revert::revert;
 
 /// Assert that a value is true
 pub fn assert(a: bool) {
     if !a {
-        panic(0);
+        revert(0);
     } else {
         ()
     }
