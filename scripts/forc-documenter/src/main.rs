@@ -92,6 +92,8 @@ fn write_new_summary_contents(
 fn write_docs(command: WriteDocsCommand) -> Result<()> {
     let WriteDocsCommand { dry_run } = command;
 
+    let mut failure_info: Vec<(&str, &str)> = Vec::new();
+
     let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
     let summary_file_path = get_sway_path().join("docs/src/SUMMARY.md");
     let index_file_path = forc_commands_docs_path.join("index.md");
@@ -171,21 +173,14 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             match existing_contents {
                 Ok(existing_contents) => {
                     if existing_contents == result {
-                        println!("forc {}: documentation ok.", &command);
+                        println!("[✓] forc {}: documentation ok.", &command);
                     } else {
-                        return Err(anyhow!(
-                            "Documentation inconsistent for forc {} - {}",
-                            &command,
-                            constants::RUN_WRITE_DOCS_MESSAGE
-                        ));
+                        failure_info
+                            .push((&"[x] Documentation inconsistent for command:", &command));
                     }
                 }
                 Err(_) => {
-                    return Err(anyhow!(
-                        "Documentation does not exist for forc {} - {}",
-                        &command,
-                        constants::RUN_WRITE_DOCS_MESSAGE
-                    ));
+                    failure_info.push((&"[x] Documentation does not exist for command:", &command));
                 }
             }
         } else {
@@ -202,6 +197,12 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
         existing_summary_contents.clone(),
         new_index_contents.clone(),
     );
+
+    if failure_info.len() > 0 {
+        for info in &failure_info {
+            eprintln!("{} forc {}", info.0, info.1);
+        }
+    }
     if dry_run {
         check_index_diffs(index_file, new_index_contents)?;
         check_summary_diffs(existing_summary_contents, new_summary_contents)?;
@@ -218,7 +219,13 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             .expect("Failed to write to SUMMARY.md");
     }
 
-    println!("Done.");
+    if failure_info.len() > 0 {
+        return Err(anyhow!(
+            "Failed to document some commands. {}",
+            constants::RUN_WRITE_DOCS_MESSAGE
+        ));
+    }
+
     Ok(())
 }
 
