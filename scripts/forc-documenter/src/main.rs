@@ -9,7 +9,6 @@ use std::str;
 
 mod checkers;
 mod constants;
-mod examples;
 mod helpers;
 
 use crate::checkers::{check_index_diffs, check_summary_diffs};
@@ -57,12 +56,12 @@ fn create_forc_commands_docs_dir(path: &Path) -> Result<()> {
 
 fn get_example_for_command(command: &str) -> &str {
     match command {
-        "init" => examples::FORC_INIT_EXAMPLE,
-        "build" => examples::FORC_BUILD_EXAMPLE,
-        "test" => examples::FORC_TEST_EXAMPLE,
-        "deploy" => examples::FORC_DEPLOY_EXAMPLE,
-        "parse-bytecode" => examples::FORC_PARSE_BYTECODE_EXAMPLE,
-        "completions" => examples::FORC_COMPLETIONS_EXAMPLE,
+        "init" => constants::FORC_INIT_EXAMPLE,
+        "build" => constants::FORC_BUILD_EXAMPLE,
+        "test" => constants::FORC_TEST_EXAMPLE,
+        "deploy" => constants::FORC_DEPLOY_EXAMPLE,
+        "parse-bytecode" => constants::FORC_PARSE_BYTECODE_EXAMPLE,
+        "completions" => constants::FORC_COMPLETIONS_EXAMPLE,
         _ => "",
     }
 }
