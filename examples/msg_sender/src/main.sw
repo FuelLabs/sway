@@ -1,6 +1,6 @@
 contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, panic::panic, result::*};
+use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, result::*, revert::revert};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -> bool;
@@ -14,7 +14,7 @@ impl MyOwnedContract for Contract {
         if let Sender::Address(addr) = sender.unwrap() {
             assert(addr.into() == OWNER);
         } else {
-            panic(0);
+            revert(0);
         };
 
         true
