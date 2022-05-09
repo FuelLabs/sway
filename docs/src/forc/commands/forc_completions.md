@@ -10,11 +10,19 @@ forc completions --shell <SHELL>
 
 `-h`, `--help` 
 
+
 Print help information
+
 
 `-s`, `--shell` <_SHELL_>
 
+
+Specify shell to enable tab-completion for
+
 [possible values: zsh, bash, fish, powershell, elvish]
+
+(For more info:
+https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html)
 
 ## EXAMPLES:
 

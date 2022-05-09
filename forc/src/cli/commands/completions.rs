@@ -6,11 +6,12 @@ use clap_complete::{generate, Generator, Shell};
 /// Generate tab-completion scripts for your shell
 #[derive(Debug, Parser)]
 pub struct Command {
-    #[clap(
-        short,
-        long,
-        help("[possible values: zsh, bash, fish, powershell, elvish]")
-    )]
+    /// Specify shell to enable tab-completion for
+    ///
+    /// [possible values: zsh, bash, fish, powershell, elvish]
+    ///
+    /// For more info: https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html
+    #[clap(short, long)]
     shell: Shell,
 }
 
