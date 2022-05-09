@@ -47,8 +47,11 @@ Homebrew stores bash completion files within the Homebrew directory.
 With the `bash-completion` brew formula installed, run the command:
 
 $ mkdir -p $(brew --prefix)/etc/bash_completion.d
-$ forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-
-completion
+$ forc completions --shell=bash > $(brew
+
+`--prefix)/etc/bash_completion.d/forc.bash-completion` 
+
+
 
 FISH:
 

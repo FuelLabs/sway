@@ -6,7 +6,7 @@
 
 library option;
 
-use ::panic::panic;
+use ::revert::revert;
 
 /// `Option` is a type that represents either the existence of a value ([`Some`]) or a value's absence
 /// ([`None`]).
@@ -47,14 +47,14 @@ impl<T> Option<T> {
 
     /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
-    /// Because this function may panic, its use is generally discouraged.
+    /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`None`]
     /// case explicitly.
     fn unwrap(self) -> T {
         if let Option::Some(inner_value) = self {
             inner_value
         } else {
-            panic(0);
+            revert(0);
         }
     }
 }
