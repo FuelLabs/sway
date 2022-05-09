@@ -1042,7 +1042,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1082,7 +1082,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1096,7 +1096,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1110,14 +1110,14 @@ dependencies = [
 
 [[package]]
 name = "forc-gm"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "clap 3.1.8",
 ]
 
 [[package]]
 name = "forc-lsp"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1127,17 +1127,17 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuels-types",
  "git2",
  "petgraph",
  "semver 1.0.7",
  "serde",
  "serde_ignored",
  "sway-core",
- "sway-types",
  "sway-utils",
  "toml",
  "url",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1325,6 +1325,18 @@ dependencies = [
  "sha3 0.9.1",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "fuels-types"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e41f0c46afe4389edc34aa84064808ab8d41cb0e4e06fd7ea2a8e19abc82eaed"
+dependencies = [
+ "anyhow",
+ "serde",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -3153,6 +3165,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+
+[[package]]
+name = "strum_macros"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d06aaeeee809dbc59eb4556183dd927df67db1540de5be8d3ec0b6636358a5ec"
+dependencies = [
+ "heck 0.3.3",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3182,7 +3212,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "clap 3.1.8",
  "derivative",
@@ -3193,6 +3223,7 @@ dependencies = [
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-vm",
+ "fuels-types",
  "generational-arena",
  "hex",
  "itertools",
@@ -3213,7 +3244,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3222,7 +3253,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "filecheck",
  "generational-arena",
@@ -3232,7 +3263,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
@@ -3251,7 +3282,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3263,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3275,7 +3306,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.12.0"
+version = "0.12.1"
 
 [[package]]
 name = "syn"
