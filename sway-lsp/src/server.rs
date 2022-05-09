@@ -444,6 +444,9 @@ fn main() {
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
 
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
+
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
 
@@ -510,6 +513,9 @@ fn main() {
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, text).await;
 
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
+
         // send "textDocument/didChange" notification for `uri`
         let params = json!({
             "textDocument": {
@@ -538,6 +544,9 @@ fn main() {
             .finish();
         let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
+
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
