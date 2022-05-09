@@ -209,6 +209,5 @@ fn match_tuple(
         match_req_map.append(&mut new_match_req_map);
         match_decl_map.append(&mut new_match_decl_map);
     }
-
     ok((match_req_map, match_decl_map), warnings, errors)
 }

@@ -200,19 +200,25 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            instantiate_function_application_simple(
-                CallPath {
-                    prefixes: vec![],
-                    suffix: method_name,
-                    is_absolute: false,
-                },
-                contract_call_params_map,
-                args_buf,
-                method,
-                selector,
-                IsConstant::No,
-                span,
-            )
+            let exp = check!(
+                instantiate_function_application_simple(
+                    CallPath {
+                        prefixes: vec![],
+                        suffix: method_name,
+                        is_absolute: false,
+                    },
+                    contract_call_params_map,
+                    args_buf,
+                    method,
+                    selector,
+                    IsConstant::No,
+                    span,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(exp, warnings, errors)
         }
 
         // something like blah::blah::~Type::foo()
@@ -254,15 +260,21 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            instantiate_function_application_simple(
-                call_path,
-                contract_call_params_map,
-                args_buf,
-                method,
-                selector,
-                IsConstant::No,
-                span,
-            )
+            let exp = check!(
+                instantiate_function_application_simple(
+                    call_path,
+                    contract_call_params_map,
+                    args_buf,
+                    method,
+                    selector,
+                    IsConstant::No,
+                    span,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(exp, warnings, errors)
         }
     }
 }
@@ -354,9 +366,8 @@ pub(crate) fn resolve_method_name(
     crate_namespace: NamespaceRef,
     self_type: TypeId,
 ) -> CompileResult<TypedFunctionDeclaration> {
-    let warnings = vec![];
+    let mut warnings = vec![];
     let mut errors = vec![];
-
     match method_name {
         MethodName::FromType {
             call_path,
@@ -411,21 +422,33 @@ pub(crate) fn resolve_method_name(
             } else {
                 None
             };
-            namespace.find_method_for_type(
-                insert_type(ty),
-                &call_path.suffix,
-                &call_path.prefixes[..],
-                from_module,
-                self_type,
-                &arguments,
-            )
+            let decl = check!(
+                namespace.find_method_for_type(
+                    insert_type(ty),
+                    &call_path.suffix,
+                    &call_path.prefixes[..],
+                    from_module,
+                    self_type,
+                    &arguments,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(decl, warnings, errors)
         }
         MethodName::FromModule { method_name } => {
             let ty = arguments
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            namespace.find_method_for_type(ty, method_name, &[], None, self_type, &arguments)
+            let decl = check!(
+                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &arguments),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(decl, warnings, errors)
         }
     }
 }

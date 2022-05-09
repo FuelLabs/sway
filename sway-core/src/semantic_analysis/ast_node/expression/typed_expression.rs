@@ -702,18 +702,24 @@ impl TypedExpression {
             warnings,
             errors
         );
-        instantiate_function_application(
-            typed_function_decl,
-            name,
-            type_arguments,
-            arguments,
-            namespace,
-            crate_namespace,
-            self_type,
-            build_config,
-            dead_code_graph,
-            opts,
-        )
+        let exp = check!(
+            instantiate_function_application(
+                typed_function_decl,
+                name,
+                type_arguments,
+                arguments,
+                namespace,
+                crate_namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                opts,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(exp, warnings, errors)
     }
 
     fn type_check_lazy_operator(
@@ -904,7 +910,13 @@ impl TypedExpression {
                 errors
             )
         });
-        instantiate_if_expression(condition, then, r#else, span, type_annotation, self_type)
+        let exp = check!(
+            instantiate_if_expression(condition, then, r#else, span, type_annotation, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(exp, warnings, errors)
     }
 
     fn type_check_match_expression(
@@ -1087,7 +1099,6 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut typed_fields_buf = vec![];
 
         // find the module that the symbol is in
         let module = check!(
@@ -1114,6 +1125,7 @@ impl TypedExpression {
         );
 
         // match up the names with their type annotations from the declaration
+        let mut typed_fields_buf = vec![];
         for def_field in struct_decl.fields.iter_mut() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
@@ -1173,12 +1185,11 @@ impl TypedExpression {
                 });
             }
         }
-        let expression = TypedExpressionVariant::StructExpression {
-            struct_name: struct_decl.name.clone(),
-            fields: typed_fields_buf,
-        };
         let exp = TypedExpression {
-            expression,
+            expression: TypedExpressionVariant::StructExpression {
+                struct_name: struct_decl.name.clone(),
+                fields: typed_fields_buf,
+            },
             return_type: struct_decl.type_id(),
             is_constant: IsConstant::No,
             span,
@@ -1217,7 +1228,13 @@ impl TypedExpression {
             warnings,
             errors
         );
-        instantiate_struct_field_access(parent, field_to_access, span, namespace)
+        let exp = check!(
+            instantiate_struct_field_access(parent, field_to_access, span, namespace),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(exp, warnings, errors)
     }
 
     fn type_check_tuple(
@@ -1358,7 +1375,13 @@ impl TypedExpression {
             warnings,
             errors
         );
-        instantiate_tuple_index_access(parent, index, index_span, span, namespace)
+        let exp = check!(
+            instantiate_tuple_index_access(parent, index, index_span, span, namespace),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok(exp, warnings, errors)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1820,19 +1843,25 @@ impl TypedExpression {
                 type_name: None,
                 type_name_span: None,
             };
-            type_check_method_application(
-                method_name,
-                vec![],
-                vec![prefix, index],
-                vec![],
-                span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                opts,
-            )
+            let exp = check!(
+                type_check_method_application(
+                    method_name,
+                    vec![],
+                    vec![prefix, index],
+                    vec![],
+                    span,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(exp, warnings, errors)
         }
     }
 

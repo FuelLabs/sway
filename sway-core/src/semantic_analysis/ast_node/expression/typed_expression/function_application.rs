@@ -102,15 +102,21 @@ pub(crate) fn instantiate_function_application(
         .collect();
 
     let span = typed_function_decl.span.clone();
-    instantiate_function_application_inner(
-        call_path,
-        HashMap::new(),
-        typed_call_arguments,
-        typed_function_decl,
-        None,
-        IsConstant::No,
-        span,
-    )
+    let exp = check!(
+        instantiate_function_application_inner(
+            call_path,
+            HashMap::new(),
+            typed_call_arguments,
+            typed_function_decl,
+            None,
+            IsConstant::No,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(exp, warnings, errors)
 }
 
 pub(crate) fn instantiate_function_application_simple(
