@@ -9,6 +9,15 @@ pub struct Literals {
     pub hex_literal_case: HexLiteralCase,
 }
 
+impl Default for Literals {
+    fn default() -> Self {
+        Self {
+            format_strings: false,
+            hex_literal_case: HexLiteralCase::Preserve,
+        }
+    }
+}
+
 /// Controls how swayfmt should handle case in hexadecimal literals.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum HexLiteralCase {

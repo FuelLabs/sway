@@ -15,6 +15,17 @@ pub struct Imports {
     pub imports_layout: ListTactic,
 }
 
+impl Default for Imports {
+    fn default() -> Self {
+        Self {
+            group_imports: GroupImportsTactic::Preserve,
+            imports_granularity: ImportGranularity::Preserve,
+            imports_indent: IndentStyle::Block,
+            imports_layout: ListTactic::Mixed,
+        }
+    }
+}
+
 /// Configuration for import groups, i.e. sets of imports separated by newlines.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum GroupImportsTactic {

@@ -10,3 +10,13 @@ pub struct Ordering {
     /// Reorder `impl` items.
     reorder_impl_items: bool,
 }
+
+impl Default for Ordering {
+    fn default() -> Self {
+        Self {
+            reorder_imports: true,
+            reorder_modules: true,
+            reorder_impl_items: false,
+        }
+    }
+}

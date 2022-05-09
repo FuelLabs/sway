@@ -1,6 +1,8 @@
 //! Configuration options related to formatting comments.
 use serde::{Deserialize, Serialize};
 
+use crate::constants::DEFAULT_MAX_COMMENT_WIDTH;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Comments {
     /// Break comments to fit on the line.
@@ -9,4 +11,14 @@ pub struct Comments {
     pub comment_width: usize,
     /// Convert /* */ comments to // comments where possible
     pub normalize_comments: bool,
+}
+
+impl Default for Comments {
+    fn default() -> Self {
+        Self {
+            wrap_comments: false,
+            comment_width: DEFAULT_MAX_COMMENT_WIDTH,
+            normalize_comments: false,
+        }
+    }
 }

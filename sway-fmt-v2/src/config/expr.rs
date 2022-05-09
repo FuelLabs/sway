@@ -29,6 +29,24 @@ pub struct Expressions {
     pub fn_single_line: bool,
 }
 
+impl Default for Expressions {
+    fn default() -> Self {
+        Self {
+            expr_brace_style: ExprBraceStyle::AlwaysSameLine,
+            trailing_semicolon: true,
+            space_before_colon: false,
+            space_after_colon: false,
+            type_punctuation_layout: TypeCombinatorLayout::Wide,
+            spaces_around_ranges: false,
+            match_block_trailing_comma: false,
+            match_arm_leading_pipe: MatchArmLeadingPipe::Never,
+            force_multiline_blocks: false,
+            fn_args_layout: ItemsLayout::Tall,
+            fn_single_line: false,
+        }
+    }
+}
+
 /////PUNCTUATION/////
 
 /// Where to put the opening brace of conditional expressions (`if`, `match`, etc.).

@@ -2,10 +2,11 @@
 use serde::{Deserialize, Serialize};
 
 use super::lists::ListTactic;
+use crate::constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Items {
-    pub items_layout: ItemsLayout,
+    /// Brace style for items.
     pub item_brace_style: ItemBraceStyle,
     /// Maximum number of blank lines which can be put between items.
     pub blank_lines_upper_bound: usize,
@@ -15,7 +16,18 @@ pub struct Items {
     pub empty_item_single_line: bool,
 }
 
-/// Preference of how items are displayed.
+impl Default for Items {
+    fn default() -> Self {
+        Self {
+            item_brace_style: ItemBraceStyle::SameLineWhere,
+            blank_lines_upper_bound: DEFAULT_BLANK_LINES_UPPER_BOUND,
+            blank_lines_lower_bound: DEFAULT_BLANK_LINES_LOWER_BOUND,
+            empty_item_single_line: true,
+        }
+    }
+}
+
+/// Preference of how list-like items are displayed.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ItemsLayout {
     /// Fit as much on one line as possible.

@@ -1,10 +1,10 @@
 //! Configuration options related to heuristics.
-use serde::{Deserialize, Serialize};
 use crate::constants::{
     DEFAULT_ARRAY_WIDTH, DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_FN_CALL_WIDTH,
     DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH, DEFAULT_STRUCT_LIT_WIDTH,
     DEFAULT_STRUCT_VAR_WIDTH,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Heuristics {
@@ -14,6 +14,16 @@ pub struct Heuristics {
     pub width_heuristics: WidthHeuristics,
     /// Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'
     pub use_small_heuristics: bool,
+}
+
+impl Default for Heuristics {
+    fn default() -> Self {
+        Self {
+            heuristics_pref: HeuristicsPreferences::Scaled,
+            width_heuristics: WidthHeuristics::scaled(DEFAULT_MAX_LINE_WIDTH),
+            use_small_heuristics: true,
+        }
+    }
 }
 
 /// Heuristic settings that can be used to simplify

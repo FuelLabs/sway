@@ -21,6 +21,18 @@ pub struct Fundamentals {
     pub indent_style: IndentStyle,
 }
 
+impl Default for Fundamentals {
+    fn default() -> Self {
+        Self {
+            max_width: 100,
+            hard_tabs: false,
+            tab_spaces: 4,
+            newline_style: NewlineStyle::Auto,
+            indent_style: IndentStyle::Block,
+        }
+    }
+}
+
 /// Handling of which OS new-line style should be applied.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum NewlineStyle {

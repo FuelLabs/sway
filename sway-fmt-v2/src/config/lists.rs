@@ -9,6 +9,14 @@ pub struct Lists {
     trailing_comma: SeparatorTactic, // Default Vertical
 }
 
+impl Default for Lists {
+    fn default() -> Self {
+        Self {
+            trailing_comma: SeparatorTactic::Vertical,
+        }
+    }
+}
+
 /// The definitive formatting tactic for lists.
 #[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum DefinitiveListTactic {
