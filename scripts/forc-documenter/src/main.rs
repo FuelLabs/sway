@@ -92,7 +92,7 @@ fn write_new_summary_contents(
 fn write_docs(command: WriteDocsCommand) -> Result<()> {
     let WriteDocsCommand { dry_run } = command;
 
-    let mut failure_info: Vec<(&str, &str)> = Vec::new();
+    let mut failed: bool = false;
 
     let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
     let summary_file_path = get_sway_path().join("docs/src/SUMMARY.md");
@@ -175,11 +175,13 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
                     if existing_contents == result {
                         println!("[✓] forc {}: documentation ok.", &command);
                     } else {
-                        failure_info.push((&command, &"documentation inconsistent!"));
+                        failed = true;
+                        eprintln!("[x] forc {}: documentation inconsistent!", &command);
                     }
                 }
                 Err(_) => {
-                    failure_info.push((&command, &"documentation does not exist!"));
+                    failed = true;
+                    eprintln!("[x] forc {}: documentation does not exist!", &command);
                 }
             }
         } else {
@@ -197,14 +199,13 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
         new_index_contents.clone(),
     );
 
-    if failure_info.len() > 0 {
-        for info in &failure_info {
-            eprintln!("[x] forc {}: {}", info.0, info.1);
-        }
-    }
     if dry_run {
-        check_index_diffs(index_file, new_index_contents)?;
-        check_summary_diffs(existing_summary_contents, new_summary_contents)?;
+        if check_index_diffs(index_file, &new_summary_contents).is_err() {
+            failed = true;
+        }
+        if check_summary_diffs(&existing_summary_contents, &new_summary_contents).is_err() {
+            failed = true;
+        }
     } else {
         println!("Updating forc commands in forc/commands/index.md...");
         index_file
@@ -218,9 +219,9 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             .expect("Failed to write to SUMMARY.md");
     }
 
-    if failure_info.len() > 0 {
+    if failed {
         return Err(anyhow!(
-            "Failed to document some commands. {}",
+            "Failed to document the Forc section of the Sway book. {}",
             constants::RUN_WRITE_DOCS_MESSAGE
         ));
     }
