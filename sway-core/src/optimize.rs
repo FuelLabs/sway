@@ -1211,129 +1211,6 @@ impl FnCompiler {
         ))
     }
 
-    /*
-        #[allow(clippy::too_many_arguments)]
-    fn compile_if_let(
-        &mut self,
-        context: &mut Context,
-        enum_type: TypeId,
-        ast_expr: Box<TypedExpression>,
-        variant: TypedEnumVariant,
-        variable_to_assign: Ident,
-        ast_then: TypedCodeBlock,
-        ast_else: Option<Box<TypedExpression>>,
-    ) -> Result<Value, CompileError> {
-        // Similar to a regular `if` expression we create the different blocks in order, being
-        // careful to track the 'current' block as it evolves.
-        //
-        // Instead of a condition we have to match the expression result with the enum variant (by
-        // comparing the tags), and then assign the variant to a local variable, which is scoped to
-        // the `then' block.
-        let cond_span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
-        let enum_aggregate = if let Type::Struct(aggregate) =
-            convert_resolved_typeid(context, &enum_type, &ast_expr.span)?
-        {
-            aggregate
-        } else {
-            return Err(CompileError::Internal(
-                "Enum type for `if let` is not an enum.",
-                ast_expr.span,
-            ));
-        };
-        let matched_value = self.compile_expression(context, *ast_expr)?;
-        let matched_tag_value = self.current_block.ins(context).extract_value(
-            matched_value,
-            enum_aggregate,
-            vec![0],
-            cond_span_md_idx,
-        );
-        let variant_tag = variant.tag as u64;
-        let variant_tag_value = Constant::get_uint(context, 64, variant_tag, cond_span_md_idx);
-        let cond_value = self.current_block.ins(context).cmp(
-            Predicate::Equal,
-            matched_tag_value,
-            variant_tag_value,
-            cond_span_md_idx,
-        );
-        let entry_block = self.current_block;
-
-        // The true/then block, with a variable referring to the matched value.
-        let true_block_begin = self.function.create_block(context, None);
-        self.current_block = true_block_begin;
-
-        // See compile_var_decl() for details.  Copied from there, essentially.  We're still making
-        // a copy of the value into a local variable, which is probably wasteful.  But an
-        // optimisation pass is probably the best way to fix that.
-        let var_span_md_idx = MetadataIndex::from_span(context, variable_to_assign.span());
-        let variable_type = enum_aggregate
-            .get_field_type(context, &[1, variant_tag])
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Unable to get type of enum variant from its tag.",
-                    variable_to_assign.span().clone(),
-                )
-            })?;
-        let var_init_value = self.current_block.ins(context).extract_value(
-            matched_value,
-            enum_aggregate,
-            vec![1, variant_tag],
-            var_span_md_idx,
-        );
-        let local_name = self
-            .lexical_map
-            .enter_scope()
-            .insert(variable_to_assign.as_str().to_owned());
-        let variable_ptr = self
-            .function
-            .new_local_ptr(context, local_name, variable_type, false, None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let variable_ptr_ty = *variable_ptr.get_type(context);
-        let variable_ptr_val = self.current_block.ins(context).get_ptr(
-            variable_ptr,
-            variable_ptr_ty,
-            0,
-            var_span_md_idx,
-        );
-        self.current_block
-            .ins(context)
-            .store(variable_ptr_val, var_init_value, var_span_md_idx);
-        let true_value = self.compile_code_block(context, ast_then)?;
-        let true_block_end = self.current_block;
-        self.lexical_map.leave_scope();
-
-        // The optional false/else block.  Does not have access to the variable.
-        let false_block_begin = self.function.create_block(context, None);
-        self.current_block = false_block_begin;
-        let false_value = match ast_else {
-            None => Constant::get_unit(context, None),
-            Some(expr) => self.compile_expression(context, *expr)?,
-        };
-        let false_block_end = self.current_block;
-
-        // Branch from the top to each of the true/false blocks and then merge from them to a final
-        // block.
-        entry_block.ins(context).conditional_branch(
-            cond_value,
-            true_block_begin,
-            false_block_begin,
-            None,
-            cond_span_md_idx,
-        );
-
-        let merge_block = self.function.create_block(context, None);
-        true_block_end
-            .ins(context)
-            .branch(merge_block, Some(true_value), None);
-        false_block_end
-            .ins(context)
-            .branch(merge_block, Some(false_value), None);
-
-        self.current_block = merge_block;
-        Ok(merge_block.get_phi(context))
-    }
-
-    */
-
     // ---------------------------------------------------------------------------------------------
 
     fn compile_while_loop(
@@ -2565,10 +2442,8 @@ mod tests {
 
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
-        parser::{Rule, SwayParser},
-        semantic_analysis::{TreeType, TypedParseTree},
+        semantic_analysis::TypedParseTree,
     };
-    use pest::Parser;
 
     // -------------------------------------------------------------------------------------------------
 
@@ -2678,23 +2553,8 @@ mod tests {
     // -------------------------------------------------------------------------------------------------
 
     fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let mut parsed =
-            SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
-
-        let program_type = match parsed
-            .peek()
-            .unwrap()
-            .into_inner()
-            .peek()
-            .unwrap()
-            .as_rule()
-        {
-            Rule::script => TreeType::Script,
-            Rule::contract => TreeType::Contract,
-            Rule::predicate => TreeType::Predicate,
-            Rule::library => todo!(),
-            _ => unreachable!("unexpected program type"),
-        };
+        let mut warnings = vec![];
+        let mut errors = vec![];
 
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
@@ -2711,11 +2571,10 @@ mod tests {
             generated_names: Default::default(),
         };
 
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let parse_tree =
-            crate::parse_root_from_pairs(parsed.next().unwrap().into_inner(), Some(&build_config))
-                .unwrap(&mut warnings, &mut errors);
+        let program =
+            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
+        let sway_parse_tree = crate::convert_parse_tree::convert_parse_tree(program)
+            .unwrap(&mut warnings, &mut errors);
 
         let mut dead_code_graph = ControlFlowGraph {
             graph: Graph::new(),
@@ -2723,10 +2582,10 @@ mod tests {
             namespace: Default::default(),
         };
         TypedParseTree::type_check(
-            parse_tree.tree,
+            sway_parse_tree.tree,
             crate::create_module(),
             crate::create_module(),
-            &program_type,
+            &sway_parse_tree.tree_type,
             &build_config,
             &mut dead_code_graph,
         )

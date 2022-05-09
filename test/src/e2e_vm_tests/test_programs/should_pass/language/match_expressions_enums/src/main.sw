@@ -61,6 +61,36 @@ impl<T> Option<T> {
     }
 }
 
+struct S {
+    n: str[17],
+    v: u64,
+}
+
+struct A {
+    a: u64,
+    b: bool,
+    s: S,
+}
+
+enum B {
+    B: A,
+}
+
+struct C {
+    a: u64,
+    b: bool,
+    d: S,
+    c: str[17],
+}
+
+enum D {
+    D: C,
+}
+
+enum E {
+    E: bool
+}
+
 fn main() -> u64 {
     let a = X::Y(42);
     let b = match a {
@@ -117,8 +147,48 @@ fn main() -> u64 {
     };
     let m = Option::Some(4);
     let n = Option::None::<u64>();
+    let o = if let D::D(x) = D::D(C {
+        d: S {
+            n: " an odd length",
+            v: 18
+        },
+        a: 10,
+        b: false,
+        c: " an odd length",
+    }) {
+        x.a
+    } else {
+        0
+    };
+    let p = if let E::E(x) = E::E(false) {
+        10
+    } else {
+        0
+    };
+    let q = match E::E(false) {
+        E::E(x) => { 10 },
+        _ => { 0 }
+    };
+    let r = if let B::B(b) = B::B(A { a: 10, b: false, s: S { n: " an odd length", v: 20 } }) {
+        b.a
+    } else {
+        0
+    };
 
-    if b == 42 && c == 24 && e == 4 && g == 2 && i == 4 && k == 5 && l == 1 && m.unwrap() == 4 && n.unwrap() == 0 {
+    if b == 42
+        && c == 24
+        && e == 4
+        && g == 2
+        && i == 4
+        && k == 5
+        && l == 1
+        && m.unwrap() == 4
+        && n.unwrap() == 0
+        && o == 10
+        && p == 10
+        && q == 10
+        && r == 10
+        {
         42
     } else {
         0

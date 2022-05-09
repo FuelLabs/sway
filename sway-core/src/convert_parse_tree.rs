@@ -1810,13 +1810,13 @@ fn if_expr_to_expression(
             let mut branches = vec![MatchBranch {
                 scrutinee,
                 result: then_block,
-                span: Span::join(scrutinee_span.clone(), then_block_span),
+                span: Span::join(scrutinee_span, then_block_span),
             }];
             if let Some(else_block) = else_block {
                 let else_block_span = else_block.span();
                 branches.push(MatchBranch {
                     scrutinee: Scrutinee::CatchAll {
-                        span: scrutinee_span,
+                        span: else_block_span.clone(),
                     },
                     result: else_block,
                     span: else_block_span,
