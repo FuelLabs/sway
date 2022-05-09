@@ -175,12 +175,11 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
                     if existing_contents == result {
                         println!("[✓] forc {}: documentation ok.", &command);
                     } else {
-                        failure_info
-                            .push((&"[x] Documentation inconsistent for command:", &command));
+                        failure_info.push((&command, &"documentation inconsistent!"));
                     }
                 }
                 Err(_) => {
-                    failure_info.push((&"[x] Documentation does not exist for command:", &command));
+                    failure_info.push((&command, &"documentation does not exist!"));
                 }
             }
         } else {
@@ -200,7 +199,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
 
     if failure_info.len() > 0 {
         for info in &failure_info {
-            eprintln!("{} forc {}", info.0, info.1);
+            eprintln!("[x] forc {}: {}", info.0, info.1);
         }
     }
     if dry_run {
