@@ -2,7 +2,7 @@ script;
 
 use std::result::Result;
 use std::b512::B512;
-use std::panic::panic;
+use std::revert::revert;
 use std::chain::log_b256;
 use std::ecr::{EcRecoverError, ec_recover, ec_recover_address};
 
@@ -21,6 +21,6 @@ fn main() {
     if let Result::Ok(address) = result_address {
         log_b256(address.value);
     } else {
-        panic(0);
+        revert(0);
     };
 }
