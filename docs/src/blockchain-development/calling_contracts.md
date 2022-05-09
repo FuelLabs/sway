@@ -20,8 +20,12 @@ impl ContractA for Contract {
     fn receive(field_1: bool, field_2: u64) -> u64 {
         assert(field_1 == true);
         assert(field_2 > 0);
-        45
+        return_45()
     }
+}
+
+fn return_45() -> u64 {
+  45
 }
 ```
 
@@ -44,6 +48,8 @@ impl ContractB for Contract {
     }
 }
 ```
+
+> **NOTE** The ABI is for `external` calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the `impl` and call it inside the contract similar to the `return_45()` function.
 
 ## Advanced Calls
 
@@ -98,4 +104,3 @@ While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI,
 1. [**Native assets**](./native_assets.md): FuelVM calls can forward any native asset not just base asset.
 
 2. **No data serialization**: Contract calls in the FuelVM do not need to serialize data to pass it between contracts; instead they simply pass a pointer to the data. This is because the FuelVM has a shared global memory which all call frames can read from.
-
