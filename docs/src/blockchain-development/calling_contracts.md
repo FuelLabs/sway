@@ -49,7 +49,7 @@ impl ContractB for Contract {
 }
 ```
 
-> **NOTE** The ABI is for `external` calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the `impl` and call it inside the contract similar to the `return_45()` function.
+> **NOTE** The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the `impl` and call it inside the contract, similar to the `return_45()` function above.
 
 ## Advanced Calls
 
