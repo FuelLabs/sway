@@ -1220,11 +1220,13 @@ fn type_check_interface_surface(
         .map(
             |TraitFn {
                  name,
+                 purity,
                  parameters,
                  return_type,
                  return_type_span,
              }| TypedTraitFn {
                 name,
+                purity,
                 return_type_span: return_type_span.clone(),
                 parameters: parameters
                     .into_iter()
