@@ -1,6 +1,8 @@
 //! Basic configuration options.
 use serde::{Deserialize, Serialize};
 
+use crate::constants::{DEFAULT_TAB_SPACES, DEFAULT_MAX_LINE_WIDTH};
+
 /// Basic styling preferences.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Fundamentals {
@@ -19,9 +21,9 @@ pub struct Fundamentals {
 impl Default for Fundamentals {
     fn default() -> Self {
         Self {
-            max_width: 100,
+            max_width: DEFAULT_MAX_LINE_WIDTH,
             hard_tabs: false,
-            tab_spaces: 4,
+            tab_spaces: DEFAULT_TAB_SPACES,
             newline_style: NewlineStyle::Auto,
             indent_style: IndentStyle::Block,
         }
