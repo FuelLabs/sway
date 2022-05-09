@@ -6,11 +6,9 @@ name = "counter"
 version = "0.1.0"
 
 [dev-dependencies]
-fuel-tx = "0.7"
-fuels-abigen-macro = "0.9"
-fuels-contract = "0.9"
-fuels-core = "0.9"
-fuels-signers = "0.9"
+fuel-tx = "0.9"
+fuels = "0.10"
+fuels-abigen-macro = "0.10"
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 

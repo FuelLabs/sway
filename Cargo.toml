@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "docstrings",
+    "examples/counter",
     "forc",
     "forc-explore",
     "forc-fmt",
@@ -20,9 +21,6 @@ members = [
     "sway-utils",
     "test",
     "test-sig-gen-util",
-]
-exclude = [
-    "examples/*"
 ]
 
 [profile.dev.package.sway-lsp]
