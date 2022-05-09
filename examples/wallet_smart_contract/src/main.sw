@@ -3,9 +3,9 @@ contract;
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError,Sender,msg_sender},
+    chain::auth::{AuthError, Sender, msg_sender},
     constants::NATIVE_ASSET_ID,
-    context::{call_frames::msg_asset_id,msg_amount},
+    context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
     result::*,
     revert::revert,

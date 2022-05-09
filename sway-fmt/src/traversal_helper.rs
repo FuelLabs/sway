@@ -164,6 +164,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     };
 
     let buff = tokenize(s);
+    // println!(">>> TOKENS : {:?} <<<<<<\n", buff);
     let mut without_newline = buff.iter().rev().collect::<Vec<&String>>();
 
     let len: usize = buff.iter().map(|x| x.len()).sum();
@@ -174,7 +175,12 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     // Receive tokens and push them to a string until a full line is made
     fn make_line(token: &str, line: &mut String, open_brackets: &mut u8, remainder: usize) -> bool {
         let mut is_line = false;
+
         line.push_str(token);
+
+        if token == "," {
+            line.push(' ');
+        }
 
         match token {
             "," => {
@@ -190,12 +196,12 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
             }
             "}" => {
                 *open_brackets -= 1;
-                if *open_brackets == 1 && remainder == 2 {
+                if *open_brackets == 1 && (remainder == 2 || remainder == 1) {
                     is_line = true;
                 }
             }
             _ => {
-                if remainder == 2 {
+                if remainder == 2 && *open_brackets == 1 {
                     line.push(',');
                     is_line = true;
                 }
@@ -205,7 +211,8 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
         is_line
     }
 
-    fn format_line(input: &String, open_brackets: u8, level: usize) -> String {
+    fn format_line(input: &str, open_brackets: u8, level: usize) -> String {
+        let input = input.trim();
         let mut tabs = open_brackets as usize + level;
 
         let mut output = match input.starts_with(ALREADY_FORMATTED_LINE_PATTERN) {
@@ -214,17 +221,15 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
         };
 
         // Remove a tab to match indent with sibling imports
-        if input.ends_with("{") || input.ends_with("};") || open_brackets > 1 {
-            if tabs > 0 {
-                tabs -= 1;
-            }
+        if (input.ends_with('{') || input.ends_with("};") || open_brackets > 1) && tabs > 0 {
+            tabs -= 1;
         }
 
         let prefix = "    ".repeat(tabs);
         output.push_str(&prefix);
         output.push_str(input);
 
-        if tabs > 0 || input.ends_with("{") || input.ends_with("};") {
+        if tabs > 0 || input.ends_with('{') || input.ends_with("};") {
             output.push('\n');
         }
 
@@ -413,7 +418,8 @@ mod tests {
     #[test]
     fn test_format_use_statement_length_formats_long_input() {
         let s = "std::{address::*, assert::assert, block::*, chain::auth::*, context::{*,text::{call_frames::*, dial_frames::{Transaction, TransactionParameters}, token_storage::{CallData, Parameters}}}, contract_id::ContractId, hash::*, panic::panic, storage::*, token::*};";
-        let expected = r#"{ALREADY_FORMATTED_LINE_PATTERN}std::{{
+        let expected = format!(
+            r#"{ALREADY_FORMATTED_LINE_PATTERN}std::{{
 {ALREADY_FORMATTED_LINE_PATTERN}    address::*,
 {ALREADY_FORMATTED_LINE_PATTERN}    assert::assert,
 {ALREADY_FORMATTED_LINE_PATTERN}    block::*,
@@ -422,9 +428,9 @@ mod tests {
 {ALREADY_FORMATTED_LINE_PATTERN}        *,
 {ALREADY_FORMATTED_LINE_PATTERN}        text::{{
 {ALREADY_FORMATTED_LINE_PATTERN}            call_frames::*,
-{ALREADY_FORMATTED_LINE_PATTERN}            dial_frames::{{Transaction,TransactionParameters}},
-{ALREADY_FORMATTED_LINE_PATTERN}            token_storage::{{CallData,Parameters,
-{ALREADY_FORMATTED_LINE_PATTERN}        }}}}
+{ALREADY_FORMATTED_LINE_PATTERN}            dial_frames::{{Transaction, TransactionParameters}},
+{ALREADY_FORMATTED_LINE_PATTERN}            token_storage::{{CallData, Parameters}}
+{ALREADY_FORMATTED_LINE_PATTERN}        }}
 {ALREADY_FORMATTED_LINE_PATTERN}    }},
 {ALREADY_FORMATTED_LINE_PATTERN}    contract_id::ContractId,
 {ALREADY_FORMATTED_LINE_PATTERN}    hash::*,
@@ -432,7 +438,8 @@ mod tests {
 {ALREADY_FORMATTED_LINE_PATTERN}    storage::*,
 {ALREADY_FORMATTED_LINE_PATTERN}    token::*,
 {ALREADY_FORMATTED_LINE_PATTERN}}};
-"#;
+"#
+        );
         assert_eq!(format_use_statement_length(s, 100, 0), expected);
     }
 }

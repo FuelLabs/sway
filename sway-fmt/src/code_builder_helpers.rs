@@ -200,7 +200,7 @@ pub fn get_already_formatted_line_pattern(line: &str) -> Option<(&str, &str)> {
             line.rfind('{').unwrap_or(0),
         ];
 
-        let end = char_idxs.iter().max().unwrap_or(&0);
+        let end = char_idxs.iter().max().unwrap();
 
         let formatted_line = &line[pattern_len..end + 1];
         // rest, if any

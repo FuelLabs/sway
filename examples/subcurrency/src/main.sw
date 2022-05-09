@@ -4,11 +4,11 @@ contract;
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError,Sender,msg_sender},
+    chain::auth::{AuthError, Sender, msg_sender},
     hash::*,
     result::*,
     revert::revert,
-    storage::{get,store}
+    storage::{get, store}
 };
 
 ////////////////////////////////////////
