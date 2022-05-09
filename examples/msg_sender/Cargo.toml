@@ -1,0 +1,18 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+license = "Apache-2.0"
+name = "msg_sender"
+version = "0.1.0"
+
+[dev-dependencies]
+fuel-tx = "0.9"
+fuels = "0.10"
+fuels-abigen-macro = "0.10"
+rand = "0.8"
+tokio = { version = "1.12", features = ["rt", "macros"] }
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/harness.rs"
