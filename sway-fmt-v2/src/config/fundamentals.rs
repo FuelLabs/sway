@@ -1,7 +1,7 @@
 //! Basic configuration options.
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{DEFAULT_TAB_SPACES, DEFAULT_MAX_LINE_WIDTH};
+use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
 
 /// Basic styling preferences.
 #[derive(Serialize, Deserialize, Debug)]

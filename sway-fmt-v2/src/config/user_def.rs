@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD, DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD};
+use crate::constants::{
+    DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD, DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Structures {
