@@ -221,8 +221,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
 
     if failed {
         return Err(anyhow!(
-            "Failed to document the Forc section of the Sway book. {}",
-            constants::RUN_WRITE_DOCS_MESSAGE
+            "Failed to document the Forc section of the Sway book. \n\nPlease run `cargo run --bin forc-documenter write-docs`. If you have made local changes to any forc native commands, please install forc from path first: `cargo install --path ./forc`, then run the command."
         ));
     }
 
