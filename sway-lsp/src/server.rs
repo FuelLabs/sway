@@ -77,7 +77,12 @@ fn capabilities() -> ServerCapabilities {
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+    async fn publish_diagnostics(
+        &self,
+        uri: Url,
+        diagnostics: Vec<Diagnostic>,
+        version: Option<i32>,
+    ) {
         // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
@@ -85,12 +90,14 @@ impl Backend {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
                 self.client
-                    .publish_diagnostics(uri, diagnostics, None)
+                    .publish_diagnostics(uri, diagnostics, version)
                     .await;
             }
-        } else if !diagnostics.is_empty() {
+        } else {
+            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
             self.client
-                .publish_diagnostics(uri, diagnostics, None)
+                .publish_diagnostics(uri, diagnostics, version)
                 .await;
         }
     }
@@ -131,20 +138,22 @@ impl LanguageServer for Backend {
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
+        let version = Some(params.text_document.version);
         let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(uri, diagnostics, version).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
+        let version = Some(params.text_document.version);
         let diagnostics = capabilities::text_sync::handle_change_file(self.session.clone(), params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(uri, diagnostics, version).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         let diagnostics = capabilities::text_sync::handle_save_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(uri, diagnostics, None).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
