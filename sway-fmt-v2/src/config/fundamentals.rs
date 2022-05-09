@@ -4,19 +4,14 @@ use serde::{Deserialize, Serialize};
 /// Basic styling preferences.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Fundamentals {
-    // TODO: make default 100
     /// Maximum width of each line.
     pub max_width: usize,
-    // TODO: make default false
     /// Use tab characters for indentation, spaces for alignment.
     pub hard_tabs: bool,
-    // TODO: make default 4
     /// Number of spaces per tab.
     pub tab_spaces: usize,
-    // TODO: make default Auto
     /// Unix or Windows line endings.
     pub newline_style: NewlineStyle,
-    // TODO: make default Block
     /// How we indent expressions or items.
     pub indent_style: IndentStyle,
 }

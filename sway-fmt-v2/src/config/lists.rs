@@ -6,7 +6,7 @@ use super::fundamentals::IndentStyle;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lists {
     /// How to handle trailing commas for lists.
-    trailing_comma: SeparatorTactic, // Default Vertical
+    trailing_comma: SeparatorTactic,
 }
 
 impl Default for Lists {
