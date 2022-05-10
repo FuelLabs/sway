@@ -85,35 +85,36 @@ pub fn format_delineated_path(line: &str) -> String {
     line.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
+/// Tokenizes the line on separators keeping the separators.
+fn tokenize(line: &str) -> Vec<String> {
+    let mut buffer: Vec<String> = Vec::new();
+    let mut current = 0;
+    for (index, separator) in line.match_indices(|c: char| c == ',' || c == '{' || c == '}') {
+        if index != current {
+            // Chomp all whitespace including newlines, and only push
+            // resulting token if what's left is not an empty string. This
+            // is needed to ignore trailing commas with newlines.
+            let to_push: String = line[current..index]
+                .to_string()
+                .chars()
+                .filter(|c| !c.is_whitespace())
+                .collect();
+            if !to_push.is_empty() {
+                buffer.push(to_push);
+            }
+        }
+        buffer.push(separator.to_string());
+        current = index + separator.len();
+    }
+    if current < line.len() {
+        buffer.push(line[current..].to_string());
+    }
+    buffer
+}
+
 /// Trims whitespaces and reorders compound import statements lexicographically
 /// a::{c, b, d::{self, f, e}} -> a::{b,c,d::{self,e,f}}
 fn sort_and_filter_use_expression(line: &str) -> String {
-    /// Tokenizes the line on separators keeping the separators.
-    fn tokenize(line: &str) -> Vec<String> {
-        let mut buffer: Vec<String> = Vec::new();
-        let mut current = 0;
-        for (index, separator) in line.match_indices(|c: char| c == ',' || c == '{' || c == '}') {
-            if index != current {
-                // Chomp all whitespace including newlines, and only push
-                // resulting token if what's left is not an empty string. This
-                // is needed to ignore trailing commas with newlines.
-                let to_push: String = line[current..index]
-                    .to_string()
-                    .chars()
-                    .filter(|c| !c.is_whitespace())
-                    .collect();
-                if !to_push.is_empty() {
-                    buffer.push(to_push);
-                }
-            }
-            buffer.push(separator.to_string());
-            current = index + separator.len();
-        }
-        if current < line.len() {
-            buffer.push(line[current..].to_string());
-        }
-        buffer
-    }
     let tokens: Vec<String> = tokenize(line);
     let mut buffer: Vec<String> = Vec::new();
 
@@ -156,14 +157,144 @@ fn sort_and_filter_use_expression(line: &str) -> String {
     buffer.concat()
 }
 
+fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> String {
+    let s = match s.starts_with(ALREADY_FORMATTED_LINE_PATTERN) {
+        true => s[ALREADY_FORMATTED_LINE_PATTERN.len()..].trim(),
+        false => s,
+    };
+
+    let buff = tokenize(s);
+    let mut without_newline = buff.iter().rev().collect::<Vec<&String>>();
+
+    let len: usize = buff.iter().map(|x| x.len()).sum();
+    if len <= max_length {
+        return s.to_owned();
+    }
+
+    // Receive tokens and push them to a string until a full line is made
+    fn make_line(token: &str, line: &mut String, open_brackets: &mut u8, remainder: usize) -> bool {
+        let mut is_line = false;
+
+        line.push_str(token);
+
+        if token == "," {
+            line.push(' ');
+        }
+
+        match token {
+            "," => {
+                if *open_brackets == 1 {
+                    is_line = true;
+                }
+            }
+            "{" => {
+                if *open_brackets == 0 {
+                    is_line = true;
+                }
+                *open_brackets += 1;
+            }
+            "}" => {
+                *open_brackets -= 1;
+                // Using `remainder` to see if we're at either a 2-char terminator for the full
+                // use statement (i.e., '};') or at a single char terminator (e.g., '}') for individual
+                // formatted lines
+                if *open_brackets == 1 && (remainder == 2 || remainder == 1) {
+                    is_line = true;
+                }
+            }
+            _ => {
+                if remainder == 2 && *open_brackets == 1 {
+                    line.push(',');
+                    is_line = true;
+                }
+            }
+        }
+
+        is_line
+    }
+
+    fn format_line(input: &str, open_brackets: u8, level: usize) -> String {
+        let input = input.trim();
+        let mut tabs = open_brackets as usize + level;
+
+        let mut output = match input.starts_with(ALREADY_FORMATTED_LINE_PATTERN) {
+            true => input.to_owned(),
+            false => ALREADY_FORMATTED_LINE_PATTERN.to_owned(),
+        };
+
+        // If this is the end of nested brackets, decrement `tabs` if we have any
+        if (input.ends_with('{') || input.ends_with("};") || open_brackets > 1) && tabs > 0 {
+            tabs -= 1;
+        }
+
+        let prefix = "    ".repeat(tabs);
+        output.push_str(&prefix);
+        output.push_str(input);
+
+        if tabs > 0 || input.ends_with('{') || input.ends_with("};") {
+            output.push('\n');
+        }
+
+        output
+    }
+
+    let mut with_newline: Vec<String> = Vec::new();
+
+    let mut curr_line = String::new();
+    let mut open_brackets = 0u8;
+
+    while let Some(token) = without_newline.pop() {
+        let is_line = make_line(
+            token,
+            &mut curr_line,
+            &mut open_brackets,
+            without_newline.len(),
+        );
+
+        if !is_line {
+            continue;
+        }
+
+        curr_line = format_line(&curr_line, open_brackets, level);
+
+        if curr_line.len() > max_length {
+            curr_line = format_use_statement_length(&curr_line, max_length, level + 1);
+        }
+
+        with_newline.push(curr_line);
+        curr_line = String::new();
+    }
+
+    if !curr_line.is_empty() {
+        curr_line = format_line(&curr_line, open_brackets, level);
+        with_newline.push(curr_line);
+    }
+
+    with_newline.concat()
+}
+
 pub fn format_use_statement(line: &str) -> String {
     let use_keyword = extract_keyword(line, Rule::use_keyword).unwrap();
     let (_, right) = line.split_once(&use_keyword).unwrap();
-    let right: String = sort_and_filter_use_expression(right);
-    format!(
-        "{}{} {}",
-        ALREADY_FORMATTED_LINE_PATTERN, use_keyword, right
-    )
+    let mut right: String = sort_and_filter_use_expression(right);
+
+    let max_length = 100usize;
+
+    // This is mostly to satisfy a failing fmt test
+    if right.len() > max_length {
+        right = format_use_statement_length(&right, max_length, 0usize);
+        right.insert_str(
+            ALREADY_FORMATTED_LINE_PATTERN.len(),
+            &format!("{} ", use_keyword),
+        );
+    } else {
+        right = format!(
+            "{}{} {}",
+            ALREADY_FORMATTED_LINE_PATTERN, use_keyword, right
+        )
+    }
+
+    right
 }
 
 pub fn format_include_statement(line: &str) -> String {
@@ -238,7 +369,8 @@ fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> Str
 
 #[cfg(test)]
 mod tests {
-    use super::sort_and_filter_use_expression;
+    use super::{format_use_statement_length, sort_and_filter_use_expression};
+    use crate::constants::ALREADY_FORMATTED_LINE_PATTERN;
 
     #[test]
     fn test_sort_and_filter_use_expression() {
@@ -277,5 +409,39 @@ mod tests {
             ),
             "a::{bar, foo};"
         );
+    }
+
+    #[test]
+    fn test_format_use_statement_length_leaves_input_unchanged() {
+        let s = "a::b::{c, d::{self, f}};";
+        assert_eq!(format_use_statement_length(s, 100, 0), s);
+    }
+
+    #[test]
+    fn test_format_use_statement_length_formats_long_input() {
+        let s = "std::{address::*, assert::assert, block::*, chain::auth::*, context::{*,text::{call_frames::*, dial_frames::{Transaction, TransactionParameters}, token_storage::{CallData, Parameters}}}, contract_id::ContractId, hash::*, panic::panic, storage::*, token::*};";
+        let expected = format!(
+            r#"{ALREADY_FORMATTED_LINE_PATTERN}std::{{
+{ALREADY_FORMATTED_LINE_PATTERN}    address::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    assert::assert,
+{ALREADY_FORMATTED_LINE_PATTERN}    block::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    chain::auth::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    context::{{
+{ALREADY_FORMATTED_LINE_PATTERN}        *,
+{ALREADY_FORMATTED_LINE_PATTERN}        text::{{
+{ALREADY_FORMATTED_LINE_PATTERN}            call_frames::*,
+{ALREADY_FORMATTED_LINE_PATTERN}            dial_frames::{{Transaction, TransactionParameters}},
+{ALREADY_FORMATTED_LINE_PATTERN}            token_storage::{{CallData, Parameters}}
+{ALREADY_FORMATTED_LINE_PATTERN}        }}
+{ALREADY_FORMATTED_LINE_PATTERN}    }},
+{ALREADY_FORMATTED_LINE_PATTERN}    contract_id::ContractId,
+{ALREADY_FORMATTED_LINE_PATTERN}    hash::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    panic::panic,
+{ALREADY_FORMATTED_LINE_PATTERN}    storage::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    token::*,
+{ALREADY_FORMATTED_LINE_PATTERN}}};
+"#
+        );
+        assert_eq!(format_use_statement_length(s, 100, 0), expected);
     }
 }
