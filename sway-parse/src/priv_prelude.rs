@@ -1,6 +1,7 @@
 pub use {
     crate::{
         assignable::Assignable,
+        attribute::{Attribute, AttributeDecl},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
         dependency::Dependency,
         error::{ParseError, ParseErrorKind},
@@ -20,7 +21,7 @@ pub use {
             item_struct::ItemStruct,
             item_trait::{ItemTrait, Traits},
             item_use::ItemUse,
-            FnSignature, Item, TypeField,
+            FnSignature, Item, ItemKind, TypeField,
         },
         keywords::*,
         literal::{LitChar, LitInt, LitIntType, LitString, Literal},
