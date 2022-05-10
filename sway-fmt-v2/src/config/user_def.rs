@@ -1,4 +1,4 @@
-//! //! Configuration options related to formatting user-defined structures.
+//! Configuration options related to formatting user-defined structures.
 
 use crate::constants::{
     DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD, DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
