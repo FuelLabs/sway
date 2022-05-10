@@ -71,6 +71,7 @@ impl FormatConfig {
     }
 
     /// Check the user's settings, and replace the values of the default formatter if they exist.
+    /// Currently this just replaces all values, and doesn't check if they exist first.
     ///
     pub fn apply_user_settings(user_settings: FormatConfig) -> Self {
         Self {
