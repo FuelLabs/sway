@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use std::fs::File;
 use std::io::Read;
 
@@ -26,7 +26,7 @@ pub fn check_summary_diffs(
         println!("[✓] SUMMARY.md ok.");
     } else {
         eprintln!("[x] SUMMARY.md inconsistent!");
-        return Err(anyhow!("SUMMARY.md is inconsistent."));
+        bail!("SUMMARY.md is inconsistent.");
     }
 
     Ok(())
@@ -39,7 +39,7 @@ pub fn check_index_diffs(mut index_file: File, new_index_contents: &str) -> Resu
         println!("[✓] index.md ok.");
     } else {
         eprintln!("[x] index.md inconsistent!");
-        return Err(anyhow!("index.md is inconsistent."));
+        bail!("index.md is inconsistent.");
     }
 
     Ok(())
