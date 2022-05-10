@@ -1,7 +1,7 @@
 //! Configuration options related to re-ordering imports, modules and items.
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Ordering {
     /// Reorder import and extern crate statements alphabetically.
     reorder_imports: bool,

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::items::ItemsLayout;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Expressions {
     /// Brace style for control flow constructs.
     pub expr_brace_style: ExprBraceStyle,
@@ -50,7 +50,7 @@ impl Default for Expressions {
 /////PUNCTUATION/////
 
 /// Where to put the opening brace of conditional expressions (`if`, `match`, etc.).
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ExprBraceStyle {
     /// K&R style, Rust community default
     AlwaysSameLine,
@@ -61,7 +61,7 @@ pub enum ExprBraceStyle {
 }
 
 /// Spacing around type combinators.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum TypeCombinatorLayout {
     /// No spaces around "=" and "+"
     Compressed,
@@ -72,7 +72,7 @@ pub enum TypeCombinatorLayout {
 /////MATCH EXPR/////
 
 /// Controls how swayfmt should handle leading pipes on match arms.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum MatchArmLeadingPipe {
     /// Place leading pipes on all match arms
     Always,

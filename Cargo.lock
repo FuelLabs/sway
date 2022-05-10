@@ -3253,13 +3253,17 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
+ "anyhow",
+ "forc-util",
  "serde",
+ "serde_ignored",
  "sway-core",
  "sway-parse",
  "sway-types",
  "thiserror",
+ "toml",
 ]
 
 [[package]]

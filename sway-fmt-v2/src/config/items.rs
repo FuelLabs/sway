@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::lists::ListTactic;
 use crate::constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Items {
     /// Brace style for items.
     pub item_brace_style: ItemBraceStyle,
@@ -28,7 +28,7 @@ impl Default for Items {
 }
 
 /// Preference of how list-like items are displayed.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ItemsLayout {
     /// Fit as much on one line as possible.
     Compressed,
@@ -50,7 +50,7 @@ impl ItemsLayout {
 }
 
 /// Where to put the opening brace of items (`fn`, `impl`, etc.).
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ItemBraceStyle {
     /// Put the opening brace on the next line.
     AlwaysNextLine,

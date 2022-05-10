@@ -1,9 +1,9 @@
 //! Configuration options related to rewriting a list.
 use serde::{Deserialize, Serialize};
 
-use super::fundamentals::IndentStyle;
+use super::whitespace::IndentStyle;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Lists {
     /// How to handle trailing commas for lists.
     trailing_comma: SeparatorTactic,
@@ -37,7 +37,7 @@ impl DefinitiveListTactic {
 /// Formatting tactic for lists. This will be cast down to a
 /// `DefinitiveListTactic` depending on the number and length of the items and
 /// their comments.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ListTactic {
     /// One item per row.
     Vertical,
@@ -51,7 +51,7 @@ pub enum ListTactic {
     Mixed,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum SeparatorTactic {
     Always,
     Never,

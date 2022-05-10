@@ -1,11 +1,11 @@
-//! Basic configuration options.
+//! Whitespace configuration options.
 use serde::{Deserialize, Serialize};
 
 use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
 
-/// Basic styling preferences.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Fundamentals {
+/// Whitespace styling preferences.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+pub struct Whitespace {
     /// Maximum width of each line.
     pub max_width: usize,
     /// Use tab characters for indentation, spaces for alignment.
@@ -18,7 +18,7 @@ pub struct Fundamentals {
     pub indent_style: IndentStyle,
 }
 
-impl Default for Fundamentals {
+impl Default for Whitespace {
     fn default() -> Self {
         Self {
             max_width: DEFAULT_MAX_LINE_WIDTH,
@@ -31,7 +31,7 @@ impl Default for Fundamentals {
 }
 
 /// Handling of which OS new-line style should be applied.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum NewlineStyle {
     /// Auto-detect based on the raw source input.
     Auto,
@@ -44,7 +44,7 @@ pub enum NewlineStyle {
 }
 
 /// Handling of line indentation for expressions or items.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum IndentStyle {
     /// First line on the same line as the opening brace, all lines aligned with
     /// the first line.

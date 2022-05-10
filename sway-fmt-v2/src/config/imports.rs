@@ -1,12 +1,12 @@
 //! Configuration options related to formatting imports.
 use serde::{Deserialize, Serialize};
 
-use super::{fundamentals::IndentStyle, lists::ListTactic};
+use super::{lists::ListTactic, whitespace::IndentStyle};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Imports {
     /// Controls the strategy for how imports are grouped together.
-    pub group_imports: GroupImportsTactic,
+    pub group_imports: GroupImports,
     /// Merge or split imports to the provided granularity.
     pub imports_granularity: ImportGranularity,
     /// Indent of imports.
@@ -18,7 +18,7 @@ pub struct Imports {
 impl Default for Imports {
     fn default() -> Self {
         Self {
-            group_imports: GroupImportsTactic::Preserve,
+            group_imports: GroupImports::Preserve,
             imports_granularity: ImportGranularity::Preserve,
             imports_indent: IndentStyle::Block,
             imports_layout: ListTactic::Mixed,
@@ -27,8 +27,8 @@ impl Default for Imports {
 }
 
 /// Configuration for import groups, i.e. sets of imports separated by newlines.
-#[derive(Serialize, Deserialize, Debug)]
-pub enum GroupImportsTactic {
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+pub enum GroupImports {
     /// Keep groups as they are.
     Preserve,
     /// Discard existing groups, and create new groups for
@@ -41,7 +41,7 @@ pub enum GroupImportsTactic {
 }
 
 /// How to merge imports.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ImportGranularity {
     /// Do not merge imports.
     Preserve,

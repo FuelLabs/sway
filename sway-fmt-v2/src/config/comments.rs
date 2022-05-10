@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::DEFAULT_MAX_COMMENT_WIDTH;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Comments {
     /// Break comments to fit on the line.
     pub wrap_comments: bool,

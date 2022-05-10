@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Heuristics {
     /// Determines heuristics level of involvement.
     pub heuristics_pref: HeuristicsPreferences,
@@ -29,7 +29,7 @@ impl Default for Heuristics {
 /// Heuristic settings that can be used to simplify
 /// the configuration of the granular width configurations
 /// like `struct_lit_width`, `array_width`, etc.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum HeuristicsPreferences {
     /// Turn off any heuristics
     Off,
@@ -39,7 +39,7 @@ pub enum HeuristicsPreferences {
     Scaled,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Copy)]
 pub struct WidthHeuristics {
     // Maximum width of the args of a function call before falling back
     // to vertical formatting.

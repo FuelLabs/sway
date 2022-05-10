@@ -4,7 +4,7 @@ use crate::constants::{
     DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD, DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Structures {
     /// Align enum variants discrims, if their diffs fit within threshold.
     pub enum_discrim_align_threshold: usize,

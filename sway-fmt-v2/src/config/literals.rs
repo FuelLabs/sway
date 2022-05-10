@@ -1,7 +1,7 @@
 //! Configuration options related to formatting literals.
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Literals {
     /// Format string literals where necessary.
     pub format_strings: bool,
@@ -19,7 +19,7 @@ impl Default for Literals {
 }
 
 /// Controls how swayfmt should handle case in hexadecimal literals.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum HexLiteralCase {
     /// Leave the literal as-is
     Preserve,
