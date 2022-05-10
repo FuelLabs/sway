@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::Read;
@@ -222,9 +222,9 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
     }
 
     if failed {
-        return Err(anyhow!(
+        bail!(
             "The Forc section of the Sway book needs to be updated. \n\nPlease run `cargo run --bin forc-documenter write-docs`. If you have made local changes to any forc native commands, please install forc from path first: `cargo install --path ./forc`, then run the command."
-        ));
+        );
     }
     println!("Done.");
 
@@ -240,7 +240,7 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         .expect("forc --help failed to run");
 
     if !output.status.success() {
-        return Err(anyhow!("Failed to run forc {} --help", subcommand));
+        bail!("Failed to run forc {} --help", subcommand);
     }
 
     let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
