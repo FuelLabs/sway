@@ -173,7 +173,13 @@
 <p>To deliver an experience akin to Ethereum's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, result::*, revert::revert};
+use std::{
+    address::Address,
+    assert::assert,
+    chain::auth::{AuthError, Sender, msg_sender},
+    result::*,
+    revert::revert,
+};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
