@@ -50,6 +50,10 @@ pub struct Command {
     /// output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
     pub minify_json_abi: bool,
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    #[clap(long)]
+    pub locked: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
