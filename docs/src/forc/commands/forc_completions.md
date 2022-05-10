@@ -46,8 +46,8 @@ system-wide commands, but can be stored in
 Run the command:
 
 ```sh
-$ mkdir -p ~/.local/share/bash-completion/completions
-$ forc completions --shell=bash >> ~/.local/share/bash-completion/completions/forc
+mkdir -p ~/.local/share/bash-completion/completions
+forc completions --shell=bash >> ~/.local/share/bash-completion/completions/forc
 ```
 
 This installs the completion script. You may have to log out and
@@ -59,8 +59,8 @@ Homebrew stores bash completion files within the Homebrew directory.
 With the `bash-completion` brew formula installed, run the command:
 
 ```sh
-$ mkdir -p $(brew --prefix)/etc/bash_completion.d
-$ forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+mkdir -p $(brew --prefix)/etc/bash_completion.d
+forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 ```
 
 **FISH:**
@@ -69,8 +69,8 @@ Fish completion files are commonly stored in
 `$HOME/.config/fish/completions`. Run the command:
 
 ```sh
-$ mkdir -p ~/.config/fish/completions
-$ forc completions --shell=fish > ~/.config/fish/completions/forc.fish
+mkdir -p ~/.config/fish/completions
+forc completions --shell=fish > ~/.config/fish/completions/forc.fish
 ```
 
 This installs the completion script. You may have to log out and
@@ -89,7 +89,7 @@ this example we'll create a hidden directory inside our `$HOME`
 directory:
 
 ```sh
-$ mkdir ~/.zfunc
+mkdir ~/.zfunc
 ```
 
 Then add the following lines to your `.zshrc` just before
@@ -103,13 +103,13 @@ Now you can install the completions script using the following
 command:
 
 ```sh
-$ forc completions --shell=zsh > ~/.zfunc/_forc
+forc completions --shell=zsh > ~/.zfunc/_forc
 ```
 
 You must then either log out and log back in, or simply run
 
 ```sh
-$ exec zsh
+exec zsh
 ```
 
 for the new completions to take effect.
@@ -131,13 +131,13 @@ or 8.1).
 First, check if a profile has already been set
 
 ```sh
-PS C:\> Test-Path $profile
+Test-Path $profile
 ```
 
 If the above command returns `False` run the following
 
 ```sh
-PS C:\> New-Item -path $profile -type file -force
+New-Item -path $profile -type file -force
 ```
 
 Now open the file provided by `$profile` (if you used the
@@ -149,5 +149,5 @@ into a separate file and source it inside our profile. To save the
 completions into our profile simply use
 
 ```sh
-PS C:\> forc completions --shell=powershell >> ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+forc completions --shell=powershell >> ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 ```
