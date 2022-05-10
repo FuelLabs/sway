@@ -351,6 +351,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bitmaps"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
 name = "blake2b_simd"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1042,7 +1051,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1082,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1096,7 +1105,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1110,14 +1119,14 @@ dependencies = [
 
 [[package]]
 name = "forc-gm"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "clap 3.1.8",
 ]
 
 [[package]]
 name = "forc-lsp"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1127,17 +1136,17 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuels-types",
  "git2",
  "petgraph",
  "semver 1.0.7",
  "serde",
  "serde_ignored",
  "sway-core",
- "sway-types",
  "sway-utils",
  "toml",
  "url",
@@ -1146,7 +1155,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1325,6 +1334,18 @@ dependencies = [
  "sha3 0.9.1",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "fuels-types"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e41f0c46afe4389edc34aa84064808ab8d41cb0e4e06fd7ea2a8e19abc82eaed"
+dependencies = [
+ "anyhow",
+ "serde",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -1752,6 +1773,20 @@ dependencies = [
  "matches",
  "unicode-bidi",
  "unicode-normalization",
+]
+
+[[package]]
+name = "im"
+version = "15.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "111c1983f3c5bb72732df25cddacee9b546d08325fb584b5ebd38148be7b0246"
+dependencies = [
+ "bitmaps",
+ "rand_core 0.5.1",
+ "rand_xoshiro",
+ "sized-chunks",
+ "typenum",
+ "version_check",
 ]
 
 [[package]]
@@ -2508,6 +2543,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_xoshiro"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9fcdd2e881d02f1d9390ae47ad8e5696a9e4be7b547a1da2afbc61973217004"
+dependencies = [
+ "rand_core 0.5.1",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3019,6 +3063,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sized-chunks"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e"
+dependencies = [
+ "bitmaps",
+ "typenum",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3153,6 +3207,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+
+[[package]]
+name = "strum_macros"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d06aaeeee809dbc59eb4556183dd927df67db1540de5be8d3ec0b6636358a5ec"
+dependencies = [
+ "heck 0.3.3",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3182,7 +3254,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "clap 3.1.8",
  "derivative",
@@ -3193,8 +3265,9 @@ dependencies = [
  "fuel-pest",
  "fuel-pest_derive",
  "fuel-vm",
- "generational-arena",
+ "fuels-types",
  "hex",
+ "im",
  "itertools",
  "lazy_static",
  "nanoid",
@@ -3213,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3222,7 +3295,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "filecheck",
  "generational-arena",
@@ -3232,7 +3305,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
@@ -3251,7 +3324,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3263,7 +3336,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.11.0"
+version = "0.12.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3275,7 +3348,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.11.0"
+version = "0.12.1"
 
 [[package]]
 name = "syn"

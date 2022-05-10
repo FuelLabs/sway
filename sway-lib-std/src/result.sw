@@ -7,7 +7,7 @@
 
 library result;
 
-use ::panic::panic;
+use ::revert::revert;
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure
 /// ([`Err`]).
@@ -48,14 +48,14 @@ impl<T, E> Result<T, E> {
 
     /// Returns the contained [`Ok`] value, consuming the `self` value.
     ///
-    /// Because this function may panic, its use is generally discouraged.
+    /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`Err`]
     /// case explicitly.
     fn unwrap(self) -> T {
         if let Result::Ok(inner_value) = self {
             inner_value
         } else {
-            panic(0);
+            revert(0);
         }
     }
 }

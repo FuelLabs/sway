@@ -20,6 +20,13 @@ If set, outputs source file mapping in JSON format
 Print help information
 
 
+`--locked` 
+
+
+Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error
+
+
 `--minify-json-abi` 
 
 
@@ -76,18 +83,6 @@ Whether to compile to bytecode (false) or to print out the IR (true)
 
 
 Silent mode. Don't output any warnings or errors to the command line
-
-
-`--use-orig-asm` 
-
-
-Whether to compile using the original (pre- IR) pipeline
-
-
-`--use-orig-parser` 
-
-
-Whether to compile using the original (pest based) parser
 
 ## EXAMPLES:
 

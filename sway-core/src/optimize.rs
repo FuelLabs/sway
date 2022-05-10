@@ -24,7 +24,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             main_function,
             declarations,
             all_nodes: _,
-        } => compile_script(&mut ctx, main_function, namespace, declarations),
+        } => compile_script(&mut ctx, main_function, &namespace, declarations),
         TypedParseTree::Predicate {
             namespace: _,
             main_function: _,
@@ -36,7 +36,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             namespace,
             declarations,
             all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, namespace, declarations),
+        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
         TypedParseTree::Library {
             namespace: _,
             all_nodes: _,
@@ -51,7 +51,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -66,7 +66,7 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -85,49 +85,43 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: NamespaceRef,
+    module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
-    read_module(
-        |ns| -> Result<(), CompileError> {
-            for decl in ns.get_all_declared_symbols() {
-                let decl_name_value = match decl {
-                    TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                        name,
-                        value,
-                        visibility,
-                    }) => {
-                        // XXX Do we really only add public constants?
-                        if !public_only || matches!(visibility, Visibility::Public) {
-                            Some((name, value))
-                        } else {
-                            None
-                        }
-                    }
-
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        name,
-                        body,
-                        const_decl_origin,
-                        ..
-                    }) if *const_decl_origin => Some((name, body)),
-
-                    _otherwise => None,
-                };
-
-                if let Some((name, value)) = decl_name_value {
-                    let const_val = compile_constant_expression(context, value)?;
-                    module.add_global_constant(context, name.as_str().to_owned(), const_val);
+    for decl in module_ns.get_all_declared_symbols() {
+        let decl_name_value = match decl {
+            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                name,
+                value,
+                visibility,
+            }) => {
+                // XXX Do we really only add public constants?
+                if !public_only || matches!(visibility, Visibility::Public) {
+                    Some((name, value))
+                } else {
+                    None
                 }
             }
 
-            for ns_ix in ns.get_all_imported_modules().filter(|x| **x != namespace) {
-                compile_constants(context, module, *ns_ix, true)?;
-            }
-            Ok(())
-        },
-        namespace,
-    )?;
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                name,
+                body,
+                const_decl_origin,
+                ..
+            }) if *const_decl_origin => Some((name, body)),
+
+            _otherwise => None,
+        };
+
+        if let Some((name, value)) = decl_name_value {
+            let const_val = compile_constant_expression(context, value)?;
+            module.add_global_constant(context, name.as_str().to_owned(), const_val);
+        }
+    }
+
+    for submodule_ns in module_ns.submodules().values() {
+        compile_constants(context, module, submodule_ns, true)?;
+    }
 
     Ok(())
 }
@@ -2102,13 +2096,29 @@ impl FnCompiler {
                     Type::Uint(_) | Type::Bool => {
                         // These types fit in a word. use state_store_word/state_load_word
                         match access_type {
-                            StateAccessType::Read => self
-                                .current_block
-                                .ins(context)
-                                .state_load_word(key_ptr_val, span_md_idx),
+                            StateAccessType::Read => {
+                                // `state_load_word` always returns a `u64`. Cast the result back
+                                // to the right type before returning
+                                let load_val = self
+                                    .current_block
+                                    .ins(context)
+                                    .state_load_word(key_ptr_val, span_md_idx);
+                                self.current_block.ins(context).bitcast(
+                                    load_val,
+                                    *r#type,
+                                    span_md_idx,
+                                )
+                            }
                             StateAccessType::Write => {
-                                self.current_block.ins(context).state_store_word(
+                                // `state_store_word` requires a `u64`. Cast the value to store to
+                                // `u64` first before actually storing.
+                                let rhs_u64 = self.current_block.ins(context).bitcast(
                                     rhs.expect("expecting a rhs for write"),
+                                    Type::Uint(64),
+                                    span_md_idx,
+                                );
+                                self.current_block.ins(context).state_store_word(
+                                    rhs_u64,
                                     key_ptr_val,
                                     span_md_idx,
                                 );
@@ -2510,7 +2520,10 @@ mod tests {
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
         parser::{Rule, SwayParser},
-        semantic_analysis::{TreeType, TypedParseTree},
+        semantic_analysis::{
+            namespace::{self, Namespace},
+            TreeType, TypedParseTree,
+        },
     };
     use pest::Parser;
 
@@ -2666,10 +2679,10 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
+        let mut namespace = Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
             parse_tree.tree,
-            crate::create_module(),
-            crate::create_module(),
+            &mut namespace,
             &program_type,
             &build_config,
             &mut dead_code_graph,

@@ -72,6 +72,13 @@ Kill Fuel Node Client after running the code. This is only available if the node
 started from `forc run`
 
 
+`--locked` 
+
+
+Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error
+
+
 `--minify-json-abi` 
 
 
@@ -127,15 +134,3 @@ Pretty-print the outputs from the node
 
 
 Silent mode. Don't output any warnings or errors to the command line
-
-
-`--use-orig-asm` 
-
-
-Whether to compile using the original (pre- IR) pipeline
-
-
-`--use-orig-parser` 
-
-
-Whether to compile using the original (pest based) parser
