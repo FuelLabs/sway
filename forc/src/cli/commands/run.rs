@@ -89,6 +89,11 @@ pub struct Command {
     /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,
+
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    #[clap(long)]
+    pub locked: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

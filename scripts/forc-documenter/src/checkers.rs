@@ -1,5 +1,4 @@
-use crate::constants;
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use std::fs::File;
 use std::io::Read;
 
@@ -20,31 +19,27 @@ pub fn is_options_line(line: &str) -> bool {
 }
 
 pub fn check_summary_diffs(
-    existing_summary_contents: String,
-    new_summary_contents: String,
+    existing_summary_contents: &str,
+    new_summary_contents: &str,
 ) -> Result<()> {
     if existing_summary_contents == new_summary_contents {
-        println!("SUMMARY.md ok.");
+        println!("[✓] SUMMARY.md ok.");
     } else {
-        return Err(anyhow!(
-            "SUMMARY.md inconsistent - {}",
-            constants::RUN_WRITE_DOCS_MESSAGE
-        ));
+        eprintln!("[x] SUMMARY.md inconsistent!");
+        bail!("SUMMARY.md is inconsistent.");
     }
 
     Ok(())
 }
 
-pub fn check_index_diffs(mut index_file: File, new_index_contents: String) -> Result<()> {
+pub fn check_index_diffs(mut index_file: File, new_index_contents: &str) -> Result<()> {
     let mut existing_index_contents = String::new();
     index_file.read_to_string(&mut existing_index_contents)?;
     if existing_index_contents == new_index_contents {
-        println!("index.md ok.");
+        println!("[✓] index.md ok.");
     } else {
-        return Err(anyhow!(
-            "index.md inconsistent - {}",
-            constants::RUN_WRITE_DOCS_MESSAGE
-        ));
+        eprintln!("[x] index.md inconsistent!");
+        bail!("index.md is inconsistent.");
     }
 
     Ok(())

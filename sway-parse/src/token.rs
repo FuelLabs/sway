@@ -26,6 +26,7 @@ pub enum PunctKind {
     Pipe,
     Tilde,
     Underscore,
+    Sharp,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -62,6 +63,7 @@ impl PunctKind {
             PunctKind::Pipe => '|',
             PunctKind::Tilde => '~',
             PunctKind::Underscore => '_',
+            PunctKind::Sharp => '#',
         }
     }
 }
@@ -84,17 +86,14 @@ pub enum Delimiter {
     Parenthesis,
     Brace,
     Bracket,
-    //None,
 }
 
 impl Delimiter {
-    //pub fn as_open_char(self) -> Option<char> {
     pub fn as_open_char(self) -> char {
         match self {
             Delimiter::Parenthesis => '(',
             Delimiter::Brace => '{',
             Delimiter::Bracket => '[',
-            //Delimiter::None => None,
         }
     }
 }
@@ -232,6 +231,7 @@ impl CharExt for char {
             '|' => Some(PunctKind::Pipe),
             '~' => Some(PunctKind::Tilde),
             '_' => Some(PunctKind::Underscore),
+            '#' => Some(PunctKind::Sharp),
             _ => None,
         }
     }
