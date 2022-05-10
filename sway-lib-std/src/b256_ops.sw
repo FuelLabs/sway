@@ -1,6 +1,6 @@
 library b256_ops;
 
-use ::panic::panic;
+use ::revert::revert;
 use core::ops::{ BitwiseAnd, BitwiseOr, BitwiseXor };
 
 
