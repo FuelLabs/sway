@@ -47,7 +47,7 @@ impl Attribute {
 impl Parse for Attribute {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         let name = parser.parse()?;
-        let args = parser.parse().ok();
+        let args = Parens::try_parse(parser)?;
         Ok(Attribute { name, args })
     }
 }

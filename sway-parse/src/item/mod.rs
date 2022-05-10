@@ -17,10 +17,9 @@ pub struct Item {
 
 impl Item {
     pub fn span(&self) -> Span {
-        if self.attribute_list.is_empty() {
-            self.kind.span()
-        } else {
-            Span::join(self.attribute_list[0].span(), self.kind.span())
+        match self.attribute_list.first() {
+            Some(attr0) => Span::join(attr0.span(), self.kind.span()),
+            None => self.kind.span(),
         }
     }
 }
@@ -29,19 +28,6 @@ impl Parse for Item {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         let mut attribute_list = Vec::new();
         loop {
-            // This is the only way I could get it to work but I'm not happy because we shouldn't
-            // know/care about Attribute's syntax (that it starts with `#`) here.
-            //
-            // Ideally we'd try_parse() an attribute, if it fails then break and parse the item
-            // below.  But if there's a malformed attribute it should be partially parsed and the
-            // syntax error reported correctly.
-            //
-            // An alternative might be to loop and `take()` them while we can, but it uses Peek
-            // which isn't a fully fledged parser and is really only for small keywords or
-            // punctuation.
-            //
-            // Or perhaps to `enter_delimited()` and `parse_to_end()` except there is no delimiter
-            // here; we have zero or more attributes before a declaration.
             if parser.peek::<HashToken>().is_some() {
                 attribute_list.push(parser.parse()?);
             } else {
