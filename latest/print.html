@@ -1749,9 +1749,13 @@ used</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
 <p><code>-s</code>, <code>--shell</code> &lt;<em>SHELL</em>&gt;</p>
+<p>Specify shell to enable tab-completion for</p>
 <p>[possible values: zsh, bash, fish, powershell, elvish]</p>
-<p>DISCUSSION:
-Enable tab completion for Bash, Fish, Zsh, or PowerShell
+<p>For more info:
+https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
+<h2 id="examples-1"><a class="header" href="#examples-1">EXAMPLES:</a></h2>
+<p>DISCUSSION:</p>
+<p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
 The script is output on <code>stdout</code>, allowing one to re-direct the
 output to the file of their choosing. Where you place the file
 will depend on which shell, and which operating system you are
@@ -1759,29 +1763,31 @@ using. Your particular configuration may also determine where
 these scripts need to be placed.</p>
 <p>Here are some common set ups for the three supported shells under
 Unix and similar operating systems (such as GNU/Linux).</p>
-<p>BASH:</p>
+<p><strong>BASH:</strong></p>
 <p>Completion files are commonly stored in <code>/etc/bash_completion.d/</code> for
 system-wide commands, but can be stored in
 <code>~/.local/share/bash-completion/completions</code> for user-specific commands.
 Run the command:</p>
-<p>$ mkdir -p ~/.local/share/bash-completion/completions
-$ forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completions/forc</p>
+<pre><code class="language-sh">mkdir -p ~/.local/share/bash-completion/completions
+forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completions/forc
+</code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p>BASH (macOS/Homebrew):</p>
+<p><strong>BASH (macOS/Homebrew):</strong></p>
 <p>Homebrew stores bash completion files within the Homebrew directory.
 With the <code>bash-completion</code> brew formula installed, run the command:</p>
-<p>$ mkdir -p $(brew --prefix)/etc/bash_completion.d
-$ forc completions --shell=bash &gt; $(brew</p>
-<p><code>--prefix)/etc/bash_completion.d/forc.bash-completion</code> </p>
-<p>FISH:</p>
+<pre><code class="language-sh">mkdir -p $(brew --prefix)/etc/bash_completion.d
+forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+</code></pre>
+<p><strong>FISH:</strong></p>
 <p>Fish completion files are commonly stored in
 <code>$HOME/.config/fish/completions</code>. Run the command:</p>
-<p>$ mkdir -p ~/.config/fish/completions
-$ forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish</p>
+<pre><code class="language-sh">mkdir -p ~/.config/fish/completions
+forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
+</code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p>ZSH:</p>
+<p><strong>ZSH:</strong></p>
 <p>ZSH completions are commonly stored in any directory listed in
 your <code>$fpath</code> variable. To use these completions, you must either
 add the generated script to one of those directories, or add your
@@ -1790,38 +1796,44 @@ own to this list.</p>
 unsure of which directory to use. First create the directory; for
 this example we'll create a hidden directory inside our <code>$HOME</code>
 directory:</p>
-<p>$ mkdir ~/.zfunc</p>
+<pre><code class="language-sh">mkdir ~/.zfunc
+</code></pre>
 <p>Then add the following lines to your <code>.zshrc</code> just before
 <code>compinit</code>:</p>
-<p>fpath+=~/.zfunc</p>
+<pre><code class="language-sh">fpath+=~/.zfunc
+</code></pre>
 <p>Now you can install the completions script using the following
 command:</p>
-<p>$ forc completions --shell=zsh &gt; ~/.zfunc/_forc</p>
+<pre><code class="language-sh">forc completions --shell=zsh &gt; ~/.zfunc/_forc
+</code></pre>
 <p>You must then either log out and log back in, or simply run</p>
-<p>$ exec zsh</p>
+<pre><code class="language-sh">exec zsh
+</code></pre>
 <p>for the new completions to take effect.</p>
-<p>CUSTOM LOCATIONS:</p>
+<p><strong>CUSTOM LOCATIONS:</strong></p>
 <p>Alternatively, you could save these files to the place of your
 choosing, such as a custom directory inside your $HOME. Doing so
 will require you to add the proper directives, such as <code>source</code>ing
 inside your login script. Consult your shells documentation for
 how to add such directives.</p>
-<p>POWERSHELL:</p>
+<p><strong>POWERSHELL:</strong></p>
 <p>The powershell completion scripts require PowerShell v5.0+ (which
 comes with Windows 10, but can be downloaded separately for windows 7
 or 8.1).</p>
 <p>First, check if a profile has already been set</p>
-<p>PS C:&gt; Test-Path $profile</p>
+<pre><code class="language-sh">Test-Path $profile
+</code></pre>
 <p>If the above command returns <code>False</code> run the following</p>
-<p>PS C:&gt; New-Item -path $profile -type file -force</p>
+<pre><code class="language-sh">New-Item -path $profile -type file -force
+</code></pre>
 <p>Now open the file provided by <code>$profile</code> (if you used the
 <code>New-Item</code> command it will be
 <code>${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1</code></p>
 <p>Next, we either save the completions file into our profile, or
 into a separate file and source it inside our profile. To save the
 completions into our profile simply use</p>
-<p>PS C:&gt; forc completions --shell=powershell &gt;&gt;
-${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1</p>
+<pre><code class="language-sh">forc completions --shell=powershell &gt;&gt; ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+</code></pre>
 <h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc-deploy</a></h1>
 <p>Deploy contract project. Crafts a contract deployment transaction then sends it to a running node</p>
 <h2 id="usage-4"><a class="header" href="#usage-4">USAGE:</a></h2>
@@ -1852,7 +1864,7 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
-<h2 id="examples-1"><a class="header" href="#examples-1">EXAMPLES:</a></h2>
+<h2 id="examples-2"><a class="header" href="#examples-2">EXAMPLES:</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
 <p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
@@ -1881,7 +1893,7 @@ creates a basic contract program</p>
 <ul>
 <li>counter</li>
 </ul>
-<h2 id="examples-2"><a class="header" href="#examples-2">EXAMPLES:</a></h2>
+<h2 id="examples-3"><a class="header" href="#examples-3">EXAMPLES:</a></h2>
 <pre><code class="language-console">$ forc init my-fuel-project
 $ cd my-fuel-project
 $ tree
@@ -1927,7 +1939,7 @@ be used</p>
 <h2 id="options-7"><a class="header" href="#options-7">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
-<h2 id="examples-3"><a class="header" href="#examples-3">EXAMPLES:</a></h2>
+<h2 id="examples-4"><a class="header" href="#examples-4">EXAMPLES:</a></h2>
 <p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
 <pre><code class="language-sh">forc init --template counter counter
 cd counter
@@ -2036,7 +2048,7 @@ All trailing arguments following <code>--</code> are collected within this argum
 <p><code>cargo test --color always</code></p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
-<h2 id="examples-4"><a class="header" href="#examples-4">EXAMPLES:</a></h2>
+<h2 id="examples-5"><a class="header" href="#examples-5">EXAMPLES:</a></h2>
 <p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc init</code>).</p>
 <p>You can find an example under the <a href="forc/commands/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 <h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
