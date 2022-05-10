@@ -183,8 +183,12 @@ impl ContractA for Contract {
     fn receive(field_1: bool, field_2: u64) -&gt; u64 {
         assert(field_1 == true);
         assert(field_2 &gt; 0);
-        45
+        return_45()
     }
+}
+
+fn return_45() -&gt; u64 {
+  45
 }
 </code></pre>
 <pre><code class="language-sway">// ./contract_b.sw
@@ -205,6 +209,9 @@ impl ContractB for Contract {
     }
 }
 </code></pre>
+<blockquote>
+<p><strong>NOTE</strong> The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the <code>impl</code> and call it inside the contract, similar to the <code>return_45()</code> function above.</p>
+</blockquote>
 <h2 id="advanced-calls"><a class="header" href="#advanced-calls">Advanced Calls</a></h2>
 <p>All calls forward a gas stipend, and may additionally forward one native asset with the call.</p>
 <p>Here is an example of how to specify the amount of gas (<code>gas</code>), the asset ID of the native asset (<code>asset_id</code>), and the amount of the native asset (<code>amount</code>) to forward:</p>
