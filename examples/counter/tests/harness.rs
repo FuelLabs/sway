@@ -1,22 +1,13 @@
-use fuel_tx::Salt;
 use fuels::prelude::*;
 use fuels_abigen_macro::abigen;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
 // Generate Rust bindings from our contract JSON ABI
 abigen!(MyContract, "examples/counter/out/debug/counter-abi.json");
 
 #[tokio::test]
 async fn harness() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    // Build the contract
-    let salt: [u8; 32] = rng.gen();
-    let salt = Salt::from(salt);
-
     // Launch a local network and deploy the contract
-    let compiled = Contract::load_sway_contract("./out/debug/counter.bin", salt).unwrap();
+    let compiled = Contract::load_sway_contract("./out/debug/counter.bin").unwrap();
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
