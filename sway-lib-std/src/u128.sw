@@ -64,7 +64,7 @@ impl U128 {
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
             let max = 18446744073709551615;
-            let lower = max - (other.lower - self.lower);
+            let lower = max - (other.lower - self.lower - 1);
             upper = upper - 1;
         } else {
             let lower = self.lower - other.lower;
@@ -107,6 +107,7 @@ pub fn mul64(a: u64, b: u64) -> U128 {
 
     // low result is what's left after the (overflowing) multiplication of a and b
     let result_lo: u64 = a * b;
+
     // High result
     let result_hi: u64 = ab_hi + (ab_mid >> 32) + (ba_mid >> 32) + carry_bit;
 

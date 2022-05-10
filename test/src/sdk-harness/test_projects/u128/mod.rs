@@ -27,14 +27,19 @@ async fn get_contract_instance() -> (U128Contract, ContractId) {
 async fn multiply_u64() {
     let (u128_instance, id) = get_contract_instance().await;
 
-    let a: u64 = u64::MAX;
-    let b: u64 = 2;
+    let a: u64 = 0xffffffffffffffff;
+    let b: u64 = 0x10;
 
     let result = u128_instance
     .multiply_u64(a, b)
     .call()
     .await
     .unwrap();
+
+    assert_eq!(result.value.0, 0x000000000000000f);
+    assert_eq!(result.value.1, 0xfffffffffffffff0);
+
+
 
     // TO DO compare result to expected components
 
