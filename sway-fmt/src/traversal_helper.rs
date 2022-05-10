@@ -164,7 +164,6 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     };
 
     let buff = tokenize(s);
-    // println!(">>> TOKENS : {:?} <<<<<<\n", buff);
     let mut without_newline = buff.iter().rev().collect::<Vec<&String>>();
 
     let len: usize = buff.iter().map(|x| x.len()).sum();
@@ -196,6 +195,9 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
             }
             "}" => {
                 *open_brackets -= 1;
+                // Using `remainder` to see if we're at either a 2-char terminator for the full
+                // use statement (i.e., '};') or at a single char terminator (e.g., '}') for individual
+                // formatted lines
                 if *open_brackets == 1 && (remainder == 2 || remainder == 1) {
                     is_line = true;
                 }
@@ -220,7 +222,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
             false => ALREADY_FORMATTED_LINE_PATTERN.to_owned(),
         };
 
-        // Remove a tab to match indent with sibling imports
+        // If this is the end of nested brackets, decrement `tabs` if we have any
         if (input.ends_with('{') || input.ends_with("};") || open_brackets > 1) && tabs > 0 {
             tabs -= 1;
         }
