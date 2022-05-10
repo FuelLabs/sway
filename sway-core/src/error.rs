@@ -169,6 +169,27 @@ impl<T> CompileResult<T> {
     }
 }
 
+impl<'a, T> CompileResult<&'a T>
+where
+    T: Clone,
+{
+    /// Converts a `CompileResult` around a reference value to an owned value by cloning the type
+    /// behind the reference.
+    pub fn cloned(self) -> CompileResult<T> {
+        let CompileResult {
+            value,
+            warnings,
+            errors,
+        } = self;
+        let value = value.cloned();
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+}
+
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Hash)]

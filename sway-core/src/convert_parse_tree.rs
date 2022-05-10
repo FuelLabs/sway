@@ -19,10 +19,11 @@ use {
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
         DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
         FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
-        Instruction, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemStorage, ItemStruct,
-        ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment,
-        PathType, PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
-        QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree,
+        Instruction, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage,
+        ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
+        PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
+        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
+        UseTree,
     },
     sway_types::{Ident, Span},
     thiserror::Error,
@@ -263,7 +264,7 @@ pub fn program_to_sway_parse_tree(
                 .collect()
         };
         for item in program.items {
-            let ast_nodes = item_to_ast_nodes(ec, item)?;
+            let ast_nodes = item_to_ast_nodes(ec, item.kind)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
@@ -274,57 +275,57 @@ pub fn program_to_sway_parse_tree(
     })
 }
 
-fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
+fn item_to_ast_nodes(ec: &mut ErrorContext, item: ItemKind) -> Result<Vec<AstNode>, ErrorEmitted> {
     let span = item.span();
     let contents = match item {
-        Item::Use(item_use) => {
+        ItemKind::Use(item_use) => {
             let use_statements = item_use_to_use_statements(ec, item_use)?;
             use_statements
                 .into_iter()
                 .map(AstNodeContent::UseStatement)
                 .collect()
         }
-        Item::Struct(item_struct) => {
+        ItemKind::Struct(item_struct) => {
             let struct_declaration = item_struct_to_struct_declaration(ec, item_struct)?;
             vec![AstNodeContent::Declaration(Declaration::StructDeclaration(
                 struct_declaration,
             ))]
         }
-        Item::Enum(item_enum) => {
+        ItemKind::Enum(item_enum) => {
             let enum_declaration = item_enum_to_enum_declaration(ec, item_enum)?;
             vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(
                 enum_declaration,
             ))]
         }
-        Item::Fn(item_fn) => {
+        ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn)?;
             vec![AstNodeContent::Declaration(
                 Declaration::FunctionDeclaration(function_declaration),
             )]
         }
-        Item::Trait(item_trait) => {
+        ItemKind::Trait(item_trait) => {
             let trait_declaration = item_trait_to_trait_declaration(ec, item_trait)?;
             vec![AstNodeContent::Declaration(Declaration::TraitDeclaration(
                 trait_declaration,
             ))]
         }
-        Item::Impl(item_impl) => {
+        ItemKind::Impl(item_impl) => {
             let declaration = item_impl_to_declaration(ec, item_impl)?;
             vec![AstNodeContent::Declaration(declaration)]
         }
-        Item::Abi(item_abi) => {
+        ItemKind::Abi(item_abi) => {
             let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
             vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
                 abi_declaration,
             ))]
         }
-        Item::Const(item_const) => {
+        ItemKind::Const(item_const) => {
             let constant_declaration = item_const_to_constant_declaration(ec, item_const)?;
             vec![AstNodeContent::Declaration(
                 Declaration::ConstantDeclaration(constant_declaration),
             )]
         }
-        Item::Storage(item_storage) => {
+        ItemKind::Storage(item_storage) => {
             let storage_declaration = item_storage_to_storage_declaration(ec, item_storage)?;
             vec![AstNodeContent::Declaration(
                 Declaration::StorageDeclaration(storage_declaration),
