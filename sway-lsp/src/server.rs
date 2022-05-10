@@ -481,16 +481,13 @@ fn main() {
 
     #[tokio::test]
     async fn did_change() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
         // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
 
         let uri = Url::parse("inmemory:///test").unwrap();
         let text = r#"script;
@@ -512,9 +509,6 @@ fn main() {
 
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, text).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
 
         // send "textDocument/didChange" notification for `uri`
         let params = json!({
@@ -544,9 +538,6 @@ fn main() {
             .finish();
         let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
