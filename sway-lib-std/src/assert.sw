@@ -1,7 +1,6 @@
 library assert;
 
 use ::revert::revert;
-use ::context/call_frames;
 
 
 /// Assert that a value is true
@@ -18,7 +17,6 @@ pub fn assert(a: bool) {
 pub fn require<T>(c: bool, v: T) {
     if !c {
         let size = size_of::<T>();
-        let this = contract_id();
         asm(r1: v, r2: size) {
             logd zero zero r1 r2;
         };
