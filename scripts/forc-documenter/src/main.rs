@@ -62,6 +62,7 @@ fn get_example_for_command(command: &str) -> &str {
         "test" => examples::FORC_TEST_EXAMPLE,
         "deploy" => examples::FORC_DEPLOY_EXAMPLE,
         "parse-bytecode" => examples::FORC_PARSE_BYTECODE_EXAMPLE,
+        "completions" => examples::FORC_COMPLETIONS_EXAMPLE,
         _ => "",
     }
 }
