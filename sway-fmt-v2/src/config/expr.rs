@@ -1,10 +1,11 @@
-//! Configuration options related to formatting expressions.
+//! Configuration options related to formatting of expressions and punctuation.
 use serde::{Deserialize, Serialize};
 
 use super::items::ItemsLayout;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Expressions {
+    /////PUNCTUATION/////
     /// Brace style for control flow constructs.
     pub expr_brace_style: ExprBraceStyle,
     /// Add trailing semicolon after break, continue and return.
@@ -13,14 +14,20 @@ pub struct Expressions {
     pub space_before_colon: bool,
     /// Leave a space after the colon.
     pub space_after_colon: bool,
+
+    /////OPERATORS/////
     /// Determines if `+` or `=` are wrapped in spaces in the punctuation of types.
-    pub type_punctuation_layout: TypeCombinatorLayout,
+    pub type_combinator_layout: TypeCombinatorLayout,
     /// Put spaces around the `..` and `..=` range operators.
     pub spaces_around_ranges: bool,
+
+    /////MATCH EXPR/////
     /// Put a trailing comma after a block based match arm (non-block arms are not affected).
     pub match_block_trailing_comma: bool,
     /// Determines whether leading pipes are emitted on match arms.
     pub match_arm_leading_pipe: MatchArmLeadingPipe,
+
+    /////FUNCTIONS/////
     /// Force multiline closure bodies and match arms to be wrapped in a block.
     pub force_multiline_blocks: bool,
     /// Control the layout of arguments in a function.
@@ -36,7 +43,7 @@ impl Default for Expressions {
             trailing_semicolon: true,
             space_before_colon: false,
             space_after_colon: false,
-            type_punctuation_layout: TypeCombinatorLayout::Wide,
+            type_combinator_layout: TypeCombinatorLayout::Wide,
             spaces_around_ranges: false,
             match_block_trailing_comma: false,
             match_arm_leading_pipe: MatchArmLeadingPipe::Never,

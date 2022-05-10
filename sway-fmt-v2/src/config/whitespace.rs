@@ -1,4 +1,4 @@
-//! Whitespace configuration options.
+//! Standard system and editor whitespace configuration options. Advanced whitespace options will be deferred to their corresponding sub-classes.
 use serde::{Deserialize, Serialize};
 
 use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
