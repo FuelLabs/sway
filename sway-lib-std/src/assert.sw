@@ -13,7 +13,7 @@ pub fn assert(a: bool) {
 }
 
 /// A wrapper for `assert` that allows logging a custom value `v` if condition `c` is not true.
-/// This will then revert with the value `42`, which indicates that you should look at the previous logd receipt for further debugging clues.
+/// This will then revert with the value `42`, which indicates that you should look at the previous logd receipt for further debugging clues. Note that the SDK will not currently decode this logd receipt for you.
 pub fn require<T>(c: bool, v: T) {
     if !c {
         let size = size_of::<T>();
