@@ -5,7 +5,6 @@ use std::b256_ops::*;
 use std::constants::ZERO;
 use std::chain::log_b256;
 
-
 fn main() -> bool {
     let one = 1;
     let two = 2;
