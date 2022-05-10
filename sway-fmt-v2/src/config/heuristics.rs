@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Heuristics {
     /// Determines heuristics level of involvement.
     pub heuristics_pref: HeuristicsPreferences,

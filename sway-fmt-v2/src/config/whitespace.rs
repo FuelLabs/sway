@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
 
 /// Whitespace styling preferences.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Whitespace {
     /// Maximum width of each line.
     pub max_width: usize,

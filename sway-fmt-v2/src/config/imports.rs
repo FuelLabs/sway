@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{lists::ListTactic, whitespace::IndentStyle};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Imports {
     /// Controls the strategy for how imports are grouped together.
     pub group_imports: GroupImports,

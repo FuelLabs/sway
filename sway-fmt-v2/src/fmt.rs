@@ -5,7 +5,7 @@ use sway_parse::Item;
 use crate::config::manifest::FormatConfig;
 pub use crate::error::FormatterError;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Formatter {
     pub config: FormatConfig,
 }

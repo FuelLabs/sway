@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use super::whitespace::IndentStyle;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Lists {
     /// How to handle trailing commas for lists.
-    trailing_comma: SeparatorTactic,
+    pub trailing_comma: SeparatorTactic,
 }
 
 impl Default for Lists {

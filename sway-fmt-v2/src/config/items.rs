@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::lists::ListTactic;
 use crate::constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Items {
     /// Brace style for items.
     pub item_brace_style: ItemBraceStyle,

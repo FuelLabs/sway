@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::items::ItemsLayout;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Expressions {
     /////PUNCTUATION/////
     /// Brace style for control flow constructs.

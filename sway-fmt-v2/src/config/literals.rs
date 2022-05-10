@@ -1,7 +1,7 @@
 //! Configuration options related to formatting literals.
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Literals {
     /// Format string literals where necessary.
     pub format_strings: bool,
