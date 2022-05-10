@@ -191,13 +191,13 @@ or 8.1).
 First, check if a profile has already been set
 
 ```sh
-C:\> Test-Path $profile
+Test-Path $profile
 ```
 
 If the above command returns `False` run the following
 
 ```sh
-C:\> New-Item -path $profile -type file -force
+New-Item -path $profile -type file -force
 ```
 
 Now open the file provided by `$profile` (if you used the
@@ -209,6 +209,6 @@ into a separate file and source it inside our profile. To save the
 completions into our profile simply use
 
 ```sh
-C:\> forc completions --shell=powershell >> ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+forc completions --shell=powershell >> ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 ```
 "#;
