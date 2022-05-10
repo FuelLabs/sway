@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::Read;
@@ -94,6 +94,8 @@ fn write_new_summary_contents(
 fn write_docs(command: WriteDocsCommand) -> Result<()> {
     let WriteDocsCommand { dry_run } = command;
 
+    let mut failed: bool = false;
+
     let forc_commands_docs_path = get_sway_path().join("docs/src/forc/commands");
     let summary_file_path = get_sway_path().join("docs/src/SUMMARY.md");
     let index_file_path = forc_commands_docs_path.join("index.md");
@@ -173,21 +175,15 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             match existing_contents {
                 Ok(existing_contents) => {
                     if existing_contents == result {
-                        println!("forc {}: documentation ok.", &command);
+                        println!("[✓] forc {}: documentation ok.", &command);
                     } else {
-                        return Err(anyhow!(
-                            "Documentation inconsistent for forc {} - {}",
-                            &command,
-                            constants::RUN_WRITE_DOCS_MESSAGE
-                        ));
+                        failed = true;
+                        eprintln!("[x] forc {}: documentation inconsistent!", &command);
                     }
                 }
                 Err(_) => {
-                    return Err(anyhow!(
-                        "Documentation does not exist for forc {} - {}",
-                        &command,
-                        constants::RUN_WRITE_DOCS_MESSAGE
-                    ));
+                    failed = true;
+                    eprintln!("[x] forc {}: documentation does not exist!", &command);
                 }
             }
         } else {
@@ -204,9 +200,14 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
         existing_summary_contents.clone(),
         new_index_contents.clone(),
     );
+
     if dry_run {
-        check_index_diffs(index_file, new_index_contents)?;
-        check_summary_diffs(existing_summary_contents, new_summary_contents)?;
+        if check_index_diffs(index_file, &new_index_contents).is_err() {
+            failed = true;
+        }
+        if check_summary_diffs(&existing_summary_contents, &new_summary_contents).is_err() {
+            failed = true;
+        }
     } else {
         println!("Updating forc commands in forc/commands/index.md...");
         index_file
@@ -220,7 +221,13 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             .expect("Failed to write to SUMMARY.md");
     }
 
+    if failed {
+        bail!(
+            "The Forc section of the Sway book needs to be updated. \n\nPlease run `cargo run --bin forc-documenter write-docs`. If you have made local changes to any forc native commands, please install forc from path first: `cargo install --path ./forc`, then run the command."
+        );
+    }
     println!("Done.");
+
     Ok(())
 }
 
@@ -233,7 +240,7 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         .expect("forc --help failed to run");
 
     if !output.status.success() {
-        return Err(anyhow!("Failed to run forc {} --help", subcommand));
+        bail!("Failed to run forc {} --help", subcommand);
     }
 
     let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
