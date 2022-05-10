@@ -52,16 +52,16 @@ fn main() -> bool {
     assert(addr_4 & addr_3 == ZERO);
     assert(addr_1 & addr_4 == addr_4);
 
-    assert(a | b == e);
+    assert(a | g == e);
     assert(a | d == e);
     assert(a | c == a);
     assert(c | f == a);
     assert(c | d == e);
 
-    // assert(a ^ b == d);
-    // assert(a ^ g == e);
-    // assert(b ^ d == g);
-    // assert(f ^ g == d);
+    assert(a ^ b == d);
+    assert(a ^ g == e);
+    assert(b ^ d == a);
+    assert(f ^ g == d);
 
     true
 }
