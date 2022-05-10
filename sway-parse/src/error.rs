@@ -58,6 +58,10 @@ pub enum ParseErrorKind {
     ExpectedKeyword { word: &'static str },
     #[error("unexpected token after abi address")]
     UnexpectedTokenAfterAbiAddress,
+    #[error("expected an attribute")]
+    ExpectedAnAttribute,
+    #[error("unexpected token after an attribute")]
+    UnexpectedTokenAfterAttribute,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]
