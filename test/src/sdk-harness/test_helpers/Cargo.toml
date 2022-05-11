@@ -6,5 +6,6 @@ edition = "2021"
 
 [dependencies]
 fuel-core = { version = "0.6", default-features = false }
+fuel-gql-client = { version = "0.6", default-features = false }
 fuel-tx = "0.9"
-fuels = "0.10"
+fuels = "0.12"

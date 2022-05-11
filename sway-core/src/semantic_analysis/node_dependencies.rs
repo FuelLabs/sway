@@ -391,7 +391,7 @@ impl Dependencies {
             }
             Expression::AsmExpression { asm, .. } => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
-                    deps.gather_from_opt_expr(&register.initializer)
+                    deps.gather_from_opt_expr(register.initializer.as_ref())
                 })
                 .gather_from_typeinfo(&asm.return_type),
 
@@ -408,13 +408,18 @@ impl Dependencies {
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
-            Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
+            Expression::IfLet {
+                expr, then, r#else, ..
+            } => self
+                .gather_from_expr(expr)
+                .gather_from_block(then)
+                .gather_from_opt_expr(r#else.as_deref()),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }
     }
 
-    fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {
+    fn gather_from_opt_expr(self, opt_expr: Option<&Expression>) -> Self {
         match opt_expr {
             None => self,
             Some(expr) => self.gather_from_expr(expr),
