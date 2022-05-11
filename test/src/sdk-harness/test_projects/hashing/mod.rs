@@ -1,4 +1,4 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::ContractId;
 use fuels::prelude::*;
 use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
@@ -9,10 +9,8 @@ abigen!(
 );
 
 async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled =
-        Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin", salt)
-            .unwrap();
+        Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
