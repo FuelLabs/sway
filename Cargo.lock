@@ -1102,6 +1102,8 @@ dependencies = [
  "serde",
  "tar",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
  "warp",
 ]
 

@@ -11,7 +11,7 @@ use fuel_vm::prelude::*;
 use std::path::PathBuf;
 use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
-use tracing::{info,instrument};
+use tracing::{info, instrument};
 
 #[instrument(err, skip_all)]
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {

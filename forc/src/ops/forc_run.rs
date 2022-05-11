@@ -10,7 +10,7 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
-use tracing::{info,instrument};
+use tracing::{info, instrument};
 
 #[instrument(err, skip_all)]
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {

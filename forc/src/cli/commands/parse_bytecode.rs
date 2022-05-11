@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::Read;
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
-use tracing::{info};
+use tracing::info;
 
 /// Parse bytecode file into a debug format.
 #[derive(Debug, Parser)]

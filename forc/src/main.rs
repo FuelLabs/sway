@@ -1,10 +1,10 @@
-use tracing_subscriber::filter::EnvFilter;
-use std::str::FromStr;
 use std::env;
-use tracing::{error};
+use std::str::FromStr;
+use tracing::error;
+use tracing_subscriber::filter::EnvFilter;
 
-pub const LOG_FILTER: &str = "RUST_LOG";
-pub const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
+const LOG_FILTER: &str = "RUST_LOG";
+const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
 
 #[tokio::main]
 async fn main() {
@@ -25,23 +25,18 @@ async fn main() {
         .with_env_filter(filter);
 
     if human_logging {
-        // use pretty logs
         sub.with_ansi(true)
             .with_level(true)
             .with_line_number(true)
             .init();
     } else {
-        // use machine parseable structured logs
-        sub
-            // disable terminal colors
-            .with_ansi(false)
+        sub.with_ansi(false)
             .with_level(true)
             .with_line_number(true)
-            // use json
             .json()
             .init();
     }
-    if let Err(_err) = forc::cli::run_cli().await{
+    if let Err(_err) = forc::cli::run_cli().await {
         error!("Forc error!");
     }
 }

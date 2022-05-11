@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
-use tracing::{info};
+use tracing::info;
 
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},

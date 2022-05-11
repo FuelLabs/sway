@@ -6,7 +6,7 @@ use std::{
     fs::{self, File},
     path::PathBuf,
 };
-use tracing::{info,instrument};
+use tracing::{info, instrument};
 
 #[instrument(err, skip_all)]
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {

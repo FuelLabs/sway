@@ -6,11 +6,15 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use forc_util::println_green;
 use serde::Deserialize;
+use std::env;
 use std::{
     fs::{self, File},
     io::{self, Cursor},
+    str::FromStr,
 };
 use tar::Archive;
+use tracing::{info, instrument};
+use tracing_subscriber::filter::EnvFilter;
 use warp::Filter;
 
 #[derive(Debug, Parser)]
@@ -63,7 +67,43 @@ fn clean() -> Result<()> {
     Ok(())
 }
 
+const LOG_FILTER: &str = "RUST_LOG";
+const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
+
+fn set_subscriber() {
+    let filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
+
+    let human_logging = env::var_os(HUMAN_LOGGING)
+        .map(|s| {
+            bool::from_str(s.to_str().unwrap())
+                .expect("Expected `true` or `false` to be provided for `HUMAN_LOGGING`")
+        })
+        .unwrap_or(true);
+
+    let sub = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(std::io::stderr)
+        .with_env_filter(filter);
+
+    if human_logging {
+        sub.with_ansi(true)
+            .with_level(true)
+            .with_line_number(true)
+            .init();
+    } else {
+        sub.with_ansi(false)
+            .with_level(true)
+            .with_line_number(true)
+            .json()
+            .init();
+    }
+}
+
+#[instrument(err, skip_all)]
 async fn run(app: App) -> Result<()> {
+    set_subscriber();
     let App { port, .. } = app;
     let releases = get_github_releases().await?;
     let release = releases
@@ -92,6 +132,7 @@ async fn run(app: App) -> Result<()> {
     start_server(&port, version).await
 }
 
+#[instrument(err, skip_all)]
 async fn get_github_releases() -> Result<Vec<GitHubRelease>, reqwest::Error> {
     let client = reqwest::Client::new();
     let response = client
@@ -107,6 +148,7 @@ fn check_version_path(version: &str) -> bool {
     path.exists()
 }
 
+#[instrument(err, skip_all)]
 fn release_url(release: &GitHubRelease) -> Result<&str> {
     release
         .assets
@@ -115,6 +157,7 @@ fn release_url(release: &GitHubRelease) -> Result<&str> {
         .map(|asset| &asset.browser_download_url[..])
 }
 
+#[instrument(err, skip_all)]
 async fn download_build(url: &str, version: &str) -> Result<File> {
     fs::create_dir_all(path::web_app().join(version))?;
     let mut file = File::create(path::build_archive(version))
@@ -125,12 +168,14 @@ async fn download_build(url: &str, version: &str) -> Result<File> {
     Ok(file)
 }
 
+#[instrument(err, skip_all)]
 fn unpack_archive(version: &str) -> Result<()> {
     let mut ar = Archive::new(File::open(path::build_archive(version))?);
     ar.unpack(path::web_app_version(version))?;
     Ok(())
 }
 
+#[instrument(err, skip_all)]
 async fn start_server(port: &str, version: &str) -> Result<()> {
     let explorer = warp::path::end().and(warp::fs::dir(path::web_app_files(version)));
     let static_assets = warp::path(end_point_static_files())
@@ -139,7 +184,7 @@ async fn start_server(port: &str, version: &str) -> Result<()> {
     let port_number = port
         .parse::<u16>()
         .with_context(|| "invalid port number, expected integer value in the range [0, 65535]")?;
-    println!("Running server on http://127.0.0.1:{}", port_number);
+    info!("Running server on http://127.0.0.1:{}", port_number);
     warp::serve(routes).run(([127, 0, 0, 1], port_number)).await;
     Ok(())
 }

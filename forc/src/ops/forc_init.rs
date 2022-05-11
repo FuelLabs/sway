@@ -12,8 +12,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use url::Url;
 use tracing::{info, instrument};
+use url::Url;
 
 #[derive(Debug)]
 struct GitPathInfo {

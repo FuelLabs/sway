@@ -2,7 +2,7 @@ use crate::cli::PluginsCommand;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::path::PathBuf;
-use tracing::{info};
+use tracing::info;
 
 /// Find all forc plugins available via `PATH`.
 ///
