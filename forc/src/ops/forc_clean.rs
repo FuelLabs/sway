@@ -3,7 +3,9 @@ use anyhow::{anyhow, bail, Result};
 use forc_util::{default_output_directory, find_cargo_manifest_dir, find_manifest_dir};
 use std::{path::PathBuf, process};
 use sway_utils::MANIFEST_FILE_NAME;
+use tracing::{instrument};
 
+#[instrument(err, skip_all)]
 pub fn clean(command: CleanCommand) -> Result<()> {
     let CleanCommand { path } = command;
 

@@ -1,6 +1,7 @@
 use crate::ops::forc_init;
 use anyhow::Result;
 use clap::Parser;
+use tracing::{error};
 
 const TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
 
@@ -28,6 +29,7 @@ pub struct Command {
     /// The name of your project
     pub project_name: String,
 }
+
 
 pub(crate) fn exec(command: Command) -> Result<()> {
     forc_init::init(command)?;

@@ -6,7 +6,9 @@ use std::{
     fs::{self, File},
     path::PathBuf,
 };
+use tracing::{info,instrument};
 
+#[instrument(err, skip_all)]
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
         path,
@@ -70,7 +72,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         } else {
             e
         };
-        println!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+        info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);
@@ -78,7 +80,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         let string = toml::ser::to_string_pretty(&lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
+        info!("   Created new lock file at {}", lock_path.display());
         Ok(plan)
     })?;
 
@@ -122,7 +124,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         res?;
     }
 
-    println!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
     Ok(compiled)
 }

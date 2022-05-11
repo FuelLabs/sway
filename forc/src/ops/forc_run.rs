@@ -10,7 +10,9 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
+use tracing::{info,instrument};
 
+#[instrument(err, skip_all)]
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
@@ -53,7 +55,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     );
 
     if command.dry_run {
-        println!("{:?}", tx);
+        info!("{:?}", tx);
         Ok(vec![])
     } else {
         let node_url = match &manifest.network {
@@ -64,6 +66,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     }
 }
 
+#[instrument(err, skip_all)]
 async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
@@ -77,6 +80,7 @@ async fn try_send_tx(
     }
 }
 
+#[instrument(err, skip_all)]
 async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
@@ -90,9 +94,9 @@ async fn send_tx(
     {
         Ok(logs) => {
             if pretty_print {
-                println!("{:#?}", logs);
+                info!("{:#?}", logs);
             } else {
-                println!("{:?}", logs);
+                info!("{:?}", logs);
             }
             Ok(logs)
         }

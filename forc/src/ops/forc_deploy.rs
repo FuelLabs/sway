@@ -11,7 +11,9 @@ use fuel_vm::prelude::*;
 use std::path::PathBuf;
 use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
+use tracing::{info,instrument};
 
+#[instrument(err, skip_all)]
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
@@ -69,7 +71,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
 
     match client.submit(&tx).await {
         Ok(logs) => {
-            println!("Logs:\n{:?}", logs);
+            info!("Logs:\n{:?}", logs);
             Ok(contract_id)
         }
         Err(e) => bail!("{e}"),
@@ -96,7 +98,7 @@ fn create_contract_tx(
     let root = contract.root();
     let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root, &state_root);
-    println!("Contract id: 0x{}", hex::encode(id));
+    info!("Contract id: 0x{}", hex::encode(id));
     let outputs = [
         &[Output::ContractCreated {
             contract_id: id,
