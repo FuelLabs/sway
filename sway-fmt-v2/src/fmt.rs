@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use sway_core::BuildConfig;
-use sway_parse::Item;
+use sway_parse::ItemKind;
 
 use crate::config::manifest::Config;
 pub use crate::error::FormatterError;
@@ -27,8 +27,8 @@ impl Formatter {
         Ok(items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
-                use Item::*;
-                Ok(match item {
+                use ItemKind::*;
+                Ok(match item.kind {
                     Use(use_stmt) => use_stmt.format(self),
                     // don't format if we don't have a formatter for this `Item`
                     otherwise => otherwise.span().as_str().to_string(),

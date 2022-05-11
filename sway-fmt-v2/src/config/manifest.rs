@@ -144,7 +144,7 @@ impl ConfigOptions {
         match config_path {
             Some(starter_path) => {
                 if let Some(path) = find_parent_dir_with_file(starter_path, SWAY_FORMAT_FILE_NAME) {
-                    let config_str = std::fs::read_to_string(path)
+                    let config_str = std::fs::read_to_string(&path)
                         .map_err(|e| anyhow!("failed to read config at {:?}: {}", path, e))?;
                     // save some time if the file is empty
                     if !config_str.is_empty() {
