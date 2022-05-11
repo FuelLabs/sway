@@ -9,10 +9,10 @@ version = "0.0.0"
 fuel-core = { version = "0.6", default-features = false }
 fuel-gql-client = { version = "0.6", default-features = false }
 fuel-tx = "0.9"
-fuel-types = "0.3"
+fuel-types = "0.4"
 fuel-vm = "0.8"
-fuels = "0.10"
-fuels-abigen-macro = "0.10"
+fuels = "0.12"
+fuels-abigen-macro = "0.12"
 hex = "0.4.3"
 rand = "0.8"
 tokio = { version = "1.12", features = ["rt", "macros"] }
