@@ -1,9 +1,9 @@
 //! Configuration options related to heuristics.
-use crate::{config, constants::{
+use crate::constants::{
     DEFAULT_ARRAY_WIDTH, DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_FN_CALL_WIDTH,
     DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH, DEFAULT_STRUCT_LIT_WIDTH,
     DEFAULT_STRUCT_VAR_WIDTH,
-}};
+};
 use serde::{Deserialize, Serialize};
 
 use super::{user_opts::HeuristicsOptions, whitespace::Whitespace};
@@ -52,9 +52,9 @@ pub enum HeuristicsPreferences {
 impl HeuristicsPreferences {
     pub fn to_width_heuristics(self, ws_opts: &Whitespace) -> WidthHeuristics {
         match self {
-            config::heuristics::HeuristicsPreferences::Off => WidthHeuristics::off(),
-            config::heuristics::HeuristicsPreferences::Max => WidthHeuristics::max(ws_opts.max_width),
-            config::heuristics::HeuristicsPreferences::Scaled => WidthHeuristics::scaled(ws_opts.max_width),
+            HeuristicsPreferences::Off => WidthHeuristics::off(),
+            HeuristicsPreferences::Max => WidthHeuristics::max(ws_opts.max_width),
+            HeuristicsPreferences::Scaled => WidthHeuristics::scaled(ws_opts.max_width),
         }
     }
 }
