@@ -1,6 +1,5 @@
 library std;
 
-dep num;
 dep revert;
 dep assert;
 dep option;
