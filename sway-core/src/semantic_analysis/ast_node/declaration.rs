@@ -1,7 +1,10 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident, NamespaceRef, NamespaceWrapper,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{namespace, TypeCheckedStorageReassignment},
+    type_engine::*,
+    Ident,
 };
 use derivative::Derivative;
 use fuels_types::Property;
@@ -66,6 +69,16 @@ impl TypedDeclaration {
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
+
+    /// Attempt to retrieve the declaration as an enum declaration.
+    ///
+    /// Returns `None` if `self` is not of variant `EnumDeclaration`.
+    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
+        match self {
+            TypedDeclaration::EnumDeclaration(ref decl) => Some(decl),
+            _ => None,
         }
     }
 }
@@ -269,21 +282,21 @@ impl PartialEq for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
+    pub(crate) fn monomorphize(&self, namespace: &mut namespace::Items) -> Self {
         let type_mapping = insert_type_parameters(&self.type_parameters);
         Self::monomorphize_inner(self, namespace, &type_mapping)
     }
 
     pub(crate) fn monomorphize_with_type_arguments(
         &self,
-        namespace: &crate::semantic_analysis::NamespaceRef,
+        namespace: &mut namespace::Items,
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
@@ -322,12 +335,28 @@ impl TypedEnumDeclaration {
                 }
             }
         }
+        // associate the type arguments with the parameters in the struct decl
+        new_decl
+            .type_parameters
+            .iter_mut()
+            .zip(type_arguments.iter())
+            .for_each(
+                |(
+                    TypeParameter {
+                        ref mut type_id, ..
+                    },
+                    arg,
+                )| {
+                    *type_id = arg.type_id;
+                },
+            );
+        // perform the monomorphization
         ok(new_decl, warnings, errors)
     }
 
     fn monomorphize_inner(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> Self {
         let old_type_id = self.type_id();

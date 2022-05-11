@@ -1,6 +1,9 @@
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::ast_node::insert_type_parameters, type_engine::*,
-    Ident, NamespaceRef, NamespaceWrapper,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{ast_node::insert_type_parameters, namespace},
+    type_engine::*,
+    Ident,
 };
 use derivative::Derivative;
 use fuels_types::Property;
@@ -30,14 +33,14 @@ impl PartialEq for TypedStructDeclaration {
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
@@ -78,13 +81,27 @@ impl TypedStructDeclaration {
                     }
                 }
             }
+            // associate the type arguments with the parameters in the struct decl
+            new_decl
+                .type_parameters
+                .iter_mut()
+                .zip(type_arguments.iter())
+                .for_each(
+                    |(
+                        TypeParameter {
+                            ref mut type_id, ..
+                        },
+                        arg,
+                    )| {
+                        *type_id = arg.type_id;
+                    },
+                );
         }
         ok(new_decl, warnings, errors)
     }
-
     fn monomorphize_inner(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> Self {
         let old_type_id = self.type_id();

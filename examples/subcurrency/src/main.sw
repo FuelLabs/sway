@@ -1,7 +1,15 @@
 // ANCHOR: body
 contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, hash::*, result::*, revert::revert, storage::{get, store}};
+use std::{
+    address::Address,
+    assert::assert,
+    chain::auth::{AuthError, Sender, msg_sender},
+    hash::*,
+    result::*,
+    revert::revert,
+    storage::{get, store}
+};
 
 ////////////////////////////////////////
 // Event declarations

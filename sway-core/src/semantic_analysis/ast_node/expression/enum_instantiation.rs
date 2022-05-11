@@ -1,5 +1,3 @@
-use generational_arena::Index;
-
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
@@ -10,13 +8,12 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    module: Index,
+    enum_module_path: &[Ident],
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -49,7 +46,7 @@ pub(crate) fn instantiate_enum(
         type_arguments.is_empty(),
     ) {
         (true, true) => enum_decl,
-        (false, true) => enum_decl.monomorphize(&namespace),
+        (false, true) => enum_decl.monomorphize(namespace),
         (true, false) => {
             errors.push(CompileError::DoesNotTakeTypeArguments {
                 name: enum_decl.name.clone(),
@@ -59,25 +56,15 @@ pub(crate) fn instantiate_enum(
         }
         (false, false) => {
             let mut enum_decl = enum_decl.clone();
-            // associate the type arguments with the parameters in the struct decl
-            enum_decl
-                .type_parameters
-                .iter_mut()
-                .zip(type_arguments.iter())
-                .for_each(
-                    |(
-                        TypeParameter {
-                            ref mut type_id, ..
-                        },
-                        arg,
-                    )| {
-                        *type_id = arg.type_id;
-                    },
-                );
-            // perform the monomorphization
+            let module = check!(
+                namespace.check_submodule_mut(enum_module_path),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             check!(
                 enum_decl.monomorphize_with_type_arguments(
-                    &module,
+                    module,
                     &type_arguments,
                     Some(self_type)
                 ),
@@ -129,7 +116,6 @@ pub(crate) fn instantiate_enum(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
                     namespace,
-                    crate_namespace,
                     return_type_annotation: enum_field_type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,

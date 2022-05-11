@@ -10,6 +10,7 @@ mod logging;
 mod option;
 mod reentrancy;
 mod registers;
+mod require;
 mod result;
 mod token_ops;
 mod tx_fields;
