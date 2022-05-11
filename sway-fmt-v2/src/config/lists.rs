@@ -1,7 +1,7 @@
 //! Configuration options related to rewriting a list.
 use serde::{Deserialize, Serialize};
 
-use super::whitespace::IndentStyle;
+use super::{user_opts::ListsOptions, whitespace::IndentStyle};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Lists {
@@ -13,6 +13,14 @@ impl Default for Lists {
     fn default() -> Self {
         Self {
             trailing_comma: SeparatorTactic::Vertical,
+        }
+    }
+}
+
+impl Lists {
+    pub fn from_opts(opts: &ListsOptions) -> Self {
+        Self {
+            trailing_comma: opts.trailing_comma.unwrap_or(SeparatorTactic::Vertical),
         }
     }
 }

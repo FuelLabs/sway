@@ -1,9 +1,9 @@
-//! All of the user-facing configuration options stored in [OptionFormatConfig].
+//! All of the user-facing configuration options stored in [ConfigOptions].
 use serde::{Deserialize, Serialize};
 
 use super::{
     expr::{ExprBraceStyle, MatchArmLeadingPipe, TypeCombinatorLayout},
-    heuristics::{HeuristicsPreferences, WidthHeuristics},
+    heuristics::HeuristicsPreferences,
     imports::{GroupImports, ImportGranularity},
     items::{ItemBraceStyle, ItemsLayout},
     lists::{ListTactic, SeparatorTactic},
@@ -72,7 +72,6 @@ pub struct ExpressionsOptions {
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct HeuristicsOptions {
     pub heuristics_pref: Option<HeuristicsPreferences>,
-    pub width_heuristics: Option<WidthHeuristics>,
     pub use_small_heuristics: Option<bool>,
 }
 /// See parent struct [Structures].

@@ -1,5 +1,7 @@
 //! Configuration options related to re-ordering imports, modules and items.
 
+use super::user_opts::OrderingOptions;
+
 #[derive(Debug)]
 pub struct Ordering {
     /// Reorder import and extern crate statements alphabetically.
@@ -16,6 +18,16 @@ impl Default for Ordering {
             reorder_imports: true,
             reorder_modules: true,
             reorder_impl_items: false,
+        }
+    }
+}
+
+impl Ordering {
+    pub fn from_opts(opts: &OrderingOptions) -> Self {
+        Self {
+            reorder_imports: opts.reorder_imports.unwrap_or(true),
+            reorder_modules: opts.reorder_modules.unwrap_or(true),
+            reorder_impl_items: opts.reorder_impl_items.unwrap_or(false),
         }
     }
 }

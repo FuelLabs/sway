@@ -1,6 +1,8 @@
 //! Configuration options related to formatting literals.
 use serde::{Deserialize, Serialize};
 
+use super::user_opts::LiteralsOptions;
+
 #[derive(Debug, Copy, Clone)]
 pub struct Literals {
     /// Format string literals where necessary.
@@ -14,6 +16,15 @@ impl Default for Literals {
         Self {
             format_strings: false,
             hex_literal_case: HexLiteralCase::Preserve,
+        }
+    }
+}
+
+impl Literals {
+    pub fn from_opts(opts: &LiteralsOptions) -> Self {
+        Self {
+            format_strings: opts.format_strings.unwrap_or(false),
+            hex_literal_case: opts.hex_literal_case.unwrap_or(HexLiteralCase::Preserve),
         }
     }
 }

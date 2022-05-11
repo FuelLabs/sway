@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
 
+use super::user_opts::WhitespaceOptions;
+
 /// Whitespace styling preferences.
 #[derive(Debug, Copy, Clone)]
 pub struct Whitespace {
@@ -26,6 +28,18 @@ impl Default for Whitespace {
             tab_spaces: DEFAULT_TAB_SPACES,
             newline_style: NewlineStyle::Auto,
             indent_style: IndentStyle::Block,
+        }
+    }
+}
+
+impl Whitespace {
+    pub fn from_opts(opts: &WhitespaceOptions) -> Self {
+        Self {
+            max_width: opts.max_width.unwrap_or(DEFAULT_MAX_LINE_WIDTH),
+            hard_tabs: opts.hard_tabs.unwrap_or(false),
+            tab_spaces: opts.tab_spaces.unwrap_or(DEFAULT_TAB_SPACES),
+            newline_style: opts.newline_style.unwrap_or(NewlineStyle::Auto),
+            indent_style: opts.indent_style.unwrap_or(IndentStyle::Block),
         }
     }
 }

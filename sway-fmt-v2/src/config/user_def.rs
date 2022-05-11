@@ -4,6 +4,8 @@ use crate::constants::{
     DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD, DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
 };
 
+use super::user_opts::StructuresOptions;
+
 /// Styling preferences for user-defined structures like `struct`s or `enum`s.
 #[derive(Debug)]
 pub struct Structures {
@@ -21,6 +23,20 @@ impl Default for Structures {
             enum_variant_align_threshold: DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD,
             struct_field_align_threshold: DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
             struct_lit_single_line: true,
+        }
+    }
+}
+
+impl Structures {
+    pub fn from_opts(opts: &StructuresOptions) -> Self {
+        Self {
+            enum_variant_align_threshold: opts
+                .enum_variant_align_threshold
+                .unwrap_or(DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD),
+            struct_field_align_threshold: opts
+                .struct_field_align_threshold
+                .unwrap_or(DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD),
+            struct_lit_single_line: opts.struct_lit_single_line.unwrap_or(true),
         }
     }
 }

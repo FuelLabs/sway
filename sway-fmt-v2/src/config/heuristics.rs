@@ -6,12 +6,12 @@ use crate::constants::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::{user_opts::HeuristicsOptions, whitespace::Whitespace};
+
 #[derive(Debug, Copy, Clone)]
 pub struct Heuristics {
     /// Determines heuristics level of involvement.
     pub heuristics_pref: HeuristicsPreferences,
-    /// 'small' heuristic values
-    pub width_heuristics: WidthHeuristics,
     /// Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'
     pub use_small_heuristics: bool,
 }
@@ -20,7 +20,17 @@ impl Default for Heuristics {
     fn default() -> Self {
         Self {
             heuristics_pref: HeuristicsPreferences::Scaled,
-            width_heuristics: WidthHeuristics::scaled(DEFAULT_MAX_LINE_WIDTH),
+            use_small_heuristics: true,
+        }
+    }
+}
+
+impl Heuristics {
+    pub fn from_opts(opts: &HeuristicsOptions) -> Self {
+        Self {
+            heuristics_pref: opts
+                .heuristics_pref
+                .unwrap_or(HeuristicsPreferences::Scaled),
             use_small_heuristics: true,
         }
     }
@@ -39,6 +49,17 @@ pub enum HeuristicsPreferences {
     Scaled,
 }
 
+impl HeuristicsPreferences {
+    pub fn to_width_heuristics(self, ws_opts: &Whitespace) -> WidthHeuristics {
+        match self {
+            Off => WidthHeuristics::off(),
+            Max => WidthHeuristics::max(ws_opts.max_width),
+            Scaled => WidthHeuristics::scaled(ws_opts.max_width),
+        }
+    }
+}
+
+/// 'small' heuristic values
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Copy)]
 pub struct WidthHeuristics {
     // Maximum width of the args of a function call before falling back

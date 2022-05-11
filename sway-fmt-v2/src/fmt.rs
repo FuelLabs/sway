@@ -2,12 +2,12 @@ use std::sync::Arc;
 use sway_core::BuildConfig;
 use sway_parse::Item;
 
-use crate::config::manifest::FormatConfig;
+use crate::config::manifest::Config;
 pub use crate::error::FormatterError;
 
 #[derive(Debug)]
 pub struct Formatter {
-    pub config: FormatConfig,
+    pub config: Config,
 }
 
 pub type FormattedCode = String;

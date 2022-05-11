@@ -1,7 +1,7 @@
 //! Configuration options related to formatting imports.
 use serde::{Deserialize, Serialize};
 
-use super::{lists::ListTactic, whitespace::IndentStyle};
+use super::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Imports {
@@ -22,6 +22,19 @@ impl Default for Imports {
             imports_granularity: ImportGranularity::Preserve,
             imports_indent: IndentStyle::Block,
             imports_layout: ListTactic::Mixed,
+        }
+    }
+}
+
+impl Imports {
+    pub fn from_opts(opts: &ImportsOptions) -> Self {
+        Self {
+            group_imports: opts.group_imports.unwrap_or(GroupImports::Preserve),
+            imports_granularity: opts
+                .imports_granularity
+                .unwrap_or(ImportGranularity::Preserve),
+            imports_indent: opts.imports_indent.unwrap_or(IndentStyle::Block),
+            imports_layout: opts.imports_layout.unwrap_or(ListTactic::Mixed),
         }
     }
 }

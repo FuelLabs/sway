@@ -1,7 +1,7 @@
 //! Configuration options related to formatting of expressions and punctuation.
 use serde::{Deserialize, Serialize};
 
-use super::items::ItemsLayout;
+use super::{items::ItemsLayout, user_opts::ExpressionsOptions};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Expressions {
@@ -50,6 +50,30 @@ impl Default for Expressions {
             force_multiline_blocks: false,
             fn_args_layout: ItemsLayout::Tall,
             fn_single_line: false,
+        }
+    }
+}
+
+impl Expressions {
+    pub fn from_opts(opts: &ExpressionsOptions) -> Self {
+        Self {
+            expr_brace_style: opts
+                .expr_brace_style
+                .unwrap_or(ExprBraceStyle::AlwaysSameLine),
+            trailing_semicolon: opts.trailing_semicolon.unwrap_or(true),
+            space_before_colon: opts.space_before_colon.unwrap_or(false),
+            space_after_colon: opts.space_after_colon.unwrap_or(false),
+            type_combinator_layout: opts
+                .type_combinator_layout
+                .unwrap_or(TypeCombinatorLayout::Wide),
+            spaces_around_ranges: opts.spaces_around_ranges.unwrap_or(false),
+            match_block_trailing_comma: opts.match_block_trailing_comma.unwrap_or(false),
+            match_arm_leading_pipe: opts
+                .match_arm_leading_pipe
+                .unwrap_or(MatchArmLeadingPipe::Never),
+            force_multiline_blocks: opts.force_multiline_blocks.unwrap_or(false),
+            fn_args_layout: opts.fn_args_layout.unwrap_or(ItemsLayout::Tall),
+            fn_single_line: opts.fn_single_line.unwrap_or(false),
         }
     }
 }

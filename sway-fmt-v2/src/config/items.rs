@@ -1,7 +1,7 @@
 //! Configuration options related to item formatting.
 use serde::{Deserialize, Serialize};
 
-use super::lists::ListTactic;
+use super::{lists::ListTactic, user_opts::ItemsOptions};
 use crate::constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND};
 
 #[derive(Debug, Copy, Clone)]
@@ -23,6 +23,23 @@ impl Default for Items {
             blank_lines_upper_bound: DEFAULT_BLANK_LINES_UPPER_BOUND,
             blank_lines_lower_bound: DEFAULT_BLANK_LINES_LOWER_BOUND,
             empty_item_single_line: true,
+        }
+    }
+}
+
+impl Items {
+    pub fn from_opts(opts: &ItemsOptions) -> Self {
+        Self {
+            item_brace_style: opts
+                .item_brace_style
+                .unwrap_or(ItemBraceStyle::SameLineWhere),
+            blank_lines_upper_bound: opts
+                .blank_lines_upper_bound
+                .unwrap_or(DEFAULT_BLANK_LINES_UPPER_BOUND),
+            blank_lines_lower_bound: opts
+                .blank_lines_lower_bound
+                .unwrap_or(DEFAULT_BLANK_LINES_LOWER_BOUND),
+            empty_item_single_line: opts.empty_item_single_line.unwrap_or(true),
         }
     }
 }
