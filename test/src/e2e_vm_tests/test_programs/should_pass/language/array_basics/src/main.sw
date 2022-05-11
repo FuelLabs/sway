@@ -17,6 +17,11 @@ fn main() -> bool {
     b[0] == b[9] &&
     e[0][1] + e[1][2] == 9 &&
     g[0].foo + g[1].bar == 12 &&
+    h(g) &&
     //a.len() == 5 &&
     true
+}
+
+fn h(ary_arg: [S; 2]) -> bool {
+    ary_arg[0].foo + ary_arg[1].bar == 12
 }

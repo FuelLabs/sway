@@ -32,8 +32,8 @@ license = "Apache-2.0"
 [dependencies]
 fuel-gql-client = {{ version = "0.6", default-features = false }}
 fuel-tx = "0.9"
-fuels = "0.10"
-fuels-abigen-macro = "0.10"
+fuels = "0.12"
+fuels-abigen-macro = "0.12"
 rand = "0.8"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
@@ -95,7 +95,7 @@ fn main() -> bool {
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
-        r#"use fuel_tx::{ContractId, Salt};
+        r#"use fuel_tx::ContractId;
 use fuels_abigen_macro::abigen;
 use fuels::prelude::*;
 use fuels::test_helpers;
@@ -107,10 +107,9 @@ abigen!(MyContract, "out/debug/"#,
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Deploy the compiled contract
-    let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract("./out/debug/"#,
         project_name,
-        r#".bin", salt).unwrap();
+        r#".bin").unwrap();
 
     // Launch a local network and deploy the contract
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
