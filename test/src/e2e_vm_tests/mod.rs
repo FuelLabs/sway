@@ -298,10 +298,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(0),
         ),
         (
-            "should_pass/language/unused_generic",
-            ProgramState::Return(8),
-        ),
-        (
             "should_pass/language/primitive_type_argument",
             ProgramState::Return(5),
         ),
