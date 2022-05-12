@@ -182,7 +182,7 @@ impl Engine {
                     errors.push(TypeError::MismatchedType {
                         expected,
                         received,
-                        help_text: help_text,
+                        help_text,
                         span: span.clone(),
                     });
                 }
