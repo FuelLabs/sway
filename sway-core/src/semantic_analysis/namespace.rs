@@ -5,7 +5,8 @@ use crate::{
 
 use crate::semantic_analysis::{
     ast_node::{
-        TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
+        Monomorphizable, TypedExpression, TypedStorageDeclaration, TypedStructField,
+        TypedVariableDeclaration,
     },
     declaration::{TypedStorageField, VariableMutability},
     TypeCheckedStorageAccess,
@@ -742,7 +743,7 @@ impl Root {
                         }
                         if !decl.type_parameters.is_empty() {
                             let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(
+                                decl.monomorphize(
                                     &mut self[mod_path],
                                     &new_type_arguments,
                                     Some(self_type)
@@ -854,11 +855,7 @@ impl Root {
                     }
                     if !decl.type_parameters.is_empty() {
                         let new_decl = check!(
-                            decl.monomorphize_with_type_arguments(
-                                &mut self[mod_path],
-                                &new_type_arguments,
-                                None
-                            ),
+                            decl.monomorphize(&mut self[mod_path], &new_type_arguments, None),
                             return err(warnings, errors),
                             warnings,
                             errors

@@ -6,10 +6,9 @@ use crate::{
     type_engine::*,
     Ident, TypeParameter,
 };
+use std::slice::IterMut;
 
-impl<'a, I: Iterator<Item = &'a mut TypeParameter>> Monomorphizable<'a, I>
-    for TypedStructDeclaration
-{
+impl<'a> Monomorphizable<'a, IterMut<'a, TypeParameter>> for TypedStructDeclaration {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -17,7 +16,7 @@ impl<'a, I: Iterator<Item = &'a mut TypeParameter>> Monomorphizable<'a, I>
         &self.span
     }
 
-    fn type_parameters_iter_mut(&mut self) -> I {
+    fn type_parameters_iter_mut(&'a mut self) -> IterMut<'a, TypeParameter> {
         self.type_parameters.iter_mut()
     }
 

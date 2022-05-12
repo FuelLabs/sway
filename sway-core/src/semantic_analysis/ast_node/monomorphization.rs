@@ -18,12 +18,12 @@ pub fn monomorphize_implemented_traits(
     todo!()
 }
 
-trait Monomorphizable<'a, I: Iterator<Item = &'a mut TypeParameter>>: Clone + Sized {
+pub trait Monomorphizable<'a, I: Iterator<Item = &'a mut TypeParameter>>: Clone + Sized {
     fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]);
 
     fn type_parameters(&self) -> &[TypeParameter];
 
-    fn type_parameters_iter_mut(&mut self) -> I;
+    fn type_parameters_iter_mut(&'a mut self) -> I;
 
     fn span(&self) -> &Span;
 
@@ -109,6 +109,7 @@ trait Monomorphizable<'a, I: Iterator<Item = &'a mut TypeParameter>>: Clone + Si
     ) -> Self {
         let old_type_id = self.type_id();
         let mut new_decl = self.clone();
+        todo!("diff between `monomorphize_impl_traits` and `copy_methods_to_type`?");
         monomorphize_implemented_traits(self.as_type(), namespace, type_mapping);
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
