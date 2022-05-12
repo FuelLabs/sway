@@ -3,6 +3,7 @@
 //! `swayfmt` configurations can be adjusted with a `swayfmt.toml` config file declared at the root of a Sway project,
 //! however the defualt formatter does not require the presence of one and any fields omitted will remain as default.
 
+#![allow(dead_code)]
 mod config;
 mod constants;
 mod error;
