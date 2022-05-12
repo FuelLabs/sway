@@ -17,3 +17,4 @@ sway-core = { version = "0.12.1", path = "../sway-core" }
 sway-fmt = { version = "0.12.1", path = "../sway-fmt" }
 sway-utils = { version = "0.12.1", path = "../sway-utils" }
 taplo = "0.7"
+tracing = "0.1"

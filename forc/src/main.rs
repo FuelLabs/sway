@@ -5,6 +5,7 @@ use tracing::error;
 async fn main() {
     set_subscriber();
     if let Err(_err) = forc::cli::run_cli().await {
-        error!("Forc error!");
+        error!("forc error!");
+        std::process::exit(1);
     }
 }

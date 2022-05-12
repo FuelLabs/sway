@@ -1117,6 +1117,7 @@ dependencies = [
  "sway-fmt",
  "sway-utils",
  "taplo",
+ "tracing",
 ]
 
 [[package]]

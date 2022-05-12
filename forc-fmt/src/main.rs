@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_util::{find_manifest_dir, println_green, println_red};
+use forc_util::{find_manifest_dir, println_green, println_red, set_subscriber};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::path::PathBuf;
@@ -11,6 +11,7 @@ use sway_core::BuildConfig;
 use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
+use tracing::{error, info, instrument};
 
 #[derive(Debug, Parser)]
 #[clap(
@@ -30,16 +31,21 @@ pub struct App {
     pub path: Option<String>,
 }
 
-fn main() -> Result<()> {
+fn main()  {
+    set_subscriber();
     let app = App::parse();
     let dir = match app.path.clone() {
         Some(p) => PathBuf::from(p),
-        None => std::env::current_dir()?,
+        None => std::env::current_dir().expect("cannot get current dir"),
     };
-    format_pkg_at_dir(app, &dir)
+    if let Err(_err) = format_pkg_at_dir(app, &dir) {
+        error!("forc-fmt error!");
+        std::process::exit(1);
+    }
 }
 
 /// Format the package at the given directory.
+#[instrument(err, skip_all)]
 fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
@@ -66,7 +72,7 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                             if app.check {
                                 if *file_content != *formatted_content {
                                     contains_edits = true;
-                                    println!("\n{:?}\n", file);
+                                    info!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
                             } else {
@@ -75,8 +81,8 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                         }
                         Err(err) => {
                             // there could still be Sway files that are not part of the build
-                            eprintln!("\nThis file: {:?} is not part of the build", file);
-                            eprintln!("{}", err.join("\n"));
+                            error!("\nThis file: {:?} is not part of the build", file);
+                            error!("{}", err.join("\n"));
                         }
                     }
                 }
@@ -92,10 +98,10 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                     format_file(&manifest_file, &formatted_content)?;
                 } else if formatted_content != file_content {
                     contains_edits = true;
-                    eprintln!("\nManifest Forc.toml improperly formatted");
+                    error!("\nManifest Forc.toml improperly formatted");
                     display_file_diff(&file_content, &formatted_content)?;
                 } else {
-                    println!("\nManifest Forc.toml properly formatted")
+                    error!("\nManifest Forc.toml properly formatted")
                 }
             }
 
@@ -115,6 +121,7 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
     }
 }
 
+#[instrument(err, skip_all)]
 fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> {
     let changeset = diff_lines(file_content, formatted_content);
     let mut count_of_updates = 0;
@@ -126,7 +133,7 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
         match diff {
             DiffOp::Equal(old) => {
                 for o in old {
-                    println!("{}", o)
+                    info!("{}", o)
                 }
             }
             DiffOp::Insert(new) => {
@@ -155,6 +162,7 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
     Result::Ok(())
 }
 
+#[instrument(err, skip_all)]
 fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
     fs::write(file, formatted_content)?;
 

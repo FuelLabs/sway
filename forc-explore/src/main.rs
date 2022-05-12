@@ -12,7 +12,7 @@ use std::{
     io::{self, Cursor},
 };
 use tar::Archive;
-use tracing::{info, instrument};
+use tracing::{info, instrument, error};
 use warp::Filter;
 
 #[derive(Debug, Parser)]
@@ -49,14 +49,19 @@ struct GitHubReleaseAsset {
 const REPO_RELEASES_URL: &str = "https://api.github.com/repos/FuelLabs/block-explorer-v2/releases";
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     let app = App::parse();
-    match app.subcmd {
+    let result = match app.subcmd {
         Some(Subcommand::Clean) => clean(),
         None => run(app).await,
-    }
+    };
+    if let Err(_) = result {
+        error!("forc-explore error!");
+        std::process::exit(1);
+    } 
 }
 
+#[instrument(err, skip_all)]
 fn clean() -> Result<()> {
     let path = path::web_app();
     if path.exists() {
