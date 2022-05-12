@@ -49,7 +49,6 @@ define_keyword!(StructToken, "struct");
 define_keyword!(EnumToken, "enum");
 define_keyword!(SelfToken, "self");
 define_keyword!(FnToken, "fn");
-define_keyword!(ImpureToken, "impure");
 define_keyword!(TraitToken, "trait");
 define_keyword!(ImplToken, "impl");
 define_keyword!(ForToken, "for");

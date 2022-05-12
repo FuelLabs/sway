@@ -88,11 +88,7 @@ impl Parse for ItemKind {
             let item_enum = parser.parse()?;
             return Ok(ItemKind::Enum(item_enum));
         }
-        if parser.peek::<FnToken>().is_some()
-            || parser.peek2::<PubToken, FnToken>().is_some()
-            || parser.peek2::<ImpureToken, FnToken>().is_some()
-            || parser.peek3::<PubToken, ImpureToken, FnToken>().is_some()
-        {
+        if parser.peek::<FnToken>().is_some() || parser.peek2::<PubToken, FnToken>().is_some() {
             let item_fn = parser.parse()?;
             return Ok(ItemKind::Fn(item_fn));
         }
@@ -223,7 +219,6 @@ impl Parse for FnArg {
 #[derive(Clone, Debug)]
 pub struct FnSignature {
     pub visibility: Option<PubToken>,
-    pub impure: Option<ImpureToken>,
     pub fn_token: FnToken,
     pub name: Ident,
     pub generics: Option<GenericParams>,
@@ -236,10 +231,7 @@ impl FnSignature {
     pub fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
-            None => match &self.impure {
-                Some(impure_token) => impure_token.span(),
-                None => self.fn_token.span(),
-            },
+            None => self.fn_token.span(),
         };
         let end = match &self.where_clause_opt {
             Some(where_clause) => where_clause.span(),
@@ -255,7 +247,6 @@ impl FnSignature {
 impl Parse for FnSignature {
     fn parse(parser: &mut Parser) -> ParseResult<FnSignature> {
         let visibility = parser.take();
-        let impure = parser.take();
         let fn_token = parser.parse()?;
         let name = parser.parse()?;
         let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
@@ -280,7 +271,6 @@ impl Parse for FnSignature {
         };
         Ok(FnSignature {
             visibility,
-            impure,
             fn_token,
             name,
             generics,

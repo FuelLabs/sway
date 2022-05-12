@@ -18,12 +18,11 @@ use {
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
         DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
-        FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
-        Instruction, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage,
-        ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
-        PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree,
+        FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, ItemAbi,
+        ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait,
+        ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment, PathType,
+        PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
+        QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree,
     },
     sway_types::{Ident, Span},
     thiserror::Error,
@@ -472,7 +471,7 @@ fn item_fn_to_function_declaration(
         None => item_fn.fn_signature.span(),
     };
     Ok(FunctionDeclaration {
-        purity: impure_token_opt_to_purity(item_fn.fn_signature.impure),
+        purity: Purity::Pure,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
         body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
@@ -687,13 +686,6 @@ fn type_field_to_enum_variant(
         span,
     };
     Ok(enum_variant)
-}
-
-fn impure_token_opt_to_purity(impure_token_opt: Option<ImpureToken>) -> Purity {
-    match impure_token_opt {
-        Some(..) => Purity::Impure,
-        None => Purity::Pure,
-    }
 }
 
 fn braced_code_block_contents_to_code_block(
