@@ -1,0 +1,7 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'double_underscore_fn'
+dependencies = ['core']
