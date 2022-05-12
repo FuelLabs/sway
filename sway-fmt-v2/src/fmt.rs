@@ -29,9 +29,15 @@ impl Formatter {
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
                 Ok(match item.kind {
-                    Use(use_stmt) => use_stmt.format(self),
-                    // don't format if we don't have a formatter for this `Item`
-                    otherwise => otherwise.span().as_str().to_string(),
+                    Use(item_use) => item_use.format(self),
+                    Struct(item_struct) => item_struct.format(self),
+                    Enum(item_enum) => item_enum.format(self),
+                    Fn(item_fn) => item_fn.format(self),
+                    Trait(item_trait) => item_trait.format(self),
+                    Impl(item_impl) => item_impl.format(self),
+                    Abi(item_abi) => item_abi.format(self),
+                    Const(item_const) => item_const.format(self),
+                    Storage(item_storage) => item_storage.format(self),
                 })
             })
             .collect::<Result<Vec<String>, _>>()?
