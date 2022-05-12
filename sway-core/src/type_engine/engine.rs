@@ -156,11 +156,13 @@ impl Engine {
                 Struct {
                     name: a_name,
                     fields: a_fields,
+                    type_parameters: a_parameters,
                     ..
                 },
                 Struct {
                     name: b_name,
                     fields: b_fields,
+                    type_parameters: b_parameters,
                     ..
                 },
             ) => {
@@ -177,10 +179,19 @@ impl Engine {
                     errors.push(TypeError::MismatchedType {
                         expected,
                         received,
-                        help_text,
+                        help_text: help_text.clone(),
                         span: span.clone(),
                     });
                 }
+                a_parameters
+                    .iter()
+                    .zip(b_parameters.iter())
+                    .for_each(|(a, b)| {
+                        let (new_warnings, new_errors) =
+                            self.unify(a.type_id, b.type_id, &a.span(), help_text.clone());
+                        warnings.extend(new_warnings);
+                        errors.extend(new_errors);
+                    });
                 (warnings, errors)
             }
             (
@@ -207,7 +218,6 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
-                    /*
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
@@ -217,7 +227,6 @@ impl Engine {
                             warnings.extend(new_warnings);
                             errors.extend(new_errors);
                         });
-                    */
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
