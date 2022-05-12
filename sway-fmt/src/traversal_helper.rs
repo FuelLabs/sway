@@ -96,7 +96,10 @@ fn match_indices_str(s: &str) -> Vec<(usize, &str)> {
 
     while start < s.len() {
         // Try to match the 'as' token first then fallback to single chars
-        if start <= s.len() - 4 && &s[start..start + as_token.len()] == as_token {
+        if start <= s.len() - as_token.len()
+            && s.len() >= as_token.len()
+            && &s[start..start + as_token.len()] == as_token
+        {
             res.push((start + 1, as_token.trim()));
             start += as_token.len();
             continue;
