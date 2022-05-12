@@ -55,7 +55,6 @@ pub(crate) fn instantiate_enum(
             return err(warnings, errors);
         }
         (false, false) => {
-            let enum_decl = enum_decl.clone();
             let module = check!(
                 namespace.check_submodule_mut(enum_module_path),
                 return err(warnings, errors),
