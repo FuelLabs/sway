@@ -1,4 +1,14 @@
-use crate::{namespace, type_engine::*, TypeParameter};
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{ast_node::TypedStructDeclaration, namespace},
+    span::Span,
+    type_engine::*,
+    Ident, TypeParameter,
+};
+
+mod r#enum;
+mod r#struct;
 
 pub fn monomorphize_implemented_traits(
     ty: TypeInfo,
