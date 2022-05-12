@@ -44,7 +44,7 @@ impl BitwiseXor for b256 {
 }
 
 // Extract a singe word from a b256 value using a specified offset.
-pub fn get_word_from_b256(val: b256, offset: u64) -> u64 {
+fn get_word_from_b256(val: b256, offset: u64) -> u64 {
     let mut empty: u64 = 0;
     asm(r1: val, offset: offset, r2,  res: empty) {
         add r2 r1 offset;
@@ -54,7 +54,7 @@ pub fn get_word_from_b256(val: b256, offset: u64) -> u64 {
 }
 
 // Get 4 words from a single b256 value.
-pub fn decompose(val: b256) -> (u64, u64, u64, u64) {
+fn decompose(val: b256) -> (u64, u64, u64, u64) {
     let w1 = get_word_from_b256(val, 0);
     let w2 = get_word_from_b256(val, 8);
     let w3 = get_word_from_b256(val, 16);
@@ -63,7 +63,7 @@ pub fn decompose(val: b256) -> (u64, u64, u64, u64) {
 }
 
 // Build a single b256 value from 4 words.
-pub fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
+fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
     let res: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     asm(w1: word_1, w2: word_2, w3: word_3, w4: word_4, result: res) {
         sw result w1 i0;
