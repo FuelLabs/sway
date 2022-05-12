@@ -278,6 +278,12 @@ impl Parse for FnSignature {
             }
             None => None,
         };
+        if name.as_str().starts_with("__") {
+            return Err(parser.emit_error_with_span(
+                ParseErrorKind::InvalidDoubleUnderscore,
+                name.span().clone(),
+            ));
+        }
         Ok(FnSignature {
             visibility,
             impure,
