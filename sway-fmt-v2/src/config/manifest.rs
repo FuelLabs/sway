@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A finalized `swayfmt` config.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Config {
     pub whitespace: Whitespace,
     pub imports: Imports,
@@ -45,22 +45,6 @@ pub struct ConfigOptions {
 }
 
 impl Config {
-    /// The default setting of `swayfmt`'s `Config`.
-    ///
-    pub fn default() -> Self {
-        Self {
-            whitespace: Whitespace::default(),
-            imports: Imports::default(),
-            ordering: Ordering::default(),
-            items: Items::default(),
-            lists: Lists::default(),
-            literals: Literals::default(),
-            expressions: Expressions::default(),
-            heuristics: Heuristics::default(),
-            structures: Structures::default(),
-            comments: Comments::default(),
-        }
-    }
     /// Construct the set of configuration to be used from the given set of options.
     ///
     pub fn from_opts(opts: ConfigOptions) -> Self {
