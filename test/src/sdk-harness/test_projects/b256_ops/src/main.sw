@@ -6,35 +6,6 @@ use std::constants::ZERO;
 use std::chain::log_b256;
 
 fn main() -> bool {
-    let one = 1;
-    let two = 2;
-    let three = 3;
-    let four = 4;
-
-    let test_val: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
-
-    let composed = compose(one, two, three, four);
-    assert(composed == test_val);
-
-    let(w1, w2, w3, w4) = decompose(test_val);
-    assert(w1 == one);
-    assert(w2 == two);
-    assert(w3 == three);
-    assert(w4 == four);
-
-    let composed_2 = compose(1111, 2222, 3333, 4444);
-    let(a1, a2, a3, a4) = decompose(composed_2);
-    assert(a1 == 1111);
-    assert(a2 == 2222);
-    assert(a3 == 3333);
-    assert(a4 == 4444);
-
-    let composed_3 = compose(9999999999999999, 8888888888888888, 7777777777777777, 6666666666666666);
-    let(b1, b2, b3, b4) = decompose(composed_3);
-    assert(b1 == 9999999999999999);
-    assert(b2 == 8888888888888888);
-    assert(b3 == 7777777777777777);
-    assert(b4 == 6666666666666666);
 
     let a: b256 = 0b1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001;
 
@@ -62,32 +33,32 @@ fn main() -> bool {
 
     let b256_F: b256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-    require(a & b == c, 13);
-    require(a & c == c, 14);
-    require(b & c == c, 15);
-    require(a & d == f, 16);
-    require(f & e == f, 17);
-    require(b & d == g, 18);
+    assert(a & b == c);
+    assert(a & c == c);
+    assert(b & c == c);
+    assert(a & d == f);
+    assert(f & e == f);
+    assert(b & d == g);
     assert(b256_F & b256_3 == b256_3);
     assert(b256_1 & b256_2 == ZERO);
     assert(b256_F & b256_2 == b256_2);
 
-    require(a | g == e, 8);
-    require(a | d == e, 9);
-    require(a | c == a, 10);
-    require(c | f == a, 11);
-    require(c | d == e, 12);
+    assert(a | g == e);
+    assert(a | d == e);
+    assert(a | c == a);
+    assert(c | f == a);
+    assert(c | d == e);
     assert(b256_1 | b256_2 == b256_3);
     assert(b256_1 | b256_4 == b256_5);
     assert(b256_2 | b256_3 == b256_3);
 
-    require(a ^ b == d, 1);
-    require(a ^ g == e, 2);
-    require(b ^ d == a, 3);
-    require(f ^ g == d, 4);
-    require(b256_1 ^ b256_2 == b256_3, 5);
-    require(b256_2 ^ b256_3 == b256_1, 6);
-    require(b256_1 ^ b256_3 == b256_2, 7);
+    assert(a ^ b == d);
+    assert(a ^ g == e);
+    assert(b ^ d == a);
+    assert(f ^ g == d);
+    assert(b256_1 ^ b256_2 == b256_3);
+    assert(b256_2 ^ b256_3 == b256_1);
+    assert(b256_1 ^ b256_3 == b256_2);
 
     true
 }
