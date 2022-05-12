@@ -77,7 +77,7 @@ impl SeparatorTactic {
 }
 
 /// Where to put separator.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum SeparatorPlace {
     Front,
     Back,

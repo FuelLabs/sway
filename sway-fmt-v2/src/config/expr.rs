@@ -81,6 +81,7 @@ impl Expressions {
 /////PUNCTUATION/////
 
 /// Where to put the opening brace of conditional expressions (`if`, `match`, etc.).
+#[allow(clippy::enum_variant_names)]
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum ExprBraceStyle {
     /// K&R style, Rust community default
