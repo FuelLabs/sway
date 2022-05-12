@@ -632,7 +632,6 @@ impl TypedExpressionVariant {
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             TypeProperty { type_id, .. } => {
-                println!("Copying type for type property {}", type_id);
                 *type_id = if let Some(matching_id) =
                     look_up_type_id(*type_id).matches_type_parameter(type_mapping)
                 {

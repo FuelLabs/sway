@@ -5,7 +5,6 @@ use crate::{
     type_engine::*,
     Ident,
 };
-use derivative::Derivative;
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
@@ -38,7 +37,6 @@ impl TypedStructDeclaration {
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
-        todo!("Find all implemented traits for this type and monomorphize them. Copy this functionality to enums. Figure out primitive types.");
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
