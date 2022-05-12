@@ -168,7 +168,10 @@ impl Engine {
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_fields.len() == b_fields.len() {
+                if a_name == b_name
+                    && a_fields.len() == b_fields.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
@@ -179,19 +182,10 @@ impl Engine {
                     errors.push(TypeError::MismatchedType {
                         expected,
                         received,
-                        help_text: help_text.clone(),
+                        help_text: help_text,
                         span: span.clone(),
                     });
                 }
-                a_parameters
-                    .iter()
-                    .zip(b_parameters.iter())
-                    .for_each(|(a, b)| {
-                        let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span(), help_text.clone());
-                        warnings.extend(new_warnings);
-                        errors.extend(new_errors);
-                    });
                 (warnings, errors)
             }
             (
@@ -218,15 +212,6 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
-                    a_parameters
-                        .iter()
-                        .zip(b_parameters.iter())
-                        .for_each(|(a, b)| {
-                            let (new_warnings, new_errors) =
-                                self.unify(a.type_id, b.type_id, &a.span(), help_text.clone());
-                            warnings.extend(new_warnings);
-                            errors.extend(new_errors);
-                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
