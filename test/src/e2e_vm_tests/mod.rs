@@ -429,6 +429,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/different_contract_caller_types",
         "should_fail/insufficient_type_info",
         "should_fail/primitive_type_argument",
+        "should_fail/double_underscore_fn",
+        "should_fail/double_underscore_trait_fn",
+        "should_fail/double_underscore_impl_self_fn",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

@@ -2,66 +2,68 @@ use crate::priv_prelude::*;
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]
 pub enum ParseErrorKind {
-    #[error("expected an import name, group of imports, or `*`")]
+    #[error("Expected an import name, group of imports, or `*`.")]
     ExpectedImportNameGroupOrGlob,
-    #[error("expected an item")]
+    #[error("Expected an item")]
     ExpectedAnItem,
-    #[error("expected a comma or closing parenthesis in function arguments")]
+    #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
-    #[error("unrecognized op code")]
+    #[error("Unrecognized op code.")]
     UnrecognizedOpCode,
-    #[error("unexpected token in statement")]
+    #[error("Unexpected token in statement.")]
     UnexpectedTokenInStatement,
-    #[error("this expression cannot be assigned to")]
+    #[error("This expression cannot be assigned to.")]
     UnassignableExpression,
-    #[error("unexpected token after array index")]
+    #[error("Unexpected token after array index.")]
     UnexpectedTokenAfterArrayIndex,
-    #[error("invalid literal to use as a field name")]
+    #[error("Invalid literal to use as a field name.")]
     InvalidLiteralFieldName,
-    #[error("integer field names cannot have type suffixes")]
+    #[error("Integer field names cannot have type suffixes.")]
     IntFieldWithTypeSuffix,
-    #[error("expected a field name")]
+    #[error("Expected a field name.")]
     ExpectedFieldName,
-    #[error("expected a comma or closing parenthesis in this tuple or parenthesized expression")]
+    #[error("Expected a comma or closing parenthesis in this tuple or parenthesized expression.")]
     ExpectedCommaOrCloseParenInTupleOrParenExpression,
-    #[error("expected an expression")]
+    #[error("Expected an expression.")]
     ExpectedExpression,
-    #[error("unexpected token after array length")]
+    #[error("Unexpected token after array length.")]
     UnexpectedTokenAfterArrayLength,
-    #[error("expected a comma, semicolon or closing bracket when parsing this array")]
+    #[error("Expected a comma, semicolon or closing bracket when parsing this array.")]
     ExpectedCommaSemicolonOrCloseBracketInArray,
-    #[error("unexpected token after asm return type")]
+    #[error("Unexpected token after asm return type.")]
     UnexpectedTokenAfterAsmReturnType,
-    #[error("malformed asm immediate value")]
+    #[error("Malformed asm immediate value.")]
     MalformedAsmImmediate,
-    #[error("expected an identifier")]
+    #[error("Expected an identifier.")]
     ExpectedIdent,
-    #[error("unexpected token after str length")]
+    #[error("Unexpected token after str length.")]
     UnexpectedTokenAfterStrLength,
-    #[error("expected a type")]
+    #[error("Expected a type.")]
     ExpectedType,
-    #[error("unexpected token after array type length")]
+    #[error("Unexpected token after array type length.")]
     UnexpectedTokenAfterArrayTypeLength,
-    #[error("expected an opening brace")]
+    #[error("Expected an opening brace.")]
     ExpectedOpenBrace,
-    #[error("expected an opening parenthesis")]
+    #[error("Expected an opening parenthesis.")]
     ExpectedOpenParen,
-    #[error("expected an opening square bracket")]
+    #[error("Expected an opening square bracket.")]
     ExpectedOpenBracket,
-    #[error("expected a literal")]
+    #[error("Expected a literal.")]
     ExpectedLiteral,
-    #[error("expected a program kind (script, contract, predicate or library)")]
+    #[error("Expected a program kind (script, contract, predicate or library).")]
     ExpectedProgramKind,
-    #[error("expected `{}`", kinds.iter().map(PunctKind::as_char).collect::<String>())]
+    #[error("Expected `{}`.", kinds.iter().map(PunctKind::as_char).collect::<String>())]
     ExpectedPunct { kinds: Vec<PunctKind> },
-    #[error("expected `{}`", word)]
+    #[error("Expected `{}`.", word)]
     ExpectedKeyword { word: &'static str },
-    #[error("unexpected token after abi address")]
+    #[error("Unexpected token after abi address.")]
     UnexpectedTokenAfterAbiAddress,
-    #[error("expected an attribute")]
+    #[error("Expected an attribute.")]
     ExpectedAnAttribute,
-    #[error("unexpected token after an attribute")]
+    #[error("Unexpected token after an attribute.")]
     UnexpectedTokenAfterAttribute,
+    #[error("Function names cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
+    InvalidDoubleUnderscore,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]

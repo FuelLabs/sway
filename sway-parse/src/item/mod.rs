@@ -257,7 +257,7 @@ impl Parse for FnSignature {
         let visibility = parser.take();
         let impure = parser.take();
         let fn_token = parser.parse()?;
-        let name = parser.parse()?;
+        let name: Ident = parser.parse()?;
         let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
             Some(parser.parse()?)
         } else {
@@ -278,6 +278,12 @@ impl Parse for FnSignature {
             }
             None => None,
         };
+        if name.as_str().starts_with("__") {
+            return Err(parser.emit_error_with_span(
+                ParseErrorKind::InvalidDoubleUnderscore,
+                name.span().clone(),
+            ));
+        }
         Ok(FnSignature {
             visibility,
             impure,
