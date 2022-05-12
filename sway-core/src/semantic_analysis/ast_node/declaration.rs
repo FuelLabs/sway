@@ -2,7 +2,10 @@ use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{
     error::*,
     parse_tree::*,
-    semantic_analysis::{namespace, TypeCheckedStorageReassignment},
+    semantic_analysis::{
+        ast_node::monomorphization::insert_type_parameters, namespace,
+        TypeCheckedStorageReassignment,
+    },
     type_engine::*,
     Ident,
 };
@@ -359,6 +362,7 @@ impl TypedEnumDeclaration {
         namespace: &mut namespace::Items,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> Self {
+        todo!("Find all implemented traits for this type and monomorphize them.");
         let old_type_id = self.type_id();
         let mut new_decl = self.clone();
         new_decl.copy_types(type_mapping);

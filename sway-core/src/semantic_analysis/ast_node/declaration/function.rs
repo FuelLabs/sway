@@ -3,9 +3,9 @@ use crate::{
     parse_tree::*,
     semantic_analysis::{
         ast_node::{
-            IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
-            TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
-            VariableMutability,
+            monomorphization::insert_type_parameters, IsConstant, Mode, TypedCodeBlock,
+            TypedDeclaration, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
+            TypedVariableDeclaration, VariableMutability,
         },
         TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
     },
@@ -488,22 +488,4 @@ fn test_function_selector_behavior() {
     };
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
-}
-
-/// Insert all type parameters as unknown types. Return a mapping of type parameter to
-/// [TypeId]
-pub(crate) fn insert_type_parameters(
-    type_parameters: &[TypeParameter],
-) -> Vec<(TypeParameter, TypeId)> {
-    type_parameters
-        .iter()
-        .map(|x| {
-            (
-                x.clone(),
-                insert_type(TypeInfo::UnknownGeneric {
-                    name: x.name_ident.clone(),
-                }),
-            )
-        })
-        .collect()
 }

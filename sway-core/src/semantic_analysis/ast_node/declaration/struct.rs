@@ -1,7 +1,10 @@
 use crate::{
     error::*,
     parse_tree::*,
-    semantic_analysis::{ast_node::insert_type_parameters, namespace},
+    semantic_analysis::{
+        ast_node::monomorphization::{insert_type_parameters, monomorphize_implemented_traits},
+        namespace,
+    },
     type_engine::*,
     Ident,
 };
@@ -38,7 +41,6 @@ impl TypedStructDeclaration {
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
-        todo!("Find all implemented traits for this type and monomorphize them. Copy this functionality to enums. Figure out primitive types.");
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
         let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
@@ -107,6 +109,7 @@ impl TypedStructDeclaration {
     ) -> Self {
         let old_type_id = self.type_id();
         let mut new_decl = self.clone();
+        monomorphize_implemented_traits(self.as_type(), namespace, type_mapping);
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
@@ -122,12 +125,16 @@ impl TypedStructDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
     }
 
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
+    pub(crate) fn as_type(&self) -> TypeInfo {
+        TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
-        })
+        }
+    }
+
+    pub(crate) fn type_id(&self) -> TypeId {
+        insert_type(self.as_type())
     }
 }
 
