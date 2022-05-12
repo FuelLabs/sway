@@ -5,7 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::*,
-    semantic_analysis::{ast_node::monomorphization::insert_type_parameters, *},
+    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
@@ -20,7 +20,6 @@ use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
-pub(crate) mod monomorphization;
 use declaration::TypedTraitFn;
 
 pub use declaration::{
