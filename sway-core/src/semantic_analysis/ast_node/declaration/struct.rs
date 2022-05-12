@@ -33,20 +33,6 @@ impl PartialEq for TypedStructDeclaration {
     }
 }
 
-impl TypedStructDeclaration {
-    pub(crate) fn as_type(&self) -> TypeInfo {
-        TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
-            type_parameters: self.type_parameters.clone(),
-        }
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(self.as_type())
-    }
-}
-
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
     pub(crate) name: Ident,
