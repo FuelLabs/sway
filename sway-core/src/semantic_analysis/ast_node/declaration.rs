@@ -283,7 +283,19 @@ impl PartialEq for TypedEnumDeclaration {
             && self.visibility == other.visibility
     }
 }
+impl TypedEnumDeclaration {
+    pub(crate) fn as_type(&self) -> TypeInfo {
+        TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
+            type_parameters: self.type_parameters.clone(),
+        }
+    }
 
+    pub(crate) fn type_id(&self) -> TypeId {
+        insert_type(self.as_type())
+    }
+}
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,

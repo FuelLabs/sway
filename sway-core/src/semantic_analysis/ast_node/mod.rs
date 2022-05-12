@@ -22,7 +22,6 @@ pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 pub mod declaration;
 pub(crate) mod monomorphization;
 use declaration::TypedTraitFn;
-pub use monomorphization::Monomorphizable;
 
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
