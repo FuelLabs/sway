@@ -765,6 +765,21 @@ impl Root {
                     }
                 }
             }
+            TypeInfo::Array(type_id, size) => {
+                let elem_type_id = check!(
+                    self.resolve_type_with_self(
+                        mod_path,
+                        look_up_type_id(type_id),
+                        self_type,
+                        span,
+                        enforce_type_args
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Array(elem_type_id, size))
+            }
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
@@ -855,6 +870,15 @@ impl Root {
                 }
                 _ => insert_type(TypeInfo::Unknown),
             },
+            TypeInfo::Array(type_id, size) => {
+                let elem_type_id = check!(
+                    self.resolve_type_without_self(mod_path, &look_up_type_id(type_id)),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Array(elem_type_id, size))
+            }
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
         };
