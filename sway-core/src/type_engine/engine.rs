@@ -227,24 +227,12 @@ impl Engine {
             }
 
             (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => {
-                let mut warnings = vec![];
+                let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
+
+                // If there was an error then we want to report the array types as mismatching, not
+                // the elem types.
                 let mut errors = vec![];
-                if a_count == b_count {
-                    let (new_warnings, new_errors) =
-                        self.unify(a_elem, b_elem, span, help_text.clone());
-                    // If there was an error then we want to report the array types as mismatching, not
-                    // the elem types.
-                    if new_errors.is_empty() {
-                        warnings.extend(new_warnings);
-                    } else {
-                        errors.push(TypeError::MismatchedType {
-                            expected,
-                            received,
-                            help_text,
-                            span: span.clone(),
-                        });
-                    }
-                } else {
+                if !new_errors.is_empty() {
                     errors.push(TypeError::MismatchedType {
                         expected,
                         received,

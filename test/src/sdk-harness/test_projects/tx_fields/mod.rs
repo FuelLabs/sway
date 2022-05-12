@@ -1,4 +1,4 @@
-use fuel_tx::{Bytes32, ContractId, Salt};
+use fuel_tx::{Bytes32, ContractId};
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::consts::VM_TX_MEMORY;
 use fuels::prelude::*;
@@ -11,10 +11,9 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let salt = Salt::from([0u8; 32]);
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let compiled =
-        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin", salt)
+        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin")
             .unwrap();
 
     let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())

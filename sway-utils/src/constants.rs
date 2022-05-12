@@ -10,3 +10,4 @@ pub const LANGUAGE_NAME: &str = "Sway";
 pub const STORAGE_DOMAIN_SEPARATOR: &str = "storage_";
 pub const LIB_ENTRY: &str = "lib.sw";
 pub const MAIN_ENTRY: &str = "main.sw";
+pub const FORC_INIT_MANIFEST_AUTHOR: &str = "FORC_INIT_MANIFEST_AUTHOR";

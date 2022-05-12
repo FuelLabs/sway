@@ -1,13 +1,15 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident, NamespaceRef, NamespaceWrapper,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{namespace, TypeCheckedStorageReassignment},
+    type_engine::*,
+    Ident,
 };
-
-use sway_types::{Property, Span};
-
 use derivative::Derivative;
+use fuels_types::Property;
 use std::hash::{Hash, Hasher};
+use sway_types::Span;
 
 mod function;
 mod storage;
@@ -65,6 +67,16 @@ impl TypedDeclaration {
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
+
+    /// Attempt to retrieve the declaration as an enum declaration.
+    ///
+    /// Returns `None` if `self` is not of variant `EnumDeclaration`.
+    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
+        match self {
+            TypedDeclaration::EnumDeclaration(ref decl) => Some(decl),
+            _ => None,
         }
     }
 }
@@ -270,7 +282,7 @@ impl PartialEq for TypedStructDeclaration {
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
@@ -324,7 +336,7 @@ impl TypedStructDeclaration {
 
     fn monomorphize_inner(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_mapping: &[(TypeParameter, usize)],
     ) -> Self {
         let old_type_id = self.type_id();
@@ -417,14 +429,14 @@ impl PartialEq for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
+    pub(crate) fn monomorphize(&self, namespace: &mut namespace::Items) -> Self {
         let type_mapping = insert_type_parameters(&self.type_parameters);
         Self::monomorphize_inner(self, namespace, &type_mapping)
     }
 
     pub(crate) fn monomorphize_with_type_arguments(
         &self,
-        namespace: &crate::semantic_analysis::NamespaceRef,
+        namespace: &mut namespace::Items,
         type_arguments: &[TypeArgument],
         self_type: Option<TypeId>,
     ) -> CompileResult<Self> {
@@ -475,7 +487,7 @@ impl TypedEnumDeclaration {
 
     fn monomorphize_inner(
         &self,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
         type_mapping: &[(TypeParameter, usize)],
     ) -> Self {
         let old_type_id = self.type_id();

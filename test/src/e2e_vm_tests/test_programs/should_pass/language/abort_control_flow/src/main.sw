@@ -1,7 +1,7 @@
 script;
 
 use std::chain::*;
-use std::panic::panic;
+use std::revert::revert;
 
 enum Result<T, E> {
     Ok: T,
@@ -20,7 +20,7 @@ fn main() -> u64 {
     let x = if true {
         42u64
     } else {
-        panic(0)
+        revert(0)
     };
     let x: u64 = local_panic();
     let x = if let Result::Ok(ok) = Result::Ok::<u64, u64>(5) {

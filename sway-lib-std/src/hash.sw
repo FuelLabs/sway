@@ -37,7 +37,7 @@ pub fn hash_u64(value: u64, method: HashMethod) -> b256 {
             move hashed_b256_ptr sp;
             cfei i32;
             addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
-            s256 hashed_b256_ptr r1 r3;
+            s256 hashed_b256_ptr value_ptr r3;
             hashed_b256_ptr: b256
         }
     } else {
@@ -49,7 +49,7 @@ pub fn hash_u64(value: u64, method: HashMethod) -> b256 {
             move hashed_b256_ptr sp;
             cfei i32;
             addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
-            k256 hashed_b256_ptr r1 r3;
+            k256 hashed_b256_ptr value_ptr r3;
             hashed_b256_ptr: b256
         }
     }
