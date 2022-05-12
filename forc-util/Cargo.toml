@@ -16,3 +16,5 @@ sway-core = { version = "0.12.1", path = "../sway-core" }
 sway-utils = { version = "0.12.1", path = "../sway-utils" }
 termcolor = "1.1"
 unicode-xid = "0.2.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }

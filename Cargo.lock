@@ -1075,7 +1075,6 @@ dependencies = [
  "toml",
  "toml_edit",
  "tracing",
- "tracing-subscriber",
  "ureq",
  "url",
  "uwuify",
@@ -1103,7 +1102,6 @@ dependencies = [
  "tar",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "warp",
 ]
 
@@ -1167,6 +1165,8 @@ dependencies = [
  "sway-core",
  "sway-utils",
  "termcolor",
+ "tracing",
+ "tracing-subscriber",
  "unicode-xid",
 ]
 

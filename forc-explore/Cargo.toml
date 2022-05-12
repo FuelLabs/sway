@@ -18,4 +18,3 @@ tar = "0.4"
 tokio = { version = "1.8", features = ["macros", "rt-multi-thread"] }
 warp = "0.3"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }

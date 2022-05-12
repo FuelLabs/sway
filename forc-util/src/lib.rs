@@ -5,13 +5,16 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
+use std::env;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
+use std::str::FromStr;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
 
@@ -405,6 +408,43 @@ fn construct_window<'a>(
     *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
+}
+
+const LOG_FILTER: &str = "RUST_LOG";
+const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
+
+pub fn set_subscriber() {
+    let filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
+
+    let human_logging = env::var_os(HUMAN_LOGGING)
+        .map(|s| {
+            bool::from_str(s.to_str().unwrap())
+                .expect("Expected `true` or `false` to be provided for `HUMAN_LOGGING`")
+        })
+        .unwrap_or(true);
+
+    let sub = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(std::io::stderr)
+        .with_env_filter(filter);
+
+    if human_logging {
+        sub.with_ansi(true)
+            .with_level(false)
+            .with_file(false)
+            .with_line_number(false)
+            .without_time()
+            .with_target(false)
+            .init();
+    } else {
+        sub.with_ansi(false)
+            .with_level(true)
+            .with_line_number(true)
+            .json()
+            .init();
+    }
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
