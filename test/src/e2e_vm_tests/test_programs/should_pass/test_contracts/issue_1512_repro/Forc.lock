@@ -1,0 +1,7 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'issue_1512_repro'
+dependencies = ['core']
