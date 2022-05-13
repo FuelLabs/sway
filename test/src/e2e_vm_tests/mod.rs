@@ -313,6 +313,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0xcb, 0x7f, 0x6d, 0xd4,
             ])),
         ),
+        (
+            "should_pass/language/many_stack_variables",
+            ProgramState::Return(10),
+        ),
     ];
 
     let mut number_of_tests_run =
