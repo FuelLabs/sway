@@ -34,3 +34,5 @@ RUN apt-get update && \
 WORKDIR /root/
 
 COPY --from=builder /build/target/release/forc .
+
+CMD ["exec", "./forc"]
