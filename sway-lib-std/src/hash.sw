@@ -124,3 +124,31 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
         }
     }
 }
+
+// Registers are 64 bits (8 bytes) wide. Words are the same width as registers.
+pub fn sha256<T>(param: T) -> b256 {
+    let result_buffer: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    if !is_reference_type::<T>() {
+        asm(r1: param, r2, r3: 8, r4: result_buffer) {
+            // Move to register r2
+            move r2 sp;
+            // Grow stack by 1 word
+            cfei i8;
+            // Save value in register r1 to memory at r2
+            sw r2 r1 i0;
+            // Hash
+            s256 r4 r2 r3;
+            // Return
+            r4: b256
+        }
+    } else {
+        let size = size_of::<T>();
+        asm(r1: result_buffer, r2: param, r3: size) {
+            // Hash
+            s256 r1 r2 r3;
+            // Return
+            r1: b256
+        }
+    }
+}
+
