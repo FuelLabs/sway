@@ -11,8 +11,6 @@ use crate::{
     CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
 };
 
-use super::CreateTypeId;
-
 #[derive(Clone, Copy)]
 pub(crate) enum EnforceTypeArguments {
     Yes,
@@ -31,13 +29,11 @@ pub(crate) trait Monomorphize {
         namespace: &mut Root,
         module_path: &Path,
     ) -> CompileResult<Self::Output>;
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }
 
 impl<T> Monomorphize for T
 where
-    T: CopyTypes + MonomorphizeHelper + CreateTypeId,
+    T: CopyTypes + MonomorphizeHelper<Output = T>,
 {
     type Output = T;
 
@@ -159,22 +155,13 @@ where
             }
         }
     }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> T {
-        let old_type_id = self.type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
 }
 
 pub(crate) trait MonomorphizeHelper {
+    type Output;
+
     fn type_parameters(&self) -> &[TypeParameter];
     fn name(&self) -> &Ident;
     fn span(&self) -> &Span;
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }

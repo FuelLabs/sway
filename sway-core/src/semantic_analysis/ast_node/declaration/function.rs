@@ -7,8 +7,9 @@ use crate::{
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
         },
-        insert_type_parameters, CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode,
-        TypedAstNodeContent,
+        insert_type_parameters,
+        namespace_system::Items,
+        CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
     },
     type_engine::*,
     Ident, TypeParameter,
@@ -20,7 +21,7 @@ use sway_types::Span;
 mod function_parameter;
 pub use function_parameter::*;
 
-use super::EnforceTypeArguments;
+use super::{EnforceTypeArguments, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -84,6 +85,32 @@ impl CopyTypes for TypedFunctionDeclaration {
             };
 
         self.body.copy_types(type_mapping);
+    }
+}
+
+impl MonomorphizeHelper for TypedFunctionDeclaration {
+    type Output = TypedFunctionDeclaration;
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+
+    fn monomorphize_inner(
+        self,
+        type_mapping: &TypeMapping,
+        _namespace: &mut Items,
+    ) -> Self::Output {
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        new_decl
     }
 }
 
@@ -262,59 +289,6 @@ impl TypedFunctionDeclaration {
             warnings,
             errors,
         )
-    }
-
-    /// Given a typed function declaration with type parameters, make a copy of it and update the
-    /// type ids which refer to generic types to be fresh copies, maintaining their referential
-    /// relationship. This is used so when this function is resolved, the types don't clobber the
-    /// generic type info.
-    pub(crate) fn monomorphize(
-        &self,
-        type_arguments: Vec<TypeArgument>,
-        self_type: TypeId,
-    ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings: Vec<CompileWarning> = vec![];
-        let mut errors: Vec<CompileError> = vec![];
-        debug_assert!(
-            !self.type_parameters.is_empty(),
-            "Only generic functions can be monomorphized"
-        );
-
-        let mut new_decl = self.clone();
-
-        let type_mapping = insert_type_parameters(&new_decl.type_parameters);
-        if !type_arguments.is_empty() {
-            // check type arguments against parameters
-            let type_arguments_span = type_arguments
-                .iter()
-                .map(|x| x.span.clone())
-                .reduce(Span::join)
-                .unwrap_or_else(|| self.span.clone());
-            if new_decl.type_parameters.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: new_decl.type_parameters.len(),
-                    span: type_arguments_span,
-                });
-            }
-
-            // check the type arguments
-            for ((_, decl_param), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-                let (mut new_warnings, new_errors) = unify_with_self(
-                    *decl_param,
-                    type_argument.type_id,
-                    self_type,
-                    &type_argument.span,
-                    "Type argument is not castable to generic type paramter",
-                );
-                warnings.append(&mut new_warnings);
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            }
-        }
-
-        // make all type ids fresh ones
-        new_decl.copy_types(&type_mapping);
-        ok(new_decl, warnings, errors)
     }
 
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

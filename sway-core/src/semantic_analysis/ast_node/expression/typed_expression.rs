@@ -1097,16 +1097,6 @@ impl TypedExpression {
             errors
         )
         .clone();
-        if struct_decl.name.as_str() == "ExampleStruct" {
-            println!(
-                "\n\n{}",
-                module_path
-                    .iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
-                    .join("::")
-            );
-        }
 
         // monomorphize the struct definition
         let mut struct_decl = check!(

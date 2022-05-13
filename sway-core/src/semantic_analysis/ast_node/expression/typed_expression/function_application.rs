@@ -1,4 +1,4 @@
-use ast_node::declaration::EnforceTypeArguments;
+use ast_node::declaration::Monomorphize;
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -23,47 +23,20 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    // if this is a generic function, monomorphize its internal types
-    let typed_function_decl = match (
-        function_decl.type_parameters.is_empty(),
-        type_arguments.is_empty(),
-    ) {
-        (true, true) => function_decl,
-        (true, false) => {
-            let type_arguments_span = type_arguments
-                .iter()
-                .map(|x| x.span.clone())
-                .reduce(Span::join)
-                .unwrap_or_else(|| call_path.span());
-            errors.push(CompileError::DoesNotTakeTypeArguments {
-                name: call_path.suffix,
-                span: type_arguments_span,
-            });
-            return err(warnings, errors);
-        }
-        _ => {
-            let mut type_arguments = type_arguments;
-            for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = check!(
-                    namespace.resolve_type_with_self(
-                        look_up_type_id(type_argument.type_id),
-                        self_type,
-                        &type_argument.span,
-                        EnforceTypeArguments::Yes,
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-            }
-            check!(
-                function_decl.monomorphize(type_arguments, self_type),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-    };
+    // monomorphize the function declaration
+    let typed_function_decl = check!(
+        function_decl.monomorphize(
+            type_arguments,
+            EnforceTypeArguments::No,
+            Some(self_type),
+            Some(&call_path.span()),
+            namespace.root_mut(),
+            &[]
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if opts.purity != typed_function_decl.purity {
         errors.push(CompileError::PureCalledImpure {

@@ -14,7 +14,10 @@ pub(crate) use self::{
 
 use super::{impl_trait::Mode, CopyTypes, TypeMapping, TypedCodeBlock, TypedExpression};
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{namespace_system::Items, TypeCheckedStorageReassignment},
+    type_engine::*,
     Ident,
 };
 use derivative::Derivative;
@@ -407,6 +410,8 @@ impl CreateTypeId for TypedStructDeclaration {
 }
 
 impl MonomorphizeHelper for TypedStructDeclaration {
+    type Output = TypedStructDeclaration;
+
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -417,6 +422,18 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 
     fn span(&self) -> &Span {
         &self.span
+    }
+
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
+        let old_type_id = self.type_id();
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.type_id()),
+            type_mapping,
+        );
+        new_decl
     }
 }
 
@@ -531,6 +548,8 @@ impl CreateTypeId for TypedEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TypedEnumDeclaration {
+    type Output = TypedEnumDeclaration;
+
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -541,6 +560,18 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 
     fn span(&self) -> &Span {
         &self.span
+    }
+
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
+        let old_type_id = self.type_id();
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.type_id()),
+            type_mapping,
+        );
+        new_decl
     }
 }
 

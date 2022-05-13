@@ -1,5 +1,5 @@
 use crate::semantic_analysis::declaration::{
-    CreateTypeId, EnforceTypeArguments, Monomorphize, MonomorphizeHelper,
+    EnforceTypeArguments, Monomorphize, MonomorphizeHelper,
 };
 use crate::semantic_analysis::{CopyTypes, TypedExpression};
 use crate::{
@@ -146,7 +146,7 @@ impl Namespace {
         call_site_span: Option<&Span>,
     ) -> CompileResult<T>
     where
-        T: CopyTypes + MonomorphizeHelper + CreateTypeId,
+        T: CopyTypes + MonomorphizeHelper<Output = T>,
     {
         decl.monomorphize(
             type_arguments,

@@ -93,7 +93,7 @@ impl Root {
                                 Some(self_type),
                                 Some(span),
                                 self,
-                                mod_path
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -109,7 +109,7 @@ impl Root {
                                 Some(self_type),
                                 Some(span),
                                 self,
-                                mod_path
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -286,7 +286,7 @@ impl Root {
                 self_type,
                 method_name.span(),
                 EnforceTypeArguments::No,
-                method_prefix,
+                method_prefix
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
