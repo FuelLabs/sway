@@ -1058,6 +1058,15 @@ impl<'ir> AsmBuilder<'ir> {
                             &instr_reg,
                             instr_val.get_span(self.context),
                         );
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                instr_reg.clone(),
+                                self.stack_base_reg.as_ref().unwrap().clone(),
+                                instr_reg.clone(),
+                            )),
+                            comment: "get_ptr".into(),
+                            owning_span: instr_val.get_span(self.context),
+                        });
                     } else {
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADDI(
