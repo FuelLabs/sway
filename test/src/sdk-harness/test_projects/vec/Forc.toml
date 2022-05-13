@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "vec"
 
 [dependencies]
-std = { path = "../../../" }
+std = { path = "../../../../../sway-lib-std" }
