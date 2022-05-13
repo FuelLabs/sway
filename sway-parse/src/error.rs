@@ -4,7 +4,7 @@ use crate::priv_prelude::*;
 pub enum ParseErrorKind {
     #[error("Expected an import name, group of imports, or `*`.")]
     ExpectedImportNameGroupOrGlob,
-    #[error("Expected an item")]
+    #[error("Expected an item.")]
     ExpectedAnItem,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
