@@ -2,13 +2,13 @@
 
 The `Forc.toml` (the *manifest* file) is a compulsory file for each package and it is written in [TOML] format. `Forc.toml` consists of the following fields:
 
-* [`[project]`](#the-project-section) — Defines a project.
+* [`[project]`](#the-project-section) — Defines a sway project.
   * [`name`](#) — The name of the project.
   * [`authors`](#) — The authors of the project.
   * [`organization`](#) — The organization of the project.
   * [`license`](#) — The project license.
-  * [`entry`](#) — Defines the entry point.
-  * [`implicit_std`](#) — .
+  * [`entry`](#) — The entry point of the project.
+  * [`implicit_std`](#) - Controls wheter provided std version (with current *forc* version) will be added as a dependency *implicitly*  
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * [`[network]`](#) — Defines a network for forc to interact with.
@@ -20,11 +20,12 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 
 * `authors`  
 * `organization`
-* `implicit_std`
+
 
 Also for the following fields, a default value is provided so omitting them is allowed:
 
 * `entry` - (default : *main.sw*)
+* `implicit_std` - (default : *true*)
 
 ```toml
 [project]
