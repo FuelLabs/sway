@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt,
 };
+use sway_types::Span;
 
 use crate::semantic_analysis::ast_node::{
     TypedStructField, TypedVariableDeclaration, VariableMutability,
@@ -12,12 +13,13 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
         virtual_register::*,
-        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate24, VirtualOp,
+        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        read_module, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
     types::ResolvedType,
@@ -42,7 +44,6 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
-use sway_types::join_spans;
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -226,15 +227,12 @@ impl AbstractInstructionSet {
                     let type_of_data = data_section.type_of_data(data_id).expect(
                         "Internal miscalculation in data section -- data id did not match up to any actual data",
                     );
-                    counter += if type_of_data.stack_size_of() > 1 {
-                        2
-                    } else {
-                        1
-                    };
+                    counter += if type_of_data.is_copy_type() { 1 } else { 2 };
                 }
                 // these ops will end up being exactly one op, so the counter goes up one
                 Either::Right(OrganizationalOp::Jump(..))
                 | Either::Right(OrganizationalOp::JumpIfNotEq(..))
+                | Either::Right(OrganizationalOp::JumpIfNotZero(..))
                 | Either::Left(_) => {
                     counter += 1;
                 }
@@ -285,6 +283,18 @@ impl AbstractInstructionSet {
                         );
                         realized_ops.push(RealizedOp {
                             opcode: VirtualOp::JNEI(r1, r2, imm),
+                            owning_span,
+                            comment,
+                            offset,
+                        });
+                    }
+                    OrganizationalOp::JumpIfNotZero(r1, ref lab) => {
+                        let imm = VirtualImmediate18::new_unchecked(
+                            *label_namespace.get(lab).unwrap(),
+                            "Programs with more than 2^18 labels are unsupported right now",
+                        );
+                        realized_ops.push(RealizedOp {
+                            opcode: VirtualOp::JNZI(r1, imm),
                             owning_span,
                             comment,
                             offset,
@@ -352,7 +362,8 @@ impl RegisterPool {
 fn label_is_used(buf: &[Op], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
-        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotEq(_, _, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotZero(_, ref l)) if label == l => true,
         _ => false,
     })
 }
@@ -625,43 +636,37 @@ pub(crate) fn compile_ast_to_asm(
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // generate any const decls
-            read_module(
-                |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
-                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
-                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable: VariableMutability::ExportedConst,
-                            name,
-                            ..
-                        }) = x
-                        {
-                            Some((body, name))
-                        } else {
-                            None
-                        }
-                    });
-                    for (body, name) in const_decls {
-                        let return_register = register_sequencer.next();
-                        let mut buf = check!(
-                            convert_expression_to_asm(
-                                body,
-                                &mut namespace,
-                                &return_register,
-                                &mut register_sequencer
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        asm_buf.append(&mut buf);
-                        namespace.insert_variable(name.clone(), return_register);
-                    }
-                    ok((), warnings, errors)
-                },
-                ast_namespace,
-            );
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            let const_decls = ast_namespace.get_all_declared_symbols().filter_map(|x| {
+                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body,
+                    is_mutable: VariableMutability::ExportedConst,
+                    name,
+                    ..
+                }) = x
+                {
+                    Some((body, name))
+                } else {
+                    None
+                }
+            });
+            for (body, name) in const_decls {
+                let return_register = register_sequencer.next();
+                let mut buf = check!(
+                    convert_expression_to_asm(
+                        body,
+                        &mut namespace,
+                        &return_register,
+                        &mut register_sequencer
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                asm_buf.append(&mut buf);
+                namespace.insert_variable(name.clone(), return_register);
+            }
             // start generating from the main function
             let return_register = register_sequencer.next();
             let mut body = check!(
@@ -705,43 +710,37 @@ pub(crate) fn compile_ast_to_asm(
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            read_module(
-                |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
-                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
-                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable: VariableMutability::ExportedConst,
-                            name,
-                            ..
-                        }) = x
-                        {
-                            Some((body, name))
-                        } else {
-                            None
-                        }
-                    });
-                    for (body, name) in const_decls {
-                        let return_register = register_sequencer.next();
-                        let mut buf = check!(
-                            convert_expression_to_asm(
-                                body,
-                                &mut namespace,
-                                &return_register,
-                                &mut register_sequencer
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        asm_buf.append(&mut buf);
-                        namespace.insert_variable(name.clone(), return_register);
-                    }
-                    ok((), warnings, errors)
-                },
-                ast_namespace,
-            );
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            let const_decls = ast_namespace.get_all_declared_symbols().filter_map(|x| {
+                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body,
+                    is_mutable: VariableMutability::ExportedConst,
+                    name,
+                    ..
+                }) = x
+                {
+                    Some((body, name))
+                } else {
+                    None
+                }
+            });
+            for (body, name) in const_decls {
+                let return_register = register_sequencer.next();
+                let mut buf = check!(
+                    convert_expression_to_asm(
+                        body,
+                        &mut namespace,
+                        &return_register,
+                        &mut register_sequencer
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                asm_buf.append(&mut buf);
+                namespace.insert_variable(name.clone(), return_register);
+            }
             // start generating from the main function
             let mut body = check!(
                 convert_code_block_to_asm(
@@ -772,43 +771,37 @@ pub(crate) fn compile_ast_to_asm(
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            read_module(
-                |ns| -> CompileResult<()> {
-                    let mut warnings = vec![];
-                    let mut errors = vec![];
-                    let const_decls = ns.get_all_declared_symbols().filter_map(|x| {
-                        if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable: VariableMutability::ExportedConst,
-                            name,
-                            ..
-                        }) = x
-                        {
-                            Some((body, name))
-                        } else {
-                            None
-                        }
-                    });
-                    for (body, name) in const_decls {
-                        let return_register = register_sequencer.next();
-                        let mut buf = check!(
-                            convert_expression_to_asm(
-                                body,
-                                &mut namespace,
-                                &return_register,
-                                &mut register_sequencer
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        asm_buf.append(&mut buf);
-                        namespace.insert_variable(name.clone(), return_register);
-                    }
-                    ok((), warnings, errors)
-                },
-                ast_namespace,
-            );
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            let const_decls = ast_namespace.get_all_declared_symbols().filter_map(|x| {
+                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body,
+                    is_mutable: VariableMutability::ExportedConst,
+                    name,
+                    ..
+                }) = x
+                {
+                    Some((body, name))
+                } else {
+                    None
+                }
+            });
+            for (body, name) in const_decls {
+                let return_register = register_sequencer.next();
+                let mut buf = check!(
+                    convert_expression_to_asm(
+                        body,
+                        &mut namespace,
+                        &return_register,
+                        &mut register_sequencer
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                asm_buf.append(&mut buf);
+                namespace.insert_variable(name.clone(), return_register);
+            }
             let (selectors_and_labels, mut contract_asm) = check!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
                 return err(warnings, errors),
@@ -1242,8 +1235,7 @@ fn build_contract_abi_switch(
         // jump to the function label if the selector was equal
         asm_buf.push(Op {
             // if the comparison result is _not_ equal to 0, then it was indeed equal.
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-                VirtualRegister::Constant(ConstantRegister::Zero),
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(
                 comparison_result_register,
                 label,
             )),
@@ -1308,13 +1300,14 @@ fn compile_contract_to_selectors(
                     .parameters
                     .iter()
                     .fold(decl.parameters[0].name.span().clone(), |acc, x| {
-                        join_spans(acc, x.name.span().clone())
+                        Span::join(acc, x.name.span().clone())
                     });
 
                 // Create a new struct type that contains all the arguments. Then, for each argument,
                 // create a register for it and load it using some utilities from expression::subfield.
                 let bundled_arguments_type = crate::type_engine::insert_type(TypeInfo::Struct {
                     name: Ident::new(bundled_arguments_span),
+                    type_parameters: Default::default(),
                     fields: decl
                         .parameters
                         .iter()

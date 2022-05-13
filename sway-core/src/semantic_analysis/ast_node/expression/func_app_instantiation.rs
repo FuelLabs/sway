@@ -12,8 +12,7 @@ pub(crate) fn instantiate_function_application(
     name: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -29,7 +28,7 @@ pub(crate) fn instantiate_function_application(
             let type_arguments_span = type_arguments
                 .iter()
                 .map(|x| x.span.clone())
-                .reduce(join_spans)
+                .reduce(Span::join)
                 .unwrap_or_else(|| name.span());
             errors.push(CompileError::DoesNotTakeTypeArguments {
                 name: name.suffix,
@@ -81,7 +80,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: arguments_span,
@@ -96,7 +95,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: arguments_span,
@@ -118,7 +117,6 @@ pub(crate) fn instantiate_function_application(
             let args = TypeCheckArguments {
                 checkee: arg.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: param.r#type,
                 help_text: "The argument that has been provided to this function's type does \
                     not match the declared type of the parameter in the function \

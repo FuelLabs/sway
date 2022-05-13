@@ -6,5 +6,4 @@ name = "dependency_package_field"
 
 [dependencies]
 # Use `std` package as `std_alt` to test `package` field.
-# TODO need https://github.com/FuelLabs/sway/issues/1053 before this can be changed to a local path
-std-alt = { git = "https://github.com/FuelLabs/sway-lib-std", branch = "master", package = "std" }
+std-alt = { path = "../../../../../../../sway-lib-std", package = "std" }

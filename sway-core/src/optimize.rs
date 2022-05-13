@@ -1,20 +1,16 @@
-use crate::constants;
 use fuel_crypto::Hasher;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
+    constants,
     error::CompileError,
     parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
 
-use sway_types::{
-    ident::Ident,
-    span::{join_spans, Span},
-    state::StateIndex,
-};
+use sway_types::{ident::Ident, span::Span, state::StateIndex};
 
 use sway_ir::*;
 
@@ -28,7 +24,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             main_function,
             declarations,
             all_nodes: _,
-        } => compile_script(&mut ctx, main_function, namespace, declarations),
+        } => compile_script(&mut ctx, main_function, &namespace, declarations),
         TypedParseTree::Predicate {
             namespace: _,
             main_function: _,
@@ -40,14 +36,14 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             namespace,
             declarations,
             all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, namespace, declarations),
+        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
         TypedParseTree::Library {
             namespace: _,
             all_nodes: _,
         } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))
+        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -55,7 +51,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -70,7 +66,7 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -89,49 +85,43 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: NamespaceRef,
+    module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
-    read_module(
-        |ns| -> Result<(), CompileError> {
-            for decl in ns.get_all_declared_symbols() {
-                let decl_name_value = match decl {
-                    TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                        name,
-                        value,
-                        visibility,
-                    }) => {
-                        // XXX Do we really only add public constants?
-                        if !public_only || matches!(visibility, Visibility::Public) {
-                            Some((name, value))
-                        } else {
-                            None
-                        }
-                    }
-
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        name,
-                        body,
-                        const_decl_origin,
-                        ..
-                    }) if *const_decl_origin => Some((name, body)),
-
-                    _otherwise => None,
-                };
-
-                if let Some((name, value)) = decl_name_value {
-                    let const_val = compile_constant_expression(context, value)?;
-                    module.add_global_constant(context, name.as_str().to_owned(), const_val);
+    for decl in module_ns.get_all_declared_symbols() {
+        let decl_name_value = match decl {
+            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                name,
+                value,
+                visibility,
+            }) => {
+                // XXX Do we really only add public constants?
+                if !public_only || matches!(visibility, Visibility::Public) {
+                    Some((name, value))
+                } else {
+                    None
                 }
             }
 
-            for ns_ix in ns.get_all_imported_modules().filter(|x| **x != namespace) {
-                compile_constants(context, module, *ns_ix, true)?;
-            }
-            Ok(())
-        },
-        namespace,
-    )?;
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                name,
+                body,
+                const_decl_origin,
+                ..
+            }) if *const_decl_origin => Some((name, body)),
+
+            _otherwise => None,
+        };
+
+        if let Some((name, value)) = decl_name_value {
+            let const_val = compile_constant_expression(context, value)?;
+            module.add_global_constant(context, name.as_str().to_owned(), const_val);
+        }
+    }
+
+    for submodule_ns in module_ns.submodules().values() {
+        compile_constants(context, module, submodule_ns, true)?;
+    }
 
     Ok(())
 }
@@ -346,6 +336,9 @@ fn compile_fn_with_args(
         || compiler.current_block == compiler.function.get_entry_block(context)
         || compiler.current_block.num_predecessors(context) > 0
     {
+        if ret_type.eq(context, &Type::Unit) {
+            ret_val = Constant::get_unit(context, None);
+        }
         compiler
             .current_block
             .ins(context)
@@ -554,10 +547,9 @@ impl FnCompiler {
                     TypedAstNodeContent::WhileLoop(twl) => {
                         self.compile_while_loop(context, twl, span_md_idx)
                     }
-                    TypedAstNodeContent::SideEffect => Err(CompileError::Internal(
-                        "unexpected side effect",
-                        ast_node.span,
-                    )),
+                    // a side effect can be () because it just impacts the type system/namespacing.
+                    // There should be no new IR generated.
+                    TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context, None)),
                 }
             })
             .collect::<Result<Vec<_>, CompileError>>()
@@ -699,8 +691,12 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::TypeProperty { property, type_id } => {
-                let ir_type = convert_resolved_typeid_no_span(context, &type_id)?;
+            TypedExpressionVariant::TypeProperty {
+                property,
+                type_id,
+                span,
+            } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &span)?;
                 match property {
                     BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
                         context,
@@ -818,46 +814,106 @@ impl FnCompiler {
             .map(|(_, expr)| self.compile_expression(context, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
-        // New struct type to hold the user arguments
-        let field_types = compiled_args
-            .iter()
-            .map(|val| val.get_type(context).unwrap())
-            .collect::<Vec<_>>();
-        let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+        let user_args_val = match compiled_args.len() {
+            0 => Constant::get_uint(context, 64, 0, None),
+            1 => {
+                // The single arg doesn't need to be put into a struct.
+                let arg0 = compiled_args[0];
 
-        // New local pointer for the struct to hold all user arguments
-        let alias_user_args_struct_local_name = self
-            .lexical_map
-            .insert(format!("{}{}", "args_struct_for_", ast_name));
-        let user_args_struct_ptr = self
-            .function
-            .new_local_ptr(
-                context,
-                alias_user_args_struct_local_name,
-                Type::Struct(user_args_struct_aggregate),
-                true,
-                None,
-            )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+                // We're still undecided as to whether this should be decided by type or size.
+                // Going with type for now.
+                let arg0_type = arg0.get_type(context).unwrap();
+                if arg0_type.is_copy_type() {
+                    self.current_block
+                        .ins(context)
+                        .bitcast(arg0, Type::Uint(64), span_md_idx)
+                } else {
+                    // Copy this value to a new location.  This is quite inefficient but we need to
+                    // pass by reference rather than by value.  Optimisation passes can remove all
+                    // the unnecessary copying eventually, though it feels like we're jumping
+                    // through a bunch of hoops here (employing the single arg optimisation) for
+                    // minimal returns.
+                    let by_reference_arg_name = self
+                        .lexical_map
+                        .insert(format!("{}{}", "arg_for_", ast_name));
+                    let by_reference_arg = self
+                        .function
+                        .new_local_ptr(context, by_reference_arg_name, arg0_type, false, None)
+                        .map_err(|ir_error| {
+                            CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                        })?;
 
-        // Initialise each of the fields in the user args struct.
-        compiled_args.into_iter().enumerate().fold(
-            self.current_block.ins(context).get_ptr(
-                user_args_struct_ptr,
-                Type::Struct(user_args_struct_aggregate),
-                0,
-                span_md_idx,
-            ),
-            |user_args_struct_ptr_val, (insert_idx, insert_val)| {
-                self.current_block.ins(context).insert_value(
-                    user_args_struct_ptr_val,
-                    user_args_struct_aggregate,
-                    insert_val,
-                    vec![insert_idx as u64],
+                    let arg0_ptr = self.current_block.ins(context).get_ptr(
+                        by_reference_arg,
+                        arg0_type,
+                        0,
+                        None,
+                    );
+                    self.current_block.ins(context).store(arg0_ptr, arg0, None);
+
+                    // NOTE: Here we're fetching the original stack pointer, cast to u64.
+                    // TODO: Instead of casting here, we should use an `ptrtoint` instruction.
+                    self.current_block.ins(context).get_ptr(
+                        by_reference_arg,
+                        Type::Uint(64),
+                        0,
+                        span_md_idx,
+                    )
+                }
+            }
+            _ => {
+                // New struct type to hold the user arguments bundled together.
+                let field_types = compiled_args
+                    .iter()
+                    .map(|val| val.get_type(context).unwrap())
+                    .collect::<Vec<_>>();
+                let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+
+                // New local pointer for the struct to hold all user arguments
+                let user_args_struct_local_name = self
+                    .lexical_map
+                    .insert(format!("{}{}", "args_struct_for_", ast_name));
+                let user_args_struct_ptr = self
+                    .function
+                    .new_local_ptr(
+                        context,
+                        user_args_struct_local_name,
+                        Type::Struct(user_args_struct_aggregate),
+                        true,
+                        None,
+                    )
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+
+                // Initialise each of the fields in the user args struct.
+                compiled_args.into_iter().enumerate().fold(
+                    self.current_block.ins(context).get_ptr(
+                        user_args_struct_ptr,
+                        Type::Struct(user_args_struct_aggregate),
+                        0,
+                        span_md_idx,
+                    ),
+                    |user_args_struct_ptr_val, (insert_idx, insert_val)| {
+                        self.current_block.ins(context).insert_value(
+                            user_args_struct_ptr_val,
+                            user_args_struct_aggregate,
+                            insert_val,
+                            vec![insert_idx as u64],
+                            span_md_idx,
+                        )
+                    },
+                );
+
+                // NOTE: Here we're fetching the original stack pointer, cast to u64.
+                self.current_block.ins(context).get_ptr(
+                    user_args_struct_ptr,
+                    Type::Uint(64),
+                    0,
                     span_md_idx,
                 )
-            },
-        );
+            }
+        };
 
         // Now handle the contract address and the selector. The contract address is just
         // as B256 while the selector is a [u8; 4] which we have to convert to a U64.
@@ -896,19 +952,12 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        // Insert the pointer to the user args struct.
-        //
-        // NOTE: Here we're inserting the original stack pointer, cast to u64.
-        let user_args_struct_addr_val = self.current_block.ins(context).get_ptr(
-            user_args_struct_ptr,
-            Type::Uint(64),
-            0,
-            span_md_idx,
-        );
+        // Insert the user args value.
+
         ra_struct_val = self.current_block.ins(context).insert_value(
             ra_struct_val,
             ra_struct_aggregate,
-            user_args_struct_addr_val,
+            user_args_val,
             vec![2],
             span_md_idx,
         );
@@ -987,21 +1036,16 @@ impl FnCompiler {
             // Firstly create the single-use callee by fudging an AST declaration.
             let callee_name = context.get_unique_name();
             let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(crate::span::Span {
-                span: pest::Span::new(std::sync::Arc::from(callee_name), 0, callee_name_len)
-                    .unwrap(),
-                path: None,
-            });
+            let callee_ident = Ident::new(
+                crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
+            );
 
             let parameters = ast_args
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
                     r#type: expr.return_type,
-                    type_span: crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })
                 .collect();
 
@@ -1019,16 +1063,10 @@ impl FnCompiler {
                 name: callee_ident,
                 body: callee_body,
                 parameters,
-                span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 return_type,
                 type_parameters: Vec::new(),
-                return_type_span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 visibility: Visibility::Private,
                 is_contract_call: false,
                 purity: Default::default(),
@@ -1200,7 +1238,7 @@ impl FnCompiler {
         let variable_ptr = self
             .function
             .new_local_ptr(context, local_name, variable_type, false, None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let variable_ptr_ty = *variable_ptr.get_type(context);
         let variable_ptr_val = self.current_block.ins(context).get_ptr(
             variable_ptr,
@@ -1326,7 +1364,7 @@ impl FnCompiler {
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{name}'."),
-                Span::empty(),
+                Span::dummy(),
             ))
         }
     }
@@ -1366,7 +1404,7 @@ impl FnCompiler {
         let ptr = self
             .function
             .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::empty()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
@@ -1402,7 +1440,7 @@ impl FnCompiler {
             self.function
                 .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
                 .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
 
             // We still insert this into the symbol table, as itself... can they be shadowed?
@@ -1476,7 +1514,7 @@ impl FnCompiler {
                         .lhs
                         .iter()
                         .map(|lhs| lhs.name.span().clone())
-                        .reduce(&join_spans)
+                        .reduce(Span::join)
                         .expect("Joined spans of LHS of reassignment.");
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
@@ -2032,7 +2070,7 @@ impl FnCompiler {
                     .function
                     .new_local_ptr(context, alias_key_name, Type::B256, true, None)
                     .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
 
                 // Const value for the key from the hash
@@ -2058,13 +2096,29 @@ impl FnCompiler {
                     Type::Uint(_) | Type::Bool => {
                         // These types fit in a word. use state_store_word/state_load_word
                         match access_type {
-                            StateAccessType::Read => self
-                                .current_block
-                                .ins(context)
-                                .state_load_word(key_ptr_val, span_md_idx),
+                            StateAccessType::Read => {
+                                // `state_load_word` always returns a `u64`. Cast the result back
+                                // to the right type before returning
+                                let load_val = self
+                                    .current_block
+                                    .ins(context)
+                                    .state_load_word(key_ptr_val, span_md_idx);
+                                self.current_block.ins(context).bitcast(
+                                    load_val,
+                                    *r#type,
+                                    span_md_idx,
+                                )
+                            }
                             StateAccessType::Write => {
-                                self.current_block.ins(context).state_store_word(
+                                // `state_store_word` requires a `u64`. Cast the value to store to
+                                // `u64` first before actually storing.
+                                let rhs_u64 = self.current_block.ins(context).bitcast(
                                     rhs.expect("expecting a rhs for write"),
+                                    Type::Uint(64),
+                                    span_md_idx,
+                                );
+                                self.current_block.ins(context).state_store_word(
+                                    rhs_u64,
                                     key_ptr_val,
                                     span_md_idx,
                                 );
@@ -2087,7 +2141,7 @@ impl FnCompiler {
                             .function
                             .new_local_ptr(context, alias_value_name, *r#type, true, None)
                             .map_err(|ir_error| {
-                                CompileError::InternalOwned(ir_error.to_string(), Span::empty())
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                             })?;
 
                         // Convert the local pointer created to a value using get_ptr
@@ -2216,7 +2270,7 @@ fn get_struct_name_and_field_index(
     resolve_type(field_type, field_name.span())
         .ok()
         .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields } => Some((
+            TypeInfo::Struct { name, fields, .. } => Some((
                 name.as_str().to_owned(),
                 fields
                     .iter()
@@ -2267,7 +2321,7 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
                 match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
                     None => Err(CompileError::Internal(
                         "Unknown struct in in reassignment.",
-                        Span::empty(),
+                        Span::dummy(),
                     )),
                     Some((struct_name, field_idx)) => match field_idx {
                         None => Err(CompileError::InternalOwned(
@@ -2343,6 +2397,7 @@ fn convert_resolved_typeid(
         context,
         &resolve_type(*ast_type, span)
             .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
+        span,
     )
 }
 
@@ -2351,14 +2406,15 @@ fn convert_resolved_typeid_no_span(
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
-    let span = crate::span::Span {
-        span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-        path: None,
-    };
+    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
     convert_resolved_typeid(context, ast_type, &span)
 }
 
-fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<Type, CompileError> {
+fn convert_resolved_type(
+    context: &mut Context,
+    ast_type: &TypeInfo,
+    span: &Span,
+) -> Result<Type, CompileError> {
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
@@ -2380,7 +2436,7 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
             create_enum_aggregate(context, variant_types.clone()).map(&Type::Struct)?
         }
         TypeInfo::Array(elem_type_id, count) => {
-            let elem_type = convert_resolved_typeid_no_span(context, elem_type_id)?;
+            let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
             Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
         }
         TypeInfo::Tuple(fields) => {
@@ -2400,55 +2456,55 @@ fn convert_resolved_type(context: &mut Context, ast_type: &TypeInfo) -> Result<T
         TypeInfo::Custom { .. } => {
             return Err(CompileError::Internal(
                 "Custom type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::SelfType { .. } => {
             return Err(CompileError::Internal(
                 "Self type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Contract => {
             return Err(CompileError::Internal(
                 "Contract type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::ContractCaller { .. } => {
             return Err(CompileError::Internal(
                 "ContractCaller type cannot be reoslved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Unknown => {
             return Err(CompileError::Internal(
                 "Unknown type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::UnknownGeneric { .. } => {
             return Err(CompileError::Internal(
                 "Generic type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Ref(_) => {
             return Err(CompileError::Internal(
                 "Ref type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::ErrorRecovery => {
             return Err(CompileError::Internal(
                 "Error recovery type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
         TypeInfo::Storage { .. } => {
             return Err(CompileError::Internal(
                 "Storage type cannot be resolved in IR.",
-                Span::empty(),
+                span.clone(),
             ))
         }
     })
@@ -2464,7 +2520,10 @@ mod tests {
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
         parser::{Rule, SwayParser},
-        semantic_analysis::{TreeType, TypedParseTree},
+        semantic_analysis::{
+            namespace::{self, Namespace},
+            TreeType, TypedParseTree,
+        },
     };
     use pest::Parser;
 
@@ -2602,6 +2661,7 @@ mod tests {
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
             use_orig_asm: false,
+            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
@@ -2619,10 +2679,10 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
+        let mut namespace = Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
             parse_tree.tree,
-            crate::create_module(),
-            crate::create_module(),
+            &mut namespace,
             &program_type,
             &build_config,
             &mut dead_code_graph,

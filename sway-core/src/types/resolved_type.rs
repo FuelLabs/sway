@@ -35,7 +35,7 @@ pub enum ResolvedType {
         from: Box<ResolvedType>,
         to: Box<ResolvedType>,
     },
-    // used for recovering from errors in the ast
+    /// used for recovering from errors in the ast
     ErrorRecovery,
 }
 
@@ -46,48 +46,14 @@ impl Default for ResolvedType {
 }
 
 impl ResolvedType {
-    /// Calculates the stack size of this type, to be used when allocating stack memory for it.
-    /// This is _in words_!
-    pub(crate) fn stack_size_of(&self) -> u64 {
-        let span = sway_types::span::Span {
-            span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
-        match self {
-            // Each char is a byte, so the size is the num of characters / 8
-            // rounded up to the nearest word
-            ResolvedType::Str(len) => (len + 7) / 8,
-            // Since things are unpacked, all unsigned integers are 64 bits.....for now
-            ResolvedType::UnsignedInteger(_) => 1,
-            ResolvedType::Boolean => 1,
-            ResolvedType::Unit => 0,
-            ResolvedType::Byte => 1,
-            ResolvedType::B256 => 4,
-            ResolvedType::Enum { variant_types, .. } => {
-                // the size of an enum is one word (for the tag) plus the maximum size
-                // of any individual variant
-                1 + variant_types
-                    .iter()
-                    .map(|x| x.stack_size_of())
-                    .max()
-                    .unwrap()
-            }
-            ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
-                acc + (resolve_type(x.r#type, &x.span)
-                    .expect("TODO(static spans)")
-                    .size_in_words(&span)
-                    .expect("TODO(static spans)"))
-            }),
-            // `ContractCaller` types are unsized and used only in the type system for
-            // calling methods
-            ResolvedType::ContractCaller { .. } => 0,
-            ResolvedType::Function { .. } => {
-                unimplemented!("Function types have not yet been implemented.")
-            }
-            ResolvedType::Contract => unreachable!("contract types are never instantiated"),
-            ResolvedType::ErrorRecovery => unreachable!(),
-        }
+    pub(crate) fn is_copy_type(&self) -> bool {
+        matches!(
+            self,
+            ResolvedType::Boolean
+                | ResolvedType::Byte
+                | ResolvedType::Unit
+                | ResolvedType::UnsignedInteger(_)
+        )
     }
 
     pub fn is_numeric(&self) -> bool {

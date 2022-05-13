@@ -25,6 +25,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/basic_func_decl",
             ProgramState::Return(1), // 1 == true
         ),
+        (
+            "should_pass/language/builtin_type_method_call",
+            ProgramState::Return(3),
+        ),
         ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
         (
             "should_pass/language/if_elseif_enum",
@@ -94,8 +98,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(43),
         ),
         ("should_pass/language/bool_and_or", ProgramState::Return(42)),
-        ("should_pass/language/neq_4_test", ProgramState::Return(0)),
-        ("should_pass/language/eq_4_test", ProgramState::Return(1)),
+        ("should_pass/language/eq_and_neq", ProgramState::Return(1)),
         (
             "should_pass/language/local_impl_for_ord",
             ProgramState::Return(1), // true
@@ -127,6 +130,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
+        ("should_pass/language/u64_ops", ProgramState::Return(1)),      // true
         (
             "should_pass/language/import_method_from_other_file",
             ProgramState::Return(10), // true
@@ -289,6 +293,26 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/import_trailing_comma",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/primitive_type_argument",
+            ProgramState::Return(5),
+        ),
+        (
+            "should_pass/language/generic-type-inference",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/ret_small_string",
+            ProgramState::ReturnData(Bytes32::from([
+                0x6a, 0x4e, 0x01, 0xe9, 0x40, 0xab, 0xc0, 0x04, 0x30, 0xfe, 0x21, 0x62, 0xed, 0x69,
+                0xc0, 0xe2, 0x31, 0x04, 0xf9, 0xfd, 0xa7, 0x81, 0x59, 0x09, 0x2f, 0xea, 0x8f, 0x7e,
+                0xcb, 0x7f, 0x6d, 0xd4,
+            ])),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -403,6 +427,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/generics_unhelpful_error",
         "should_fail/generic_shadows_generic",
         "should_fail/different_contract_caller_types",
+        "should_fail/insufficient_type_info",
+        "should_fail/primitive_type_argument",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -414,39 +440,62 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     });
 
     // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
-    // TODO validate that call output is correct
     let contract_and_project_names = &[
         (
-            "should_pass/test_contracts/basic_storage",
-            "should_pass/require_contract_deployment/call_basic_storage",
+            (
+                "should_pass/test_contracts/basic_storage",
+                "should_pass/require_contract_deployment/call_basic_storage",
+            ),
+            4242,
         ),
         (
-            "should_pass/test_contracts/increment_contract",
-            "should_pass/require_contract_deployment/call_increment_contract",
+            (
+                "should_pass/test_contracts/increment_contract",
+                "should_pass/require_contract_deployment/call_increment_contract",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/auth_testing_contract",
-            "should_pass/require_contract_deployment/caller_auth_test",
+            (
+                "should_pass/test_contracts/auth_testing_contract",
+                "should_pass/require_contract_deployment/caller_auth_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/context_testing_contract",
-            "should_pass/require_contract_deployment/caller_context_test",
+            (
+                "should_pass/test_contracts/context_testing_contract",
+                "should_pass/require_contract_deployment/caller_context_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/balance_test_contract",
-            "should_pass/require_contract_deployment/bal_opcode",
+            (
+                "should_pass/test_contracts/balance_test_contract",
+                "should_pass/require_contract_deployment/bal_opcode",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/test_fuel_coin_contract",
-            "should_pass/require_contract_deployment/token_ops_test",
+            (
+                "should_pass/test_contracts/test_fuel_coin_contract",
+                "should_pass/require_contract_deployment/token_ops_test",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/storage_access_contract",
-            "should_pass/require_contract_deployment/storage_access_caller",
+            (
+                "should_pass/test_contracts/storage_access_contract",
+                "should_pass/require_contract_deployment/storage_access_caller",
+            ),
+            1, // true
         ),
         (
-            "should_pass/test_contracts/nested_struct_args_contract",
-            "should_pass/require_contract_deployment/nested_struct_args_caller",
+            (
+                "should_pass/test_contracts/nested_struct_args_contract",
+                "should_pass/require_contract_deployment/nested_struct_args_caller",
+            ),
+            1,
         ),
     ];
 
@@ -456,11 +505,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         + contract_and_project_names.len();
 
     // Filter them first.
-    let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
+    let (contracts_and_projects, vals): (Vec<_>, Vec<_>) = contract_and_project_names
         .iter()
-        .filter(|names| filter(names.1))
+        .filter(|names| filter(names.0 .1))
         .cloned()
         .unzip();
+
+    let (contracts, projects): (Vec<_>, Vec<_>) = contracts_and_projects.iter().cloned().unzip();
 
     // Deploy and then test.
     number_of_tests_run += projects.len();
@@ -469,8 +520,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         let contract_id = harness::deploy_contract(name);
         contract_ids.push(contract_id);
     }
-    for name in projects {
-        harness::runs_on_node(name, &contract_ids);
+
+    for (name, val) in projects.iter().zip(vals.iter()) {
+        let result = harness::runs_on_node(name, &contract_ids);
+        assert!(result.iter().all(|r| !matches!(
+            r,
+            fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+        )));
+        assert!(
+            result.len() >= 2
+                && matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. })
+                && result[result.len() - 2].val().unwrap() == *val
+        );
     }
 
     if number_of_tests_run == 0 {

@@ -10,10 +10,7 @@ use crate::{
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{
-    span::{join_spans, Span},
-    state::StateIndex,
-};
+use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
 use std::sync::Arc;
@@ -97,6 +94,35 @@ impl std::fmt::Display for TypedAstNode {
 }
 
 impl TypedAstNode {
+    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
+    pub(crate) fn is_public(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            Declaration(decl) => decl.visibility().is_public(),
+            ReturnStatement(_)
+            | Expression(_)
+            | WhileLoop(_)
+            | SideEffect
+            | ImplicitReturnExpression(_) => false,
+        }
+    }
+
+    /// Naive check to see if this node is a function declaration of a function called `main` if
+    /// the [TreeType] is Script or Predicate.
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+        match &self {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                        TypedFunctionDeclaration { name, .. },
+                    )),
+                ..
+            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
+                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            }
+            _ => false,
+        }
+    }
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -187,7 +213,6 @@ impl TypedAstNode {
         let TypeCheckArguments {
             checkee: node,
             namespace,
-            crate_namespace,
             return_type_annotation,
             help_text,
             self_type,
@@ -198,53 +223,52 @@ impl TypedAstNode {
         } = arguments;
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |namespace: crate::semantic_analysis::NamespaceRef,
-                                            crate_namespace: NamespaceRef,
-                                            type_ascription: TypeInfo,
-                                            value| {
-            let type_id = check!(
-                namespace.resolve_type_with_self(
-                    type_ascription,
-                    self_type,
-                    node.span.clone(),
-                    false
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            );
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: value,
-                namespace,
-                crate_namespace,
-                return_type_annotation: type_id,
-                help_text: "This declaration's type annotation  does \
+        let mut type_check_ascribed_expr =
+            |namespace: &mut Namespace, type_ascription: TypeInfo, value| {
+                let type_id = check!(
+                    namespace.resolve_type_with_self(
+                        type_ascription,
+                        self_type,
+                        node.span.clone(),
+                        false
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: value,
+                    namespace,
+                    return_type_annotation: type_id,
+                    help_text: "This declaration's type annotation  does \
                      not match up with the assigned expression's type.",
-                self_type,
-                build_config,
-                dead_code_graph,
-                mode: Mode::NonAbi,
-                opts,
-            })
-        };
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                })
+            };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute {
-                        Some(crate_namespace)
+                    let path = if a.is_absolute {
+                        a.call_path.clone()
                     } else {
-                        None
+                        namespace
+                            .mod_path()
+                            .iter()
+                            .chain(&a.call_path)
+                            .cloned()
+                            .collect()
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => namespace.star_import(from_module, a.call_path),
-                        ImportType::SelfImport => {
-                            namespace.self_import(from_module, a.call_path, a.alias)
-                        }
-                        ImportType::Item(s) => {
-                            namespace.item_import(from_module, a.call_path, &s, a.alias)
-                        }
+                        ImportType::Star => namespace.star_import(&path),
+                        ImportType::SelfImport => namespace.self_import(&path, a.alias),
+                        ImportType::Item(s) => namespace.item_import(&path, &s, a.alias),
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
@@ -296,7 +320,6 @@ impl TypedAstNode {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,
                                     namespace,
-                                    crate_namespace,
                                     return_type_annotation: type_ascription,
                                     help_text: "Variable declaration's type annotation does \
                      not match up with the assigned expression's type.",
@@ -321,7 +344,7 @@ impl TypedAstNode {
                                     const_decl_origin: false,
                                     type_ascription,
                                 });
-                            namespace.insert(name, typed_var_decl.clone());
+                            namespace.insert_symbol(name, typed_var_decl.clone());
                             typed_var_decl
                         }
                         Declaration::ConstantDeclaration(ConstantDeclaration {
@@ -330,12 +353,8 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result = type_check_ascribed_expr(
-                                namespace,
-                                crate_namespace,
-                                type_ascription.clone(),
-                                value,
-                            );
+                            let result =
+                                type_check_ascribed_expr(namespace, type_ascription.clone(), value);
                             let value = check!(
                                 result,
                                 error_recovery_expr(name.span().clone()),
@@ -354,7 +373,7 @@ impl TypedAstNode {
                                     const_decl_origin: true,
                                     type_ascription: insert_type(type_ascription),
                                 });
-                            namespace.insert(name, typed_const_decl.clone());
+                            namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
@@ -363,7 +382,7 @@ impl TypedAstNode {
                             );
 
                             let _ = check!(
-                                namespace.insert(e.name, decl.clone()),
+                                namespace.insert_symbol(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -375,7 +394,6 @@ impl TypedAstNode {
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
                                     namespace,
-                                    crate_namespace,
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text,
                                     self_type,
@@ -388,104 +406,30 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            namespace.insert(
+                            namespace.insert_symbol(
                                 decl.name.clone(),
                                 TypedDeclaration::FunctionDeclaration(decl.clone()),
                             );
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
-                        Declaration::TraitDeclaration(TraitDeclaration {
-                            name,
-                            interface_surface,
-                            methods,
-                            supertraits,
-                            visibility,
-                        }) => {
-                            // type check the interface surface
-                            let interface_surface = check!(
-                                type_check_interface_surface(interface_surface, namespace),
+                        Declaration::TraitDeclaration(trait_decl) => {
+                            check!(
+                                type_check_trait_decl(TypeCheckArguments {
+                                    checkee: trait_decl,
+                                    namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                    // this is unused by `type_check_trait`
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: Default::default(),
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                }),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
-                            );
-
-                            let trait_namespace = create_new_scope(namespace);
-                            // Error checking. Make sure that each supertrait exists and that none
-                            // of the supertraits are actually an ABI declaration
-                            for supertrait in &supertraits {
-                                match namespace
-                                    .get_call_path(&supertrait.name)
-                                    .ok(&mut warnings, &mut errors)
-                                {
-                                    Some(TypedDeclaration::TraitDeclaration(
-                                        TypedTraitDeclaration {
-                                            ref interface_surface,
-                                            ..
-                                        },
-                                    )) => {
-                                        // insert trait implementations for all of the supertraits
-                                        trait_namespace.insert_trait_implementation(
-                                            supertrait.name.clone(),
-                                            TypeInfo::SelfType,
-                                            interface_surface
-                                                .iter()
-                                                .map(|x| x.to_dummy_func(Mode::NonAbi))
-                                                .collect(),
-                                        );
-                                        // TODO: use `_methods` to insert dummy funcs for those
-                                        // methods into the namespace here
-                                        // will need to implement something for converting
-                                        // non-type-checked functions into dummy functions
-                                    }
-                                    Some(TypedDeclaration::AbiDeclaration(_)) => {
-                                        errors.push(CompileError::AbiAsSupertrait {
-                                            span: name.span().clone(),
-                                        })
-                                    }
-                                    _ => errors.push(CompileError::TraitNotFound {
-                                        name: supertrait.name.span().as_str().to_string(),
-                                        span: name.span().clone(),
-                                    }),
-                                }
-                            }
-                            // insert placeholder functions representing the interface surface
-                            // to allow methods to use those functions
-                            trait_namespace.insert_trait_implementation(
-                                CallPath {
-                                    prefixes: vec![],
-                                    suffix: name.clone(),
-                                    is_absolute: false,
-                                },
-                                TypeInfo::SelfType,
-                                interface_surface
-                                    .iter()
-                                    .map(|x| x.to_dummy_func(Mode::NonAbi))
-                                    .collect(),
-                            );
-                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-                            let _methods = check!(
-                                type_check_trait_methods(
-                                    methods.clone(),
-                                    trait_namespace,
-                                    crate_namespace,
-                                    insert_type(TypeInfo::SelfType),
-                                    build_config,
-                                    dead_code_graph,
-                                ),
-                                vec![],
-                                warnings,
-                                errors
-                            );
-                            let trait_decl =
-                                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                                    name: name.clone(),
-                                    interface_surface,
-                                    methods,
-                                    supertraits,
-                                    visibility,
-                                });
-                            namespace.insert(name, trait_decl.clone());
-                            trait_decl
+                            )
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
@@ -493,7 +437,6 @@ impl TypedAstNode {
                                     TypeCheckArguments {
                                         checkee: (lhs, rhs),
                                         namespace,
-                                        crate_namespace,
                                         self_type,
                                         build_config,
                                         dead_code_graph,
@@ -514,7 +457,6 @@ impl TypedAstNode {
                             implementation_of_trait(
                                 impl_trait,
                                 namespace,
-                                crate_namespace,
                                 build_config,
                                 dead_code_graph,
                                 opts,
@@ -540,13 +482,15 @@ impl TypedAstNode {
                                     break;
                                 }
                             }
-                            let impl_namespace = create_new_scope(namespace);
+
+                            let mut impl_namespace = namespace.clone();
                             for type_parameter in type_parameters.iter() {
-                                impl_namespace.insert(
+                                impl_namespace.insert_symbol(
                                     type_parameter.name_ident.clone(),
                                     type_parameter.into(),
                                 );
                             }
+
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id = check!(
@@ -578,8 +522,7 @@ impl TypedAstNode {
                                 }
                                 let args = TypeCheckArguments {
                                     checkee: fn_decl,
-                                    namespace: impl_namespace,
-                                    crate_namespace,
+                                    namespace: &mut impl_namespace,
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: "",
                                     self_type: implementing_for_type_id,
@@ -653,7 +596,7 @@ impl TypedAstNode {
 
                             // insert struct into namespace
                             let _ = check!(
-                                namespace.insert(
+                                namespace.insert_symbol(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
                                 ),
@@ -687,7 +630,6 @@ impl TypedAstNode {
                                 type_check_trait_methods(
                                     methods.clone(),
                                     namespace,
-                                    crate_namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
@@ -703,7 +645,7 @@ impl TypedAstNode {
                                 name: name.clone(),
                                 span,
                             });
-                            namespace.insert(name, decl.clone());
+                            namespace.insert_symbol(name, decl.clone());
                             decl
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
@@ -738,7 +680,6 @@ impl TypedAstNode {
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: a.clone(),
                             namespace,
-                            crate_namespace,
                             return_type_annotation: insert_type(TypeInfo::Unknown),
                             help_text: Default::default(),
                             self_type,
@@ -759,7 +700,6 @@ impl TypedAstNode {
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: expr.clone(),
                                 namespace,
-                                crate_namespace,
                                 // we use "unknown" here because return statements do not
                                 // necessarily follow the type annotation of their immediate
                                 // surrounding context. Because a return statement is control flow
@@ -789,7 +729,6 @@ impl TypedAstNode {
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: expr.clone(),
                             namespace,
-                            crate_namespace,
                             return_type_annotation,
                             help_text: "Implicit return must match up with block's type.",
                             self_type,
@@ -809,7 +748,6 @@ impl TypedAstNode {
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: condition,
                             namespace,
-                            crate_namespace,
                             return_type_annotation: insert_type(TypeInfo::Boolean),
                             help_text:
                                 "A while loop's loop condition must be a boolean expression.",
@@ -827,7 +765,6 @@ impl TypedAstNode {
                         TypedCodeBlock::type_check(TypeCheckArguments {
                             checkee: body.clone(),
                             namespace,
-                            crate_namespace,
                             return_type_annotation: insert_type(TypeInfo::Tuple(Vec::new())),
                             help_text:
                                 "A while loop's loop body cannot implicitly return a value.Try \
@@ -882,71 +819,50 @@ impl TypedAstNode {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file(
     statement: &IncludeStatement,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+    let canonical_path = build_config
+        .dir_of_code
+        .iter()
+        .chain(statement.path_span.as_str().split('/').map(AsRef::as_ref))
+        .collect::<std::path::PathBuf>()
+        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
-    let mut canonical_path = (*build_config.dir_of_code).clone();
-    canonical_path.push(statement.path_span.as_str());
-    canonical_path.set_extension(crate::constants::DEFAULT_FILE_EXTENSION);
-
-    let file_name = match canonical_path.strip_prefix(build_config.manifest_path.parent().unwrap())
-    {
+    let manifest_dir = build_config.manifest_path.parent().unwrap();
+    let file_name = match canonical_path.strip_prefix(manifest_dir) {
         Ok(file_name) => Arc::new(file_name.to_path_buf()),
-        Err(_) => return err(warnings, errors),
+        Err(_) => return err(vec![], vec![]),
     };
 
-    let res = if canonical_path.exists() {
-        std::fs::read_to_string(&*canonical_path)
-    } else {
-        errors.push(CompileError::FileNotFound {
-            span: statement.path_span.clone(),
+    if !canonical_path.exists() {
+        let err = CompileError::FileNotFound {
             file_path: canonical_path.to_string_lossy().to_string(),
-        });
-        return ok((), warnings, errors);
-    };
+            span: statement.path_span.clone(),
+        };
+        return ok((), vec![], vec![err]);
+    }
 
-    let file_as_string = match res {
+    let file_str: Arc<str> = match std::fs::read_to_string(&canonical_path) {
         Ok(s) => Arc::from(s),
         Err(e) => {
-            errors.push(CompileError::FileCouldNotBeRead {
+            let err = CompileError::FileCouldNotBeRead {
                 span: statement.path_span.clone(),
                 file_path: canonical_path.to_string_lossy().to_string(),
                 stringified_error: e.to_string(),
-            });
-            return ok((), warnings, errors);
+            };
+            return ok((), vec![], vec![err]);
         }
     };
 
     let mut dep_config = build_config.clone();
-    let dep_path = {
-        canonical_path.pop();
-        canonical_path
-    };
+    let dep_path = canonical_path.parent().unwrap();
     dep_config.file_name = file_name;
-    dep_config.dir_of_code = Arc::new(dep_path);
-    let dep_namespace = create_new_scope(namespace);
-    let crate::InnerDependencyCompileResult {
-        name,
-        namespace: module,
-        ..
-    } = check!(
-        crate::compile_inner_dependency(file_as_string, dep_namespace, dep_config, dead_code_graph),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    dep_config.dir_of_code = Arc::new(dep_path.to_owned());
 
-    let name = match statement.alias {
-        Some(ref alias) => alias,
-        None => &name,
-    };
-    let name = name.as_str().to_string();
-    namespace.insert_module(name, module);
-    ok((), warnings, errors)
+    let alias = statement.alias.as_ref();
+    crate::compile_inner_dependency(file_str, alias, dep_config, namespace, dead_code_graph)
 }
 
 fn reassignment(
@@ -956,7 +872,6 @@ fn reassignment(
     let TypeCheckArguments {
         checkee: (lhs, rhs),
         namespace,
-        crate_namespace,
         self_type,
         build_config,
         dead_code_graph,
@@ -971,7 +886,7 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
+                    let thing_to_reassign = match namespace.resolve_symbol(&name).cloned().value {
                         Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
                             is_mutable,
@@ -979,10 +894,7 @@ fn reassignment(
                             ..
                         })) => {
                             if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable(
-                                    name.as_str().to_string(),
-                                    span.clone(),
-                                ));
+                                errors.push(CompileError::AssignmentToNonMutable { name });
                             }
 
                             body
@@ -997,8 +909,7 @@ fn reassignment(
                         }
                         None => {
                             errors.push(CompileError::UnknownVariable {
-                                var_name: name.as_str().to_string(),
-                                span: name.span().clone(),
+                                var_name: name.clone(),
                             });
                             return err(warnings, errors);
                         }
@@ -1010,7 +921,6 @@ fn reassignment(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: rhs,
                             namespace,
-                            crate_namespace,
                             return_type_annotation: rhs_type_id,
                             help_text:
                                 "You can only reassign a value of the same type to a variable.",
@@ -1049,7 +959,6 @@ fn reassignment(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: expr.clone(),
                                 namespace,
-                                crate_namespace,
                                 return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text: Default::default(),
                                 self_type,
@@ -1112,7 +1021,6 @@ fn reassignment(
                         TypedExpression::type_check(TypeCheckArguments {
                             checkee: rhs,
                             namespace,
-                            crate_namespace,
                             return_type_annotation: ty_of_field,
                             help_text: Default::default(),
                             self_type,
@@ -1144,7 +1052,6 @@ fn reassignment(
         ReassignmentTarget::StorageField(fields) => reassign_storage_subfield(TypeCheckArguments {
             checkee: (fields, span, rhs),
             namespace,
-            crate_namespace,
             return_type_annotation: insert_type(TypeInfo::Unknown),
             help_text: Default::default(),
             self_type,
@@ -1157,9 +1064,149 @@ fn reassignment(
     }
 }
 
+/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
+/// which is meant to be the namespace of the subtrait in question
+fn handle_supertraits(
+    supertraits: &[Supertrait],
+    trait_namespace: &mut Namespace,
+) -> CompileResult<()> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    for supertrait in supertraits.iter() {
+        match trait_namespace
+            .resolve_call_path(&supertrait.name)
+            .ok(&mut warnings, &mut errors)
+            .cloned()
+        {
+            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                ref interface_surface,
+                ref methods,
+                ref supertraits,
+                ..
+            })) => {
+                // insert dummy versions of the interfaces for all of the supertraits
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    interface_surface
+                        .iter()
+                        .map(|x| x.to_dummy_func(Mode::NonAbi))
+                        .collect(),
+                );
+
+                // insert dummy versions of the methods of all of the supertraits
+                let dummy_funcs = check!(
+                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    dummy_funcs,
+                );
+
+                // Recurse to insert dummy versions of interfaces and methods of the *super*
+                // supertraits
+                check!(
+                    handle_supertraits(supertraits, trait_namespace),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            Some(TypedDeclaration::AbiDeclaration(_)) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
+            _ => errors.push(CompileError::TraitNotFound {
+                name: supertrait.name.clone(),
+            }),
+        }
+    }
+
+    ok((), warnings, errors)
+}
+
+fn type_check_trait_decl(
+    arguments: TypeCheckArguments<'_, TraitDeclaration>,
+) -> CompileResult<TypedDeclaration> {
+    let TypeCheckArguments {
+        checkee: trait_decl,
+        namespace,
+        return_type_annotation: _return_type_annotation,
+        help_text: _help_text,
+        build_config,
+        dead_code_graph,
+        ..
+    } = arguments;
+
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    // type check the interface surface
+    let interface_surface = check!(
+        type_check_interface_surface(trait_decl.interface_surface.to_vec(), namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // A temporary namespace for checking within the trait's scope.
+    let mut trait_namespace = namespace.clone();
+
+    // Recursively handle supertraits: make their interfaces and methods available to this trait
+    check!(
+        handle_supertraits(&trait_decl.supertraits, &mut trait_namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // insert placeholder functions representing the interface surface
+    // to allow methods to use those functions
+    trait_namespace.insert_trait_implementation(
+        CallPath {
+            prefixes: vec![],
+            suffix: trait_decl.name.clone(),
+            is_absolute: false,
+        },
+        TypeInfo::SelfType,
+        interface_surface
+            .iter()
+            .map(|x| x.to_dummy_func(Mode::NonAbi))
+            .collect(),
+    );
+    // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+    let _methods = check!(
+        type_check_trait_methods(
+            trait_decl.methods.clone(),
+            &mut trait_namespace,
+            insert_type(TypeInfo::SelfType),
+            build_config,
+            dead_code_graph,
+        ),
+        vec![],
+        warnings,
+        errors
+    );
+    let typed_trait_decl = TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+        name: trait_decl.name.clone(),
+        interface_surface,
+        methods: trait_decl.methods.to_vec(),
+        supertraits: trait_decl.supertraits.to_vec(),
+        visibility: trait_decl.visibility,
+    });
+    namespace.insert_symbol(trait_decl.name, typed_trait_decl.clone());
+    ok(typed_trait_decl, warnings, errors)
+}
+
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
-    namespace: crate::semantic_analysis::NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1217,8 +1264,7 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -1238,7 +1284,6 @@ fn type_check_trait_methods(
         ..
     } in methods
     {
-        let function_namespace = namespace;
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name,
@@ -1246,7 +1291,7 @@ fn type_check_trait_methods(
                  ..
              }| {
                 let r#type = check!(
-                    function_namespace.resolve_type_with_self(
+                    namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
                         name.span().clone(),
@@ -1256,7 +1301,7 @@ fn type_check_trait_methods(
                     warnings,
                     errors,
                 );
-                function_namespace.insert(
+                namespace.insert_symbol(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                         name: name.clone(),
@@ -1291,7 +1336,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1304,7 +1349,7 @@ fn type_check_trait_methods(
                     }
                 }) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.to_string(),
+                        name: name.clone(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_name.clone(),
@@ -1324,7 +1369,7 @@ fn type_check_trait_methods(
                     TypedFunctionParameter {
                         name,
                         r#type: check!(
-                            function_namespace.resolve_type_with_self(
+                            namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
                                 type_span.clone(),
@@ -1342,7 +1387,7 @@ fn type_check_trait_methods(
 
         // TODO check code block implicit return
         let return_type = check!(
-            function_namespace.resolve_type_with_self(
+            namespace.resolve_type_with_self(
                 return_type,
                 self_type,
                 return_type_span.clone(),
@@ -1355,8 +1400,7 @@ fn type_check_trait_methods(
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
-                namespace: function_namespace,
-                crate_namespace,
+                namespace,
                 return_type_annotation: return_type,
                 help_text: "Trait method body's return type does not match up with \
                                          its return type annotation.",
@@ -1387,6 +1431,77 @@ fn type_check_trait_methods(
         });
     }
     ok(methods_buf, warnings, errors)
+}
+
+/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
+/// the parameters and the return types are type checked.
+fn convert_trait_methods_to_dummy_funcs(
+    methods: &[FunctionDeclaration],
+    trait_namespace: &mut Namespace,
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let dummy_funcs = methods
+        .iter()
+        .map(
+            |FunctionDeclaration {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+                 ..
+             }| TypedFunctionDeclaration {
+                purity: Default::default(),
+                name: name.clone(),
+                body: TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: name.span().clone(),
+                },
+                parameters: parameters
+                    .iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             type_id,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name: name.clone(),
+                            r#type: check!(
+                                trait_namespace.resolve_type_with_self(
+                                    look_up_type_id(*type_id),
+                                    crate::type_engine::insert_type(TypeInfo::SelfType),
+                                    type_span.clone(),
+                                    true
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            ),
+                            type_span: type_span.clone(),
+                        },
+                    )
+                    .collect(),
+                span: name.span().clone(),
+                return_type: check!(
+                    trait_namespace.resolve_type_with_self(
+                        return_type.clone(),
+                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                        return_type_span.clone(),
+                        true
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                ),
+                return_type_span: return_type_span.clone(),
+                visibility: Visibility::Public,
+                type_parameters: vec![],
+                is_contract_call: false,
+            },
+        )
+        .collect::<Vec<_>>();
+
+    ok(dummy_funcs, warnings, errors)
 }
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
@@ -1430,7 +1545,7 @@ impl TypeCheckedStorageReassignment {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                join_spans(acc, field.span.clone())
+                Span::join(acc, field.span.clone())
             })
     }
     pub fn names(&self) -> Vec<Ident> {
@@ -1465,7 +1580,6 @@ fn reassign_storage_subfield(
     let TypeCheckArguments {
         checkee: (fields, span, rhs),
         namespace,
-        crate_namespace,
         return_type_annotation: _return_type_annotation,
         help_text: _help_text,
         self_type,
@@ -1500,8 +1614,7 @@ fn reassign_storage_subfield(
         Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
-                name: first_field.as_str().to_string(),
-                span: first_field.span().clone(),
+                name: first_field.clone(),
             });
             return err(warnings, errors);
         }
@@ -1549,8 +1662,7 @@ fn reassign_storage_subfield(
                 errors.push(CompileError::FieldNotFound {
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
-                    struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),
-                    span: field.span().clone(),
+                    struct_name: type_checked_buf.last().unwrap().name.clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1560,7 +1672,6 @@ fn reassign_storage_subfield(
         TypedExpression::type_check(TypeCheckArguments {
             checkee: rhs,
             namespace,
-            crate_namespace,
             return_type_annotation: curr_type,
             help_text: Default::default(),
             self_type,

@@ -4,8 +4,7 @@ use crate::{
     utils::SWAY_GIT_TAG,
 };
 use anyhow::{bail, Result};
-use forc_pkg::{check_program_type, manifest_file_missing, Manifest};
-use forc_util::find_manifest_dir;
+use forc_pkg::ManifestFile;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
@@ -19,14 +18,13 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest_dir =
-        find_manifest_dir(&curr_dir).ok_or_else(|| manifest_file_missing(curr_dir))?;
-    let manifest = Manifest::from_dir(&manifest_dir, SWAY_GIT_TAG)?;
-    check_program_type(&manifest, manifest_dir, TreeType::Contract)?;
+    let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
+    manifest.check_program_type(TreeType::Contract)?;
 
     let DeployCommand {
         path,
         use_orig_asm,
+        use_orig_parser,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -36,11 +34,13 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        locked,
     } = command;
 
     let build_command = BuildCommand {
         path,
         use_orig_asm,
+        use_orig_parser,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -50,6 +50,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        locked,
     };
 
     let compiled = forc_build::build(build_command)?;

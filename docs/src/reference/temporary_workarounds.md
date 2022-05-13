@@ -1,47 +1,8 @@
 # Temporary Workarounds
 
-## Standard Library
-
-The standard library is currently not distributed with `forc` if [installed via `cargo`](../introduction/installation.md#installing-from-cargo). It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's `Forc.toml` file:
-
-```toml
-[dependencies]
-std = { git = "https://github.com/FuelLabs/sway", branch = "master" }
-```
-
-Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
-
 ## Storage Variables and Mappings
 
-Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.
-
-```sway
-contract;
-
-use std::hash::*;
-use std::storage::*;
-
-abi Store {
-    fn store(x: u64, y: b256);
-}
-
-// Storage slot domain separator for a primitive
-const STORAGE_SLOT_PRIMITIVE: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-// Storage slot domain separator for a mapping
-const STORAGE_SLOT_MAPPING: b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
-
-impl Store for Contract {
-    fn store(x: u64, y: b256) {
-        // Compute storage slot for primitive and store `x`
-        let storage_slot_primitive = hash_value(STORAGE_SLOT_PRIMITIVE, HashMethod::Sha256);
-        store(storage_slot_primitive, x);
-
-        // Compute mapping slot for `y` and store `x`
-        let storage_slot_mapping = hash_pair(STORAGE_SLOT_MAPPING, y, HashMethod::Sha256);
-        store(storage_slot_mapping, x);
-    }
-}
-```
+Storage variables of types `str[]`, `b256`, `enum`, and arrays are not yet supported. After [this issue](https://github.com/FuelLabs/sway/issues/1229) is closed, it will be possible to read and write these types using [manual storage management](../blockchain-development/storage.md#manual-storage-management). Moreover, storage mappings have to be managed manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
 
 ## Serialization and Deserialization
 

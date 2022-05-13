@@ -7,7 +7,7 @@ use crate::{
     AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };
 
-use sway_types::{ident::Ident, join_spans, Span};
+use sway_types::{ident::Ident, Span};
 
 use either::Either;
 use pest;
@@ -26,7 +26,7 @@ pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
 use matcher::matcher;
-pub(crate) use method_name::MethodName;
+pub use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
@@ -236,8 +236,8 @@ impl LazyOp {
 
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
-    pub(crate) name: Ident,
-    pub(crate) value: Expression,
+    pub name: Ident,
+    pub value: Expression,
     pub(crate) span: Span,
 }
 
@@ -337,10 +337,10 @@ impl Expression {
         let first_expr = expr_iter.next().unwrap();
         let first_expr_result = check!(
             Expression::parse_from_pair_inner(first_expr.clone(), config),
-            ParserLifter::empty(error_recovery_exp(Span {
-                span: first_expr.as_span(),
-                path: path.clone(),
-            })),
+            ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                first_expr.as_span(),
+                path.clone(),
+            ))),
             warnings,
             errors
         );
@@ -349,10 +349,7 @@ impl Expression {
         // sometimes exprs are followed by ops in the same expr
         while let Some(op) = expr_iter.next() {
             let op_str = op.as_str().to_string();
-            let op_span = Span {
-                span: op.as_span(),
-                path: path.clone(),
-            };
+            let op_span = Span::from_pest(op.as_span(), path.clone());
 
             let op = check!(
                 parse_op(op, config),
@@ -365,20 +362,17 @@ impl Expression {
             let next_expr_result = match expr_iter.next() {
                 Some(o) => check!(
                     Expression::parse_from_pair_inner(o.clone(), config),
-                    ParserLifter::empty(error_recovery_exp(Span {
-                        span: o.as_span(),
-                        path: path.clone()
-                    })),
+                    ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                        o.as_span(),
+                        path.clone()
+                    ))),
                     warnings,
                     errors
                 ),
                 None => {
                     errors.push(CompileError::ExpectedExprAfterOp {
                         op: op_str,
-                        span: Span {
-                            span: expr_for_debug.as_span(),
-                            path: path.clone(),
-                        },
+                        span: Span::from_pest(expr_for_debug.as_span(), path.clone()),
                     });
                     ParserLifter::empty(error_recovery_exp(op_span))
                 }
@@ -398,16 +392,13 @@ impl Expression {
         } else {
             let expr_result = arrange_by_order_of_operations(
                 expr_result_or_op_buf,
-                Span {
-                    span: expr_for_debug.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(expr_for_debug.as_span(), path.clone()),
             )
             .unwrap_or_else(&mut warnings, &mut errors, || {
-                ParserLifter::empty(error_recovery_exp(Span {
-                    span: expr_for_debug.as_span(),
-                    path: path.clone(),
-                }))
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                    expr_for_debug.as_span(),
+                    path.clone(),
+                )))
             });
             ok(expr_result, warnings, errors)
         }
@@ -420,10 +411,7 @@ impl Expression {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
-        let span = Span {
-            span: expr.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(expr.as_span(), path.clone());
         let parsed_result = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr, config)
                 .map(|(value, span)| ParserLifter::empty(Expression::Literal { value, span }))
@@ -431,10 +419,7 @@ impl Expression {
                     ParserLifter::empty(error_recovery_exp(span))
                 }),
             Rule::func_app => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let span = Span::from_pest(expr.as_span(), path.clone());
                 let mut func_app_parts = expr.into_inner();
                 let first_part = func_app_parts.next().unwrap();
                 assert!(first_part.as_rule() == Rule::call_path);
@@ -458,10 +443,10 @@ impl Expression {
                 for argument in arguments.into_inner() {
                     let arg = check!(
                         Expression::parse_from_pair(argument.clone(), config),
-                        ParserLifter::empty(error_recovery_exp(Span {
-                            span: argument.as_span(),
-                            path: path.clone()
-                        })),
+                        ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                            argument.as_span(),
+                            path.clone()
+                        ))),
                         warnings,
                         errors
                     );
@@ -635,10 +620,7 @@ impl Expression {
                         warnings,
                         errors
                     );
-                    let span = Span {
-                        span: fields[i].as_span(),
-                        path: path.clone(),
-                    };
+                    let span = Span::from_pest(fields[i].as_span(), path.clone());
                     let mut value_result = check!(
                         Expression::parse_from_pair(fields[i + 1].clone(), config),
                         ParserLifter::empty(error_recovery_exp(span.clone())),
@@ -667,19 +649,13 @@ impl Expression {
             Rule::parenthesized_expression => {
                 check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
-                    ParserLifter::empty(error_recovery_exp(Span {
-                        span: expr.as_span(),
-                        path,
-                    })),
+                    ParserLifter::empty(error_recovery_exp(Span::from_pest(expr.as_span(), path,))),
                     warnings,
                     errors
                 )
             }
             Rule::code_block => {
-                let whole_block_span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let whole_block_span = Span::from_pest(expr.as_span(), path);
                 let expr = check!(
                     CodeBlock::parse_from_pair(expr, config),
                     CodeBlock {
@@ -697,10 +673,7 @@ impl Expression {
                 ParserLifter::empty(exp)
             }
             Rule::if_exp => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut if_exp_pairs = expr.into_inner();
                 let condition_pair = if_exp_pairs.next().unwrap();
                 let then_pair = if_exp_pairs.next().unwrap();
@@ -744,10 +717,7 @@ impl Expression {
                 }
             }
             Rule::asm_expression => {
-                let whole_block_span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let whole_block_span = Span::from_pest(expr.as_span(), path);
                 let asm_result = check!(
                     AsmExpression::parse_from_pair(expr, config),
                     return err(warnings, errors),
@@ -764,10 +734,7 @@ impl Expression {
                 }
             }
             Rule::method_exp => {
-                let whole_exp_span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let whole_exp_span = Span::from_pest(expr.as_span(), path.clone());
                 let mut parts = expr.into_inner();
                 let pair = parts.next().unwrap();
                 match pair.as_rule() {
@@ -800,10 +767,7 @@ impl Expression {
                                     warnings,
                                     errors
                                 );
-                                let span = Span {
-                                    span: fields[i].as_span(),
-                                    path: path.clone(),
-                                };
+                                let span = Span::from_pest(fields[i].as_span(), path.clone());
                                 let ParserLifter {
                                     value,
                                     mut var_decls,
@@ -840,10 +804,10 @@ impl Expression {
                                 mut var_decls,
                             } = check!(
                                 Expression::parse_from_pair(argument.clone(), config),
-                                ParserLifter::empty(error_recovery_exp(Span {
-                                    span: argument.as_span(),
-                                    path: path.clone()
-                                })),
+                                ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                                    argument.as_span(),
+                                    path.clone()
+                                ))),
                                 warnings,
                                 errors
                             );
@@ -871,10 +835,7 @@ impl Expression {
                         for name_part in name_parts {
                             expr = Expression::SubfieldExpression {
                                 prefix: Box::new(expr.clone()),
-                                span: Span {
-                                    span: name_part.as_span(),
-                                    path: path.clone(),
-                                },
+                                span: Span::from_pest(name_part.as_span(), path.clone()),
                                 field_to_access: check!(
                                     ident::parse_from_pair(name_part, config),
                                     continue,
@@ -932,10 +893,8 @@ impl Expression {
 
                         let (type_name, type_name_span) = match type_name {
                             Some(type_name) => {
-                                let type_name_span = Span {
-                                    span: type_name.as_span(),
-                                    path: path.clone(),
-                                };
+                                let type_name_span =
+                                    Span::from_pest(type_name.as_span(), path.clone());
                                 (
                                     TypeInfo::pair_as_str_to_type_info(type_name, config),
                                     type_name_span,
@@ -999,10 +958,10 @@ impl Expression {
                             for argument in arguments.into_inner() {
                                 let arg_result = check!(
                                     Expression::parse_from_pair(argument.clone(), config),
-                                    ParserLifter::empty(error_recovery_exp(Span {
-                                        span: argument.as_span(),
-                                        path: path.clone()
-                                    })),
+                                    ParserLifter::empty(error_recovery_exp(Span::from_pest(
+                                        argument.as_span(),
+                                        path.clone()
+                                    ))),
                                     warnings,
                                     errors
                                 );
@@ -1036,10 +995,7 @@ impl Expression {
             Rule::delineated_path => {
                 // this is either an enum expression or looking something
                 // up in libraries
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
                 let (maybe_type_args, maybe_instantiator) = {
@@ -1142,10 +1098,7 @@ impl Expression {
                 }
             }
             Rule::tuple_index => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let span = Span::from_pest(expr.as_span(), path.clone());
                 let mut inner = expr.into_inner();
                 let call_item = inner.next().expect("guarenteed by grammar");
                 assert_eq!(call_item.as_rule(), Rule::call_item);
@@ -1156,10 +1109,7 @@ impl Expression {
                     errors
                 );
                 let the_integer = inner.next().expect("guarenteed by grammar");
-                let the_integer_span = Span {
-                    span: the_integer.as_span(),
-                    path: path.clone(),
-                };
+                let the_integer_span = Span::from_pest(the_integer.as_span(), path.clone());
                 let index: Result<usize, CompileError> =
                     the_integer.as_str().trim().parse().map_err(|e| {
                         handle_parse_int_error(
@@ -1202,10 +1152,7 @@ impl Expression {
                 for name_part in name_parts {
                     let new_expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr_result.value.clone()),
-                        span: Span {
-                            span: name_part.as_span(),
-                            path: path.clone(),
-                        },
+                        span: Span::from_pest(name_part.as_span(), path.clone()),
                         field_to_access: check!(
                             ident::parse_from_pair(name_part, config),
                             continue,
@@ -1222,10 +1169,7 @@ impl Expression {
                 expr_result
             }
             Rule::abi_cast => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
                 let abi_name = iter.next().expect("guaranteed by grammar");
@@ -1293,16 +1237,10 @@ impl Expression {
                 );
                 errors.push(CompileError::UnimplementedRule(
                     a,
-                    Span {
-                        span: expr.as_span(),
-                        path: path.clone(),
-                    },
+                    Span::from_pest(expr.as_span(), path.clone()),
                 ));
                 // construct unit expression for error recovery
-                ParserLifter::empty(error_recovery_exp(Span {
-                    span: expr.as_span(),
-                    path,
-                }))
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(expr.as_span(), path)))
             }
         };
         ok(parsed_result, warnings, errors)
@@ -1321,10 +1259,7 @@ fn convert_unary_to_fn_calls(
     for item in iter {
         match item.as_rule() {
             Rule::unary_op => unary_stack.push((
-                Span {
-                    span: item.as_span(),
-                    path: config.map(|c| c.path()),
-                },
+                Span::from_pest(item.as_span(), config.map(|c| c.path())),
                 check!(
                     UnaryOp::parse_from_pair(item, config),
                     return err(warnings, errors),
@@ -1348,7 +1283,7 @@ fn convert_unary_to_fn_calls(
     while let Some((op_span, unary_op)) = unary_stack.pop() {
         let exp = unary_op.to_fn_application(
             expr_result.value.clone(),
-            join_spans(op_span.clone(), expr_result.value.span()),
+            Span::join(op_span.clone(), expr_result.value.span()),
             op_span,
         );
         expr_result = ParserLifter {
@@ -1368,7 +1303,7 @@ pub(crate) fn parse_storage_access(
     let mut errors = vec![];
     let path = config.map(|c| c.path());
     let span = item.as_span();
-    let span = Span { span, path };
+    let span = Span::from_pest(span, path);
     let mut parts = item.into_inner();
     let _storage_keyword = parts.next();
 
@@ -1425,20 +1360,14 @@ pub(crate) fn parse_array_index(
     let mut exp = Expression::ArrayIndex {
         prefix: Box::new(prefix_result.value),
         index: Box::new(first_result_index.value.to_owned()),
-        span: Span {
-            span: span.clone(),
-            path: path.clone(),
-        },
+        span: Span::from_pest(span.clone(), path.clone()),
     };
     for mut index_result in index_result_buf.into_iter().skip(1) {
         var_decls.append(&mut index_result.var_decls);
         exp = Expression::ArrayIndex {
             prefix: Box::new(exp),
             index: Box::new(index_result.value),
-            span: Span {
-                span: span.clone(),
-                path: path.clone(),
-            },
+            span: Span::from_pest(span.clone(), path.clone()),
         };
     }
     ok(
@@ -1457,10 +1386,7 @@ pub(crate) fn parse_built_in_expr(
 ) -> CompileResult<ParserLifter<Expression>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let span = Span {
-        span: item.as_span(),
-        path: config.map(|c| c.path()),
-    };
+    let span = Span::from_pest(item.as_span(), config.map(|c| c.path()));
     let mut iter = item.into_inner();
     let size_of = iter.next().expect("gaurenteed by grammar");
     let exp = match size_of.as_rule() {
@@ -1489,10 +1415,7 @@ pub(crate) fn parse_built_in_expr(
             let mut inner_iter = size_of.into_inner();
             let keyword = inner_iter.next().expect("guaranteed by grammar");
             let elem = inner_iter.next().expect("guaranteed by grammar");
-            let type_span = Span {
-                span: elem.as_span(),
-                path: config.map(|c| c.path()),
-            };
+            let type_span = Span::from_pest(elem.as_span(), config.map(|c| c.path()));
             let type_name = check!(
                 TypeInfo::parse_from_pair(elem, config),
                 TypeInfo::ErrorRecovery,
@@ -1536,16 +1459,11 @@ fn parse_subfield_path(
             );
             errors.push(CompileError::UnimplementedRule(
                 a,
-                Span {
-                    span: item.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
-            let exp_result = ParserLifter::empty(error_recovery_exp(Span {
-                span: item.as_span(),
-                path,
-            }));
+            let exp_result =
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(item.as_span(), path)));
             ok(exp_result, warnings, errors)
         }
     }
@@ -1571,10 +1489,7 @@ fn parse_call_item(
                     warnings,
                     errors
                 ),
-                span: Span {
-                    span: item.as_span(),
-                    path: config.map(|c| c.path()),
-                },
+                span: Span::from_pest(item.as_span(), config.map(|c| c.path())),
             };
             ParserLifter::empty(exp)
         }
@@ -1597,10 +1512,7 @@ fn parse_array_elems(
     let mut errors = Vec::new();
 
     let path = config.map(|cfg| cfg.path());
-    let span = Span {
-        span: elems.as_span(),
-        path: path.clone(),
-    };
+    let span = Span::from_pest(elems.as_span(), path.clone());
 
     let mut elem_iter = elems.into_inner();
     let first_elem = elem_iter.next().unwrap();
@@ -1611,7 +1523,7 @@ fn parse_array_elems(
             let init = Literal::parse_from_pair(first_elem, config)
                 .map(|(value, span)| ParserLifter::empty(Expression::Literal { value, span }))
                 .unwrap_or_else(&mut warnings, &mut errors, || {
-                    ParserLifter::empty(error_recovery_exp(Span { span, path }))
+                    ParserLifter::empty(error_recovery_exp(Span::from_pest(span, path)))
                 });
 
             // This is a constant integer expression we need to parse now into a count.  Currently
@@ -1633,10 +1545,7 @@ fn parse_array_elems(
             let span = first_elem.as_span();
             let first_elem_expr_result = check!(
                 Expression::parse_from_pair(first_elem, config),
-                ParserLifter::empty(error_recovery_exp(Span {
-                    span,
-                    path: path.clone()
-                })),
+                ParserLifter::empty(error_recovery_exp(Span::from_pest(span, path.clone()))),
                 warnings,
                 errors
             );
@@ -1644,10 +1553,7 @@ fn parse_array_elems(
                 let span = pair.as_span();
                 elems.push(check!(
                     Expression::parse_from_pair(pair, config),
-                    ParserLifter::empty(error_recovery_exp(Span {
-                        span,
-                        path: path.clone()
-                    })),
+                    ParserLifter::empty(error_recovery_exp(Span::from_pest(span, path.clone()))),
                     warnings,
                     errors
                 ));
@@ -1697,20 +1603,14 @@ fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
         a => {
             errors.push(CompileError::ExpectedOp {
                 op: a.to_string(),
-                span: Span {
-                    span: op.as_span(),
-                    path,
-                },
+                span: Span::from_pest(op.as_span(), path),
             });
             return err(Vec::new(), errors);
         }
     };
     ok(
         Op {
-            span: Span {
-                span: op.as_span(),
-                path,
-            },
+            span: Span::from_pest(op.as_span(), path),
             op_variant,
         },
         Vec::new(),
@@ -1891,8 +1791,8 @@ fn arrange_by_order_of_operations(
         let mut rhs = rhs.unwrap();
 
         // See above about special casing `&&` and `||`.
-        let span = join_spans(
-            join_spans(lhs.value.span(), op.span.clone()),
+        let span = Span::join(
+            Span::join(lhs.value.span(), op.span.clone()),
             rhs.value.span(),
         );
         let mut new_var_decls = lhs.var_decls;
@@ -2041,7 +1941,7 @@ pub(crate) fn desugar_match_expression(
         // 2a. Assemble the conditional that goes in the if primary expression.
         let mut conditional = None;
         for (left_req, right_req) in match_req_map.iter() {
-            let joined_span = join_spans(left_req.clone().span(), right_req.clone().span());
+            let joined_span = Span::join(left_req.clone().span(), right_req.clone().span());
             let condition = Expression::core_ops_eq(
                 vec![left_req.to_owned(), right_req.to_owned()],
                 joined_span,
@@ -2055,7 +1955,7 @@ pub(crate) fn desugar_match_expression(
                         op: crate::LazyOp::And,
                         lhs: Box::new(the_conditional.clone()),
                         rhs: Box::new(condition.clone()),
-                        span: join_spans(the_conditional.span(), condition.span()),
+                        span: Span::join(the_conditional.span(), condition.span()),
                     });
                 }
             }
@@ -2072,14 +1972,14 @@ pub(crate) fn desugar_match_expression(
                 type_ascription: TypeInfo::Unknown,
                 type_ascription_span: None,
             });
-            let new_span = join_spans(left_impl.span().clone(), right_impl.span());
+            let new_span = Span::join(left_impl.span().clone(), right_impl.span());
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
                 span: new_span.clone(),
             });
             code_block_stmts_span = match code_block_stmts_span {
                 None => Some(new_span),
-                Some(old_span) => Some(join_spans(old_span, new_span)),
+                Some(old_span) => Some(Span::join(old_span, new_span)),
             };
         }
         match result {
@@ -2095,7 +1995,7 @@ pub(crate) fn desugar_match_expression(
                 code_block_stmts.append(&mut contents);
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(whole_block_span.clone()),
-                    Some(old_span) => Some(join_spans(old_span, whole_block_span.clone())),
+                    Some(old_span) => Some(Span::join(old_span, whole_block_span.clone())),
                 };
             }
             result => {
@@ -2105,7 +2005,7 @@ pub(crate) fn desugar_match_expression(
                 });
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(result.span()),
-                    Some(old_span) => Some(join_spans(old_span, result.span())),
+                    Some(old_span) => Some(Span::join(old_span, result.span())),
                 };
             }
         }
@@ -2130,7 +2030,7 @@ pub(crate) fn desugar_match_expression(
                         condition: Box::new(conditional.clone()),
                         then: Box::new(code_block.clone()),
                         r#else: None,
-                        span: join_spans(conditional.span(), code_block.span()),
+                        span: Span::join(conditional.span(), code_block.span()),
                     }),
                 };
             }
@@ -2150,13 +2050,13 @@ pub(crate) fn desugar_match_expression(
                         }),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                        span: Span::join(code_block.clone().span(), right.clone().span()),
                     }),
                     Some(the_conditional) => Some(Expression::IfExp {
                         condition: Box::new(the_conditional),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                        span: Span::join(code_block.clone().span(), right.clone().span()),
                     }),
                 };
             }
@@ -2175,7 +2075,7 @@ pub(crate) fn desugar_match_expression(
                         r#else,
                         span: exp_span.clone(),
                     })),
-                    span: join_spans(code_block.clone().span(), exp_span),
+                    span: Span::join(code_block.clone().span(), exp_span),
                 });
             }
             Some(if_statement) => {
@@ -2217,10 +2117,7 @@ fn parse_if_let(
     let mut errors = vec![];
     let path = config.map(|c| c.path());
 
-    let span = Span {
-        span: expr.as_span(),
-        path: path.clone(),
-    };
+    let span = Span::from_pest(expr.as_span(), path.clone());
 
     let mut if_exp_pairs = expr.into_inner();
 
@@ -2247,10 +2144,7 @@ fn parse_if_let(
         errors
     );
 
-    let then_branch_span = Span {
-        span: then_branch_pair.as_span(),
-        path: path.clone(),
-    };
+    let then_branch_span = Span::from_pest(then_branch_pair.as_span(), path.clone());
 
     let then = check!(
         CodeBlock::parse_from_pair(then_branch_pair, config),
@@ -2263,10 +2157,7 @@ fn parse_if_let(
     );
 
     let maybe_else_branch = if let Some(ref else_branch) = maybe_else_branch_pair {
-        let else_span = Span {
-            path,
-            span: else_branch.as_span(),
-        };
+        let else_span = Span::from_pest(else_branch.as_span(), path);
         match else_branch.as_rule() {
             Rule::code_block => {
                 let block = check!(

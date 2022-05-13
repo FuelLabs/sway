@@ -98,7 +98,7 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
     match &dec {
         Declaration::VariableDeclaration(var_dec) => handle_expression(&var_dec.body, changes),
 
-        Declaration::StructDeclaration(_) => {
+        Declaration::StructDeclaration(_) | Declaration::StorageDeclaration(_) => {
             changes.push(Change::new(&ast_node.span, ChangeType::Struct))
         }
 

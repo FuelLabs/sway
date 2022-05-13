@@ -1,6 +1,6 @@
 # Introduction
 
-To get started with Forc and Sway start contract development, install the Sway toolchain and Fuel full node and set up your first project.
+To get started with Forc and Sway smart contract development, install the Sway toolchain and Fuel full node and set up your first project.
 
 - [Installation](./installation.md)
 - [Getting Started](./overview.md)

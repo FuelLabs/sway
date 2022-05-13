@@ -43,6 +43,8 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
+    /// If this expression deterministically_aborts 100% of the time, this function returns
+    /// `true`. Used in dead-code and control-flow analysis.
     pub(crate) fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
         match &self.expression {
@@ -184,7 +186,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: other,
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             help_text,
             self_type,
@@ -209,7 +210,6 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (name, arguments, type_arguments),
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text,
                     self_type,
@@ -225,7 +225,6 @@ impl TypedExpression {
                     checkee: (op, *lhs, *rhs),
                     return_type_annotation: insert_type(TypeInfo::Boolean),
                     namespace,
-                    crate_namespace,
                     help_text,
                     self_type,
                     build_config,
@@ -239,7 +238,6 @@ impl TypedExpression {
                 contents,
                 span,
                 namespace,
-                crate_namespace,
                 type_annotation,
                 help_text,
                 self_type,
@@ -259,7 +257,6 @@ impl TypedExpression {
                     checkee: (condition, then, r#else),
                     return_type_annotation: type_annotation,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -278,7 +275,6 @@ impl TypedExpression {
                     checkee: (*if_exp, cases_covered),
                     return_type_annotation: type_annotation,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -292,7 +288,6 @@ impl TypedExpression {
                 asm,
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -309,7 +304,6 @@ impl TypedExpression {
                 type_arguments,
                 fields,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -324,7 +318,6 @@ impl TypedExpression {
                 span,
                 field_to_access,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -343,7 +336,6 @@ impl TypedExpression {
                 type_arguments,
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -353,7 +345,6 @@ impl TypedExpression {
                 fields,
                 span,
                 namespace,
-                crate_namespace,
                 type_annotation,
                 self_type,
                 build_config,
@@ -371,7 +362,6 @@ impl TypedExpression {
                 index_span,
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -388,7 +378,6 @@ impl TypedExpression {
                 args,
                 type_arguments,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -403,7 +392,6 @@ impl TypedExpression {
                 address,
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -413,7 +401,6 @@ impl TypedExpression {
                 contents,
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -427,7 +414,6 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (*prefix, *index),
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -443,7 +429,6 @@ impl TypedExpression {
                     variant,
                     span,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -454,7 +439,6 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: field_names,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -479,7 +463,6 @@ impl TypedExpression {
                     help_text: Default::default(),
                     opts,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -490,7 +473,6 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: *exp,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -511,7 +493,6 @@ impl TypedExpression {
                 TypeCheckArguments {
                     checkee: (type_name, type_span),
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -618,10 +599,10 @@ impl TypedExpression {
     pub(crate) fn type_check_variable_expression(
         name: Ident,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
+        namespace: &Namespace,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let exp = match namespace.get_symbol(&name).value {
+        let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
             })) => TypedExpression {
@@ -643,21 +624,21 @@ impl TypedExpression {
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
                 return_type: decl.as_type(),
                 is_constant: IsConstant::Yes,
-                expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                expression: TypedExpressionVariant::AbiName(AbiName::Known(
+                    decl.name.clone().into(),
+                )),
                 span,
             },
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
-                    name: name.span().as_str().to_string(),
-                    span: name.span().clone(),
+                    name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
                 error_recovery_expr(name.span().clone())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: name.span().as_str().trim().to_string(),
-                    span: name.span().clone(),
+                    var_name: name.clone(),
                 });
                 error_recovery_expr(name.span().clone())
             }
@@ -675,7 +656,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
             namespace,
-            crate_namespace,
             self_type,
             build_config,
             dead_code_graph,
@@ -683,7 +663,7 @@ impl TypedExpression {
             ..
         } = arguments;
         let function_declaration = check!(
-            namespace.get_call_path(&name),
+            namespace.resolve_call_path(&name).cloned(),
             return err(warnings, errors),
             warnings,
             errors
@@ -692,8 +672,7 @@ impl TypedExpression {
             TypedDeclaration::FunctionDeclaration(decl) => decl,
             _ => {
                 errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str().to_string(),
-                    span: name.span(),
+                    name,
                     what_it_is: function_declaration.friendly_name(),
                 });
                 return err(warnings, errors);
@@ -705,7 +684,6 @@ impl TypedExpression {
             type_arguments,
             arguments,
             namespace,
-            crate_namespace,
             self_type,
             build_config,
             dead_code_graph,
@@ -720,7 +698,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (op, lhs, rhs),
             namespace,
-            crate_namespace,
             self_type,
             build_config,
             dead_code_graph,
@@ -739,7 +716,6 @@ impl TypedExpression {
                 opts,
                 self_type,
                 namespace,
-                crate_namespace,
                 return_type_annotation,
                 build_config,
                 dead_code_graph,
@@ -753,7 +729,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: rhs.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation,
                 help_text: Default::default(),
                 self_type,
@@ -786,8 +761,7 @@ impl TypedExpression {
     fn type_check_code_block(
         contents: CodeBlock,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
@@ -801,7 +775,6 @@ impl TypedExpression {
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: contents,
                 namespace,
-                crate_namespace,
                 return_type_annotation: type_annotation,
                 help_text,
                 self_type,
@@ -859,7 +832,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (scrutinee, expr, then, r#else),
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -886,7 +858,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *expr.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: enum_type,
                 help_text: "The return value of this expression must match the type of the pattern provided.",
                 self_type,
@@ -899,12 +870,12 @@ impl TypedExpression {
             warnings,
             errors
         ));
-        // put the variable and type of the enum variants inner type into the namespace for the
-        // "then" branch but not the else branch
-        let then_branch_scope = create_new_scope(namespace);
+        // put the variable and type of the enum variants inner type into a temporary namespace for
+        // the "then" branch, but not the else branch.
+        let mut then_namespace = namespace.clone();
         // calculate the return type of the variable by checking the enum variant's return type
 
-        then_branch_scope.insert(
+        then_namespace.insert_symbol(
             variable_to_assign.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: variable_to_assign.clone(),
@@ -926,8 +897,7 @@ impl TypedExpression {
         let (then, then_branch_code_block_return_type) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: then,
-                namespace: then_branch_scope,
-                crate_namespace,
+                namespace: &mut then_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: "Because the return value of this expression is used, all branches of `if let` expression must return this type",
                 self_type,
@@ -973,7 +943,6 @@ impl TypedExpression {
                     TypedExpression::type_check(TypeCheckArguments {
                         checkee: *expr,
                         namespace,
-                        crate_namespace,
                         return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text:
                             "The two branches of an if let expression must return the same type.",
@@ -1047,7 +1016,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (condition, then, r#else),
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -1061,7 +1029,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *condition.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Boolean),
                 help_text: "The condition of an if expression must be a boolean expression.",
                 self_type,
@@ -1078,7 +1045,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1116,7 +1082,6 @@ impl TypedExpression {
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: *expr.clone(),
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -1194,7 +1159,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (if_exp, cases_covered),
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             self_type,
             build_config,
@@ -1205,7 +1169,6 @@ impl TypedExpression {
         let args = TypeCheckArguments {
             checkee: if_exp.clone(),
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,
@@ -1248,8 +1211,7 @@ impl TypedExpression {
     fn type_check_asm_expression(
         asm: AsmExpression,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1280,7 +1242,6 @@ impl TypedExpression {
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: initializer.clone(),
                                 namespace,
-                                crate_namespace,
                                 return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text: Default::default(),
                                 self_type,
@@ -1317,8 +1278,7 @@ impl TypedExpression {
         call_path: CallPath,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1327,28 +1287,40 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
-        let module = check!(
-            namespace.find_module_relative(&call_path.prefixes),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
 
-        let decl = match module.clone().get_symbol(&call_path.suffix).value {
-            Some(TypedDeclaration::StructDeclaration(decl)) => decl,
-            Some(_) => {
-                errors.push(CompileError::DeclaredNonStructAsStruct {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
-            }
-            None => {
-                errors.push(CompileError::StructNotFound {
-                    name: call_path.suffix.clone(),
-                    span,
-                });
-                return err(warnings, errors);
+        let decl = {
+            let module_path: Vec<_> = namespace
+                .mod_path()
+                .iter()
+                .chain(&call_path.prefixes)
+                .cloned()
+                .collect();
+            check!(
+                namespace.root().check_submodule(&module_path),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            match namespace
+                .root()
+                .resolve_symbol(&module_path, &call_path.suffix)
+                .value
+            {
+                Some(TypedDeclaration::StructDeclaration(decl)) => decl.clone(),
+                Some(_) => {
+                    errors.push(CompileError::DeclaredNonStructAsStruct {
+                        name: call_path.suffix.clone(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                None => {
+                    errors.push(CompileError::StructNotFound {
+                        name: call_path.suffix.clone(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
             }
         };
 
@@ -1361,7 +1333,7 @@ impl TypedExpression {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(join_spans)
+                    .reduce(Span::join)
                     .unwrap_or_else(|| call_path.suffix.span().clone());
                 errors.push(CompileError::DoesNotTakeTypeArguments {
                     name: call_path.suffix,
@@ -1384,8 +1356,13 @@ impl TypedExpression {
                         errors
                     );
                 }
+                // perform the monomorphization
                 check!(
-                    decl.monomorphize(&module, &type_arguments, Some(self_type)),
+                    decl.monomorphize(
+                        &mut namespace[&call_path.prefixes],
+                        &type_arguments,
+                        Some(self_type)
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1421,7 +1398,6 @@ impl TypedExpression {
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: expr_field.value,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: def_field.r#type,
                     help_text: "Struct field's type must match up with the type specified in its \
                      declaration.",
@@ -1471,8 +1447,7 @@ impl TypedExpression {
         prefix: Box<Expression>,
         span: Span,
         field_to_access: Ident,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1484,7 +1459,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *prefix,
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1514,14 +1488,13 @@ impl TypedExpression {
             field
         } else {
             errors.push(CompileError::FieldNotFound {
-                span: field_to_access.span().clone(),
                 available_fields: fields
                     .iter()
                     .map(|TypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.clone(),
-                struct_name: struct_name.to_string(),
+                struct_name,
             });
             return err(warnings, errors);
         };
@@ -1542,8 +1515,7 @@ impl TypedExpression {
     fn type_check_tuple(
         fields: Vec<Expression>,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1571,7 +1543,6 @@ impl TypedExpression {
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: field,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: field_type.type_id,
                     help_text: "tuple field type does not match the expected type",
                     self_type,
@@ -1611,15 +1582,19 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, Vec<Ident>>,
         span: &Span,
     ) -> CompileResult<TypedExpression> {
+        let TypeCheckArguments {
+            checkee, namespace, ..
+        } = arguments;
+
         let mut warnings = vec![];
         let mut errors = vec![];
-        if !arguments.namespace.has_storage_declared() {
+        if !namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
         }
 
         let storage_fields = check!(
-            arguments.namespace.get_storage_field_descriptors(),
+            namespace.get_storage_field_descriptors(),
             return err(warnings, errors),
             warnings,
             errors
@@ -1627,9 +1602,7 @@ impl TypedExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            arguments
-                .namespace
-                .apply_storage_load(arguments.checkee, &storage_fields),
+            namespace.apply_storage_load(checkee, &storage_fields),
             return err(warnings, errors),
             warnings,
             errors
@@ -1651,8 +1624,7 @@ impl TypedExpression {
         index: usize,
         index_span: Span,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1664,7 +1636,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix,
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -1720,8 +1691,7 @@ impl TypedExpression {
         span: Span,
         args: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1737,93 +1707,47 @@ impl TypedExpression {
         // an ambiguous reference error.
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
-        let module_result = namespace
-            .find_module_relative(&call_path.prefixes)
-            .ok(&mut probe_warnings, &mut probe_errors);
-        let (enum_module_combined_result, enum_module_combined_result_module) = {
-            // also, check if this is an enum _in_ another module.
-            let (module_path, enum_name) =
-                call_path.prefixes.split_at(call_path.prefixes.len() - 1);
-            let enum_name = enum_name[0].clone();
-            let namespace = namespace.find_module_relative(module_path);
-            let namespace = namespace.ok(&mut warnings, &mut errors);
-            let enum_module_combined_result = namespace.and_then(|ns| ns.find_enum(&enum_name));
-            (enum_module_combined_result, namespace)
-        };
 
-        // now we can see if this thing is a symbol (typed declaration) or reference to an
-        // enum instantiation, and if it is not either of those things, then it might be a
-        // function application
-        let exp: TypedExpression = match (module_result, enum_module_combined_result) {
-            (Some(_module), Some(_enum_res)) => {
+        // First, check if this could be a module. We check first so that we can check for
+        // ambiguity in the following enum check.
+        let is_module = namespace
+            .check_submodule(&call_path.prefixes)
+            .ok(&mut probe_warnings, &mut probe_errors)
+            .is_some();
+
+        // Check if the call path refers to an enum in another module.
+        let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
+        let abs_enum_mod_path: Vec<_> = namespace
+            .mod_path()
+            .iter()
+            .chain(enum_mod_path)
+            .cloned()
+            .collect();
+        let exp = if let Some(enum_decl) = namespace
+            .check_submodule_mut(enum_mod_path)
+            .ok(&mut warnings, &mut errors)
+            .map(|_| ())
+            .and_then(|_| {
+                namespace
+                    .root()
+                    .resolve_symbol(&abs_enum_mod_path, enum_name)
+                    .value
+            })
+            .and_then(|decl| decl.as_enum().cloned())
+        {
+            // Check for ambiguity between this enum name and a module name.
+            if is_module {
                 errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
-            (Some(module), None) => match module.get_symbol(&call_path.suffix).value {
-                Some(decl) => match decl {
-                    TypedDeclaration::EnumDeclaration(enum_decl) => {
-                        check!(
-                            instantiate_enum(
-                                module,
-                                enum_decl,
-                                call_path.suffix,
-                                args,
-                                type_arguments,
-                                namespace,
-                                crate_namespace,
-                                self_type,
-                                build_config,
-                                dead_code_graph,
-                                opts,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
-                    TypedDeclaration::FunctionDeclaration(func_decl) => check!(
-                        instantiate_function_application(
-                            func_decl,
-                            call_path,
-                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
-                            args,
-                            namespace,
-                            crate_namespace,
-                            self_type,
-                            build_config,
-                            dead_code_graph,
-                            opts,
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
-                    a => {
-                        errors.push(CompileError::NotAnEnum {
-                            name: call_path.friendly_name(),
-                            span,
-                            actually: a.friendly_name().to_string(),
-                        });
-                        return err(warnings, errors);
-                    }
-                },
-                None => {
-                    errors.push(CompileError::SymbolNotFound {
-                        name: call_path.suffix.as_str().to_string(),
-                        span: call_path.suffix.span().clone(),
-                    });
-                    return err(warnings, errors);
-                }
-            },
-            (None, Some(enum_decl)) => check!(
+            check!(
                 instantiate_enum(
-                    enum_module_combined_result_module.unwrap(),
+                    enum_mod_path,
                     enum_decl,
                     call_path.suffix,
                     args,
                     type_arguments,
                     namespace,
-                    crate_namespace,
                     self_type,
                     build_config,
                     dead_code_graph,
@@ -1832,14 +1756,78 @@ impl TypedExpression {
                 return err(warnings, errors),
                 warnings,
                 errors
-            ),
-            (None, None) => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: call_path.suffix.as_str().to_string(),
-                    span: call_path.suffix.span().clone(),
-                });
-                return err(warnings, errors);
+            )
+
+        // Otherwise, our prefix should point to some module ending with an enum or function.
+        } else if namespace
+            .check_submodule_mut(&call_path.prefixes)
+            .ok(&mut probe_warnings, &mut probe_errors)
+            .is_some()
+        {
+            let decl = match namespace.resolve_call_path(&call_path).value {
+                Some(decl) => decl.clone(),
+                None => {
+                    errors.push(CompileError::SymbolNotFound {
+                        name: call_path.suffix.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
+            match decl {
+                TypedDeclaration::EnumDeclaration(enum_decl) => {
+                    check!(
+                        instantiate_enum(
+                            &call_path.prefixes,
+                            enum_decl,
+                            call_path.suffix,
+                            args,
+                            type_arguments,
+                            namespace,
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            opts,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+                TypedDeclaration::FunctionDeclaration(func_decl) => {
+                    check!(
+                        instantiate_function_application(
+                            func_decl,
+                            call_path,
+                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
+                            args,
+                            namespace,
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            opts,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+                a => {
+                    // TODO: Should this be `NotAnEnumOrFunction`?
+                    errors.push(CompileError::NotAnEnum {
+                        name: call_path.friendly_name(),
+                        span,
+                        actually: a.friendly_name().to_string(),
+                    });
+                    return err(warnings, errors);
+                }
             }
+
+        // If prefix is neither a module or enum, there's nothing to be found.
+        } else {
+            errors.push(CompileError::SymbolNotFound {
+                name: call_path.suffix.clone(),
+            });
+            return err(warnings, errors);
         };
 
         ok(exp, warnings, errors)
@@ -1850,8 +1838,7 @@ impl TypedExpression {
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -1869,7 +1856,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *address,
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::B256),
                 help_text: "An address that is being ABI cast must be of type b256",
                 self_type,
@@ -1884,7 +1870,7 @@ impl TypedExpression {
         );
         // look up the call path and get the declaration it references
         let abi = check!(
-            namespace.get_call_path(&abi_name),
+            namespace.resolve_call_path(&abi_name).cloned(),
             return err(warnings, errors),
             warnings,
             errors
@@ -1910,7 +1896,7 @@ impl TypedExpression {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
                         let decl = check!(
-                            namespace.get_call_path(&abi_name),
+                            namespace.resolve_call_path(&abi_name).cloned(),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1969,7 +1955,6 @@ impl TypedExpression {
                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                     checkee: method.clone(),
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
@@ -2007,8 +1992,7 @@ impl TypedExpression {
     fn type_check_array(
         contents: Vec<Expression>,
         span: Span,
-        namespace: crate::semantic_analysis::NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -2039,7 +2023,6 @@ impl TypedExpression {
                     Self::type_check(TypeCheckArguments {
                         checkee: expr,
                         namespace,
-                        crate_namespace,
                         return_type_annotation: insert_type(TypeInfo::Unknown),
                         help_text: Default::default(),
                         self_type,
@@ -2097,7 +2080,6 @@ impl TypedExpression {
         let TypeCheckArguments {
             checkee: (prefix, index),
             namespace,
-            crate_namespace,
             self_type,
             build_config,
             dead_code_graph,
@@ -2111,7 +2093,6 @@ impl TypedExpression {
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: prefix.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -2131,7 +2112,6 @@ impl TypedExpression {
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: index,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::UnsignedInteger(
                         IntegerBits::SixtyFour
                     )),
@@ -2181,7 +2161,6 @@ impl TypedExpression {
                 vec![],
                 span,
                 namespace,
-                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -2202,8 +2181,7 @@ impl TypedExpression {
     fn type_check_delayed_resolution(
         variant: DelayedResolutionVariant,
         span: Span,
-        namespace: NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -2219,7 +2197,6 @@ impl TypedExpression {
                 let args = TypeCheckArguments {
                     checkee: *exp,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -2292,7 +2269,6 @@ impl TypedExpression {
                 let args = TypeCheckArguments {
                     checkee: *exp,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type,
@@ -2403,14 +2379,15 @@ impl TypedExpression {
         );
         let return_type = match builtin {
             BuiltinProperty::SizeOfType => {
-                crate::type_engine::insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
             }
-            BuiltinProperty::IsRefType => crate::type_engine::insert_type(TypeInfo::Boolean),
+            BuiltinProperty::IsRefType => insert_type(TypeInfo::Boolean),
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::TypeProperty {
                 property: builtin,
                 type_id,
+                span: span.clone(),
             },
             return_type,
             is_constant: IsConstant::No,
@@ -2425,8 +2402,6 @@ impl TypedExpression {
         new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let pest_span = span.clone().span;
-        let path = span.clone().path;
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
@@ -2437,8 +2412,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2448,8 +2422,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2459,8 +2432,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2470,8 +2442,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -2482,8 +2453,7 @@ impl TypedExpression {
                         Literal::handle_parse_int_error(
                             e,
                             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                            pest_span,
-                            path,
+                            span.clone(),
                         )
                     }),
                     insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
@@ -2522,7 +2492,7 @@ impl TypedExpression {
 
 fn check_scrutinee_type(
     scrutinee: &Scrutinee,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<(TypeId, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -2547,14 +2517,14 @@ fn check_scrutinee_type(
 
 fn check_enum_scrutinee_type(
     call_path: &CallPath,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
     let decl: TypedDeclaration = check!(
-        namespace.get_call_path(&call_path),
+        namespace.resolve_call_path(&call_path).cloned(),
         return err(warnings, errors),
         warnings,
         errors
@@ -2569,7 +2539,7 @@ fn check_enum_scrutinee_type(
         }
     };
     let enum_decl = if !enum_decl.type_parameters.is_empty() {
-        enum_decl.monomorphize(&namespace)
+        enum_decl.monomorphize(namespace)
     } else {
         enum_decl
     };
@@ -2599,13 +2569,14 @@ mod tests {
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let namespace = create_module();
+        let mut namespace = Namespace::init_root(namespace::Module::default());
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
             use_orig_asm: false,
+            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
@@ -2615,8 +2586,7 @@ mod tests {
 
         TypedExpression::type_check(TypeCheckArguments {
             checkee: expr,
-            namespace,
-            crate_namespace: namespace,
+            namespace: &mut namespace,
             return_type_annotation: type_annotation,
             help_text: Default::default(),
             self_type,
@@ -2636,24 +2606,19 @@ mod tests {
 
     #[test]
     fn test_array_type_check_non_homogeneous_0() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::U64(0),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2669,24 +2634,19 @@ mod tests {
 
     #[test]
     fn test_array_type_check_non_homogeneous_1() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::U64(0),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2709,28 +2669,23 @@ mod tests {
 
     #[test]
     fn test_array_type_check_bad_count() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression::Array {
             contents: vec![
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
                 Expression::Literal {
                     value: Literal::Boolean(true),
-                    span: empty_span.clone(),
+                    span: Span::dummy(),
                 },
             ],
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -2746,14 +2701,9 @@ mod tests {
 
     #[test]
     fn test_array_type_check_empty() {
-        let empty_span = Span {
-            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-            path: None,
-        };
-
         let expr = Expression::Array {
             contents: Vec::new(),
-            span: empty_span,
+            span: Span::dummy(),
         };
 
         let comp_res = do_type_check(

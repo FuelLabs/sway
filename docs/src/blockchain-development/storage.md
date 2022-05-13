@@ -1,74 +1,51 @@
 # Storage
 
-When developing a [smart contract](../sway-on-chain/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistent storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
+When developing a [smart contract](../sway-program-types/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistent storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
 
 Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 
-<!--
-## Syntax
+## Storage Accesses Via the `storage` Keyword
 
-### Declaration
-
-The syntax of declaring storage space in Sway looks like this:
+Declaring variables in storage requires a `storage` declaration that contains a list of all your variables and their types as follows:
 
 ```sway
 storage {
-    owner: b256,
+    var1: Type1,
+    var2: Type2,
+    ...
 }
 ```
 
-It is very similar to a struct declaration, except with storage, you also have the option to specify an initial value:
+To write into a storage variable, you need to use the `storage` keyword as follows:
 
 ```sway
-storage {
-    owner: 0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd,
-}
+storage.var1 = v;
 ```
 
-This value is passed as a part of the transaction, which initializes storage upon contract deployment.
-
-### Access
-
-Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: _reading_ and _writing_.
-
-#### Reading from Storage
-
-Reading from storage is less expensive than writing. To read a value from storage, use the `.read()` method:
+To read a storage variable, you also need to use the `storage` keyword as follows:
 
 ```sway
-storage {
-    owner: b256
-}
-
-impure fn get_owner() -> ref b256 {
-    storage.owner.read()
-}
+let v = storage.var1;
 ```
 
-This returns an immutable reference to a `b256` which is held in storage. The `read()` method itself copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. **This means that writing to a storage value will not update other variables that are holding references to that value acquired via `read()`**. If you'd like an actual `StorageRef` to the value itself, which does _not_ copy the value and instead incurs a storage read cost on every access, use `.direct_read()`.
+Notes:
 
-#### Writing to Storage
+* The only types currently supported by the syntax above are integers, Booleans, and structs.
+* The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
+* Storage, in general, is still work-in-progress and so, its use model may change in the future.
 
-Writing to storage is accomplished with the `.write()` method. The `.write()` method returns a special kind of mutable reference, called a `MutStorageRef`, which mutates storage directly upon every write. Writing to values of this type costs more gas than usual and should be minimized.
+## Manual Storage Management
+
+Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
+
+With this approach you will have to manually assign the internal key used for storage.
+
+An example is as follows:
 
 ```sway
-contract;
-
-storage {
-    owner: b256
-}
-
-impure fn main() {
-    let mutable_owner_ptr = write_owner();
-    deref mutable_owner_ptr = 0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f;
-}
-
-impure fn write_owner() -> MutStorageRef<b256> {
-    storage.owner.write()
-}
+{{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-Note that to write to a mutable reference, you must dereference it first. See [the chapter on reference types](../basics/reference_types.md) for more information on reference types in general.
--->
+Note, if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).

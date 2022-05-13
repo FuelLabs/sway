@@ -60,10 +60,10 @@ impl TypeParameter {
         let params = match (type_params_pair, where_clause_pair) {
             (None, None) => vec![],
             (None, Some(where_clause_pair)) => {
-                errors.push(CompileError::UnexpectedWhereClause(Span {
-                    span: where_clause_pair.as_span(),
+                errors.push(CompileError::UnexpectedWhereClause(Span::from_pest(
+                    where_clause_pair.as_span(),
                     path,
-                }));
+                )));
                 return err(warnings, errors);
             }
             (Some(type_params_pair), None) => check!(
@@ -109,6 +109,10 @@ impl TypeParameter {
             }
         };
         ok(params, warnings, errors)
+    }
+
+    pub fn span(&self) -> Span {
+        self.name_ident.span().clone()
     }
 
     fn parse_from_type_params(
