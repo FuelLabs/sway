@@ -2,6 +2,8 @@ library math;
 
 use ::revert::revert;
 
+const EXPONENTIATION_OVERFLOW = 11;
+
 pub trait Root {
     fn sqrt(self) -> Self;
 }
@@ -56,15 +58,16 @@ pub trait Exponentiate {
 impl Exponentiate for u64 {
     fn pow(self, exponent: Self) -> Self {
         let empty_return = (0u64, 0u64);
-        let(value, overflow) = asm(r1: self, r2: exponent, r3, output: empty_return) {
+        let(value, overflow) = asm(r1: self, r2: exponent, r3, output: empty_return, r4: 1) {
+            // flag r4;
             exp r3 r1 r2;
             sw output r3 i0; // store the word at r3 in output + 0 words
             sw output of i1; // store the word at `of` in output + 1 word
             output: (u64, u64)
         };
-
+        log_u64(overflow);
         if overflow != 0 {
-            revert(11);
+            revert(EXPONENTIATION_OVERFLOW);
         };
 
         value
