@@ -5,9 +5,9 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait},
-    semantic_analysis::*,
+    semantic_analysis::{namespace_system::Namespace, TCOpts, TypeCheckArguments},
     type_engine::*,
-    CallPath, Ident,
+    CallPath, Ident, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use sway_types::span::Span;

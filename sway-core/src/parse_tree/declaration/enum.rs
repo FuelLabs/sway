@@ -6,7 +6,7 @@ use crate::{
     semantic_analysis::{
         ast_node::{TypedEnumDeclaration, TypedEnumVariant},
         insert_type_parameters,
-        namespace::Namespace,
+        namespace_system::Namespace,
     },
     style::is_upper_camel_case,
     type_engine::*,

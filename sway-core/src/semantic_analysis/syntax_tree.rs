@@ -1,4 +1,5 @@
 use super::{
+    namespace_system::{Module, Namespace},
     node_dependencies, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
     TypedFunctionDeclaration,
 };
@@ -8,11 +9,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::Purity,
-    semantic_analysis::{
-        ast_node::Mode,
-        namespace::{self, Namespace},
-        TypeCheckArguments,
-    },
+    semantic_analysis::{ast_node::Mode, TypeCheckArguments},
     type_engine::*,
     AstNode, ParseTree,
 };
@@ -31,24 +28,24 @@ pub enum TreeType {
 pub enum TypedParseTree {
     Script {
         main_function: TypedFunctionDeclaration,
-        namespace: namespace::Module,
+        namespace: Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration,
-        namespace: namespace::Module,
+        namespace: Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: namespace::Module,
+        namespace: Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: namespace::Module,
+        namespace: Module,
         all_nodes: Vec<TypedAstNode>,
     },
 }
@@ -67,7 +64,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn namespace(&self) -> &namespace::Module {
+    pub fn namespace(&self) -> &Module {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -77,7 +74,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn into_namespace(self) -> namespace::Module {
+    pub fn into_namespace(self) -> Module {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,

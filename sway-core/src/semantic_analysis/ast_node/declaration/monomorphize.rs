@@ -2,8 +2,11 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    namespace,
-    semantic_analysis::{insert_type_parameters, CopyTypes, TypeMapping},
+    semantic_analysis::{
+        insert_type_parameters,
+        namespace_system::{Items, Path, Root},
+        CopyTypes, TypeMapping,
+    },
     type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
     CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
 };
@@ -19,15 +22,11 @@ pub(crate) trait Monomorphize {
         enforce_type_arguments: bool,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
-        namespace: &mut namespace::Root,
-        module_path: &namespace::Path,
+        namespace: &mut Root,
+        module_path: &Path,
     ) -> CompileResult<Self::Output>;
 
-    fn monomorphize_inner(
-        self,
-        type_mapping: &TypeMapping,
-        namespace: &mut namespace::Items,
-    ) -> Self::Output;
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }
 
 impl<T> Monomorphize for T
@@ -42,8 +41,8 @@ where
         enforce_type_arguments: bool,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
-        namespace: &mut namespace::Root,
-        module_path: &namespace::Path,
+        namespace: &mut Root,
+        module_path: &Path,
     ) -> CompileResult<Self::Output> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -155,7 +154,7 @@ where
         }
     }
 
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut namespace::Items) -> T {
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> T {
         let old_type_id = self.type_id();
         let mut new_decl = self;
         new_decl.copy_types(type_mapping);

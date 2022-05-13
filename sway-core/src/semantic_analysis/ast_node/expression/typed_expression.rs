@@ -2006,10 +2006,12 @@ impl TypedExpression {
 mod tests {
     use std::sync::Mutex;
 
+    use crate::semantic_analysis::namespace_system::Module;
+
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut namespace = Namespace::init_root(namespace::Module::default());
+        let mut namespace = Namespace::init_root(Module::default());
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),

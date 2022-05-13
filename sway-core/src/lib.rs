@@ -29,13 +29,11 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
+use semantic_analysis::namespace_system::{Module, Namespace, Root};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub use semantic_analysis::{
-    namespace::{self, Namespace},
-    TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
-};
+pub use semantic_analysis::{TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree};
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
 
@@ -192,7 +190,7 @@ pub enum CompilationResult {
     },
     Library {
         name: Ident,
-        namespace: Box<namespace::Root>,
+        namespace: Box<Root>,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -332,7 +330,7 @@ pub(crate) fn compile_inner_dependency(
 
 pub fn compile_to_ast(
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: Module,
     build_config: &BuildConfig,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -408,7 +406,7 @@ pub fn compile_to_ast(
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: Module,
     build_config: BuildConfig,
 ) -> CompilationResult {
     let ast_res = compile_to_ast(input, initial_namespace, &build_config);
@@ -561,7 +559,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
 /// bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {

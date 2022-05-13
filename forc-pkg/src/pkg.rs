@@ -17,7 +17,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
+    semantic_analysis::namespace_system, source_map::SourceMap, BytecodeCompilationResult,
     CompileAstResult, CompileError, TreeType, TypedParseTree,
 };
 use sway_utils::constants;
@@ -954,18 +954,18 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, namespace::Module>,
+    namespace_map: &HashMap<NodeIx, namespace_system::Module>,
     graph: &Graph,
     compilation_order: &[NodeIx],
     node: NodeIx,
-) -> namespace::Module {
+) -> namespace_system::Module {
     use petgraph::visit::{Dfs, Walker};
 
     // Find all nodes that are a dependency of this one with a depth-first search.
     let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
 
     // In order of compilation, accumulate dependency namespaces as submodules.
-    let mut namespace = namespace::Module::default();
+    let mut namespace = namespace_system::Module::default();
     for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
         if dep_node == node {
             break;
@@ -1007,9 +1007,9 @@ pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
-    namespace: namespace::Module,
+    namespace: namespace_system::Module,
     source_map: &mut SourceMap,
-) -> Result<(Compiled, Option<namespace::Root>)> {
+) -> Result<(Compiled, Option<namespace_system::Root>)> {
     let entry_path = manifest.entry_path();
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;

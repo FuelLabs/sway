@@ -5,10 +5,11 @@ use crate::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
             instantiate_unsafe_downcast,
         },
+        namespace_system::Namespace,
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
     type_engine::unify,
-    CompileResult, Ident, Literal, Namespace,
+    CompileResult, Ident, Literal,
 };
 
 use sway_types::span::Span;

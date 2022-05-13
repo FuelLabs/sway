@@ -4,7 +4,7 @@ use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::parser::{Rule, SwayParser};
-use crate::semantic_analysis::{namespace::Namespace, TCOpts};
+use crate::semantic_analysis::TCOpts;
 use pest::iterators::Pairs;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
