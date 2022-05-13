@@ -1,9 +1,7 @@
 use super::{FunctionDeclaration, TraitFn};
-use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule};
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident};
 
 use sway_types::{ident::Ident, span::Span};
-
-use pest::iterators::Pair;
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.

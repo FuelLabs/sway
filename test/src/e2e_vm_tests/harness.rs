@@ -147,6 +147,8 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
         fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
         fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+    println!("{}", oracle_contents);
+    println!("{}", output_contents);
     if oracle_contents != output_contents {
         bail!("Mismatched ABI JSON output.");
     }

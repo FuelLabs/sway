@@ -2,7 +2,6 @@
 
 use crate::{
     convert_parse_tree::ConvertParseTreeError,
-    parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
     VariableDeclaration,

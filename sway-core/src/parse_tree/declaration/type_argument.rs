@@ -1,6 +1,5 @@
 use std::hash::{Hash, Hasher};
 
-use pest::iterators::Pair;
 use sway_types::Span;
 
 use crate::{
@@ -43,42 +42,6 @@ impl Default for TypeArgument {
 }
 
 impl TypeArgument {
-    pub(crate) fn parse_arguments_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let iter = pair.into_inner();
-        let mut type_arguments = vec![];
-        for type_arg in iter {
-            type_arguments.push(check!(
-                Self::parse_from_pair(type_arg, config),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        ok(type_arguments, warnings, errors)
-    }
-
-    pub(crate) fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let span = Span::from_pest(pair.as_span(), config.map(|c| c.path()));
-        let type_id = insert_type(check!(
-            TypeInfo::parse_from_pair(pair, config),
-            TypeInfo::ErrorRecovery,
-            warnings,
-            errors
-        ));
-        let type_argument = TypeArgument { type_id, span };
-        ok(type_argument, warnings, errors)
-    }
-
     pub(crate) fn friendly_type_str(&self) -> String {
         look_up_type_id(self.type_id).friendly_type_str()
     }
