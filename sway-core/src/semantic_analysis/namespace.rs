@@ -239,7 +239,7 @@ impl Items {
         &mut self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, usize)],
+        type_mapping: &[(TypeParameter, TypeId)],
     ) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.
