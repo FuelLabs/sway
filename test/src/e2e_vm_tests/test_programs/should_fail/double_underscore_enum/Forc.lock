@@ -1,12 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'double_underscore_enum'
-dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.12.2#2b6e9384f06692ec627293ae5db5e2f748fe2c30']
-
-[[package]]
-name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.12.2#2b6e9384f06692ec627293ae5db5e2f748fe2c30'
-dependencies = ['core']
+dependencies = []
