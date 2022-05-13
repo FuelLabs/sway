@@ -135,7 +135,7 @@ impl Engine {
             }
 
             (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name == r_name =>
+                if l_name.as_str() == r_name.as_str() =>
             {
                 (vec![], vec![])
             }
@@ -156,17 +156,22 @@ impl Engine {
                 Struct {
                     name: a_name,
                     fields: a_fields,
+                    type_parameters: a_parameters,
                     ..
                 },
                 Struct {
                     name: b_name,
                     fields: b_fields,
+                    type_parameters: b_parameters,
                     ..
                 },
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_fields.len() == b_fields.len() {
+                if a_name == b_name
+                    && a_fields.len() == b_fields.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
@@ -187,15 +192,20 @@ impl Engine {
                 Enum {
                     name: a_name,
                     variant_types: a_variants,
+                    type_parameters: a_parameters,
                 },
                 Enum {
                     name: b_name,
                     variant_types: b_variants,
+                    type_parameters: b_parameters,
                 },
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_variants.len() == b_variants.len() {
+                if a_name == b_name
+                    && a_variants.len() == b_variants.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
