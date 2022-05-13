@@ -9,7 +9,7 @@ pub use variable::*;
 
 pub(crate) use self::{
     create_type_id::CreateTypeId,
-    monomorphize::{Monomorphize, MonomorphizeHelper},
+    monomorphize::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
 };
 
 use super::{impl_trait::Mode, CopyTypes, TypeMapping, TypedCodeBlock, TypedExpression};

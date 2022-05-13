@@ -20,6 +20,8 @@ use sway_types::Span;
 mod function_parameter;
 pub use function_parameter::*;
 
+use super::EnforceTypeArguments;
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
     pub(crate) name: Ident,
@@ -141,7 +143,7 @@ impl TypedFunctionDeclaration {
                             look_up_type_id(parameter.type_id),
                             self_type,
                             &parameter.type_span,
-                            true
+                            EnforceTypeArguments::Yes
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
@@ -175,7 +177,7 @@ impl TypedFunctionDeclaration {
                     return_type,
                     self_type,
                     &return_type_span,
-                    true
+                    EnforceTypeArguments::Yes
                 ),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,

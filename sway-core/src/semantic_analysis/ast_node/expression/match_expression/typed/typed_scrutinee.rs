@@ -1,6 +1,6 @@
 use sway_types::{Ident, Span};
 
-use crate::semantic_analysis::declaration::CreateTypeId;
+use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
 use crate::semantic_analysis::TypedEnumVariant;
 use crate::Namespace;
 use crate::{
@@ -82,7 +82,13 @@ impl TypedScrutinee {
                 .clone();
                 // monomorphize the struct definition
                 let struct_decl = check!(
-                    namespace.monomorphize(struct_decl, vec!(), false, Some(self_type), None),
+                    namespace.monomorphize(
+                        struct_decl,
+                        vec!(),
+                        EnforceTypeArguments::No,
+                        Some(self_type),
+                        None
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -147,7 +153,13 @@ impl TypedScrutinee {
                 .clone();
                 // monomorphize the enum definition
                 let enum_decl = check!(
-                    namespace.monomorphize(enum_decl, vec!(), false, Some(self_type), None),
+                    namespace.monomorphize(
+                        enum_decl,
+                        vec!(),
+                        EnforceTypeArguments::No,
+                        Some(self_type),
+                        None
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -1,4 +1,4 @@
-use ast_node::declaration::Monomorphize;
+use ast_node::declaration::{EnforceTypeArguments, Monomorphize};
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -30,7 +30,7 @@ pub(crate) fn instantiate_enum(
     let enum_decl = check!(
         enum_decl.monomorphize(
             type_arguments,
-            false,
+            EnforceTypeArguments::No,
             Some(self_type),
             Some(enum_field_name.span()),
             namespace.root_mut(),

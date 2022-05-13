@@ -1,4 +1,6 @@
-use crate::semantic_analysis::declaration::{CreateTypeId, Monomorphize, MonomorphizeHelper};
+use crate::semantic_analysis::declaration::{
+    CreateTypeId, EnforceTypeArguments, Monomorphize, MonomorphizeHelper,
+};
 use crate::semantic_analysis::{CopyTypes, TypedExpression};
 use crate::{
     type_engine::*, CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
@@ -114,7 +116,7 @@ impl Namespace {
         type_info: TypeInfo,
         self_type: TypeId,
         span: &Span,
-        enforce_type_args: bool,
+        enforce_type_args: EnforceTypeArguments,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type_with_self(
             type_info,
@@ -139,7 +141,7 @@ impl Namespace {
         &mut self,
         decl: T,
         type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: bool,
+        enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
     ) -> CompileResult<T>

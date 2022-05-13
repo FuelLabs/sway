@@ -1,4 +1,4 @@
-use crate::semantic_analysis::declaration::{CreateTypeId, Monomorphize};
+use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments, Monomorphize};
 use crate::semantic_analysis::TypedExpression;
 use crate::{
     error::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration,
@@ -70,7 +70,7 @@ impl Root {
         type_info: TypeInfo,
         self_type: TypeId,
         span: &Span,
-        enforce_type_arguments: bool,
+        enforce_type_arguments: EnforceTypeArguments,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
@@ -184,7 +184,14 @@ impl Root {
                 {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
                         let new_decl = check!(
-                            decl.monomorphize(type_arguments, false, None, None, self, mod_path),
+                            decl.monomorphize(
+                                type_arguments,
+                                EnforceTypeArguments::No,
+                                None,
+                                None,
+                                self,
+                                mod_path
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -193,7 +200,14 @@ impl Root {
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let new_decl = check!(
-                            decl.monomorphize(type_arguments, false, None, None, self, mod_path),
+                            decl.monomorphize(
+                                type_arguments,
+                                EnforceTypeArguments::No,
+                                None,
+                                None,
+                                self,
+                                mod_path
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -271,7 +285,7 @@ impl Root {
                 look_up_type_id(r#type),
                 self_type,
                 method_name.span(),
-                false,
+                EnforceTypeArguments::No,
                 method_prefix,
             ),
             insert_type(TypeInfo::ErrorRecovery),

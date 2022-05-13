@@ -5,6 +5,7 @@ use crate::{
     parser::Rule,
     semantic_analysis::{
         ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+        declaration::EnforceTypeArguments,
         insert_type_parameters,
         namespace_system::Namespace,
     },
@@ -170,7 +171,12 @@ impl EnumVariant {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => {
                 check!(
-                    namespace.resolve_type_with_self(self.r#type.clone(), self_type, &span, false),
+                    namespace.resolve_type_with_self(
+                        self.r#type.clone(),
+                        self_type,
+                        &span,
+                        EnforceTypeArguments::No
+                    ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,

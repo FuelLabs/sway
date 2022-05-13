@@ -9,6 +9,8 @@ mod unsafe_downcast;
 
 use std::collections::{HashMap, VecDeque};
 
+use ast_node::declaration::EnforceTypeArguments;
+
 use self::{
     enum_instantiation::instantiate_enum, function_application::instantiate_function_application,
     function_application::instantiate_function_application_simple,
@@ -567,7 +569,7 @@ impl TypedExpression {
                 look_up_type_id(typed_expression.return_type),
                 self_type,
                 &expr_span,
-                false
+                EnforceTypeArguments::No
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -1002,7 +1004,12 @@ impl TypedExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, &asm_span, false),
+            namespace.resolve_type_with_self(
+                asm.return_type.clone(),
+                self_type,
+                &asm_span,
+                EnforceTypeArguments::No
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -1090,12 +1097,22 @@ impl TypedExpression {
             errors
         )
         .clone();
+        if struct_decl.name.as_str() == "ExampleStruct" {
+            println!(
+                "\n\n{}",
+                module_path
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join("::")
+            );
+        }
 
         // monomorphize the struct definition
         let mut struct_decl = check!(
             struct_decl.monomorphize(
                 type_arguments,
-                false,
+                EnforceTypeArguments::No,
                 Some(self_type),
                 None,
                 namespace.root_mut(),
@@ -1884,7 +1901,12 @@ impl TypedExpression {
             ..
         } = arguments;
         let type_id = check!(
-            namespace.resolve_type_with_self(type_name, self_type, &type_span, true),
+            namespace.resolve_type_with_self(
+                type_name,
+                self_type,
+                &type_span,
+                EnforceTypeArguments::Yes
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,

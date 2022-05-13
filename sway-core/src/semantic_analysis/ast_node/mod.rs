@@ -1,3 +1,5 @@
+use self::declaration::EnforceTypeArguments;
+
 use super::{namespace_system::Namespace, ERROR_RECOVERY_DECLARATION};
 
 use crate::{
@@ -228,7 +230,12 @@ impl TypedAstNode {
         let mut type_check_ascribed_expr =
             |namespace: &mut Namespace, type_ascription: TypeInfo, value| {
                 let type_id = check!(
-                    namespace.resolve_type_with_self(type_ascription, self_type, &node.span, false),
+                    namespace.resolve_type_with_self(
+                        type_ascription,
+                        self_type,
+                        &node.span,
+                        EnforceTypeArguments::No
+                    ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
@@ -299,7 +306,7 @@ impl TypedAstNode {
                                     type_ascription,
                                     self_type,
                                     &type_ascription_span,
-                                    true,
+                                    EnforceTypeArguments::Yes,
                                 )
                                 .value
                             {
@@ -571,7 +578,10 @@ impl TypedAstNode {
                                         }
                                         None => check!(
                                             namespace.resolve_type_with_self(
-                                                r#type, self_type, &type_span, false
+                                                r#type,
+                                                self_type,
+                                                &type_span,
+                                                EnforceTypeArguments::No
                                             ),
                                             insert_type(TypeInfo::ErrorRecovery),
                                             warnings,
@@ -1284,7 +1294,7 @@ fn type_check_interface_surface(
                                     look_up_type_id(type_id),
                                     crate::type_engine::insert_type(TypeInfo::SelfType),
                                     &type_span,
-                                    true
+                                    EnforceTypeArguments::Yes
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -1299,7 +1309,7 @@ fn type_check_interface_surface(
                         return_type,
                         crate::type_engine::insert_type(TypeInfo::SelfType),
                         &return_type_span,
-                        true
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1344,7 +1354,7 @@ fn type_check_trait_methods(
                         look_up_type_id(*r#type),
                         insert_type(TypeInfo::SelfType),
                         name.span(),
-                        true
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1422,7 +1432,7 @@ fn type_check_trait_methods(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
                                 &type_span,
-                                true
+                                EnforceTypeArguments::Yes
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
                             warnings,
@@ -1436,7 +1446,12 @@ fn type_check_trait_methods(
 
         // TODO check code block implicit return
         let return_type = check!(
-            namespace.resolve_type_with_self(return_type, self_type, &return_type_span, true,),
+            namespace.resolve_type_with_self(
+                return_type,
+                self_type,
+                &return_type_span,
+                EnforceTypeArguments::Yes
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -1515,7 +1530,7 @@ fn convert_trait_methods_to_dummy_funcs(
                                     look_up_type_id(*type_id),
                                     insert_type(TypeInfo::SelfType),
                                     type_span,
-                                    true
+                                    EnforceTypeArguments::Yes
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -1531,7 +1546,7 @@ fn convert_trait_methods_to_dummy_funcs(
                         return_type.clone(),
                         insert_type(TypeInfo::SelfType),
                         return_type_span,
-                        true
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

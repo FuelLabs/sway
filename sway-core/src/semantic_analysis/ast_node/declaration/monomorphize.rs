@@ -13,13 +13,19 @@ use crate::{
 
 use super::CreateTypeId;
 
+#[derive(Clone, Copy)]
+pub(crate) enum EnforceTypeArguments {
+    Yes,
+    No,
+}
+
 pub(crate) trait Monomorphize {
     type Output;
 
     fn monomorphize(
         self,
         type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: bool,
+        enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
         namespace: &mut Root,
@@ -38,7 +44,7 @@ where
     fn monomorphize(
         self,
         type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: bool,
+        enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
         namespace: &mut Root,
@@ -49,7 +55,7 @@ where
         match (self.type_parameters().is_empty(), type_arguments.is_empty()) {
             (true, true) => ok(self, warnings, errors),
             (false, true) => {
-                if enforce_type_arguments {
+                if let EnforceTypeArguments::Yes = enforce_type_arguments {
                     errors.push(CompileError::NeedsTypeArguments {
                         name: self.name().clone(),
                         span: call_site_span.unwrap_or_else(|| self.name().span()).clone(),
