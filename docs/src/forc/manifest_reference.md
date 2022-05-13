@@ -8,7 +8,7 @@ The `Forc.toml` (the *manifest* file) is a compulsory file for each package and 
   * [`organization`](#) — The organization of the project.
   * [`license`](#) — The project license.
   * [`entry`](#) — The entry point of the project.
-  * [`implicit_std`](#) - Controls wheter provided std version (with current *forc* version) will be added as a dependency *implicitly*  
+  * [`implicit_std`](#) -  Controls whether provided `std` version (with current `forc` version) will get added as a dependency *implicitly*.  
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * [`[network]`](#) — Defines a network for forc to interact with.
