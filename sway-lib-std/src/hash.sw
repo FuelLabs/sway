@@ -125,7 +125,7 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
     }
 }
 
-// Registers are 64 bits (8 bytes) wide. Words are the same width as registers.
+/// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
     let result_buffer: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     if !is_reference_type::<T>() {
