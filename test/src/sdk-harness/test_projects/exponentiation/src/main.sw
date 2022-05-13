@@ -1,7 +1,7 @@
 script;
 
 use std::{ assert::assert, math::*, chain::log_u64 };
-use std::panic::panic;
+use std::revert::revert;
 
 
 fn main() -> bool {
@@ -18,7 +18,8 @@ fn main() -> bool {
     assert(100.pow(5) == 10000000000);
     assert(100.pow(8) == 10000000000000000);
     assert(100.pow(9) == 1000000000000000000);
-    // assert(100.pow(10) == max_u64); // 100000000000000000000 int literal out of range, `$of` should be set to `1`
+    let val = 100.pow(10);
+    // assert(val == max_u64); // this should revert. $of is set to 1
     assert(2.pow(0) == 1);
     assert(0.pow(1) == 0);
     assert(0.pow(2) == 0);
