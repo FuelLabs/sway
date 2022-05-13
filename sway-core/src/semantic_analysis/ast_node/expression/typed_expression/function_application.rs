@@ -12,8 +12,7 @@ pub(crate) fn instantiate_function_application(
     call_path: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -80,7 +79,6 @@ pub(crate) fn instantiate_function_application(
             let args = TypeCheckArguments {
                 checkee: arg.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: param.r#type,
                 help_text: "The argument that has been provided to this function's type does \
                     not match the declared type of the parameter in the function \

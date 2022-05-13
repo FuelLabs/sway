@@ -190,7 +190,7 @@ jobs:
         name: Cargo Build Workspace
         with:
           command: build
-          args: --workspace --all-features --all-targets
+          args: --locked --workspace --all-features --all-targets
         env:
           RUSTFLAGS: '-D warnings'
 
@@ -273,7 +273,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --release --bin test
+          args: --locked --release --bin test
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
@@ -305,7 +305,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin examples-checker build --all-examples
+          args: --locked --bin examples-checker build --all-examples
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh && cd ../../../
       - name: Cargo Test sway-lib-std
@@ -343,6 +343,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --locked
 
   forc-documenter-dry-run:
     needs: cancel-previous-runs
@@ -390,17 +391,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin examples-checker build --all-examples
+          args: --locked --bin examples-checker build --all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-udeps
+          args: --locked cargo-udeps
       - name: Check Unused Deps
         uses: actions-rs/cargo@v1
         with:
           command: udeps
-          args: --all-targets
+          args: --locked --all-targets
 
   notify-slack-on-failure:
     needs:
@@ -430,7 +431,7 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
   publish:
     # Only do this job if publishing a release
@@ -493,7 +494,7 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
   build-publish-master-image:
     needs:
@@ -574,7 +575,7 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
@@ -629,4 +630,4 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}

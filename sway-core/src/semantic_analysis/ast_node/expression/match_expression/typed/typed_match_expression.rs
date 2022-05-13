@@ -9,7 +9,7 @@ use crate::{
         IsConstant, TypeCheckArguments, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
-    CompileError, CompileResult, LazyOp, Literal, MatchBranch, NamespaceRef, Scrutinee, TypeInfo,
+    CompileError, CompileResult, LazyOp, Literal, MatchBranch, Namespace, Scrutinee, TypeInfo,
 };
 
 use super::typed_match_branch::TypedMatchBranch;
@@ -33,7 +33,6 @@ impl TypedMatchExpression {
         let TypeCheckArguments {
             checkee: (typed_value, branches),
             namespace,
-            crate_namespace,
             return_type_annotation,
             self_type,
             build_config,
@@ -51,7 +50,6 @@ impl TypedMatchExpression {
                 TypedMatchBranch::type_check(TypeCheckArguments {
                     checkee: (&typed_value, branch),
                     namespace,
-                    crate_namespace,
                     return_type_annotation,
                     help_text: "all branches of a match statement must return the same type",
                     self_type,
@@ -78,8 +76,7 @@ impl TypedMatchExpression {
 
     pub(crate) fn convert_to_typed_if_expression(
         self,
-        namespace: NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -104,7 +101,6 @@ impl TypedMatchExpression {
                         vec![left_req, right_req],
                         joined_span,
                         namespace,
-                        crate_namespace,
                         self_type
                     ),
                     continue,

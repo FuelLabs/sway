@@ -169,6 +169,27 @@ impl<T> CompileResult<T> {
     }
 }
 
+impl<'a, T> CompileResult<&'a T>
+where
+    T: Clone,
+{
+    /// Converts a `CompileResult` around a reference value to an owned value by cloning the type
+    /// behind the reference.
+    pub fn cloned(self) -> CompileResult<T> {
+        let CompileResult {
+            value,
+            warnings,
+            errors,
+        } = self;
+        let value = value.cloned();
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+}
+
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -624,6 +645,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
         name: String,
@@ -636,6 +659,14 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not an enum.")]
+    DeclIsNotAnEnum { actually: String, span: Span },
+    #[error("This is a {actually}, not a struct.")]
+    DeclIsNotAStruct { actually: String, span: Span },
+    #[error("This is a {actually}, not a function.")]
+    DeclIsNotAFunction { actually: String, span: Span },
+    #[error("This is a {actually}, not a variable.")]
+    DeclIsNotAVariable { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -1068,6 +1099,7 @@ impl CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span().clone(),
             SymbolNotFound { name, .. } => name.span().clone(),
             ImportPrivateSymbol { name } => name.span().clone(),
@@ -1128,6 +1160,10 @@ impl CompileError {
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAStruct { span, .. } => span.clone(),
+            DeclIsNotAFunction { span, .. } => span.clone(),
+            DeclIsNotAVariable { span, .. } => span.clone(),
             PureCalledImpure { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),

@@ -8,7 +8,7 @@ use crate::{
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
     type_engine::unify,
-    CompileResult, Ident, Literal, NamespaceRef,
+    CompileResult, Ident, Literal, Namespace,
 };
 
 use sway_types::span::Span;
@@ -65,7 +65,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 pub(crate) fn matcher(
     exp: &TypedExpression,
     scrutinee: TypedScrutinee,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -123,7 +123,7 @@ fn match_variable(
 fn match_struct(
     exp: &TypedExpression,
     fields: Vec<TypedStructScrutineeField>,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -136,7 +136,7 @@ fn match_struct(
     } in fields.into_iter()
     {
         let subfield = check!(
-            instantiate_struct_field_access(exp.clone(), field.clone(), field_span, namespace),
+            instantiate_struct_field_access(exp.clone(), field.clone(), field_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -168,7 +168,7 @@ fn match_enum(
     variant: TypedEnumVariant,
     scrutinee: TypedScrutinee,
     span: Span,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -187,7 +187,7 @@ fn match_tuple(
     exp: &TypedExpression,
     elems: Vec<TypedScrutinee>,
     span: Span,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];

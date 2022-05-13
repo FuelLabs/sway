@@ -3,13 +3,12 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     semantic_analysis::{
-        ast_node::expression::match_expression::typed::typed_scrutinee::TypedScrutinee,
-        create_new_scope, IsConstant, TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
-        TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedVariableDeclaration,
-        VariableMutability,
+        ast_node::expression::match_expression::typed::typed_scrutinee::TypedScrutinee, IsConstant,
+        TypeCheckArguments, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
+        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::{insert_type, unify_with_self},
-    CompileResult, MatchBranch, NamespaceWrapper, Scrutinee, TypeInfo, TypedDeclaration,
+    CompileResult, MatchBranch, Scrutinee, TypeInfo, TypedDeclaration,
 };
 
 use super::matcher::{matcher, MatchReqMap};
@@ -32,7 +31,6 @@ impl TypedMatchBranch {
         let TypeCheckArguments {
             checkee: (typed_value, branch),
             namespace,
-            crate_namespace,
             return_type_annotation,
             self_type,
             build_config,
@@ -65,7 +63,7 @@ impl TypedMatchBranch {
         );
 
         // create a new namespace for this branch
-        let namespace = create_new_scope(namespace);
+        let mut namespace = namespace.clone();
 
         // for every item in the declarations map, create a variable declaration,
         // insert it into the branch namespace, and add it to a block of code statements
@@ -80,7 +78,7 @@ impl TypedMatchBranch {
                 type_ascription,
                 const_decl_origin: false,
             });
-            namespace.insert(left_decl, var_decl.clone());
+            namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {
                 content: TypedAstNodeContent::Declaration(var_decl),
                 span,
@@ -91,8 +89,7 @@ impl TypedMatchBranch {
         let typed_result = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: result,
-                namespace,
-                crate_namespace,
+                namespace: &mut namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text,
                 self_type,

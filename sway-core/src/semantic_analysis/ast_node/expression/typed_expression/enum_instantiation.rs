@@ -1,4 +1,4 @@
-use generational_arena::Index;
+use ast_node::declaration::Monomorphize;
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -11,13 +11,12 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    module: Index,
+    enum_module_path: &namespace::Path,
     enum_decl: TypedEnumDeclaration,
-    call_path: CallPath,
+    enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    namespace: NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -26,17 +25,15 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let instantiation_span = call_path.span();
-    let enum_field_name = call_path.suffix;
-
     // monomorphize the enum definition with the type arguments
     let enum_decl = check!(
         enum_decl.monomorphize(
             type_arguments,
             false,
-            &module,
             Some(self_type),
-            Some(&instantiation_span)
+            Some(enum_field_name.span()),
+            namespace.root_mut(),
+            enum_module_path
         ),
         return err(warnings, errors),
         warnings,
@@ -62,7 +59,7 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    instantiation_span,
+                    instantiation_span: enum_field_name.span().clone(),
                 },
                 is_constant: IsConstant::No,
                 span: enum_field_name.span().clone(),
@@ -75,7 +72,6 @@ pub(crate) fn instantiate_enum(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
                     namespace,
-                    crate_namespace,
                     return_type_annotation: enum_variant.r#type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
@@ -100,7 +96,7 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        instantiation_span,
+                        instantiation_span: enum_field_name.span().clone(),
                     },
                     is_constant: IsConstant::No,
                     span: enum_field_name.span().clone(),

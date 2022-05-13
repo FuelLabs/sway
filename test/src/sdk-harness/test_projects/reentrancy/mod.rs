@@ -1,4 +1,4 @@
-use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId, Salt};
+use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId};
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels_abigen_macro::abigen;
@@ -80,10 +80,8 @@ async fn get_attacker_instance(
     provider: Provider,
     wallet: Wallet,
 ) -> (AttackerContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract(
         "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract.bin",
-        salt,
     )
     .unwrap();
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
@@ -96,10 +94,8 @@ async fn get_attacker_instance(
 }
 
 async fn get_target_instance(provider: Provider, wallet: Wallet) -> (TargetContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract(
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
-        salt,
     )
     .unwrap();
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())

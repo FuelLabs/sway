@@ -3,7 +3,7 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     semantic_analysis::{IsConstant, TypedExpression, TypedExpressionVariant},
-    CompileError, CompileResult, NamespaceRef, NamespaceWrapper,
+    CompileError, CompileResult, Namespace,
 };
 
 pub(crate) fn instantiate_tuple_index_access(
@@ -11,7 +11,7 @@ pub(crate) fn instantiate_tuple_index_access(
     index: usize,
     index_span: Span,
     span: Span,
-    namespace: NamespaceRef,
+    namespace: &mut Namespace,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];

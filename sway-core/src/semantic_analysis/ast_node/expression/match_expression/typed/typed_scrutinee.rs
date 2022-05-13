@@ -1,13 +1,13 @@
 use sway_types::{Ident, Span};
 
-use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::ast_node::declaration::Monomorphize;
+use crate::semantic_analysis::declaration::CreateTypeId;
 use crate::semantic_analysis::TypedEnumVariant;
+use crate::Namespace;
 use crate::{
     error::{err, ok},
     semantic_analysis::TypedStructField,
     type_engine::{insert_type, TypeId},
-    CompileResult, Literal, NamespaceRef, NamespaceWrapper, Scrutinee, TypeArgument, TypeInfo,
+    CompileResult, Literal, Scrutinee, TypeArgument, TypeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ pub(crate) struct TypedStructScrutineeField {
 impl TypedScrutinee {
     pub(crate) fn type_check(
         scrutinee: Scrutinee,
-        namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -66,16 +66,23 @@ impl TypedScrutinee {
                 fields,
                 span,
             } => {
-                // grab the struct definition
-                let struct_decl = check!(
-                    namespace.expect_struct_decl_from_name(&struct_name),
+                // find the struct definition from the name
+                let unknown_decl = check!(
+                    namespace.resolve_symbol(&struct_name).cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+                let struct_decl = check!(
+                    unknown_decl.expect_struct(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .clone();
                 // monomorphize the struct definition
                 let struct_decl = check!(
-                    struct_decl.monomorphize(vec!(), false, &namespace, Some(self_type), None),
+                    namespace.monomorphize(struct_decl, vec!(), false, Some(self_type), None),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -124,16 +131,23 @@ impl TypedScrutinee {
                 // grab the enum name and variant name from the call path
                 let enum_name = call_path.prefixes.last().unwrap().clone();
                 let variant_name = call_path.suffix;
-                // grab the enum definition
-                let enum_decl = check!(
-                    namespace.expect_enum_decl_from_name(&enum_name), // TODO: edit this so that it is found via call_path
+                // find the enum definition from the name
+                let unknown_decl = check!(
+                    namespace.resolve_symbol(&enum_name).cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+                let enum_decl = check!(
+                    unknown_decl.expect_enum(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .clone();
                 // monomorphize the enum definition
                 let enum_decl = check!(
-                    enum_decl.monomorphize(vec!(), false, &namespace, Some(self_type), None),
+                    namespace.monomorphize(enum_decl, vec!(), false, Some(self_type), None),
                     return err(warnings, errors),
                     warnings,
                     errors

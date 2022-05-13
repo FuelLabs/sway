@@ -5,7 +5,8 @@ use crate::{
     parser::Rule,
     semantic_analysis::{
         ast_node::{TypedEnumDeclaration, TypedEnumVariant},
-        insert_type_parameters, NamespaceRef, NamespaceWrapper,
+        insert_type_parameters,
+        namespace::Namespace,
     },
     style::is_upper_camel_case,
     type_engine::*,
@@ -37,7 +38,7 @@ impl EnumDeclaration {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: crate::semantic_analysis::NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
     ) -> TypedEnumDeclaration {
         let mut errors = vec![];
@@ -158,24 +159,26 @@ impl EnumDeclaration {
 impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: NamespaceRef,
+        namespace: &mut Namespace,
         self_type: TypeId,
         span: Span,
         type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<TypedEnumVariant> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let enum_variant_type =
-            if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
+        let enum_variant_type = match self.r#type.matches_type_parameter(type_mapping) {
+            Some(matching_id) => {
                 insert_type(TypeInfo::Ref(matching_id))
-            } else {
+            },
+            None => {
                 check!(
                     namespace.resolve_type_with_self(self.r#type.clone(), self_type, &span, false),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 )
-            };
+            }
+        };
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),

@@ -24,6 +24,10 @@ fn main() -> bool {
 
     let v = WrapperEnum::Variant(u);
 
+    if let AnEnum::Variant = AnEnum::Variant {
+        void();
+    }
+
     true
 }
 
@@ -58,4 +62,7 @@ impl FuelTrait for u64 {
 
 trait FuelTrait {
     fn foo() -> bool;
+}
+
+fn void() {
 }

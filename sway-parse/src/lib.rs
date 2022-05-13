@@ -1,4 +1,5 @@
 pub mod assignable;
+pub mod attribute;
 pub mod brackets;
 pub mod dependency;
 mod error;
@@ -41,7 +42,7 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        FnArg, FnArgs, FnSignature, Item, TypeField,
+        FnArg, FnArgs, FnSignature, ItemKind, TypeField,
     },
     keywords::{DoubleColonToken, ImpureToken, PubToken},
     literal::{LitInt, LitIntType, Literal},

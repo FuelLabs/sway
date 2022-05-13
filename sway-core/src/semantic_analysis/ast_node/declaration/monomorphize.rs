@@ -2,10 +2,10 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
+    namespace,
     semantic_analysis::{insert_type_parameters, CopyTypes, TypeMapping},
     type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
-    CompileError, CompileResult, NamespaceRef, NamespaceWrapper, TypeArgument, TypeInfo,
-    TypeParameter,
+    CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
 };
 
 use super::CreateTypeId;
@@ -17,15 +17,16 @@ pub(crate) trait Monomorphize {
         self,
         type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: bool,
-        namespace: &NamespaceRef,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
     ) -> CompileResult<Self::Output>;
 
     fn monomorphize_inner(
         self,
         type_mapping: &TypeMapping,
-        namespace: &NamespaceRef,
+        namespace: &mut namespace::Items,
     ) -> Self::Output;
 }
 
@@ -39,9 +40,10 @@ where
         self,
         type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: bool,
-        namespace: &NamespaceRef,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
     ) -> CompileResult<Self::Output> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -56,7 +58,13 @@ where
                     return err(warnings, errors);
                 }
                 let type_mapping = insert_type_parameters(self.type_parameters());
-                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
+                let module = check!(
+                    namespace.check_submodule_mut(module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let new_decl = self.monomorphize_inner(&type_mapping, module);
                 ok(new_decl, warnings, errors)
             }
             (true, false) => {
@@ -80,9 +88,12 @@ where
                             self_type,
                             &type_argument.span,
                             enforce_type_arguments,
+                            module_path,
                         ),
-                        None => namespace
-                            .resolve_type_without_self(&look_up_type_id(type_argument.type_id)),
+                        None => namespace.resolve_type_without_self(
+                            &look_up_type_id(type_argument.type_id),
+                            module_path,
+                        ),
                     };
                     type_argument.type_id = check!(
                         type_id,
@@ -132,13 +143,19 @@ where
                         }
                     }
                 }
-                let new_decl = self.monomorphize_inner(&type_mapping, namespace);
+                let module = check!(
+                    namespace.check_submodule_mut(module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let new_decl = self.monomorphize_inner(&type_mapping, module);
                 ok(new_decl, warnings, errors)
             }
         }
     }
 
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &NamespaceRef) -> T {
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut namespace::Items) -> T {
         let old_type_id = self.type_id();
         let mut new_decl = self;
         new_decl.copy_types(type_mapping);
