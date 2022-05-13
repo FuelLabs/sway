@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate pest_derive;
-#[macro_use]
 pub mod error;
 
 mod asm_generation;
@@ -12,7 +10,6 @@ mod control_flow_analysis;
 mod convert_parse_tree;
 mod optimize;
 pub mod parse_tree;
-mod parser;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
@@ -27,8 +24,6 @@ use crate::{
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
-use pest::iterators::Pair;
-use pest::Parser;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -127,60 +122,32 @@ impl ParseTree {
 /// ```
 ///
 /// # Panics
-/// Panics if the generated parser from Pest panics.
+/// Panics if the parser from panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let use_orig_parser = config
-        .map(|config| config.use_orig_parser)
-        .unwrap_or_default();
-    if use_orig_parser {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
-        let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
-            Ok(o) => o,
-            Err(e) => {
-                let path = config.map(|config| config.path());
-                return err(
-                    Vec::new(),
-                    vec![CompileError::ParseFailure {
-                        span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
-                        err: e,
-                    }],
-                );
-            }
-        };
-        let parsed_root = check!(
-            parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        ok(parsed_root, warnings, errors)
-    } else {
-        let path = config.map(|config| config.path());
-        let program = match sway_parse::parse_file(input, path) {
-            Ok(program) => program,
-            Err(error) => {
-                let errors = match error {
-                    sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-                    sway_parse::ParseFileError::Parse(errors) => errors
-                        .into_iter()
-                        .map(|error| CompileError::Parse { error })
-                        .collect(),
-                };
-                return err(vec![], errors);
-            }
-        };
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
-        let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
-        let sway_parse_tree = check!(
-            compile_result,
-            return err(warnings, errors),
-            warnings,
-            errors,
-        );
-        ok(sway_parse_tree, warnings, errors)
-    }
+    let path = config.map(|config| config.path());
+    let program = match sway_parse::parse_file(input, path) {
+        Ok(program) => program,
+        Err(error) => {
+            let errors = match error {
+                sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
+                sway_parse::ParseFileError::Parse(errors) => errors
+                    .into_iter()
+                    .map(|error| CompileError::Parse { error })
+                    .collect(),
+            };
+            return err(vec![], errors);
+        }
+    };
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
+    let sway_parse_tree = check!(
+        compile_result,
+        return err(warnings, errors),
+        warnings,
+        errors,
+    );
+    ok(sway_parse_tree, warnings, errors)
 }
 
 /// Represents the result of compiling Sway code via [compile_to_asm].

@@ -1251,40 +1251,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-pest_derive"
-version = "3.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "206d9d86c910f99d45f964762c47a760323479f0758e5e0bc88ec400617a2d11"
-dependencies = [
- "fuel-pest",
- "fuel-pest_generator",
-]
-
-[[package]]
-name = "fuel-pest_generator"
-version = "3.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e73112149dddbcc98624d43541fceada156458f8bab4bb022d7d564e2bb94568"
-dependencies = [
- "fuel-pest",
- "fuel-pest_meta",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "fuel-pest_meta"
-version = "3.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beeba7ab4966d3403cf2c2c30405c9e80e940bff82eac9ef04b592f393218bce"
-dependencies = [
- "fuel-pest",
- "maplit",
- "sha-1 0.9.8",
-]
-
-[[package]]
 name = "fuel-storage"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2015,12 +1981,6 @@ dependencies = [
  "serde_repr",
  "url",
 ]
-
-[[package]]
-name = "maplit"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "matches"
@@ -3262,8 +3222,6 @@ dependencies = [
  "either",
  "fuel-asm",
  "fuel-crypto",
- "fuel-pest",
- "fuel-pest_derive",
  "fuel-vm",
  "fuels-types",
  "hex",
