@@ -1,9 +1,8 @@
 script;
 
 fn main() {
-  __test()
+    __test()
 }
 
 fn __test() {
-
 }

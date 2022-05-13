@@ -1,6 +1,8 @@
 script;
 
-
-enum __MyEnum { Foo: (), Bar: () }
+enum __MyEnum {
+    Foo: (),
+    Bar: (),
+}
 fn main() {
 }

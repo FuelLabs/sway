@@ -1,8 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit_std = false
 license = "Apache-2.0"
 name = "double_underscore_var"
-
-[dependencies]
-core = { path = "../../../../../../sway-lib-core" }
