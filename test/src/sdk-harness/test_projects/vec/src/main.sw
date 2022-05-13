@@ -2,7 +2,7 @@ script;
 
 use std::assert::assert;
 use std::option::Option;
-use std::panic::panic;
+use std::revert::revert;
 use std::vec::Vec;
 
 fn main() -> bool {
@@ -20,6 +20,6 @@ fn test_vector_new() {
     if let Option::Some(inner_value) = val {
         assert(42 == inner_value);
     } else {
-        panic(0);
+        revert(0);
     }
 }
