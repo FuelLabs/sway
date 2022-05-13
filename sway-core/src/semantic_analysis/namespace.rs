@@ -546,7 +546,7 @@ impl Root {
 
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        ty: TypeInfo,
+        type_info: TypeInfo,
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: bool,
@@ -554,7 +554,7 @@ impl Root {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match ty {
+        let type_id = match type_info {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
@@ -607,6 +607,38 @@ impl Root {
             }
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
+            TypeInfo::Array(type_id, n) => {
+                let new_type_id = check!(
+                    self.resolve_type_with_self(
+                        look_up_type_id(type_id),
+                        self_type,
+                        span,
+                        enforce_type_arguments,
+                        mod_path
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Array(new_type_id, n))
+            }
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        self.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            span,
+                            enforce_type_arguments,
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Tuple(type_arguments))
+            }
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
@@ -614,13 +646,12 @@ impl Root {
 
     pub(crate) fn resolve_type_without_self(
         &mut self,
-        ty: &TypeInfo,
+        type_info: TypeInfo,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
-        let ty = ty.clone();
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match ty {
+        let type_id = match type_info {
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -648,10 +679,33 @@ impl Root {
                         );
                         new_decl.type_id()
                     }
-                    _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+                    _ => insert_type(TypeInfo::Unknown),
                 }
             }
             TypeInfo::Ref(id) => id,
+            TypeInfo::Array(type_id, n) => {
+                let new_type_id = check!(
+                    self.resolve_type_without_self(look_up_type_id(type_id), mod_path),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Array(new_type_id, n))
+            }
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        self.resolve_type_without_self(
+                            look_up_type_id(type_argument.type_id),
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Tuple(type_arguments))
+            }
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
@@ -718,7 +772,8 @@ impl Root {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        match methods.clone()
+        match methods
+            .clone()
             .into_iter()
             .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
         {
@@ -803,13 +858,27 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        ty: TypeInfo,
+        type_info: TypeInfo,
         self_type: TypeId,
         span: &Span,
         enforce_type_args: bool,
     ) -> CompileResult<TypeId> {
+        self.root.resolve_type_with_self(
+            type_info,
+            self_type,
+            span,
+            enforce_type_args,
+            &self.mod_path,
+        )
+    }
+
+    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        type_info: TypeInfo,
+    ) -> CompileResult<TypeId> {
         self.root
-            .resolve_type_with_self(ty, self_type, span, enforce_type_args, &self.mod_path)
+            .resolve_type_without_self(type_info, &self.mod_path)
     }
 
     /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.
@@ -844,11 +913,6 @@ impl Namespace {
     ) -> CompileResult<TypedFunctionDeclaration> {
         self.root
             .find_method_for_type(&self.mod_path, r#type, method_path, self_type, args_buf)
-    }
-
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(&mut self, ty: &TypeInfo) -> CompileResult<TypeId> {
-        self.root.resolve_type_without_self(ty, &self.mod_path)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

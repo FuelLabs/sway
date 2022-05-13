@@ -124,6 +124,10 @@ impl TypeParameter {
         ok(params, warnings, errors)
     }
 
+    pub fn span(&self) -> Span {
+        self.name_ident.span().clone()
+    }
+
     fn parse_from_type_params(
         type_params_pair: Pair<Rule>,
         config: Option<&BuildConfig>,

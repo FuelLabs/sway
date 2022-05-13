@@ -489,7 +489,7 @@ impl TypedAstNode {
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id = check!(
-                                impl_namespace.resolve_type_without_self(&type_implementing_for),
+                                impl_namespace.resolve_type_without_self(type_implementing_for),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -647,7 +647,7 @@ impl TypedAstNode {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, r#type } in fields {
                                 let r#type = check!(
-                                    namespace.resolve_type_without_self(&r#type),
+                                    namespace.resolve_type_without_self(r#type),
                                     return err(warnings, errors),
                                     warnings,
                                     errors

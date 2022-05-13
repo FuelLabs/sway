@@ -91,7 +91,7 @@ where
                             module_path,
                         ),
                         None => namespace.resolve_type_without_self(
-                            &look_up_type_id(type_argument.type_id),
+                            look_up_type_id(type_argument.type_id),
                             module_path,
                         ),
                     };

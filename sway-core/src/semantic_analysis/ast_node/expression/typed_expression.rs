@@ -1891,9 +1891,9 @@ impl TypedExpression {
         );
         let return_type = match builtin {
             BuiltinProperty::SizeOfType => {
-                crate::type_engine::insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
             }
-            BuiltinProperty::IsRefType => crate::type_engine::insert_type(TypeInfo::Boolean),
+            BuiltinProperty::IsRefType => insert_type(TypeInfo::Boolean),
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::TypeProperty {

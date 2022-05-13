@@ -167,9 +167,7 @@ impl EnumVariant {
         let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type = match self.r#type.matches_type_parameter(type_mapping) {
-            Some(matching_id) => {
-                insert_type(TypeInfo::Ref(matching_id))
-            },
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => {
                 check!(
                     namespace.resolve_type_with_self(self.r#type.clone(), self_type, &span, false),

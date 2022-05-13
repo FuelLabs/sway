@@ -11,10 +11,10 @@ move $r1 $sp                  ; save register for temporary stack value
 cfei i16                      ; allocate 16 bytes for temporary struct
 lw   $r0 data_0               ; literal instantiation
 sw   $r1 $r0 i0               ; insert_value @ 0
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i16              ; store value
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 move $r1 $sp                  ; save register for temporary stack value
 cfei i16                      ; allocate 16 bytes for temporary struct
 lw   $r0 data_1               ; literal instantiation
