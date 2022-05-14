@@ -84,11 +84,50 @@ pub fn format_delineated_path(line: &str) -> String {
     line.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
+// Same as s.match_indices(|ch| {}) but allows to match by checking &str vs char
+fn match_indices_str(s: &str) -> Vec<(usize, &str)> {
+    let mut res: Vec<(usize, &str)> = Vec::new();
+
+    // Match the as token with spaces so as to avoid imprperly matching an 'as' substring
+    // in another type of token
+    let as_token = " as ";
+    let mut start = 0;
+
+    while start < s.len() {
+        // Try to match the 'as' token first then fallback to single chars
+        if start <= s.len() - as_token.len()
+            && s.len() >= as_token.len()
+            && &s[start..start + as_token.len()] == as_token
+        {
+            res.push((start + 1, as_token.trim()));
+            start += as_token.len();
+            continue;
+        }
+
+        match &s[start..start + 1] {
+            "," => {
+                res.push((start, ","));
+            }
+            "{" => {
+                res.push((start, "{"));
+            }
+            "}" => {
+                res.push((start, "}"));
+            }
+            _ => {}
+        };
+
+        start += 1;
+    }
+
+    res
+}
+
 /// Tokenizes the line on separators keeping the separators.
 fn tokenize(line: &str) -> Vec<String> {
     let mut buffer: Vec<String> = Vec::new();
     let mut current = 0;
-    for (index, separator) in line.match_indices(|c: char| c == ',' || c == '{' || c == '}') {
+    for (index, separator) in match_indices_str(line) {
         if index != current {
             // Chomp all whitespace including newlines, and only push
             // resulting token if what's left is not an empty string. This
@@ -98,6 +137,7 @@ fn tokenize(line: &str) -> Vec<String> {
                 .chars()
                 .filter(|c| !c.is_whitespace())
                 .collect();
+
             if !to_push.is_empty() {
                 buffer.push(to_push);
             }
@@ -148,6 +188,12 @@ fn sort_and_filter_use_expression(line: &str) -> String {
                 }
                 return;
             }
+            Some("as") => {
+                // There should always be a name before an 'as' token
+                let prev = buffer.pop().unwrap();
+                let alias = tokens.next().unwrap();
+                buffer.push(format!("{} {} {}", prev, "as", alias));
+            }
             Some(c) => buffer.push(c.to_string()),
         }
         sort_imports(tokens, buffer);
@@ -174,25 +220,22 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     fn make_line(token: &str, line: &mut String, open_brackets: &mut u8, remainder: usize) -> bool {
         let mut is_line = false;
 
-        line.push_str(token);
-
-        if token == "," {
-            line.push(' ');
-        }
-
         match token {
             "," => {
+                line.push_str(&format!("{} ", token));
                 if *open_brackets == 1 {
                     is_line = true;
                 }
             }
             "{" => {
+                line.push_str(token);
                 if *open_brackets == 0 {
                     is_line = true;
                 }
                 *open_brackets += 1;
             }
             "}" => {
+                line.push_str(token);
                 *open_brackets -= 1;
                 // Using `remainder` to see if we're at either a 2-char terminator for the full
                 // use statement (i.e., '};') or at a single char terminator (e.g., '}') for individual
@@ -201,7 +244,11 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
                     is_line = true;
                 }
             }
+            "as" => {
+                line.push_str(&format!(" {} ", token));
+            }
             _ => {
+                line.push_str(token);
                 if remainder == 2 && *open_brackets == 1 {
                     line.push(',');
                     is_line = true;
@@ -404,6 +451,34 @@ mod tests {
 {ALREADY_FORMATTED_LINE_PATTERN}        text::{{
 {ALREADY_FORMATTED_LINE_PATTERN}            call_frames::*,
 {ALREADY_FORMATTED_LINE_PATTERN}            dial_frames::{{Transaction, TransactionParameters}},
+{ALREADY_FORMATTED_LINE_PATTERN}            token_storage::{{CallData, Parameters}}
+{ALREADY_FORMATTED_LINE_PATTERN}        }}
+{ALREADY_FORMATTED_LINE_PATTERN}    }},
+{ALREADY_FORMATTED_LINE_PATTERN}    contract_id::ContractId,
+{ALREADY_FORMATTED_LINE_PATTERN}    hash::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    panic::panic,
+{ALREADY_FORMATTED_LINE_PATTERN}    storage::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    token::*,
+{ALREADY_FORMATTED_LINE_PATTERN}}};
+"#
+        );
+        assert_eq!(format_use_statement_length(s, 100, 0), expected);
+    }
+
+    #[test]
+    fn test_format_use_statement_formats_long_input_with_aliases() {
+        let s = "std::{address::*, assert::assert as LocalAssert, block::*, chain::auth::*, context::{*,text::{call_frames::*, dial_frames::{Transaction as DialFrameTransaction, TransactionParameters}, token_storage::{CallData, Parameters}}}, contract_id::ContractId, hash::*, panic::panic, storage::*, token::*};";
+        let expected = format!(
+            r#"{ALREADY_FORMATTED_LINE_PATTERN}std::{{
+{ALREADY_FORMATTED_LINE_PATTERN}    address::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    assert::assert as LocalAssert,
+{ALREADY_FORMATTED_LINE_PATTERN}    block::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    chain::auth::*,
+{ALREADY_FORMATTED_LINE_PATTERN}    context::{{
+{ALREADY_FORMATTED_LINE_PATTERN}        *,
+{ALREADY_FORMATTED_LINE_PATTERN}        text::{{
+{ALREADY_FORMATTED_LINE_PATTERN}            call_frames::*,
+{ALREADY_FORMATTED_LINE_PATTERN}            dial_frames::{{Transaction as DialFrameTransaction, TransactionParameters}},
 {ALREADY_FORMATTED_LINE_PATTERN}            token_storage::{{CallData, Parameters}}
 {ALREADY_FORMATTED_LINE_PATTERN}        }}
 {ALREADY_FORMATTED_LINE_PATTERN}    }},
