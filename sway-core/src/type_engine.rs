@@ -1,9 +1,5 @@
 use crate::error::*;
-use std::{
-    fmt::{Debug, Display},
-    iter::FromIterator,
-};
-use sway_types::span::Span;
+use std::fmt::{Debug, Display};
 
 mod engine;
 mod integer_bits;
@@ -195,60 +191,4 @@ fn chain_of_refs_2() {
         engine.resolve_type(id3, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
-}
-
-fn parse_str_type(raw: &str, span: Span) -> CompileResult<TypeInfo> {
-    if raw.starts_with("str[") {
-        let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
-        if let Some(']') = rest.pop() {
-            if let Ok(num) = String::from_iter(rest).parse() {
-                return ok(TypeInfo::Str(num), vec![], vec![]);
-            }
-        }
-        return err(
-            vec![],
-            vec![CompileError::InvalidStrType {
-                raw: raw.to_string(),
-                span,
-            }],
-        );
-    }
-    err(vec![], vec![CompileError::UnknownType { span }])
-}
-
-#[test]
-fn test_str_parse() {
-    match parse_str_type("str[20]", Span::dummy()).value {
-        Some(value) if value == TypeInfo::Str(20) => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str[]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str[ab]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str [ab]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-
-    match parse_str_type("not even a str[ type", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("20", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("[20]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
 }

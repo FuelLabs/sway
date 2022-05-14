@@ -1,13 +1,7 @@
-use std::hash::{Hash, Hasher};
-
-use crate::{
-    error::*, TypeInfo,
-};
-
-use sway_types::{ident::Ident, span::Span};
-
 use super::Expression;
-
+use crate::TypeInfo;
+use std::hash::{Hash, Hasher};
+use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression {
@@ -69,28 +63,4 @@ impl From<AsmRegister> for String {
 pub(crate) struct AsmRegisterDeclaration {
     pub(crate) name: Ident,
     pub(crate) initializer: Option<Expression>,
-}
-
-fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
-    let mut errors = vec![];
-
-    match op.as_str().to_lowercase().as_str() {
-        "ji" => {
-            errors.push(CompileError::DisallowedJi {
-                span: op.span().clone(),
-            });
-        }
-        "jnei" => {
-            errors.push(CompileError::DisallowedJnei {
-                span: op.span().clone(),
-            });
-        }
-        "jnzi" => {
-            errors.push(CompileError::DisallowedJnzi {
-                span: op.span().clone(),
-            });
-        }
-        _ => (),
-    };
-    errors
 }

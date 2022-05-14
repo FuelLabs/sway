@@ -1258,6 +1258,10 @@ impl TypedExpression {
                 },
             )
             .collect();
+        // check for any disallowed opcodes
+        for ref op in &asm.body {
+            check!(disallow_opcode(&op.op_name), continue, warnings, errors)
+        }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
@@ -2707,5 +2711,32 @@ mod tests {
             insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
+    }
+}
+fn disallow_opcode(op: &Ident) -> CompileResult<()> {
+    let mut errors = vec![];
+
+    match op.as_str().to_lowercase().as_str() {
+        "ji" => {
+            errors.push(CompileError::DisallowedJi {
+                span: op.span().clone(),
+            });
+        }
+        "jnei" => {
+            errors.push(CompileError::DisallowedJnei {
+                span: op.span().clone(),
+            });
+        }
+        "jnzi" => {
+            errors.push(CompileError::DisallowedJnzi {
+                span: op.span().clone(),
+            });
+        }
+        _ => (),
+    };
+    if errors.is_empty() {
+        ok((), vec![], vec![])
+    } else {
+        err(vec![], errors)
     }
 }

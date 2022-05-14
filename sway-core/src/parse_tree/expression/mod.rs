@@ -2,14 +2,10 @@ use crate::{
     build_config::BuildConfig,
     error::*,
     parse_tree::{ident, CallPath, Literal},
-    type_engine::{TypeInfo},
+    type_engine::TypeInfo,
     AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };
-
 use sway_types::{ident::Ident, Span};
-
-use either::Either;
-
 
 mod asm;
 mod match_branch;
@@ -17,7 +13,6 @@ mod match_condition;
 mod matcher;
 mod method_name;
 mod scrutinee;
-mod unary_op;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
@@ -25,7 +20,6 @@ pub(crate) use match_condition::MatchCondition;
 use matcher::matcher;
 pub use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
-pub(crate) use unary_op::UnaryOp;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
@@ -221,28 +215,11 @@ pub enum LazyOp {
     Or,
 }
 
-impl LazyOp {
-    fn from(op_variant: OpVariant) -> Self {
-        match op_variant {
-            OpVariant::And => Self::And,
-            OpVariant::Or => Self::Or,
-            _ => unreachable!(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
     pub name: Ident,
     pub value: Expression,
     pub(crate) span: Span,
-}
-
-pub(crate) fn error_recovery_exp(span: Span) -> Expression {
-    Expression::Tuple {
-        fields: vec![],
-        span,
-    }
 }
 
 impl Expression {
@@ -259,27 +236,6 @@ impl Expression {
                         span: span.clone(),
                     }
                     .to_var_name(),
-                    is_absolute: true,
-                },
-                type_name: None,
-                type_name_span: None,
-            },
-            contract_call_params: vec![],
-            arguments,
-            type_arguments: vec![],
-            span,
-        }
-    }
-
-    pub(crate) fn core_ops(op: Op, arguments: Vec<Expression>, span: Span) -> Expression {
-        Expression::MethodApplication {
-            method_name: MethodName::FromType {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("ops", span.clone()),
-                    ],
-                    suffix: op.to_var_name(),
                     is_absolute: true,
                 },
                 type_name: None,
@@ -376,155 +332,6 @@ impl OpVariant {
             GreaterThanOrEqualTo => "ge",
         }
     }
-    fn precedence(&self) -> usize {
-        use OpVariant::*;
-        // a higher number means the operation has higher precedence
-        match self {
-            Or => 0,
-            And => 0,
-
-            Equals => 1,
-            NotEquals => 1,
-
-            GreaterThan => 2,
-            LessThan => 2,
-            GreaterThanOrEqualTo => 2,
-            LessThanOrEqualTo => 2,
-
-            Add => 3,
-            Subtract => 3,
-
-            Divide => 4,
-            Multiply => 4,
-            Modulo => 4,
-
-            BinaryOr => 5,
-            BinaryAnd => 5,
-            Xor => 5,
-        }
-    }
-}
-
-fn arrange_by_order_of_operations(
-    expression_results: Vec<Either<Op, ParserLifter<Expression>>>,
-    debug_span: Span,
-) -> CompileResult<ParserLifter<Expression>> {
-    let mut errors = Vec::new();
-    let warnings = Vec::new();
-    let mut expression_result_stack: Vec<ParserLifter<Expression>> = Vec::new();
-    let mut op_stack = Vec::new();
-
-    for expr_result_or_op in expression_results {
-        match expr_result_or_op {
-            Either::Left(op) => {
-                if op.op_variant.precedence()
-                    < op_stack
-                        .last()
-                        .map(|x: &Op| x.op_variant.precedence())
-                        .unwrap_or(0)
-                {
-                    let rhs = expression_result_stack.pop();
-                    let lhs = expression_result_stack.pop();
-                    let new_op = op_stack.pop().unwrap();
-                    if lhs.is_none() {
-                        errors.push(CompileError::Internal(
-                            "Prematurely empty expression stack for left hand side.",
-                            debug_span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                    if rhs.is_none() {
-                        errors.push(CompileError::Internal(
-                            "Prematurely empty expression stack for right hand side.",
-                            debug_span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                    let lhs = lhs.unwrap();
-                    let mut rhs = rhs.unwrap();
-
-                    // We special case `&&` and `||` here because they are binary operators and are
-                    // bound by the precedence rules, but they are not overloaded by std::ops since
-                    // they must be evaluated lazily.
-                    let mut new_var_decls = lhs.var_decls;
-                    new_var_decls.append(&mut rhs.var_decls);
-                    let new_exp = match new_op.op_variant {
-                        OpVariant::And | OpVariant::Or => Expression::LazyOperator {
-                            op: LazyOp::from(new_op.op_variant),
-                            lhs: Box::new(lhs.value),
-                            rhs: Box::new(rhs.value),
-                            span: debug_span.clone(),
-                        },
-                        _ => Expression::core_ops(
-                            new_op,
-                            vec![lhs.value, rhs.value],
-                            debug_span.clone(),
-                        ),
-                    };
-                    expression_result_stack.push(ParserLifter {
-                        var_decls: new_var_decls,
-                        value: new_exp,
-                    });
-                }
-                op_stack.push(op)
-            }
-            Either::Right(expr_result) => expression_result_stack.push(expr_result),
-        }
-    }
-
-    while let Some(op) = op_stack.pop() {
-        let rhs = expression_result_stack.pop();
-        let lhs = expression_result_stack.pop();
-
-        if lhs.is_none() {
-            errors.push(CompileError::Internal(
-                "Prematurely empty expression stack for left hand side.",
-                debug_span,
-            ));
-            return err(warnings, errors);
-        }
-        if rhs.is_none() {
-            errors.push(CompileError::Internal(
-                "Prematurely empty expression stack for right hand side.",
-                debug_span,
-            ));
-            return err(warnings, errors);
-        }
-
-        let lhs = lhs.unwrap();
-        let mut rhs = rhs.unwrap();
-
-        // See above about special casing `&&` and `||`.
-        let span = Span::join(
-            Span::join(lhs.value.span(), op.span.clone()),
-            rhs.value.span(),
-        );
-        let mut new_var_decls = lhs.var_decls;
-        new_var_decls.append(&mut rhs.var_decls);
-        let new_exp = match op.op_variant {
-            OpVariant::And | OpVariant::Or => Expression::LazyOperator {
-                op: LazyOp::from(op.op_variant),
-                lhs: Box::new(lhs.value),
-                rhs: Box::new(rhs.value),
-                span,
-            },
-            _ => Expression::core_ops(op, vec![lhs.value.clone(), rhs.value.clone()], span),
-        };
-        expression_result_stack.push(ParserLifter {
-            var_decls: new_var_decls,
-            value: new_exp,
-        });
-    }
-
-    if expression_result_stack.len() != 1 {
-        errors.push(CompileError::Internal(
-            "Invalid expression stack length",
-            debug_span,
-        ));
-        return err(warnings, errors);
-    }
-
-    ok(expression_result_stack[0].clone(), warnings, errors)
 }
 
 struct MatchedBranch {
