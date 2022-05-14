@@ -5,7 +5,7 @@ use sway_types::Span;
 use crate::{
     error::ok,
     type_engine::{insert_type, look_up_type_id, TypeId},
-    BuildConfig, CompileResult, Rule, TypeInfo,
+    BuildConfig, CompileResult, TypeInfo,
 };
 
 #[derive(Debug, Clone)]

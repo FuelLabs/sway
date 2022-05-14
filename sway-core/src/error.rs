@@ -438,18 +438,8 @@ pub enum CompileError {
     Unimplemented(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
-    #[error("Error parsing input: expected {err:?}")]
-    ParseFailure {
-        span: Span,
-        err: pest::error::Error<Rule>,
-    },
     #[error("Error parsing input: {err:?}")]
     ParseError { span: Span, err: String },
-    #[error(
-        "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
-         predicate at the top level."
-    )]
-    InvalidTopLevelItem(Rule, Span),
     #[error(
         "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
          code that triggered this error."
@@ -460,8 +450,6 @@ pub enum CompileError {
          code that triggered this error."
     )]
     InternalOwned(String, Span),
-    #[error("Unimplemented feature: {0:?}")]
-    UnimplementedRule(Rule, Span),
     #[error(
         "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
          binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
@@ -977,42 +965,7 @@ impl TypeError {
 
 impl CompileError {
     pub fn to_friendly_error_string(&self) -> String {
-        match self {
-            CompileError::ParseFailure { err, .. } => format!(
-                "Error parsing input: {}",
-                match &err.variant {
-                    pest::error::ErrorVariant::ParsingError {
-                        positives,
-                        negatives,
-                    } => {
-                        let mut buf = String::new();
-                        if !positives.is_empty() {
-                            buf.push_str(&format!(
-                                "expected one of [{}]",
-                                positives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        if !negatives.is_empty() {
-                            buf.push_str(&format!(
-                                "did not expect any of [{}]",
-                                negatives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        buf
-                    }
-                    pest::error::ErrorVariant::CustomError { message } => message.to_string(),
-                }
-            ),
-            a => format!("{}", a),
-        }
+        format!("{}", self)
     }
 
     pub fn path(&self) -> Option<Arc<PathBuf>> {
@@ -1029,12 +982,9 @@ impl CompileError {
             NotAFunction { name, .. } => name.span(),
             Unimplemented(_, span) => span.clone(),
             TypeError(err) => err.span(),
-            ParseFailure { span, .. } => span.clone(),
             ParseError { span, .. } => span.clone(),
-            InvalidTopLevelItem(_, span) => span.clone(),
             Internal(_, span) => span.clone(),
             InternalOwned(_, span) => span.clone(),
-            UnimplementedRule(_, span) => span.clone(),
             InvalidByteLiteralLength { span, .. } => span.clone(),
             ExpectedExprAfterOp { span, .. } => span.clone(),
             ExpectedOp { span, .. } => span.clone(),

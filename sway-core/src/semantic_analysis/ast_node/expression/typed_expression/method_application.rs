@@ -3,10 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::{namespace::Namespace, TCOpts};
-use pest::iterators::Pairs;
-use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -420,34 +417,10 @@ fn re_parse_expression(
     )
     .unwrap();
 
-    let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
-        Ok(o) => o,
-        Err(_e) => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
-    let contract_pair = match contract_pairs.next() {
-        Some(o) => o,
-        None => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing. No address.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
+    let mut contract_pairs = todo!("use sway-parse");
 
     // purposefully ignore var_decls as those have already been lifted during parsing
-    let ParserLifter { value, .. } = check!(
-        Expression::parse_from_pair(contract_pair, Some(build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let ParserLifter { value, .. } = todo!("use sway-parse");
 
     let contract_address = check!(
         TypedExpression::type_check(TypeCheckArguments {

@@ -4,7 +4,6 @@ use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 use std::iter::{Enumerate, Peekable};
 use std::slice::Iter;
 use std::str::Chars;
-use sway_core::{extract_keyword, Rule};
 
 /// Performs the formatting of the `comments` section in your code.
 /// Takes in a function that provides the logic to handle the rest of the code.
@@ -274,37 +273,11 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
 }
 
 pub fn format_use_statement(line: &str) -> String {
-    let use_keyword = extract_keyword(line, Rule::use_keyword).unwrap();
-    let (_, right) = line.split_once(&use_keyword).unwrap();
-    let mut right: String = sort_and_filter_use_expression(right);
-
-    let max_length = 100usize;
-
-    // This is mostly to satisfy a failing fmt test
-    if right.len() > max_length {
-        right = format_use_statement_length(&right, max_length, 0usize);
-        right.insert_str(
-            ALREADY_FORMATTED_LINE_PATTERN.len(),
-            &format!("{} ", use_keyword),
-        );
-    } else {
-        right = format!(
-            "{}{} {}",
-            ALREADY_FORMATTED_LINE_PATTERN, use_keyword, right
-        )
-    }
-
-    right
+    todo!()
 }
 
 pub fn format_include_statement(line: &str) -> String {
-    let include_keyword = extract_keyword(line, Rule::include_keyword).unwrap();
-    let (_, right) = line.split_once(&include_keyword).unwrap();
-    let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
-    format!(
-        "{}{} {}",
-        ALREADY_FORMATTED_LINE_PATTERN, include_keyword, right
-    )
+    todo!()
 }
 
 fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> String {

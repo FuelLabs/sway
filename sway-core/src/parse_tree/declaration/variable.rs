@@ -1,4 +1,3 @@
-use crate::parser::Rule;
 use crate::{
     error::{err, ok},
     ident,
@@ -7,7 +6,6 @@ use crate::{
     BuildConfig, CompileResult, Ident,
 };
 
-use pest::iterators::Pair;
 use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
@@ -47,72 +45,6 @@ struct LHSTuple {
 }
 
 impl VariableDeclaration {
-    pub(crate) fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut var_decl_parts = pair.into_inner();
-        let _let_keyword = var_decl_parts.next();
-        let lhs = check!(
-            VariableDeclarationLHS::parse_from_pair(
-                var_decl_parts.next().expect("gaurenteed by grammar"),
-                config
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut maybe_body = var_decl_parts.next().unwrap();
-        let type_ascription = match maybe_body.as_rule() {
-            Rule::type_ascription => {
-                let type_asc = maybe_body.clone();
-                maybe_body = var_decl_parts.next().unwrap();
-                Some(type_asc)
-            }
-            _ => None,
-        };
-        let type_ascription_span = type_ascription.clone().map(|x| {
-            Span::from_pest(
-                x.into_inner().next().unwrap().as_span(),
-                config.map(|x| x.path()),
-            )
-        });
-        let type_ascription = match type_ascription {
-            Some(ascription) => {
-                let type_name = ascription.into_inner().next().unwrap();
-                check!(
-                    TypeInfo::parse_from_pair(type_name, config),
-                    TypeInfo::Tuple(Vec::new()),
-                    warnings,
-                    errors
-                )
-            }
-            _ => TypeInfo::Unknown,
-        };
-        let body_result = check!(
-            Expression::parse_from_pair(maybe_body, config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut var_decls = body_result.var_decls;
-        var_decls.append(&mut check!(
-            VariableDeclaration::desugar_to_decls(
-                lhs,
-                type_ascription,
-                type_ascription_span,
-                body_result.value,
-                config,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
-        ok(var_decls, warnings, errors)
-    }
-
     fn desugar_to_decls(
         lhs: VariableDeclarationLHS,
         type_ascription: TypeInfo,
@@ -205,58 +137,6 @@ impl VariableDeclaration {
 }
 
 impl VariableDeclarationLHS {
-    pub(crate) fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        assert_eq!(pair.as_rule(), Rule::var_lhs);
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let span = Span::from_pest(pair.as_span(), config.map(|x| x.path()));
-        let inner = pair.into_inner().next().expect("gaurenteed by grammar.");
-        let lhs = match inner.as_rule() {
-            Rule::var_name => {
-                let mut parts = inner.into_inner();
-                let maybe_mut_keyword = parts.next().unwrap();
-                let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
-                let name_pair = if is_mutable {
-                    parts.next().unwrap()
-                } else {
-                    maybe_mut_keyword
-                };
-                let name = check!(
-                    ident::parse_from_pair(name_pair, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                VariableDeclarationLHS::Name(LHSName {
-                    name,
-                    is_mutable,
-                    span,
-                })
-            }
-            Rule::var_tuple => {
-                let fields = inner.into_inner().collect::<Vec<_>>();
-                let mut fields_buf = Vec::with_capacity(fields.len());
-                for field in fields.into_iter() {
-                    fields_buf.push(check!(
-                        VariableDeclarationLHS::parse_from_pair(field, config),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                VariableDeclarationLHS::Tuple(LHSTuple {
-                    elems: fields_buf,
-                    span,
-                })
-            }
-            a => unreachable!("Grammar should prevent this case from being {:?}", a),
-        };
-        ok(lhs, warnings, errors)
-    }
-
     pub(crate) fn span(&self) -> Span {
         match self {
             VariableDeclarationLHS::Name(LHSName { span, .. }) => span.clone(),

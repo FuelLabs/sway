@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
     error::{err, ok, CompileError, CompileResult, ParserLifter},
-    error_recovery_exp, parse_array_index,
+    error_recovery_exp,
     parse_tree::{ident, Expression},
 };
 
