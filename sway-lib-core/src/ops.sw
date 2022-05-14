@@ -275,7 +275,7 @@ impl Shiftable for b256 {
         let (word_4, overflow_4) = shift_left_and_get_overflow(w4, n);
         // Add overflow from word on the right to each shifted word
         let w1_shifted = word_1.add(overflow_2);
-        let w2_shifted =  word_2.add(overflow_3);
+        let w2_shifted = word_2.add(overflow_3);
         let w3_shifted = word_3.add(overflow_4);
         let w4_shifted = word_4.lsh(n);
 
