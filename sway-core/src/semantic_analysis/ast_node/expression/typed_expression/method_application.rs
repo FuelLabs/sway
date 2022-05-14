@@ -339,7 +339,14 @@ pub(crate) fn type_check_method_application(
                         None
                     }
                 };
-                let contract_address = todo!("use expr");
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: call_path.span().clone(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
