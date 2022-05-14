@@ -264,20 +264,7 @@ pub(crate) fn type_check_method_application(
                 };
                 // TODO(static span): this can be a normal address expression,
                 // so we don't need to re-parse and re-compile
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = todo!("use expr");
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
@@ -347,20 +334,7 @@ pub(crate) fn type_check_method_application(
                         String::new()
                     }
                 };
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = todo!("use expr");
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
@@ -387,56 +361,4 @@ pub(crate) fn type_check_method_application(
         }
     };
     ok(exp, warnings, errors)
-}
-
-// TODO(static span): this whole method can go away and the address can go back in the contract
-// caller type.
-#[allow(clippy::too_many_arguments)]
-fn re_parse_expression(
-    contract_string: Arc<str>,
-    build_config: &BuildConfig,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    dead_code_graph: &mut ControlFlowGraph,
-    opts: TCOpts,
-    span: Span,
-) -> CompileResult<TypedExpression> {
-    if contract_string.is_empty() {
-        return err(
-            vec![],
-            vec![CompileError::ContractAddressMustBeKnown { span }],
-        );
-    }
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let span = sway_types::span::Span::new(
-        "TODO(static span): use Idents instead of Strings".into(),
-        0,
-        0,
-        None,
-    )
-    .unwrap();
-
-    let mut contract_pairs = todo!("use sway-parse");
-
-    // purposefully ignore var_decls as those have already been lifted during parsing
-    let ParserLifter { value, .. } = todo!("use sway-parse");
-
-    let contract_address = check!(
-        TypedExpression::type_check(TypeCheckArguments {
-            checkee: value,
-            namespace,
-            return_type_annotation: insert_type(TypeInfo::Unknown),
-            help_text: Default::default(),
-            self_type,
-            build_config,
-            dead_code_graph,
-            mode: Mode::NonAbi,
-            opts,
-        }),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(contract_address, warnings, errors)
 }

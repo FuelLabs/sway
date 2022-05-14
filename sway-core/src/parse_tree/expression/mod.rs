@@ -1,7 +1,7 @@
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{ident, literal::handle_parse_int_error, CallPath, Literal},
+    parse_tree::{ident, CallPath, Literal},
     type_engine::{IntegerBits, TypeInfo},
     AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };

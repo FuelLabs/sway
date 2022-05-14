@@ -81,6 +81,7 @@ pub struct ParserLifter<T> {
 }
 
 impl<T> ParserLifter<T> {
+    #[allow(dead_code)]
     pub(crate) fn empty(value: T) -> Self {
         ParserLifter {
             var_decls: vec![],

@@ -19,13 +19,3 @@ impl CodeBlock {
         &self.whole_block_span
     }
 }
-
-fn collect_var_decls(var_decls: Vec<VariableDeclaration>, span: Span) -> Vec<AstNode> {
-    var_decls
-        .into_iter()
-        .map(|x| AstNode {
-            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(x)),
-            span: span.clone(),
-        })
-        .collect::<Vec<_>>()
-}

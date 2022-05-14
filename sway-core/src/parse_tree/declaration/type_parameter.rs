@@ -64,8 +64,3 @@ impl TypeParameter {
 pub(crate) struct TraitConstraint {
     pub(crate) name: Ident,
 }
-
-pub(crate) struct WhereClause {
-    pub(crate) type_param: Ident,
-    pub(crate) trait_constraint: Ident,
-}

@@ -93,22 +93,6 @@ pub enum AstNodeContent {
     IncludeStatement(IncludeStatement),
 }
 
-impl ParseTree {
-    /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
-    /// cover.
-    pub(crate) fn new(span: span::Span) -> Self {
-        ParseTree {
-            root_nodes: Vec::new(),
-            span,
-        }
-    }
-
-    /// Push a new [AstNode] on to the end of a [ParseTree]'s root nodes.
-    pub(crate) fn push(&mut self, new_node: AstNode) {
-        self.root_nodes.push(new_node);
-    }
-}
-
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
