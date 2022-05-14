@@ -32,3 +32,94 @@ async fn test_hash_u64() {
     let keccak256_result2 = instance.get_k256_hash_u64(42).call().await.unwrap();
     assert_eq!(keccak256_result1.value, keccak256_result2.value);
 }
+
+#[tokio::test]
+async fn test_sha256_u8() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_u8(254).call().await.unwrap();
+    let result2 = instance.sha256_u8(254).call().await.unwrap();
+    let result3 = instance.sha256_u8(253).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_u16() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_u16(65534).call().await.unwrap();
+    let result2 = instance.sha256_u16(65534).call().await.unwrap();
+    let result3 = instance.sha256_u16(65533).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_u32() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_u32(4294967294).call().await.unwrap();
+    let result2 = instance.sha256_u32(4294967294).call().await.unwrap();
+    let result3 = instance.sha256_u32(4294967293).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_u64() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_u64(18446744073709551613).call().await.unwrap();
+    let result2 = instance.sha256_u64(18446744073709551613).call().await.unwrap();
+    let result3 = instance.sha256_u64(18446744073709551612).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_str() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_str(String::from("John")).call().await.unwrap();
+    let result2 = instance.sha256_str(String::from("John")).call().await.unwrap();
+    let result3 = instance.sha256_str(String::from("Nick")).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_bool() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_bool(true).call().await.unwrap();
+    let result2 = instance.sha256_bool(true).call().await.unwrap();
+    let result3 = instance.sha256_bool(false).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+// #[tokio::test]
+// async fn test_sha256_b256() {
+//     let (instance, _id) = get_hashing_instance().await;
+//     let result2 = instance.sha256_b256().call().await.unwrap();
+//     let result1 = instance.sha256_b256().call().await.unwrap();
+//     let result3 = instance.sha256_b256().call().await.unwrap();
+//     assert_eq!(result1.value, result2.value);
+//     assert_ne!(result1.value, result3.value);
+// }
+
+#[tokio::test]
+async fn test_sha256_tuple() {
+    let (instance, _id) = get_hashing_instance().await;
+    let result1 = instance.sha256_tuple((true, 5)).call().await.unwrap();
+    let result2 = instance.sha256_tuple((true, 5)).call().await.unwrap();
+    let result3 = instance.sha256_tuple((true, 6)).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
+
+#[tokio::test]
+async fn test_sha256_array() {
+    let (instance, _id) = get_hashing_instance().await;
+    let array_1: [u64; 2] = [5, 4];
+    let result1 = instance.sha256_array(array_1.to_vec()).call().await.unwrap();
+    let result2 = instance.sha256_array(array_1.to_vec()).call().await.unwrap();
+    // let result3 = instance.sha256_array([5, 99]).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    // assert_ne!(result1.value, result3.value);
+}
