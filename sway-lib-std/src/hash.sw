@@ -1,5 +1,7 @@
 library hash;
 
+use std::constants::ZERO;
+
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
 pub fn not(a: bool) -> bool {
@@ -127,20 +129,21 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
 
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
-    let result_buffer: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    let mut result_buffer: b256 = ZERO;
     if !is_reference_type::<T>() {
-        asm(r1: param, r2, r3: 8, r4: result_buffer) {
-            move r2 sp; // Move to register r2
+        asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
+            move buffer sp; // Copy stack pointer to memory at "buffer"
             cfei i8; // Grow stack by 1 word
-            sw r2 r1 i0; // Save value in register r1 to memory at r2
-            s256 r4 r2 r3; // Hash
-            r4: b256 // Return
+            sw buffer ptr i0; // Save value in register at "ptr" to memory at "buffer"
+            s256 hash buffer eight_bytes; // Hash the next eight bytes starting from "buffer" into "hash"
+            cfsi i8; // Shrink stack by 1 word
+            hash: b256 // Return
         }
     } else {
         let size = size_of::<T>();
-        asm(r1: result_buffer, r2: param, r3: size) {
-            s256 r1 r2 r3; // Hash
-            r1: b256 // Return
+        asm(hash: result_buffer, ptr: param, bytes: size) {
+            s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
+            hash: b256 // Return
         }
     }
 }
