@@ -7,6 +7,7 @@ use std::process;
 
 mod formatter;
 
+#[derive(Default)]
 pub struct ForcDocumenter;
 
 impl ForcDocumenter {
@@ -21,15 +22,6 @@ impl Preprocessor for ForcDocumenter {
     }
 
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
-        let output = process::Command::new("forc")
-            .arg("--version")
-            .output()
-            .expect("Failed running forc --version");
-        let version =
-            String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
-        let version_message = "Running forc --help using ".to_owned() + &version;
-        eprintln!("{}", version_message);
-
         let output = process::Command::new("forc")
             .arg("--help")
             .output()

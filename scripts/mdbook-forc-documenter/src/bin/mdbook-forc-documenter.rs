@@ -1,9 +1,7 @@
 use clap::{Arg, ArgMatches, Command};
-use mdbook::book::Summary;
 use mdbook::errors::Error;
 use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
-use std::fs::read_to_string;
 use std::io;
 use std::process;
 
@@ -52,9 +50,12 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
         .arg("--version")
         .output()
         .expect("Failed running forc --version");
+    let version = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
+    let version_message = "Running forc --help using ".to_owned() + &version;
+    println!("{}", version_message);
 
     let processed_book = pre.run(&ctx, book)?;
-    serde_json::to_writer(io::stdout(), &processed_book);
+    serde_json::to_writer(io::stdout(), &processed_book)?;
 
     Ok(())
 }

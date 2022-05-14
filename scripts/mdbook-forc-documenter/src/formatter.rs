@@ -141,7 +141,7 @@ fn format_option(option: &str) -> String {
 /// - [forc addr2line](./forc_addr2line.md)\n
 pub fn format_index_entry(forc_command_str: &str) -> String {
     let command_name = forc_command_str;
-    let command_link = forc_command_str.replace(" ", "_");
+    let command_link = forc_command_str.replace(' ', "_");
     format!("- [{}](./{}.md)\n", command_name, command_link)
 }
 
