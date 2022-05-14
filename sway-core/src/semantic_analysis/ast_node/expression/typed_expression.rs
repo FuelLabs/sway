@@ -27,7 +27,6 @@ pub(crate) use self::{
 use super::match_expression::TypedMatchExpression;
 
 use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::ast_node::declaration::Monomorphize;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -1100,13 +1099,12 @@ impl TypedExpression {
 
         // monomorphize the struct definition
         let mut struct_decl = check!(
-            struct_decl.monomorphize(
+            namespace.monomorphize(
+                struct_decl,
                 type_arguments,
                 EnforceTypeArguments::No,
                 Some(self_type),
-                None,
-                namespace.root_mut(),
-                &module_path
+                None
             ),
             return err(warnings, errors),
             warnings,
@@ -1420,7 +1418,6 @@ impl TypedExpression {
             }
             check!(
                 instantiate_enum(
-                    &abs_enum_mod_path,
                     enum_decl,
                     call_path.suffix,
                     args,
@@ -1455,7 +1452,6 @@ impl TypedExpression {
                 TypedDeclaration::EnumDeclaration(enum_decl) => {
                     check!(
                         instantiate_enum(
-                            &call_path.prefixes,
                             enum_decl,
                             call_path.suffix,
                             args,

@@ -1,10 +1,9 @@
-use ast_node::declaration::{EnforceTypeArguments, Monomorphize};
+use ast_node::declaration::EnforceTypeArguments;
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::namespace_system::Path;
 use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
 use crate::type_engine::{look_up_type_id, TypeId};
 
@@ -12,7 +11,6 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    enum_module_path: &Path,
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
@@ -28,13 +26,12 @@ pub(crate) fn instantiate_enum(
 
     // monomorphize the enum definition with the type arguments
     let enum_decl = check!(
-        enum_decl.monomorphize(
+        namespace.monomorphize(
+            enum_decl,
             type_arguments,
             EnforceTypeArguments::No,
             Some(self_type),
-            Some(enum_field_name.span()),
-            namespace.root_mut(),
-            enum_module_path
+            Some(enum_field_name.span())
         ),
         return err(warnings, errors),
         warnings,

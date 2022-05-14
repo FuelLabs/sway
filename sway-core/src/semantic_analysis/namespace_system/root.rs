@@ -190,7 +190,7 @@ impl Root {
                                 None,
                                 None,
                                 self,
-                                mod_path
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -206,7 +206,7 @@ impl Root {
                                 None,
                                 None,
                                 self,
-                                mod_path
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,

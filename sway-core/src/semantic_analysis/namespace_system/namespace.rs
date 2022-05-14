@@ -67,7 +67,10 @@ impl Namespace {
     }
 
     /// Find the module that these prefixes point to
-    pub fn find_module_path(&self, prefixes: &[Ident]) -> PathBuf {
+    pub fn find_module_path<'a, T>(&'a self, prefixes: T) -> PathBuf
+    where
+        T: IntoIterator<Item = &'a Ident>,
+    {
         self.mod_path.iter().chain(prefixes).cloned().collect()
     }
 

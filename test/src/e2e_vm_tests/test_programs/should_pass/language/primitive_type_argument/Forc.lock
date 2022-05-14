@@ -3,9 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'std'
-dependencies = ['core']
+name = 'primitive_type_argument'
+dependencies = ['std']
 
 [[package]]
-name = 'unused_generic'
-dependencies = ['std']
+name = 'std'
+dependencies = ['core']

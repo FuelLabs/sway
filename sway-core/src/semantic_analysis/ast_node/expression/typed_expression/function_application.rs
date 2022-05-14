@@ -1,5 +1,3 @@
-use ast_node::declaration::Monomorphize;
-
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
@@ -25,13 +23,12 @@ pub(crate) fn instantiate_function_application(
 
     // monomorphize the function declaration
     let typed_function_decl = check!(
-        function_decl.monomorphize(
+        namespace.monomorphize(
+            function_decl,
             type_arguments,
             EnforceTypeArguments::No,
             Some(self_type),
-            Some(&call_path.span()),
-            namespace.root_mut(),
-            &[]
+            Some(&call_path.span())
         ),
         return err(warnings, errors),
         warnings,

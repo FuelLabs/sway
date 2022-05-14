@@ -260,12 +260,7 @@ impl TypedAstNode {
                     let path = if a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        namespace
-                            .mod_path()
-                            .iter()
-                            .chain(&a.call_path)
-                            .cloned()
-                            .collect()
+                        namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(&path),
