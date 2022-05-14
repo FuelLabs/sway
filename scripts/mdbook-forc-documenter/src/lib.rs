@@ -3,7 +3,9 @@ use anyhow::{anyhow, Result};
 use mdbook::book::{Book, BookItem};
 use mdbook::errors::Error;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
+use std::collections::HashMap;
 use std::process;
+use std::{env, fs};
 
 mod formatter;
 
@@ -43,15 +45,18 @@ impl Preprocessor for ForcDocumenter {
             }
         }
 
+        let command_examples: HashMap<String, String> = load_examples()?;
+
         book.for_each_mut(|item| {
             if let BookItem::Chapter(ref mut chapter) = item {
                 if chapter.name == "Commands" {
-                    // add commands stuff here
                     let mut command_index_content = String::new();
 
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut command_chapter) = sub_item {
                             let forc_subcommand = command_chapter.name.split(' ').nth(1).unwrap();
+                            let example_content = command_examples.get(&command_chapter.name);
+
                             if possible_commands.iter().any(|&i| i == forc_subcommand) {
                                 let mut result = match generate_doc_output(forc_subcommand) {
                                     Ok(output) => output,
@@ -62,6 +67,10 @@ impl Preprocessor for ForcDocumenter {
                                 command_index_content
                                     .push_str(&format_index_entry(&command_chapter.name));
                                 command_chapter.content = result;
+
+                                if let Some(example_content) = example_content {
+                                    command_chapter.content += example_content;
+                                }
                             }
                         }
                     }
@@ -77,6 +86,32 @@ impl Preprocessor for ForcDocumenter {
     fn supports_renderer(&self, renderer: &str) -> bool {
         renderer == "html"
     }
+}
+
+fn load_examples() -> Result<HashMap<String, String>> {
+    let curr_path = std::env::current_dir()
+        .unwrap()
+        .join("scripts/mdbook-forc-documenter/examples");
+
+    let mut command_examples: HashMap<String, String> = HashMap::new();
+
+    for entry in curr_path.read_dir().expect("read dir examples failed") {
+        if let Ok(entry) = entry {
+            let command_name = entry
+                .file_name()
+                .into_string()
+                .unwrap()
+                .split('.')
+                .next()
+                .unwrap()
+                .to_string()
+                .replace('_', " ");
+            let example_content = fs::read_to_string(entry.path())?;
+            command_examples.insert(command_name, example_content);
+        }
+    }
+
+    Ok(command_examples)
 }
 
 fn generate_doc_output(subcommand: &str) -> Result<String> {
