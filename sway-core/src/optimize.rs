@@ -2649,7 +2649,8 @@ mod tests {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let parse_tree = sway_parse::parse_file(std::sync::Arc::from(input), None).unwrap();
+        let parse_tree =
+            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
         let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
             .unwrap(&mut warnings, &mut errors);
 
