@@ -22,6 +22,7 @@ fn main() {
 ```
 
 You can also do block comments
+
 ```sway
 fn main() {
     /*
