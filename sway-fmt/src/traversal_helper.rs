@@ -272,11 +272,11 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     with_newline.concat()
 }
 
-pub fn format_use_statement(line: &str) -> String {
+pub fn format_use_statement(_line: &str) -> String {
     todo!()
 }
 
-pub fn format_include_statement(line: &str) -> String {
+pub fn format_include_statement(_line: &str) -> String {
     todo!()
 }
 
