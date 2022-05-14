@@ -4,8 +4,8 @@ use mdbook::book::{Book, BookItem};
 use mdbook::errors::Error;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use std::collections::HashMap;
+use std::fs;
 use std::process;
-use std::{env, fs};
 
 mod formatter;
 
@@ -95,20 +95,22 @@ fn load_examples() -> Result<HashMap<String, String>> {
 
     let mut command_examples: HashMap<String, String> = HashMap::new();
 
-    for entry in curr_path.read_dir().expect("read dir examples failed") {
-        if let Ok(entry) = entry {
-            let command_name = entry
-                .file_name()
-                .into_string()
-                .unwrap()
-                .split('.')
-                .next()
-                .unwrap()
-                .to_string()
-                .replace('_', " ");
-            let example_content = fs::read_to_string(entry.path())?;
-            command_examples.insert(command_name, example_content);
-        }
+    for entry in curr_path
+        .read_dir()
+        .expect("read dir examples failed")
+        .flatten()
+    {
+        let command_name = entry
+            .file_name()
+            .into_string()
+            .unwrap()
+            .split('.')
+            .next()
+            .unwrap()
+            .to_string()
+            .replace('_', " ");
+        let example_content = fs::read_to_string(entry.path())?;
+        command_examples.insert(command_name, example_content);
     }
 
     Ok(command_examples)
