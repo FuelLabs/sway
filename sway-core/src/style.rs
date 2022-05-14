@@ -149,6 +149,7 @@ pub fn to_upper_camel_case(ident: &str) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use sway_types::Span;
 
     #[test]
     fn detect_styles() {
@@ -169,30 +170,46 @@ mod test {
         ];
         let screaming_snake_case_or_upper_camel_case_idents = ["HELLO", "__HELLO", "BLAH32"];
         let styleless_idents = ["Mix_Of_Things", "__Mix_Of_Things", "FooBar_123"];
-        for ident in snake_case_idents {
-            assert!(is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        let snake_case_idents = snake_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let screaming_snake_case_idents = screaming_snake_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let styleless_idents = styleless_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let screaming_snake_case_or_upper_camel_case_idents =
+            screaming_snake_case_or_upper_camel_case_idents
+                .into_iter()
+                .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let upper_camel_case_idents = upper_camel_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        for ref ident in snake_case_idents {
+            assert!(is_snake_case(ident).is_ok());
+            assert!(!is_screaming_snake_case(ident).is_ok());
+            assert!(!is_upper_camel_case(ident).is_ok());
         }
-        for ident in screaming_snake_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        for ref ident in screaming_snake_case_idents {
+            assert!(!is_snake_case(ident).is_ok());
+            assert!(is_screaming_snake_case(ident).is_ok());
+            assert!(!is_upper_camel_case(ident).is_ok());
         }
-        for ident in upper_camel_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(is_upper_camel_case(ident));
+        for ref ident in upper_camel_case_idents {
+            assert!(!is_snake_case(ident).is_ok());
+            assert!(!is_screaming_snake_case(ident).is_ok());
+            assert!(is_upper_camel_case(ident).is_ok());
         }
-        for ident in screaming_snake_case_or_upper_camel_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(is_screaming_snake_case(ident));
-            assert!(is_upper_camel_case(ident));
+        for ref ident in screaming_snake_case_or_upper_camel_case_idents {
+            assert!(!is_snake_case(ident).is_ok());
+            assert!(is_screaming_snake_case(ident).is_ok());
+            assert!(is_upper_camel_case(ident).is_ok());
         }
-        for ident in styleless_idents {
-            assert!(!is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        for ref ident in styleless_idents {
+            assert!(!is_snake_case(ident).is_ok());
+            assert!(!is_screaming_snake_case(ident).is_ok());
+            assert!(!is_upper_camel_case(ident).is_ok());
         }
     }
 

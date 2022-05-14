@@ -115,6 +115,10 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn is_ok(&self) -> bool {
+        self.value.is_some() && self.warnings.is_empty() && self.errors.is_empty()
+    }
+
     pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
         CompileResult {
             value,
