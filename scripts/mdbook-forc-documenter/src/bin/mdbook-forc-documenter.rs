@@ -52,7 +52,6 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
         .expect("Failed running forc --version");
     let version = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
     let version_message = "Running forc --help using ".to_owned() + &version;
-    println!("{}", version_message);
 
     let processed_book = pre.run(&ctx, book)?;
     serde_json::to_writer(io::stdout(), &processed_book)?;
