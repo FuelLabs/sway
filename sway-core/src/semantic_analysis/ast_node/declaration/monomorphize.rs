@@ -5,7 +5,7 @@ use crate::{
     semantic_analysis::{
         insert_type_parameters,
         namespace_system::{Items, Path, Root},
-        CopyTypes, TypeMapping,
+        TypeMapping,
     },
     type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
     CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
@@ -33,7 +33,7 @@ pub(crate) trait Monomorphize {
 
 impl<T> Monomorphize for T
 where
-    T: CopyTypes + MonomorphizeHelper<Output = T>,
+    T: MonomorphizeHelper<Output = T>,
 {
     type Output = T;
 
