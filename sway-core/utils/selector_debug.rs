@@ -7,8 +7,7 @@ use sway_core::{
     parse_tree::declaration::FunctionDeclaration,
     semantic_analysis::{
         ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},
-        namespace_system,
-        TypeCheckArguments,
+        namespace_system, TypeCheckArguments,
     },
     type_engine::*,
     BuildConfig, Rule, SwayParser,
