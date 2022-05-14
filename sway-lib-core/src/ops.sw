@@ -269,10 +269,10 @@ impl Shiftable for b256 {
     fn lsh(self, other: Self) -> Self {
         let (w1, w2, w3, w4) = decompose(val);
         // get each shifted word and associated overflow in turn
-        let (word_1, _) = shift_left_and_get_overflow(w1, n);
-        let (word_2, overflow_2) = shift_left_and_get_overflow(w2, n);
-        let (word_3, overflow_3) = shift_left_and_get_overflow(w3, n);
-        let (word_4, overflow_4) = shift_left_and_get_overflow(w4, n);
+        let (word_1, _) = lsh_with_overflow(w1, n);
+        let (word_2, overflow_2) = lsh_with_overflow(w2, n);
+        let (word_3, overflow_3) = lsh_with_overflow(w3, n);
+        let (word_4, overflow_4) = lsh_with_overflow(w4, n);
         // Add overflow from word on the right to each shifted word
         let w1_shifted = word_1.add(overflow_2);
         let w2_shifted = word_2.add(overflow_3);
@@ -285,10 +285,10 @@ impl Shiftable for b256 {
     fn rsh(self, other: Self) -> Self {
         let (w1, w2, w3, w4) = decompose(val);
         // get each shifted word and associated overflow in turn
-        let (word_1, overflow_1) = shift_right_and_get_overflow(w1, n);
-        let (word_2, overflow_2) = shift_right_and_get_overflow(w2, n);
-        let (word_3, overflow_3) = shift_right_and_get_overflow(w3, n);
-        let (word_4, _) = shift_right_and_get_overflow(w4, n);
+        let (word_1, overflow_1) = rsh_with_overflow(w1, n);
+        let (word_2, overflow_2) = rsh_with_overflow(w2, n);
+        let (word_3, overflow_3) = rsh_with_overflow(w3, n);
+        let (word_4, _) = rsh_with_overflow(w4, n);
         // Add overflow from the word on the left to each shifted word
         let w4_shifted = word_4.add(overflow_3);
         let w3_shifted = word_3.add(overflow_2);
@@ -510,7 +510,7 @@ impl OrdEq for u8 {
 /// For setting the bit which allows overflow to occur without a vm panic
 const FLAG = 2;
 
-fn shift_left_and_get_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
     let mut result_buffer = 0;
@@ -527,7 +527,7 @@ fn shift_left_and_get_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, overflow)
 }
 
-fn shift_right_and_get_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
     let mut result_buffer = 0;
