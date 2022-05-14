@@ -29,8 +29,10 @@ impl From for U128 {
     }
 }
 
+
 /// Methods on the U128 type
 impl U128 {
+
     /// Initializes a new, zeroed U128.
     fn new() -> U128 {
         U128 {
@@ -39,6 +41,7 @@ impl U128 {
         }
     }
 
+    // Add a U128 to a U128
     fn add(self, other: U128) -> U128 {
         let lower = self.lower + other.lower;
         let mut upper = self.upper + other.upper;
@@ -57,6 +60,13 @@ impl U128 {
         }
     }
 
+    // Add a u64 to a U128
+    fn add_u64(self, other: u64) -> U128 {
+        let other_u128 = U128{upper: 0, lower: other};
+        self.sub(other_u128)
+    }
+
+    // Subtract a U128 from a U128
     fn sub(self, other: U128) -> U128 {
         let mut upper = self.upper - other.upper;
         let mut lower = 0;
@@ -79,21 +89,34 @@ impl U128 {
         }
     }
 
-    // TO DO : mul, div, inequalities, etc.
+    // Subtract a u64 from a U128
+    fn sub_u64(self, other: u64) -> U128 {
+        let other_u128 = U128{upper: 0, lower: other};
+        self.sub(other_u128)
+    }
+
+    // Divide a U128 by a U64, returning a U64
+    fn div_by_u64(self, other: u64) -> u64 {
+        // TO DO
+        42
+    }s
+
+    // TO DO : Other U128 ops : mul, div, inequalities, etc.
 }
 
-// Downcast from u64 to u32, losing precision
+// Get lower 32 bits of a u64
 fn lower(a: u64) -> u64 {
     (a << 32) >> 32
 }
 
+// Get upper 32 bits of a u64
 fn upper(a: u64) -> u64 {
     a >> 32
 }
 
 // Multiply two u64 values, producing a U128
 pub fn mul64(a: u64, b: u64) -> U128 {
-    // Split a and b into 32-bit lo and hi components
+    // Split a and b into 32-bit low and high components
     let a_lo: u64 = lower(a);
     let a_hi: u64 = upper(a);
     let b_lo: u64 = lower(b);
@@ -105,11 +128,11 @@ pub fn mul64(a: u64, b: u64) -> U128 {
     let ba_mid: u64 = b_hi * a_lo;
     let ab_lo: u64 = a_lo * b_lo;
 
+    // low result is just the overflow from the multiplication of a and b
+    let result_lo = a * b;
+
     // Calculate the carry
     let carry: u64 = upper(lower(ab_mid) + upper(ab_lo) + lower(ba_mid));
-
-    // low result
-    let result_lo = a * b;
 
     // High result
     let result_hi = ab_hi + upper(ab_mid) + upper(ba_mid) + carry;
