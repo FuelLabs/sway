@@ -1,10 +1,7 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    build_config::BuildConfig,
-    error::*,
-    parse_tree::{ident, CallPath, Visibility},
-    style::{is_snake_case, is_upper_camel_case},
+    parse_tree::{CallPath, Visibility},
     type_engine::TypeInfo,
 };
 

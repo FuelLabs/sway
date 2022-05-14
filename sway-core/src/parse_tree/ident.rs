@@ -1,4 +1,4 @@
-use crate::{build_config::BuildConfig, error::*};
+use crate::{build_config::BuildConfig};
 
 use sway_types::{ident::Ident, span::Span};
 

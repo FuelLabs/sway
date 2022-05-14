@@ -1,7 +1,6 @@
 use super::*;
 
 use crate::{
-    build_config::BuildConfig,
     semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
     CallPath, Ident, TypeArgument, TypeParameter,
 };

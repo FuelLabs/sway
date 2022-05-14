@@ -2520,8 +2520,7 @@ mod tests {
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
         semantic_analysis::{
-            namespace::{self, Namespace},
-            TreeType, TypedParseTree,
+            namespace::{self, Namespace}, TypedParseTree,
         },
     };
 

@@ -1,16 +1,13 @@
 use crate::{
-    build_config::BuildConfig, error::*, span::Span, type_engine::IntegerBits, types::ResolvedType,
+    type_engine::IntegerBits, types::ResolvedType,
     CompileError, TypeInfo,
 };
 
 use sway_types::span;
 
 use std::{
-    convert::TryInto,
     hash::{Hash, Hasher},
     num::{IntErrorKind, ParseIntError},
-    path::PathBuf,
-    sync::Arc,
 };
 
 #[derive(Debug, Clone, Eq)]

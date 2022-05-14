@@ -1,9 +1,6 @@
 use crate::{
-    build_config::BuildConfig,
-    error::*,
-    parse_tree::{declaration::TypeParameter, ident, Visibility},
-    style::{is_snake_case, is_upper_camel_case},
-    type_engine::{insert_type, look_up_type_id, TypeId, TypeInfo},
+    parse_tree::{declaration::TypeParameter, Visibility},
+    type_engine::{look_up_type_id, TypeId, TypeInfo},
     CodeBlock,
 };
 

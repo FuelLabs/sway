@@ -1,5 +1,5 @@
 use super::{FunctionDeclaration, TypeParameter};
-use crate::{build_config::BuildConfig, error::*, parse_tree::CallPath, type_engine::TypeInfo};
+use crate::{parse_tree::CallPath, type_engine::TypeInfo};
 
 use sway_types::span::Span;
 

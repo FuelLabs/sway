@@ -1,12 +1,10 @@
 use crate::{
-    build_config::BuildConfig,
     error::*,
-    parse_tree::{declaration::TypeParameter, ident, Visibility},
+    parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::{
         ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
         namespace::Namespace,
     },
-    style::is_upper_camel_case,
     type_engine::*,
 };
 

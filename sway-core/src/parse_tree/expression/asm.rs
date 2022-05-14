@@ -1,13 +1,13 @@
 use std::hash::{Hash, Hasher};
 
 use crate::{
-    build_config::BuildConfig, error::*, parse_tree::ident, TypeInfo, VariableDeclaration,
+    error::*, TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};
 
 use super::Expression;
-use crate::type_engine::IntegerBits;
+
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression {

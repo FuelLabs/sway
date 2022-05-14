@@ -1,8 +1,5 @@
 use crate::{
-    build_config::BuildConfig,
-    error::{err, ok, CompileError, CompileResult, ParserLifter},
-    error_recovery_exp,
-    parse_tree::{ident, Expression},
+    parse_tree::{Expression},
 };
 
 use sway_types::{span::Span, Ident};

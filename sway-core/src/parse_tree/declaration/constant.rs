@@ -1,12 +1,9 @@
 use crate::{
-    build_config::BuildConfig,
-    error::{err, ok, CompileResult, ParserLifter, Warning},
-    parse_tree::{ident, Expression, Visibility},
-    style::is_screaming_snake_case,
+    parse_tree::{Expression, Visibility},
     type_engine::TypeInfo,
 };
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident};
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {

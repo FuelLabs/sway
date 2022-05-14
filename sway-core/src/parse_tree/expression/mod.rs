@@ -2,14 +2,14 @@ use crate::{
     build_config::BuildConfig,
     error::*,
     parse_tree::{ident, CallPath, Literal},
-    type_engine::{IntegerBits, TypeInfo},
+    type_engine::{TypeInfo},
     AstNode, AstNodeContent, CodeBlock, Declaration, TypeArgument, VariableDeclaration,
 };
 
 use sway_types::{ident::Ident, Span};
 
 use either::Either;
-use std::collections::VecDeque;
+
 
 mod asm;
 mod match_branch;

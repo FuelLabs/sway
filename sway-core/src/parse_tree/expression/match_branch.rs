@@ -1,8 +1,8 @@
-use crate::{build_config::BuildConfig, error::*, CatchAll, CodeBlock};
 
-use sway_types::{span, Span};
 
-use super::scrutinee::Scrutinee;
+use sway_types::{span};
+
+
 use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]

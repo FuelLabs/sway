@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::ident, type_engine::*, BuildConfig};
+use crate::{type_engine::*};
 
 use sway_types::{ident::Ident, span::Span};
 

@@ -1,9 +1,7 @@
-use std::{path::PathBuf, sync::Arc};
+
 
 use crate::{
-    error::{err, ok},
-    parse_tree::ident,
-    BuildConfig, CallPath, CompileError, CompileResult, Literal,
+    error::{err, ok}, CallPath, CompileError, CompileResult, Literal,
 };
 
 use sway_types::{ident::Ident, span::Span};

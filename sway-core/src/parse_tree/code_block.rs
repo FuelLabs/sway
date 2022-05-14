@@ -1,9 +1,6 @@
-use super::WhileLoop;
+
 use crate::{
-    build_config::BuildConfig,
-    error::*,
-    parse_tree::{Expression, ReturnStatement},
-    AstNode, AstNodeContent, Declaration, VariableDeclaration,
+    AstNode,
 };
 
 use sway_types::span::Span;
