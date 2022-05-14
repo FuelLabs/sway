@@ -1849,9 +1849,6 @@ impl TypedExpression {
         // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
-        // TODO(static span): the below String address should just be address_expr
-        // basically delete the bottom line and replace references to it with address_expr
-        let address_str = address.span().as_str().to_string();
         let address_expr = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *address,
@@ -1918,7 +1915,7 @@ impl TypedExpression {
                             TypedExpression {
                                 return_type: insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
-                                    address: String::new(),
+                                    address: None,
                                 }),
                                 expression: TypedExpressionVariant::Tuple { fields: vec![] },
                                 is_constant: IsConstant::Yes,
@@ -1940,7 +1937,7 @@ impl TypedExpression {
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
             abi_name: AbiName::Known(abi_name.clone()),
-            address: address_str,
+            address: Some(address_expr.clone()),
         });
         let mut functions_buf = abi
             .interface_surface

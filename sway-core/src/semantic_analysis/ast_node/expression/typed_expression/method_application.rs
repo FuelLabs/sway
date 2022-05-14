@@ -259,12 +259,17 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
-                // TODO(static span): this can be a normal address expression,
-                // so we don't need to re-parse and re-compile
-                let contract_address = todo!("use expr");
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: method_name.span().clone(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
@@ -331,7 +336,7 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
                 let contract_address = todo!("use expr");
