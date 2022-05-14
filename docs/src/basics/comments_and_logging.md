@@ -21,6 +21,17 @@ fn main() {
 }
 ```
 
+You can also do block comments
+```sway
+fn main() {
+    /*
+    You can write on multiple lines
+    like this if you want
+    */
+    let baz = 8;
+}
+```
+
 ## Logging
 
 To log integers, you can use the `log_u64`, `log_u32`, `log_u16`, or `log_u8` functions from the standard library.
