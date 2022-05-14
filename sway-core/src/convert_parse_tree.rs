@@ -1,7 +1,7 @@
-use crate::ident;
-
+use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
+        ident,
         error::{err, ok, CompileError, CompileResult, CompileWarning},
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
@@ -14,7 +14,6 @@ use {
         TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
         WhileLoop,
     },
-    nanoid::nanoid,
     std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
@@ -2216,11 +2215,19 @@ fn statement_let_to_ast_nodes(
             }
             Pattern::Tuple(pat_tuple) => {
                 let mut ast_nodes = Vec::new();
-                let name = {
-                    // FIXME: This is so, so dodgy.
-                    let name_str: &'static str = Box::leak(nanoid!(32).into_boxed_str());
-                    Ident::new_with_override(name_str, span.clone())
-                };
+
+                // Generate a deterministic name for the tuple. Because the parser is single
+                // threaded, the name generated below will be stable.
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let tuple_name = format!(
+                    "{}{}",
+                    crate::constants::TUPLE_NAME_PREFIX,
+                    COUNTER.load(Ordering::SeqCst)
+                );
+                COUNTER.fetch_add(1, Ordering::SeqCst);
+                let name =
+                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
