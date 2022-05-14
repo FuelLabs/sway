@@ -681,6 +681,7 @@ fn main() {
         let result = get_formatted_data(test_sway.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
+        println!("{}\n{}", formatted_code, expected_sway);
         assert_eq!(formatted_code, expected_sway);
     }
 

@@ -319,12 +319,42 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
     with_newline.concat()
 }
 
-pub fn format_use_statement(_line: &str) -> String {
-    todo!()
+// this will be replaced in v2 anyway
+pub fn format_use_statement(line: &str) -> String {
+    let mut line = line.trim().split(" ");
+    let use_keyword = line
+        .next()
+        .expect("err: format_use_statement called on non-use-statement");
+    let line = line.collect::<Vec<&str>>().join(" ");
+    let mut line: String = sort_and_filter_use_expression(&line);
+
+    let max_length = 100usize;
+
+    // This is mostly to satisfy a failing fmt test
+    if line.len() > max_length {
+        line = format_use_statement_length(&line, max_length, 0usize);
+        line.insert_str(
+            ALREADY_FORMATTED_LINE_PATTERN.len(),
+            &format!("{} ", use_keyword),
+        );
+    } else {
+        line = format!("{}{} {}", ALREADY_FORMATTED_LINE_PATTERN, use_keyword, line)
+    }
+
+    line
 }
 
-pub fn format_include_statement(_line: &str) -> String {
-    todo!()
+pub fn format_include_statement(line: &str) -> String {
+    let mut line = line.trim().split(" ");
+    let include_keyword = line
+        .next()
+        .expect("err: format_include_statement called on non-include-statement");
+    let line = line.collect::<Vec<&str>>().join(" ");
+    let line: String = line.chars().filter(|c| !c.is_whitespace()).collect();
+    format!(
+        "{}{} {}",
+        ALREADY_FORMATTED_LINE_PATTERN, include_keyword, line
+    )
 }
 
 fn get_data_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> String {
