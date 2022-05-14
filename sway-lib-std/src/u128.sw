@@ -83,18 +83,21 @@ impl U128 {
 }
 
 // Downcast from u64 to u32, losing precision
-fn u64_to_u32(a: u64) -> u32 {
-    let result: u32 = a;
-    result
+fn lower(a: u64) -> u64 {
+    (a << 32) >> 32
+}
+
+fn upper(a: u64) -> u64 {
+    a >> 32
 }
 
 // Multiply two u64 values, producing a U128
 pub fn mul64(a: u64, b: u64) -> U128 {
     // Split a and b into 32-bit lo and hi components
-    let a_lo = u64_to_u32(a);
-    let a_hi = u64_to_u32(a >> 32);
-    let b_lo = u64_to_u32(b);
-    let b_hi = u64_to_u32(b >> 32);
+    let a_lo: u64 = lower(a);
+    let a_hi: u64 = upper(a);
+    let b_lo: u64 = lower(b);
+    let b_hi: u64 = upper(b);
 
     // Calculate low, high, and mid multiplications
     let ab_hi: u64 = a_hi * b_hi;
@@ -102,14 +105,14 @@ pub fn mul64(a: u64, b: u64) -> U128 {
     let ba_mid: u64 = b_hi * a_lo;
     let ab_lo: u64 = a_lo * b_lo;
 
-    // Calculate the carry bit
-    let carry_bit: u64 = (u64_to_u32(ab_mid) + u64_to_u32(ba_mid) + (ab_lo >> 32)) >> 32;
+    // Calculate the carry
+    let carry: u64 = upper(lower(ab_mid) + upper(ab_lo) + lower(ba_mid));
 
-    // low result is what's left after the (overflowing) multiplication of a and b
-    let result_lo: u64 = a * b;
+    // low result
+    let result_lo = a * b;
 
     // High result
-    let result_hi: u64 = ab_hi + (ab_mid >> 32) + (ba_mid >> 32) + carry_bit;
+    let result_hi = ab_hi + upper(ab_mid) + upper(ba_mid) + carry;
 
     U128 {
         upper: result_hi,
