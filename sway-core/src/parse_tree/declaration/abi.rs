@@ -1,6 +1,5 @@
 use super::{FunctionDeclaration, TraitFn};
 
-
 use sway_types::{ident::Ident, span::Span};
 
 /// An `abi` declaration, which declares an interface for a contract

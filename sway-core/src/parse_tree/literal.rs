@@ -1,7 +1,4 @@
-use crate::{
-    type_engine::IntegerBits, types::ResolvedType,
-    CompileError, TypeInfo,
-};
+use crate::{type_engine::IntegerBits, types::ResolvedType, CompileError, TypeInfo};
 
 use sway_types::span;
 

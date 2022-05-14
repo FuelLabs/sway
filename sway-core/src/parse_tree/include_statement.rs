@@ -1,5 +1,3 @@
-
-
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Clone, Debug)]

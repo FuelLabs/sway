@@ -1,7 +1,4 @@
-
-
-use sway_types::{span};
-
+use sway_types::span;
 
 use super::{Expression, MatchCondition};
 

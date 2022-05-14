@@ -1,6 +1,4 @@
-use crate::{
-    parse_tree::{Expression},
-};
+use crate::parse_tree::Expression;
 
 use sway_types::{span::Span, Ident};
 

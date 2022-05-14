@@ -1,7 +1,6 @@
-
-
 use crate::{
-    error::{err, ok}, CallPath, CompileError, CompileResult, Literal,
+    error::{err, ok},
+    CallPath, CompileError, CompileResult, Literal,
 };
 
 use sway_types::{ident::Ident, span::Span};

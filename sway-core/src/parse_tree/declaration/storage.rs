@@ -1,4 +1,4 @@
-use crate::{type_engine::*};
+use crate::type_engine::*;
 
 use sway_types::{ident::Ident, span::Span};
 

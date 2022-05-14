@@ -3,7 +3,8 @@ use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
 use crate::{
-    type_engine::{insert_type, look_up_type_id, TypeId}, TypeInfo,
+    type_engine::{insert_type, look_up_type_id, TypeId},
+    TypeInfo,
 };
 
 #[derive(Debug, Clone)]

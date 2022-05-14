@@ -24,8 +24,6 @@ pub(crate) use type_argument::*;
 pub(crate) use type_parameter::*;
 pub use variable::*;
 
-
-
 #[derive(Debug, Clone)]
 pub enum Declaration {
     VariableDeclaration(VariableDeclaration),

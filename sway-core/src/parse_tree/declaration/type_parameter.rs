@@ -1,7 +1,4 @@
-use crate::{
-    type_engine::*,
-    TypedDeclaration,
-};
+use crate::{type_engine::*, TypedDeclaration};
 
 use sway_types::{ident::Ident, span::Span};
 

@@ -1,7 +1,4 @@
-
-use crate::{
-    AstNode,
-};
+use crate::AstNode;
 
 use sway_types::span::Span;
 

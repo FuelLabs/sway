@@ -1,8 +1,4 @@
-use crate::{
-    CodeBlock, Expression,
-};
-
-
+use crate::{CodeBlock, Expression};
 
 /// A parsed while loop. Contains the `condition`, which is defined from an [Expression], and the `body` from a [CodeBlock].
 #[derive(Debug, Clone)]

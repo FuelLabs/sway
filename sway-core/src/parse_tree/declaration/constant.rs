@@ -3,7 +3,7 @@ use crate::{
     type_engine::TypeInfo,
 };
 
-use sway_types::{ident::Ident};
+use sway_types::ident::Ident;
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
