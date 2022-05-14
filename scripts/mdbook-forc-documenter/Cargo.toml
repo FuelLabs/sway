@@ -1,0 +1,22 @@
+[package]
+name = "mdbook-forc-documenter"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mdbook-forc-documenter"
+path = "src/bin/mdbook-forc-documenter.rs"
+
+[lib]
+name = "mdbook_forc_documenter"
+path = "src/lib.rs"
+
+
+[dependencies]
+mdbook = "=0.4.15"
+anyhow = "1"
+clap = { version = "3.1", features = [ "derive" ]  }
+semver = "1.0"
+serde = "1.0"
+serde_json = "1.0"
+
