@@ -345,6 +345,27 @@ jobs:
           command: test
           args: --locked
 
+  forc-documenter-dry-run:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Run forc-documenter in dry run mode
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --bin forc-documenter write-docs --dry-run
+
   cargo-unused-deps-check:
     needs: cancel-previous-runs
     runs-on: ubuntu-latest
