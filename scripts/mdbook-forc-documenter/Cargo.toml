@@ -13,9 +13,9 @@ path = "src/lib.rs"
 
 
 [dependencies]
-mdbook = "=0.4.15"
 anyhow = "1"
 clap = { version = "3.1", features = [ "derive" ]  }
+mdbook = "=0.4.15"
 semver = "1.0"
 serde = "1.0"
 serde_json = "1.0"
