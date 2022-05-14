@@ -8,8 +8,8 @@ use std::process;
 use mdbook_forc_documenter::ForcDocumenter;
 
 pub fn make_app() -> Command<'static> {
-    Command::new("nop-preprocessor")
-        .about("A mdbook preprocessor which does precisely nothing")
+    Command::new("forc-documenter")
+        .about("A mdbook preprocessor which documents Forc commands")
         .subcommand(
             Command::new("supports")
                 .arg(Arg::new("renderer").required(true))
@@ -20,7 +20,6 @@ pub fn make_app() -> Command<'static> {
 fn main() {
     let matches = make_app().get_matches();
 
-    // Users will want to construct their own preprocessor here
     let preprocessor = ForcDocumenter::new();
 
     if let Some(sub_args) = matches.subcommand_matches("supports") {
