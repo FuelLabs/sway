@@ -313,6 +313,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0xcb, 0x7f, 0x6d, 0xd4,
             ])),
         ),
+        (
+            "should_pass/language/many_stack_variables",
+            ProgramState::Return(10),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -366,6 +370,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/nested_struct_args_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/issue_1512_repro",
             ProgramState::Revert(0),
         ),
     ];
@@ -429,6 +437,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/different_contract_caller_types",
         "should_fail/insufficient_type_info",
         "should_fail/primitive_type_argument",
+        "should_fail/double_underscore_fn",
+        "should_fail/double_underscore_trait_fn",
+        "should_fail/double_underscore_impl_self_fn",
+        "should_fail/double_underscore_var",
+        "should_fail/double_underscore_struct",
+        "should_fail/double_underscore_enum",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

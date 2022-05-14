@@ -34,10 +34,10 @@ eq   $r0 $r1 $r0
 jnzi $r0 i35
 ji   i42
 addi $r1 $r3 i8               ; extract address
-addi $r0 $r4 i0               ; get_ptr
+addi $r0 $r4 i0               ; get offset reg for get_ptr
 addi $r0 $r4 i0               ; get store offset
 mcpi $r0 $r1 i48              ; store value
-addi $r0 $r4 i0               ; get_ptr
+addi $r0 $r4 i0               ; get offset reg for get_ptr
 lw   $r0 $r0 i4               ; extract_value @ 1
 ji   i43
 lw   $r0 data_0               ; literal instantiation

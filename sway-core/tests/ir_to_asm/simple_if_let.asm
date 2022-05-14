@@ -13,19 +13,19 @@ lw   $r0 data_0               ; literal instantiation
 sw   $r1 $r0 i0               ; insert_value @ 0
 lw   $r0 data_1               ; literal instantiation
 sw   $r1 $r0 i1               ; insert_value @ 1
-addi $r0 $r3 i8               ; get_ptr
+addi $r0 $r3 i8               ; get offset reg for get_ptr
 addi $r0 $r3 i8               ; get store offset
 mcpi $r0 $r1 i16              ; store value
-addi $r2 $r3 i8               ; get_ptr
+addi $r2 $r3 i8               ; get offset reg for get_ptr
 lw   $r1 $r2 i0               ; extract_value @ 0
 lw   $r0 data_2               ; literal instantiation
 eq   $r0 $r1 $r0
 jnzi $r0 i23
 ji   i29
 lw   $r1 $r2 i1               ; extract_value @ 1,1
-addi $r0 $r3 i0               ; get_ptr
+addi $r0 $r3 i0               ; get offset reg for get_ptr
 sw   $r3 $r1 i0               ; store value
-addi $r0 $r3 i0               ; get_ptr
+addi $r0 $r3 i0               ; get offset reg for get_ptr
 lw   $r0 $r3 i0               ; load value
 ji   i30
 lw   $r0 data_0               ; literal instantiation
