@@ -1,6 +1,6 @@
 library hash;
 
-use std::constants::ZERO;
+use ::constants::ZERO;
 
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
