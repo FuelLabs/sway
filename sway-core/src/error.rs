@@ -266,7 +266,7 @@ pub enum Warning {
         cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: TypeInfo,
+        r#type: Box<TypeInfo>,
     },
     SimilarMethodFound {
         lib: Ident,

@@ -278,7 +278,7 @@ impl TypedAstNode {
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = check!(
+                    check!(
                         import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
@@ -384,7 +384,7 @@ impl TypedAstNode {
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -600,7 +600,7 @@ impl TypedAstNode {
                             };
 
                             // insert struct into namespace
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
@@ -806,7 +806,7 @@ impl TypedAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: node.type_info(),
+                r#type: Box::new(node.type_info()),
             };
             assert_or_warn!(
                 node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,

@@ -1259,7 +1259,7 @@ impl TypedExpression {
             )
             .collect();
         // check for any disallowed opcodes
-        for ref op in &asm.body {
+        for op in &asm.body {
             check!(disallow_opcode(&op.op_name), continue, warnings, errors)
         }
         let exp = TypedExpression {
@@ -1939,10 +1939,12 @@ impl TypedExpression {
                 return err(warnings, errors);
             }
         };
+
         let return_type = insert_type(TypeInfo::ContractCaller {
             abi_name: AbiName::Known(abi_name.clone()),
-            address: Some(address_expr.clone()),
+            address: Some(Box::new(address_expr.clone())),
         });
+
         let mut functions_buf = abi
             .interface_surface
             .iter()

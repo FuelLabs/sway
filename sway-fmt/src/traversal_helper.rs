@@ -321,7 +321,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
 
 // this will be replaced in v2 anyway
 pub fn format_use_statement(line: &str) -> String {
-    let mut line = line.trim().split(" ");
+    let mut line = line.trim().split(' ');
     let use_keyword = line
         .next()
         .expect("err: format_use_statement called on non-use-statement");
@@ -345,7 +345,7 @@ pub fn format_use_statement(line: &str) -> String {
 }
 
 pub fn format_include_statement(line: &str) -> String {
-    let mut line = line.trim().split(" ");
+    let mut line = line.trim().split(' ');
     let include_keyword = line
         .next()
         .expect("err: format_include_statement called on non-include-statement");

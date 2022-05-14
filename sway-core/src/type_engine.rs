@@ -83,7 +83,7 @@ impl ToJsonAbi for TypeId {
 #[test]
 fn generic_enum_resolution() {
     use crate::semantic_analysis::ast_node::TypedEnumVariant;
-    use crate::Ident;
+    use crate::{span::Span, Ident};
     let engine = Engine::default();
 
     let sp = Span::dummy();
@@ -138,6 +138,7 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
+    use sway_types::Span;
     let engine = Engine::default();
 
     let sp = Span::dummy();
@@ -156,6 +157,7 @@ fn basic_numeric_unknown() {
 }
 #[test]
 fn chain_of_refs() {
+    use sway_types::Span;
     let engine = Engine::default();
     let sp = Span::dummy();
     // numerics
@@ -175,6 +177,7 @@ fn chain_of_refs() {
 }
 #[test]
 fn chain_of_refs_2() {
+    use sway_types::Span;
     let engine = Engine::default();
     let sp = Span::dummy();
     // numerics

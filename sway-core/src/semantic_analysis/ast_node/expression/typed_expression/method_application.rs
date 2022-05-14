@@ -273,7 +273,7 @@ pub(crate) fn type_check_method_application(
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None
@@ -343,14 +343,14 @@ pub(crate) fn type_check_method_application(
                     addr
                 } else {
                     errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: call_path.span().clone(),
+                        span: call_path.span(),
                     });
                     return err(warnings, errors);
                 };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None

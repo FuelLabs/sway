@@ -56,7 +56,8 @@ pub enum TypeInfo {
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
         abi_name: AbiName,
-        address: Option<TypedExpression>,
+        // boxed for size
+        address: Option<Box<TypedExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
