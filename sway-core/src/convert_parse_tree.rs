@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
-        ident,
         error::{err, ok, CompileError, CompileResult, CompileWarning},
+        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
