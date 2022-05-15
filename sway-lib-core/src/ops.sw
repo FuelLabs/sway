@@ -1,5 +1,11 @@
 library ops;
 
+fn log_u64(val: u64) {
+    asm(r1: val) {
+        log r1 zero zero zero;
+    }
+}
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
@@ -265,6 +271,38 @@ impl Shiftable for u8 {
     }
 }
 
+impl Shiftable for b256 {
+    fn lsh(self, n: u64) -> Self {
+        let (w1, w2, w3, w4) = decompose(self);
+        // get each shifted word and associated overflow in turn
+        let (word_1, _) = lsh_with_overflow(w1, n);
+        let (word_2, overflow_2) = lsh_with_overflow(w2, n);
+        let (word_3, overflow_3) = lsh_with_overflow(w3, n);
+        let (word_4, overflow_4) = lsh_with_overflow(w4, n);
+        // Add overflow from word on the right to each shifted word
+        let w1_shifted = word_1.add(overflow_2);
+        let w2_shifted = word_2.add(overflow_3);
+        let w3_shifted = word_3.add(overflow_4);
+
+        compose(w1_shifted, w2_shifted, w3_shifted, word_4)
+    }
+
+    fn rsh(self, n: u64) -> Self {
+        let (w1, w2, w3, w4) = decompose(self);
+        // get each shifted word and associated overflow in turn
+        let (word_1, overflow_1) = rsh_with_overflow(w1, n);
+        let (word_2, overflow_2) = rsh_with_overflow(w2, n);
+        let (word_3, overflow_3) = rsh_with_overflow(w3, n);
+        let (word_4, _) = rsh_with_overflow(w4, n);
+        // Add overflow from the word on the left to each shifted word
+        let w4_shifted = word_4.add(overflow_3);
+        let w3_shifted = word_3.add(overflow_2);
+        let w2_shifted = word_2.add(overflow_1);
+
+        compose(word_1, w2_shifted, w3_shifted, w4_shifted)
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
@@ -488,6 +526,45 @@ impl BitwiseXor for u64 {
     }
 }
 
+impl BitwiseAnd for b256 {
+    pub fn binary_and(val: self, other: Self) -> Self {
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let word_1 = value_word_1.binary_and(other_word_1);
+        let word_2 = value_word_2.binary_and(other_word_2);
+        let word_3 = value_word_3.binary_and(other_word_3);
+        let word_4 = value_word_4.binary_and(other_word_4);
+        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        rebuilt
+    }
+}
+
+impl BitwiseOr for b256 {
+    pub fn binary_or(val: self, other: Self) -> Self {
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let word_1 = value_word_1.binary_or(other_word_1);
+        let word_2 = value_word_2.binary_or(other_word_2);
+        let word_3 = value_word_3.binary_or(other_word_3);
+        let word_4 = value_word_4.binary_or(other_word_4);
+        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        rebuilt
+    }
+}
+
+impl BitwiseXor for b256 {
+    pub fn binary_xor(val: self, other: Self) -> Self {
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let word_1 = value_word_1.binary_xor(other_word_1);
+        let word_2 = value_word_2.binary_xor(other_word_2);
+        let word_3 = value_word_3.binary_xor(other_word_3);
+        let word_4 = value_word_4.binary_xor(other_word_4);
+        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        rebuilt
+    }
+}
+
 impl OrdEq for u64 {
 }
 impl OrdEq for u32 {
@@ -495,4 +572,77 @@ impl OrdEq for u32 {
 impl OrdEq for u16 {
 }
 impl OrdEq for u8 {
+}
+
+/////////////////////////////////////////////////
+// Internal Helpers
+/////////////////////////////////////////////////
+
+/// For setting the bit which allows overflow to occur without a vm panic
+const FLAG = 2;
+
+/// Left shift a u64 and preserve the overflow amount if any
+fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+    let mut output = (0, 0);
+    // @todo try to remove copy once this is working.
+    // i think the issue atm is that there is wrapping occoring. Wait till vm fix with safe math flags lands.
+    let word_copy = word;
+    let right_shift_amount = 64.subtract(shift_amount);
+    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
+       flag r5;        // set flag to allow overflow without panic
+       srl r3 copy r6; // shift right to get overflow, put result in r3
+       sll r4 r1 r2;   // shift left, put result in r4
+       sw out r4 i0;   // store word at r4 in output
+       sw out r3 i1;   // store word at r3 in output + 1 word offset
+       out: (u64, u64) // return both values
+    };
+
+    (shifted, overflow)
+}
+
+/// Right shift a u64 and preserve the overflow amount if any
+fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+    let mut output = (0, 0);
+    let left_shift_amount = 64.subtract(shift_amount);
+    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: left_shift_amount) {
+       flag r5;        // set flag to allow overflow without panic
+       sll r3 r1 r6;   // shift left to get overflow, put result in r3
+       srl r4 r1 r2;   // shift right, put result in r4
+       sw out r4 i0;   // store word at r4 in output
+       sw out r3 i1;   // store word at r3 in output + 1 word offset
+       out: (u64, u64) // return both values
+    };
+
+    (shifted, overflow)
+}
+
+/// Extract a single 64 bit word from a b256 value using the specified offset.
+fn get_word_from_b256(val: b256, offset: u64) -> u64 {
+    let mut empty: u64 = 0;
+    asm(r1: val, offset: offset, r2,  res: empty) {
+        add r2 r1 offset;
+        lw res r2 i0;
+        res: u64
+    }
+}
+
+/// Build a single b256 value from 4 64 bit words.
+fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
+    let res: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    asm(w1: word_1, w2: word_2, w3: word_3, w4: word_4, result: res) {
+        sw result w1 i0;
+        sw result w2 i1;
+        sw result w3 i2;
+        sw result w4 i3;
+        result: b256
+    }
+}
+
+/// Get 4 64 bit words from a single b256 value.
+fn decompose(val: b256) -> (u64, u64, u64, u64) {
+    let w1 = get_word_from_b256(val, 0);
+    let w2 = get_word_from_b256(val, 8);
+    let w3 = get_word_from_b256(val, 16);
+    let w4 = get_word_from_b256(val, 24);
+    (w1, w2, w3, w4)
 }
