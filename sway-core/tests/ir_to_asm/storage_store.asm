@@ -15,10 +15,10 @@ jnzi $r0 i28                  ; jump to selected function
 rvrt $zero                    ; revert if no selectors matched
 move $r2 $sp                  ; save locals base register
 cfei i40                      ; allocate 40 bytes for all locals
-addi $r0 $r2 i32              ; get_ptr
+addi $r0 $r2 i32              ; get offset reg for get_ptr
 lw   $r0 data_0               ; literal instantiation
 sw   $r2 $r0 i4               ; store value
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r1 data_1               ; literal instantiation
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i32              ; store value
@@ -28,15 +28,15 @@ sww  $r0 $r1                  ; single word state access
 ret  $zero                    ; returning unit as zero
 move $r1 $sp                  ; save locals base register
 cfei i64                      ; allocate 64 bytes for all locals
-addi $r0 $r1 i32              ; get_ptr
+addi $r0 $r1 i32              ; get offset reg for get_ptr
 lw   $r2 data_2               ; literal instantiation
 addi $r0 $r1 i32              ; get store offset
 mcpi $r0 $r2 i32              ; store value
-addi $r0 $r1 i0               ; get_ptr
+addi $r0 $r1 i0               ; get offset reg for get_ptr
 lw   $r2 data_3               ; literal instantiation
 addi $r0 $r1 i0               ; get store offset
 mcpi $r0 $r2 i32              ; store value
-addi $r0 $r1 i32              ; get_ptr
+addi $r0 $r1 i32              ; get offset reg for get_ptr
 addi $r2 $r1 i32              ; get offset
 addi $r0 $r1 i0               ; get offset
 swwq $r0 $r2                  ; quad word state access

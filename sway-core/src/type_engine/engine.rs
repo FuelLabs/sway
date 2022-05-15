@@ -109,10 +109,7 @@ impl Engine {
                 (warnings, errors)
             }
 
-            (
-                ref received_info @ UnsignedInteger(received_width),
-                ref expected_info @ UnsignedInteger(expected_width),
-            ) => {
+            (UnsignedInteger(received_width), UnsignedInteger(expected_width)) => {
                 // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
                 // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
                 // `u64`.  So we're casting received TO expected.
@@ -128,14 +125,17 @@ impl Engine {
                     }
                 };
 
-                // Cast the expected type to the received type.
-                self.slab
-                    .replace(received, received_info, expected_info.clone());
+                // we don't want to do a slab replacement here, because
+                // we don't want to overwrite the original numeric type with the new one.
+                // This isn't actually inferencing the original type to the new numeric type.
+                // We just want to say "up until this point, this was a u32 (eg) and now it is a
+                // u64 (eg)". If we were to do a slab replace here, we'd be saying "this was always a
+                // u64 (eg)".
                 (warnings, vec![])
             }
 
             (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name == r_name =>
+                if l_name.as_str() == r_name.as_str() =>
             {
                 (vec![], vec![])
             }
@@ -156,17 +156,22 @@ impl Engine {
                 Struct {
                     name: a_name,
                     fields: a_fields,
+                    type_parameters: a_parameters,
                     ..
                 },
                 Struct {
                     name: b_name,
                     fields: b_fields,
+                    type_parameters: b_parameters,
                     ..
                 },
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_fields.len() == b_fields.len() {
+                if a_name == b_name
+                    && a_fields.len() == b_fields.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
@@ -187,15 +192,20 @@ impl Engine {
                 Enum {
                     name: a_name,
                     variant_types: a_variants,
+                    type_parameters: a_parameters,
                 },
                 Enum {
                     name: b_name,
                     variant_types: b_variants,
+                    type_parameters: b_parameters,
                 },
             ) => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
-                if a_name == b_name && a_variants.len() == b_variants.len() {
+                if a_name == b_name
+                    && a_variants.len() == b_variants.len()
+                    && a_parameters.len() == b_parameters.len()
+                {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());

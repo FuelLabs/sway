@@ -35,8 +35,7 @@ fn main() -> bool {
     assert(check_prime(11) == check_prime(17));
     assert(check_prime(12) == false);
     assert(check_prime(18) == false);
-    // The assert below currently fails. I think this is a compiler bug
-    // assert(check_prime(12) == check_prime(18));
+    assert(check_prime(12) == check_prime(18));
 
     true
 }
