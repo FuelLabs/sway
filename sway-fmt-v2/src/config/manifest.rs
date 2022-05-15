@@ -102,8 +102,11 @@ impl Config {
         }
     }
     /// Given a directory to a forc project containing a `swayfmt.toml`, read and
-    /// construct the `ConfigOptions` then construct a `Config` from those options.
-    pub fn from_dir_or_default(config_path: &Path) -> Result<Self> {
+    /// construct a `Config` from `ConfigOptions`.
+    ///
+    /// This is a combination of `ConfigOptions::from_dir` and `Config::from_opts`,
+    /// and takes care of constructing a finalized config.
+    pub fn from_dir(config_path: &Path) -> Result<Self> {
         let config_opts = ConfigOptions::from_dir(config_path)?;
         Ok(Self::from_opts(config_opts))
     }
