@@ -101,6 +101,8 @@ impl Config {
                 .unwrap_or_default(),
         }
     }
+    /// Given a directory to a forc project containing a `swayfmt.toml`, read and 
+    /// construct the `ConfigOptions` then construct a `Config` from those options.
     pub fn from_dir_or_default(config_path: &Path) -> Result<Self> {
         let config_opts = ConfigOptions::from_dir(config_path)?;
         let config = Self::from_opts(config_opts);
@@ -109,7 +111,7 @@ impl Config {
 }
 
 impl ConfigOptions {
-    /// Given a path to a `swayfmt.toml`, read it and construct a `ConfigOptions`.
+    /// Given a path to a `swayfmt.toml`, read and construct the `ConfigOptions`.
     pub fn from_file(config_path: &Path) -> Result<Self> {
         let config_str = std::fs::read_to_string(config_path)
             .map_err(|e| anyhow!("failed to read config at {:?}: {}", config_path, e))?;
