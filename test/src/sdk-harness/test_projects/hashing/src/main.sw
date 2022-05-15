@@ -22,8 +22,8 @@ abi MyContract {
 }
 
 enum Location {
-    earth: (),
-    mars: (),
+    Earth: (),
+    Mars: (),
 }
 
 struct Person {
