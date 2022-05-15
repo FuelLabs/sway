@@ -7,13 +7,13 @@ use std::hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256};
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
 enum Location {
-    Earth: ()
+    Earth: (),
 }
 
 struct Person {
     name: str[4],
     age: u64,
-    alive: bool
+    alive: bool,
 }
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
     let sha_hashed_bool = sha256(true);
     log_b256(sha_hashed_bool);
 
-    let sha_hashed_str = sha256("Fastest Modular Execution Layer!");
+    let sha_hashed_str = sha256( "Fastest Modular Execution Layer!");
     log_b256(sha_hashed_str);
 
     let sha_hashed_tuple = sha256((true, 7));
@@ -48,7 +48,9 @@ fn main() {
     let sha_hashed_enum = sha256(Location::Earth);
     log_b256(sha_hashed_enum);
 
-    let sha_hashed_struct = sha256(Person { name: "John", age: 9000, alive: true });
+    let sha_hashed_struct = sha256(Person {
+        name: "John", age: 9000, alive: true
+    });
     log_b256(sha_hashed_struct);
 
     // Hash a single u64 value.
