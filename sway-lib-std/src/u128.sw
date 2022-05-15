@@ -61,10 +61,11 @@ impl U128 {
     }
 
     // Add a u64 to a U128
-    fn add_u64(self, other: u64) -> U128 {
-        let other_u128 = U128{upper: 0, lower: other};
-        self.sub(other_u128)
-    }
+    // TO DO : blocked by https://github.com/FuelLabs/sway/issues/1548
+    // fn add_u64(self, other: u64) -> U128 {
+    //     let other_u128 = U128{upper: 0, lower: other};
+    //     self.sub(other_u128)
+    // }
 
     // Subtract a U128 from a U128
     fn sub(self, other: U128) -> U128 {
@@ -90,16 +91,17 @@ impl U128 {
     }
 
     // Subtract a u64 from a U128
-    fn sub_u64(self, other: u64) -> U128 {
-        let other_u128 = U128{upper: 0, lower: other};
-        self.sub(other_u128)
-    }
+    // TO DO : blocked by https://github.com/FuelLabs/sway/issues/1548
+    // fn sub_u64(self, other: u64) -> U128 {
+    //     let other_u128 = U128{upper: 0, lower: other};
+    //     self.sub(other_u128)
+    // }
 
     // Divide a U128 by a U64, returning a U64
     fn div_by_u64(self, other: u64) -> u64 {
         // TO DO
         42
-    }s
+    }
 
     // TO DO : Other U128 ops : mul, div, inequalities, etc.
 }
