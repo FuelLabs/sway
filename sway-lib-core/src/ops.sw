@@ -311,7 +311,7 @@ pub trait Eq {
     }
 }
 
-trait OrdEq: Ord + Eq {
+pub trait OrdEq: Ord + Eq {
 } {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
@@ -446,22 +446,38 @@ impl Ord for b256 {
     fn gt(self, other: Self) -> bool {
         let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        // also add the check that all 4 corresponding words are not eq!
-        // maybe impl eq for b256 first and reuse here
-        if (self_word_1.ge(other_word_1) && self_word_2.ge(other_word_2) && self_word_3.ge(other_word_3) && self_word_4.ge(other_word_4)) {
-            true
-        } else {
+
+        if self.eq(other) {
             false
+        } else {
+            if self_word_1.neq(other_word_1) {
+                self_word_1.gt(other_word_1)
+            } else if self_word_2.neq(other_word_2) {
+                self_word_2.gt(other_word_2)
+            } else if self_word_3.neq(other_word_3){
+                self_word_3.gt(other_word_3)
+            } else {
+                self_word_4.gt(other_word_4)
+            }
         }
     }
 
     fn lt(self, other: Self) -> bool {
         let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
         let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        if self_word_1.le(other_word_1) && self_word_2.le(other_word_2) && self_word_3.le(other_word_3) && self_word_4.le(other_word_4) {
-            true
-        } else {
+
+        if self.eq(other) {
             false
+        } else {
+            if self_word_1.neq(other_word_1) {
+                self_word_1.lt(other_word_1)
+            } else if self_word_2.neq(other_word_2) {
+                self_word_2.lt(other_word_2)
+            } else if self_word_3.neq(other_word_3){
+                self_word_3.lt(other_word_3)
+            } else {
+                self_word_4.lt(other_word_4)
+            }
         }
     }
 }
