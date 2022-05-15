@@ -1,5 +1,11 @@
 library ops;
 
+fn log_u64(val: u64) {
+    asm(r1: val) {
+        log r1 zero zero zero;
+    }
+}
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
@@ -277,9 +283,8 @@ impl Shiftable for b256 {
         let w1_shifted = word_1.add(overflow_2);
         let w2_shifted = word_2.add(overflow_3);
         let w3_shifted = word_3.add(overflow_4);
-        let w4_shifted = word_4.lsh(n);
 
-        compose(w1_shifted, w2_shifted, w3_shifted, w4_shifted)
+        compose(w1_shifted, w2_shifted, w3_shifted, word_4)
     }
 
     fn rsh(self, n: u64) -> Self {
@@ -293,9 +298,8 @@ impl Shiftable for b256 {
         let w4_shifted = word_4.add(overflow_3);
         let w3_shifted = word_3.add(overflow_2);
         let w2_shifted = word_2.add(overflow_1);
-        let w1_shifted = word_1.rsh(n);
 
-        compose(w1_shifted, w2_shifted, w3_shifted, w4_shifted)
+        compose(word_1, w2_shifted, w3_shifted, w4_shifted)
     }
 }
 
@@ -556,12 +560,13 @@ const FLAG = 2;
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
-    let mut overflow_buffer = 0;
-    let mut result_buffer = 0;
+    // @todo try to remove copy once this is working.
+    // i think the issue atm is that there is wrapping occoring. Wait till vm fix with safe math flags lands.
+    let word_copy = word;
     let right_shift_amount = 64.subtract(shift_amount);
-    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3: overflow_buffer, r4: result_buffer, r5: FLAG, r6: right_shift_amount) {
+    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
        flag r5;        // set flag to allow overflow without panic
-       srl r3 r1 r6;   // shift right to get overflow, put result in r3
+       srl r3 copy r6; // shift right to get overflow, put result in r3
        sll r4 r1 r2;   // shift left, put result in r4
        sw out r4 i0;   // store word at r4 in output
        sw out r3 i1;   // store word at r3 in output + 1 word offset
@@ -574,10 +579,8 @@ fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
 /// Right shift a u64 and preserve the overflow amount if any
 fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
-    let mut overflow_buffer = 0;
-    let mut result_buffer = 0;
     let left_shift_amount = 64.subtract(shift_amount);
-    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3: overflow_buffer, r4: result_buffer, r5: FLAG, r6: left_shift_amount) {
+    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: left_shift_amount) {
        flag r5;        // set flag to allow overflow without panic
        sll r3 r1 r6;   // shift left to get overflow, put result in r3
        srl r4 r1 r2;   // shift right, put result in r4
