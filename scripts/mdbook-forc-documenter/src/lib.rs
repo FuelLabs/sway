@@ -88,16 +88,30 @@ impl Preprocessor for ForcDocumenter {
             }
         });
 
+        let mut error_message = String::new();
+
         if !command_contents.is_empty() {
-            Err(Error::msg(format!(
-                "\nSome commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md.\n",
-                command_contents.into_keys().collect::<String>()
-            )))
-        } else if !removed_commands.is_empty() {
-            Err(Error::msg(format!(
-                "\nSome commands were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the above command(s) from SUMMARY.md.\n",
-                removed_commands.iter().map(String::as_str).collect::<String>()
-            )))
+            let missing_entries_text: String = command_contents
+                .keys()
+                .map(|c| format_index_entry(&c))
+                .collect();
+
+            let missing_summary_entries_text = format!("\nSome commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
+                command_contents.into_keys().collect::<String>(), missing_entries_text);
+            error_message.push_str(&missing_summary_entries_text);
+        };
+
+        if !removed_commands.is_empty() {
+            let removed_commands_text = format!("\nSome commands were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the above command(s) from SUMMARY.md.\n", 
+            removed_commands
+                .iter()
+                .map(String::as_str)
+                .collect::<String>());
+            error_message.push_str(&removed_commands_text);
+        };
+
+        if !error_message.is_empty() {
+            Err(Error::msg(error_message))
         } else {
             Ok(book)
         }
