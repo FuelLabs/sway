@@ -20,7 +20,7 @@ Run the command:
 
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
-forc competions --shell=bash >> ~/.local/share/bash-completion/completions/forc
+forc completions --shell=bash >> ~/.local/share/bash-completion/completions/forc
 ```
 
 This installs the completion script. You may have to log out and
