@@ -101,54 +101,33 @@ impl Config {
                 .unwrap_or_default(),
         }
     }
-    /// Given an optional path to a `swayfmt.toml`, read it and construct a `Config`.
-    /// If settings are omitted, those fields will be set to default. If `None` is provided,
-    /// the default config will be applied. If a `swayfmt.toml` exists but is empty, the default
-    /// config will be applied.
-    ///
-    /// At present, this will only return a warning if it catches unusable fields.
-    /// Upon completion, this should give errors/warnings for incorrect input fields as well.
-    ///
-    pub fn from_dir_or_default(config_path: Option<&Path>) -> Result<Self> {
-        let config = ConfigOptions::from_dir_or_default(config_path)?;
+    pub fn from_dir_or_default(config_path: &Path) -> Result<Self> {
+        let config_opts = ConfigOptions::from_dir(config_path)?;
+        let config = Self::from_opts(config_opts);
         Ok(config)
     }
 }
 
 impl ConfigOptions {
-    /// Given an optional path to a `swayfmt.toml`, read it and construct a `Config`.
-    /// If settings are omitted, those fields will be set to default. If `None` is provided,
-    /// the default config will be applied. If a `swayfmt.toml` exists but is empty, the default
-    /// config will be applied.
+    /// Given a path to a `swayfmt.toml`, read it and construct a `ConfigOptions`.
+    pub fn from_file(config_path: &Path) -> Result<Self> {
+        let config_str = std::fs::read_to_string(config_path)
+            .map_err(|e| anyhow!("failed to read config at {:?}: {}", config_path, e))?;
+        let toml_de = &mut toml::de::Deserializer::new(&config_str);
+        let user_settings: Self = serde_ignored::deserialize(toml_de, |field| {
+            let warning = format!("  WARNING! found unusable configuration: {}", field);
+            println_yellow_err(&warning);
+        })
+        .map_err(|e| anyhow!("failed to parse config: {}.", e))?;
+        Ok(user_settings)
+    }
+    /// Given a directory to a forc project containing a `swayfmt.toml`, read the config.
     ///
-    /// At present, this will only return a warning if it catches unusable fields.
-    /// Upon completion, this should give errors/warnings for incorrect input fields as well.
-    ///
-    pub fn from_dir_or_default(config_path: Option<&Path>) -> Result<Config> {
-        match config_path {
-            Some(starter_path) => {
-                if let Some(path) = find_parent_dir_with_file(starter_path, SWAY_FORMAT_FILE_NAME) {
-                    let config_str = std::fs::read_to_string(&path)
-                        .map_err(|e| anyhow!("failed to read config at {:?}: {}", path, e))?;
-                    // save some time if the file is empty
-                    if !config_str.is_empty() {
-                        let toml_de = &mut toml::de::Deserializer::new(&config_str);
-                        let user_settings: Self = serde_ignored::deserialize(toml_de, |field| {
-                            let warning =
-                                format!("  WARNING! found unusable configuration: {}", field);
-                            println_yellow_err(&warning);
-                        })
-                        .map_err(|e| anyhow!("failed to parse config: {}.", e))?;
-
-                        Ok(Config::from_opts(user_settings))
-                    } else {
-                        Ok(Config::default())
-                    }
-                } else {
-                    Ok(Config::default())
-                }
-            }
-            None => Ok(Config::default()),
-        }
+    /// This is short for `ConfigOptions::from_file`, but takes care of constructing the path to the
+    /// file.
+    pub fn from_dir(dir: &Path) -> Result<Self> {
+        let config_dir = find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).unwrap();
+        let file_path = config_dir.join(SWAY_FORMAT_FILE_NAME);
+        Self::from_file(&file_path)
     }
 }
