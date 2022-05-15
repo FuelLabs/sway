@@ -1,9 +1,11 @@
 use crate::formatter::{format_header_line, format_index_entry, format_line};
-use anyhow::{anyhow, Result};
+
+use anyhow::anyhow;
 use mdbook::book::{Book, BookItem};
-use mdbook::errors::Error;
+use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fs;
 use std::process;
 
@@ -46,6 +48,17 @@ impl Preprocessor for ForcDocumenter {
         }
 
         let command_examples: HashMap<String, String> = load_examples()?;
+        let mut command_contents: HashMap<String, String> = HashMap::new();
+        let mut removed_commands = Vec::new();
+
+        for forc_command in possible_commands.iter() {
+            let mut result = match generate_doc_output(forc_command) {
+                Ok(output) => output,
+                Err(_) => continue,
+            };
+            result = result.trim().to_string();
+            command_contents.insert("forc ".to_owned() + forc_command, result);
+        }
 
         book.for_each_mut(|item| {
             if let BookItem::Chapter(ref mut chapter) = item {
@@ -54,24 +67,19 @@ impl Preprocessor for ForcDocumenter {
 
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut command_chapter) = sub_item {
-                            let forc_subcommand = command_chapter.name.split(' ').nth(1).unwrap();
-                            let example_content = command_examples.get(&command_chapter.name);
-
-                            if possible_commands.iter().any(|&i| i == forc_subcommand) {
-                                let mut result = match generate_doc_output(forc_subcommand) {
-                                    Ok(output) => output,
-                                    Err(_) => continue,
-                                };
-
-                                result = result.trim().to_string();
+                            if let Some(content) = command_contents.remove(&command_chapter.name) {
                                 command_index_content
                                     .push_str(&format_index_entry(&command_chapter.name));
-                                command_chapter.content = result;
+                                command_chapter.content = content.to_string();
 
-                                if let Some(example_content) = example_content {
+                                if let Some(example_content) =
+                                    command_examples.get(&command_chapter.name)
+                                {
                                     command_chapter.content += example_content;
                                 }
-                            }
+                            } else {
+                                removed_commands.push(command_chapter.name.clone());
+                            };
                         }
                     }
 
@@ -80,12 +88,35 @@ impl Preprocessor for ForcDocumenter {
             }
         });
 
-        Ok(book)
+        if !command_contents.is_empty() {
+            Err(Error::msg(format!(
+                "\nSome commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md.\n",
+                command_contents.into_keys().collect::<String>()
+            )))
+        } else if !removed_commands.is_empty() {
+            Err(Error::msg(format!(
+                "\nSome commands were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the above command(s) from SUMMARY.md.\n",
+                removed_commands.iter().map(String::as_str).collect::<String>()
+            )))
+        } else {
+            Ok(book)
+        }
     }
 
     fn supports_renderer(&self, renderer: &str) -> bool {
         renderer == "html"
     }
+}
+
+fn get_forc_command_from_file_name(file_name: OsString) -> String {
+    file_name
+        .into_string()
+        .unwrap()
+        .split('.')
+        .next()
+        .unwrap()
+        .to_string()
+        .replace('_', " ")
 }
 
 fn load_examples() -> Result<HashMap<String, String>> {
@@ -100,15 +131,7 @@ fn load_examples() -> Result<HashMap<String, String>> {
         .expect("read dir examples failed")
         .flatten()
     {
-        let command_name = entry
-            .file_name()
-            .into_string()
-            .unwrap()
-            .split('.')
-            .next()
-            .unwrap()
-            .to_string()
-            .replace('_', " ");
+        let command_name = get_forc_command_from_file_name(entry.file_name());
         let example_content = fs::read_to_string(entry.path())?;
         command_examples.insert(command_name, example_content);
     }
@@ -149,4 +172,16 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         }
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_get_forc_command_from_file_name() {
+        assert_eq!(
+            "forc gm",
+            get_forc_command_from_file_name(OsString::from("forc_gm.md")),
+        );
+    }
 }
