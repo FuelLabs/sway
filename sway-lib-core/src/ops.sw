@@ -404,6 +404,30 @@ impl Ord for u8 {
     }
 }
 
+impl Ord for b256 {
+    fn gt(self, other: Self) -> bool {
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        // also add the check that all 4 corresponding words are not eq!
+        // maybe impl eq for b256 first and reuse here
+        if (self_word_1.ge(other_word_1) && self_word_2.ge(other_word_2) && self_word_3.ge(other_word_3) && self_word_4.ge(other_word_4)) {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn lt(self, other: Self) -> bool {
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        if self_word_1.le(other_word_1) && self_word_2.le(other_word_2) && self_word_3.le(other_word_3) && self_word_4.le(other_word_4) {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
 pub fn not(a: bool) -> bool {
