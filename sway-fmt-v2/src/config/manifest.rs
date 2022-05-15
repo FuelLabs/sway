@@ -105,8 +105,7 @@ impl Config {
     /// construct the `ConfigOptions` then construct a `Config` from those options.
     pub fn from_dir_or_default(config_path: &Path) -> Result<Self> {
         let config_opts = ConfigOptions::from_dir(config_path)?;
-        let config = Self::from_opts(config_opts);
-        Ok(config)
+        Ok(Self::from_opts(config_opts))
     }
 }
 
