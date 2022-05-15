@@ -40,11 +40,11 @@ fn main() -> u64 {
       z: 2
     };
     let foo = return_the_same(7u64);
-    assert(size_of_val(x) == 24);
-    assert(size_of_val(y) == 24);
-    assert(size_of::<Data>() == 24);
-    assert(size_of_val(p) == 24);
-    assert(size_of_val(foo) == 8);
-    assert(size_of::<Point>() == 24);
+    assert(__size_of_val(x) == 24);
+    assert(__size_of_val(y) == 24);
+    assert(__size_of::<Data>() == 24);
+    assert(__size_of_val(p) == 24);
+    assert(__size_of_val(foo) == 8);
+    assert(__size_of::<Point>() == 24);
     1
 }

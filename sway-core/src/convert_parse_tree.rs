@@ -19,8 +19,8 @@ use {
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
         DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
         FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
-        Instruction, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage,
-        ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
+        Instruction, Intrinsic, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+        ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
         PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
         ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
         UseTree,
@@ -100,15 +100,15 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("size_of does not take arguments")]
+    #[error("__size_of does not take arguments")]
     SizeOfTooManyArgs { span: Span },
-    #[error("size_of requires exactly one generic argument")]
+    #[error("__size_of requires exactly one generic argument")]
     SizeOfOneGenericArg { span: Span },
-    #[error("is_reference_type does not take arguments")]
+    #[error("__is_reference_type does not take arguments")]
     IsReferenceTypeTooManyArgs { span: Span },
-    #[error("is_reference_type requires exactly one generic argument")]
+    #[error("__is_reference_type requires exactly one generic argument")]
     IsReferenceTypeOneGenericArg { span: Span },
-    #[error("size_of_val requires exactly one argument")]
+    #[error("__size_of_val requires exactly one argument")]
     SizeOfValOneArg { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
@@ -1175,7 +1175,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 None => {
                     if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "size_of"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::SizeOf)
                     {
                         if !arguments.is_empty() {
                             let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
@@ -1202,7 +1203,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "is_reference_type"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::IsReferenceType)
                     {
                         if !arguments.is_empty() {
                             let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
@@ -1230,7 +1232,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "size_of_val"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::SizeOfVal)
                     {
                         let exp = match <[_; 1]>::try_from(arguments) {
                             Ok([exp]) => Box::new(exp),
