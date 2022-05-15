@@ -546,9 +546,14 @@ impl OrdEq for u16 {
 impl OrdEq for u8 {
 }
 
+/////////////////////////////////////////////////
+// Internal Helpers
+/////////////////////////////////////////////////
+
 /// For setting the bit which allows overflow to occur without a vm panic
 const FLAG = 2;
 
+/// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
@@ -566,6 +571,7 @@ fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, overflow)
 }
 
+/// Right shift a u64 and preserve the overflow amount if any
 fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
@@ -581,9 +587,7 @@ fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     };
 
     (shifted, overflow)
-/////////////////////////////////////////////////
-// Internal Helpers
-/////////////////////////////////////////////////
+}
 
 /// Extract a single 64 bit word from a b256 value using the specified offset.
 fn get_word_from_b256(val: b256, offset: u64) -> u64 {
