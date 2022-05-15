@@ -118,12 +118,12 @@ impl ConfigOptions {
         let config_str = std::fs::read_to_string(config_path)
             .map_err(|e| anyhow!("failed to read config at {:?}: {}", config_path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&config_str);
-        let user_settings: Self = serde_ignored::deserialize(toml_de, |field| {
+        let config_opts: Self = serde_ignored::deserialize(toml_de, |field| {
             let warning = format!("  WARNING! found unusable configuration: {}", field);
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse config: {}.", e))?;
-        Ok(user_settings)
+        Ok(config_opts)
     }
     /// Given a directory to a forc project containing a `swayfmt.toml`, read the config.
     ///
