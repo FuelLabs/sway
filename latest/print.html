@@ -769,12 +769,12 @@ fn main() {
 </ol>
 <p>Each special parameter is optional and assumes a default value when skipped.</p>
 <h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements.</p>
+<p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
 <p>Libraries are denoted using the <code>library</code> keyword at the beginning of the file, followed by a name so that they can be imported, e.g. <code>library foo;</code>.</p>
 <pre><code class="language-sway">library my_library;
 </code></pre>
-<p>A good reference library to use when learning library design is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a>. The <code>add</code> function interface is defined via the <code>Add</code> trait and then implemented for <code>u64</code>. This attaches this <code>add</code> function to the type so that, when the trait is imported, <code>u64</code>s can utilize the <code>add</code> function.</p>
+<p>A good reference library to use when learning library design is the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-core">Sway Core Library</a>. The <code>add</code> function interface is defined via the <code>Add</code> trait and then implemented for <code>u64</code>. This attaches this <code>add</code> function to the type so that, when the trait is imported, <code>u64</code>s can utilize the <code>add</code> function.</p>
 <pre><code class="language-sway">pub trait Add {
     fn add(self, other: Self) -&gt; Self;
 }
