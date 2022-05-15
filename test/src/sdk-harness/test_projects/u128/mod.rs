@@ -1,6 +1,5 @@
 use fuel_tx::{ContractId, Salt};
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels_abigen_macro::abigen;
 
 // Load abi from json
@@ -33,8 +32,8 @@ async fn test_u64mul(
 ) {
     let result = instance.multiply_u64(a, b).call().await.unwrap();
 
-    assert_eq!(result.value.0, expected_upper);
-    assert_eq!(result.value.1, expected_lower);
+    assert_eq!(result.value.upper, expected_upper);
+    assert_eq!(result.value.lower, expected_lower);
 }
 
 #[tokio::test]
