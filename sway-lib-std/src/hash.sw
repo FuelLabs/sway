@@ -130,7 +130,7 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = ZERO;
-    if !is_reference_type::<T>() {
+    if !__is_reference_type::<T>() {
         asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
             move buffer sp; // Copy stack pointer to memory at "buffer"
             cfei i8; // Grow stack by 1 word
@@ -140,7 +140,7 @@ pub fn sha256<T>(param: T) -> b256 {
             hash: b256 // Return
         }
     } else {
-        let size = size_of::<T>();
+        let size = __size_of::<T>();
         asm(hash: result_buffer, ptr: param, bytes: size) {
             s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
             hash: b256 // Return
