@@ -266,8 +266,8 @@ impl Shiftable for u8 {
 }
 
 impl Shiftable for b256 {
-    fn lsh(self, other: Self) -> Self {
-        let (w1, w2, w3, w4) = decompose(val);
+    fn lsh(self, n: u64) -> Self {
+        let (w1, w2, w3, w4) = decompose(self);
         // get each shifted word and associated overflow in turn
         let (word_1, _) = lsh_with_overflow(w1, n);
         let (word_2, overflow_2) = lsh_with_overflow(w2, n);
@@ -282,8 +282,8 @@ impl Shiftable for b256 {
         compose(w1_shifted, w2_shifted, w3_shifted, w4_shifted)
     }
 
-    fn rsh(self, other: Self) -> Self {
-        let (w1, w2, w3, w4) = decompose(val);
+    fn rsh(self, n: u64) -> Self {
+        let (w1, w2, w3, w4) = decompose(self);
         // get each shifted word and associated overflow in turn
         let (word_1, overflow_1) = rsh_with_overflow(w1, n);
         let (word_2, overflow_2) = rsh_with_overflow(w2, n);
@@ -558,7 +558,7 @@ fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
     let mut result_buffer = 0;
-    let right_shift_amount = 64 - shift_amount;
+    let right_shift_amount = 64.subtract(shift_amount);
     let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3: overflow_buffer, r4: result_buffer, r5: FLAG, r6: right_shift_amount) {
        flag r5;        // set flag to allow overflow without panic
        srl r3 r1 r6;   // shift right to get overflow, put result in r3
@@ -576,7 +576,7 @@ fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let mut overflow_buffer = 0;
     let mut result_buffer = 0;
-    let left_shift_amount = 64 - shift_amount;
+    let left_shift_amount = 64.subtract(shift_amount);
     let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3: overflow_buffer, r4: result_buffer, r5: FLAG, r6: left_shift_amount) {
        flag r5;        // set flag to allow overflow without panic
        sll r3 r1 r6;   // shift left to get overflow, put result in r3
