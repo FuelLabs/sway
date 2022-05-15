@@ -93,7 +93,7 @@ impl Preprocessor for ForcDocumenter {
         if !command_contents.is_empty() {
             let missing_entries_text: String = command_contents
                 .keys()
-                .map(|c| format_index_entry(&c))
+                .map(|c| format_index_entry(c))
                 .collect();
 
             let missing_summary_entries_text = format!("\nSome commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
