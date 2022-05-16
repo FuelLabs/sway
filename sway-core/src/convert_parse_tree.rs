@@ -2521,6 +2521,26 @@ fn assignable_to_expression(
             field_to_access: name,
             span,
         },
+        Assignable::TupleFieldProjection {
+            target,
+            field,
+            field_span,
+            ..
+        } => {
+            let index = match usize::try_from(field) {
+                Ok(index) => index,
+                Err(..) => {
+                    let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                    return Err(ec.error(error));
+                }
+            };
+            Expression::TupleIndex {
+                prefix: Box::new(assignable_to_expression(ec, *target)?),
+                index,
+                index_span: field_span,
+                span,
+            }
+        }
     };
     Ok(expression)
 }
@@ -2545,6 +2565,7 @@ fn assignable_to_reassignment_target(
                 break;
             }
             Assignable::Index { .. } => break,
+            Assignable::TupleFieldProjection { .. } => break,
         }
     }
     let expression = assignable_to_expression(ec, assignable)?;
