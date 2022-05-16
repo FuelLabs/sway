@@ -175,7 +175,7 @@
     fn equals(self, b: Self) -&gt; bool;
 } {
     fn not_equals(self, b: Self) -&gt; bool {
-        !equals(self.equals(b))
+        !self.equals(b)
     }
 }
 </code></pre>
