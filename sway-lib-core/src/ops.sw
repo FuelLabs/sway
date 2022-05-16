@@ -273,7 +273,7 @@ pub trait Eq {
     }
 }
 
-pub trait OrdEq: Ord + Eq {
+trait OrdEq: Ord + Eq {
 } {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
