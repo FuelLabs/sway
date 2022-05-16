@@ -1,9 +1,6 @@
 contract;
 
-use std::{
-    constants::ZERO,
-    hash::{HashMethod, hash_u64, sha256}
-};
+use std::{constants::ZERO, hash::{HashMethod, hash_u64, sha256}};
 
 abi MyContract {
     fn sha256_u8(value: u8) -> b256;
@@ -79,20 +76,24 @@ impl MyContract for Contract {
 
     fn sha256_struct(location: bool) -> b256 {
         sha256(Person {
-            name: "John",
-            age: 18,
-            birth_place: if location { Location::Earth } else { Location::Mars },
-            stats: Stats {
-                strength: 10,
-                agility: 9
+            name: "John", age: 18, birth_place: if location {
+                Location::Earth
+            } else {
+                Location::Mars
             },
-            alive: true,
-            random_b256: ZERO
+            stats: Stats {
+                strength: 10, agility: 9
+            },
+            alive: true, random_b256: ZERO
         })
     }
 
     fn sha256_enum(location: bool) -> b256 {
-        sha256(if location { Location::Earth } else { Location::Mars })
+        sha256(if location {
+            Location::Earth
+        } else {
+            Location::Mars
+        })
     }
 
     fn get_s256_hash_u64(value: u64) -> b256 {
