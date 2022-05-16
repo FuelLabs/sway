@@ -29,17 +29,18 @@ impl Default for Items {
 
 impl Items {
     pub fn from_opts(opts: &ItemsOptions) -> Self {
+        let default = Self::default();
         Self {
-            item_brace_style: opts
-                .item_brace_style
-                .unwrap_or(ItemBraceStyle::SameLineWhere),
+            item_brace_style: opts.item_brace_style.unwrap_or(default.item_brace_style),
             blank_lines_upper_bound: opts
                 .blank_lines_upper_bound
-                .unwrap_or(DEFAULT_BLANK_LINES_UPPER_BOUND),
+                .unwrap_or(default.blank_lines_upper_bound),
             blank_lines_lower_bound: opts
                 .blank_lines_lower_bound
-                .unwrap_or(DEFAULT_BLANK_LINES_LOWER_BOUND),
-            empty_item_single_line: opts.empty_item_single_line.unwrap_or(true),
+                .unwrap_or(default.blank_lines_lower_bound),
+            empty_item_single_line: opts
+                .empty_item_single_line
+                .unwrap_or(default.empty_item_single_line),
         }
     }
 }

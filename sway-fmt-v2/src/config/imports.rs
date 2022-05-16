@@ -28,13 +28,14 @@ impl Default for Imports {
 
 impl Imports {
     pub fn from_opts(opts: &ImportsOptions) -> Self {
+        let default = Self::default();
         Self {
-            group_imports: opts.group_imports.unwrap_or(GroupImports::Preserve),
+            group_imports: opts.group_imports.unwrap_or(default.group_imports),
             imports_granularity: opts
                 .imports_granularity
-                .unwrap_or(ImportGranularity::Preserve),
-            imports_indent: opts.imports_indent.unwrap_or(IndentStyle::Block),
-            imports_layout: opts.imports_layout.unwrap_or(ListTactic::Mixed),
+                .unwrap_or(default.imports_granularity),
+            imports_indent: opts.imports_indent.unwrap_or(default.imports_indent),
+            imports_layout: opts.imports_layout.unwrap_or(default.imports_layout),
         }
     }
 }

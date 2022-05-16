@@ -56,24 +56,33 @@ impl Default for Expressions {
 
 impl Expressions {
     pub fn from_opts(opts: &ExpressionsOptions) -> Self {
+        let default = Self::default();
         Self {
-            expr_brace_style: opts
-                .expr_brace_style
-                .unwrap_or(ExprBraceStyle::AlwaysSameLine),
-            trailing_semicolon: opts.trailing_semicolon.unwrap_or(true),
-            space_before_colon: opts.space_before_colon.unwrap_or(false),
-            space_after_colon: opts.space_after_colon.unwrap_or(false),
+            expr_brace_style: opts.expr_brace_style.unwrap_or(default.expr_brace_style),
+            trailing_semicolon: opts
+                .trailing_semicolon
+                .unwrap_or(default.trailing_semicolon),
+            space_before_colon: opts
+                .space_before_colon
+                .unwrap_or(default.space_before_colon),
+            space_after_colon: opts.space_after_colon.unwrap_or(default.space_after_colon),
             type_combinator_layout: opts
                 .type_combinator_layout
-                .unwrap_or(TypeCombinatorLayout::Wide),
-            spaces_around_ranges: opts.spaces_around_ranges.unwrap_or(false),
-            match_block_trailing_comma: opts.match_block_trailing_comma.unwrap_or(false),
+                .unwrap_or(default.type_combinator_layout),
+            spaces_around_ranges: opts
+                .spaces_around_ranges
+                .unwrap_or(default.spaces_around_ranges),
+            match_block_trailing_comma: opts
+                .match_block_trailing_comma
+                .unwrap_or(default.match_block_trailing_comma),
             match_arm_leading_pipe: opts
                 .match_arm_leading_pipe
-                .unwrap_or(MatchArmLeadingPipe::Never),
-            force_multiline_blocks: opts.force_multiline_blocks.unwrap_or(false),
-            fn_args_layout: opts.fn_args_layout.unwrap_or(ItemsLayout::Tall),
-            fn_single_line: opts.fn_single_line.unwrap_or(false),
+                .unwrap_or(default.match_arm_leading_pipe),
+            force_multiline_blocks: opts
+                .force_multiline_blocks
+                .unwrap_or(default.force_multiline_blocks),
+            fn_args_layout: opts.fn_args_layout.unwrap_or(default.fn_args_layout),
+            fn_single_line: opts.fn_single_line.unwrap_or(default.fn_single_line),
         }
     }
 }

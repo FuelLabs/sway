@@ -24,10 +24,13 @@ impl Default for Ordering {
 
 impl Ordering {
     pub fn from_opts(opts: &OrderingOptions) -> Self {
+        let default = Self::default();
         Self {
-            reorder_imports: opts.reorder_imports.unwrap_or(true),
-            reorder_modules: opts.reorder_modules.unwrap_or(true),
-            reorder_impl_items: opts.reorder_impl_items.unwrap_or(false),
+            reorder_imports: opts.reorder_imports.unwrap_or(default.reorder_imports),
+            reorder_modules: opts.reorder_modules.unwrap_or(default.reorder_modules),
+            reorder_impl_items: opts
+                .reorder_impl_items
+                .unwrap_or(default.reorder_impl_items),
         }
     }
 }

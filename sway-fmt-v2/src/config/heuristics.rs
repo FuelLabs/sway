@@ -27,11 +27,12 @@ impl Default for Heuristics {
 
 impl Heuristics {
     pub fn from_opts(opts: &HeuristicsOptions) -> Self {
+        let default = Self::default();
         Self {
-            heuristics_pref: opts
-                .heuristics_pref
-                .unwrap_or(HeuristicsPreferences::Scaled),
-            use_small_heuristics: true,
+            heuristics_pref: opts.heuristics_pref.unwrap_or(default.heuristics_pref),
+            use_small_heuristics: opts
+                .use_small_heuristics
+                .unwrap_or(default.use_small_heuristics),
         }
     }
 }

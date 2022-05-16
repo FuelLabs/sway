@@ -19,8 +19,9 @@ impl Default for Lists {
 
 impl Lists {
     pub fn from_opts(opts: &ListsOptions) -> Self {
+        let default = Self::default();
         Self {
-            trailing_comma: opts.trailing_comma.unwrap_or(SeparatorTactic::Vertical),
+            trailing_comma: opts.trailing_comma.unwrap_or(default.trailing_comma),
         }
     }
 }

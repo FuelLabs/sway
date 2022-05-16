@@ -34,12 +34,13 @@ impl Default for Whitespace {
 
 impl Whitespace {
     pub fn from_opts(opts: &WhitespaceOptions) -> Self {
+        let default = Self::default();
         Self {
-            max_width: opts.max_width.unwrap_or(DEFAULT_MAX_LINE_WIDTH),
-            hard_tabs: opts.hard_tabs.unwrap_or(false),
-            tab_spaces: opts.tab_spaces.unwrap_or(DEFAULT_TAB_SPACES),
-            newline_style: opts.newline_style.unwrap_or(NewlineStyle::Auto),
-            indent_style: opts.indent_style.unwrap_or(IndentStyle::Block),
+            max_width: opts.max_width.unwrap_or(default.max_width),
+            hard_tabs: opts.hard_tabs.unwrap_or(default.hard_tabs),
+            tab_spaces: opts.tab_spaces.unwrap_or(default.tab_spaces),
+            newline_style: opts.newline_style.unwrap_or(default.newline_style),
+            indent_style: opts.indent_style.unwrap_or(default.indent_style),
         }
     }
 }

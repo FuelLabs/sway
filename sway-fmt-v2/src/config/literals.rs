@@ -22,9 +22,10 @@ impl Default for Literals {
 
 impl Literals {
     pub fn from_opts(opts: &LiteralsOptions) -> Self {
+        let default = Self::default();
         Self {
-            format_strings: opts.format_strings.unwrap_or(false),
-            hex_literal_case: opts.hex_literal_case.unwrap_or(HexLiteralCase::Preserve),
+            format_strings: opts.format_strings.unwrap_or(default.format_strings),
+            hex_literal_case: opts.hex_literal_case.unwrap_or(default.hex_literal_case),
         }
     }
 }

@@ -25,10 +25,13 @@ impl Default for Comments {
 
 impl Comments {
     pub fn from_opts(opts: &CommentsOptions) -> Self {
+        let default = Self::default();
         Self {
-            wrap_comments: opts.wrap_comments.unwrap_or(false),
-            comment_width: opts.comment_width.unwrap_or(DEFAULT_MAX_COMMENT_WIDTH),
-            normalize_comments: opts.normalize_comments.unwrap_or(false),
+            wrap_comments: opts.wrap_comments.unwrap_or(default.wrap_comments),
+            comment_width: opts.comment_width.unwrap_or(default.comment_width),
+            normalize_comments: opts
+                .normalize_comments
+                .unwrap_or(default.normalize_comments),
         }
     }
 }

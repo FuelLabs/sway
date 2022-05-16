@@ -102,7 +102,7 @@ impl Config {
         }
     }
     /// Given a directory to a forc project containing a `swayfmt.toml`, read and
-    /// construct a `Config` from `ConfigOptions`.
+    /// construct a `Config` from the project's `swayfmt.toml` configuration file.
     ///
     /// This is a combination of `ConfigOptions::from_dir` and `Config::from_opts`,
     /// and takes care of constructing a finalized config.
