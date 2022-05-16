@@ -20,3 +20,6 @@ pub const CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE: [u8; 32] = [0; 32];
 
 /// The default entry point for scripts and predicates.
 pub const DEFAULT_ENTRY_POINT_FN_NAME: &str = "main";
+
+/// The default prefix for the compiler generated names of tuples
+pub const TUPLE_NAME_PREFIX: &str = "__tuple_";

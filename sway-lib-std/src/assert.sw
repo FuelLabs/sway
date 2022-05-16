@@ -16,8 +16,8 @@ pub fn assert(a: bool) {
 /// A wrapper for `assert` that allows logging a custom value `v` if condition `c` is not true.
 pub fn require<T>(c: bool, v: T) {
     if !c {
-        let ref_type = is_reference_type::<T>();
-        let size = size_of::<T>();
+        let ref_type = __is_reference_type::<T>();
+        let size = __size_of::<T>();
         if ref_type {
             asm(r1: v, r2: size) {
                 logd zero zero r1 r2;
