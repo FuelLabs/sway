@@ -1648,7 +1648,7 @@ abi MyContract {
 
 fn main() {
     let x = abi(MyContract, 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0);
-    let native_asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
+    let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     x.foo {
         gas: 5000, asset_id: asset_id, amount: 5000
     }
