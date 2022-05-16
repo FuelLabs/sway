@@ -442,6 +442,42 @@ impl Ord for u8 {
     }
 }
 
+impl Ord for b256 {
+    fn gt(self, other: Self) -> bool {
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+
+        if self.eq(other) {
+            false
+        } else if self_word_1.neq(other_word_1) {
+            self_word_1.gt(other_word_1)
+        } else if self_word_2.neq(other_word_2) {
+            self_word_2.gt(other_word_2)
+        } else if self_word_3.neq(other_word_3) {
+            self_word_3.gt(other_word_3)
+        } else {
+            self_word_4.gt(other_word_4)
+        }
+    }
+
+    fn lt(self, other: Self) -> bool {
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+
+        if self.eq(other) {
+            false
+        } else if self_word_1.neq(other_word_1) {
+            self_word_1.lt(other_word_1)
+        } else if self_word_2.neq(other_word_2) {
+            self_word_2.lt(other_word_2)
+        } else if self_word_3.neq(other_word_3){
+            self_word_3.lt(other_word_3)
+        } else {
+            self_word_4.lt(other_word_4)
+        }
+    }
+}
+
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
 pub fn not(a: bool) -> bool {
@@ -548,6 +584,8 @@ impl OrdEq for u32 {
 impl OrdEq for u16 {
 }
 impl OrdEq for u8 {
+}
+impl OrdEq for b256 {
 }
 
 /////////////////////////////////////////////////
