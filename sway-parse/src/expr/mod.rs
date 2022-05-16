@@ -1128,6 +1128,25 @@ impl Expr {
                     name,
                 }),
             },
+            Expr::TupleFieldProjection {
+                target,
+                dot_token,
+                field,
+                field_span,
+            } => match target.try_into_assignable() {
+                Ok(target) => Ok(Assignable::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
+                }),
+                Err(target) => Err(Expr::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
+                }),
+            },
             expr => Err(expr),
         }
     }
