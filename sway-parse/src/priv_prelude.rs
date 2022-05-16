@@ -11,6 +11,7 @@ pub use {
             CodeBlockContents, Expr,
         },
         generics::{GenericArgs, GenericParams},
+        intrinsics::*,
         item::{
             item_abi::ItemAbi,
             item_const::ItemConst,
