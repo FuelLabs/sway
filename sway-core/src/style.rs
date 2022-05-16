@@ -187,29 +187,29 @@ mod test {
             .into_iter()
             .map(|x| Ident::new_with_override(x, Span::dummy()));
         for ref ident in snake_case_idents {
-            assert!(is_snake_case(ident).is_ok());
-            assert!(!is_screaming_snake_case(ident).is_ok());
-            assert!(!is_upper_camel_case(ident).is_ok());
+            assert!(is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
         for ref ident in screaming_snake_case_idents {
-            assert!(!is_snake_case(ident).is_ok());
-            assert!(is_screaming_snake_case(ident).is_ok());
-            assert!(!is_upper_camel_case(ident).is_ok());
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
         for ref ident in upper_camel_case_idents {
-            assert!(!is_snake_case(ident).is_ok());
-            assert!(!is_screaming_snake_case(ident).is_ok());
-            assert!(is_upper_camel_case(ident).is_ok());
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(is_upper_camel_case(ident).is_ok_no_warn());
         }
         for ref ident in screaming_snake_case_or_upper_camel_case_idents {
-            assert!(!is_snake_case(ident).is_ok());
-            assert!(is_screaming_snake_case(ident).is_ok());
-            assert!(is_upper_camel_case(ident).is_ok());
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(is_upper_camel_case(ident).is_ok_no_warn());
         }
         for ref ident in styleless_idents {
-            assert!(!is_snake_case(ident).is_ok());
-            assert!(!is_screaming_snake_case(ident).is_ok());
-            assert!(!is_upper_camel_case(ident).is_ok());
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
     }
 
