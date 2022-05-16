@@ -1321,8 +1321,8 @@ pub(crate) fn parse_built_in_expr(
             );
             let exp = Expression::BuiltinGetTypeProperty {
                 builtin: match keyword.as_str() {
-                    "size_of" => BuiltinProperty::SizeOfType,
-                    "is_reference_type" => BuiltinProperty::IsRefType,
+                    "__size_of" => BuiltinProperty::SizeOfType,
+                    "__is_reference_type" => BuiltinProperty::IsRefType,
                     _otherwise => unreachable!("unexpected built in keyword: {keyword}"),
                 },
                 type_name,

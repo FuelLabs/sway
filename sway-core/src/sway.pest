@@ -27,9 +27,9 @@ true_keyword         =  {"true"}
 false_keyword        =  {"false"}
 const_decl_keyword   =  {"const"}
 impurity_keyword     =  {"impure"}
-size_of_type_keyword =  {"size_of"}
-size_of_val_keyword  =  {"size_of_val"}
-is_ref_type_keyword  =  {"is_reference_type"}
+size_of_type_keyword =  {"__size_of"}
+size_of_val_keyword  =  {"__size_of_val"}
+is_ref_type_keyword  =  {"__is_reference_type"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
