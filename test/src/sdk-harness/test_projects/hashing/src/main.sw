@@ -13,12 +13,9 @@ abi MyContract {
     fn sha256_str(value: str[4]) -> b256;
     fn sha256_bool(value: bool) -> b256;
     fn sha256_b256(value: b256) -> b256;
-    // Bug when using struct / enum in tuple so using simpler example
-    // fn sha256_tuple(value: (Person, Location, u64)) -> b256;
     fn sha256_tuple(value: (bool, u64)) -> b256;
-    fn sha256_array(value: [u64;
-    2]) -> b256;
-    fn sha256_struct(name: str[4], birth_place: bool) -> b256;
+    fn sha256_array(value1: u64, value2: u64) -> b256;
+    fn sha256_struct(location: bool) -> b256;
     fn sha256_enum(location: bool) -> b256;
     fn get_s256_hash_u64(value: u64) -> b256;
     fn get_k256_hash_u64(value: u64) -> b256;
@@ -76,16 +73,15 @@ impl MyContract for Contract {
         sha256(value)
     }
 
-    fn sha256_array(value: [u64;
-    2]) -> b256 {
-        sha256(value)
+    fn sha256_array(value1: u64, value2: u64) -> b256 {
+        sha256([value1, value2])
     }
 
-    fn sha256_struct(name: str[4], birth_place: bool) -> b256 {
+    fn sha256_struct(location: bool) -> b256 {
         sha256(Person {
-            name,
-            age: 9000,
-            birth_place: if birth_place { Location::Earth } else { Location::Mars },
+            name: "John",
+            age: 18,
+            birth_place: if location { Location::Earth } else { Location::Mars },
             stats: Stats {
                 strength: 10,
                 agility: 9

@@ -8,25 +8,6 @@ abigen!(
     "test_projects/hashing/out/debug/hashing-abi.json"
 );
 
-enum Location {
-    Earth,
-    Mars,
-}
-
-struct Person {
-    name: String,
-    age: u8,
-    birth_place: Location,
-    stats: Stats,
-    alive: bool,
-    random_b256: [[u8; 32]; 1]
-}
-
-struct Stats {
-    strength: u64,
-    agility: u64
-}
-
 async fn get_hashing_instance() -> (HashingTestContract, ContractId, LocalWallet, LocalWallet) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
@@ -139,48 +120,22 @@ async fn test_sha256_tuple() {
     assert_ne!(result1.value, result3.value);
 }
 
-// #[tokio::test]
-// async fn test_sha256_array() {
-//     let (instance, _id, _, _) = get_hashing_instance().await;
-//     // There is a bug in using arrays as parameters
-//     let array_1: [u64; 2] = [5, 4];
-//     let result1 = instance.sha256_array(array_1.to_vec()).call().await.unwrap();
-//     let result2 = instance.sha256_array(array_1.to_vec()).call().await.unwrap();
-//     // let result3 = instance.sha256_array([5, 99]).call().await.unwrap();
-//     assert_eq!(result1.value, result2.value);
-//     // assert_ne!(result1.value, result3.value);
-// }
+#[tokio::test]
+async fn test_sha256_array() {
+    let (instance, _id, _, _) = get_hashing_instance().await;
+    let result1 = instance.sha256_array(1, 5).call().await.unwrap();
+    let result2 = instance.sha256_array(1, 5).call().await.unwrap();
+    let result3 = instance.sha256_array(1, 6).call().await.unwrap();
+    assert_eq!(result1.value, result2.value);
+    assert_ne!(result1.value, result3.value);
+}
 
 #[tokio::test]
 async fn test_sha256_struct() {
     let (instance, _id, _, _) = get_hashing_instance().await;
-    let person1 = Person {
-        name: String::from("John"),
-        age: 18,
-        birth_place: Location::Earth,
-        stats: Stats {
-            strength: 5,
-            agility: 8
-        },
-        alive: true,
-        random_b256: [[1; 32]]
-    };
-
-    let person2 = Person {
-        name: String::from("Nick"),
-        age: 18,
-        birth_place: Location::Earth,
-        stats: Stats {
-            strength: 5,
-            agility: 8
-        },
-        alive: true,
-        random_b256: [[1; 32]]
-    };
-
-    let result1 = instance.sha256_struct(person1).call().await.unwrap();
-    let result2 = instance.sha256_struct(person1).call().await.unwrap();
-    let result3 = instance.sha256_struct(person2).call().await.unwrap();
+    let result1 = instance.sha256_struct(true).call().await.unwrap();
+    let result2 = instance.sha256_struct(true).call().await.unwrap();
+    let result3 = instance.sha256_struct(false).call().await.unwrap();
     assert_eq!(result1.value, result2.value);
     assert_ne!(result1.value, result3.value);
 }
@@ -188,11 +143,9 @@ async fn test_sha256_struct() {
 #[tokio::test]
 async fn test_sha256_enum() {
     let (instance, _id, _, _) = get_hashing_instance().await;
-    let location1 = Location::Earth;
-    let location2 = Location::Mars;
-    let result1 = instance.sha256_enum(location1).call().await.unwrap();
-    let result2 = instance.sha256_enum(location1).call().await.unwrap();
-    let result3 = instance.sha256_enum(location2).call().await.unwrap();
+    let result1 = instance.sha256_enum(true).call().await.unwrap();
+    let result2 = instance.sha256_enum(true).call().await.unwrap();
+    let result3 = instance.sha256_enum(false).call().await.unwrap();
     assert_eq!(result1.value, result2.value);
     assert_ne!(result1.value, result3.value);
 }
