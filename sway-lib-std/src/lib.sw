@@ -19,5 +19,6 @@ dep token;
 dep ecr;
 dep reentrancy;
 dep vm/mod;
+dep intrinsics;
 
 use core::*;
