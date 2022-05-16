@@ -411,16 +411,14 @@ impl Ord for b256 {
 
         if self.eq(other) {
             false
+        } else if self_word_1.neq(other_word_1) {
+            self_word_1.gt(other_word_1)
+        } else if self_word_2.neq(other_word_2) {
+            self_word_2.gt(other_word_2)
+        } else if self_word_3.neq(other_word_3) {
+            self_word_3.gt(other_word_3)
         } else {
-            if self_word_1.neq(other_word_1) {
-                self_word_1.gt(other_word_1)
-            } else if self_word_2.neq(other_word_2) {
-                self_word_2.gt(other_word_2)
-            } else if self_word_3.neq(other_word_3){
-                self_word_3.gt(other_word_3)
-            } else {
-                self_word_4.gt(other_word_4)
-            }
+            self_word_4.gt(other_word_4)
         }
     }
 
@@ -430,16 +428,14 @@ impl Ord for b256 {
 
         if self.eq(other) {
             false
+        } else if self_word_1.neq(other_word_1) {
+            self_word_1.lt(other_word_1)
+        } else if self_word_2.neq(other_word_2) {
+            self_word_2.lt(other_word_2)
+        } else if self_word_3.neq(other_word_3){
+            self_word_3.lt(other_word_3)
         } else {
-            if self_word_1.neq(other_word_1) {
-                self_word_1.lt(other_word_1)
-            } else if self_word_2.neq(other_word_2) {
-                self_word_2.lt(other_word_2)
-            } else if self_word_3.neq(other_word_3){
-                self_word_3.lt(other_word_3)
-            } else {
-                self_word_4.lt(other_word_4)
-            }
+            self_word_4.lt(other_word_4)
         }
     }
 }
