@@ -121,7 +121,6 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
     }
 }
 
-#[instrument(err, skip_all)]
 fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> {
     let changeset = diff_lines(file_content, formatted_content);
     let mut count_of_updates = 0;
@@ -162,7 +161,6 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
     Result::Ok(())
 }
 
-#[instrument(err, skip_all)]
 fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
     fs::write(file, formatted_content)?;
 

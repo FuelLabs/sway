@@ -101,7 +101,6 @@ async fn run(app: App) -> Result<()> {
     start_server(&port, version).await
 }
 
-#[instrument(err, skip_all)]
 async fn get_github_releases() -> Result<Vec<GitHubRelease>, reqwest::Error> {
     let client = reqwest::Client::new();
     let response = client
@@ -117,7 +116,6 @@ fn check_version_path(version: &str) -> bool {
     path.exists()
 }
 
-#[instrument(err, skip_all)]
 fn release_url(release: &GitHubRelease) -> Result<&str> {
     release
         .assets
@@ -126,7 +124,6 @@ fn release_url(release: &GitHubRelease) -> Result<&str> {
         .map(|asset| &asset.browser_download_url[..])
 }
 
-#[instrument(err, skip_all)]
 async fn download_build(url: &str, version: &str) -> Result<File> {
     fs::create_dir_all(path::web_app().join(version))?;
     let mut file = File::create(path::build_archive(version))
@@ -137,14 +134,12 @@ async fn download_build(url: &str, version: &str) -> Result<File> {
     Ok(file)
 }
 
-#[instrument(err, skip_all)]
 fn unpack_archive(version: &str) -> Result<()> {
     let mut ar = Archive::new(File::open(path::build_archive(version))?);
     ar.unpack(path::web_app_version(version))?;
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 async fn start_server(port: &str, version: &str) -> Result<()> {
     let explorer = warp::path::end().and(warp::fs::dir(path::web_app_files(version)));
     let static_assets = warp::path(end_point_static_files())
