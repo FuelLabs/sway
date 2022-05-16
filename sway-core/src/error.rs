@@ -973,10 +973,6 @@ impl TypeError {
 }
 
 impl CompileError {
-    pub fn to_friendly_error_string(&self) -> String {
-        format!("{}", self)
-    }
-
     pub fn path(&self) -> Option<Arc<PathBuf>> {
         self.span().path().cloned()
     }

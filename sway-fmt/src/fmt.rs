@@ -50,13 +50,7 @@ pub fn get_formatted_data(
         None => Err(parsed_res
             .errors
             .iter()
-            .map(|e| {
-                format!(
-                    "{:?} at line: {}",
-                    e.to_friendly_error_string(),
-                    e.line_col().0.line,
-                )
-            })
+            .map(|e| format!("{} at line: {}", e, e.line_col().0.line,))
             .collect()),
     }
 }

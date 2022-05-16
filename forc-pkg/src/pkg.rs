@@ -1202,7 +1202,7 @@ pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
 pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
-        .map(|e| e.to_friendly_error_string())
+        .map(|e| format!("{}", e))
         .collect::<Vec<String>>()
         .join("\n");
     let message = format!("Parsing {} failed: \n{}", project_name, error);
