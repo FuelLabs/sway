@@ -164,7 +164,6 @@ pub fn init(command: InitCommand) -> Result<()> {
         }
     }
 }
-#[instrument(err, skip_all)]
 fn get_sway_examples() -> Result<Vec<String>> {
     // Query the main repo so that we can search for the "sha" that belongs to "examples"
     let sway_response: GithubRepoResponse = ureq::get(
@@ -198,7 +197,6 @@ fn get_sway_examples() -> Result<Vec<String>> {
     Ok(examples)
 }
 
-#[instrument(err, skip_all)]
 pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) -> Result<()> {
     let neat_name: String = project_name.split('/').last().unwrap().to_string();
 
@@ -275,7 +273,6 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) -> Result<()> {
     let git = parse_github_link(example_url)?;
 
@@ -337,7 +334,6 @@ pub(crate) fn init_from_git_template(project_name: String, example_url: &Url) ->
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 fn parse_github_link(url: &Url) -> Result<GitPathInfo> {
     let mut path_segments = url.path_segments().context("cannot be base")?;
 
@@ -364,7 +360,6 @@ fn parse_github_link(url: &Url) -> Result<GitPathInfo> {
     })
 }
 
-#[instrument(err, skip_all)]
 fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
     let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
@@ -408,7 +403,6 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
     let mut file = File::open(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
@@ -439,7 +433,6 @@ fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Resul
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 fn download_file(url: &str, file_name: &str, out_dir: &Path) -> Result<PathBuf> {
     let mut data = Vec::new();
     let resp = ureq::get(url).call()?;
@@ -450,7 +443,6 @@ fn download_file(url: &str, file_name: &str, out_dir: &Path) -> Result<PathBuf> 
     Ok(path)
 }
 
-#[instrument(err, skip_all)]
 fn download_contents(url: &str, out_dir: &Path, responses: &[ContentResponse]) -> Result<()> {
     if !out_dir.exists() {
         fs::create_dir(out_dir)?;

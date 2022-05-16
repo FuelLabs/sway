@@ -66,7 +66,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     }
 }
 
-#[instrument(err, skip_all)]
 async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
@@ -80,7 +79,6 @@ async fn try_send_tx(
     }
 }
 
-#[instrument(err, skip_all)]
 async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
