@@ -2014,7 +2014,7 @@ impl TypedExpression {
 mod tests {
     use std::sync::Mutex;
 
-    use crate::semantic_analysis::namespace_system::Module;
+    use crate::semantic_analysis::namespace::Module;
 
     use super::*;
 

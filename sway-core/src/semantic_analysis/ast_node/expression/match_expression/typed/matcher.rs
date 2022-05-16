@@ -5,7 +5,7 @@ use crate::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
             instantiate_unsafe_downcast,
         },
-        namespace_system::Namespace,
+        namespace::Namespace,
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
     type_engine::unify,

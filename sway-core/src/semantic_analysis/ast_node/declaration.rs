@@ -16,7 +16,7 @@ use super::{impl_trait::Mode, CopyTypes, TypeMapping, TypedCodeBlock, TypedExpre
 use crate::{
     error::*,
     parse_tree::*,
-    semantic_analysis::{namespace_system::Items, TypeCheckedStorageReassignment},
+    semantic_analysis::{namespace::Items, TypeCheckedStorageReassignment},
     type_engine::*,
     Ident,
 };

@@ -1,5 +1,6 @@
 mod items;
 pub mod module;
+#[allow(clippy::module_inception)]
 pub mod namespace;
 mod root;
 mod trait_map;

@@ -51,7 +51,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: &namespace_system::Module,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -66,7 +66,7 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: &namespace_system::Module,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -85,7 +85,7 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    module_ns: &namespace_system::Module,
+    module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
     for decl in module_ns.get_all_declared_symbols() {
@@ -2436,7 +2436,7 @@ mod tests {
 
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
-        semantic_analysis::{namespace_system, TypedParseTree},
+        semantic_analysis::{namespace, TypedParseTree},
     };
 
     // -------------------------------------------------------------------------------------------------
@@ -2575,8 +2575,7 @@ mod tests {
             entry_points: vec![],
             namespace: Default::default(),
         };
-        let mut namespace =
-            namespace_system::Namespace::init_root(namespace_system::Module::default());
+        let mut namespace = namespace::Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
             sway_parse_tree.tree,
             &mut namespace,

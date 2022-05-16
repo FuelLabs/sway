@@ -1,6 +1,6 @@
 use self::declaration::EnforceTypeArguments;
 
-use super::{namespace_system::Namespace, ERROR_RECOVERY_DECLARATION};
+use super::{namespace::Namespace, ERROR_RECOVERY_DECLARATION};
 
 use crate::{
     build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,

@@ -7,7 +7,7 @@ use crate::{
         ast_node::{TypedEnumDeclaration, TypedEnumVariant},
         declaration::EnforceTypeArguments,
         insert_type_parameters,
-        namespace_system::Namespace,
+        namespace::Namespace,
     },
     style::is_upper_camel_case,
     type_engine::*,

@@ -5,7 +5,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::{FunctionDeclaration, ImplTrait},
-    semantic_analysis::{namespace_system::Namespace, TCOpts, TypeCheckArguments},
+    semantic_analysis::{namespace::Namespace, TCOpts, TypeCheckArguments},
     type_engine::*,
     CallPath, Ident, TypedDeclaration, TypedFunctionDeclaration,
 };

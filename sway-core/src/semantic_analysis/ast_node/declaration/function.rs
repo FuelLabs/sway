@@ -8,7 +8,7 @@ use crate::{
             VariableMutability,
         },
         insert_type_parameters,
-        namespace_system::Items,
+        namespace::Items,
         CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
     },
     type_engine::*,

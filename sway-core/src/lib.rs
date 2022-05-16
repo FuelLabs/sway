@@ -29,7 +29,7 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
-use semantic_analysis::namespace_system::{Module, Namespace, Root};
+use semantic_analysis::namespace::{Module, Namespace, Root};
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -4,7 +4,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         insert_type_parameters,
-        namespace_system::{Items, Path, Root},
+        namespace::{Items, Path, Root},
         TypeMapping,
     },
     type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},

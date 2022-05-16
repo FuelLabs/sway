@@ -4,7 +4,7 @@ use crate::parse_tree::declaration::Purity;
 use crate::semantic_analysis::ast_node::Mode;
 use crate::type_engine::*;
 
-use super::namespace_system::Namespace;
+use super::namespace::Namespace;
 
 pub struct TypeCheckArguments<'a, T> {
     pub checkee: T,

@@ -1,5 +1,5 @@
 use super::{
-    namespace_system::{Module, Namespace},
+    namespace::{Module, Namespace},
     node_dependencies, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
     TypedFunctionDeclaration,
 };
