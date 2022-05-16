@@ -551,6 +551,8 @@ impl OrdEq for u16 {
 }
 impl OrdEq for u8 {
 }
+impl OrdEq for b256 {
+}
 
 /////////////////////////////////////////////////
 // Internal Helpers

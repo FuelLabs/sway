@@ -113,5 +113,13 @@ fn main() -> bool {
     assert(y < x);
     assert(x < w);
 
+    // OrdEq
+    assert(x <= w);
+    assert(w >= x);
+    assert(foo >= foo);
+    assert(foo <= foo);
+    assert(fiz >= baz);
+    assert(foo <= fiz);
+
     true
 }
