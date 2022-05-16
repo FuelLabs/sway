@@ -1982,7 +1982,7 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Bool(_) => 8,
             ConstantValue::Uint(_) => 8,
             ConstantValue::B256(_) => 32,
-            ConstantValue::String(_) => 8,
+            ConstantValue::String(v) => size_bytes_round_up_to_word_alignment!(v.len() as u64),
             ConstantValue::Array(elems) => {
                 if elems.is_empty() {
                     0
@@ -2003,6 +2003,7 @@ impl<'ir> AsmBuilder<'ir> {
         offs_in_words: u64,
         span: Option<Span>,
     ) -> u64 {
+        let constant_size = self.constant_size_in_bytes(constant);
         match &constant.value {
             ConstantValue::Undef => {
                 // We don't need to actually create an initialiser, but we do need to return the
@@ -2028,7 +2029,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                 // Write the initialiser to memory.  Most Literals are 1 word, B256 is 32 bytes and
                 // needs to use a MCP instruction.
-                if matches!(lit, Literal::B256(_)) {
+                if matches!(lit, Literal::B256(_)) || matches!(lit, Literal::String(_)) {
                     let offs_reg = self.reg_seqr.next();
                     if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
                         self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
@@ -2058,7 +2059,9 @@ impl<'ir> AsmBuilder<'ir> {
                         opcode: Either::Left(VirtualOp::MCPI(
                             offs_reg,
                             init_reg,
-                            VirtualImmediate12 { value: 32 },
+                            VirtualImmediate12 {
+                                value: constant_size as u16,
+                            },
                         )),
                         comment: "initialise aggregate field".into(),
                         owning_span: span,
