@@ -105,7 +105,7 @@ pub enum AstNodeContent {
 /// ```
 ///
 /// # Panics
-/// Panics if the parser from panics.
+/// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
     let path = config.map(|config| config.path());
     let program = match sway_parse::parse_file(input, path) {
