@@ -2067,7 +2067,7 @@ impl<'ir> AsmBuilder<'ir> {
                         owning_span: span,
                     });
 
-                    4 // 32 bytes is 4 words.
+                    constant_size / 8
                 } else {
                     if offs_in_words > compiler_constants::TWELVE_BITS {
                         let offs_reg = self.reg_seqr.next();
