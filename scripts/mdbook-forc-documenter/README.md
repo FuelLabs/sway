@@ -15,7 +15,7 @@ This preprocessor is automatically run on every build, as long as the `book.toml
 Enter a new entry under the `Commands` section within `SUMMARY.md`, in this format:
 
 ```md
-- [forc gm](./forc_gm.md)\n
+- [forc gm](./forc_gm.md)
 ```
 
 ### Removing a forc command
@@ -29,5 +29,3 @@ Create a new Markdown file within `scripts/mdbook-forc-documenter/examples`, nam
 ### Removing an example
 
 Delete the Markdown file from within the above examples directory.
-
-
