@@ -13,10 +13,10 @@ lw   $r0 data_0               ; literal instantiation
 sw   $r1 $r0 i0               ; insert_value @ 0
 lw   $r0 data_1               ; literal instantiation
 sw   $r1 $r0 i1               ; insert_value @ 1
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 addi $r0 $r2 i0               ; get store offset
 mcpi $r0 $r1 i16              ; store value
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r0 i0               ; extract_value @ 0
 ret  $r0
 noop                          ; word-alignment of data section
