@@ -31,6 +31,7 @@ pub use {
         path::{PathExpr, PathType},
         pattern::Pattern,
         punctuated::Punctuated,
+        spanned::Spanned,
         statement::{Statement, StatementLet},
         token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
         ty::Ty,

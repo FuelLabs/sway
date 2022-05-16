@@ -11,8 +11,8 @@ pub struct ItemConst {
     pub semicolon_token: SemicolonToken,
 }
 
-impl ItemConst {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemConst {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => self.const_token.span(),

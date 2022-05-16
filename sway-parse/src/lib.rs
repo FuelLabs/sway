@@ -16,6 +16,7 @@ pub mod pattern;
 mod priv_prelude;
 pub mod program;
 pub mod punctuated;
+mod spanned;
 pub mod statement;
 mod token;
 pub mod ty;
@@ -53,6 +54,7 @@ pub use crate::{
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
     program::{Program, ProgramKind},
+    spanned::Spanned,
     statement::{Statement, StatementLet},
     token::lex,
     token::LexError,
