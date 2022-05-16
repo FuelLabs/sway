@@ -22,7 +22,7 @@ pub(crate) fn instantiate_function_application(
     let mut errors = vec![];
 
     // monomorphize the function declaration
-    let typed_function_decl = check!(
+    let function_decl = check!(
         namespace.monomorphize(
             function_decl,
             type_arguments,
@@ -35,7 +35,7 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    if opts.purity != typed_function_decl.purity {
+    if opts.purity != function_decl.purity {
         errors.push(CompileError::PureCalledImpure {
             span: call_path.span(),
         });
@@ -46,23 +46,22 @@ pub(crate) fn instantiate_function_application(
     // arguments
     let typed_call_arguments = arguments
         .into_iter()
-        .zip(typed_function_decl.parameters.iter())
+        .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
-            let args = TypeCheckArguments {
-                checkee: arg.clone(),
-                namespace,
-                return_type_annotation: param.r#type,
-                help_text: "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration.",
-                self_type,
-                build_config,
-                dead_code_graph,
-                mode: Mode::NonAbi,
-                opts,
-            };
             let exp = check!(
-                TypedExpression::type_check(args),
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: arg.clone(),
+                    namespace,
+                    return_type_annotation: param.r#type,
+                    help_text: "The argument that has been provided to this function's type does \
+                        not match the declared type of the parameter in the function \
+                        declaration.",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
                 error_recovery_expr(arg.span()),
                 warnings,
                 errors
@@ -71,13 +70,13 @@ pub(crate) fn instantiate_function_application(
         })
         .collect();
 
-    let span = typed_function_decl.span.clone();
+    let span = function_decl.span.clone();
     let exp = check!(
         instantiate_function_application_inner(
             call_path,
             HashMap::new(),
             typed_call_arguments,
-            typed_function_decl,
+            function_decl,
             None,
             IsConstant::No,
             span,
@@ -120,37 +119,37 @@ fn instantiate_function_application_inner(
     call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: Vec<(Ident, TypedExpression)>,
-    typed_function_decl: TypedFunctionDeclaration,
+    function_decl: TypedFunctionDeclaration,
     selector: Option<ContractCallMetadata>,
     is_constant: IsConstant,
     span: Span,
 ) -> CompileResult<TypedExpression> {
     let warnings = vec![];
     let mut errors = vec![];
-    if arguments.len() > typed_function_decl.parameters.len() {
+    if arguments.len() > function_decl.parameters.len() {
         errors.push(CompileError::TooManyArgumentsForFunction {
             span: span.clone(),
-            method_name: typed_function_decl.name,
-            expected: typed_function_decl.parameters.len(),
+            method_name: function_decl.name,
+            expected: function_decl.parameters.len(),
             received: arguments.len(),
         });
-    } else if arguments.len() < typed_function_decl.parameters.len() {
+    } else if arguments.len() < function_decl.parameters.len() {
         errors.push(CompileError::TooFewArgumentsForFunction {
             span: span.clone(),
-            method_name: typed_function_decl.name,
-            expected: typed_function_decl.parameters.len(),
+            method_name: function_decl.name,
+            expected: function_decl.parameters.len(),
             received: arguments.len(),
         });
     }
     let exp = TypedExpression {
         expression: TypedExpressionVariant::FunctionApplication {
-            name: call_path,
+            call_path,
             contract_call_params,
             arguments,
-            function_body: typed_function_decl.body.clone(),
+            function_body: function_decl.body.clone(),
             selector,
         },
-        return_type: typed_function_decl.return_type,
+        return_type: function_decl.return_type,
         is_constant,
         span,
     };

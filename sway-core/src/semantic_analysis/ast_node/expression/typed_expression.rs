@@ -677,24 +677,21 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let function_declaration = check!(
+        let unknown_decl = check!(
             namespace.resolve_call_path(&name).cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_function_decl = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => decl,
-            _ => {
-                errors.push(CompileError::NotAFunction {
-                    name,
-                    what_it_is: function_declaration.friendly_name(),
-                });
-                return err(warnings, errors);
-            }
-        };
+        let function_decl = check!(
+            unknown_decl.expect_function(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+        .clone();
         instantiate_function_application(
-            typed_function_decl,
+            function_decl,
             name,
             type_arguments,
             arguments,
@@ -1569,23 +1566,19 @@ impl TypedExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let decl = check!(
+                        let unknown_decl = check!(
                             namespace.resolve_call_path(&abi_name).cloned(),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        let abi = match decl {
-                            TypedDeclaration::AbiDeclaration(abi) => abi,
-                            _ => {
-                                errors.push(CompileError::NotAnAbi {
-                                    span: abi_name.span(),
-                                    actually_is: abi.friendly_name(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        };
-                        abi
+                        check!(
+                            unknown_decl.expect_abi(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                        .clone()
                     }
                     AbiName::Deferred => {
                         return ok(

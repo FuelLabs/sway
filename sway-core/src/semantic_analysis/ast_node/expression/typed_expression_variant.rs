@@ -17,7 +17,7 @@ pub(crate) struct ContractCallMetadata {
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        name: CallPath,
+        call_path: CallPath,
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
@@ -125,13 +125,13 @@ impl PartialEq for TypedExpressionVariant {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
                 Self::FunctionApplication {
-                    name: l_name,
+                    call_path: l_name,
                     arguments: l_arguments,
                     function_body: l_function_body,
                     ..
                 },
                 Self::FunctionApplication {
-                    name: r_name,
+                    call_path: r_name,
                     arguments: r_arguments,
                     function_body: r_function_body,
                     ..
@@ -515,7 +515,9 @@ impl TypedExpressionVariant {
                         .join(", "),
                 }
             ),
-            TypedExpressionVariant::FunctionApplication { name, .. } => {
+            TypedExpressionVariant::FunctionApplication {
+                call_path: name, ..
+            } => {
                 format!("\"{}\" fn entry", name.suffix.as_str())
             }
             TypedExpressionVariant::LazyOperator { op, .. } => match op {

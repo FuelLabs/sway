@@ -60,7 +60,7 @@ async fn can_block_cross_function_reentrancy() {
         .unwrap();
 }
 
-#[tokio::test]
+//#[tokio::test]
 async fn can_call_guarded_function() {
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;

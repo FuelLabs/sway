@@ -8,6 +8,7 @@ use ::context::call_frames::*;
 use ::assert::assert;
 use ::context::registers::frame_ptr;
 
+/// Panics if the reentrancy pattern is detected
 pub fn reentrancy_guard() {
     assert(!is_reentrant());
 }

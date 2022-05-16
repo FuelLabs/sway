@@ -272,23 +272,21 @@ impl TypedFunctionDeclaration {
             errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
 
-        ok(
-            TypedFunctionDeclaration {
-                name,
-                body,
-                parameters,
-                span,
-                return_type,
-                type_parameters,
-                return_type_span,
-                visibility,
-                // if this is for a contract, then it is a contract call
-                is_contract_call: mode == Mode::ImplAbiFn,
-                purity,
-            },
-            warnings,
-            errors,
-        )
+        let function_decl = TypedFunctionDeclaration {
+            name,
+            body,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            return_type_span,
+            visibility,
+            // if this is for a contract, then it is a contract call
+            is_contract_call: mode == Mode::ImplAbiFn,
+            purity,
+        };
+
+        ok(function_decl, warnings, errors)
     }
 
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

@@ -269,6 +269,17 @@ impl TypedDeclaration {
         }
     }
 
+    /// Attempt to retrieve the declaration as an Abi declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a `TypedEnumDeclaration`.
@@ -308,7 +319,6 @@ impl TypedDeclaration {
     /// Retrieves the declaration as a function declaration.
     ///
     /// Returns an error if `self` is not a `TypedFunctionDeclaration`.
-    #[allow(dead_code)]
     pub(crate) fn expect_function(&self) -> CompileResult<&TypedFunctionDeclaration> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -334,6 +344,24 @@ impl TypedDeclaration {
             TypedDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as an Abi declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedAbiDeclaration`.
+    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAnAbi {
                     actually: decl.friendly_name().to_string(),
                     span: decl.span(),
                 });
