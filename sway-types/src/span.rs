@@ -139,3 +139,7 @@ impl fmt::Debug for Span {
             .finish()
     }
 }
+
+pub trait Spanned {
+    fn span(&self) -> Span;
+}

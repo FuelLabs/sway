@@ -31,7 +31,6 @@ pub use {
         path::{PathExpr, PathType},
         pattern::Pattern,
         punctuated::Punctuated,
-        spanned::Spanned,
         statement::{Statement, StatementLet},
         token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
         ty::Ty,
@@ -42,7 +41,7 @@ pub use {
     std::{
         fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
     },
-    sway_types::{Ident, Span},
+    sway_types::{Ident, Span, Spanned},
     thiserror::Error,
     unicode_xid::UnicodeXID,
 };

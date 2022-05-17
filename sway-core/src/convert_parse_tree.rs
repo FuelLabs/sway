@@ -22,10 +22,10 @@ use {
         Instruction, Intrinsic, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
         ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
         PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Spanned, Statement, StatementLet, Traits, Ty,
-        TypeField, UseTree,
+        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
+        UseTree,
     },
-    sway_types::{Ident, Span},
+    sway_types::{Ident, Span, Spanned},
     thiserror::Error,
 };
 
