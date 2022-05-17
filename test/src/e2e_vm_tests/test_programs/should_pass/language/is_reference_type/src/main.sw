@@ -11,21 +11,21 @@ enum E {
 }
 
 fn arg_is_reference<T>(a: T) -> bool {
-    is_reference_type::<T>()
+    __is_reference_type::<T>()
 }
 
 fn main() -> bool {
-    assert(!is_reference_type::<()>());        // Is Unit ref or not?
-    assert(!is_reference_type::<bool>());
-    assert(!is_reference_type::<byte>());
-    assert(!is_reference_type::<u64>());
+    assert(!__is_reference_type::<()>());        // Is Unit ref or not?
+    assert(!__is_reference_type::<bool>());
+    assert(!__is_reference_type::<byte>());
+    assert(!__is_reference_type::<u64>());
 
-    assert(!is_reference_type::<str[1]>());
-    assert(is_reference_type::<b256>());
-    assert(is_reference_type::<S>());
-    assert(is_reference_type::<E>());
-    assert(is_reference_type::<(bool, bool)>());
-    assert(is_reference_type::<[u64; 2]>());
+    assert(__is_reference_type::<str[1]>());
+    assert(__is_reference_type::<b256>());
+    assert(__is_reference_type::<S>());
+    assert(__is_reference_type::<E>());
+    assert(__is_reference_type::<(bool, bool)>());
+    assert(__is_reference_type::<[u64; 2]>());
 
     assert(!arg_is_reference(()));
     assert(!arg_is_reference(false));

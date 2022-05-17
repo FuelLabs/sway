@@ -1,12 +1,13 @@
-use fuel_core::service::Config;
+use fuel_core::service::{Config, FuelService};
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Receipt, Transaction};
-use fuels_contract::script::Script;
-use fuels_signers::provider::Provider;
+use fuels::contract::script::Script;
 
 #[tokio::test]
 async fn run_valid() {
     let bin = std::fs::read("test_projects/option/out/debug/option.bin");
-    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let server = FuelService::new_node(Config::local_node()).await.unwrap();
+    let client = FuelClient::from(server.bound_address);
 
     let tx = Transaction::Script {
         gas_price: 0,

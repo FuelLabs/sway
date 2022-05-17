@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
         error::{err, ok, CompileError, CompileResult, CompileWarning},
@@ -13,40 +14,46 @@ use {
         SwayParseTree, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter,
         UseStatement, VariableDeclaration, Visibility, WhileLoop,
     },
-    nanoid::nanoid,
     std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
-        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArgs,
-        FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken, Instruction,
-        Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemStorage, ItemStruct, ItemTrait,
-        ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr, PathExprSegment, PathType,
-        PathTypeSegment, Pattern, PatternStructField, Program, ProgramKind, PubToken,
-        QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree,
+        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
+        FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
+        Instruction, Intrinsic, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+        ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
+        PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
+        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
+        UseTree,
     },
     sway_types::{Ident, Span},
     thiserror::Error,
 };
 
 #[derive(Debug)]
+/// Contains any errors or warnings that were generated during the conversion into the parse tree.
+/// Typically these warnings and errors are populated as a side effect in the `From` and `Into`
+/// implementations of error types into [ErrorEmitted].
 pub struct ErrorContext {
     warnings: Vec<CompileWarning>,
     errors: Vec<CompileError>,
 }
 
+#[derive(Debug)]
+/// Represents that an error was emitted to the error context. This struct does not contain the
+/// error, rather, other errors are responsible for pushing to the [ErrorContext] in their `Into`
+/// implementations.
 pub struct ErrorEmitted {
     _priv: (),
 }
 
 impl ErrorContext {
-    /*
+    #[allow(dead_code)]
     pub fn warning<W>(&mut self, warning: W)
     where
         W: Into<CompileWarning>,
     {
         self.warnings.push(warning.into());
     }
-    */
 
     pub fn error<E>(&mut self, error: E) -> ErrorEmitted
     where
@@ -93,15 +100,15 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("size_of does not take arguments")]
+    #[error("__size_of does not take arguments")]
     SizeOfTooManyArgs { span: Span },
-    #[error("size_of requires exactly one generic argument")]
+    #[error("__size_of requires exactly one generic argument")]
     SizeOfOneGenericArg { span: Span },
-    #[error("is_reference_type does not take arguments")]
+    #[error("__is_reference_type does not take arguments")]
     IsReferenceTypeTooManyArgs { span: Span },
-    #[error("is_reference_type requires exactly one generic argument")]
+    #[error("__is_reference_type requires exactly one generic argument")]
     IsReferenceTypeOneGenericArg { span: Span },
-    #[error("size_of_val requires exactly one argument")]
+    #[error("__size_of_val requires exactly one argument")]
     SizeOfValOneArg { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
@@ -149,6 +156,8 @@ pub enum ConvertParseTreeError {
     StructPatternsNotSupportedHere { span: Span },
     #[error("wildcard patterns not supported in this position")]
     WildcardPatternsNotSupportedHere { span: Span },
+    #[error("tuple patterns not supported in this position")]
+    TuplePatternsNotSupportedHere { span: Span },
     #[error("constructor patterns require a single argument")]
     ConstructorPatternOneArg { span: Span },
     #[error("mutable bindings are not supported in this position")]
@@ -157,7 +166,7 @@ pub enum ConvertParseTreeError {
     ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
     PathsNotSupportedHere { span: Span },
-    #[error("fully specified types are not supported")]
+    #[error("Fully specified types are not supported in this position. Try importing the type and referring to it here.")]
     FullySpecifiedTypesNotSupported { span: Span },
     #[error("ContractCaller requires exactly one generic argument")]
     ContractCallerOneGenericArg { span: Span },
@@ -166,49 +175,50 @@ pub enum ConvertParseTreeError {
 }
 
 impl ConvertParseTreeError {
-    pub fn span_ref(&self) -> &Span {
+    pub fn span(&self) -> Span {
         match self {
-            ConvertParseTreeError::PubUseNotSupported { span } => span,
-            ConvertParseTreeError::ReturnOutsideOfBlock { span } => span,
-            ConvertParseTreeError::WhileOutsideOfBlock { span } => span,
-            ConvertParseTreeError::FunctionArbitraryExpression { span } => span,
-            ConvertParseTreeError::GenericsNotSupportedHere { span } => span,
-            ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span,
-            ConvertParseTreeError::SizeOfTooManyArgs { span } => span,
-            ConvertParseTreeError::SizeOfOneGenericArg { span } => span,
-            ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span,
-            ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span,
-            ConvertParseTreeError::SizeOfValOneArg { span } => span,
-            ConvertParseTreeError::TupleIndexOutOfRange { span } => span,
-            ConvertParseTreeError::ShlNotImplemented { span } => span,
-            ConvertParseTreeError::ShrNotImplemented { span } => span,
-            ConvertParseTreeError::BitXorNotImplemented { span } => span,
-            ConvertParseTreeError::ReassignmentOutsideOfBlock { span } => span,
-            ConvertParseTreeError::IntTySuffixNotSupported { span } => span,
-            ConvertParseTreeError::IntLiteralOutOfRange { span } => span,
-            ConvertParseTreeError::IntLiteralExpected { span } => span,
-            ConvertParseTreeError::FullyQualifiedTraitsNotSupported { span } => span,
-            ConvertParseTreeError::QualifiedPathRootsNotImplemented { span } => span,
-            ConvertParseTreeError::CharLiteralsNotImplemented { span } => span,
-            ConvertParseTreeError::HexLiteralLength { span } => span,
-            ConvertParseTreeError::BinaryLiteralLength { span } => span,
-            ConvertParseTreeError::U8LiteralOutOfRange { span } => span,
-            ConvertParseTreeError::U16LiteralOutOfRange { span } => span,
-            ConvertParseTreeError::U32LiteralOutOfRange { span } => span,
-            ConvertParseTreeError::U64LiteralOutOfRange { span } => span,
-            ConvertParseTreeError::SignedIntegersNotSupported { span } => span,
-            ConvertParseTreeError::LiteralPatternsNotSupportedHere { span } => span,
-            ConvertParseTreeError::ConstantPatternsNotSupportedHere { span } => span,
-            ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span,
-            ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span,
-            ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span,
-            ConvertParseTreeError::ConstructorPatternOneArg { span } => span,
-            ConvertParseTreeError::MutableBindingsNotSupportedHere { span } => span,
-            ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span,
-            ConvertParseTreeError::PathsNotSupportedHere { span } => span,
-            ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span,
-            ConvertParseTreeError::ContractCallerOneGenericArg { span } => span,
-            ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span,
+            ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
+            ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
+            ConvertParseTreeError::WhileOutsideOfBlock { span } => span.clone(),
+            ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
+            ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::SizeOfTooManyArgs { span } => span.clone(),
+            ConvertParseTreeError::SizeOfOneGenericArg { span } => span.clone(),
+            ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
+            ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
+            ConvertParseTreeError::SizeOfValOneArg { span } => span.clone(),
+            ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
+            ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
+            ConvertParseTreeError::BitXorNotImplemented { span } => span.clone(),
+            ConvertParseTreeError::ReassignmentOutsideOfBlock { span } => span.clone(),
+            ConvertParseTreeError::IntTySuffixNotSupported { span } => span.clone(),
+            ConvertParseTreeError::IntLiteralOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::IntLiteralExpected { span } => span.clone(),
+            ConvertParseTreeError::FullyQualifiedTraitsNotSupported { span } => span.clone(),
+            ConvertParseTreeError::QualifiedPathRootsNotImplemented { span } => span.clone(),
+            ConvertParseTreeError::CharLiteralsNotImplemented { span } => span.clone(),
+            ConvertParseTreeError::HexLiteralLength { span } => span.clone(),
+            ConvertParseTreeError::BinaryLiteralLength { span } => span.clone(),
+            ConvertParseTreeError::U8LiteralOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::U16LiteralOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::U32LiteralOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::U64LiteralOutOfRange { span } => span.clone(),
+            ConvertParseTreeError::SignedIntegersNotSupported { span } => span.clone(),
+            ConvertParseTreeError::LiteralPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::ConstantPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
+            ConvertParseTreeError::MutableBindingsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span.clone(),
+            ConvertParseTreeError::PathsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
+            ConvertParseTreeError::ContractCallerOneGenericArg { span } => span.clone(),
+            ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
         }
     }
 }
@@ -254,7 +264,7 @@ pub fn program_to_sway_parse_tree(
                 .collect()
         };
         for item in program.items {
-            let ast_nodes = item_to_ast_nodes(ec, item)?;
+            let ast_nodes = item_to_ast_nodes(ec, item.kind)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
@@ -265,57 +275,57 @@ pub fn program_to_sway_parse_tree(
     })
 }
 
-fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
+fn item_to_ast_nodes(ec: &mut ErrorContext, item: ItemKind) -> Result<Vec<AstNode>, ErrorEmitted> {
     let span = item.span();
     let contents = match item {
-        Item::Use(item_use) => {
+        ItemKind::Use(item_use) => {
             let use_statements = item_use_to_use_statements(ec, item_use)?;
             use_statements
                 .into_iter()
                 .map(AstNodeContent::UseStatement)
                 .collect()
         }
-        Item::Struct(item_struct) => {
+        ItemKind::Struct(item_struct) => {
             let struct_declaration = item_struct_to_struct_declaration(ec, item_struct)?;
             vec![AstNodeContent::Declaration(Declaration::StructDeclaration(
                 struct_declaration,
             ))]
         }
-        Item::Enum(item_enum) => {
+        ItemKind::Enum(item_enum) => {
             let enum_declaration = item_enum_to_enum_declaration(ec, item_enum)?;
             vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(
                 enum_declaration,
             ))]
         }
-        Item::Fn(item_fn) => {
+        ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn)?;
             vec![AstNodeContent::Declaration(
                 Declaration::FunctionDeclaration(function_declaration),
             )]
         }
-        Item::Trait(item_trait) => {
+        ItemKind::Trait(item_trait) => {
             let trait_declaration = item_trait_to_trait_declaration(ec, item_trait)?;
             vec![AstNodeContent::Declaration(Declaration::TraitDeclaration(
                 trait_declaration,
             ))]
         }
-        Item::Impl(item_impl) => {
+        ItemKind::Impl(item_impl) => {
             let declaration = item_impl_to_declaration(ec, item_impl)?;
             vec![AstNodeContent::Declaration(declaration)]
         }
-        Item::Abi(item_abi) => {
+        ItemKind::Abi(item_abi) => {
             let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
             vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
                 abi_declaration,
             ))]
         }
-        Item::Const(item_const) => {
+        ItemKind::Const(item_const) => {
             let constant_declaration = item_const_to_constant_declaration(ec, item_const)?;
             vec![AstNodeContent::Declaration(
                 Declaration::ConstantDeclaration(constant_declaration),
             )]
         }
-        Item::Storage(item_storage) => {
+        ItemKind::Storage(item_storage) => {
             let storage_declaration = item_storage_to_storage_declaration(ec, item_storage)?;
             vec![AstNodeContent::Declaration(
                 Declaration::StorageDeclaration(storage_declaration),
@@ -717,7 +727,7 @@ fn fn_args_to_function_parameters(
     let function_parameters = match fn_args {
         FnArgs::Static(args) => args
             .into_iter()
-            .map(|type_field| type_field_to_function_parameter(ec, type_field))
+            .map(|fn_arg| fn_arg_to_function_parameter(ec, fn_arg))
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
@@ -730,7 +740,7 @@ fn fn_args_to_function_parameters(
             }];
             if let Some((_comma_token, args)) = args_opt {
                 for arg in args {
-                    let function_parameter = type_field_to_function_parameter(ec, arg)?;
+                    let function_parameter = fn_arg_to_function_parameter(ec, arg)?;
                     function_parameters.push(function_parameter);
                 }
             }
@@ -926,20 +936,23 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 span,
             }
         }
-        Expr::Struct { path, fields } => Expression::StructExpression {
-            struct_name: path_expr_to_call_path(ec, path)?,
-            fields: {
-                fields
-                    .into_inner()
-                    .into_iter()
-                    .map(|expr_struct_field| {
-                        expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                    })
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+        Expr::Struct { path, fields } => {
+            let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
+            Expression::StructExpression {
+                struct_name,
+                fields: {
+                    fields
+                        .into_inner()
+                        .into_iter()
+                        .map(|expr_struct_field| {
+                            expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+                        })
+                        .collect::<Result<_, _>>()?
+                },
+                type_arguments,
+                span,
+            }
+        }
         Expr::Tuple(parenthesized_expr_tuple_descriptor) => Expression::Tuple {
             fields: expr_tuple_descriptor_to_expressions(
                 ec,
@@ -1162,7 +1175,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 None => {
                     if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "size_of"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::SizeOf)
                     {
                         if !arguments.is_empty() {
                             let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
@@ -1189,7 +1203,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "is_reference_type"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::IsReferenceType)
                     {
                         if !arguments.is_empty() {
                             let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
@@ -1217,7 +1232,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && call_path.suffix.as_str() == "size_of_val"
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::SizeOfVal)
                     {
                         let exp = match <[_; 1]>::try_from(arguments) {
                             Ok([exp]) => Box::new(exp),
@@ -1516,14 +1532,51 @@ fn statement_to_ast_nodes(
     Ok(ast_nodes)
 }
 
-fn type_field_to_function_parameter(
+fn fn_arg_to_function_parameter(
     ec: &mut ErrorContext,
-    type_field: TypeField,
+    fn_arg: FnArg,
 ) -> Result<FunctionParameter, ErrorEmitted> {
-    let type_span = type_field.ty.span();
+    let type_span = fn_arg.ty.span();
+    let pat_span = fn_arg.pattern.span();
+    let name = match fn_arg.pattern {
+        Pattern::Wildcard { .. } => {
+            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Var { mutable, name } => {
+            if let Some(mut_token) = mutable {
+                let error = ConvertParseTreeError::MutableBindingsNotSupportedHere {
+                    span: mut_token.span(),
+                };
+                return Err(ec.error(error));
+            }
+            name
+        }
+        Pattern::Literal(..) => {
+            let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Constant(..) => {
+            let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Constructor { .. } => {
+            let error =
+                ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Struct { .. } => {
+            let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+        Pattern::Tuple(..) => {
+            let error = ConvertParseTreeError::TuplePatternsNotSupportedHere { span: pat_span };
+            return Err(ec.error(error));
+        }
+    };
     let function_parameter = FunctionParameter {
-        name: type_field.name,
-        type_id: insert_type(ty_to_type_info(ec, type_field.ty)?),
+        name,
+        type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
     Ok(function_parameter)
@@ -1660,6 +1713,30 @@ fn path_type_segment_to_ident(
     Ok(name)
 }
 
+/// Similar to [path_type_segment_to_ident], but allows for the item to be either
+/// type arguments _or_ an ident.
+fn path_expr_segment_to_ident_or_type_argument(
+    ec: &mut ErrorContext,
+    path_expr_segment: PathExprSegment,
+) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
+    let PathExprSegment {
+        fully_qualified,
+        name,
+        generics_opt,
+    } = path_expr_segment;
+    if let Some(tilde_token) = fully_qualified {
+        let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
+            span: tilde_token.span(),
+        };
+        return Err(ec.error(error));
+    }
+    let generic_args = generics_opt.map(|(_, y)| y);
+    let type_args = match generic_args {
+        Some(x) => generic_args_to_type_arguments(ec, x)?,
+        None => Default::default(),
+    };
+    Ok((name, type_args))
+}
 fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
@@ -1911,6 +1988,54 @@ fn literal_to_literal(
     Ok(literal)
 }
 
+/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
+/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// turbofish.
+fn path_expr_to_call_path_type_args(
+    ec: &mut ErrorContext,
+    path_expr: PathExpr,
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+    let PathExpr {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_expr;
+    let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+    let (call_path, type_arguments) = match suffix.pop() {
+        Some((_double_colon_token, call_path_suffix)) => {
+            let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
+            for (_double_colon_token, call_path_prefix) in suffix {
+                let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
+                // note that call paths only support one set of type arguments per call path right
+                // now
+                prefixes.push(ident);
+            }
+            let (suffix, ty_args) =
+                path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
+            (
+                CallPath {
+                    prefixes,
+                    suffix,
+                    is_absolute,
+                },
+                ty_args,
+            )
+        }
+        None => {
+            let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
+            (
+                CallPath {
+                    prefixes: Default::default(),
+                    suffix,
+                    is_absolute,
+                },
+                ty_args,
+            )
+        }
+    };
+    Ok((call_path, type_arguments))
+}
+
 fn path_expr_to_call_path(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
@@ -2106,11 +2231,19 @@ fn statement_let_to_ast_nodes(
             }
             Pattern::Tuple(pat_tuple) => {
                 let mut ast_nodes = Vec::new();
-                let name = {
-                    // FIXME: This is so, so dodgy.
-                    let name_str: &'static str = Box::leak(nanoid!(32).into_boxed_str());
-                    Ident::new_with_override(name_str, span.clone())
-                };
+
+                // Generate a deterministic name for the tuple. Because the parser is single
+                // threaded, the name generated below will be stable.
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let tuple_name = format!(
+                    "{}{}",
+                    crate::constants::TUPLE_NAME_PREFIX,
+                    COUNTER.load(Ordering::SeqCst)
+                );
+                COUNTER.fetch_add(1, Ordering::SeqCst);
+                let name =
+                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2182,16 +2315,18 @@ fn dependency_to_include_statement(dependency: Dependency) -> IncludeStatement {
     }
 }
 
-/*
-fn generic_args_to_type_parameters(generic_args: GenericArgs) -> Vec<TypeParameter> {
+#[allow(dead_code)]
+fn generic_args_to_type_parameters(
+    ec: &mut ErrorContext,
+    generic_args: GenericArgs,
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     generic_args
-    .parameters
-    .into_inner()
-    .into_iter()
-    .map(ty_to_type_parameter)
-    .collect()
+        .parameters
+        .into_inner()
+        .into_iter()
+        .map(|x| ty_to_type_parameter(ec, x))
+        .collect()
 }
-*/
 
 fn asm_register_declaration_to_asm_register_declaration(
     ec: &mut ErrorContext,
@@ -2301,32 +2436,43 @@ fn pattern_to_scrutinee(
     Ok(scrutinee)
 }
 
-/*
-fn ty_to_type_parameter(ty: Ty) -> TypeParameter {
+#[allow(dead_code)]
+fn ty_to_type_parameter(ec: &mut ErrorContext, ty: Ty) -> Result<TypeParameter, ErrorEmitted> {
     let name_ident = match ty {
-        Ty::Path(path_type) => path_type_to_ident(path_type),
+        Ty::Path(path_type) => path_type_to_ident(ec, path_type)?,
+        Ty::Infer { underscore_token } => {
+            return Ok(TypeParameter {
+                type_id: insert_type(TypeInfo::Unknown),
+                name_ident: underscore_token.into(),
+                trait_constraints: Default::default(),
+            })
+        }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
-    TypeParameter {
+    Ok(TypeParameter {
         type_id: insert_type(TypeInfo::Custom {
             name: name_ident.clone(),
             type_arguments: Vec::new(),
         }),
         name_ident,
         trait_constraints: Vec::new(),
-    }
+    })
 }
 
-fn path_type_to_ident(path_type: PathType) -> Ident {
-    let PathType { root_opt, prefix, suffix } = path_type;
+#[allow(dead_code)]
+fn path_type_to_ident(ec: &mut ErrorContext, path_type: PathType) -> Result<Ident, ErrorEmitted> {
+    let PathType {
+        root_opt,
+        prefix,
+        suffix,
+    } = path_type;
     if root_opt.is_some() || !suffix.is_empty() {
         panic!("types with paths aren't currently supported");
     }
-    path_type_segment_to_ident(prefix)
+    path_type_segment_to_ident(ec, prefix)
 }
-*/
 
 fn path_expr_to_ident(ec: &mut ErrorContext, path_expr: PathExpr) -> Result<Ident, ErrorEmitted> {
     let span = path_expr.span();
@@ -2483,7 +2629,7 @@ fn path_type_to_type_info(
                 };
                 TypeInfo::ContractCaller {
                     abi_name,
-                    address: String::new(),
+                    address: None,
                 }
             } else {
                 let type_arguments = match generics_opt {

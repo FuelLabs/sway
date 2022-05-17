@@ -1,14 +1,14 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_manifest(project_name: &str) -> String {
-    let real_name = whoami::realname();
+pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
+    let author = get_author();
 
     format!(
         r#"[project]
-authors = ["{real_name}"]
-entry = "main.sw"
-license = "Apache-2.0"
 name = "{project_name}"
+authors = ["{author}"]
+entry = "{entry_type}"
+license = "Apache-2.0"
 
 [dependencies]
 "#
@@ -19,24 +19,21 @@ name = "{project_name}"
 /// It includes necessary packages to make the Rust-based
 /// tests work.
 pub(crate) fn default_tests_manifest(project_name: &str) -> String {
-    let real_name = whoami::realname();
+    let author = get_author();
 
     format!(
         r#"[project]
-authors = ["{real_name}"]
-edition = "2021"
-license = "Apache-2.0"
 name = "{project_name}"
 version = "0.1.0"
+authors = ["{author}"]
+edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.5", default-features = false }}
-fuel-tx = "0.7"
-fuels-abigen-macro = "0.9"
-fuels-contract = "0.9"
-fuels-core = "0.9"
-fuels-signers = "0.9"
-rand = "0.8"
+fuel-gql-client = {{ version = "0.6", default-features = false }}
+fuel-tx = "0.9"
+fuels = "0.12"
+fuels-abigen-macro = "0.12"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -47,7 +44,7 @@ path = "tests/harness.rs"
     )
 }
 
-pub(crate) fn default_program() -> String {
+pub(crate) fn default_contract() -> String {
     r#"contract;
 
 abi MyContract {
@@ -63,15 +60,44 @@ impl MyContract for Contract {
     .into()
 }
 
+pub(crate) fn default_script() -> String {
+    r#"script;
+
+fn main() {
+
+}
+"#
+    .into()
+}
+
+pub(crate) fn default_library(project_name: &str) -> String {
+    format!(
+        "library {project_name};
+
+// anything `pub` here will be exported as a part of this library's API
+"
+    )
+}
+
+pub(crate) fn default_predicate() -> String {
+    r#"predicate;
+
+fn main() -> bool {
+    false
+}
+"#
+    .into()
+}
+
 // TODO Ideally after (instance, id) it should link to the The Fuels-rs Book
 // to provide further information for writing tests/working with sway
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
-        r#"use fuel_tx::{ContractId, Salt};
+        r#"use fuel_tx::ContractId;
 use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::util::test_helpers;
+use fuels::prelude::*;
+use fuels::test_helpers;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
@@ -80,10 +106,9 @@ abigen!(MyContract, "out/debug/"#,
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Deploy the compiled contract
-    let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract("./out/debug/"#,
         project_name,
-        r#".bin", salt).unwrap();
+        r#".bin").unwrap();
 
     // Launch a local network and deploy the contract
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
@@ -113,11 +138,16 @@ target
     .into()
 }
 
+fn get_author() -> String {
+    std::env::var(sway_utils::FORC_INIT_MANIFEST_AUTHOR).unwrap_or_else(|_| whoami::realname())
+}
+
 #[test]
 fn parse_default_manifest() {
+    use sway_utils::constants::MAIN_ENTRY;
     println!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj")).unwrap()
+        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
     )
 }
 

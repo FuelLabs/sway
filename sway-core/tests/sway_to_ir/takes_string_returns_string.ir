@@ -1,0 +1,15 @@
+contract {
+    fn small_string<80da70e2>(s !1: string<7>) -> string<7> {
+        entry:
+        ret string<7> s
+    }
+
+    fn large_string<28c0f699>(s !2: string<9>) -> string<9> {
+        entry:
+        ret string<9> s
+    }
+}
+
+!0 = filepath "/path/to/takes_string_returns_string.sw"
+!1 = span !0 166 167
+!2 = span !0 226 227

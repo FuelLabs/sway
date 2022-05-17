@@ -1,8 +1,8 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::ContractId;
 use fuel_vm::consts::VM_MAX_RAM;
+use fuels::prelude::*;
+use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::util::test_helpers;
 
 abigen!(
     CallFramesTestContract,
@@ -10,9 +10,8 @@ abigen!(
 );
 
 async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled =
-        Contract::load_sway_contract("test_projects/call_frames/out/debug/call_frames.bin", salt)
+        Contract::load_sway_contract("test_projects/call_frames/out/debug/call_frames.bin")
             .unwrap();
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
@@ -26,9 +25,8 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
 #[tokio::test]
 async fn can_get_contract_id() {
     let (instance, id) = get_call_frames_instance().await;
-    let c = callframestestcontract_mod::ContractId { value: id.into() };
     let result = instance.get_id().call().await.unwrap();
-    assert_eq!(result.value, c);
+    assert_eq!(result.value, id);
 }
 
 #[tokio::test]

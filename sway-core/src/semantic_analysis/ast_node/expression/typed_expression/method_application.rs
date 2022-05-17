@@ -3,10 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::parser::{Rule, SwayParser};
-use crate::semantic_analysis::TCOpts;
-use pest::iterators::Pairs;
-use pest::Parser;
+use crate::semantic_analysis::{namespace::Namespace, TCOpts};
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -16,8 +13,7 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
-    namespace: NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -32,7 +28,6 @@ pub(crate) fn type_check_method_application(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: arg,
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
@@ -96,20 +91,18 @@ pub(crate) fn type_check_method_application(
                 }
                 (ty, true) => ty,
             };
-            let from_module = if call_path.is_absolute {
-                Some(crate_namespace)
+            let abs_path: Vec<Ident> = if call_path.is_absolute {
+                call_path.full_path().cloned().collect()
             } else {
-                None
+                namespace
+                    .mod_path()
+                    .iter()
+                    .chain(call_path.full_path())
+                    .cloned()
+                    .collect()
             };
             check!(
-                namespace.find_method_for_type(
-                    insert_type(ty),
-                    &call_path.suffix,
-                    &call_path.prefixes[..],
-                    from_module,
-                    self_type,
-                    &args_buf,
-                ),
+                namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -120,8 +113,14 @@ pub(crate) fn type_check_method_application(
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+            let abs_path: Vec<_> = namespace
+                .mod_path()
+                .iter()
+                .chain(Some(method_name))
+                .cloned()
+                .collect();
             check!(
-                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
+                namespace.find_method_for_type(ty, &abs_path, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -170,7 +169,6 @@ pub(crate) fn type_check_method_application(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: param.value,
                                 namespace,
-                                crate_namespace,
                                 return_type_annotation: match param.name.span().as_str() {
                                     constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                                     | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => insert_type(
@@ -261,30 +259,21 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
-                // TODO(static span): this can be a normal address expression,
-                // so we don't need to re-parse and re-compile
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        crate_namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: method_name.span().clone(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None
@@ -347,28 +336,21 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        crate_namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: call_path.span(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None
@@ -391,82 +373,4 @@ pub(crate) fn type_check_method_application(
         }
     };
     ok(exp, warnings, errors)
-}
-
-// TODO(static span): this whole method can go away and the address can go back in the contract
-// caller type.
-#[allow(clippy::too_many_arguments)]
-fn re_parse_expression(
-    contract_string: Arc<str>,
-    build_config: &BuildConfig,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
-    self_type: TypeId,
-    dead_code_graph: &mut ControlFlowGraph,
-    opts: TCOpts,
-    span: Span,
-) -> CompileResult<TypedExpression> {
-    if contract_string.is_empty() {
-        return err(
-            vec![],
-            vec![CompileError::ContractAddressMustBeKnown { span }],
-        );
-    }
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let span = sway_types::span::Span::new(
-        "TODO(static span): use Idents instead of Strings".into(),
-        0,
-        0,
-        None,
-    )
-    .unwrap();
-
-    let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
-        Ok(o) => o,
-        Err(_e) => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
-    let contract_pair = match contract_pairs.next() {
-        Some(o) => o,
-        None => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing. No address.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
-
-    // purposefully ignore var_decls as those have already been lifted during parsing
-    let ParserLifter { value, .. } = check!(
-        Expression::parse_from_pair(contract_pair, Some(build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    let contract_address = check!(
-        TypedExpression::type_check(TypeCheckArguments {
-            checkee: value,
-            namespace,
-            crate_namespace,
-            return_type_annotation: insert_type(TypeInfo::Unknown),
-            help_text: Default::default(),
-            self_type,
-            build_config,
-            dead_code_graph,
-            mode: Mode::NonAbi,
-            opts,
-        }),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(contract_address, warnings, errors)
 }

@@ -25,11 +25,13 @@ use crate::{
 pub enum Instruction {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// Cast the type of a value without changing its actual content.
+    BitCast(Value, Type),
     /// An unconditional jump.
     Branch(Block),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
-    /// Comparison between two values using various comparators and retuning a boolean.
+    /// Comparison between two values using various comparators and returning a boolean.
     Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
@@ -150,6 +152,7 @@ impl Instruction {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
+            Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::Cmp(..) => Some(Type::Bool),
             Instruction::ContractCall { return_type, .. } => Some(*return_type),
@@ -234,6 +237,7 @@ impl Instruction {
                     .iter_mut()
                     .for_each(|init_val| replace(init_val))
             }),
+            Instruction::BitCast(value, _) => replace(value),
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
@@ -386,6 +390,15 @@ impl<'a> InstructionInserter<'a> {
             Value::new_instruction(self.context, Instruction::AsmBlock(asm, args), span_md_idx);
         self.context.blocks[self.block.0].instructions.push(asm_val);
         asm_val
+    }
+
+    pub fn bitcast(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
+        let bitcast_val =
+            Value::new_instruction(self.context, Instruction::BitCast(value, ty), span_md_idx);
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(bitcast_val);
+        bitcast_val
     }
 
     pub fn branch(

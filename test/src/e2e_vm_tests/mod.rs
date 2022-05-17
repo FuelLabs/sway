@@ -297,6 +297,34 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
         ),
+        (
+            "should_pass/language/primitive_type_argument",
+            ProgramState::Return(5),
+        ),
+        (
+            "should_pass/language/generic-type-inference",
+            ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/ret_small_string",
+            ProgramState::ReturnData(Bytes32::from([
+                0x6a, 0x4e, 0x01, 0xe9, 0x40, 0xab, 0xc0, 0x04, 0x30, 0xfe, 0x21, 0x62, 0xed, 0x69,
+                0xc0, 0xe2, 0x31, 0x04, 0xf9, 0xfd, 0xa7, 0x81, 0x59, 0x09, 0x2f, 0xea, 0x8f, 0x7e,
+                0xcb, 0x7f, 0x6d, 0xd4,
+            ])),
+        ),
+        (
+            "should_pass/language/many_stack_variables",
+            ProgramState::Return(10),
+        ),
+        (
+            "should_pass/language/ret_string_in_struct",
+            ProgramState::ReturnData(Bytes32::from([
+                0xaa, 0x5e, 0xfc, 0xa8, 0xda, 0xaf, 0x6e, 0xe6, 0x3f, 0x44, 0x93, 0xb2, 0x88, 0xb3,
+                0x85, 0xd7, 0x60, 0xb8, 0xef, 0x93, 0xdc, 0x70, 0xe0, 0xfb, 0xc3, 0x06, 0xed, 0x9b,
+                0x67, 0x6e, 0x5f, 0x13,
+            ])),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -350,6 +378,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/nested_struct_args_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/issue_1512_repro",
             ProgramState::Revert(0),
         ),
     ];
@@ -411,6 +443,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/generics_unhelpful_error",
         "should_fail/generic_shadows_generic",
         "should_fail/different_contract_caller_types",
+        "should_fail/insufficient_type_info",
+        "should_fail/primitive_type_argument",
+        "should_fail/double_underscore_fn",
+        "should_fail/double_underscore_trait_fn",
+        "should_fail/double_underscore_impl_self_fn",
+        "should_fail/double_underscore_var",
+        "should_fail/double_underscore_struct",
+        "should_fail/double_underscore_enum",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

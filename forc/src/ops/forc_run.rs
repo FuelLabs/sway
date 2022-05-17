@@ -27,7 +27,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let build_command = BuildCommand {
         path: command.path,
         use_orig_asm: command.use_orig_asm,
-        use_orig_parser: command.use_orig_parser,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,
@@ -37,6 +36,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         silent_mode: command.silent_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
+        locked: command.locked,
     };
 
     let compiled = forc_build::build(build_command)?;

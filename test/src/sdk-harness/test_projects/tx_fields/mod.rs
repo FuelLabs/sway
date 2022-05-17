@@ -1,12 +1,9 @@
-use fuel_tx::{Bytes32, ContractId, Salt};
+use fuel_tx::{Bytes32, ContractId};
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::consts::VM_TX_MEMORY;
+use fuels::prelude::*;
+use fuels::signers::wallet::Wallet;
 use fuels_abigen_macro::abigen;
-use fuels_contract::contract::Contract;
-use fuels_contract::parameters::TxParameters;
-use fuels_signers::util::test_helpers::setup_test_provider_and_wallet;
-use fuels_signers::wallet::Wallet;
-use fuels_signers::Signer;
 
 abigen!(
     TxContractTest,
@@ -14,10 +11,9 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let salt = Salt::from([0u8; 32]);
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let compiled =
-        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin", salt)
+        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin")
             .unwrap();
 
     let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
@@ -45,7 +41,7 @@ async fn can_get_gas_price() {
 
     let result = contract_instance
         .get_tx_gas_price()
-        .tx_params(TxParameters::new(Some(gas_price), None, None))
+        .tx_params(TxParameters::new(Some(gas_price), None, None, None))
         .call()
         .await
         .unwrap();
@@ -59,7 +55,7 @@ async fn can_get_gas_limit() {
 
     let result = contract_instance
         .get_tx_gas_limit()
-        .tx_params(TxParameters::new(None, Some(gas_limit), None))
+        .tx_params(TxParameters::new(None, Some(gas_limit), None, None))
         .call()
         .await
         .unwrap();
@@ -74,7 +70,7 @@ async fn can_get_byte_price() {
 
     let result = contract_instance
         .get_tx_byte_price()
-        .tx_params(TxParameters::new(None, None, Some(byte_price)))
+        .tx_params(TxParameters::new(None, None, Some(byte_price), None))
         .call()
         .await
         .unwrap();
@@ -234,9 +230,6 @@ async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
     // Coin input
-    let input_owner = txcontracttest_mod::Address {
-        value: wallet.address().into(),
-    };
     let result_ptr = contract_instance
         .get_tx_input_pointer(1)
         .call()
@@ -247,7 +240,7 @@ async fn can_get_tx_input_coin_owner() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, input_owner);
+    assert_eq!(result.value, wallet.address());
 }
 
 #[tokio::test]

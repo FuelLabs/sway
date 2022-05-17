@@ -8,11 +8,11 @@ add  $$ds $$ds $is
 lw   $r0 data_0               ; literal instantiation
 lw   $r1 data_0               ; literal instantiation
 lw   $r0 data_0               ; literal instantiation
-jnei $r0 $one i11
+jnzi $r0 i11
+ji   i12
 lw   $r1 data_1               ; literal instantiation
 move $r0 $r1
-jnei $r1 $one i14
-ji   i15
+jnzi $r1 i15
 lw   $r1 data_1               ; literal instantiation
 ret  $r1
 noop                          ; word-alignment of data section

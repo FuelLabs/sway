@@ -1,0 +1,17 @@
+script {
+    fn main() -> () {
+        entry:
+        v0 = call anon_0(), !1
+        v1 = const unit ()
+        ret () v1
+    }
+
+    fn anon_0() -> () {
+        entry:
+        v0 = const unit ()
+        ret () v0
+    }
+}
+
+!0 = filepath "/path/to/ret_unit.sw"
+!1 = span !0 9 18

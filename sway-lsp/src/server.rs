@@ -66,12 +66,6 @@ fn capabilities() -> ServerCapabilities {
             trigger_characters: None,
             ..Default::default()
         }),
-        rename_provider: Some(OneOf::Right(RenameOptions {
-            prepare_provider: Some(true),
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: Some(true),
-            },
-        })),
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec![],
             ..Default::default()
@@ -94,7 +88,9 @@ impl Backend {
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
             }
-        } else if !diagnostics.is_empty() {
+        } else {
+            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
             self.client
                 .publish_diagnostics(uri, diagnostics, None)
                 .await;
@@ -448,6 +444,9 @@ fn main() {
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
 
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
+
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
 
@@ -482,16 +481,13 @@ fn main() {
 
     #[tokio::test]
     async fn did_change() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
         // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
 
         let uri = Url::parse("inmemory:///test").unwrap();
         let text = r#"script;

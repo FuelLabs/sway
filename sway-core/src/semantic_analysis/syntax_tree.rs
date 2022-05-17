@@ -9,8 +9,9 @@ use crate::{
     error::*,
     parse_tree::Purity,
     semantic_analysis::{
-        ast_node::Mode, namespace::arena::NamespaceWrapper, retrieve_module, Namespace,
-        NamespaceRef, TypeCheckArguments,
+        ast_node::Mode,
+        namespace::{self, Namespace},
+        TypeCheckArguments,
     },
     type_engine::*,
     AstNode, ParseTree,
@@ -30,24 +31,24 @@ pub enum TreeType {
 pub enum TypedParseTree {
     Script {
         main_function: TypedFunctionDeclaration,
-        namespace: NamespaceRef,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration,
-        namespace: NamespaceRef,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: NamespaceRef,
+        namespace: namespace::Module,
         declarations: Vec<TypedDeclaration>,
         all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: NamespaceRef,
+        namespace: namespace::Module,
         all_nodes: Vec<TypedAstNode>,
     },
 }
@@ -66,7 +67,7 @@ impl TypedParseTree {
         }
     }
 
-    pub fn get_namespace_ref(self) -> NamespaceRef {
+    pub fn namespace(&self) -> &namespace::Module {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -76,20 +77,58 @@ impl TypedParseTree {
         }
     }
 
-    pub fn into_namespace(self) -> Namespace {
+    pub fn into_namespace(self) -> namespace::Module {
         use TypedParseTree::*;
         match self {
-            Library { namespace, .. } => retrieve_module(namespace),
-            Script { namespace, .. } => retrieve_module(namespace),
-            Contract { namespace, .. } => retrieve_module(namespace),
-            Predicate { namespace, .. } => retrieve_module(namespace),
+            Library { namespace, .. } => namespace,
+            Script { namespace, .. } => namespace,
+            Contract { namespace, .. } => namespace,
+            Predicate { namespace, .. } => namespace,
         }
     }
 
+    /// Ensures there are no unresolved types or types awaiting resolution in the AST.
+    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+        use TypedParseTree::*;
+        // Get all of the entry points for this tree type. For libraries, that's everything
+        // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
+        let errors: Vec<_> = match self {
+            Library { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_public())
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Script { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_main_function(TreeType::Script))
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Predicate { all_nodes, .. } => all_nodes
+                .iter()
+                .filter(|x| x.is_main_function(TreeType::Predicate))
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            Contract { abi_entries, .. } => abi_entries
+                .iter()
+                .map(TypedAstNode::from)
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+        };
+
+        if errors.is_empty() {
+            ok((), vec![], errors)
+        } else {
+            err(vec![], errors)
+        }
+    }
+
+    /// Type-check the given `parsed` tree.
+    ///
+    /// This is called from both the top-level `compile_*` functions, as well as internally for
+    /// each submodule dependency library.
     pub(crate) fn type_check(
         parsed: ParseTree,
-        new_namespace: NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
@@ -103,11 +142,11 @@ impl TypedParseTree {
             warnings,
             errors
         );
+
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
-                new_namespace,
-                crate_namespace,
+                namespace,
                 build_config,
                 dead_code_graph,
             ),
@@ -119,7 +158,7 @@ impl TypedParseTree {
         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
-            new_namespace,
+            namespace,
             tree_type,
             warnings,
             errors,
@@ -128,8 +167,7 @@ impl TypedParseTree {
 
     fn type_check_nodes(
         nodes: Vec<AstNode>,
-        namespace: NamespaceRef,
-        crate_namespace: NamespaceRef,
+        namespace: &mut Namespace,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Vec<TypedAstNode>> {
@@ -141,7 +179,6 @@ impl TypedParseTree {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node,
                     namespace,
-                    crate_namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
@@ -164,7 +201,7 @@ impl TypedParseTree {
     fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode>,
         span: Span,
-        namespace: NamespaceRef,
+        namespace: &Namespace,
         tree_type: &TreeType,
         warnings: Vec<CompileWarning>,
         mut errors: Vec<CompileError>,
@@ -174,7 +211,7 @@ impl TypedParseTree {
 
         // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
         // then B is also implemented for type T
-        errors.append(&mut check_supertraits(&all_nodes, &namespace));
+        errors.append(&mut check_supertraits(&all_nodes, namespace));
 
         // Extract other interesting properties from the list.
         let mut mains = Vec::new();
@@ -206,6 +243,7 @@ impl TypedParseTree {
         }
 
         // Perform other validation based on the tree type.
+        let namespace = namespace.module().clone();
         let typed_parse_tree = match tree_type {
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
@@ -275,7 +313,7 @@ impl TypedParseTree {
 ///
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
-    namespace: &NamespaceRef,
+    namespace: &Namespace,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
@@ -289,10 +327,9 @@ fn check_supertraits(
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
                 ..
-            } = namespace.get_call_path(trait_name)
+            } = namespace.resolve_call_path(trait_name)
             {
-                let supertraits = tr.supertraits;
-                for supertrait in &supertraits {
+                for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
                             trait_name: search_node_trait_name,
@@ -310,8 +347,8 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                namespace.get_call_path(search_node_trait_name),
-                                namespace.get_call_path(&supertrait.name),
+                                namespace.resolve_call_path(search_node_trait_name),
+                                namespace.resolve_call_path(&supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (type_implementing_for
@@ -324,13 +361,13 @@ fn check_supertraits(
                         // but we don't have a way today to point to two separate locations in the
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
-                            supertrait_name: supertrait.name.to_string(),
+                            supertrait_name: supertrait.name.clone(),
                             type_name: type_implementing_for.friendly_type_str(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
-                            supertrait_name: supertrait.name.to_string(),
-                            trait_name: tr.name.to_string(),
+                            supertrait_name: supertrait.name.clone(),
+                            trait_name: tr.name.clone(),
                             span: tr.name.span().clone(),
                         });
                     }

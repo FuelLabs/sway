@@ -10,9 +10,41 @@ pub mod item_struct;
 pub mod item_trait;
 pub mod item_use;
 
+pub struct Item {
+    pub attribute_list: Vec<AttributeDecl>,
+    pub kind: ItemKind,
+}
+
+impl Item {
+    pub fn span(&self) -> Span {
+        match self.attribute_list.first() {
+            Some(attr0) => Span::join(attr0.span(), self.kind.span()),
+            None => self.kind.span(),
+        }
+    }
+}
+
+impl Parse for Item {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let mut attribute_list = Vec::new();
+        loop {
+            if parser.peek::<HashToken>().is_some() {
+                attribute_list.push(parser.parse()?);
+            } else {
+                break;
+            }
+        }
+        let kind = parser.parse()?;
+        Ok(Item {
+            attribute_list,
+            kind,
+        })
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
-pub enum Item {
+pub enum ItemKind {
     Use(ItemUse),
     Struct(ItemStruct),
     Enum(ItemEnum),
@@ -24,37 +56,37 @@ pub enum Item {
     Storage(ItemStorage),
 }
 
-impl Item {
+impl ItemKind {
     pub fn span(&self) -> Span {
         match self {
-            Item::Use(item_use) => item_use.span(),
-            Item::Struct(item_struct) => item_struct.span(),
-            Item::Enum(item_enum) => item_enum.span(),
-            Item::Fn(item_fn) => item_fn.span(),
-            Item::Trait(item_trait) => item_trait.span(),
-            Item::Impl(item_impl) => item_impl.span(),
-            Item::Abi(item_abi) => item_abi.span(),
-            Item::Const(item_const) => item_const.span(),
-            Item::Storage(item_storage) => item_storage.span(),
+            ItemKind::Use(item_use) => item_use.span(),
+            ItemKind::Struct(item_struct) => item_struct.span(),
+            ItemKind::Enum(item_enum) => item_enum.span(),
+            ItemKind::Fn(item_fn) => item_fn.span(),
+            ItemKind::Trait(item_trait) => item_trait.span(),
+            ItemKind::Impl(item_impl) => item_impl.span(),
+            ItemKind::Abi(item_abi) => item_abi.span(),
+            ItemKind::Const(item_const) => item_const.span(),
+            ItemKind::Storage(item_storage) => item_storage.span(),
         }
     }
 }
 
-impl Parse for Item {
-    fn parse(parser: &mut Parser) -> ParseResult<Item> {
+impl Parse for ItemKind {
+    fn parse(parser: &mut Parser) -> ParseResult<ItemKind> {
         if parser.peek::<UseToken>().is_some() || parser.peek2::<PubToken, UseToken>().is_some() {
             let item_use = parser.parse()?;
-            return Ok(Item::Use(item_use));
+            return Ok(ItemKind::Use(item_use));
         }
         if parser.peek::<StructToken>().is_some()
             || parser.peek2::<PubToken, StructToken>().is_some()
         {
             let item_struct = parser.parse()?;
-            return Ok(Item::Struct(item_struct));
+            return Ok(ItemKind::Struct(item_struct));
         }
         if parser.peek::<EnumToken>().is_some() || parser.peek2::<PubToken, EnumToken>().is_some() {
             let item_enum = parser.parse()?;
-            return Ok(Item::Enum(item_enum));
+            return Ok(ItemKind::Enum(item_enum));
         }
         if parser.peek::<FnToken>().is_some()
             || parser.peek2::<PubToken, FnToken>().is_some()
@@ -62,29 +94,29 @@ impl Parse for Item {
             || parser.peek3::<PubToken, ImpureToken, FnToken>().is_some()
         {
             let item_fn = parser.parse()?;
-            return Ok(Item::Fn(item_fn));
+            return Ok(ItemKind::Fn(item_fn));
         }
         if parser.peek::<TraitToken>().is_some() || parser.peek2::<PubToken, TraitToken>().is_some()
         {
             let item_trait = parser.parse()?;
-            return Ok(Item::Trait(item_trait));
+            return Ok(ItemKind::Trait(item_trait));
         }
         if parser.peek::<ImplToken>().is_some() {
             let item_impl = parser.parse()?;
-            return Ok(Item::Impl(item_impl));
+            return Ok(ItemKind::Impl(item_impl));
         }
         if parser.peek::<AbiToken>().is_some() {
             let item_abi = parser.parse()?;
-            return Ok(Item::Abi(item_abi));
+            return Ok(ItemKind::Abi(item_abi));
         }
         if parser.peek::<ConstToken>().is_some() || parser.peek2::<PubToken, ConstToken>().is_some()
         {
             let item_const = parser.parse()?;
-            return Ok(Item::Const(item_const));
+            return Ok(ItemKind::Const(item_const));
         }
         if parser.peek::<StorageToken>().is_some() {
             let item_storage = parser.parse()?;
-            return Ok(Item::Storage(item_storage));
+            return Ok(ItemKind::Storage(item_storage));
         }
         Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
     }
@@ -118,11 +150,24 @@ impl Parse for TypeField {
 
 #[derive(Clone, Debug)]
 pub enum FnArgs {
-    Static(Punctuated<TypeField, CommaToken>),
+    Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
         self_token: SelfToken,
-        args_opt: Option<(CommaToken, Punctuated<TypeField, CommaToken>)>,
+        args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct FnArg {
+    pub pattern: Pattern,
+    pub colon_token: ColonToken,
+    pub ty: Ty,
+}
+
+impl FnArg {
+    pub fn span(&self) -> Span {
+        Span::join(self.pattern.span(), self.ty.span())
+    }
 }
 
 impl ParseToEnd for FnArgs {
@@ -159,6 +204,19 @@ impl ParseToEnd for FnArgs {
                 Ok((fn_args, consumed))
             }
         }
+    }
+}
+
+impl Parse for FnArg {
+    fn parse(parser: &mut Parser) -> ParseResult<FnArg> {
+        let pattern = parser.parse()?;
+        let colon_token = parser.parse()?;
+        let ty = parser.parse()?;
+        Ok(FnArg {
+            pattern,
+            colon_token,
+            ty,
+        })
     }
 }
 
@@ -199,7 +257,7 @@ impl Parse for FnSignature {
         let visibility = parser.take();
         let impure = parser.take();
         let fn_token = parser.parse()?;
-        let name = parser.parse()?;
+        let name: Ident = parser.parse()?;
         let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
             Some(parser.parse()?)
         } else {
@@ -230,5 +288,305 @@ impl Parse for FnSignature {
             return_type_opt,
             where_clause_opt,
         })
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_item(input: &str) -> Item {
+        let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
+        let mut errors = Vec::new();
+        let mut parser = Parser::new(&token_stream, &mut errors);
+        match Item::parse(&mut parser) {
+            Ok(item) => item,
+            Err(_) => {
+                //println!("Tokens: {:?}", token_stream);
+                panic!("Parse error: {:?}", errors);
+            }
+        }
+    }
+
+    #[test]
+    fn parse_attributes_none() {
+        let item = parse_item(
+            r#"
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+        assert!(item.attribute_list.is_empty());
+    }
+
+    #[test]
+    fn parse_attributes_fn_basic() {
+        let item = parse_item(
+            r#"
+            #[foo]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_none());
+    }
+
+    #[test]
+    fn parse_attributes_fn_two_basic() {
+        let item = parse_item(
+            r#"
+            #[foo]
+            #[bar]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 2);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_none());
+
+        let attrib = item.attribute_list.get(1).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
+        assert!(attrib.attribute.get().args.is_none());
+    }
+
+    #[test]
+    fn parse_attributes_fn_one_arg() {
+        let item = parse_item(
+            r#"
+            #[foo(one)]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+    }
+
+    #[test]
+    fn parse_attributes_fn_empty_parens() {
+        let item = parse_item(
+            r#"
+            #[foo()]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+
+        // Args are still parsed as 'some' but with an empty collection.
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+    }
+
+    #[test]
+    fn parse_attributes_fn_zero_and_one_arg() {
+        let item = parse_item(
+            r#"
+            #[bar]
+            #[foo(one)]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 2);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
+        assert!(attrib.attribute.get().args.is_none());
+
+        let attrib = item.attribute_list.get(1).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+    }
+
+    #[test]
+    fn parse_attributes_fn_one_and_zero_arg() {
+        let item = parse_item(
+            r#"
+            #[foo(one)]
+            #[bar]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 2);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+
+        let attrib = item.attribute_list.get(1).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
+        assert!(attrib.attribute.get().args.is_none());
+    }
+
+    #[test]
+    fn parse_attributes_fn_two_args() {
+        let item = parse_item(
+            r#"
+            #[foo(one, two)]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+    }
+
+    #[test]
+    fn parse_attributes_fn_zero_one_and_three_args() {
+        let item = parse_item(
+            r#"
+            #[bar]
+            #[foo(one)]
+            #[baz(two,three,four)]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.kind, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 3);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
+        assert!(attrib.attribute.get().args.is_none());
+
+        let attrib = item.attribute_list.get(1).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+
+        let attrib = item.attribute_list.get(2).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "baz");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = attrib
+            .attribute
+            .get()
+            .args
+            .as_ref()
+            .unwrap()
+            .get()
+            .into_iter();
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), Some("four"));
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 }

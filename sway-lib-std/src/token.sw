@@ -3,7 +3,7 @@ library token;
 
 use ::address::Address;
 use ::contract_id::ContractId;
-use ::panic::panic;
+use ::revert::revert;
 use ::tx::*;
 use ::context::call_frames::contract_id;
 
@@ -69,7 +69,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     }
 
     if !output_found {
-        panic(0);
+        revert(0);
     } else {
         asm(r1: recipient.value, r2: output_index, r3: amount, r4: asset_id.value) {
             tro r1 r2 r3 r4;

@@ -8,7 +8,7 @@ use crate::{
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, TypedWhileLoop,
+            TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
         TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
@@ -42,13 +42,12 @@ impl ControlFlowGraph {
             .iter()
             .filter_map(|x| match &self.graph[*x] {
                 ControlFlowGraphNode::EnumVariant {
-                    span,
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: span.clone(),
+                    span: variant_name.span().clone(),
                     warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
+                        variant_name: variant_name.clone(),
                     },
                 }),
                 _ => None,
@@ -62,13 +61,12 @@ impl ControlFlowGraph {
                     construct_dead_code_warning_from_node(node)
                 }
                 ControlFlowGraphNode::EnumVariant {
-                    span,
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: span.clone(),
+                    span: variant_name.span().clone(),
                     warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
+                        variant_name: variant_name.clone(),
                     },
                 }),
                 ControlFlowGraphNode::EnumVariant { .. } => None,
@@ -340,15 +338,27 @@ fn connect_declaration(
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
-            &body.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable instantiation",
-            tree_type,
-            body.clone().span,
-        ),
+        VariableDeclaration(TypedVariableDeclaration {
+            name,
+            body,
+            is_mutable,
+            ..
+        }) => {
+            if matches!(is_mutable, VariableMutability::ExportedConst) {
+                graph.namespace.insert_constant(name.clone(), entry_node);
+                Ok(leaves.to_vec())
+            } else {
+                connect_expression(
+                    &body.expression,
+                    graph,
+                    &[entry_node],
+                    exit_node,
+                    "variable instantiation",
+                    tree_type,
+                    body.clone().span,
+                )
+            }
+        }
         ConstantDeclaration(TypedConstantDeclaration { name, .. }) => {
             graph.namespace.insert_constant(name.clone(), entry_node);
             Ok(leaves.to_vec())

@@ -24,7 +24,7 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
     if !errors.is_empty() {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
-        errors.sort_by(|lhs, rhs| lhs.span().0.cmp(&rhs.span().0));
+        errors.sort_by_key(|err| err.span().start());
         err(Vec::new(), errors)
     } else {
         // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
@@ -391,7 +391,7 @@ impl Dependencies {
             }
             Expression::AsmExpression { asm, .. } => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
-                    deps.gather_from_opt_expr(&register.initializer)
+                    deps.gather_from_opt_expr(register.initializer.as_ref())
                 })
                 .gather_from_typeinfo(&asm.return_type),
 
@@ -408,13 +408,18 @@ impl Dependencies {
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
-            Expression::IfLet { expr, .. } => self.gather_from_expr(expr),
+            Expression::IfLet {
+                expr, then, r#else, ..
+            } => self
+                .gather_from_expr(expr)
+                .gather_from_block(then)
+                .gather_from_opt_expr(r#else.as_deref()),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }
     }
 
-    fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {
+    fn gather_from_opt_expr(self, opt_expr: Option<&Expression>) -> Self {
         match opt_expr {
             None => self,
             Some(expr) => self.gather_from_expr(expr),

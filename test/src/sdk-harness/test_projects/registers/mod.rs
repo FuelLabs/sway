@@ -1,8 +1,7 @@
-use fuel_tx::Salt;
 use fuel_vm::consts::VM_MAX_RAM;
+use fuels::prelude::*;
+use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
-use fuels_contract::{contract::Contract, parameters::TxParameters};
-use fuels_signers::util::test_helpers;
 
 abigen!(
     TestRegistersContract,
@@ -14,10 +13,8 @@ abigen!(
 //    -  Ability to return any type of Contract.
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract {
-    let salt = Salt::from([0u8; 32]);
     let compiled =
-        Contract::load_sway_contract("test_projects/registers/out/debug/registers.bin", salt)
-            .unwrap();
+        Contract::load_sway_contract("test_projects/registers/out/debug/registers.bin").unwrap();
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await

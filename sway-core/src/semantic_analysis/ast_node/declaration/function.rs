@@ -7,15 +7,15 @@ use crate::{
             TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
             VariableMutability,
         },
-        create_new_scope, NamespaceWrapper, TypeCheckArguments,
+        TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
     },
+    style::*,
     type_engine::*,
     Ident, TypeParameter,
 };
-
-use sway_types::{Function, Property, Span};
-
+use fuels_types::{Function, Property};
 use sha2::{Digest, Sha256};
+use sway_types::Span;
 
 mod function_parameter;
 pub use function_parameter::*;
@@ -35,6 +35,18 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+impl From<&TypedFunctionDeclaration> for TypedAstNode {
+    fn from(o: &TypedFunctionDeclaration) -> Self {
+        let span = o.span.clone();
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                o.clone(),
+            )),
+            span,
+        }
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -62,7 +74,6 @@ impl TypedFunctionDeclaration {
         let TypeCheckArguments {
             checkee: fn_decl,
             namespace,
-            crate_namespace,
             self_type,
             build_config,
             dead_code_graph,
@@ -82,18 +93,20 @@ impl TypedFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
+        is_snake_case(&name).ok(&mut warnings, &mut errors);
         opts.purity = purity;
 
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // insert parameters and generic type declarations into namespace
-        let namespace = create_new_scope(namespace);
+        let mut fn_namespace = namespace.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
-                namespace.insert(type_parameter.name_ident.clone(), type_parameter.into()),
+                fn_namespace
+                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -105,7 +118,7 @@ impl TypedFunctionDeclaration {
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
                     None => check!(
-                        namespace.resolve_type_with_self(
+                        fn_namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
                             self_type,
                             parameter.type_span.clone(),
@@ -119,7 +132,7 @@ impl TypedFunctionDeclaration {
         });
 
         for FunctionParameter { name, type_id, .. } in parameters.clone() {
-            namespace.insert(
+            fn_namespace.insert_symbol(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -139,7 +152,7 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
             None => check!(
-                namespace.resolve_type_with_self(
+                fn_namespace.resolve_type_with_self(
                     return_type,
                     self_type,
                     return_type_span.clone(),
@@ -156,8 +169,7 @@ impl TypedFunctionDeclaration {
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace,
-                crate_namespace,
+                namespace: &mut fn_namespace,
                 return_type_annotation: return_type,
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",
@@ -431,7 +443,7 @@ fn test_function_selector_behavior() {
         },
         parameters: vec![],
         span: Span::dummy(),
-        return_type: 0,
+        return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,
@@ -465,7 +477,7 @@ fn test_function_selector_behavior() {
             },
         ],
         span: Span::dummy(),
-        return_type: 0,
+        return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,

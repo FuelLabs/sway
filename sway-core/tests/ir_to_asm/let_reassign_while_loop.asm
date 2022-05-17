@@ -7,20 +7,22 @@ lw   $ds $is 1
 add  $$ds $$ds $is
 move $r2 $sp                  ; save locals base register
 cfei i8                       ; allocate 8 bytes for all locals
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 data_0               ; literal instantiation
 sw   $r2 $r0 i0               ; store value
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r2 i0               ; load value
-jnei $r0 $one i21
-addi $r0 $r2 i0               ; get_ptr
+jnzi $r0 i15
+ji   i23
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r2 i0               ; load value
-jnei $r0 $one i18
+jnzi $r0 i19
+ji   i20
 lw   $r0 data_1               ; literal instantiation
-addi $r1 $r2 i0               ; get_ptr
+addi $r1 $r2 i0               ; get offset reg for get_ptr
 sw   $r2 $r0 i0               ; store value
 ji   i11
-addi $r0 $r2 i0               ; get_ptr
+addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r2 i0               ; load value
 ret  $r0
 noop                          ; word-alignment of data section

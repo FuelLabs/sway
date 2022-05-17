@@ -1,7 +1,3 @@
 [[package]]
 name = 'array_oob'
-dependencies = ['core']
-
-[[package]]
-name = 'core'
 dependencies = []
