@@ -1,6 +1,6 @@
 script;
 
-use std::logging::b256;
+use std::logging::log;
 use std::hash::{HashMethod, hash_pair, hash_u64, hash_value};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
