@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use std::fs::File;
 use std::io::Read;
-use tracing::{info, error};
+use tracing::{error, info};
 
 pub fn is_option(token: &str) -> bool {
     token.starts_with('-')

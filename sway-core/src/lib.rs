@@ -521,7 +521,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     if build_config.print_ir {
-        println!("{}", ir);
+        tracing::info!("{}", ir);
     }
 
     crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)

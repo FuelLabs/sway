@@ -1,13 +1,13 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
+use forc_util::set_subscriber;
 use std::fs::{create_dir_all, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::str;
-use tracing::{instrument, info, error};
-use forc_util::set_subscriber;
+use tracing::{error, info};
 
 mod checkers;
 mod constants;
@@ -273,9 +273,11 @@ fn main() {
 
     if let Err(err) = match cli.command {
         Commands::WriteDocs(command) => write_docs(command),
-    }{
-        error!("{}",err);
-        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
+    } {
+        error!("{}", err);
+        err.chain()
+            .skip(1)
+            .for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }

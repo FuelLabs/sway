@@ -2541,7 +2541,7 @@ mod tests {
                     //
                     // Run the tests!
                     //
-                    println!("---- Sway To IR: {:?} ----", path);
+                    tracing::info!("---- Sway To IR: {:?} ----", path);
                     test_sway_to_ir(path);
                 }
                 Some("ir") | Some("disabled") => (),
@@ -2575,7 +2575,7 @@ mod tests {
         let output = path_converter.replace_all(output.as_str(), "$1/path/to/$2");
 
         if output != expected {
-            println!("{}", prettydiff::diff_lines(&expected, &output));
+            tracing::error!("{}", prettydiff::diff_lines(&expected, &output));
             panic!("{} failed.", sw_path.display());
         }
     }
@@ -2594,7 +2594,7 @@ mod tests {
                     //
                     // Run the tests!
                     //
-                    println!("---- IR Print and Parse Test: {:?} ----", path);
+                    tracing::info!("---- IR Print and Parse Test: {:?} ----", path);
                     test_printer_parser(path);
                 }
                 Some("sw") | Some("disabled") => (),
@@ -2621,13 +2621,13 @@ mod tests {
         let parsed_ctx = match sway_ir::parser::parse(&input) {
             Ok(p) => p,
             Err(e) => {
-                println!("{}: {}", path.display(), e);
+                tracing::error!("{}: {}", path.display(), e);
                 panic!();
             }
         };
         let printed = sway_ir::printer::to_string(&parsed_ctx);
         if printed != input {
-            println!("{}", prettydiff::diff_lines(&input, &printed));
+            tracing::error!("{}", prettydiff::diff_lines(&input, &printed));
             panic!("{} failed.", path.display());
         }
     }

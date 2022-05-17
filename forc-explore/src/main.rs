@@ -12,7 +12,7 @@ use std::{
     io::{self, Cursor},
 };
 use tar::Archive;
-use tracing::{info, instrument, error};
+use tracing::{error, info};
 use warp::Filter;
 
 #[derive(Debug, Parser)]
@@ -56,10 +56,12 @@ async fn main() {
         None => run(app).await,
     };
     if let Err(err) = result {
-        error!("{}",err);
-        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
+        error!("{}", err);
+        err.chain()
+            .skip(1)
+            .for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
-    } 
+    }
 }
 
 fn clean() -> Result<()> {

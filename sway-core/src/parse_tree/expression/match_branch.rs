@@ -47,7 +47,7 @@ impl MatchBranch {
                         MatchCondition::Scrutinee(scrutinee)
                     }
                     a => {
-                        eprintln!(
+                        tracing::error!(
                             "Unimplemented condition: {:?} ({:?}) ({:?})",
                             a,
                             e.as_str(),

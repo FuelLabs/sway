@@ -4,13 +4,13 @@
 
 use anyhow::{anyhow, Result};
 use clap::{ArgEnum, ArgGroup, Parser};
+use forc_util::set_subscriber;
 use std::{
     fs,
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use tracing::{info, error};
-use forc_util::set_subscriber;
+use tracing::{error, info};
 
 #[derive(Parser)]
 #[clap(name = "examples-checker", about = "Forc Examples Checker")]
@@ -165,12 +165,14 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     Ok(())
 }
 
-fn main(){
+fn main() {
     set_subscriber();
     let cli = Cli::parse();
     if let Err(err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
-        error!("{}",err);
-        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
+        error!("{}", err);
+        err.chain()
+            .skip(1)
+            .for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }

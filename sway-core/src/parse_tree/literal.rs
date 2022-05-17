@@ -241,7 +241,7 @@ impl Literal {
                 )
             }
             a => {
-                eprintln!(
+                tracing::error!(
                     "not yet able to parse literal rule {:?} ({:?})",
                     a,
                     lit_inner.as_str()

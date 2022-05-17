@@ -38,6 +38,7 @@ sway-parse = { version = "0.12.2", path = "../sway-parse" }
 sway-types = { version = "0.12.2", path = "../sway-types" }
 sway-utils = { version = "0.12.2", path = "../sway-utils" }
 thiserror = "1.0"
+tracing = "0.1"
 
 [[bin]]
 name = "selector-debug"

@@ -15,8 +15,8 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::Layer;
 
 pub mod restricted;
 
@@ -315,7 +315,7 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
@@ -357,7 +357,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the
@@ -411,7 +411,6 @@ fn construct_window<'a>(
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
 }
-
 
 struct UserFacingVisitor;
 impl tracing::field::Visit for UserFacingVisitor {
@@ -480,17 +479,17 @@ pub fn set_subscriber() {
 
     if human_logging {
         tracing_subscriber::registry()
-        .with(filter)
-        .with(UserFacingLayer)
-        .init();
+            .with(filter)
+            .with(UserFacingLayer)
+            .init();
     } else {
         tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(filter)
-        .with_ansi(false)
-        .with_level(true)
-        .with_line_number(true)
-        .json()
-        .init();
+            .with_env_filter(filter)
+            .with_ansi(false)
+            .with_level(true)
+            .with_line_number(true)
+            .json()
+            .init();
     }
 }
 

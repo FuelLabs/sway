@@ -12,7 +12,7 @@ use std::fs;
 pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
     // build the contract
     // deploy it
-    println!(" Deploying {}", file_name);
+    tracing::info!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     let (verbose, use_orig_asm, use_orig_parser) = get_test_config_from_env();
@@ -37,7 +37,7 @@ pub(crate) fn runs_on_node(
     file_name: &str,
     contract_ids: &[fuel_tx::ContractId],
 ) -> Vec<fuel_tx::Receipt> {
-    println!("Running on node: {}", file_name);
+    tracing::info!("Running on node: {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
@@ -110,7 +110,7 @@ pub(crate) fn does_not_compile(file_name: &str) {
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
 pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
-    println!(" Compiling {}", file_name);
+    tracing::info!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let (verbose, use_orig_asm, use_orig_parser) = get_test_config_from_env();
     forc_build::build(BuildCommand {
@@ -154,7 +154,7 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
 }
 
 fn compile_to_json_abi(file_name: &str) -> Result<Value> {
-    println!("   ABI gen {}", file_name);
+    tracing::info!("   ABI gen {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_abi_json::build(JsonAbiCommand {
         path: Some(format!(

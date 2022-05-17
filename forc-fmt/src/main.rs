@@ -11,7 +11,7 @@ use sway_core::BuildConfig;
 use sway_fmt::{get_formatted_data, FormattingOptions};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
-use tracing::{error, info, instrument};
+use tracing::{error, info};
 
 #[derive(Debug, Parser)]
 #[clap(
@@ -31,7 +31,7 @@ pub struct App {
     pub path: Option<String>,
 }
 
-fn main()  {
+fn main() {
     set_subscriber();
     let app = App::parse();
     let dir = match app.path.clone() {
@@ -39,8 +39,10 @@ fn main()  {
         None => std::env::current_dir().expect("cannot get current dir"),
     };
     if let Err(err) = format_pkg_at_dir(app, &dir) {
-        error!("{}",err);
-        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
+        error!("{}", err);
+        err.chain()
+            .skip(1)
+            .for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }

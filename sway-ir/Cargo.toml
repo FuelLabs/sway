@@ -13,3 +13,4 @@ filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
 sway-types = { version = "0.12.2", path = "../sway-types" }
+tracing = "0.1"

@@ -61,7 +61,7 @@ fn main() {
         .to_fn_selector_value()
         .unwrap(&mut warnings, &mut errors);
     let selector_hash = hex::encode(selector_hash);
-    println!("selector string:         {}", selector_string);
-    println!("untruncated hash:        0x{}", selector_hash_untruncated);
-    println!("truncated/padded hash:   0x00000000{}", selector_hash);
+    tracing::info!("selector string:         {}", selector_string);
+    tracing::info!("untruncated hash:        0x{}", selector_hash_untruncated);
+    tracing::info!("truncated/padded hash:   0x00000000{}", selector_hash);
 }

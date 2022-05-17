@@ -59,7 +59,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     };
 
     if build_config.print_intermediate_asm {
-        println!("{}", asm);
+        tracing::info!("{}", asm);
     }
 
     let finalized_asm = asm
@@ -68,7 +68,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         .optimize();
 
     if build_config.print_finalized_asm {
-        println!("{}", finalized_asm);
+        tracing::info!("{}", finalized_asm);
     }
 
     check!(
@@ -2254,7 +2254,7 @@ mod tests {
                     //
                     // Run the tests!
                     //
-                    println!("---- IR To ASM: {:?} ----", path);
+                    tracing::info!("---- IR To ASM: {:?} ----", path);
                     test_ir_to_asm(path);
                 }
                 Some("asm") | Some("disabled") => (),
@@ -2298,7 +2298,7 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            println!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            tracing::error!("{}", prettydiff::diff_lines(&expected, &asm_script));
             panic!();
         }
     }

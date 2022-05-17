@@ -249,7 +249,7 @@ fn parse_subfield_path_ensure_only_var(
         Rule::call_item => parse_call_item_ensure_only_var(item, config),
         Rule::array_index => parse_array_index(item, config),
         a => {
-            eprintln!(
+            tracing::error!(
                 "Unimplemented subfield path: {:?} ({:?}) ({:?})",
                 a,
                 item.as_str(),

@@ -131,7 +131,7 @@ impl Scrutinee {
                 errors
             ),
             a => {
-                eprintln!(
+                tracing::error!(
                     "Unimplemented scrutinee: {:?} ({:?}) ({:?})",
                     a,
                     scrutinee.as_str(),

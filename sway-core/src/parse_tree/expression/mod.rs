@@ -1229,7 +1229,7 @@ impl Expression {
                 errors
             ),
             a => {
-                eprintln!(
+                tracing::error!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
                     a,
                     expr.as_str(),
@@ -1451,7 +1451,7 @@ fn parse_subfield_path(
         Rule::call_item => parse_call_item(item, config),
         Rule::array_index => parse_array_index(item, config),
         a => {
-            eprintln!(
+            tracing::error!(
                 "Unimplemented subfield path: {:?} ({:?}) ({:?})",
                 a,
                 item.as_str(),
@@ -2079,7 +2079,7 @@ pub(crate) fn desugar_match_expression(
                 });
             }
             Some(if_statement) => {
-                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
+                tracing::error!("Unimplemented if_statement_pattern: {:?}", if_statement,);
                 errors.push(CompileError::Unimplemented(
                     "this desugared if expression pattern is not implemented",
                     if_statement.span(),
