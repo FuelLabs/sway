@@ -16,7 +16,11 @@ use super::{impl_trait::Mode, CopyTypes, TypeMapping, TypedCodeBlock, TypedExpre
 use crate::{
     error::*,
     parse_tree::*,
-    semantic_analysis::{namespace::Items, TypeCheckedStorageReassignment},
+    semantic_analysis::{
+        insert_type_parameters,
+        namespace::{Items, Namespace},
+        TypeCheckedStorageReassignment,
+    },
     type_engine::*,
     Ident,
 };
@@ -465,6 +469,73 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     }
 }
 
+impl TypedStructDeclaration {
+    pub fn type_check(
+        decl: StructDeclaration,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedStructDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a namespace for the decl, used to create a scope for generics
+        let mut decl_namespace = namespace.clone();
+
+        // insert the generics into the decl namespace and
+        // check to see if the type parameters shadow one another
+        for type_parameter in decl.type_parameters.iter() {
+            check!(
+                decl_namespace
+                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // create the type parameters type mapping of custom types to generic types
+        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        let fields = decl
+            .fields
+            .into_iter()
+            .map(|field| {
+                let StructField {
+                    name,
+                    r#type,
+                    span,
+                    type_span,
+                } = field;
+                let r#type = match r#type.matches_type_parameter(&type_mapping) {
+                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    None => check!(
+                        decl_namespace.resolve_type_with_self(
+                            r#type,
+                            self_type,
+                            &type_span,
+                            EnforceTypeArguments::No
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    ),
+                };
+                TypedStructField { name, r#type, span }
+            })
+            .collect::<Vec<_>>();
+
+        // create the struct decl
+        let decl = TypedStructDeclaration {
+            name: decl.name.clone(),
+            type_parameters: decl.type_parameters.clone(),
+            fields,
+            visibility: decl.visibility,
+            span: decl.span,
+        };
+
+        ok(decl, warnings, errors)
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
     pub(crate) name: Ident,
@@ -604,6 +675,55 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
+    pub fn type_check(
+        decl: EnumDeclaration,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedEnumDeclaration> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+
+        // create a namespace for the decl, used to create a scope for generics
+        let mut decl_namespace = namespace.clone();
+
+        // insert the generics into the decl namespace and
+        // check to see if the type parameters shadow one another
+        for type_parameter in decl.type_parameters.iter() {
+            check!(
+                decl_namespace
+                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        let mut variants_buf = vec![];
+        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        for variant in decl.variants {
+            variants_buf.push(check!(
+                variant.to_typed_decl(
+                    &mut decl_namespace,
+                    self_type,
+                    variant.span.clone(),
+                    &type_mapping
+                ),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        let decl = TypedEnumDeclaration {
+            name: decl.name.clone(),
+            type_parameters: decl.type_parameters.clone(),
+            variants: variants_buf,
+            span: decl.span.clone(),
+            visibility: decl.visibility,
+        };
+        ok(decl, warnings, errors)
+    }
+
     pub(crate) fn expect_variant_from_name(
         self,
         variant_name: &Ident,

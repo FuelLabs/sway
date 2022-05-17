@@ -373,13 +373,17 @@ impl TypedAstNode {
                             namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
-                        Declaration::EnumDeclaration(e) => {
-                            let decl = TypedDeclaration::EnumDeclaration(
-                                e.to_typed_decl(namespace, self_type),
+                        Declaration::EnumDeclaration(decl) => {
+                            let decl = check!(
+                                TypedEnumDeclaration::type_check(decl, namespace, self_type),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
                             );
-
+                            let name = decl.name.clone();
+                            let decl = TypedDeclaration::EnumDeclaration(decl);
                             let _ = check!(
-                                namespace.insert_symbol(e.name, decl.clone()),
+                                namespace.insert_symbol(name, decl.clone(),),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -553,59 +557,22 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
-                            // look up any generic or struct types in the namespace
-                            // insert type parameters
-                            let type_mapping = insert_type_parameters(&decl.type_parameters);
-                            let fields = decl
-                                .fields
-                                .into_iter()
-                                .map(|field| {
-                                    let StructField {
-                                        name,
-                                        r#type,
-                                        span,
-                                        type_span,
-                                    } = field;
-                                    let r#type = match r#type.matches_type_parameter(&type_mapping)
-                                    {
-                                        Some(matching_id) => {
-                                            insert_type(TypeInfo::Ref(matching_id))
-                                        }
-                                        None => check!(
-                                            namespace.resolve_type_with_self(
-                                                r#type,
-                                                self_type,
-                                                &type_span,
-                                                EnforceTypeArguments::No
-                                            ),
-                                            insert_type(TypeInfo::ErrorRecovery),
-                                            warnings,
-                                            errors,
-                                        ),
-                                    };
-                                    TypedStructField { name, r#type, span }
-                                })
-                                .collect::<Vec<_>>();
-                            let decl = TypedStructDeclaration {
-                                name: decl.name.clone(),
-                                type_parameters: decl.type_parameters.clone(),
-                                fields,
-                                visibility: decl.visibility,
-                                span: decl.span,
-                            };
-
-                            // insert struct into namespace
-                            let _ = check!(
-                                namespace.insert_symbol(
-                                    decl.name.clone(),
-                                    TypedDeclaration::StructDeclaration(decl.clone()),
-                                ),
+                            let decl = check!(
+                                TypedStructDeclaration::type_check(decl, namespace, self_type),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-
-                            TypedDeclaration::StructDeclaration(decl)
+                            let name = decl.name.clone();
+                            let decl = TypedDeclaration::StructDeclaration(decl);
+                            // insert the struct decl into namespace
+                            let _ = check!(
+                                namespace.insert_symbol(name, decl.clone(),),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            decl
                         }
                         Declaration::AbiDeclaration(AbiDeclaration {
                             name,

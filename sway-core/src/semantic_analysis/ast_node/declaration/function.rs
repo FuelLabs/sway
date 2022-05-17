@@ -144,9 +144,6 @@ impl TypedFunctionDeclaration {
         } = fn_decl;
         opts.purity = purity;
 
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
-
         // insert parameters and generic type declarations into namespace
         let mut fn_namespace = namespace.clone();
 
@@ -160,6 +157,9 @@ impl TypedFunctionDeclaration {
                 errors
             );
         }
+
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
 
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =

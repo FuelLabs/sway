@@ -4,10 +4,7 @@ use crate::{
     parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
     semantic_analysis::{
-        ast_node::{TypedEnumDeclaration, TypedEnumVariant},
-        declaration::EnforceTypeArguments,
-        insert_type_parameters,
-        namespace::Namespace,
+        ast_node::TypedEnumVariant, declaration::EnforceTypeArguments, namespace::Namespace,
     },
     style::is_upper_camel_case,
     type_engine::*,
@@ -35,35 +32,6 @@ pub struct EnumVariant {
 }
 
 impl EnumDeclaration {
-    /// Looks up the various TypeInfos in the [Namespace] to see if they are generic or refer to
-    /// something.
-    pub(crate) fn to_typed_decl(
-        &self,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> TypedEnumDeclaration {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-
-        let mut variants_buf = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        for variant in &self.variants {
-            variants_buf.push(check!(
-                variant.to_typed_decl(namespace, self_type, variant.span.clone(), &type_mapping),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        TypedEnumDeclaration {
-            name: self.name.clone(),
-            type_parameters: self.type_parameters.clone(),
-            variants: variants_buf,
-            span: self.span.clone(),
-            visibility: self.visibility,
-        }
-    }
-
     pub(crate) fn parse_from_pair(
         decl_inner: Pair<Rule>,
         config: Option<&BuildConfig>,

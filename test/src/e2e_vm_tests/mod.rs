@@ -333,6 +333,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x67, 0x6e, 0x5f, 0x13,
             ])),
         ),
+        (
+            "should_pass/language/generic_inside_generic",
+            ProgramState::Return(7),
+        ),
     ];
 
     let mut number_of_tests_run =
