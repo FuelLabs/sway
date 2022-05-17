@@ -1,6 +1,6 @@
 script;
 
-use std::assert::{assert, require};
+use std::assert::assert;
 use std::constants::ZERO;
 
 fn main() -> bool {
