@@ -13,6 +13,7 @@ dep storage;
 dep b512;
 dep address;
 dep tx;
+dep chain;
 dep math;
 dep block;
 dep token;
