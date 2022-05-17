@@ -1,6 +1,7 @@
 library std;
 
 dep revert;
+dep logging;
 dep assert;
 dep option;
 dep result;
@@ -12,7 +13,6 @@ dep storage;
 dep b512;
 dep address;
 dep tx;
-dep chain;
 dep math;
 dep block;
 dep token;
