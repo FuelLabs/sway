@@ -12,6 +12,7 @@ html {
     color: var(--fg);
     background-color: var(--bg);
     text-size-adjust: none;
+    -webkit-text-size-adjust: none;
 }
 
 body {
@@ -92,7 +93,7 @@ h6:target::before {
 .content ul { line-height: 1.45em; }
 .content a { text-decoration: none; }
 .content a:hover { text-decoration: underline; }
-.content img { max-width: 100%; }
+.content img, .content video { max-width: 100%; }
 .content .header:link,
 .content .header:visited {
     color: var(--fg);
@@ -174,4 +175,8 @@ blockquote {
     color: var(--sidebar-fg);
     margin: 5px 0px;
     font-weight: bold;
+}
+
+.result-no-output {
+    font-style: italic;
 }

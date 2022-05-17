@@ -4,49 +4,28 @@
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
         <title>The Sway Programming Language</title>
-        
         <meta name="robots" content="noindex" />
-        
-        
-
-
         <!-- Custom HTML head -->
-        
-
-
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        
         <link rel="icon" href="favicon.svg">
-        
-        
         <link rel="shortcut icon" href="favicon.png">
-        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
-        
         <link rel="stylesheet" href="css/print.css" media="print">
-        
-
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        
         <link rel="stylesheet" href="fonts/fonts.css">
-        
-
         <!-- Highlight.js Stylesheets -->
         <link rel="stylesheet" href="highlight.css">
         <link rel="stylesheet" href="tomorrow-night.css">
         <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
-        
-
-        
     </head>
     <body>
         <!-- Provide site root to javascript -->
@@ -105,7 +84,6 @@
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                
                 <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky bordered">
                     <div class="left-buttons">
@@ -122,33 +100,26 @@
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        
                         <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
-                        
                     </div>
 
                     <h1 class="menu-title">The Sway Programming Language</h1>
 
                     <div class="right-buttons">
-                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        
-                        
                         <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        
                     </div>
                 </div>
 
-                
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -156,8 +127,6 @@
                         </ul>
                     </div>
                 </div>
-                
-
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
                 <script type="text/javascript">
                     document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
@@ -173,7 +142,7 @@
 <p>Sway is a domain-specific language (DSL) for the <a href="https://github.com/FuelLabs/fuel-specs">Fuel Virtual Machine (FuelVM)</a>, a blockchain-optimized VM designed for the Fuel blockchain. Sway is based on <a href="https://doc.rust-lang.org/book/">Rust</a>, and includes syntax to leverage a blockchain VM without needlessly verbose boilerplate.</p>
 <p>This book documents how to write smart contracts in Sway, along with how to install and use the Sway toolchain.</p>
 <p>Before starting developing smart contracts in Sway, please keep in mind the <a href="./reference/temporary_workarounds.html">temporary workarounds and missing features</a> of the language and toolchain.</p>
-<h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>To get started with Forc and Sway smart contract development, install the Sway toolchain and Fuel full node and set up your first project.</p>
 <ul>
 <li><a href="introduction/./installation.html">Installation</a></li>
@@ -181,7 +150,7 @@
 <li><a href="introduction/./sway-toolchain.html">The Sway Toolchain</a></li>
 <li><a href="introduction/./forc_project.html">A Forc Project</a></li>
 </ul>
-<h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.</p>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
 <p>A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions can be found <a href="https://www.rust-lang.org/tools/install">here</a>.</p>
@@ -234,7 +203,7 @@ $ forc completions --shell=powershell &gt;&gt; $PROFILE.CurrentUserCurrentHost
 $ forc completions --shell=powershell | Out-String | Invoke-Expression
 </code></pre>
 <p>Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.</p>
-<h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
 <p>Follow this guide to write and deploy a simple wallet smart contract in Sway.</p>
 <h2 id="glossary"><a class="header" href="#glossary">Glossary</a></h2>
 <p>Before we begin, it may be helpful to understand terminology that will used throughout the docs and how they relate to each other:</p>
@@ -380,7 +349,7 @@ fn main() {
 <p>It returns a <code>Call</code> receipt and a <code>ScriptResult</code> receipt.</p>
 <h2 id="testing-sway-contracts"><a class="header" href="#testing-sway-contracts">Testing Sway contracts</a></h2>
 <p>The recommended way to test Sway contracts is via the <a href="introduction/../testing/testing-with-rust.html">Rust SDK</a>. You may also write tests in TypeScript if you are using the TypeScript SDK.</p>
-<h1 id="the-sway-toolchain"><a class="header" href="#the-sway-toolchain">The Sway Toolchain</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="the-sway-toolchain"><a class="header" href="#the-sway-toolchain">The Sway Toolchain</a></h1>
 <p>The Sway toolchain consists of several components.</p>
 <h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
 <p>The &quot;Fuel Orchestrator&quot; <a href="https://github.com/FuelLabs/sway/tree/master/forc">Forc</a> is our equivalent of Rust's <a href="https://doc.rust-lang.org/cargo/">Cargo</a>. It is the primary entry point for creating, building, testing, and deploying Sway projects.</p>
@@ -392,7 +361,7 @@ fn main() {
 <p>Note that there is no need to manually run <code>forc lsp</code> (the plugin will automatically start it), however <code>forc</code> must be in your <code>$PATH</code>. To check if <code>forc</code> is in your <code>$PATH</code>, type <code>forc --help</code> in your terminal.</p>
 <h2 id="fuel-core-fuel-core"><a class="header" href="#fuel-core-fuel-core">Fuel Core (<code>fuel-core</code>)</a></h2>
 <p>While not directly part of the Sway toolchain, an implementation of the Fuel protocol, <a href="https://github.com/FuelLabs/fuel-core">Fuel Core</a>, is provided. Note that <a href="https://github.com/FuelLabs/fuels-rs">the SDK</a> will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.</p>
-<h1 id="a-forc-project"><a class="header" href="#a-forc-project">A Forc Project</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="a-forc-project"><a class="header" href="#a-forc-project">A Forc Project</a></h1>
 <p>To initialize a new project with Forc, use <code>forc init</code>:</p>
 <pre><code class="language-sh">forc init my-fuel-project
 </code></pre>
@@ -461,7 +430,7 @@ test can_get_contract_id ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 </code></pre>
 <p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="introduction/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
-<h1 id="example"><a class="header" href="#example">Example</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
 <ul>
 <li><a href="examples/./counter.html">Counter</a></li>
@@ -469,7 +438,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <li><a href="examples/./fizzbuzz.html">FizzBuzz</a></li>
 <li><a href="examples/./wallet_smart_contract.html">Wallet Smart Contract</a></li>
 </ul>
-<h1 id="counter"><a class="header" href="#counter">Counter</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="counter"><a class="header" href="#counter">Counter</a></h1>
 <p>The following is a simple example of a contract which implements a counter. Both the <code>initialize()</code> and <code>increment()</code> functions return the currently set value.</p>
 <pre><code class="language-bash">forc init --template counter my_counter_project
 </code></pre>
@@ -498,7 +467,7 @@ impl TestContract for Contract {
     }
 }
 </code></pre>
-<h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
 <p>The following is a simple example of a subcurrency which implements a <code>mint</code> and <code>send</code> function for a token. This example does not use Fuel's native asset system (see: <a href="examples/../blockchain-development/native_assets.html">Native Assets</a>).</p>
 <pre><code class="language-sway">contract;
 
@@ -600,7 +569,7 @@ impl Token for Contract {
     }
 }
 </code></pre>
-<h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
 <p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
 and receive back its fizzbuzzability as an enum. Note that the deserialization scheme for the fizzbuzz enum will be included in the ABI descriptor
 so the caller knows what to do with the bytes.</p>
@@ -631,7 +600,7 @@ impl FizzBuzz for Contract {
     }
 }
 </code></pre>
-<h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
 <p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
 <pre><code class="language-sway">contract;
 
@@ -680,7 +649,7 @@ impl Wallet for Contract {
     }
 }
 </code></pre>
-<h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
 <p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
 <p>Every Sway file <em>must</em> begin with a declaration of what type of program it is. A project can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require <code>main</code> functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve.</p>
 <p>Contracts are used primarily for protocols or systems that operate within a fixed set of rules. A good example would be a staking contract or a decentralized exchange.</p>
@@ -692,7 +661,7 @@ impl Wallet for Contract {
 <li><a href="sway-program-types/./scripts.html">Scripts</a></li>
 <li><a href="sway-program-types/./predicates.html">Predicates</a></li>
 </ul>
-<h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
 <p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
@@ -768,7 +737,7 @@ fn main() {
 <li><code>asset_id</code>: represents the ID of the <em>asset type</em> of the coins being forwarded.</li>
 </ol>
 <p>Each special parameter is optional and assumes a default value when skipped.</p>
-<h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
 <p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
 <p>Libraries are denoted using the <code>library</code> keyword at the beginning of the file, followed by a name so that they can be imported, e.g. <code>library foo;</code>.</p>
@@ -831,7 +800,7 @@ pub fn height() -&gt; u64 {
 <p>You will also need to link the library in the <code>Forc.toml</code> of the <code>forc</code> repo that you're calling from. You can do this by opening up the <code>Forc.toml</code> file and adding the following line to the bottom:</p>
 <pre><code class="language-toml">wallet_lib = { path = &quot;../wallet_lib&quot; }
 </code></pre>
-<h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
 <p>A script is runnable bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.</p>
 <p>Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.</p>
 <p>This example script calls a contract:</p>
@@ -859,7 +828,7 @@ fn main () {
 <p>An example use case for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.</p>
 <h2 id="scripts-and-the-sdks"><a class="header" href="#scripts-and-the-sdks">Scripts and the SDKs</a></h2>
 <p>Unlike Ethereum transactions which can call a contract directly (but can only call a single contract), Fuel transactions execute a script, which may call zero or more contracts. The Rust and TypeScript SDKs provide functions to call contract methods as if they were calling contracts directly. Under the hood, the SDKs wrap all contract calls with scripts that contain minimal code to simply make the call and forward script data as call parameters.</p>
-<h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>
 <p>From the perspective of Sway, predicates are programs that return a Boolean value and which represent ownership of some resource upon execution to true. They have no access to contract storage. Here is a trivial predicate, which always evaluates to true:</p>
 <pre><code class="language-sway">predicate;
 
@@ -868,7 +837,7 @@ fn main() -&gt; bool {
     true
 }
 </code></pre>
-<h1 id="sway-language-basics"><a class="header" href="#sway-language-basics">Sway Language basics</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="sway-language-basics"><a class="header" href="#sway-language-basics">Sway Language basics</a></h1>
 <p>Sway is a programming language designed for the FuelVM. It is a statically typed, compiled language with type inference and traits. Sway aims to make smart contract development safer and more performant through the use of strong static analysis and compiler feedback.</p>
 <p>Sway basics.</p>
 <ul>
@@ -881,7 +850,7 @@ fn main() -&gt; bool {
 <li><a href="basics/./control_flow.html">Control Flow</a></li>
 <li><a href="basics/./comments_and_logging.html">Comments and Logging</a></li>
 </ul>
-<h1 id="variables"><a class="header" href="#variables">Variables</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="variables"><a class="header" href="#variables">Variables</a></h1>
 <p>Variables in Sway are <em>immutable by default</em>. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.</p>
 <h2 id="declaring-a-variable"><a class="header" href="#declaring-a-variable">Declaring a Variable</a></h2>
 <p>Let's look at a variable declaration:</p>
@@ -908,7 +877,7 @@ foo = 6;
 let baz: bool = true;
 </code></pre>
 <p>If the value declared cannot be assigned to the declared type, there will be an error generated by the compiler.</p>
-<h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
 <p>Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in the underlying virtual machine, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
 <p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred by the compiler.</p>
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
@@ -979,7 +948,7 @@ assert(classmates.contains(name));
 assert(x[0]);
 </code></pre>
 <p>Note that arrays are zero-indexed, just like tuples.</p>
-<h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
 <p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
 <h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
@@ -1006,7 +975,7 @@ let forty_two: b256 = my_address.into();
 let my_contract_id: ContractId = ~ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
-<h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
 <p>Functions in Sway are declared with the <code>fn</code> keyword. Let's take a look:</p>
 <pre><code class="language-sway">fn equals(first_param: u64, second_param: u64) -&gt; bool {
     first_param == second_param
@@ -1019,7 +988,7 @@ let forty_two: b256 = my_contract_id.into();
     equals(5, 6); // evaluates to `false`
 }
 </code></pre>
-<h1 id="structs-and-tuples"><a class="header" href="#structs-and-tuples">Structs and Tuples</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="structs-and-tuples"><a class="header" href="#structs-and-tuples">Structs and Tuples</a></h1>
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
 <p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
 <p>To declare a struct type, use <em>struct declaration syntax</em>:</p>
@@ -1122,7 +1091,7 @@ let event = InventoryEvent::ItemLoss(Claim {
 <h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
 <p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
 <p>Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
-<h1 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h1>
 <p>Methods are similar to functions in that we declare them with the <code>fn</code> keyword and they have parameters and return a value. However, unlike functions, <em>Methods</em> are defined within the context of a struct (or enum), and either refers to that type or mutates it. The first parameter of a method is always <code>self</code>, which represents the instance of the struct the method is being called on.</p>
 <p><em>Associated functions</em> are very similar to <em>methods</em>, in that they are also defined in the context of a struct or enum, but they do not actually use any of the data in the struct and as a result do not take <em>self</em> as a parameter. Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.</p>
 <p>To declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
@@ -1178,7 +1147,7 @@ struct Car {
     color: Color,
 }
 </code></pre>
-<h1 id="comments-and-logging"><a class="header" href="#comments-and-logging">Comments and Logging</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="comments-and-logging"><a class="header" href="#comments-and-logging">Comments and Logging</a></h1>
 <h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
 <p>Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include <code>//</code> on each line.</p>
 <pre><code class="language-sway">// hello world
@@ -1210,7 +1179,7 @@ fn main() {
 }
 </code></pre>
 <p>Note that you cannot log arbitrary structs yet because <a href="basics/../reference/temporary_workarounds.html#serialization-and-deserialization">we do not yet support serialization</a>.</p>
-<h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>
 <p>For example:</p>
@@ -1318,7 +1287,7 @@ while counter &lt; 10 {
     }
 }
 </code></pre>
-<h1 id="blockchain-development-with-sway"><a class="header" href="#blockchain-development-with-sway">Blockchain Development with Sway</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="blockchain-development-with-sway"><a class="header" href="#blockchain-development-with-sway">Blockchain Development with Sway</a></h1>
 <p>Sway is fundamentally a blockchain language. Because of this, it has some features and requirements that you may not have seen in general-purpose programming languages.</p>
 <p>These are also some concepts related to the FuelVM and Fuel ecosystem that you may utilize when writing Sway.</p>
 <ul>
@@ -1330,7 +1299,7 @@ while counter &lt; 10 {
 <li><a href="blockchain-development/./access_control.html">Access Control</a></li>
 <li><a href="blockchain-development/./calling_contracts.html">Calling Contracts</a></li>
 </ul>
-<h1 id="hashing-and-cryptography"><a class="header" href="#hashing-and-cryptography">Hashing and Cryptography</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="hashing-and-cryptography"><a class="header" href="#hashing-and-cryptography">Hashing and Cryptography</a></h1>
 <p>The Sway standard library provides easy access to a selection of cryptographic hash functions (<code>sha256</code> and Ethereum-compatible <code>keccak256</code>), and Ethereum-compatible <code>secp256k1</code>-based signature recovery operations.</p>
 <h2 id="hashing"><a class="header" href="#hashing">Hashing</a></h2>
 <pre><code class="language-sway">script;
@@ -1381,7 +1350,7 @@ fn main() {
     };
 }
 </code></pre>
-<h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
 <p>When developing a <a href="blockchain-development/../sway-program-types/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistent storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
 <p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
@@ -1432,18 +1401,18 @@ impl StorageExample for Contract {
 }
 </code></pre>
 <p>Note, if you are looking to store non-primitive types (e.g. b256), please refer to <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a>.</p>
-<h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
 <p>A function is <em>pure</em> if it does not access any <a href="blockchain-development/./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>In Sway, functions are pure by default but can be opted in to impurity via function annotations which are currently work-in-progress.</p>
 <p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
-<h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
 <p>Addresses in Sway are similar to Ethereum addresses. The two major differences are:</p>
 <ol>
 <li>Sway addresses are 32 bytes long (instead of 20), and</li>
 <li>are computed with the SHA-256 hash of the public key instead of the keccak-256 hash.</li>
 </ol>
 <p>Contracts, on the other hand, are uniquely identified with a contract ID rather than an address. A contract's ID is also 32 bytes long and is calculated <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id">here</a>.</p>
-<h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native Support for Multiple Asset Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native Support for Multiple Asset Types</a></h1>
 <p>The FuelVM has built-in support for working with multiple assets.</p>
 <p>What does this mean in practice?</p>
 <p>As in Ethereum, sending ETH to an address or contract is an operation built into the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances to track ownership.</p>
@@ -1553,7 +1522,7 @@ impl NativeAssetToken for Contract {
     }
 }
 </code></pre>
-<h1 id="access-control"><a class="header" href="#access-control">Access Control</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="access-control"><a class="header" href="#access-control">Access Control</a></h1>
 <p>Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.</p>
 <h2 id="msg_sender"><a class="header" href="#msg_sender"><code>msg_sender</code></a></h2>
 <p>To deliver an experience akin to Ethereum's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
@@ -1592,7 +1561,7 @@ impl MyOwnedContract for Contract {
 <li>If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then <code>Result::Ok(Sender)</code> is returned with the <code>Address</code> sender variant.</li>
 <li>If the caller is external and coin input owners are different, then the caller cannot be determined and a <code>Result::Err(AuthError)</code> is returned.</li>
 </ul>
-<h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>
 <p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract"><code>call</code></a> instruction.</p>
 <p>Sway provides a nice way to manage callable interfaces with its <code>abi</code> system. The Fuel ABI specification can be found <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md">here</a>.</p>
 <h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
@@ -1683,11 +1652,11 @@ impl ContractB for Contract {
 <p><strong>No data serialization</strong>: Contract calls in the FuelVM do not need to serialize data to pass it between contracts; instead they simply pass a pointer to the data. This is because the FuelVM has a shared global memory which all call frames can read from.</p>
 </li>
 </ol>
-<h1 id="forc"><a class="header" href="#forc">Forc</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc"><a class="header" href="#forc">Forc</a></h1>
 <p>Forc stands for Fuel Orchestrator. Forc provides a variety of tools and commands for developers working with the Fuel ecosystem, such as scaffolding a new project, formatting, running scripts, deploying contracts, testing contracts, and more. If you're coming from a Rust background, forc is similar to cargo.</p>
 <p>If you are new to Forc, see the <a href="forc/../introduction/forc_project.html">Forc Project</a> introduction section.</p>
 <p>For a comprehensive overview of the Forc CLI commands, see the <a href="forc/./commands/index.html">Commands</a> section.</p>
-<h1 id="manifest-reference"><a class="header" href="#manifest-reference">Manifest Reference</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="manifest-reference"><a class="header" href="#manifest-reference">Manifest Reference</a></h1>
 <p>The <code>Forc.toml</code> (the <em>manifest</em> file) is a compulsory file for each package and it is written in [TOML] format. <code>Forc.toml</code> consists of the following fields:</p>
 <ul>
 <li>
@@ -1749,7 +1718,7 @@ name = &quot;wallet_contract&quot;
 <ul>
 <li><code>URL</code> - (default: <em><a href="http://127.0.0.1:4000">http://127.0.0.1:4000</a></em>)</li>
 </ul>
-<h1 id="dependencies-1"><a class="header" href="#dependencies-1">Dependencies</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dependencies-1"><a class="header" href="#dependencies-1">Dependencies</a></h1>
 <p>Forc has a dependency management system which can pull packages using git. This allows users to build and share Forc libraries.</p>
 <h2 id="adding-a-dependency"><a class="header" href="#adding-a-dependency">Adding a dependency</a></h2>
 <p>If your <code>Forc.toml</code> doesn't already have a <code>[dependencies]</code> table, add one. Below, list the package name alongside its source. Currently, <code>forc</code> supports both <code>git</code> and <code>path</code> sources.</p>
@@ -1767,20 +1736,425 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p>Once the package is added, running <code>forc build</code> will automatically download added dependencies.</p>
 <h2 id="updating-dependencies"><a class="header" href="#updating-dependencies">Updating dependencies</a></h2>
 <p>To update dependencies in your Forc directory you can run <code>forc update</code>. For <code>path</code> dependencies this will have no effect. For <code>git</code> dependencies with a <code>branch</code> reference, this will update the project to use the latest commit for the given branch.</p>
-<p>Here are a list of commands available to forc:</p>
-<h1 id="forc-addr2line"><a class="header" href="#forc-addr2line">forc addr2line</a></h1>
-<h1 id="forc-build"><a class="header" href="#forc-build">forc build</a></h1>
-<h1 id="forc-clean"><a class="header" href="#forc-clean">forc clean</a></h1>
-<h1 id="forc-completions"><a class="header" href="#forc-completions">forc completions</a></h1>
-<h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc deploy</a></h1>
-<h1 id="forc-init"><a class="header" href="#forc-init">forc init</a></h1>
-<h1 id="forc-json-abi"><a class="header" href="#forc-json-abi">forc json-abi</a></h1>
-<h1 id="forc-parse-bytecode"><a class="header" href="#forc-parse-bytecode">forc parse-bytecode</a></h1>
-<h1 id="forc-plugins"><a class="header" href="#forc-plugins">forc plugins</a></h1>
-<h1 id="forc-run"><a class="header" href="#forc-run">forc run</a></h1>
-<h1 id="forc-test"><a class="header" href="#forc-test">forc test</a></h1>
-<h1 id="forc-update"><a class="header" href="#forc-update">forc update</a></h1>
-<h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><p>Here are a list of commands available to forc:</p>
+<ul>
+<li><a href="forc/commands/./forc_addr2line.html">forc addr2line</a></li>
+<li><a href="forc/commands/./forc_build.html">forc build</a></li>
+<li><a href="forc/commands/./forc_clean.html">forc clean</a></li>
+<li><a href="forc/commands/./forc_completions.html">forc completions</a></li>
+<li><a href="forc/commands/./forc_deploy.html">forc deploy</a></li>
+<li><a href="forc/commands/./forc_init.html">forc init</a></li>
+<li><a href="forc/commands/./forc_json-abi.html">forc json-abi</a></li>
+<li><a href="forc/commands/./forc_parse-bytecode.html">forc parse-bytecode</a></li>
+<li><a href="forc/commands/./forc_plugins.html">forc plugins</a></li>
+<li><a href="forc/commands/./forc_run.html">forc run</a></li>
+<li><a href="forc/commands/./forc_test.html">forc test</a></li>
+<li><a href="forc/commands/./forc_update.html">forc update</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-addr2line"><a class="header" href="#forc-addr2line">forc-addr2line</a></h1>
+<p>Show location and context of an opcode address in its source file</p>
+<h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
+<p>forc addr2line [OPTIONS] --sourcemap-path &lt;SOURCEMAP_PATH&gt; --opcode-index &lt;OPCODE_INDEX&gt;</p>
+<h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
+<p><code>-c</code>, <code>--context</code> &lt;<em>CONTEXT</em>&gt;</p>
+<p>How many lines of context to show [default: 2]</p>
+<p><code>-g</code>, <code>--sourcemap-path</code> &lt;<em>SOURCEMAP_PATH</em>&gt;</p>
+<p>Source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-i</code>, <code>--opcode-index</code> &lt;<em>OPCODE_INDEX</em>&gt;</p>
+<p>Opcode index</p>
+<p><code>-s</code>, <code>--search-dir</code> &lt;<em>SEARCH_DIR</em>&gt;</p>
+<p>Where to search for the project root [default: .]</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-build"><a class="header" href="#forc-build">forc-build</a></h1>
+<p>Compile the current or target project.</p>
+<p>The output produced will depend on the project's program type. Building script, predicate and
+contract projects will produce their bytecode in binary format <code>&lt;project-name&gt;.bin</code>. Building
+contracts and libraries will also produce the public ABI in JSON format <code>&lt;project-name&gt;-abi.json</code>.</p>
+<h2 id="usage-1"><a class="header" href="#usage-1">USAGE:</a></h2>
+<p>forc build [OPTIONS]</p>
+<h2 id="options-1"><a class="header" href="#options-1">OPTIONS:</a></h2>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-ir</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated IR (true)</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<h2 id="example-2"><a class="header" href="#example-2">EXAMPLE:</a></h2>
+<p>Compile the sway files of the current project.</p>
+<pre><code class="language-console">$ forc build
+Compiled script &quot;my-fuel-project&quot;.
+Bytecode size is 28 bytes.
+</code></pre>
+<p>The output produced will depend on the project's program type. Building script, predicate and contract projects will produce their bytecode in binary format <code>&lt;project-name&gt;.bin</code>. Building contracts and libraries will also produce the public ABI in JSON format <code>&lt;project-name&gt;-abi.json</code>.</p>
+<p>By default, these artifacts are placed in the <code>out/</code> directory.</p>
+<p>If a <code>Forc.lock</code> file did not yet exist, it will be created in order to pin each of the dependencies listed in <code>Forc.toml</code> to a specific commit or version.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-clean"><a class="header" href="#forc-clean">forc-clean</a></h1>
+<p>Removes the default forc compiler output artifact directory, i.e. <code>&lt;project-name&gt;/out</code>. Also calls
+<code>cargo clean</code> which removes the <code>target</code> directory generated by <code>cargo</code> when running tests</p>
+<h2 id="usage-2"><a class="header" href="#usage-2">USAGE:</a></h2>
+<p>forc clean [OPTIONS]</p>
+<h2 id="options-2"><a class="header" href="#options-2">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be
+used</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-completions"><a class="header" href="#forc-completions">forc-completions</a></h1>
+<p>Generate tab-completion scripts for your shell</p>
+<h2 id="usage-3"><a class="header" href="#usage-3">USAGE:</a></h2>
+<p>forc completions --shell <SHELL></p>
+<h2 id="options-3"><a class="header" href="#options-3">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-s</code>, <code>--shell</code> &lt;<em>SHELL</em>&gt;</p>
+<p>Specify shell to enable tab-completion for</p>
+<p>[possible values: zsh, bash, fish, powershell, elvish]</p>
+<p>For more info:
+https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
+<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION:</a></h2>
+<p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
+The script is output on <code>stdout</code>, allowing one to re-direct the
+output to the file of their choosing. Where you place the file
+will depend on which shell, and which operating system you are
+using. Your particular configuration may also determine where
+these scripts need to be placed.</p>
+<p>Here are some common set ups for the three supported shells under
+Unix and similar operating systems (such as GNU/Linux).</p>
+<p><strong>BASH:</strong></p>
+<p>Completion files are commonly stored in <code>/etc/bash_completion.d/</code> for
+system-wide commands, but can be stored in
+<code>~/.local/share/bash-completion/completions</code> for user-specific commands.
+Run the command:</p>
+<pre><code class="language-sh">mkdir -p ~/.local/share/bash-completion/completions
+forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completions/forc
+</code></pre>
+<p>This installs the completion script. You may have to log out and
+log back in to your shell session for the changes to take effect.</p>
+<p><strong>BASH (macOS/Homebrew):</strong></p>
+<p>Homebrew stores bash completion files within the Homebrew directory.
+With the <code>bash-completion</code> brew formula installed, run the command:</p>
+<pre><code class="language-sh">mkdir -p $(brew --prefix)/etc/bash_completion.d
+forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+</code></pre>
+<p><strong>FISH:</strong></p>
+<p>Fish completion files are commonly stored in
+<code>$HOME/.config/fish/completions</code>. Run the command:</p>
+<pre><code class="language-sh">mkdir -p ~/.config/fish/completions
+forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
+</code></pre>
+<p>This installs the completion script. You may have to log out and
+log back in to your shell session for the changes to take effect.</p>
+<p><strong>ZSH:</strong></p>
+<p>ZSH completions are commonly stored in any directory listed in
+your <code>$fpath</code> variable. To use these completions, you must either
+add the generated script to one of those directories, or add your
+own to this list.</p>
+<p>Adding a custom directory is often the safest bet if you are
+unsure of which directory to use. First create the directory; for
+this example we'll create a hidden directory inside our <code>$HOME</code>
+directory:</p>
+<pre><code class="language-sh">mkdir ~/.zfunc
+</code></pre>
+<p>Then add the following lines to your <code>.zshrc</code> just before
+<code>compinit</code>:</p>
+<pre><code class="language-sh">fpath+=~/.zfunc
+</code></pre>
+<p>Now you can install the completions script using the following
+command:</p>
+<pre><code class="language-sh">forc completions --shell=zsh &gt; ~/.zfunc/_forc
+</code></pre>
+<p>You must then either log out and log back in, or simply run</p>
+<pre><code class="language-sh">exec zsh
+</code></pre>
+<p>for the new completions to take effect.</p>
+<p><strong>CUSTOM LOCATIONS:</strong></p>
+<p>Alternatively, you could save these files to the place of your
+choosing, such as a custom directory inside your $HOME. Doing so
+will require you to add the proper directives, such as <code>source</code>ing
+inside your login script. Consult your shells documentation for
+how to add such directives.</p>
+<p><strong>POWERSHELL:</strong></p>
+<p>The powershell completion scripts require PowerShell v5.0+ (which
+comes with Windows 10, but can be downloaded separately for windows 7
+or 8.1).</p>
+<p>First, check if a profile has already been set</p>
+<pre><code class="language-sh">Test-Path $profile
+</code></pre>
+<p>If the above command returns <code>False</code> run the following</p>
+<pre><code class="language-sh">New-Item -path $profile -type file -force
+</code></pre>
+<p>Now open the file provided by <code>$profile</code> (if you used the
+<code>New-Item</code> command it will be
+<code>${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1</code></p>
+<p>Next, we either save the completions file into our profile, or
+into a separate file and source it inside our profile. To save the
+completions into our profile simply use</p>
+<pre><code class="language-sh">forc completions --shell=powershell &gt;&gt; ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc-deploy</a></h1>
+<p>Deploy contract project. Crafts a contract deployment transaction then sends it to a running node</p>
+<h2 id="usage-4"><a class="header" href="#usage-4">USAGE:</a></h2>
+<p>forc deploy [OPTIONS]</p>
+<h2 id="options-4"><a class="header" href="#options-4">OPTIONS:</a></h2>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-ir</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE:</a></h2>
+<p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
+<p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
+<p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-init"><a class="header" href="#forc-init">forc-init</a></h1>
+<p>Create a new Forc project</p>
+<h2 id="usage-5"><a class="header" href="#usage-5">USAGE:</a></h2>
+<p>forc init [OPTIONS] &lt;PROJECT_NAME&gt;</p>
+<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
+<p>&lt;<em>PROJECT_NAME</em>&gt;</p>
+<p>The name of your project</p>
+<h2 id="options-5"><a class="header" href="#options-5">OPTIONS:</a></h2>
+<p><code>--contract</code> </p>
+<p>The default program type, excluding all flags or adding this flag
+creates a basic contract program</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>--library</code> </p>
+<p>Adding this flag creates an empty library program</p>
+<p><code>--predicate</code> </p>
+<p>Adding this flag creates an empty predicate program</p>
+<p><code>--script</code> </p>
+<p>Adding this flag creates an empty script program</p>
+<p><code>-t</code>, <code>--template</code> &lt;<em>TEMPLATE</em>&gt;</p>
+<p>Initialize a new project from a template.</p>
+<p>Example Templates:</p>
+<ul>
+<li>counter</li>
+</ul>
+<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE:</a></h2>
+<pre><code class="language-console">$ forc init my-fuel-project
+$ cd my-fuel-project
+$ tree
+.
+├── Cargo.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+</code></pre>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies. <code>Cargo.toml</code> is the Rust project manifest file, used by the Rust-based tests package.</p>
+<p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
+<p>A <code>tests/</code> directory is also created. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (<code>fuels-rs</code>). More on this in the <code>Test</code> section down below.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-json-abi"><a class="header" href="#forc-json-abi">forc-json-abi</a></h1>
+<p>Output the JSON associated with the ABI</p>
+<h2 id="usage-6"><a class="header" href="#usage-6">USAGE:</a></h2>
+<p>forc json-abi [OPTIONS]</p>
+<h2 id="options-6"><a class="header" href="#options-6">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>--minify</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line
+without whitespace</p>
+<p><code>-o</code> &lt;<em>JSON_OUTFILE</em>&gt;</p>
+<p>If set, outputs a json file representing the output json abi</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing
+dependencies. Meaning it will only try to use previously downloaded
+dependencies</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will
+be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-parse-bytecode"><a class="header" href="#forc-parse-bytecode">forc-parse-bytecode</a></h1>
+<p>Parse bytecode file into a debug format</p>
+<h2 id="usage-7"><a class="header" href="#usage-7">USAGE:</a></h2>
+<p>forc parse-bytecode &lt;FILE_PATH&gt;</p>
+<h2 id="args-1"><a class="header" href="#args-1">ARGS:</a></h2>
+<p>&lt;<em>FILE_PATH</em>&gt;</p>
+<h2 id="options-7"><a class="header" href="#options-7">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE:</a></h2>
+<p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
+<pre><code class="language-sh">forc init --template counter counter
+cd counter
+forc build -o obj
+</code></pre>
+<pre><code class="language-console">counter$ forc parse-bytecode obj
+
+  half-word   byte   op                   raw           notes
+          0   0      JI(4)                90 00 00 04   conditionally jumps to byte 16
+          1   4      NOOP                 47 00 00 00
+          2   8      Undefined            00 00 00 00   data section offset lo (0)
+          3   12     Undefined            00 00 00 c8   data section offset hi (200)
+          4   16     LW(63, 12, 1)        5d fc c0 01
+          5   20     ADD(63, 63, 12)      10 ff f3 00
+         ...
+         ...
+         ...
+         60   240    Undefined            00 00 00 00
+         61   244    Undefined            fa f9 0d d3
+         62   248    Undefined            00 00 00 00
+         63   252    Undefined            00 00 00 c8
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-plugins"><a class="header" href="#forc-plugins">forc-plugins</a></h1>
+<p>Find all forc plugins available via <code>PATH</code>.</p>
+<p>Prints information about each discovered plugin.</p>
+<h2 id="usage-8"><a class="header" href="#usage-8">USAGE:</a></h2>
+<p>forc plugins [OPTIONS]</p>
+<h2 id="options-8"><a class="header" href="#options-8">OPTIONS:</a></h2>
+<p><code>-d</code>, <code>--describe</code> </p>
+<p>Prints the long description associated with each listed plugin</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-p</code>, <code>--paths</code> </p>
+<p>Prints the absolute path to each discovered plugin</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-run"><a class="header" href="#forc-run">forc-run</a></h1>
+<p>Run script project. Crafts a script transaction then sends it to a running node</p>
+<h2 id="usage-9"><a class="header" href="#usage-9">USAGE:</a></h2>
+<p>forc run [OPTIONS] [NODE_URL]</p>
+<h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
+<p>&lt;<em>NODE_URL</em>&gt;
+URL of the Fuel Client Node</p>
+<p>[env: FUEL_NODE_URL=]
+[default: http://127.0.0.1:4000]</p>
+<h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
+<p><code>--byte-price</code> &lt;<em>BYTE_PRICE</em>&gt;</p>
+<p>Set the transaction byte price. Defaults to 0</p>
+<p><code>--contract</code> &lt;<em>CONTRACT</em>&gt;</p>
+<p>32-byte contract ID that will be called during the transaction</p>
+<p><code>-d</code>, <code>--data</code> &lt;<em>DATA</em>&gt;</p>
+<p>Hex string of data to input to script</p>
+<p><code>--dry-run</code> </p>
+<p>Only craft transaction and print it out</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>--gas-limit</code> &lt;<em>GAS_LIMIT</em>&gt;</p>
+<p>Set the transaction gas limit. Defaults to the maximum gas limit</p>
+<p><code>--gas-price</code> &lt;<em>GAS_PRICE</em>&gt;</p>
+<p>Set the transaction gas price. Defaults to 0</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-k</code>, <code>--kill-node</code> </p>
+<p>Kill Fuel Node Client after running the code. This is only available if the node is
+started from <code>forc run</code></p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
+<p><code>--print-ir</code> </p>
+<p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
+<p><code>-r</code>, <code>--pretty-print</code> </p>
+<p>Pretty-print the outputs from the node</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
+<p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
+<code>forc init</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
+these Rust tests by using <code>forc test</code> or going inside the package and using <code>cargo test</code></p>
+<h2 id="usage-10"><a class="header" href="#usage-10">USAGE:</a></h2>
+<p>forc test [OPTIONS] [TEST_NAME] [-- &lt;CARGO_TEST_ARGS&gt;...]</p>
+<h2 id="args-3"><a class="header" href="#args-3">ARGS:</a></h2>
+<p>&lt;<em>TEST_NAME</em>&gt;
+If specified, only run tests containing this string in their names</p>
+<p>&lt;<em>CARGO_TEST_ARGS</em>&gt;</p>
+<p>..
+All trailing arguments following <code>--</code> are collected within this argument.</p>
+<p>E.g. Given the following:</p>
+<p><code>forc test -- foo bar baz</code></p>
+<p>The arguments <code>foo</code>, <code>bar</code> and <code>baz</code> are forwarded on to <code>cargo test</code> like so:</p>
+<p><code>cargo test -- foo bar baz</code></p>
+<h2 id="options-10"><a class="header" href="#options-10">OPTIONS:</a></h2>
+<p><code>--cargo-test-opts</code> &lt;<em>CARGO_TEST_OPTS</em>&gt;</p>
+<p>Options passed through to the <code>cargo test</code> invocation.</p>
+<p>E.g. Given the following:</p>
+<p><code>forc test --cargo-test-opts=&quot;--color always&quot;</code></p>
+<p>The <code>--color always</code> option is forwarded to <code>cargo test</code> like so:</p>
+<p><code>cargo test --color always</code></p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE:</a></h2>
+<p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc init</code>).</p>
+<p>You can find an example under the <a href="forc/commands/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
+<p>Update dependencies in the Forc dependencies directory</p>
+<h2 id="usage-11"><a class="header" href="#usage-11">USAGE:</a></h2>
+<p>forc update [OPTIONS]</p>
+<h2 id="options-11"><a class="header" href="#options-11">OPTIONS:</a></h2>
+<p><code>-c</code>, <code>--check</code> </p>
+<p>Checks if the dependencies have newer versions. Won't actually
+perform the update, will output which ones are up-to-date and
+outdated</p>
+<p><code>-d</code> &lt;<em>TARGET_DEPENDENCY</em>&gt;</p>
+<p>Dependency to be updated. If not set, all dependencies will be
+updated</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory
+will be used</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 <p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
 <p>Let's install a starter plugin, <code>forc-gm</code>, and take a look at how it works underneath:</p>
 <pre><code class="language-sh">cargo install forc-gm
@@ -1790,7 +2164,7 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 /Users/&lt;USER&gt;/.cargo/bin/forc-gm
 </code></pre>
 <p>Underneath, <code>forc-gm</code> is a simple CLI app, with <a href="https://docs.rs/clap/latest/clap/">clap</a> as the only dependency:</p>
-<pre><pre class="playground"><code class="language-rust">//! A sample `forc` plugin that greets you!
+<pre><pre class="playground"><code class="language-rust edition2021">//! A sample `forc` plugin that greets you!
 //!
 //! Once installed and available via `PATH`, can be executed via `forc gm`.
 
@@ -1839,12 +2213,12 @@ gn from Fuel!
 <h2 id="writing-your-own-plugin"><a class="header" href="#writing-your-own-plugin">Writing your own plugin</a></h2>
 <p>We encourage anyone to write and publish their own <code>forc</code> plugin to enhance their development experience.</p>
 <p>Your plugin must be named in the format <code>forc-&lt;MY_PLUGIN&gt;</code> and you may use the above template as a starting point. You can use <a href="https://docs.rs/clap/latest/clap/">clap</a> and add more subcommands, options and configurations to suit your plugin's needs.</p>
-<h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
 <p>Testing your Sway contracts can be done with the Rust SDK.</p>
 <ul>
 <li><a href="testing/./testing-with-rust.html">Testing with Rust</a></li>
 </ul>
-<h1 id="testing-with-rust"><a class="header" href="#testing-with-rust">Testing with Rust</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="testing-with-rust"><a class="header" href="#testing-with-rust">Testing with Rust</a></h1>
 <p>If you look again at the project structure when you create a <a href="testing/../introduction/forc_project.html">new Forc project</a> with <code>forc init</code>, you can see a directory called <code>tests/</code>:</p>
 <pre><code class="language-plaintext">$ forc init my-fuel-project
 $ cd my-fuel-project
@@ -1943,7 +2317,7 @@ test harness ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 </code></pre>
-<h1 id="advanced-concepts"><a class="header" href="#advanced-concepts">Advanced Concepts</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="advanced-concepts"><a class="header" href="#advanced-concepts">Advanced Concepts</a></h1>
 <p>Advanced concepts.</p>
 <ul>
 <li><a href="advanced/./generic_types.html">Generic Types</a></li>
@@ -1951,7 +2325,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <li><a href="advanced/./trait_constraints.html">Trait Constraints</a></li>
 <li><a href="advanced/./assembly.html">Assembly</a></li>
 </ul>
-<h1 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h1>
 <h2 id="basics"><a class="header" href="#basics">Basics</a></h2>
 <p>In Sway, generic types follow a very similar pattern to those in Rust. Let's look at some example syntax,
 starting with a generic function:</p>
@@ -2049,7 +2423,7 @@ For example, let's try to implement the successor function, <code>successor()</c
     foo::&lt;Bar, Baz&gt;()
 }
 </code></pre>
-<h1 id="traits"><a class="header" href="#traits">Traits</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="traits"><a class="header" href="#traits">Traits</a></h1>
 <h2 id="declaring-a-trait"><a class="header" href="#declaring-a-trait">Declaring a Trait</a></h2>
 <p>A <em>trait</em> opts a type into a certain type of behavior or functionality that can be shared among types. This allows for easy reuse of code and generic programming. If you have ever used a typeclass in Haskell, a trait in Rust, or even an interface in Java, these are similar concepts.</p>
 <p>Let's take a look at some code:</p>
@@ -2146,9 +2520,9 @@ fn random_suit(i: u64) -&gt; Suit {
   [ ... ]
 }
 </code></pre>
-<h1 id="trait-constraints-1"><a class="header" href="#trait-constraints-1">Trait Constraints</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="trait-constraints-1"><a class="header" href="#trait-constraints-1">Trait Constraints</a></h1>
 <p>Trait constraints on generics are currently a work in progress.</p>
-<h1 id="inline-assembly-in-sway"><a class="header" href="#inline-assembly-in-sway">Inline Assembly in Sway</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="inline-assembly-in-sway"><a class="header" href="#inline-assembly-in-sway">Inline Assembly in Sway</a></h1>
 <p>While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (ie: optimizations, building libraries, etc).</p>
 <h2 id="asm-block"><a class="header" href="#asm-block">ASM Block</a></h2>
 <p>In Sway, the way we use assembly inline is to declare an asm block like this:</p>
@@ -2201,11 +2575,11 @@ fn main() -&gt; bool {
 <p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">Sway standard library</a>.</p>
 <p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md">Instructions</a>.</p>
 <p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a>.</p>
-<h1 id="application-frontend-development"><a class="header" href="#application-frontend-development">Application Frontend Development</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="application-frontend-development"><a class="header" href="#application-frontend-development">Application Frontend Development</a></h1>
 <ul>
 <li><a href="frontend/./typescript_sdk.html">TypeScript SDK</a></li>
 </ul>
-<h1 id="typescript-sdk"><a class="header" href="#typescript-sdk">TypeScript SDK</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="typescript-sdk"><a class="header" href="#typescript-sdk">TypeScript SDK</a></h1>
 <p>The TypeScript SDK supports common tasks like:</p>
 <ul>
 <li>Deploying and calling contracts</li>
@@ -2214,7 +2588,7 @@ fn main() -&gt; bool {
 <li>Encoding and decoding contract ABI</li>
 </ul>
 <p>Refer <a href="https://github.com/FuelLabs/fuels-ts">here</a> for full documentation.</p>
-<h1 id="reference"><a class="header" href="#reference">Reference</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="reference"><a class="header" href="#reference">Reference</a></h1>
 <ul>
 <li><a href="reference/./style_guide.html">Style Guide</a></li>
 <li><a href="reference/./temporary_workarounds.html">Temporary Workarounds</a></li>
@@ -2222,10 +2596,10 @@ fn main() -&gt; bool {
 <li><a href="reference/./solidity_differences.html">Differences from Solidity</a></li>
 <li><a href="reference/./contributing_to_sway.html">Contributing to Sway</a></li>
 </ul>
-<h1 id="style-guide"><a class="header" href="#style-guide">Style Guide</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="style-guide"><a class="header" href="#style-guide">Style Guide</a></h1>
 <h2 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h2>
 <p>In Sway, structs, traits, and enums are <code>CapitalCase</code>. Modules, variables, and functions are <code>snake_case</code>, constants are <code>SCREAMING_SNAKE_CASE</code>. The compiler will warn you if your capitalization is ever unidiomatic.</p>
-<h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
 <p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="reference/../blockchain-development/storage.html#manual-storage-management">manual storage management</a>. Moreover, storage mappings have to be managed manually for now as shown in the <a href="reference/../examples/subcurrency.html">Subcurrency</a> example.</p>
 <h2 id="serialization-and-deserialization"><a class="header" href="#serialization-and-deserialization">Serialization and Deserialization</a></h2>
@@ -2235,7 +2609,7 @@ fn main() -&gt; bool {
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 <h2 id="formatter"><a class="header" href="#formatter">Formatter</a></h2>
 <p>Currently, we need to parse the Sway code before formatting it. Hence, <strong>the formatter cannot work on Sway code that does not parse correctly</strong>. This requirement may be changed in the future.</p>
-<h1 id="differences-from-solidity"><a class="header" href="#differences-from-solidity">Differences From Solidity</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="differences-from-solidity"><a class="header" href="#differences-from-solidity">Differences From Solidity</a></h1>
 <p>This page outlines some of the critical differences between Sway and Solidity, and between the FuelVM and the EVM.</p>
 <h2 id="underlying-virtual-machine"><a class="header" href="#underlying-virtual-machine">Underlying Virtual Machine</a></h2>
 <p>The underlying virtual machine targeted by Sway is the FuelVM, specified <a href="https://github.com/FuelLabs/fuel-specs">here</a>. Solidity targets the Ethereum Virtual Machine (EVM), specified <a href="https://ethereum.github.io/yellowpaper/paper.pdf">here</a>.</p>
@@ -2249,7 +2623,7 @@ fn main() -&gt; bool {
 <p>Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like <a href="https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics">Solidity's default safe math</a>.</p>
 <h2 id="no-code-size-limit"><a class="header" href="#no-code-size-limit">No* Code Size Limit</a></h2>
 <p>There is no practical code size limit to Sway contracts. The physical limit is governed by the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#parameters"><code>VM_MAX_RAM</code> VM parameter</a>, which at the time of writing is 64 MiB.</p>
-<h1 id="differences-from-rust"><a class="header" href="#differences-from-rust">Differences From Rust</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="differences-from-rust"><a class="header" href="#differences-from-rust">Differences From Rust</a></h1>
 <p>Sway shares a lot with Rust, especially its syntax. Because they are so similar, you may be surprised or caught off guard when they differ. This page serves to outline, from a high level, some of the syntactic <em>gotchas</em> that you may encounter.</p>
 <h2 id="enum-variant-syntax"><a class="header" href="#enum-variant-syntax">Enum Variant Syntax</a></h2>
 <p>In Rust, enums generally take one of three forms: <em>unit</em> variants, which have no inner data, <em>struct</em> variants, which contain named fields, and <em>tuple</em> variants, which contain within them a tuple of data. If you are unfamiliar with these terms, this is what they look like:</p>
@@ -2292,7 +2666,7 @@ struct MyStruct {
 }
 </code></pre>
 <p>This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.</p>
-<h1 id="contributing-to-sway"><a class="header" href="#contributing-to-sway">Contributing To Sway</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="contributing-to-sway"><a class="header" href="#contributing-to-sway">Contributing To Sway</a></h1>
 <p>Thanks for your interest in contributing to Sway! This document outlines the process for installing and setting up the Sway toolchain for development, as well as some conventions on contributing to Sway.</p>
 <p>If you run into any difficulties getting started, you can always ask questions on our <a href="https://discord.gg/xfpK4Pe">Discord</a>.</p>
 <h2 id="building-and-setting-up-a-development-workspace"><a class="header" href="#building-and-setting-up-a-development-workspace">Building and setting up a development workspace</a></h2>
@@ -2373,59 +2747,31 @@ Any changes to the branch will require a re-review.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                        
-
-                        
-
                         <div style="clear: both"></div>
                     </nav>
                 </div>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                
-
-                
             </nav>
 
         </div>
 
-        
-
-        
-
-        
-
-        
         <script type="text/javascript">
             window.playground_copyable = true;
         </script>
-        
-
-        
-
-        
         <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
-        
-
         <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
         <script src="book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
-        
-
-        
-        
         <script type="text/javascript">
         window.addEventListener('load', function() {
             window.setTimeout(window.print, 100);
         });
         </script>
-        
-        
-
     </body>
 </html>
