@@ -3,7 +3,7 @@ library logging;
 
 /// Log any stack type.
 /// If the type is a reference type, `log` is used.
-/// Otherwise `'logd` is used.'
+/// Otherwise `logd` is used.'
 pub fn log<T>(value: T) {
     if ! __is_reference_type::<T>() {
         asm(r1: value) {
