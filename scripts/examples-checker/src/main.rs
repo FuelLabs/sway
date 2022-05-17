@@ -9,6 +9,8 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
+use tracing::{instrument, info, error};
+use forc_util::set_subscriber;
 
 #[derive(Parser)]
 #[clap(name = "examples-checker", about = "Forc Examples Checker")]
@@ -95,7 +97,7 @@ fn run_forc_fmt(path: &Path) -> bool {
 }
 
 fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Result<()> {
-    println!("\nSummary for command {}:", command_kind);
+    info!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
     for (path, success) in summary {
         let (checkmark, status) = if *success {
@@ -103,7 +105,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
         } else {
             ("[x]", "failed")
         };
-        println!("  {}: {} {}!", checkmark, path.display(), status);
+        info!("  {}: {} {}!", checkmark, path.display(), status);
         if *success {
             successes += 1;
         }
@@ -115,7 +117,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
         "successes"
     };
     let failures_str = if failures == 1 { "failure" } else { "failures" };
-    println!(
+    info!(
         "{} {}, {} {}",
         successes, successes_str, failures, failures_str
     );
@@ -163,8 +165,12 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     Ok(())
 }
 
-fn main() -> Result<()> {
+#[instrument(skip_all)]
+fn main(){
+    set_subscriber();
     let cli = Cli::parse();
-    exec(cli.paths, cli.all_examples, cli.command_kind)?;
-    Ok(())
+    if let Err(_err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
+        error!("examples-checker error!");
+        std::process::exit(1);
+    }
 }

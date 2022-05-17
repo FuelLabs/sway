@@ -6,6 +6,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::str;
+use tracing::{instrument, info, error};
+use forc_util::set_subscriber;
 
 mod checkers;
 mod constants;
@@ -124,7 +126,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
         .expect("Failed running forc --version");
     let version = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
     let version_message = "Running forc --help using ".to_owned() + &version;
-    println!("{}", version_message);
+    info!("{}", version_message);
 
     let output = process::Command::new("forc")
         .arg("--help")
@@ -175,19 +177,19 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             match existing_contents {
                 Ok(existing_contents) => {
                     if existing_contents == result {
-                        println!("[✓] forc {}: documentation ok.", &command);
+                        info!("[✓] forc {}: documentation ok.", &command);
                     } else {
                         failed = true;
-                        eprintln!("[x] forc {}: documentation inconsistent!", &command);
+                        error!("[x] forc {}: documentation inconsistent!", &command);
                     }
                 }
                 Err(_) => {
                     failed = true;
-                    eprintln!("[x] forc {}: documentation does not exist!", &command);
+                    error!("[x] forc {}: documentation does not exist!", &command);
                 }
             }
         } else {
-            println!("Generating docs for command: forc {}...", &command);
+            info!("Generating docs for command: forc {}...", &command);
             let mut command_file =
                 File::create(&forc_command_file_path).expect("Failed to create documentation");
             command_file
@@ -209,13 +211,13 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             failed = true;
         }
     } else {
-        println!("Updating forc commands in forc/commands/index.md...");
+        info!("Updating forc commands in forc/commands/index.md...");
         index_file
             .write_all(new_index_contents.as_bytes())
             .expect("Failed to write to forc/commands/index.md");
 
         let mut new_summary_file = File::create(&summary_file_path)?;
-        println!("Updating forc commands in SUMMARY.md...");
+        info!("Updating forc commands in SUMMARY.md...");
         new_summary_file
             .write_all(new_summary_contents.as_bytes())
             .expect("Failed to write to SUMMARY.md");
@@ -226,7 +228,7 @@ fn write_docs(command: WriteDocsCommand) -> Result<()> {
             "The Forc section of the Sway book needs to be updated. \n\nPlease run `cargo run --bin forc-documenter write-docs`. If you have made local changes to any forc native commands, please install forc from path first: `cargo install --path ./forc`, then run the command."
         );
     }
-    println!("Done.");
+    info!("Done.");
 
     Ok(())
 }
@@ -265,11 +267,15 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
     }
     Ok(result)
 }
-fn main() -> Result<()> {
+#[instrument(skip_all)]
+fn main() {
+    set_subscriber();
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::WriteDocs(command) => write_docs(command)?,
+    if let Err(_err) = match cli.command {
+        Commands::WriteDocs(command) => write_docs(command),
+    }{
+        error!("forc-documentor error!");
+        std::process::exit(1);
     }
-    Ok(())
 }

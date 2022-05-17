@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use std::fs::File;
 use std::io::Read;
+use tracing::{info, error};
 
 pub fn is_option(token: &str) -> bool {
     token.starts_with('-')
@@ -23,9 +24,9 @@ pub fn check_summary_diffs(
     new_summary_contents: &str,
 ) -> Result<()> {
     if existing_summary_contents == new_summary_contents {
-        println!("[✓] SUMMARY.md ok.");
+        info!("[✓] SUMMARY.md ok.");
     } else {
-        eprintln!("[x] SUMMARY.md inconsistent!");
+        error!("[x] SUMMARY.md inconsistent!");
         bail!("SUMMARY.md is inconsistent.");
     }
 
@@ -36,9 +37,9 @@ pub fn check_index_diffs(mut index_file: File, new_index_contents: &str) -> Resu
     let mut existing_index_contents = String::new();
     index_file.read_to_string(&mut existing_index_contents)?;
     if existing_index_contents == new_index_contents {
-        println!("[✓] index.md ok.");
+        info!("[✓] index.md ok.");
     } else {
-        eprintln!("[x] index.md inconsistent!");
+        error!("[x] index.md inconsistent!");
         bail!("index.md is inconsistent.");
     }
 
