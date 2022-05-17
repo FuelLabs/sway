@@ -1,5 +1,6 @@
 library ops;
 
+// @todo remove !
 fn log_u64(val: u64) {
     asm(r1: val) {
         log r1 zero zero zero;
@@ -586,6 +587,23 @@ impl OrdEq for u16 {
 impl OrdEq for u8 {
 }
 impl OrdEq for b256 {
+}
+
+// @todo move up with other impl adds when possible
+impl Add for b256 {
+    fn add(self, other: Self) -> Self {
+        let mut sum: b256 = 0x0000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        let mut a = self;
+        let mut b = other;
+
+        while not(b.eq(0x0000000000000000_0000000000000000_0000000000000000_0000000000000000)) {
+            let carry = a.binary_and(b);
+            sum = a.binary_or(b);
+            b = carry.lsh(1);
+        }
+
+        sum
+    }
 }
 
 /////////////////////////////////////////////////
