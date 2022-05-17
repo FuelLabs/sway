@@ -12,7 +12,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use tracing::{info, instrument};
+use tracing::info;
 use url::Url;
 
 #[derive(Debug)]
@@ -107,7 +107,6 @@ fn print_welcome_message() {
     );
 }
 
-#[instrument(err, skip_all)]
 pub fn init(command: InitCommand) -> Result<()> {
     let project_name = command.project_name;
     validate_name(&project_name, "project name")?;

@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::lock_path;
 use std::{fs, path::PathBuf};
-use tracing::{info, instrument};
+use tracing::info;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
 /// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated
@@ -18,7 +18,6 @@ use tracing::{info, instrument};
 ///
 /// Use the `--package <package-name>` flag to update only a specific package throughout the
 /// dependency graph.
-#[instrument(err, skip_all)]
 pub async fn update(command: UpdateCommand) -> Result<()> {
     let UpdateCommand {
         path,

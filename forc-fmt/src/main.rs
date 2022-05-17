@@ -38,14 +38,14 @@ fn main()  {
         Some(p) => PathBuf::from(p),
         None => std::env::current_dir().expect("cannot get current dir"),
     };
-    if let Err(_err) = format_pkg_at_dir(app, &dir) {
-        error!("forc-fmt error!");
+    if let Err(err) = format_pkg_at_dir(app, &dir) {
+        error!("{}",err);
+        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }
 
 /// Format the package at the given directory.
-#[instrument(err, skip_all)]
 fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {

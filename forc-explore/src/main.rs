@@ -55,13 +55,13 @@ async fn main() {
         Some(Subcommand::Clean) => clean(),
         None => run(app).await,
     };
-    if let Err(_) = result {
-        error!("forc-explore error!");
+    if let Err(err) = result {
+        error!("{}",err);
+        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     } 
 }
 
-#[instrument(err, skip_all)]
 fn clean() -> Result<()> {
     let path = path::web_app();
     if path.exists() {
@@ -70,7 +70,6 @@ fn clean() -> Result<()> {
     Ok(())
 }
 
-#[instrument(err, skip_all)]
 async fn run(app: App) -> Result<()> {
     set_subscriber();
     let App { port, .. } = app;

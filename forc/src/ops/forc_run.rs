@@ -10,9 +10,8 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
-use tracing::{info, instrument};
+use tracing::info;
 
-#[instrument(err, skip_all)]
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)

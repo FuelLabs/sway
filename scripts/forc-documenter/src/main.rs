@@ -267,15 +267,15 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
     }
     Ok(result)
 }
-#[instrument(skip_all)]
 fn main() {
     set_subscriber();
     let cli = Cli::parse();
 
-    if let Err(_err) = match cli.command {
+    if let Err(err) = match cli.command {
         Commands::WriteDocs(command) => write_docs(command),
     }{
-        error!("forc-documentor error!");
+        error!("{}",err);
+        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }

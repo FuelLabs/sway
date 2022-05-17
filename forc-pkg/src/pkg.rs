@@ -23,7 +23,7 @@ use sway_core::{
 use sway_utils::constants;
 use url::Url;
 
-use tracing::{info, instrument};
+use tracing::info;
 
 type GraphIx = u32;
 type Node = Pinned;

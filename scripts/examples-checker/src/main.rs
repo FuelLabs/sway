@@ -9,7 +9,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use tracing::{instrument, info, error};
+use tracing::{info, error};
 use forc_util::set_subscriber;
 
 #[derive(Parser)]
@@ -165,12 +165,12 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     Ok(())
 }
 
-#[instrument(skip_all)]
 fn main(){
     set_subscriber();
     let cli = Cli::parse();
-    if let Err(_err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
-        error!("examples-checker error!");
+    if let Err(err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
+        error!("{}",err);
+        err.chain().skip(1).for_each(|cause| error!("Caused by: {}", cause));
         std::process::exit(1);
     }
 }

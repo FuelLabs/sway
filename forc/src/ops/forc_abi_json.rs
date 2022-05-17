@@ -8,9 +8,8 @@ use serde_json::{json, Value};
 use std::fs::File;
 use std::path::PathBuf;
 use sway_core::TreeType;
-use tracing::{info, instrument};
+use tracing::info;
 
-#[instrument(err, skip_all)]
 pub fn build(command: JsonAbiCommand) -> Result<Value> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
