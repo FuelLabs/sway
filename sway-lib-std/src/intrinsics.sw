@@ -1,7 +1,6 @@
 //! Exposes compiler intrinsics as stdlib wrapper functions.
 library intrinsics;
 
-
 /// Returns whether a generic type `T` is a reference type or not.
 pub fn is_reference_type<T>(value: T) -> bool {
     __is_reference_type::<T>()
