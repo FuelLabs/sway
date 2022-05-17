@@ -50,13 +50,7 @@ pub fn get_formatted_data(
         None => Err(parsed_res
             .errors
             .iter()
-            .map(|e| {
-                format!(
-                    "{:?} at line: {}",
-                    e.to_friendly_error_string(),
-                    e.line_col().0.line,
-                )
-            })
+            .map(|e| format!("{} at line: {}", e, e.line_col().0.line,))
             .collect()),
     }
 }
@@ -681,6 +675,7 @@ fn main() {
         let result = get_formatted_data(test_sway.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
+        println!("{}\n{}", formatted_code, expected_sway);
         assert_eq!(formatted_code, expected_sway);
     }
 

@@ -9,6 +9,7 @@ use crate::{
         },
         TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
     },
+    style::*,
     type_engine::*,
     Ident, TypeParameter,
 };
@@ -92,6 +93,7 @@ impl TypedFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
+        is_snake_case(&name).ok(&mut warnings, &mut errors);
         opts.purity = purity;
 
         // insert type parameters as Unknown types

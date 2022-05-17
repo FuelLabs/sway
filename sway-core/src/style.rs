@@ -1,3 +1,5 @@
+use crate::{error::*, Ident};
+
 /// Find the first index in the string which separates a lowercase character from an uppercase
 /// character. Used for splitting words in a CamelCase style identifier.
 fn find_camel_case_word_boundary(ident: &str) -> Option<usize> {
@@ -31,39 +33,61 @@ fn split_words(ident: &str) -> impl Iterator<Item = &str> {
 }
 
 /// Detect whether an identifier is written in snake_case.
-pub fn is_snake_case(ident: &str) -> bool {
-    let trimmed = ident.trim_start_matches('_');
-    if trimmed.contains("__") {
-        return false;
+pub fn is_snake_case(ident: &Ident) -> CompileResult<()> {
+    let span = ident.span();
+    let name = ident.as_str();
+    let trimmed = name.trim_start_matches('_');
+    if trimmed.contains("__") || trimmed.contains(char::is_uppercase) {
+        return ok(
+            (),
+            vec![CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::NonSnakeCaseFunctionName {
+                    name: ident.clone(),
+                },
+            }],
+            vec![],
+        );
     }
-    if trimmed.contains(char::is_uppercase) {
-        return false;
-    }
-    true
+    ok((), vec![], vec![])
 }
 
 /// Detect whether an identifier is written in SCREAMING_SNAKE_CASE.
-pub fn is_screaming_snake_case(ident: &str) -> bool {
-    let trimmed = ident.trim_start_matches('_');
-    if trimmed.contains("__") {
-        return false;
+pub fn is_screaming_snake_case(ident: &Ident) -> CompileResult<()> {
+    let trimmed = ident.as_str().trim_start_matches('_');
+    let span = ident.span();
+    if trimmed.contains("__") || trimmed.contains(char::is_lowercase) {
+        return ok(
+            (),
+            vec![CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::NonScreamingSnakeCaseConstName {
+                    name: ident.clone(),
+                },
+            }],
+            vec![],
+        );
     }
-    if trimmed.contains(char::is_lowercase) {
-        return false;
-    }
-    true
+    ok((), vec![], vec![])
 }
 
 /// Detect whether an identifier is written in UpperCamelCase.
-pub fn is_upper_camel_case(ident: &str) -> bool {
-    let trimmed = ident.trim_start_matches('_');
-    if trimmed.contains('_') {
-        return false;
+pub fn is_upper_camel_case(ident: &Ident) -> CompileResult<()> {
+    let trimmed = ident.as_str().trim_start_matches('_');
+    let span = ident.span();
+    if trimmed.contains('_') || trimmed.starts_with(char::is_lowercase) {
+        return ok(
+            (),
+            vec![CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::NonScreamingSnakeCaseConstName {
+                    name: ident.clone(),
+                },
+            }],
+            vec![],
+        );
     }
-    if trimmed.starts_with(char::is_lowercase) {
-        return false;
-    }
-    true
+    ok((), vec![], vec![])
 }
 
 /// Convert an identifier into snake_case. This is a best-guess at what the identifier would look
@@ -125,6 +149,7 @@ pub fn to_upper_camel_case(ident: &str) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use sway_types::Span;
 
     #[test]
     fn detect_styles() {
@@ -145,30 +170,46 @@ mod test {
         ];
         let screaming_snake_case_or_upper_camel_case_idents = ["HELLO", "__HELLO", "BLAH32"];
         let styleless_idents = ["Mix_Of_Things", "__Mix_Of_Things", "FooBar_123"];
-        for ident in snake_case_idents {
-            assert!(is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        let snake_case_idents = snake_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let screaming_snake_case_idents = screaming_snake_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let styleless_idents = styleless_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let screaming_snake_case_or_upper_camel_case_idents =
+            screaming_snake_case_or_upper_camel_case_idents
+                .into_iter()
+                .map(|x| Ident::new_with_override(x, Span::dummy()));
+        let upper_camel_case_idents = upper_camel_case_idents
+            .into_iter()
+            .map(|x| Ident::new_with_override(x, Span::dummy()));
+        for ref ident in snake_case_idents {
+            assert!(is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
-        for ident in screaming_snake_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        for ref ident in screaming_snake_case_idents {
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
-        for ident in upper_camel_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(is_upper_camel_case(ident));
+        for ref ident in upper_camel_case_idents {
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(is_upper_camel_case(ident).is_ok_no_warn());
         }
-        for ident in screaming_snake_case_or_upper_camel_case_idents {
-            assert!(!is_snake_case(ident));
-            assert!(is_screaming_snake_case(ident));
-            assert!(is_upper_camel_case(ident));
+        for ref ident in screaming_snake_case_or_upper_camel_case_idents {
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(is_upper_camel_case(ident).is_ok_no_warn());
         }
-        for ident in styleless_idents {
-            assert!(!is_snake_case(ident));
-            assert!(!is_screaming_snake_case(ident));
-            assert!(!is_upper_camel_case(ident));
+        for ref ident in styleless_idents {
+            assert!(!is_snake_case(ident).is_ok_no_warn());
+            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
+            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
         }
     }
 
