@@ -10,6 +10,9 @@ abigen!(
 );
 
 fn hash_u64(number: u64) -> [u8; 32] {
+    // Note!
+    // Numbers will be padded into u64 in sway regardless of whether you declare a smaller type
+    // Therefore tests pass because we use a rust u64 type rather than any smaller type
     Sha256::digest(number.to_be_bytes()).into()
 }
 
@@ -50,37 +53,55 @@ async fn test_hash_u64() {
 #[tokio::test]
 async fn test_sha256_u8() {
     let (instance, _id, _, _) = get_hashing_instance().await;
+
+    let expected_1 = hash_u64(254);
+    let expected_2 = hash_u64(253);
     
-    let call_1 = instance.sha256_u8(254).call().await.unwrap();
-    let call_2 = instance.sha256_u8(254).call().await.unwrap();
-    let call_3 = instance.sha256_u8(253).call().await.unwrap();
+    let call_1 = instance.sha256_u8(254u8).call().await.unwrap();
+    let call_2 = instance.sha256_u8(254u8).call().await.unwrap();
+    let call_3 = instance.sha256_u8(253u8).call().await.unwrap();
 
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
 async fn test_sha256_u16() {
     let (instance, _id, _, _) = get_hashing_instance().await;
 
-    let call_1 = instance.sha256_u16(65534).call().await.unwrap();
-    let call_2 = instance.sha256_u16(65534).call().await.unwrap();
-    let call_3 = instance.sha256_u16(65533).call().await.unwrap();
+    let expected_1 = hash_u64(65534);
+    let expected_2 = hash_u64(65533);
+
+    let call_1 = instance.sha256_u16(65534u16).call().await.unwrap();
+    let call_2 = instance.sha256_u16(65534u16).call().await.unwrap();
+    let call_3 = instance.sha256_u16(65533u16).call().await.unwrap();
 
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
 async fn test_sha256_u32() {
     let (instance, _id, _, _) = get_hashing_instance().await;
 
-    let call_1 = instance.sha256_u32(4294967294).call().await.unwrap();
-    let call_2 = instance.sha256_u32(4294967294).call().await.unwrap();
-    let call_3 = instance.sha256_u32(4294967293).call().await.unwrap();
+    let expected_1 = hash_u64(4294967294);
+    let expected_2 = hash_u64(4294967293);
+
+    let call_1 = instance.sha256_u32(4294967294u32).call().await.unwrap();
+    let call_2 = instance.sha256_u32(4294967294u32).call().await.unwrap();
+    let call_3 = instance.sha256_u32(4294967293u32).call().await.unwrap();
 
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
