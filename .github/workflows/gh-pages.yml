@@ -18,6 +18,11 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:

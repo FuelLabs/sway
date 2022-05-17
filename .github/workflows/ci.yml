@@ -109,6 +109,7 @@ jobs:
           args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
+    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -117,6 +118,11 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -129,7 +135,6 @@ jobs:
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           mdbook build docs &> tmp.txt
-          cat tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             rm tmp.txt && exit 1
