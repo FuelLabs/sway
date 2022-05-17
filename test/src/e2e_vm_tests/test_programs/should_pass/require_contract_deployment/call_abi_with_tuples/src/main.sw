@@ -4,7 +4,7 @@ use abi_with_tuples::*;
 use std::assert::assert;
 
 fn main() -> bool {
-    let the_abi = abi(MyContract, 0xeff8d28ce02d20aac8e32c811f1760f5031670d6a141bd7c0ee6ba594ac31355);
+    let the_abi = abi(MyContract, 0x0e1d75ab5fb3354cc69e3cbdef35e9a94c261df54671d78ce3f08bd66562c309);
     
     let param1 = (
         Person {

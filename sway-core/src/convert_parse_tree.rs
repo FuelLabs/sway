@@ -1825,7 +1825,7 @@ fn if_expr_to_expression(
                         result: else_block,
                         span: else_block_span,
                     }
-                },
+                }
                 None => {
                     let else_block_span = then_block.span();
                     MatchBranch {
