@@ -1812,19 +1812,31 @@ fn if_expr_to_expression(
             let scrutinee_span = scrutinee.span();
             let mut branches = vec![MatchBranch {
                 scrutinee,
-                result: then_block,
+                result: then_block.clone(),
                 span: Span::join(scrutinee_span, then_block_span),
             }];
-            if let Some(else_block) = else_block {
-                let else_block_span = else_block.span();
-                branches.push(MatchBranch {
-                    scrutinee: Scrutinee::CatchAll {
-                        span: else_block_span.clone(),
-                    },
-                    result: else_block,
-                    span: else_block_span,
-                });
-            }
+            branches.push(match else_block {
+                Some(else_block) => {
+                    let else_block_span = else_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: else_block,
+                        span: else_block_span,
+                    }
+                },
+                None => {
+                    let else_block_span = then_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: then_block,
+                        span: else_block_span,
+                    }
+                }
+            });
             Expression::MatchExp {
                 value: Box::new(expr_to_expression(ec, *rhs)?),
                 branches,
