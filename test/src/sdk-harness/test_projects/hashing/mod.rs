@@ -21,6 +21,19 @@ fn hash_bool(value: bool) -> [u8; 32] {
     hash.into()
 }
 
+fn hash_str(text: &str) -> [u8; 32] {
+    let mut buffer: Vec<u8> = Vec::new();
+    for character in text.chars() {
+        buffer.push(character as u8);
+    }
+
+    while buffer.len() % 8 != 0 {
+        buffer.push(0);
+    }
+
+    Sha256::digest(buffer).into()
+}
+
 async fn get_hashing_instance() -> (HashingTestContract, ContractId, LocalWallet, LocalWallet) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
@@ -125,11 +138,19 @@ async fn test_sha256_u64() {
 #[tokio::test]
 async fn test_sha256_str() {
     let (instance, _id, _, _) = get_hashing_instance().await;
-    let result1 = instance.sha256_str(String::from("John")).call().await.unwrap();
-    let result2 = instance.sha256_str(String::from("John")).call().await.unwrap();
-    let result3 = instance.sha256_str(String::from("Nick")).call().await.unwrap();
-    assert_eq!(result1.value, result2.value);
-    assert_ne!(result1.value, result3.value);
+
+    let expected_1 = hash_str("John");
+    let expected_2 = hash_str("Nick");
+
+    let call_1 = instance.sha256_str(String::from("John")).call().await.unwrap();
+    let call_2 = instance.sha256_str(String::from("John")).call().await.unwrap();
+    let call_3 = instance.sha256_str(String::from("Nick")).call().await.unwrap();
+
+    assert_eq!(call_1.value, call_2.value);
+    assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
