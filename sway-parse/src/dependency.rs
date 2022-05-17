@@ -6,8 +6,8 @@ pub struct Dependency {
     pub semicolon_token: SemicolonToken,
 }
 
-impl Dependency {
-    pub fn span(&self) -> Span {
+impl Spanned for Dependency {
+    fn span(&self) -> Span {
         Span::join(self.dep_token.span(), self.semicolon_token.span())
     }
 }
@@ -17,8 +17,8 @@ pub struct DependencyPath {
     pub suffixes: Vec<(ForwardSlashToken, Ident)>,
 }
 
-impl DependencyPath {
-    pub fn span(&self) -> Span {
+impl Spanned for DependencyPath {
+    fn span(&self) -> Span {
         match self.suffixes.last() {
             Some((_forward_slash_token, suffix)) => {
                 Span::join(self.prefix.span().clone(), suffix.span().clone())
