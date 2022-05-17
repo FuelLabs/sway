@@ -18,7 +18,10 @@ use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use sway_types::span::Span;
 
 use either::Either;
-use std::{collections::HashSet, fmt};
+use std::{
+    collections::HashSet,
+    fmt::{self, Write},
+};
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
@@ -1464,7 +1467,7 @@ impl fmt::Display for Op {
             while op_and_comment.len() < COMMENT_START_COLUMN {
                 op_and_comment.push(' ');
             }
-            op_and_comment.push_str(&format!("; {}", self.comment))
+            write!(op_and_comment, "; {}", self.comment)?;
         }
 
         write!(fmtr, "{}", op_and_comment)

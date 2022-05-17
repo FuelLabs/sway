@@ -1,6 +1,5 @@
-use std::fmt;
+use std::fmt::{self, Write};
 
-use itertools::Itertools;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -630,7 +629,7 @@ impl fmt::Display for Pattern {
             Pattern::Tuple(elems) => {
                 let mut builder = String::new();
                 builder.push('(');
-                builder.push_str(&format!("{}", elems));
+                write!(builder, "{}", elems)?;
                 builder.push(')');
                 builder
             }
@@ -681,13 +680,14 @@ impl fmt::Display for StructPattern {
                 let (front, _) = self.fields.split_at(start_of_wildcard_tail);
                 let mut inner_builder = front
                     .iter()
-                    .map(|(name, field)| {
+                    .map(|(name, field)| -> Result<_, _> {
                         let mut inner_builder = String::new();
                         inner_builder.push_str(name);
                         inner_builder.push_str(": ");
-                        inner_builder.push_str(&format!("{}", field));
-                        inner_builder
+                        write!(inner_builder, "{}", field)?;
+                        Ok(inner_builder)
                     })
+                    .collect::<Result<Vec<_>, _>>()?
                     .join(", ");
                 inner_builder.push_str(", ...");
                 inner_builder
@@ -695,13 +695,14 @@ impl fmt::Display for StructPattern {
             None => self
                 .fields
                 .iter()
-                .map(|(name, field)| {
+                .map(|(name, field)| -> Result<_, _> {
                     let mut inner_builder = String::new();
                     inner_builder.push_str(name);
                     inner_builder.push_str(": ");
-                    inner_builder.push_str(&format!("{}", field));
-                    inner_builder
+                    write!(inner_builder, "{}", field)?;
+                    Ok(inner_builder)
                 })
+                .collect::<Result<Vec<_>, _>>()?
                 .join(", "),
         };
         builder.push_str(&s);
