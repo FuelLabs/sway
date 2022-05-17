@@ -15,8 +15,6 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::Layer;
 
 pub mod restricted;
 
@@ -412,55 +410,6 @@ fn construct_window<'a>(
     &input[calculated_start_ix..calculated_end_ix]
 }
 
-struct UserFacingVisitor;
-impl tracing::field::Visit for UserFacingVisitor {
-    fn record_f64(&mut self, _: &tracing::field::Field, value: f64) {
-        println!("{}", value)
-    }
-
-    fn record_i64(&mut self, _: &tracing::field::Field, value: i64) {
-        println!("{}", value)
-    }
-
-    fn record_u64(&mut self, _: &tracing::field::Field, value: u64) {
-        println!("{}", value)
-    }
-
-    fn record_bool(&mut self, _: &tracing::field::Field, value: bool) {
-        println!("{}", value)
-    }
-
-    fn record_str(&mut self, _: &tracing::field::Field, value: &str) {
-        println!("{}", value)
-    }
-
-    fn record_error(
-        &mut self,
-        _: &tracing::field::Field,
-        value: &(dyn std::error::Error + 'static),
-    ) {
-        println!("{}", value)
-    }
-
-    fn record_debug(&mut self, _: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        println!("{:?}", value)
-    }
-}
-struct UserFacingLayer;
-impl<S> Layer<S> for UserFacingLayer
-where
-    S: tracing::Subscriber,
-{
-    fn on_event(
-        &self,
-        event: &tracing::Event<'_>,
-        _ctx: tracing_subscriber::layer::Context<'_, S>,
-    ) {
-        let mut visitor = UserFacingVisitor;
-        event.record(&mut visitor);
-    }
-}
-
 const LOG_FILTER: &str = "RUST_LOG";
 const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
 
@@ -477,15 +426,18 @@ pub fn set_subscriber() {
         })
         .unwrap_or(true);
 
+    let sub = tracing_subscriber::fmt::Subscriber::builder().with_env_filter(filter);
+
     if human_logging {
-        tracing_subscriber::registry()
-            .with(filter)
-            .with(UserFacingLayer)
+        sub.with_ansi(true)
+            .with_level(false)
+            .with_file(false)
+            .with_line_number(false)
+            .without_time()
+            .with_target(false)
             .init();
     } else {
-        tracing_subscriber::fmt::Subscriber::builder()
-            .with_env_filter(filter)
-            .with_ansi(false)
+        sub.with_ansi(false)
             .with_level(true)
             .with_line_number(true)
             .json()
