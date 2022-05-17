@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "call_abi_with_tuples"
 
 [dependencies]
-auth_testing_abi = { path = "../../test_abis/auth_testing_abi" }
+abi_with_tuples = { path = "../../test_abis/abi_with_tuples" }
 std = { path = "../../../../../../../sway-lib-std" }

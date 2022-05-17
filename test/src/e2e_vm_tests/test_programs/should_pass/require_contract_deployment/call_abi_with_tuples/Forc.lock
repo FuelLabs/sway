@@ -1,16 +1,16 @@
 [[package]]
-name = 'call_increment_contract'
+name = 'abi_with_tuples'
+dependencies = ['core']
+
+[[package]]
+name = 'call_abi_with_tuples'
 dependencies = [
-    'increment_abi',
+    'abi_with_tuples',
     'std',
 ]
 
 [[package]]
 name = 'core'
-dependencies = []
-
-[[package]]
-name = 'increment_abi'
 dependencies = []
 
 [[package]]
