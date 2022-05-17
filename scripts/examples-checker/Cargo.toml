@@ -8,5 +8,5 @@ publish = false
 [dependencies]
 anyhow = "1.0.41"
 clap = { version = "3.1", features = ["env", "derive"] }
-tracing = "0.1"
 forc-util = { version = "0.12.2", path = "../../forc-util" }
+tracing = "0.1"

@@ -20,6 +20,6 @@ serde_ignored = "0.1"
 sway-core = { version = "0.12.2", path = "../sway-core" }
 sway-utils = { version = "0.12.2", path = "../sway-utils" }
 toml = "0.5"
-url = { version = "2.2", features = ["serde"] }
 tracing = "0.1"
+url = { version = "2.2", features = ["serde"] }
 walkdir = "2"
