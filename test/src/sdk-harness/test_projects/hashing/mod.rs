@@ -48,6 +48,30 @@ fn hash_array(arr: [u8; 16]) -> [u8; 32] {
     Sha256::digest(arr).into()
 }
 
+fn hash_enum(arr: [u8; 16]) -> [u8; 32] {
+    /*
+        An enum consists of 2 parts in the 16 byte array
+        The first 8 bytes are for the values that the enum can have
+        Idk what the second 8 bytes are for
+
+        enum Test {
+            A,
+            B,
+            C
+        }
+
+        arr of Test::A will be
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        arr of Test::B will be
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        arr of Test::C will be
+        [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+    */
+    Sha256::digest(arr).into()
+}
+
 async fn get_hashing_instance() -> (HashingTestContract, ContractId, LocalWallet, LocalWallet) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
@@ -247,9 +271,17 @@ async fn test_sha256_struct() {
 #[tokio::test]
 async fn test_sha256_enum() {
     let (instance, _id, _, _) = get_hashing_instance().await;
-    let result1 = instance.sha256_enum(true).call().await.unwrap();
-    let result2 = instance.sha256_enum(true).call().await.unwrap();
-    let result3 = instance.sha256_enum(false).call().await.unwrap();
-    assert_eq!(result1.value, result2.value);
-    assert_ne!(result1.value, result3.value);
+
+    let expected_1 = hash_enum([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let expected_2 = hash_enum([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+    let call_1 = instance.sha256_enum(true).call().await.unwrap();
+    let call_2 = instance.sha256_enum(true).call().await.unwrap();
+    let call_3 = instance.sha256_enum(false).call().await.unwrap();
+    
+    assert_eq!(call_1.value, call_2.value);
+    assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
