@@ -1,7 +1,6 @@
-use anyhow::{anyhow, Result};
 use forc_util::{find_parent_dir_with_file, println_yellow_err};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub use crate::error::FormatterError;
 use crate::{
@@ -11,6 +10,7 @@ use crate::{
         user_opts::*, whitespace::Whitespace,
     },
     constants::SWAY_FORMAT_FILE_NAME,
+    error::ConfigError,
 };
 
 /// A finalized `swayfmt` config.
@@ -106,7 +106,7 @@ impl Config {
     ///
     /// This is a combination of `ConfigOptions::from_dir` and `Config::from_opts`,
     /// and takes care of constructing a finalized config.
-    pub fn from_dir(config_path: &Path) -> Result<Self> {
+    pub fn from_dir(config_path: &Path) -> Result<Self, ConfigError> {
         let config_opts = ConfigOptions::from_dir(config_path)?;
         Ok(Self::from_opts(config_opts))
     }
@@ -114,24 +114,28 @@ impl Config {
 
 impl ConfigOptions {
     /// Given a path to a `swayfmt.toml`, read and construct the `ConfigOptions`.
-    pub fn from_file(config_path: &Path) -> Result<Self> {
-        let config_str = std::fs::read_to_string(config_path)
-            .map_err(|e| anyhow!("failed to read config at {:?}: {}", config_path, e))?;
+    pub fn from_file(config_path: PathBuf) -> Result<Self, ConfigError> {
+        let config_str =
+            std::fs::read_to_string(&config_path).map_err(|e| ConfigError::ReadConfig {
+                path: config_path,
+                err: e,
+            })?;
         let toml_de = &mut toml::de::Deserializer::new(&config_str);
         let config_opts: Self = serde_ignored::deserialize(toml_de, |field| {
             let warning = format!("  WARNING! found unusable configuration: {}", field);
             println_yellow_err(&warning);
         })
-        .map_err(|e| anyhow!("failed to parse config: {}.", e))?;
+        .map_err(|e| ConfigError::Deserialize { err: (e) })?;
         Ok(config_opts)
     }
     /// Given a directory to a forc project containing a `swayfmt.toml`, read the config.
     ///
     /// This is short for `ConfigOptions::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(dir: &Path) -> Result<Self> {
-        let config_dir = find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).unwrap();
-        let file_path = config_dir.join(SWAY_FORMAT_FILE_NAME);
-        Self::from_file(&file_path)
+    pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
+        let config_dir =
+            find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).ok_or(ConfigError::NotFound);
+        let file_path = config_dir.unwrap().join(SWAY_FORMAT_FILE_NAME);
+        Self::from_file(file_path)
     }
 }
