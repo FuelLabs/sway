@@ -167,34 +167,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
-<p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
-<code>forc init</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
-these Rust tests by using <code>forc test</code> or going inside the package and using <code>cargo test</code></p>
-<h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
-<p>forc test [OPTIONS] [TEST_NAME] [-- &lt;CARGO_TEST_ARGS&gt;...]</p>
-<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
-<p>&lt;<em>TEST_NAME</em>&gt;
-If specified, only run tests containing this string in their names</p>
-<p>&lt;<em>CARGO_TEST_ARGS</em>&gt;</p>
-<p>..
-All trailing arguments following <code>--</code> are collected within this argument.</p>
-<p>E.g. Given the following:</p>
-<p><code>forc test -- foo bar baz</code></p>
-<p>The arguments <code>foo</code>, <code>bar</code> and <code>baz</code> are forwarded on to <code>cargo test</code> like so:</p>
-<p><code>cargo test -- foo bar baz</code></p>
-<h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
-<p><code>--cargo-test-opts</code> &lt;<em>CARGO_TEST_OPTS</em>&gt;</p>
-<p>Options passed through to the <code>cargo test</code> invocation.</p>
-<p>E.g. Given the following:</p>
-<p><code>forc test --cargo-test-opts=&quot;--color always&quot;</code></p>
-<p>The <code>--color always</code> option is forwarded to <code>cargo test</code> like so:</p>
-<p><code>cargo test --color always</code></p>
-<p><code>-h</code>, <code>--help</code> </p>
-<p>Print help information</p>
-<h2 id="examples"><a class="header" href="#examples">EXAMPLES:</a></h2>
-<p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc init</code>).</p>
-<p>You can find an example under the <a href="../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
+                        <h1 id="forc-test"><a class="header" href="#forc-test">forc test</a></h1>
 
                     </main>
 

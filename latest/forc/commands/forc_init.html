@@ -167,46 +167,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="forc-init"><a class="header" href="#forc-init">forc-init</a></h1>
-<p>Create a new Forc project</p>
-<h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
-<p>forc init [OPTIONS] &lt;PROJECT_NAME&gt;</p>
-<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
-<p>&lt;<em>PROJECT_NAME</em>&gt;</p>
-<p>The name of your project</p>
-<h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
-<p><code>--contract</code> </p>
-<p>The default program type, excluding all flags or adding this flag
-creates a basic contract program</p>
-<p><code>-h</code>, <code>--help</code> </p>
-<p>Print help information</p>
-<p><code>--library</code> </p>
-<p>Adding this flag creates an empty library program</p>
-<p><code>--predicate</code> </p>
-<p>Adding this flag creates an empty predicate program</p>
-<p><code>--script</code> </p>
-<p>Adding this flag creates an empty script program</p>
-<p><code>-t</code>, <code>--template</code> &lt;<em>TEMPLATE</em>&gt;</p>
-<p>Initialize a new project from a template.</p>
-<p>Example Templates:</p>
-<ul>
-<li>counter</li>
-</ul>
-<h2 id="examples"><a class="header" href="#examples">EXAMPLES:</a></h2>
-<pre><code class="language-console">$ forc init my-fuel-project
-$ cd my-fuel-project
-$ tree
-.
-├── Cargo.toml
-├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
-</code></pre>
-<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies. <code>Cargo.toml</code> is the Rust project manifest file, used by the Rust-based tests package.</p>
-<p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
-<p>A <code>tests/</code> directory is also created. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (<code>fuels-rs</code>). More on this in the <code>Test</code> section down below.</p>
+                        <h1 id="forc-init"><a class="header" href="#forc-init">forc init</a></h1>
 
                     </main>
 
