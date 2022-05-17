@@ -4,14 +4,15 @@ use std::intrinsics::*;
 use std::assert::assert;
 use std::constants::ZERO;
 
-
 struct TestStruct {
     field_1: bool,
     field_2: u64,
 }
 
 fn main() -> bool {
-    let test_array = [42u16; 3];
+    let test_array = [42u16;
+    3];
+
     let test_struct = TestStruct {
         field_1: false,
         field_2: 11,
