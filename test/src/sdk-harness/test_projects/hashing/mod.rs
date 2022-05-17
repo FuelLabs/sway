@@ -41,6 +41,13 @@ fn hash_tuple(arr: [u8; 16]) -> [u8; 32] {
     Sha256::digest(arr).into()
 }
 
+fn hash_array(arr: [u8; 16]) -> [u8; 32] {
+    // An array is hashed by converting each element into bytes and then combining them together
+    // in the sequential order that they are in the array
+    // E.g. (18, 555) -> [0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 2, 43]
+    Sha256::digest(arr).into()
+}
+
 async fn get_hashing_instance() -> (HashingTestContract, ContractId, LocalWallet, LocalWallet) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
@@ -212,11 +219,19 @@ async fn test_sha256_tuple() {
 #[tokio::test]
 async fn test_sha256_array() {
     let (instance, _id, _, _) = get_hashing_instance().await;
-    let result1 = instance.sha256_array(1, 5).call().await.unwrap();
-    let result2 = instance.sha256_array(1, 5).call().await.unwrap();
-    let result3 = instance.sha256_array(1, 6).call().await.unwrap();
-    assert_eq!(result1.value, result2.value);
-    assert_ne!(result1.value, result3.value);
+
+    let expected_1 = hash_array([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5]);
+    let expected_2 = hash_array([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6]);
+
+    let call_1 = instance.sha256_array(1, 5).call().await.unwrap();
+    let call_2 = instance.sha256_array(1, 5).call().await.unwrap();
+    let call_3 = instance.sha256_array(1, 6).call().await.unwrap();
+
+    assert_eq!(call_1.value, call_2.value);
+    assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
