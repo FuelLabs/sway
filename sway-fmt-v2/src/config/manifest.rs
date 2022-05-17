@@ -134,8 +134,8 @@ impl ConfigOptions {
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
         let config_dir =
-            find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).ok_or(ConfigError::NotFound);
-        let file_path = config_dir.unwrap().join(SWAY_FORMAT_FILE_NAME);
+            find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).ok_or(ConfigError::NotFound)?;
+        let file_path = config_dir.join(SWAY_FORMAT_FILE_NAME);
         Self::from_file(file_path)
     }
 }
