@@ -8,5 +8,7 @@ title = "The Sway Programming Language"
 [output.html]
 git-repository-url = "https://github.com/FuelLabs/sway"
 
+[preprocessor.forc-documenter]
+
 [rust]
 edition = "2021"

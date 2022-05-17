@@ -23,11 +23,11 @@ script {
 }
 
 !0 = filepath "/path/to/array_simple.sw"
-!1 = span !0 42 60
+!1 = span !0 41 61
 !2 = span !0 42 47
 !3 = span !0 49 53
 !4 = span !0 55 60
 !5 = span !0 33 62
 !6 = span !0 67 68
 !7 = span !0 69 70
-!8 = span !0 67 72
+!8 = span !0 67 71

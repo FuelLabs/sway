@@ -2519,13 +2519,11 @@ mod tests {
 
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
-        parser::{Rule, SwayParser},
         semantic_analysis::{
             namespace::{self, Namespace},
-            TreeType, TypedParseTree,
+            TypedParseTree,
         },
     };
-    use pest::Parser;
 
     // -------------------------------------------------------------------------------------------------
 
@@ -2635,24 +2633,6 @@ mod tests {
     // -------------------------------------------------------------------------------------------------
 
     fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let mut parsed =
-            SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
-
-        let program_type = match parsed
-            .peek()
-            .unwrap()
-            .into_inner()
-            .peek()
-            .unwrap()
-            .as_rule()
-        {
-            Rule::script => TreeType::Script,
-            Rule::contract => TreeType::Contract,
-            Rule::predicate => TreeType::Predicate,
-            Rule::library => todo!(),
-            _ => unreachable!("unexpected program type"),
-        };
-
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
 
@@ -2661,18 +2641,18 @@ mod tests {
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
             use_orig_asm: false,
-            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
             generated_names: Default::default(),
         };
-
         let mut warnings = vec![];
         let mut errors = vec![];
+
         let parse_tree =
-            crate::parse_root_from_pairs(parsed.next().unwrap().into_inner(), Some(&build_config))
-                .unwrap(&mut warnings, &mut errors);
+            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
+        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
+            .unwrap(&mut warnings, &mut errors);
 
         let mut dead_code_graph = ControlFlowGraph {
             graph: Graph::new(),
@@ -2683,7 +2663,7 @@ mod tests {
         TypedParseTree::type_check(
             parse_tree.tree,
             &mut namespace,
-            &program_type,
+            &parse_tree.tree_type,
             &build_config,
             &mut dead_code_graph,
         )

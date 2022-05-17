@@ -25,7 +25,6 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let DeployCommand {
         path,
         use_orig_asm,
-        use_orig_parser,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -41,7 +40,6 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let build_command = BuildCommand {
         path,
         use_orig_asm,
-        use_orig_parser,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
