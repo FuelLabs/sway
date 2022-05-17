@@ -6,10 +6,11 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
+        namespace::Namespace,
         IsConstant, TypeCheckArguments, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
-    CompileError, CompileResult, LazyOp, Literal, MatchBranch, Namespace, Scrutinee, TypeInfo,
+    CompileError, CompileResult, LazyOp, Literal, MatchBranch, Scrutinee, TypeInfo,
 };
 
 use super::typed_match_branch::TypedMatchBranch;

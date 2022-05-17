@@ -8,9 +8,6 @@ license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 description = "Sway core language."
 
-[features]
-selector-debug = ["clap", "hex"]
-
 [dependencies]
 clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
@@ -25,8 +22,6 @@ im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
 nanoid = "0.4"
-pest = { version = "3.0.4", package = "fuel-pest" }
-pest_derive = { version = "3.0.4", package = "fuel-pest_derive" }
 petgraph = "0.6"
 prettydiff = "0.5"
 regex = "1"
@@ -38,8 +33,3 @@ sway-parse = { version = "0.12.2", path = "../sway-parse" }
 sway-types = { version = "0.12.2", path = "../sway-types" }
 sway-utils = { version = "0.12.2", path = "../sway-utils" }
 thiserror = "1.0"
-
-[[bin]]
-name = "selector-debug"
-path = "utils/selector_debug.rs"
-required-features = ["selector-debug"]

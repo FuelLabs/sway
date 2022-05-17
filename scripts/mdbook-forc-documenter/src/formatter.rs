@@ -1,6 +1,3 @@
-use crate::checkers::{is_arg, is_args_line, is_option, is_options_line};
-use crate::constants;
-
 #[derive(PartialEq)]
 pub enum LineKind {
     SubHeader,
@@ -10,7 +7,7 @@ pub enum LineKind {
 }
 
 fn get_line_kind(line: &str) -> LineKind {
-    if constants::SUBHEADERS.contains(&line) {
+    if SUBHEADERS.contains(&line) {
         LineKind::SubHeader
     } else if is_args_line(line) {
         LineKind::Arg
@@ -20,15 +17,27 @@ fn get_line_kind(line: &str) -> LineKind {
         LineKind::Text
     }
 }
-pub fn format_command_doc_name(command: &str) -> String {
-    "forc_".to_owned() + command + ".md"
+
+pub const SUBHEADERS: &[&str] = &["USAGE:", "ARGS:", "OPTIONS:", "SUBCOMMANDS:"];
+
+pub fn is_args_line(line: &str) -> bool {
+    line.trim().starts_with('<')
 }
 
-pub fn format_index_entry_name(command: &str) -> String {
-    "forc ".to_owned() + command
+pub fn is_options_line(line: &str) -> bool {
+    line.trim().starts_with('-') && line.trim().chars().nth(1).unwrap() != ' '
 }
-pub fn format_index_entry_string(document_name: &str, index_entry_name: &str) -> String {
-    "- [".to_owned() + index_entry_name + "](./" + document_name + ")\n"
+
+pub fn is_option(token: &str) -> bool {
+    token.starts_with('-')
+}
+
+pub fn is_arg(token: &str) -> bool {
+    token.starts_with('<')
+}
+
+pub fn format_header_line(header_line: &str) -> String {
+    "\n# ".to_owned() + header_line + "\n"
 }
 
 pub fn format_line(line: &str) -> String {
@@ -40,28 +49,8 @@ pub fn format_line(line: &str) -> String {
     }
 }
 
-pub fn format_header_line(header_line: &str) -> String {
-    "\n# ".to_owned() + header_line + "\n"
-}
-
 fn format_subheader_line(subheader_line: &str) -> String {
     "\n## ".to_owned() + subheader_line + "\n"
-}
-
-fn format_arg(arg: &str) -> String {
-    let mut result = String::new();
-    let mut inner = arg.to_string();
-
-    inner.pop();
-    inner.remove(0);
-
-    result.push('<');
-    result.push('_');
-    result.push_str(&inner);
-    result.push('_');
-    result.push('>');
-
-    result
 }
 
 fn format_arg_line(arg_line: &str) -> String {
@@ -121,6 +110,22 @@ fn format_option_line(option_line: &str) -> String {
     "\n".to_owned() + &result
 }
 
+fn format_arg(arg: &str) -> String {
+    let mut result = String::new();
+    let mut inner = arg.to_string();
+
+    inner.pop();
+    inner.remove(0);
+
+    result.push('<');
+    result.push('_');
+    result.push_str(&inner);
+    result.push('_');
+    result.push('>');
+
+    result
+}
+
 fn format_option(option: &str) -> String {
     match option.ends_with(',') {
         true => {
@@ -132,23 +137,38 @@ fn format_option(option: &str) -> String {
     }
 }
 
-pub fn format_index_line_for_summary(index_line: &str) -> String {
-    let mut formatted_index_line = String::new();
-    let mut pushed = false;
-    for c in index_line.chars() {
-        formatted_index_line.push(c);
-        if c == '.' && !pushed {
-            pushed = true;
-            formatted_index_line.push_str("/forc/commands");
-        }
-    }
-
-    formatted_index_line
+/// Index entries should be in the form of:
+/// - [forc addr2line](./forc_addr2line.md)\n
+pub fn format_index_entry(forc_command_str: &str) -> String {
+    let command_name = forc_command_str;
+    let command_link = forc_command_str.replace(' ', "_");
+    format!("- [{}](./{}.md)\n", command_name, command_link)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{format_arg_line, format_header_line, format_option_line, format_subheader_line};
+    use super::*;
+
+    #[test]
+    fn test_is_options_line() {
+        let example_option_line_1= "    -s, --silent             Silent mode. Don't output any warnings or errors to the command line";
+        let example_option_line_2 = "    -o <JSON_OUTFILE>        If set, outputs a json file representing the output json abi";
+        let example_option_line_3 = " - counter";
+
+        assert!(is_options_line(example_option_line_1));
+        assert!(is_options_line(example_option_line_2));
+        assert!(!is_options_line(example_option_line_3));
+    }
+
+    #[test]
+    fn test_format_index_entry() {
+        let forc_command = "forc build";
+
+        assert_eq!(
+            format_index_entry(forc_command),
+            "- [forc build](./forc_build.md)\n"
+        );
+    }
 
     #[test]
     fn test_format_header_line() {

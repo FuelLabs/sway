@@ -1,18 +1,13 @@
 use crate::{
-    build_config::BuildConfig,
     error::*,
-    parse_tree::{declaration::TypeParameter, ident, Visibility},
-    parser::Rule,
+    parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::{
         ast_node::TypedEnumVariant, declaration::EnforceTypeArguments, namespace::Namespace,
     },
-    style::is_upper_camel_case,
     type_engine::*,
 };
 
 use sway_types::{ident::Ident, span::Span};
-
-use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration {
@@ -29,100 +24,6 @@ pub struct EnumVariant {
     pub(crate) r#type: TypeInfo,
     pub(crate) tag: usize,
     pub(crate) span: Span,
-}
-
-impl EnumDeclaration {
-    pub(crate) fn parse_from_pair(
-        decl_inner: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let path = config.map(|c| c.path());
-        let whole_enum_span = Span::from_pest(decl_inner.as_span(), path);
-        let inner = decl_inner.into_inner();
-        let mut visibility = Visibility::Private;
-        let mut enum_name = None;
-        let mut type_params = None;
-        let mut where_clause = None;
-        let mut variants = None;
-        for pair in inner {
-            match pair.as_rule() {
-                Rule::enum_name => {
-                    enum_name = Some(pair);
-                }
-                Rule::type_params => {
-                    type_params = Some(pair);
-                }
-                Rule::trait_bounds => {
-                    where_clause = Some(pair);
-                }
-                Rule::enum_fields => {
-                    variants = Some(pair);
-                }
-                Rule::enum_keyword => (),
-                Rule::visibility => {
-                    visibility = Visibility::parse_from_pair(pair);
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        let name = check!(
-            ident::parse_from_pair(enum_name.unwrap(), config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        assert_or_warn!(
-            is_upper_camel_case(name.as_str()),
-            warnings,
-            name.span().clone(),
-            Warning::NonClassCaseEnumName {
-                enum_name: name.clone()
-            }
-        );
-
-        let type_parameters = check!(
-            TypeParameter::parse_from_type_params_and_where_clause(
-                type_params,
-                where_clause,
-                config,
-            ),
-            vec!(),
-            warnings,
-            errors
-        );
-        for type_parameter in type_parameters.iter() {
-            assert_or_warn!(
-                is_upper_camel_case(type_parameter.name_ident.as_str()),
-                warnings,
-                type_parameter.name_ident.span().clone(),
-                Warning::NonClassCaseTypeParameter {
-                    name: type_parameter.name_ident.clone()
-                }
-            );
-        }
-
-        let variants = check!(
-            EnumVariant::parse_from_pairs(variants, config),
-            Vec::new(),
-            warnings,
-            errors
-        );
-
-        ok(
-            EnumDeclaration {
-                name,
-                type_parameters,
-                variants,
-                span: whole_enum_span,
-                visibility,
-            },
-            warnings,
-            errors,
-        )
-    }
 }
 
 impl EnumVariant {
@@ -161,49 +62,5 @@ impl EnumVariant {
             vec![],
             errors,
         )
-    }
-
-    pub(crate) fn parse_from_pairs(
-        decl_inner: Option<Pair<Rule>>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let mut fields_buf = Vec::new();
-        let mut tag = 0;
-        if let Some(decl_inner) = decl_inner {
-            let fields = decl_inner.into_inner().collect::<Vec<_>>();
-            for i in (0..fields.len()).step_by(2) {
-                let variant_span = Span::from_pest(fields[i].as_span(), config.map(|c| c.path()));
-                let name = check!(
-                    ident::parse_from_pair(fields[i].clone(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                assert_or_warn!(
-                    is_upper_camel_case(name.as_str()),
-                    warnings,
-                    name.span().clone(),
-                    Warning::NonClassCaseEnumVariantName {
-                        variant_name: name.clone()
-                    }
-                );
-                let r#type = check!(
-                    TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
-                    TypeInfo::Tuple(Vec::new()),
-                    warnings,
-                    errors
-                );
-                fields_buf.push(EnumVariant {
-                    name,
-                    r#type,
-                    tag,
-                    span: variant_span,
-                });
-                tag += 1;
-            }
-        }
-        ok(fields_buf, warnings, errors)
     }
 }

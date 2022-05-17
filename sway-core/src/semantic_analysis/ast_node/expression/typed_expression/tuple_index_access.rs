@@ -2,8 +2,10 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{IsConstant, TypedExpression, TypedExpressionVariant},
-    CompileError, CompileResult, Namespace,
+    semantic_analysis::{
+        namespace::Namespace, IsConstant, TypedExpression, TypedExpressionVariant,
+    },
+    CompileError, CompileResult,
 };
 
 pub(crate) fn instantiate_tuple_index_access(

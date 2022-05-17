@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeSet, HashMap},
-    fmt,
+    fmt::{self, Write},
 };
 use sway_types::Span;
 
@@ -448,7 +448,7 @@ impl fmt::Display for DataSection {
                 ),
             };
             let data_label = DataId(ix as u32);
-            data_buf.push_str(&format!("{} {}\n", data_label, data_val));
+            writeln!(data_buf, "{} {}", data_label, data_val)?;
         }
 
         write!(f, ".data:\n{}", data_buf)

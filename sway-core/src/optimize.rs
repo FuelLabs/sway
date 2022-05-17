@@ -2547,9 +2547,6 @@ mod tests {
     // -------------------------------------------------------------------------------------------------
 
     fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
 
@@ -2558,16 +2555,17 @@ mod tests {
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
             use_orig_asm: false,
-            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
             generated_names: Default::default(),
         };
+        let mut warnings = vec![];
+        let mut errors = vec![];
 
-        let program =
+        let parse_tree =
             sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
-        let sway_parse_tree = crate::convert_parse_tree::convert_parse_tree(program)
+        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
             .unwrap(&mut warnings, &mut errors);
 
         let mut dead_code_graph = ControlFlowGraph {
@@ -2577,9 +2575,9 @@ mod tests {
         };
         let mut namespace = namespace::Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
-            sway_parse_tree.tree,
+            parse_tree.tree,
             &mut namespace,
-            &sway_parse_tree.tree_type,
+            &parse_tree.tree_type,
             &build_config,
             &mut dead_code_graph,
         )

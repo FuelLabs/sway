@@ -1,15 +1,11 @@
 use crate::{
-    build_config::BuildConfig,
-    error::*,
-    parse_tree::ident,
     semantic_analysis::{CopyTypes, TypeMapping},
     type_engine::*,
-    CompileError, Rule, TypedDeclaration,
+    TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
 
-use pest::iterators::Pair;
 use std::{
     convert::From,
     hash::{Hash, Hasher},
@@ -62,139 +58,12 @@ impl CopyTypes for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn parse_from_type_params_and_where_clause(
-        type_params_pair: Option<Pair<Rule>>,
-        where_clause_pair: Option<Pair<Rule>>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<TypeParameter>> {
-        let path = config.map(|c| c.path());
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let params = match (type_params_pair, where_clause_pair) {
-            (None, None) => vec![],
-            (None, Some(where_clause_pair)) => {
-                errors.push(CompileError::UnexpectedWhereClause(Span::from_pest(
-                    where_clause_pair.as_span(),
-                    path,
-                )));
-                return err(warnings, errors);
-            }
-            (Some(type_params_pair), None) => check!(
-                Self::parse_from_type_params(type_params_pair, config),
-                vec!(),
-                warnings,
-                errors
-            ),
-            (Some(type_params_pair), Some(where_clause_pair)) => {
-                let mut params = check!(
-                    Self::parse_from_type_params(type_params_pair, config),
-                    vec!(),
-                    warnings,
-                    errors
-                );
-                let where_clauses = check!(
-                    WhereClause::parse_from_trait_bounds(where_clause_pair, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                for where_clause in where_clauses.into_iter() {
-                    let param_to_edit =
-                        match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                            name_ident.as_str() == where_clause.type_param.as_str()
-                        }) {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::ConstrainedNonExistentType {
-                                    type_name: where_clause.type_param,
-                                    trait_name: where_clause.trait_constraint.clone(),
-                                    span: where_clause.trait_constraint.span().clone(),
-                                });
-                                continue;
-                            }
-                        };
-
-                    param_to_edit.trait_constraints.push(TraitConstraint {
-                        name: where_clause.trait_constraint,
-                    });
-                }
-                params
-            }
-        };
-        ok(params, warnings, errors)
-    }
-
     pub fn span(&self) -> Span {
         self.name_ident.span().clone()
-    }
-
-    fn parse_from_type_params(
-        type_params_pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut buf = vec![];
-        for pair in type_params_pair.into_inner() {
-            let name_ident = check!(
-                ident::parse_from_pair(pair.clone(), config),
-                continue,
-                warnings,
-                errors
-            );
-            let type_id = insert_type(check!(
-                TypeInfo::parse_from_type_param_pair(pair.clone(), config),
-                continue,
-                warnings,
-                errors
-            ));
-            buf.push(TypeParameter {
-                name_ident,
-                type_id,
-                trait_constraints: Vec::new(),
-            });
-        }
-        ok(buf, warnings, errors)
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
     pub(crate) name: Ident,
-}
-
-pub(crate) struct WhereClause {
-    pub(crate) type_param: Ident,
-    pub(crate) trait_constraint: Ident,
-}
-
-impl WhereClause {
-    pub(crate) fn parse_from_trait_bounds(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<WhereClause>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut iter = pair.into_inner().peekable();
-        let mut clauses = vec![];
-        while iter.peek().is_some() {
-            let type_param = check!(
-                ident::parse_from_pair(iter.next().unwrap(), config),
-                continue,
-                warnings,
-                errors
-            );
-            let trait_constraint = check!(
-                ident::parse_from_pair(iter.next().unwrap(), config),
-                continue,
-                warnings,
-                errors
-            );
-            clauses.push(WhereClause {
-                type_param,
-                trait_constraint,
-            });
-        }
-        ok(clauses, warnings, errors)
-    }
 }

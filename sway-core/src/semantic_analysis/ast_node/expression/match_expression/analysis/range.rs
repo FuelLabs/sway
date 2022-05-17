@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    fmt::{self, Debug},
+    fmt::{self, Write},
     ops::Sub,
 };
 
@@ -103,7 +103,7 @@ impl MyMath<u64> for u64 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -156,7 +156,7 @@ impl Range<u64> {
 
 impl<T> Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -537,7 +537,7 @@ where
 
 impl<T> fmt::Display for Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -554,13 +554,13 @@ where
         if self.first == T::global_min() {
             builder.push_str("MIN");
         } else {
-            builder.push_str(&format!("{}", self.first));
+            write!(builder, "{}", self.first)?;
         }
         builder.push_str("...");
         if self.last == T::global_max() {
             builder.push_str("MAX");
         } else {
-            builder.push_str(&format!("{}", self.last));
+            write!(builder, "{}", self.last)?;
         }
         builder.push(']');
         write!(f, "{}", builder)
@@ -570,7 +570,7 @@ where
 /// Checks to see if two ranges are greater than or equal to one another.
 impl<T> std::cmp::Ord for Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -598,7 +598,7 @@ where
 
 impl<T> std::cmp::PartialOrd for Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord

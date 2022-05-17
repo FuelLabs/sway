@@ -3,10 +3,8 @@ use crate::build_config::BuildConfig;
 use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::parser::{Rule, SwayParser};
+use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TCOpts;
-use pest::iterators::Pairs;
-use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -167,29 +165,21 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
-                // TODO(static span): this can be a normal address expression,
-                // so we don't need to re-parse and re-compile
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: method_name.span().clone(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None
@@ -228,27 +218,21 @@ pub(crate) fn type_check_method_application(
                             "Attempted to find contract address of non-contract-call.",
                             span.clone(),
                         ));
-                        String::new()
+                        None
                     }
                 };
-                let contract_address = check!(
-                    re_parse_expression(
-                        contract_address.into(),
-                        build_config,
-                        namespace,
-                        self_type,
-                        dead_code_graph,
-                        opts,
-                        span.clone(),
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let contract_address = if let Some(addr) = contract_address {
+                    addr
+                } else {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: call_path.span(),
+                    });
+                    return err(warnings, errors);
+                };
                 let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
                 Some(ContractCallMetadata {
                     func_selector,
-                    contract_address: Box::new(contract_address),
+                    contract_address,
                 })
             } else {
                 None
@@ -271,82 +255,6 @@ pub(crate) fn type_check_method_application(
             ok(exp, warnings, errors)
         }
     }
-}
-
-// TODO(static span): this whole method can go away and the address can go back in the contract
-// caller type.
-#[allow(clippy::too_many_arguments)]
-fn re_parse_expression(
-    contract_string: Arc<str>,
-    build_config: &BuildConfig,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    dead_code_graph: &mut ControlFlowGraph,
-    opts: TCOpts,
-    span: Span,
-) -> CompileResult<TypedExpression> {
-    if contract_string.is_empty() {
-        return err(
-            vec![],
-            vec![CompileError::ContractAddressMustBeKnown { span }],
-        );
-    }
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let span = sway_types::span::Span::new(
-        "TODO(static span): use Idents instead of Strings".into(),
-        0,
-        0,
-        None,
-    )
-    .unwrap();
-
-    let mut contract_pairs: Pairs<Rule> = match SwayParser::parse(Rule::expr, contract_string) {
-        Ok(o) => o,
-        Err(_e) => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
-    let contract_pair = match contract_pairs.next() {
-        Some(o) => o,
-        None => {
-            errors.push(CompileError::Internal(
-                "Internal error handling contract call address parsing. No address.",
-                span,
-            ));
-            return err(warnings, errors);
-        }
-    };
-
-    // purposefully ignore var_decls as those have already been lifted during parsing
-    let ParserLifter { value, .. } = check!(
-        Expression::parse_from_pair(contract_pair, Some(build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    let contract_address = check!(
-        TypedExpression::type_check(TypeCheckArguments {
-            checkee: value,
-            namespace,
-            return_type_annotation: insert_type(TypeInfo::Unknown),
-            help_text: Default::default(),
-            self_type,
-            build_config,
-            dead_code_graph,
-            mode: Mode::NonAbi,
-            opts,
-        }),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(contract_address, warnings, errors)
 }
 
 pub(crate) fn resolve_method_name(

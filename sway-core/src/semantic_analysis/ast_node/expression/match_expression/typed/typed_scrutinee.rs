@@ -1,8 +1,8 @@
 use sway_types::{Ident, Span};
 
 use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
+use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TypedEnumVariant;
-use crate::Namespace;
 use crate::{
     error::{err, ok},
     semantic_analysis::TypedStructField,

@@ -397,7 +397,7 @@ impl TypedAbiDeclaration {
     pub(crate) fn as_type(&self) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
-            address: String::new(),
+            address: None,
         };
         insert_type(ty)
     }
