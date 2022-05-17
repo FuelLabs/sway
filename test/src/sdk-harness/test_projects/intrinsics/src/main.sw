@@ -8,6 +8,13 @@ struct TestStruct {
     field_1: bool,
     field_2: u64,
 }
+fn is_ref_type<T>(param: T) -> bool {
+    is_reference_type::<T>()
+}
+
+fn get_size_of<T>(param: T) -> u64 {
+    size_of::<T>()
+}
 
 fn main() -> bool {
     let a: u64 = 1;
@@ -25,22 +32,22 @@ fn main() -> bool {
         field_2: 11,
     };
 
-    assert(!is_reference_type(42u64));
-    assert(!is_reference_type(42u32));
-    assert(!is_reference_type(42u16));
-    assert(!is_reference_type(11u8));
-    assert(is_reference_type(test_array));
-    assert(is_reference_type(test_struct));
-    assert(is_reference_type((true, 11, ZERO, 255u8)));
-    assert(is_reference_type(e));
-    assert(is_reference_type(f));
+    assert(!is_ref_type(42u64));
+    assert(!is_ref_type(42u32));
+    assert(!is_ref_type(42u16));
+    assert(!is_ref_type(11u8));
+    assert(is_ref_type(test_array));
+    assert(is_ref_type(test_struct));
+    assert(is_ref_type((true, 11, ZERO, 255u8)));
+    assert(is_ref_type(e));
+    assert(is_ref_type(f));
 
-    assert(size_of(a) == 8);
-    assert(size_of(b) == 8);
-    assert(size_of(c) == 8);
-    assert(size_of(d) == 8);
-    assert(size_of(e) == 32);
-    assert(size_of(f) == 16);
+    assert(get_size_of(a) == 8);
+    assert(get_size_of(b) == 8);
+    assert(get_size_of(c) == 8);
+    assert(get_size_of(d) == 8);
+    assert(get_size_of(e) == 32);
+    assert(get_size_of(f) == 16);
 
     true
 }
