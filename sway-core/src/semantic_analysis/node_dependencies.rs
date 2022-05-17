@@ -513,6 +513,10 @@ impl Dependencies {
                 self.deps.insert(DependentSymbol::Symbol(name.to_string()));
                 self.gather_from_type_arguments(type_arguments)
             }
+            TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
+                deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
+            }),
+            TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             _ => self,
         }
     }

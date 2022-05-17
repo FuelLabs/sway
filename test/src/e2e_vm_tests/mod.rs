@@ -365,6 +365,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Revert(0),
         ),
         (
+            "should_pass/test_contracts/abi_with_tuples_contract",
+            ProgramState::Revert(0),
+        ),
+        (
             "should_pass/test_contracts/balance_test_contract",
             ProgramState::Revert(0),
         ),
@@ -492,6 +496,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             (
                 "should_pass/test_contracts/auth_testing_contract",
                 "should_pass/require_contract_deployment/caller_auth_test",
+            ),
+            1, // true
+        ),
+        (
+            (
+                "should_pass/test_contracts/abi_with_tuples_contract",
+                "should_pass/require_contract_deployment/call_abi_with_tuples",
             ),
             1, // true
         ),

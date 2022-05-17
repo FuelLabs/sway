@@ -1,0 +1,18 @@
+[[package]]
+name = 'call_increment_contract'
+dependencies = [
+    'increment_abi',
+    'std',
+]
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'increment_abi'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

@@ -1,0 +1,38 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "param",
+        "type": "(struct Person, u64)"
+      }
+    ],
+    "name": "bug1",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "param",
+        "type": "(enum Location, u64)"
+      }
+    ],
+    "name": "bug2",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  }
+]
