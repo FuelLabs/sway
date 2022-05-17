@@ -1,5 +1,6 @@
 library std;
 
+dep intrinsics;
 dep revert;
 dep assert;
 dep option;
@@ -19,6 +20,5 @@ dep token;
 dep ecr;
 dep reentrancy;
 dep vm/mod;
-dep intrinsics;
 
 use core::*;
