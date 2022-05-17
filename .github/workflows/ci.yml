@@ -109,7 +109,6 @@ jobs:
           args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -126,10 +125,11 @@ jobs:
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.7'
+          mdbook-version: '0.4.15'
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           mdbook build docs &> tmp.txt
+          cat tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             rm tmp.txt && exit 1
