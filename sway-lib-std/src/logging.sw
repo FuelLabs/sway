@@ -1,6 +1,9 @@
+//! Allows logging of arbitrary types, emited as either `Log` or `Logd` receipts.
 library logging;
 
-
+/// Log any stack type.
+/// If the type is a reference types, `log` is used.
+/// Otherwise `'logd` is used.'
 pub fn log<T>(value: T) {
     if ! __is_reference_type::<T>() {
         asm(r1: value) {
