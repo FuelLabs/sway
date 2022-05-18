@@ -50,7 +50,7 @@ fn generate_documentation(subcommand: &str) -> Result<String> {
     let output = process::Command::new("forc")
         .args([subcommand, "--help"])
         .output()
-        .expect("forc --help failed to run");
+        .expect("Failed running forc --help");
 
     if !output.status.success() {
         return Err(anyhow!("Failed to run forc {} --help", subcommand));
