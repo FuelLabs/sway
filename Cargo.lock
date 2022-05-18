@@ -2126,6 +2126,7 @@ dependencies = [
  "semver 1.0.7",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

@@ -25,7 +25,7 @@ fn main() {
     if let Some(sub_args) = matches.subcommand_matches("supports") {
         handle_supports(&preprocessor, sub_args);
     } else if let Err(e) = handle_preprocessing(&preprocessor) {
-        eprintln!("{}", e);
+        tracing::error!("{}", e);
         process::exit(1);
     }
 }
@@ -37,7 +37,7 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
     let version_req = VersionReq::parse(mdbook::MDBOOK_VERSION)?;
 
     if !version_req.matches(&book_version) {
-        eprintln!(
+        tracing::error!(
             "Warning: The {} plugin was built against version {} of mdbook, \
              but we're being called from version {}",
             pre.name(),

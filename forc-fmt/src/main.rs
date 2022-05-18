@@ -39,10 +39,7 @@ fn main() {
         None => std::env::current_dir().expect("cannot get current dir"),
     };
     if let Err(err) = format_pkg_at_dir(app, &dir) {
-        error!("{}", err);
-        err.chain()
-            .skip(1)
-            .for_each(|cause| error!("Caused by: {}", cause));
+        error!("{:?}", err);
         std::process::exit(1);
     }
 }
@@ -103,7 +100,7 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
                     error!("\nManifest Forc.toml improperly formatted");
                     display_file_diff(&file_content, &formatted_content)?;
                 } else {
-                    error!("\nManifest Forc.toml properly formatted")
+                    info!("\nManifest Forc.toml properly formatted")
                 }
             }
 

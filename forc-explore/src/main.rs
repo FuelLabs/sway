@@ -56,10 +56,7 @@ async fn main() {
         None => run(app).await,
     };
     if let Err(err) = result {
-        error!("{}", err);
-        err.chain()
-            .skip(1)
-            .for_each(|cause| error!("Caused by: {}", cause));
+        error!("{:?}", err);
         std::process::exit(1);
     }
 }

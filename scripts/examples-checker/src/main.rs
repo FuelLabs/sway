@@ -169,10 +169,7 @@ fn main() {
     set_subscriber();
     let cli = Cli::parse();
     if let Err(err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
-        error!("{}", err);
-        err.chain()
-            .skip(1)
-            .for_each(|cause| error!("Caused by: {}", cause));
+        error!("{:?}", err);
         std::process::exit(1);
     }
 }
