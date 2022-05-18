@@ -1,6 +1,7 @@
 use crate::formatter::{format_header_line, format_index_entry, format_line};
 
 use anyhow::anyhow;
+use commands::call_possible_forc_commands;
 use mdbook::book::{Book, BookItem};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
@@ -9,6 +10,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::process;
 
+mod commands;
 mod formatter;
 
 #[derive(Default)]
@@ -20,48 +22,48 @@ impl ForcDocumenter {
     }
 }
 
+fn get_contents_from_commands(commands: &Vec<String>) -> HashMap<String, String> {
+    let mut contents: HashMap<String, String> = HashMap::new();
+
+    for command in commands {
+        let result = match generate_doc_output(command) {
+            Ok(output) => output,
+            Err(_) => continue,
+        };
+        contents.insert("forc ".to_owned() + command, result);
+    }
+
+    contents
+}
+
 impl Preprocessor for ForcDocumenter {
     fn name(&self) -> &str {
         "forc-documenter"
     }
 
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
-        let output = process::Command::new("forc")
-            .arg("--help")
-            .output()
-            .expect("Failed running forc --version");
-
-        let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
-        let lines = s.lines();
-
-        let mut subcommand_is_parsed = false;
-        let mut possible_commands = vec![];
-
-        for line in lines {
-            if subcommand_is_parsed {
-                let (command, _) = line.trim().split_once(' ').unwrap_or(("", ""));
-                possible_commands.push(command);
-            }
-            if line == "SUBCOMMANDS:" {
-                subcommand_is_parsed = true;
-            }
-        }
-
+        let plugins: Vec<String> =
+            vec!["fmt".to_string(), "explore".to_string(), "lsp".to_string()];
+        let possible_commands: Vec<String> = call_possible_forc_commands();
         let command_examples: HashMap<String, String> = load_examples()?;
-        let mut command_contents: HashMap<String, String> = HashMap::new();
-        let mut removed_commands = Vec::new();
 
-        for forc_command in possible_commands.iter() {
-            let mut result = match generate_doc_output(forc_command) {
-                Ok(output) => output,
-                Err(_) => continue,
-            };
-            result = result.trim().to_string();
-            command_contents.insert("forc ".to_owned() + forc_command, result);
-        }
+        let mut command_contents: HashMap<String, String> =
+            get_contents_from_commands(&possible_commands);
+        let mut plugin_contents: HashMap<String, String> = get_contents_from_commands(&plugins);
+        let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
             if let BookItem::Chapter(ref mut chapter) = item {
+                if chapter.name == "Plugins" {
+                    eprintln!("{:?}", chapter.name);
+                    for sub_item in chapter.sub_items.iter_mut() {
+                        if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
+                            if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
+                                plugin_chapter.content = content.to_string();
+                            }
+                        }
+                    }
+                }
                 if chapter.name == "Commands" {
                     let mut command_index_content = String::new();
 
@@ -185,6 +187,7 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
             result.push('\n');
         }
     }
+    result = result.trim().to_string();
     Ok(result)
 }
 
