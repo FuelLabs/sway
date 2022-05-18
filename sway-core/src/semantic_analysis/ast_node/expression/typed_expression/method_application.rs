@@ -94,12 +94,7 @@ pub(crate) fn type_check_method_application(
             let abs_path: Vec<Ident> = if call_path.is_absolute {
                 call_path.full_path().cloned().collect()
             } else {
-                namespace
-                    .mod_path()
-                    .iter()
-                    .chain(call_path.full_path())
-                    .cloned()
-                    .collect()
+                namespace.find_module_path(call_path.full_path())
             };
             check!(
                 namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &args_buf),
@@ -113,12 +108,7 @@ pub(crate) fn type_check_method_application(
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            let abs_path: Vec<_> = namespace
-                .mod_path()
-                .iter()
-                .chain(Some(method_name))
-                .cloned()
-                .collect();
+            let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
             check!(
                 namespace.find_method_for_type(ty, &abs_path, self_type, &args_buf),
                 return err(warnings, errors),

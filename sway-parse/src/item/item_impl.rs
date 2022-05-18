@@ -9,8 +9,8 @@ pub struct ItemImpl {
     pub contents: Braces<Vec<ItemFn>>,
 }
 
-impl ItemImpl {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemImpl {
+    fn span(&self) -> Span {
         Span::join(self.impl_token.span(), self.contents.span())
     }
 }

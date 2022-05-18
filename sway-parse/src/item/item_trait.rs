@@ -10,8 +10,8 @@ pub struct ItemTrait {
     pub trait_defs_opt: Option<Braces<Vec<ItemFn>>>,
 }
 
-impl ItemTrait {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemTrait {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => self.trait_token.span(),
