@@ -1,5 +1,6 @@
 use crate::{
     error::*,
+    namespace::Items,
     parse_tree::*,
     semantic_analysis::{
         ast_node::copy_types::{insert_type_parameters, TypeMapping},
@@ -12,7 +13,7 @@ use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::CreateTypeId;
+use super::{CreateTypeId, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -53,10 +54,38 @@ impl CreateTypeId for TypedEnumDeclaration {
     }
 }
 
+impl MonomorphizeHelper for TypedEnumDeclaration {
+    type Output = TypedEnumDeclaration;
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
+        let old_type_id = self.type_id();
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.type_id()),
+            type_mapping,
+        );
+        new_decl
+    }
+}
+
 impl TypedEnumDeclaration {
     pub(crate) fn monomorphize(&self, namespace: &mut namespace::Items) -> Self {
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        Self::monomorphize_inner(self, namespace, &type_mapping)
+        self.clone().monomorphize_inner(&type_mapping, namespace)
     }
 
     pub(crate) fn monomorphize_with_type_arguments(
@@ -68,7 +97,7 @@ impl TypedEnumDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let mut new_decl = self.clone().monomorphize_inner(&type_mapping, namespace);
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
@@ -125,23 +154,8 @@ impl TypedEnumDeclaration {
         // perform the monomorphization
         ok(new_decl, warnings, errors)
     }
-
-    fn monomorphize_inner(
-        &self,
-        namespace: &mut namespace::Items,
-        type_mapping: &TypeMapping,
-    ) -> Self {
-        let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
 }
+
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
