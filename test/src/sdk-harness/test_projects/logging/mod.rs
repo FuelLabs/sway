@@ -1,13 +1,14 @@
-use fuel_core::service::Config;
+use fuel_core::service::{Config, FuelService};
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
 use fuels::contract::script::Script;
-use fuels::prelude::*;
 use hex;
 
 #[tokio::test]
 async fn run_valid() {
     let bin = std::fs::read("test_projects/logging/out/debug/logging.bin");
-    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let server = FuelService::new_node(Config::local_node()).await.unwrap();
+    let client = FuelClient::from(server.bound_address);
 
     let tx = Transaction::Script {
         gas_price: 0,

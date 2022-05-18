@@ -1,16 +1,17 @@
 //! util & helper functions to support working with the Rust SDK (fuels-rs)
 
-use fuel_core::service::Config;
+use fuel_core::service::{Config, FuelService};
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
 use fuels::contract::script::Script;
-use fuels::prelude::*;
 use std::fs::read;
 
 /// Helper function to reduce boilerplate code in tests.
 /// Used to run a script which returns a boolean value.
 pub async fn script_runner(bin_path: &str) -> u64 {
     let bin = read(bin_path);
-    let client = Provider::launch(Config::local_node()).await.unwrap();
+    let server = FuelService::new_node(Config::local_node()).await.unwrap();
+    let client = FuelClient::from(server.bound_address);
 
     let tx = Transaction::Script {
         gas_price: 0,

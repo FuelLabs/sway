@@ -13,7 +13,7 @@ pub fn get_diagnostics(
             Diagnostic {
                 range,
                 severity: Some(DiagnosticSeverity::ERROR),
-                message: error.to_friendly_error_string(),
+                message: format!("{}", error),
                 ..Default::default()
             }
         })
@@ -42,10 +42,10 @@ fn get_range(warning_or_error: &WarningOrError<'_>) -> Range {
     };
 
     let start_line = start.line as u32 - 1;
-    let start_character = start.col as u32;
+    let start_character = start.col as u32 - 1;
 
     let end_line = end.line as u32 - 1;
-    let end_character = end.col as u32;
+    let end_character = end.col as u32 - 1;
 
     Range {
         start: Position::new(start_line, start_character),

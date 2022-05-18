@@ -2,7 +2,6 @@
 
 use crate::{
     convert_parse_tree::ConvertParseTreeError,
-    parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
     VariableDeclaration,
@@ -82,6 +81,7 @@ pub struct ParserLifter<T> {
 }
 
 impl<T> ParserLifter<T> {
+    #[allow(dead_code)]
     pub(crate) fn empty(value: T) -> Self {
         ParserLifter {
             var_decls: vec![],
@@ -115,6 +115,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn is_ok(&self) -> bool {
+        self.value.is_some() && self.errors.is_empty()
+    }
+
+    pub fn is_ok_no_warn(&self) -> bool {
+        self.value.is_some() && self.warnings.is_empty() && self.errors.is_empty()
+    }
+
     pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
         CompileResult {
             value,
@@ -166,6 +174,27 @@ impl<T> CompileResult<T> {
         or_else: F,
     ) -> T {
         self.ok(warnings, errors).unwrap_or_else(or_else)
+    }
+}
+
+impl<'a, T> CompileResult<&'a T>
+where
+    T: Clone,
+{
+    /// Converts a `CompileResult` around a reference value to an owned value by cloning the type
+    /// behind the reference.
+    pub fn cloned(self) -> CompileResult<T> {
+        let CompileResult {
+            value,
+            warnings,
+            errors,
+        } = self;
+        let value = value.cloned();
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
     }
 }
 
@@ -245,7 +274,7 @@ pub enum Warning {
         cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: TypeInfo,
+        r#type: Box<TypeInfo>,
     },
     SimilarMethodFound {
         lib: Ident,
@@ -418,18 +447,8 @@ pub enum CompileError {
     Unimplemented(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
-    #[error("Error parsing input: expected {err:?}")]
-    ParseFailure {
-        span: Span,
-        err: pest::error::Error<Rule>,
-    },
     #[error("Error parsing input: {err:?}")]
     ParseError { span: Span, err: String },
-    #[error(
-        "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
-         predicate at the top level."
-    )]
-    InvalidTopLevelItem(Rule, Span),
     #[error(
         "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
          code that triggered this error."
@@ -440,8 +459,6 @@ pub enum CompileError {
          code that triggered this error."
     )]
     InternalOwned(String, Span),
-    #[error("Unimplemented feature: {0:?}")]
-    UnimplementedRule(Rule, Span),
     #[error(
         "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
          binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
@@ -572,6 +589,11 @@ pub enum CompileError {
     )]
     StructNotFound { name: Ident, span: Span },
     #[error(
+        "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
+         it?"
+    )]
+    EnumNotFound { name: Ident, span: Span },
+    #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
@@ -619,6 +641,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
         name: String,
@@ -631,6 +655,16 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not an enum.")]
+    DeclIsNotAnEnum { actually: String, span: Span },
+    #[error("This is a {actually}, not a struct.")]
+    DeclIsNotAStruct { actually: String, span: Span },
+    #[error("This is a {actually}, not a function.")]
+    DeclIsNotAFunction { actually: String, span: Span },
+    #[error("This is a {actually}, not a variable.")]
+    DeclIsNotAVariable { actually: String, span: Span },
+    #[error("This is a {actually}, not an ABI.")]
+    DeclIsNotAnAbi { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -833,7 +867,7 @@ pub enum CompileError {
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
-    TupleOutOfBounds {
+    TupleIndexOutOfBounds {
         index: usize,
         count: usize,
         span: Span,
@@ -943,6 +977,17 @@ pub enum TypeError {
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
 }
 
 impl TypeError {
@@ -951,50 +996,12 @@ impl TypeError {
         match self {
             MismatchedType { span, .. } => span.clone(),
             UnknownType { span } => span.clone(),
+            MatchArmScrutineeWrongType { span, .. } => span.clone(),
         }
     }
 }
 
 impl CompileError {
-    pub fn to_friendly_error_string(&self) -> String {
-        match self {
-            CompileError::ParseFailure { err, .. } => format!(
-                "Error parsing input: {}",
-                match &err.variant {
-                    pest::error::ErrorVariant::ParsingError {
-                        positives,
-                        negatives,
-                    } => {
-                        let mut buf = String::new();
-                        if !positives.is_empty() {
-                            buf.push_str(&format!(
-                                "expected one of [{}]",
-                                positives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        if !negatives.is_empty() {
-                            buf.push_str(&format!(
-                                "did not expect any of [{}]",
-                                negatives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        buf
-                    }
-                    pest::error::ErrorVariant::CustomError { message } => message.to_string(),
-                }
-            ),
-            a => format!("{}", a),
-        }
-    }
-
     pub fn path(&self) -> Option<Arc<PathBuf>> {
         self.span().path().cloned()
     }
@@ -1009,12 +1016,9 @@ impl CompileError {
             NotAFunction { name, .. } => name.span(),
             Unimplemented(_, span) => span.clone(),
             TypeError(err) => err.span(),
-            ParseFailure { span, .. } => span.clone(),
             ParseError { span, .. } => span.clone(),
-            InvalidTopLevelItem(_, span) => span.clone(),
             Internal(_, span) => span.clone(),
             InternalOwned(_, span) => span.clone(),
-            UnimplementedRule(_, span) => span.clone(),
             InvalidByteLiteralLength { span, .. } => span.clone(),
             ExpectedExprAfterOp { span, .. } => span.clone(),
             ExpectedOp { span, .. } => span.clone(),
@@ -1051,6 +1055,7 @@ impl CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span().clone(),
             SymbolNotFound { name, .. } => name.span().clone(),
             ImportPrivateSymbol { name } => name.span().clone(),
@@ -1105,13 +1110,17 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            TupleOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span().clone(),
             GenericShadowsGeneric { name } => name.span().clone(),
             StarImportShadowsOtherSymbol { name } => name.span().clone(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAStruct { span, .. } => span.clone(),
+            DeclIsNotAFunction { span, .. } => span.clone(),
+            DeclIsNotAVariable { span, .. } => span.clone(),
+            DeclIsNotAnAbi { span, .. } => span.clone(),
             PureCalledImpure { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
@@ -1134,6 +1143,8 @@ impl CompileError {
             ConvertParseTree { error } => error.span(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
+            EnumNotFound { span, .. } => span.clone(),
+            TupleIndexOutOfBounds { span, .. } => span.clone(),
         }
     }
 

@@ -18,10 +18,6 @@ pub struct Command {
     #[clap(long, hide = true)]
     pub use_orig_asm: bool,
 
-    /// Whether to compile using the original (pest based) parser.
-    #[clap(long, hide = true)]
-    pub use_orig_parser: bool,
-
     /// Only craft transaction and print it out.
     #[clap(long)]
     pub dry_run: bool,
@@ -89,6 +85,11 @@ pub struct Command {
     /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,
+
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    #[clap(long)]
+    pub locked: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

@@ -1,5 +1,5 @@
 use crate::ops::forc_build;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process;
@@ -90,5 +90,14 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     out.lines().for_each(|line| println!("{}", line.unwrap()));
     thread.join().unwrap();
 
-    Ok(())
+    let child_success = match child.try_wait() {
+        Ok(Some(returned_status)) => returned_status.success(),
+        Ok(None) => child.wait().unwrap().success(),
+        Err(_) => false,
+    };
+
+    match child_success {
+        true => Ok(()),
+        false => bail!("child test process failed"),
+    }
 }

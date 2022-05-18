@@ -12,9 +12,6 @@ pub struct Command {
     /// Whether to compile using the original (pre- IR) pipeline.
     #[clap(long, hide = true)]
     pub use_orig_asm: bool,
-    /// Whether to compile using the original (pest based) parser.
-    #[clap(long, hide = true)]
-    pub use_orig_parser: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,
@@ -46,6 +43,10 @@ pub struct Command {
     /// output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
     pub minify_json_abi: bool,
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    #[clap(long)]
+    pub locked: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

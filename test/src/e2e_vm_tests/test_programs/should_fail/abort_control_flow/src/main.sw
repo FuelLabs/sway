@@ -11,6 +11,6 @@ fn main() {
         } else {
             return true;
         };
-        panic(0)
+        revert(0)
     };
 }
