@@ -7,8 +7,8 @@ pub struct Program {
     pub items: Vec<Item>,
 }
 
-impl Program {
-    pub fn span(&self) -> Span {
+impl Spanned for Program {
+    fn span(&self) -> Span {
         let start = self.kind.span();
         let end = match self.items.last() {
             Some(item) => item.span(),
@@ -37,7 +37,7 @@ pub enum ProgramKind {
     },
 }
 
-impl ProgramKind {
+impl Spanned for ProgramKind {
     fn span(&self) -> Span {
         match self {
             ProgramKind::Script { script_token } => script_token.span(),

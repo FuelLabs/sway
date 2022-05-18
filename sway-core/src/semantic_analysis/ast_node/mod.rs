@@ -6,6 +6,7 @@ use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
+    style::*,
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
@@ -277,7 +278,7 @@ impl TypedAstNode {
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = check!(
+                    check!(
                         import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
@@ -355,6 +356,7 @@ impl TypedAstNode {
                         }) => {
                             let result =
                                 type_check_ascribed_expr(namespace, type_ascription.clone(), value);
+                            is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value = check!(
                                 result,
                                 error_recovery_expr(name.span().clone()),
@@ -377,11 +379,12 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
+                            is_upper_camel_case(&e.name).ok(&mut warnings, &mut errors);
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -413,6 +416,7 @@ impl TypedAstNode {
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
+                            is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
                             check!(
                                 type_check_trait_decl(TypeCheckArguments {
                                     checkee: trait_decl,
@@ -556,6 +560,7 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
+                            is_upper_camel_case(&decl.name).ok(&mut warnings, &mut errors);
                             // look up any generic or struct types in the namespace
                             // insert type parameters
                             let type_mapping = insert_type_parameters(&decl.type_parameters);
@@ -595,7 +600,7 @@ impl TypedAstNode {
                             };
 
                             // insert struct into namespace
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
@@ -801,7 +806,7 @@ impl TypedAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: node.type_info(),
+                r#type: Box::new(node.type_info()),
             };
             assert_or_warn!(
                 node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,

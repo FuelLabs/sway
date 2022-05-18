@@ -53,20 +53,20 @@ impl Parse for Literal {
     }
 }
 
-impl LitString {
-    pub fn span(&self) -> Span {
+impl Spanned for LitString {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl LitChar {
-    pub fn span(&self) -> Span {
+impl Spanned for LitChar {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl LitInt {
-    pub fn span(&self) -> Span {
+impl Spanned for LitInt {
+    fn span(&self) -> Span {
         match &self.ty_opt {
             Some((_lit_int_ty, span)) => Span::join(self.span.clone(), span.clone()),
             None => self.span.clone(),
@@ -74,8 +74,8 @@ impl LitInt {
     }
 }
 
-impl Literal {
-    pub fn span(&self) -> Span {
+impl Spanned for Literal {
+    fn span(&self) -> Span {
         match self {
             Literal::String(lit_string) => lit_string.span(),
             Literal::Char(lit_char) => lit_char.span(),

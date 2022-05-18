@@ -267,7 +267,7 @@ fn format_err(err: &sway_core::CompileError) {
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
-    let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
+    let friendly_str = maybe_uwuify(&format!("{}", err));
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
             label: None,
