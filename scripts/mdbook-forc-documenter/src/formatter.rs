@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn test_format_subcommand_line() {
         let example_subcommand =
-            "clean Cleans up any existing state associated with the fuel block explorer";
+            "   clean     Cleans up any existing state associated with the fuel block explorer";
         let expected_subcommand =
             "`clean`\n\nCleans up any existing state associated with the fuel block explorer\n\n";
 
