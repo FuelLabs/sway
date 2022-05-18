@@ -1,8 +1,10 @@
+mod create_type_id;
 mod r#enum;
 mod function;
 mod storage;
 mod r#struct;
 mod variable;
+pub(crate) use create_type_id::*;
 pub use function::*;
 pub use r#enum::*;
 pub use r#struct::*;

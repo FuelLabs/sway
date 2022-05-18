@@ -11,6 +11,8 @@ use crate::{
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
+
+use super::CreateTypeId;
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
@@ -37,6 +39,16 @@ impl CopyTypes for TypedStructDeclaration {
         self.fields
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedStructDeclaration {
+    fn type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Struct {
+            name: self.name.clone(),
+            fields: self.fields.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -123,14 +135,6 @@ impl TypedStructDeclaration {
             type_mapping,
         );
         new_decl
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
     }
 }
 

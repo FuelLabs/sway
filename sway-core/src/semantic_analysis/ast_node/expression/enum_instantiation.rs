@@ -1,3 +1,5 @@
+use ast_node::declaration::CreateTypeId;
+
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;

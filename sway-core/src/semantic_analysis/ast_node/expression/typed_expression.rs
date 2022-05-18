@@ -9,6 +9,7 @@ use crate::{
 
 mod method_application;
 use crate::type_engine::TypeId;
+use ast_node::declaration::CreateTypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug, Eq)]

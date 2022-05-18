@@ -1,6 +1,9 @@
 use crate::{
-    error::*, semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath,
-    CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*,
+    semantic_analysis::{ast_node::TypedExpression, declaration::CreateTypeId},
+    type_engine::*,
+    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};

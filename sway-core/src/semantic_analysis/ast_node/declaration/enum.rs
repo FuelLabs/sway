@@ -12,6 +12,8 @@ use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
+use super::CreateTypeId;
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
     pub(crate) name: Ident,
@@ -38,6 +40,16 @@ impl CopyTypes for TypedEnumDeclaration {
         self.variants
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedEnumDeclaration {
+    fn type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -128,14 +140,6 @@ impl TypedEnumDeclaration {
             type_mapping,
         );
         new_decl
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
     }
 }
 #[derive(Debug, Clone, Eq)]
