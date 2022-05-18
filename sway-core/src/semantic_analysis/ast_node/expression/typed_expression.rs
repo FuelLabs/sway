@@ -330,7 +330,7 @@ impl TypedExpression {
                 span,
             } => Self::type_check_if_expression(
                 TypeCheckArguments {
-                    checkee: (condition, then, r#else),
+                    checkee: (*condition, *then, r#else.map(|x| *x)),
                     return_type_annotation: type_annotation,
                     namespace,
                     self_type,
@@ -390,7 +390,7 @@ impl TypedExpression {
                 span,
                 field_to_access,
             } => Self::type_check_subfield_expression(
-                prefix,
+                *prefix,
                 span,
                 field_to_access,
                 namespace,
@@ -803,20 +803,8 @@ impl TypedExpression {
             errors
         );
 
-        ok(
-            TypedExpression {
-                expression: TypedExpressionVariant::LazyOperator {
-                    op,
-                    lhs: Box::new(typed_lhs),
-                    rhs: Box::new(typed_rhs),
-                },
-                return_type: return_type_annotation,
-                is_constant: IsConstant::No, // Maybe.
-                span,
-            },
-            warnings,
-            errors,
-        )
+        let exp = instantiate_lazy_operator(op, typed_lhs, typed_rhs, return_type_annotation, span);
+        ok(exp, warnings, errors)
     }
 
     fn type_check_code_block(
@@ -1068,12 +1056,11 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_if_expression(
-        arguments: TypeCheckArguments<
-            '_,
-            (Box<Expression>, Box<Expression>, Option<Box<Expression>>),
-        >,
+        arguments: TypeCheckArguments<'_, (Expression, Expression, Option<Expression>)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let TypeCheckArguments {
             checkee: (condition, then, r#else),
             namespace,
@@ -1084,11 +1071,9 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let condition = Box::new(check!(
+        let condition = check!(
             TypedExpression::type_check(TypeCheckArguments {
-                checkee: *condition.clone(),
+                checkee: condition.clone(),
                 namespace,
                 return_type_annotation: insert_type(TypeInfo::Boolean),
                 help_text: "The condition of an if expression must be a boolean expression.",
@@ -1101,10 +1086,10 @@ impl TypedExpression {
             error_recovery_expr(condition.span()),
             warnings,
             errors
-        ));
-        let then = Box::new(check!(
+        );
+        let then = check!(
             TypedExpression::type_check(TypeCheckArguments {
-                checkee: *then.clone(),
+                checkee: then.clone(),
                 namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
@@ -1117,31 +1102,11 @@ impl TypedExpression {
             error_recovery_expr(then.span()),
             warnings,
             errors
-        ));
-        // if the branch aborts, then its return type doesn't matter.
-        let then_deterministically_aborts = then.deterministically_aborts();
-        if !then_deterministically_aborts {
-            // if this does not deterministically_abort, check the block return type
-            let ty_to_check = if r#else.is_some() {
-                type_annotation
-            } else {
-                insert_type(TypeInfo::Tuple(vec![]))
-            };
-            let (mut new_warnings, new_errors) = unify_with_self(
-                then.return_type,
-                ty_to_check,
-                self_type,
-                &then.span,
-                "`then` branch must return expected type.",
-            );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-        }
-        let mut else_deterministically_aborts = false;
+        );
         let r#else = r#else.map(|expr| {
-            let r#else = check!(
+            check!(
                 TypedExpression::type_check(TypeCheckArguments {
-                    checkee: *expr.clone(),
+                    checkee: expr.clone(),
                     namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
@@ -1154,59 +1119,14 @@ impl TypedExpression {
                 error_recovery_expr(expr.span()),
                 warnings,
                 errors
-            );
-            else_deterministically_aborts = r#else.deterministically_aborts();
-            if !else_deterministically_aborts {
-                // if this does not deterministically_abort, check the block return type
-                let (mut new_warnings, new_errors) = unify_with_self(
-                    r#else.return_type,
-                    then.return_type,
-                    self_type,
-                    &r#else.span,
-                    "`else` branch must return expected type.",
-                );
-                warnings.append(&mut new_warnings);
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            }
-            Box::new(r#else)
+            )
         });
-
-        let r#else_ret_ty = r#else
-            .as_ref()
-            .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
-        // if there is a type annotation, then the else branch must exist
-        if !else_deterministically_aborts && !then_deterministically_aborts {
-            let (mut new_warnings, new_errors) = unify_with_self(
-                then.return_type,
-                r#else_ret_ty,
-                self_type,
-                &span,
-                "The two branches of an if expression must return the same type.",
-            );
-            warnings.append(&mut new_warnings);
-            if new_errors.is_empty() {
-                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
-                    errors.push(CompileError::NoElseBranch {
-                        span: span.clone(),
-                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
-                    });
-                }
-            } else {
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            }
-        }
-
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::IfExp {
-                condition,
-                then: then.clone(),
-                r#else,
-            },
-            is_constant: IsConstant::No, // TODO
-            return_type: then.return_type,
-            span,
-        };
+        let exp = check!(
+            instantiate_if_expression(condition, then, r#else, span, type_annotation, self_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         ok(exp, warnings, errors)
     }
 
@@ -1510,7 +1430,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression(
-        prefix: Box<Expression>,
+        prefix: Expression,
         span: Span,
         field_to_access: Ident,
         namespace: &mut Namespace,
@@ -1523,7 +1443,7 @@ impl TypedExpression {
         let mut errors = vec![];
         let parent = check!(
             TypedExpression::type_check(TypeCheckArguments {
-                checkee: *prefix,
+                checkee: prefix,
                 namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
@@ -1537,44 +1457,12 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let (fields, struct_name) = check!(
-            namespace.get_struct_type_fields(
-                parent.return_type,
-                parent.span.as_str(),
-                &parent.span
-            ),
+        let exp = check!(
+            instantiate_struct_field_access(parent, field_to_access, span),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let field = if let Some(field) = fields
-            .iter()
-            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
-        {
-            field
-        } else {
-            errors.push(CompileError::FieldNotFound {
-                available_fields: fields
-                    .iter()
-                    .map(|TypedStructField { name, .. }| name.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                field_name: field_to_access.clone(),
-                struct_name,
-            });
-            return err(warnings, errors);
-        };
-
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::StructFieldAccess {
-                resolved_type_of_parent: parent.return_type,
-                prefix: Box::new(parent),
-                field_to_access: field.clone(),
-            },
-            return_type: field.r#type,
-            is_constant: IsConstant::No,
-            span,
-        };
         ok(exp, warnings, errors)
     }
 
@@ -1714,40 +1602,12 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let mut tuple_elem_to_access = None;
-        let tuple_elems = check!(
-            namespace.get_tuple_elems(parent.return_type, parent.span.as_str(), &parent.span),
+        let exp = check!(
+            instantiate_tuple_index_access(parent, index, index_span, span),
             return err(warnings, errors),
             warnings,
             errors
         );
-        for (pos, elem) in tuple_elems.iter().enumerate() {
-            if pos == index {
-                tuple_elem_to_access = Some(elem.clone());
-            }
-        }
-        let tuple_elem_to_access = match tuple_elem_to_access {
-            Some(tuple_elem_to_access) => tuple_elem_to_access,
-            None => {
-                errors.push(CompileError::TupleIndexOutOfBounds {
-                    index,
-                    count: tuple_elems.len(),
-                    span: index_span,
-                });
-                return err(warnings, errors);
-            }
-        };
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::TupleElemAccess {
-                resolved_type_of_parent: parent.return_type,
-                prefix: Box::new(parent),
-                elem_to_access_num: index,
-                elem_to_access_span: index_span,
-            },
-            return_type: tuple_elem_to_access.type_id,
-            is_constant: IsConstant::No,
-            span,
-        };
         ok(exp, warnings, errors)
     }
 
@@ -2262,44 +2122,12 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
-                let tuple_elems = check!(
-                    namespace.get_tuple_elems(
-                        parent.return_type,
-                        parent.span.as_str(),
-                        &parent.span
-                    ),
+                let exp = check!(
+                    instantiate_tuple_index_access(parent, elem_num, span.clone(), span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let mut tuple_elem_to_access = None;
-                for (pos, tuple_elem) in tuple_elems.into_iter().enumerate() {
-                    if pos == elem_num {
-                        tuple_elem_to_access = Some(tuple_elem)
-                    }
-                }
-                let tuple_elem_to_access = match tuple_elem_to_access {
-                    None => {
-                        errors.push(CompileError::MatchWrongType {
-                            expected: parent.return_type,
-                            span: parent.span,
-                        });
-                        let exp = error_recovery_expr(span);
-                        return ok(exp, warnings, errors);
-                    }
-                    Some(tuple_elem_to_access) => tuple_elem_to_access,
-                };
-                let exp = TypedExpression {
-                    expression: TypedExpressionVariant::TupleElemAccess {
-                        resolved_type_of_parent: parent.return_type,
-                        prefix: Box::new(parent),
-                        elem_to_access_num: elem_num,
-                        elem_to_access_span: span.clone(),
-                    },
-                    return_type: tuple_elem_to_access.type_id,
-                    is_constant: IsConstant::No,
-                    span,
-                };
                 ok(exp, warnings, errors)
             }
             DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
@@ -2334,32 +2162,18 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
-                let (struct_fields, other_struct_name) = check!(
-                    namespace.get_struct_type_fields(
-                        parent.return_type,
-                        parent.span.as_str(),
-                        &parent.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if struct_name.as_str() != other_struct_name.as_str() {
-                    errors.push(CompileError::MatchWrongType {
-                        expected: parent.return_type,
-                        span: struct_name.span().clone(),
-                    });
-                    let exp = error_recovery_expr(span);
-                    return ok(exp, warnings, errors);
-                }
-                let mut field_to_access = None;
-                for struct_field in struct_fields.iter() {
-                    if struct_field.name.as_str() == field.as_str() {
-                        field_to_access = Some(struct_field.clone())
+                match look_up_type_id(parent.return_type) {
+                    TypeInfo::Struct { name, .. } => {
+                        if name.as_str() != struct_name.as_str() {
+                            errors.push(CompileError::MatchWrongType {
+                                expected: parent.return_type,
+                                span: struct_name.span().clone(),
+                            });
+                            let exp = error_recovery_expr(span);
+                            return ok(exp, warnings, errors);
+                        }
                     }
-                }
-                let field_to_access = match field_to_access {
-                    None => {
+                    _ => {
                         errors.push(CompileError::MatchWrongType {
                             expected: parent.return_type,
                             span: struct_name.span().clone(),
@@ -2367,18 +2181,13 @@ impl TypedExpression {
                         let exp = error_recovery_expr(span);
                         return ok(exp, warnings, errors);
                     }
-                    Some(field_to_access) => field_to_access,
-                };
-                let exp = TypedExpression {
-                    expression: TypedExpressionVariant::StructFieldAccess {
-                        resolved_type_of_parent: parent.return_type,
-                        prefix: Box::new(parent),
-                        field_to_access: field_to_access.clone(),
-                    },
-                    return_type: field_to_access.r#type,
-                    is_constant: IsConstant::No,
-                    span,
-                };
+                }
+                let exp = check!(
+                    instantiate_struct_field_access(parent, field, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 ok(exp, warnings, errors)
             }
         }
