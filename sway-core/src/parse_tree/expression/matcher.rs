@@ -55,6 +55,7 @@ pub type MatcherResult = (MatchReqMap, MatchImplMap);
 /// ```
 pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<MatcherResult> {
     match scrutinee {
+        Scrutinee::CatchAll { .. } => ok((vec![], vec![]), vec![], vec![]),
         Scrutinee::Literal { value, span } => match_literal(exp, value, span),
         Scrutinee::Variable { name, span } => match_variable(exp, name, span),
         Scrutinee::StructScrutinee {

@@ -1149,7 +1149,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_match_expression(
-        arguments: TypeCheckArguments<'_, (Expression, Vec<MatchCondition>)>,
+        arguments: TypeCheckArguments<'_, (Expression, Vec<Scrutinee>)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];

@@ -5,14 +5,14 @@ use {
         parse_tree::desugar_match_expression,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
-        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
-        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
-        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
-        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-        SwayParseTree, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter,
-        UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
+        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
+        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
+        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
+        StructScrutineeField, Supertrait, SwayParseTree, TraitDeclaration, TraitFn, TreeType,
+        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
+        WhileLoop,
     },
     std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
@@ -2156,7 +2156,7 @@ fn match_branch_to_match_branch(
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
-        condition: pattern_to_match_condition(ec, match_branch.pattern)?,
+        condition: pattern_to_scrutinee(ec, match_branch.pattern)?,
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
@@ -2350,31 +2350,26 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     }
 }
 
-fn pattern_to_match_condition(
-    ec: &mut ErrorContext,
-    pattern: Pattern,
-) -> Result<MatchCondition, ErrorEmitted> {
-    let match_condition = match pattern {
-        Pattern::Wildcard { underscore_token } => {
-            let span = underscore_token.span();
-            MatchCondition::CatchAll(CatchAll { span })
-        }
-        _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
-    };
-    Ok(match_condition)
-}
-
 fn pattern_to_scrutinee(
     ec: &mut ErrorContext,
     pattern: Pattern,
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
-        Pattern::Wildcard { .. } => {
-            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
-            return Err(ec.error(error));
-        }
-        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
+        Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
+            span: underscore_token.span(),
+        },
+        Pattern::Var { name, .. } => match name.as_str() {
+            "true" => Scrutinee::Literal {
+                value: Literal::Boolean(true),
+                span,
+            },
+            "false" => Scrutinee::Literal {
+                value: Literal::Boolean(false),
+                span,
+            },
+            _ => Scrutinee::Variable { name, span },
+        },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,

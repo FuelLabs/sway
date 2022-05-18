@@ -11,6 +11,9 @@ use sway_types::{ident::Ident, span::Span};
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
+    CatchAll {
+        span: Span,
+    },
     Literal {
         value: Literal,
         span: Span,
@@ -45,6 +48,7 @@ pub struct StructScrutineeField {
 impl Scrutinee {
     pub fn span(&self) -> Span {
         match self {
+            Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
