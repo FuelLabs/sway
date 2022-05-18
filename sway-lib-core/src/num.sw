@@ -79,7 +79,7 @@ impl b256 {
     }
 
     /// The largest value that can be represented by this type,
-    /// 2<sup>8</sup> - 1.
+    /// 2<sup>256</sup> - 1.
     pub fn max() -> b256 {
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     }
