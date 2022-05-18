@@ -1,26 +1,13 @@
 use crate::{
-    error::*,
-    parse_tree::Visibility,
-    semantic_analysis::{
-        ast_node::{
-            TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
-        },
-        declaration::{TypedStorageField, VariableMutability},
-        TypeCheckedStorageAccess,
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypeParameter, TypedDeclaration,
-    TypedFunctionDeclaration,
+    error::*, semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath,
+    CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
-use super::{items::Items, module::Module, namespace::Namespace, ModuleName, Path};
+use super::{module::Module, namespace::Namespace, Path};
 
 use sway_types::span::Span;
 
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use std::collections::VecDeque;
 
 /// The root module, from which all other modules can be accessed.
 ///

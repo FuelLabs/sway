@@ -1,26 +1,4 @@
-use crate::{
-    error::*,
-    parse_tree::Visibility,
-    semantic_analysis::{
-        ast_node::{
-            TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
-        },
-        declaration::{TypedStorageField, VariableMutability},
-        TypeCheckedStorageAccess,
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypeParameter, TypedDeclaration,
-    TypedFunctionDeclaration,
-};
-
-use super::{items::Items, module::Module, namespace::Namespace, ModuleName, Path, PathBuf};
-
-use sway_types::span::Span;
-
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use super::{namespace::Namespace, PathBuf};
 
 /// A namespace session type representing the type-checking of a submodule.
 ///

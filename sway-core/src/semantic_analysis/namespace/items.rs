@@ -1,11 +1,8 @@
 use crate::{
     error::*,
-    parse_tree::Visibility,
     semantic_analysis::{
-        ast_node::{
-            TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
-        },
-        declaration::{TypedStorageField, VariableMutability},
+        ast_node::{TypedStorageDeclaration, TypedStructField},
+        declaration::TypedStorageField,
         TypeCheckedStorageAccess,
     },
     type_engine::*,
@@ -13,14 +10,11 @@ use crate::{
     TypedFunctionDeclaration,
 };
 
-use super::{trait_map::TraitMap, ModuleName};
+use super::trait_map::TraitMap;
 
 use sway_types::span::Span;
 
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
 type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;

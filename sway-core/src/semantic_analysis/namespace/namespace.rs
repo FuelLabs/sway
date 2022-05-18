@@ -1,29 +1,13 @@
 use crate::{
-    error::*,
-    parse_tree::Visibility,
-    semantic_analysis::{
-        ast_node::{
-            TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
-        },
-        declaration::{TypedStorageField, VariableMutability},
-        TypeCheckedStorageAccess,
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypeParameter, TypedDeclaration,
-    TypedFunctionDeclaration,
+    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
+    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
-use super::{
-    items::Items, module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModuleName,
-    Path, PathBuf,
-};
+use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
 use sway_types::span::Span;
 
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use std::collections::VecDeque;
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug, PartialEq)]

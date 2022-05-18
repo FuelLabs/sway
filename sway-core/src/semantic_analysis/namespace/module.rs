@@ -1,26 +1,14 @@
 use crate::{
     error::*,
     parse_tree::Visibility,
-    semantic_analysis::{
-        ast_node::{
-            TypedExpression, TypedStorageDeclaration, TypedStructField, TypedVariableDeclaration,
-        },
-        declaration::{TypedStorageField, VariableMutability},
-        TypeCheckedStorageAccess,
-    },
+    semantic_analysis::{ast_node::TypedVariableDeclaration, declaration::VariableMutability},
     type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypeParameter, TypedDeclaration,
-    TypedFunctionDeclaration,
+    CompileResult, Ident, TypedDeclaration,
 };
 
-use super::{items::Items, root::Root, trait_map::TraitMap, ModuleName, Path};
+use super::{items::Items, root::Root, ModuleName, Path};
 
 use sway_types::span::Span;
-
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
 
 /// A single `Module` within a Sway project.
 ///
