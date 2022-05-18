@@ -178,6 +178,7 @@ fn load_examples() -> Result<HashMap<String, String>> {
 
 fn generate_doc_output(subcommand: &str) -> Result<String> {
     let mut result = String::new();
+    let mut has_parsed_subcommand_header = false;
 
     let output = process::Command::new("forc")
         .args([subcommand, "--help"])
@@ -194,12 +195,16 @@ fn generate_doc_output(subcommand: &str) -> Result<String> {
         let mut formatted_line = String::new();
         let line = line.trim();
 
+        if line == "SUBCOMMANDS:" {
+            has_parsed_subcommand_header = true;
+        }
+
         if index == 0 {
             formatted_line.push_str(&format_header_line(line));
         } else if index == 1 {
             formatted_line.push_str(line);
         } else {
-            formatted_line.push_str(&format_line(line))
+            formatted_line.push_str(&format_line(line, has_parsed_subcommand_header))
         }
 
         result.push_str(&formatted_line);
