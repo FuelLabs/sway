@@ -39,7 +39,7 @@ fn main() {
         None => std::env::current_dir().expect("cannot get current dir"),
     };
     if let Err(err) = format_pkg_at_dir(app, &dir) {
-        error!("{:?}", err);
+        error!("Error: {:?}", err);
         std::process::exit(1);
     }
 }

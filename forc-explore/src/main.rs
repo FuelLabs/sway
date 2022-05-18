@@ -56,7 +56,7 @@ async fn main() {
         None => run(app).await,
     };
     if let Err(err) = result {
-        error!("{:?}", err);
+        error!("Error: {:?}", err);
         std::process::exit(1);
     }
 }
