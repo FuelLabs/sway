@@ -15,8 +15,8 @@ pub enum Ty {
     },
 }
 
-impl Ty {
-    pub fn span(&self) -> Span {
+impl Spanned for Ty {
+    fn span(&self) -> Span {
         match self {
             Ty::Path(path_type) => path_type.span(),
             Ty::Tuple(tuple_type) => tuple_type.span(),

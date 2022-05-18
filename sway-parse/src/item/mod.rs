@@ -15,8 +15,8 @@ pub struct Item {
     pub kind: ItemKind,
 }
 
-impl Item {
-    pub fn span(&self) -> Span {
+impl Spanned for Item {
+    fn span(&self) -> Span {
         match self.attribute_list.first() {
             Some(attr0) => Span::join(attr0.span(), self.kind.span()),
             None => self.kind.span(),
@@ -56,8 +56,8 @@ pub enum ItemKind {
     Storage(ItemStorage),
 }
 
-impl ItemKind {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemKind {
+    fn span(&self) -> Span {
         match self {
             ItemKind::Use(item_use) => item_use.span(),
             ItemKind::Struct(item_struct) => item_struct.span(),
@@ -129,8 +129,8 @@ pub struct TypeField {
     pub ty: Ty,
 }
 
-impl TypeField {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeField {
+    fn span(&self) -> Span {
         Span::join(self.name.span().clone(), self.ty.span())
     }
 }
@@ -164,8 +164,8 @@ pub struct FnArg {
     pub ty: Ty,
 }
 
-impl FnArg {
-    pub fn span(&self) -> Span {
+impl Spanned for FnArg {
+    fn span(&self) -> Span {
         Span::join(self.pattern.span(), self.ty.span())
     }
 }
@@ -232,8 +232,8 @@ pub struct FnSignature {
     pub where_clause_opt: Option<WhereClause>,
 }
 
-impl FnSignature {
-    pub fn span(&self) -> Span {
+impl Spanned for FnSignature {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => match &self.impure {
@@ -257,7 +257,7 @@ impl Parse for FnSignature {
         let visibility = parser.take();
         let impure = parser.take();
         let fn_token = parser.parse()?;
-        let name = parser.parse()?;
+        let name: Ident = parser.parse()?;
         let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
             Some(parser.parse()?)
         } else {

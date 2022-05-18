@@ -12,8 +12,8 @@ pub struct AttributeDecl {
     pub attribute: SquareBrackets<Attribute>,
 }
 
-impl AttributeDecl {
-    pub fn span(&self) -> Span {
+impl Spanned for AttributeDecl {
+    fn span(&self) -> Span {
         Span::join(self.hash_token.span(), self.attribute.span())
     }
 }
@@ -35,8 +35,8 @@ pub struct Attribute {
     pub args: Option<Parens<Punctuated<Ident, CommaToken>>>,
 }
 
-impl Attribute {
-    pub fn span(&self) -> Span {
+impl Spanned for Attribute {
+    fn span(&self) -> Span {
         self.args
             .as_ref()
             .map(|args| Span::join(self.name.span().clone(), args.span()))

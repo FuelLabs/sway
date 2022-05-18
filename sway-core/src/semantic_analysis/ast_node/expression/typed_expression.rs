@@ -1258,6 +1258,10 @@ impl TypedExpression {
                 },
             )
             .collect();
+        // check for any disallowed opcodes
+        for op in &asm.body {
+            check!(disallow_opcode(&op.op_name), continue, warnings, errors)
+        }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
@@ -1849,9 +1853,6 @@ impl TypedExpression {
         // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
-        // TODO(static span): the below String address should just be address_expr
-        // basically delete the bottom line and replace references to it with address_expr
-        let address_str = address.span().as_str().to_string();
         let address_expr = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *address,
@@ -1918,7 +1919,7 @@ impl TypedExpression {
                             TypedExpression {
                                 return_type: insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
-                                    address: String::new(),
+                                    address: None,
                                 }),
                                 expression: TypedExpressionVariant::Tuple { fields: vec![] },
                                 is_constant: IsConstant::Yes,
@@ -1938,10 +1939,12 @@ impl TypedExpression {
                 return err(warnings, errors);
             }
         };
+
         let return_type = insert_type(TypeInfo::ContractCaller {
             abi_name: AbiName::Known(abi_name.clone()),
-            address: address_str,
+            address: Some(Box::new(address_expr.clone())),
         });
+
         let mut functions_buf = abi
             .interface_surface
             .iter()
@@ -2576,7 +2579,6 @@ mod tests {
             dir_of_code: Arc::new("".into()),
             manifest_path: Arc::new("".into()),
             use_orig_asm: false,
-            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
@@ -2711,5 +2713,32 @@ mod tests {
             insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
+    }
+}
+fn disallow_opcode(op: &Ident) -> CompileResult<()> {
+    let mut errors = vec![];
+
+    match op.as_str().to_lowercase().as_str() {
+        "ji" => {
+            errors.push(CompileError::DisallowedJi {
+                span: op.span().clone(),
+            });
+        }
+        "jnei" => {
+            errors.push(CompileError::DisallowedJnei {
+                span: op.span().clone(),
+            });
+        }
+        "jnzi" => {
+            errors.push(CompileError::DisallowedJnzi {
+                span: op.span().clone(),
+            });
+        }
+        _ => (),
+    };
+    if errors.is_empty() {
+        ok((), vec![], vec![])
+    } else {
+        err(vec![], errors)
     }
 }
