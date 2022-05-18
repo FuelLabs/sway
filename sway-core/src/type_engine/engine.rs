@@ -330,7 +330,6 @@ impl Engine {
         } else {
             expected
         };
-
         self.unify(received, expected, span, help_text)
     }
 

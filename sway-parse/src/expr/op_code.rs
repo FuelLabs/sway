@@ -7,8 +7,8 @@ macro_rules! define_op_code (
             span: Span,
         }
 
-        impl $ty_name {
-            pub fn span(&self) -> Span {
+        impl Spanned for $ty_name {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
         }
@@ -105,8 +105,10 @@ macro_rules! define_op_codes (
                     },)*
                 }
             }
+        }
 
-            pub fn span(&self) -> Span {
+        impl Spanned for Instruction {
+            fn span(&self) -> Span {
                 match self {
                     $(Instruction::$op_name { token, $($arg_name,)* } => {
                         get_span!(token.span(), ($($arg_name,)*))

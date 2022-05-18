@@ -25,7 +25,7 @@ use {
         ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
         UseTree,
     },
-    sway_types::{Ident, Span},
+    sway_types::{Ident, Span, Spanned},
     thiserror::Error,
 };
 

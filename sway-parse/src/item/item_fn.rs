@@ -6,8 +6,8 @@ pub struct ItemFn {
     pub body: Braces<CodeBlockContents>,
 }
 
-impl ItemFn {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemFn {
+    fn span(&self) -> Span {
         Span::join(self.fn_signature.span(), self.body.span())
     }
 }
