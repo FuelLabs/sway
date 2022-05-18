@@ -3,8 +3,8 @@ script;
 use std::{
     constants::ZERO,
     core::num::*,
+    hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256},
     logging::log,
-    hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256}
 };
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
