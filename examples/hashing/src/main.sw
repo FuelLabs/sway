@@ -2,10 +2,10 @@ script;
 
 use std::{
     chain::log_b256,
-    constants::ZERO,
     core::num::*,
     hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256}
 };
+use core::num::*;
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
@@ -32,6 +32,7 @@ struct Stats {
 }
 
 fn main() {
+    let zero = ~b256::min();
     // Use the generic sha256 to hash some integers
     let sha_hashed_u8 = sha256(~u8::max());
     let sha_hashed_u16 = sha256(~u16::max());
@@ -61,7 +62,7 @@ fn main() {
         name: "John", age: 9000, alive: true, location: Location::Mars, stats: Stats {
             strength: 10, agility: 9
         },
-        some_tuple: (true, 8), some_array: [17, 76], some_b256: ZERO
+        some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
     });
 
     log_b256(sha_hashed_u8);
