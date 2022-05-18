@@ -170,8 +170,8 @@ pub enum Expr {
     },
 }
 
-impl Expr {
-    pub fn span(&self) -> Span {
+impl Spanned for Expr {
+    fn span(&self) -> Span {
         match self {
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
@@ -290,8 +290,8 @@ pub enum IfCondition {
     },
 }
 
-impl IfExpr {
-    pub fn span(&self) -> Span {
+impl Spanned for IfExpr {
+    fn span(&self) -> Span {
         let start = self.if_token.span();
         let end = match &self.else_opt {
             Some((_else_token, tail)) => match tail {
@@ -380,8 +380,8 @@ pub struct MatchBranch {
     pub kind: MatchBranchKind,
 }
 
-impl MatchBranch {
-    pub fn span(&self) -> Span {
+impl Spanned for MatchBranch {
+    fn span(&self) -> Span {
         Span::join(self.pattern.span(), self.kind.span())
     }
 }
@@ -399,8 +399,8 @@ pub enum MatchBranchKind {
     },
 }
 
-impl MatchBranchKind {
-    pub fn span(&self) -> Span {
+impl Spanned for MatchBranchKind {
+    fn span(&self) -> Span {
         match self {
             MatchBranchKind::Block {
                 block,
@@ -993,8 +993,8 @@ pub struct ExprStructField {
     pub expr_opt: Option<(ColonToken, Box<Expr>)>,
 }
 
-impl ExprStructField {
-    pub fn span(&self) -> Span {
+impl Spanned for ExprStructField {
+    fn span(&self) -> Span {
         match &self.expr_opt {
             None => self.field_name.span().clone(),
             Some((_colon_token, expr)) => Span::join(self.field_name.span().clone(), expr.span()),

@@ -10,7 +10,7 @@ members = [
     "forc-pkg",
     "forc-util",
     "scripts/examples-checker",
-    "scripts/forc-documenter",
+    "scripts/mdbook-forc-documenter",
     "sway-core",
     "sway-fmt",
     "sway-ir",

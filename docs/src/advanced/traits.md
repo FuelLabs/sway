@@ -11,7 +11,7 @@ trait Compare {
     fn equals(self, b: Self) -> bool;
 } {
     fn not_equals(self, b: Self) -> bool {
-        !equals(self.equals(b))
+        !self.equals(b)
     }
 }
 ```

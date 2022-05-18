@@ -20,12 +20,6 @@ To serve locally:
 mdbook serve
 ```
 
-## Regenerate Forc SubCommand Docs
+## Generating Forc commands documentation
 
-With forc installed running the command
-
-```sh
-cargo run --bin forc-documenter write-docs
-```
-
-will generate the proper docs for `forc` and its commands based on `forc --help`. This behavior is further documented in [the Forc documenter README](../scripts/forc-documenter/README.md).
+The `mdbook-forc-documenter` now automatically handles documenting forc commands. This behavior is further documented in [the mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md).
