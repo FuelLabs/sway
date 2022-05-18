@@ -379,6 +379,15 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
+                            for type_parameter in e.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             is_upper_camel_case(&e.name).ok(&mut warnings, &mut errors);
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
@@ -393,6 +402,15 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
+                            for type_parameter in fn_decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
@@ -479,10 +497,9 @@ impl TypedAstNode {
                         }) => {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
-                                        "Where clauses are not supported yet.",
-                                        type_parameter.name_ident.span().clone(),
-                                    ));
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
                                     break;
                                 }
                             }
@@ -560,6 +577,15 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
+                            for type_parameter in decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             is_upper_camel_case(&decl.name).ok(&mut warnings, &mut errors);
                             // look up any generic or struct types in the namespace
                             // insert type parameters

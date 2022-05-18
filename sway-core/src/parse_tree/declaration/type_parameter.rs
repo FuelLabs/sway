@@ -1,4 +1,4 @@
-use crate::{type_engine::*, TypedDeclaration};
+use crate::{type_engine::*, CallPath, TypedDeclaration};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -59,5 +59,5 @@ impl TypeParameter {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
-    pub(crate) name: Ident,
+    pub(crate) name: CallPath,
 }

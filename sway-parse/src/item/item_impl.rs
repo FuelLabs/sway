@@ -6,6 +6,7 @@ pub struct ItemImpl {
     pub generic_params_opt: Option<GenericParams>,
     pub trait_opt: Option<(PathType, ForToken)>,
     pub ty: Ty,
+    pub where_clause_opt: Option<WhereClause>,
     pub contents: Braces<Vec<ItemFn>>,
 }
 
@@ -33,12 +34,20 @@ impl Parse for ItemImpl {
             }
             None => (None, Ty::Path(path_type)),
         };
+        let where_clause_opt = match parser.peek::<WhereToken>() {
+            Some(..) => {
+                let where_clause = parser.parse()?;
+                Some(where_clause)
+            }
+            None => None,
+        };
         let contents = parser.parse()?;
         Ok(ItemImpl {
             impl_token,
             generic_params_opt,
             trait_opt,
             ty,
+            where_clause_opt,
             contents,
         })
     }

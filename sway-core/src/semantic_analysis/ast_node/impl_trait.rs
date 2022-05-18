@@ -40,10 +40,9 @@ pub(crate) fn implementation_of_trait(
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
     for type_argument in type_arguments.iter() {
         if !type_argument.trait_constraints.is_empty() {
-            errors.push(CompileError::Internal(
-                "Where clauses are not supported yet.",
-                type_argument.name_ident.span().clone(),
-            ));
+            errors.push(CompileError::WhereClauseNotYetSupported {
+                span: type_argument.name_ident.span().clone(),
+            });
             break;
         }
     }
