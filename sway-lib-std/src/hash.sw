@@ -132,7 +132,7 @@ pub fn sha256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = ZERO;
     if !__is_reference_type::<T>() {
         asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
-            move buffer sp; // Copy stack pointer to memory at "buffer"
+            move buffer sp; // Make `buffer` point to the current top of the stack
             cfei i8; // Grow stack by 1 word
             sw buffer ptr i0; // Save value in register at "ptr" to memory at "buffer"
             s256 hash buffer eight_bytes; // Hash the next eight bytes starting from "buffer" into "hash"
