@@ -72,25 +72,28 @@ fn hash_enum(arr: [u8; 16]) -> [u8; 32] {
     Sha256::digest(arr).into()
 }
 
-async fn get_hashing_instance() -> (HashingTestContract, ContractId, LocalWallet, LocalWallet) {
+fn hash_b256(arr: [u8; 32]) -> [u8; 32] {
+    Sha256::digest(arr).into()
+}
+
+async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
 
     // Hacky way to get 2 addresses
-    let (provider, wallet1) = test_helpers::setup_test_provider_and_wallet().await;
-    let (_, wallet2) = test_helpers::setup_test_provider_and_wallet().await;
+    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
     
-    let id = Contract::deploy(&compiled, &provider, &wallet1, TxParameters::default())
+    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
         .unwrap();
-    let instance = HashingTestContract::new(id.to_string(), provider, wallet1.clone());
+    let instance = HashingTestContract::new(id.to_string(), provider, wallet);
 
-    (instance, id, wallet1, wallet2)
+    (instance, id)
 }
 
 #[tokio::test]
 async fn test_hash_u64() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
     // Check that hashing the same `u64` results in the same hash
     let sha256_result1 = instance.get_s256_hash_u64(42).call().await.unwrap();
     let sha256_result2 = instance.get_s256_hash_u64(42).call().await.unwrap();
@@ -103,7 +106,7 @@ async fn test_hash_u64() {
 
 #[tokio::test]
 async fn test_sha256_u8() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_u64(254);
     let expected_2 = hash_u64(253);
@@ -121,7 +124,7 @@ async fn test_sha256_u8() {
 
 #[tokio::test]
 async fn test_sha256_u16() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_u64(65534);
     let expected_2 = hash_u64(65533);
@@ -139,7 +142,7 @@ async fn test_sha256_u16() {
 
 #[tokio::test]
 async fn test_sha256_u32() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_u64(4294967294);
     let expected_2 = hash_u64(4294967293);
@@ -157,7 +160,7 @@ async fn test_sha256_u32() {
 
 #[tokio::test]
 async fn test_sha256_u64() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
     
     let expected_1 = hash_u64(18446744073709551613);
     let expected_2 = hash_u64(18446744073709551612);
@@ -175,7 +178,7 @@ async fn test_sha256_u64() {
 
 #[tokio::test]
 async fn test_sha256_str() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_str("John");
     let expected_2 = hash_str("Nick");
@@ -193,7 +196,7 @@ async fn test_sha256_str() {
 
 #[tokio::test]
 async fn test_sha256_bool() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_bool(true);
     let expected_2 = hash_bool(false);
@@ -211,20 +214,28 @@ async fn test_sha256_bool() {
 
 #[tokio::test]
 async fn test_sha256_b256() {
-    let (instance, _id, wallet1, wallet2) = get_hashing_instance().await;
-    let address1 = wallet1.address();
-    let address2 = wallet2.address();
+    let (instance, _id) = get_hashing_instance().await;
 
-    let result1 = instance.sha256_b256(*address1).call().await.unwrap();
-    let result2 = instance.sha256_b256(*address1).call().await.unwrap();
-    let result3 = instance.sha256_b256(*address2).call().await.unwrap();
-    assert_eq!(result1.value, result2.value);
-    assert_ne!(result1.value, result3.value);
+    let address1 = [118, 64, 238, 245, 229, 5, 191, 187, 201, 174, 141, 75, 72, 119, 88, 252, 38, 62, 110, 176, 51, 16, 126, 190, 233, 136, 54, 127, 90, 101, 230, 168];
+    let address2 = [8, 4, 28, 217, 200, 5, 161, 17, 20, 214, 54, 77, 72, 118, 90, 31, 225, 63, 110, 77, 190, 190, 12, 1, 233, 48, 54, 72, 90, 253, 100, 103];
+
+    let expected_1 = hash_b256(address1);
+    let expected_2 = hash_b256(address2);
+
+    let call_1 = instance.sha256_b256(address1).call().await.unwrap();
+    let call_2 = instance.sha256_b256(address1).call().await.unwrap();
+    let call_3 = instance.sha256_b256(address2).call().await.unwrap();
+
+    assert_eq!(call_1.value, call_2.value);
+    assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
 async fn test_sha256_tuple() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_tuple([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5]);
     let expected_2 = hash_tuple([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6]);
@@ -242,7 +253,7 @@ async fn test_sha256_tuple() {
 
 #[tokio::test]
 async fn test_sha256_array() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_array([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5]);
     let expected_2 = hash_array([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6]);
@@ -260,7 +271,7 @@ async fn test_sha256_array() {
 
 #[tokio::test]
 async fn test_sha256_struct() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
     let result1 = instance.sha256_struct(true).call().await.unwrap();
     let result2 = instance.sha256_struct(true).call().await.unwrap();
     let result3 = instance.sha256_struct(false).call().await.unwrap();
@@ -270,7 +281,7 @@ async fn test_sha256_struct() {
 
 #[tokio::test]
 async fn test_sha256_enum() {
-    let (instance, _id, _, _) = get_hashing_instance().await;
+    let (instance, _id) = get_hashing_instance().await;
 
     let expected_1 = hash_enum([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     let expected_2 = hash_enum([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
