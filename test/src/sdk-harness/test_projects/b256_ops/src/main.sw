@@ -1,7 +1,8 @@
 script;
 
 use std::assert::{assert, require};
-use std::constants::ZERO;
+use core::num::*;
+
 
 fn main() -> bool {
     let a: b256 = 0b1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001_1000000000000001;
@@ -45,7 +46,7 @@ fn main() -> bool {
     assert(f & e == f);
     assert(b & d == g);
     assert(b256_F & b256_3 == b256_3);
-    assert(b256_1 & b256_2 == ZERO);
+    assert(b256_1 & b256_2 == ~b256::min());
     assert(b256_F & b256_2 == b256_2);
 
     assert(a | g == e);
@@ -78,7 +79,7 @@ fn main() -> bool {
     // test Ord
     ///////////////////////////////////////////////////////
 
-    assert(one > ZERO);
+    assert(one > ~b256::min());
     assert(two > one);
     assert(one < two);
     assert(two < saturated);
