@@ -23,6 +23,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
+      - name: Install Forc plugins
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: forc-fmt forc-lsp forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
