@@ -7,7 +7,7 @@ impl u64 {
     }
 
     /// The largest value that can be represented by this integer type,
-    /// 2**64 - 1.
+    /// 2<sup>64</sup> - 1.
     pub fn max() -> u64 {
         18446744073709551615
     }
@@ -25,7 +25,7 @@ impl u32 {
     }
 
     /// The largest value that can be represented by this integer type,
-    /// 2**32 - 1.
+    /// 2<sup>32</sup> - 1.
     pub fn max() -> u32 {
         4294967295
     }
@@ -43,7 +43,7 @@ impl u16 {
     }
 
     /// The largest value that can be represented by this integer type,
-    /// 2**16 - 1.
+    /// 2<sup>16</sup> - 1.
     pub fn max() -> u16 {
         65535
     }
@@ -61,7 +61,7 @@ impl u8 {
     }
 
     /// The largest value that can be represented by this integer type,
-    /// 2**8 - 1.
+    /// 2<sup>8</sup> - 1.
     pub fn max() -> u8 {
         255
     }
