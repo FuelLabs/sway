@@ -1,6 +1,6 @@
-#[allow(clippy::module_inception)]
 mod items;
 mod module;
+#[allow(clippy::module_inception)]
 mod namespace;
 mod root;
 mod submodule_namespace;
