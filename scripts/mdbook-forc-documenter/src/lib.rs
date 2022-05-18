@@ -5,7 +5,6 @@ use commands::call_possible_forc_commands;
 use mdbook::book::{Book, BookItem};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
