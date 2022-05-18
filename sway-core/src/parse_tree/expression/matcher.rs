@@ -54,8 +54,6 @@ pub type MatcherResult = Option<(MatchReqMap, MatchImplMap)>;
 /// ]
 /// ```
 pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<MatcherResult> {
-    let mut errors = vec![];
-    let warnings = vec![];
     match scrutinee {
         Scrutinee::Literal { value, span } => match_literal(exp, value, span),
         Scrutinee::Variable { name, span } => match_variable(exp, name, span),
@@ -71,14 +69,6 @@ pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<Matcher
             ..
         } => match_enum(exp, call_path, variable_to_assign, span),
         Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
-        scrutinee => {
-            eprintln!("Unimplemented scrutinee: {:?}", scrutinee,);
-            errors.push(CompileError::Unimplemented(
-                "this match expression scrutinee is not implemented",
-                scrutinee.span(),
-            ));
-            ok(Some((vec![], vec![])), warnings, errors)
-        }
     }
 }
 

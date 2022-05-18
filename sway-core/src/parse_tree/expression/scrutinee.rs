@@ -11,9 +11,6 @@ use sway_types::{ident::Ident, span::Span};
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
-    Unit {
-        span: Span,
-    },
     Literal {
         value: Literal,
         span: Span,
@@ -49,7 +46,6 @@ impl Scrutinee {
     pub fn span(&self) -> Span {
         match self {
             Scrutinee::Literal { span, .. } => span.clone(),
-            Scrutinee::Unit { span } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),

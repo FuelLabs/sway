@@ -178,13 +178,6 @@ impl Pattern {
                 }
                 ok(Pattern::Tuple(new_elems), warnings, errors)
             }
-            Scrutinee::Unit { span } => {
-                errors.push(CompileError::Unimplemented(
-                    "unit exhaustivity checking",
-                    span,
-                ));
-                err(warnings, errors)
-            }
             Scrutinee::EnumScrutinee { span, .. } => {
                 errors.push(CompileError::Unimplemented(
                     "enum exhaustivity checking",
