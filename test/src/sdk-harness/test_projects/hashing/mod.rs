@@ -2,7 +2,7 @@ use fuel_tx::ContractId;
 use fuels::prelude::*;
 use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 abigen!(
     HashingTestContract,
@@ -17,7 +17,11 @@ fn hash_u64(number: u64) -> [u8; 32] {
 }
 
 fn hash_bool(value: bool) -> [u8; 32] {
-    let hash = if value { Sha256::digest([0, 0, 0, 0, 0, 0, 0, 1]) } else { Sha256::digest([0, 0, 0, 0, 0, 0, 0, 0]) };
+    let hash = if value {
+        Sha256::digest([0, 0, 0, 0, 0, 0, 0, 1])
+    } else {
+        Sha256::digest([0, 0, 0, 0, 0, 0, 0, 0])
+    };
     hash.into()
 }
 
@@ -82,7 +86,7 @@ async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
 
     // Hacky way to get 2 addresses
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
-    
+
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
         .unwrap();
@@ -110,7 +114,7 @@ async fn test_sha256_u8() {
 
     let expected_1 = hash_u64(254);
     let expected_2 = hash_u64(253);
-    
+
     let call_1 = instance.sha256_u8(254u8).call().await.unwrap();
     let call_2 = instance.sha256_u8(254u8).call().await.unwrap();
     let call_3 = instance.sha256_u8(253u8).call().await.unwrap();
@@ -161,13 +165,25 @@ async fn test_sha256_u32() {
 #[tokio::test]
 async fn test_sha256_u64() {
     let (instance, _id) = get_hashing_instance().await;
-    
+
     let expected_1 = hash_u64(18446744073709551613);
     let expected_2 = hash_u64(18446744073709551612);
 
-    let call_1 = instance.sha256_u64(18446744073709551613).call().await.unwrap();
-    let call_2 = instance.sha256_u64(18446744073709551613).call().await.unwrap();
-    let call_3 = instance.sha256_u64(18446744073709551612).call().await.unwrap();
+    let call_1 = instance
+        .sha256_u64(18446744073709551613)
+        .call()
+        .await
+        .unwrap();
+    let call_2 = instance
+        .sha256_u64(18446744073709551613)
+        .call()
+        .await
+        .unwrap();
+    let call_3 = instance
+        .sha256_u64(18446744073709551612)
+        .call()
+        .await
+        .unwrap();
 
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
@@ -183,9 +199,21 @@ async fn test_sha256_str() {
     let expected_1 = hash_str("John");
     let expected_2 = hash_str("Nick");
 
-    let call_1 = instance.sha256_str(String::from("John")).call().await.unwrap();
-    let call_2 = instance.sha256_str(String::from("John")).call().await.unwrap();
-    let call_3 = instance.sha256_str(String::from("Nick")).call().await.unwrap();
+    let call_1 = instance
+        .sha256_str(String::from("John"))
+        .call()
+        .await
+        .unwrap();
+    let call_2 = instance
+        .sha256_str(String::from("John"))
+        .call()
+        .await
+        .unwrap();
+    let call_3 = instance
+        .sha256_str(String::from("Nick"))
+        .call()
+        .await
+        .unwrap();
 
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
@@ -204,7 +232,7 @@ async fn test_sha256_bool() {
     let call_1 = instance.sha256_bool(true).call().await.unwrap();
     let call_2 = instance.sha256_bool(true).call().await.unwrap();
     let call_3 = instance.sha256_bool(false).call().await.unwrap();
-    
+
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
 
@@ -216,8 +244,14 @@ async fn test_sha256_bool() {
 async fn test_sha256_b256() {
     let (instance, _id) = get_hashing_instance().await;
 
-    let address1 = [118, 64, 238, 245, 229, 5, 191, 187, 201, 174, 141, 75, 72, 119, 88, 252, 38, 62, 110, 176, 51, 16, 126, 190, 233, 136, 54, 127, 90, 101, 230, 168];
-    let address2 = [8, 4, 28, 217, 200, 5, 161, 17, 20, 214, 54, 77, 72, 118, 90, 31, 225, 63, 110, 77, 190, 190, 12, 1, 233, 48, 54, 72, 90, 253, 100, 103];
+    let address1 = [
+        118, 64, 238, 245, 229, 5, 191, 187, 201, 174, 141, 75, 72, 119, 88, 252, 38, 62, 110, 176,
+        51, 16, 126, 190, 233, 136, 54, 127, 90, 101, 230, 168,
+    ];
+    let address2 = [
+        8, 4, 28, 217, 200, 5, 161, 17, 20, 214, 54, 77, 72, 118, 90, 31, 225, 63, 110, 77, 190,
+        190, 12, 1, 233, 48, 54, 72, 90, 253, 100, 103,
+    ];
 
     let expected_1 = hash_b256(address1);
     let expected_2 = hash_b256(address2);
@@ -289,7 +323,7 @@ async fn test_sha256_enum() {
     let call_1 = instance.sha256_enum(true).call().await.unwrap();
     let call_2 = instance.sha256_enum(true).call().await.unwrap();
     let call_3 = instance.sha256_enum(false).call().await.unwrap();
-    
+
     assert_eq!(call_1.value, call_2.value);
     assert_ne!(call_1.value, call_3.value);
 

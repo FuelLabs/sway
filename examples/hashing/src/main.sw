@@ -18,16 +18,16 @@ struct Person {
 
 fn main() {
     // Use the generic sha256 to hash some values
-    let sha_hashed_u8 = sha256(~u8::MAX());
+    let sha_hashed_u8 = sha256(~u8::max());
     log_b256(sha_hashed_u8);
 
-    let sha_hashed_u16 = sha256(~u16::MAX());
+    let sha_hashed_u16 = sha256(~u16::max());
     log_b256(sha_hashed_u16);
 
-    let sha_hashed_u32 = sha256(~u32::MAX());
+    let sha_hashed_u32 = sha256(~u32::max());
     log_b256(sha_hashed_u32);
 
-    let sha_hashed_u64 = sha256(~u64::MAX());
+    let sha_hashed_u64 = sha256(~u64::max());
     log_b256(sha_hashed_u64);
 
     let sha_hashed_b256 = sha256(VALUE_A);
