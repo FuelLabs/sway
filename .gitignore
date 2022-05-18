@@ -18,6 +18,3 @@ out
 # accidental upstream patch release breakage before users do.
 examples/*/Cargo.lock
 test/src/sdk-harness/Cargo.lock
-
-# These are unneeded mac generated files
-.DS_Store
