@@ -2550,7 +2550,7 @@ fn check_enum_scrutinee_type(
     let matching_variant = enum_decl
         .variants
         .iter()
-        .find(|TypedEnumVariant { name, .. }| *name == enum_variant)
+        .find(|TypedEnumVariant { name, .. }| name.as_str() == enum_variant.as_str())
         .cloned();
     match matching_variant {
         Some(variant) => ok((enum_decl, variant), warnings, errors),
