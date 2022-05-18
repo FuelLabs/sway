@@ -1,17 +1,18 @@
-use crate::formatter::{format_header_line, format_index_entry, format_line};
+use crate::formatter::format_index_entry;
 
-use anyhow::anyhow;
-use commands::call_possible_forc_commands;
+use commands::{
+    get_contents_from_commands, get_forc_command_from_file_name, possible_forc_commands,
+};
 use mdbook::book::{Book, BookItem, Chapter};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
+use plugins::official_plugin_commands;
 use std::collections::HashMap;
-use std::ffi::OsString;
 use std::fs;
-use std::process;
 
 mod commands;
 mod formatter;
+mod plugins;
 
 #[derive(Default)]
 pub struct ForcDocumenter;
@@ -20,24 +21,6 @@ impl ForcDocumenter {
     pub fn new() -> ForcDocumenter {
         ForcDocumenter
     }
-}
-
-fn get_contents_from_commands(commands: &Vec<String>) -> HashMap<String, String> {
-    let mut contents: HashMap<String, String> = HashMap::new();
-
-    for command in commands {
-        let result = match generate_doc_output(command) {
-            Ok(output) => output,
-            Err(_) => continue,
-        };
-        contents.insert("forc ".to_owned() + command, result);
-    }
-
-    contents
-}
-
-fn get_official_plugin_commands() -> Vec<String> {
-    vec!["fmt".to_string(), "explore".to_string(), "lsp".to_string()]
 }
 
 fn inject_content(chapter: &mut Chapter, content: &str, examples: &HashMap<String, String>) {
@@ -54,13 +37,13 @@ impl Preprocessor for ForcDocumenter {
     }
 
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
-        let possible_native_commands: Vec<String> = call_possible_forc_commands();
+        let possible_commands: Vec<String> = possible_forc_commands();
         let examples: HashMap<String, String> = load_examples()?;
 
-        let mut native_command_contents: HashMap<String, String> =
-            get_contents_from_commands(&possible_native_commands);
-        let mut plugin_command_contents: HashMap<String, String> =
-            get_contents_from_commands(&get_official_plugin_commands());
+        let mut command_contents: HashMap<String, String> =
+            get_contents_from_commands(&possible_commands);
+        let mut plugin_contents: HashMap<String, String> =
+            get_contents_from_commands(&official_plugin_commands());
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
@@ -68,9 +51,7 @@ impl Preprocessor for ForcDocumenter {
                 if chapter.name == "Plugins" {
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
-                            if let Some(content) =
-                                plugin_command_contents.remove(&plugin_chapter.name)
-                            {
+                            if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 inject_content(plugin_chapter, &content, &examples);
                             } else {
                                 removed_commands.push(plugin_chapter.name.clone());
@@ -83,9 +64,7 @@ impl Preprocessor for ForcDocumenter {
 
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut command_chapter) = sub_item {
-                            if let Some(content) =
-                                native_command_contents.remove(&command_chapter.name)
-                            {
+                            if let Some(content) = command_contents.remove(&command_chapter.name) {
                                 command_index_content
                                     .push_str(&format_index_entry(&command_chapter.name));
                                 inject_content(command_chapter, &content, &examples);
@@ -102,26 +81,26 @@ impl Preprocessor for ForcDocumenter {
 
         let mut error_message = String::new();
 
-        if !native_command_contents.is_empty() {
-            let missing_entries_text: String = native_command_contents
+        if !command_contents.is_empty() {
+            let missing_entries: String = command_contents
                 .keys()
                 .map(|c| format_index_entry(c))
                 .collect();
 
-            let missing_summary_entries_text = format!("\nSome forc commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                native_command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
-            error_message.push_str(&missing_summary_entries_text);
+            let missing_summary_entries = format!("\nSome forc commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
+                command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries);
+            error_message.push_str(&missing_summary_entries);
         };
 
-        if !plugin_command_contents.is_empty() {
-            let missing_entries_text: String = plugin_command_contents
+        if !plugin_contents.is_empty() {
+            let missing_entries: String = plugin_contents
                 .keys()
                 .map(|c| format_index_entry(c))
                 .collect();
 
-            let missing_summary_entries_text = format!("\nSome forc plugins were missing from SUMMARY.md:\n\n{}\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                plugin_command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
-            error_message.push_str(&missing_summary_entries_text);
+            let missing_summary_entries = format!("\nSome forc plugins were missing from SUMMARY.md:\n\n{}\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
+                plugin_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries);
+            error_message.push_str(&missing_summary_entries);
         }
 
         if !removed_commands.is_empty() {
@@ -145,17 +124,6 @@ impl Preprocessor for ForcDocumenter {
     }
 }
 
-fn get_forc_command_from_file_name(file_name: OsString) -> String {
-    file_name
-        .into_string()
-        .unwrap()
-        .split('.')
-        .next()
-        .unwrap()
-        .to_string()
-        .replace('_', " ")
-}
-
 fn load_examples() -> Result<HashMap<String, String>> {
     let curr_path = std::env::current_dir()
         .unwrap()
@@ -174,57 +142,4 @@ fn load_examples() -> Result<HashMap<String, String>> {
     }
 
     Ok(command_examples)
-}
-
-fn generate_doc_output(subcommand: &str) -> Result<String> {
-    let mut result = String::new();
-    let mut has_parsed_subcommand_header = false;
-
-    let output = process::Command::new("forc")
-        .args([subcommand, "--help"])
-        .output()
-        .expect("forc --help failed to run");
-
-    if !output.status.success() {
-        return Err(anyhow!("Failed to run forc {} --help", subcommand));
-    }
-
-    let s = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
-
-    for (index, line) in s.lines().enumerate() {
-        let mut formatted_line = String::new();
-        let line = line.trim();
-
-        if line == "SUBCOMMANDS:" {
-            has_parsed_subcommand_header = true;
-        }
-
-        if index == 0 {
-            formatted_line.push_str(&format_header_line(line));
-        } else if index == 1 {
-            formatted_line.push_str(line);
-        } else {
-            formatted_line.push_str(&format_line(line, has_parsed_subcommand_header))
-        }
-
-        result.push_str(&formatted_line);
-
-        if !formatted_line.ends_with('\n') {
-            result.push('\n');
-        }
-    }
-    result = result.trim().to_string();
-    Ok(result)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_get_forc_command_from_file_name() {
-        assert_eq!(
-            "forc gm",
-            get_forc_command_from_file_name(OsString::from("forc_gm.md")),
-        );
-    }
 }
