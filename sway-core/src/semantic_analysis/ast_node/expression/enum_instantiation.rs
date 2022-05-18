@@ -10,7 +10,6 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    enum_module_path: &[Ident],
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
@@ -21,90 +20,45 @@ pub(crate) fn instantiate_enum(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    let instantiation_span = enum_field_name.span();
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let mut type_arguments = type_arguments;
-    for type_argument in type_arguments.iter_mut() {
-        type_argument.type_id = check!(
-            namespace.resolve_type_with_self(
-                look_up_type_id(type_argument.type_id),
-                self_type,
-                type_argument.span.clone(),
-                true,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-    }
+    // monomorphize the enum definition with the type arguments
+    let enum_decl = check!(
+        namespace.monomorphize(
+            enum_decl,
+            type_arguments,
+            EnforceTypeArguments::No,
+            Some(self_type),
+            Some(enum_field_name.span())
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    // if this is a generic enum, i.e. it has some type
-    // parameters, monomorphize it before unifying the
-    // types
-    let new_decl = match (
-        enum_decl.type_parameters.is_empty(),
-        type_arguments.is_empty(),
-    ) {
-        (true, true) => enum_decl,
-        (false, true) => enum_decl.monomorphize(namespace),
-        (true, false) => {
-            errors.push(CompileError::DoesNotTakeTypeArguments {
-                name: enum_decl.name.clone(),
-                span: enum_decl.span,
-            });
-            return err(warnings, errors);
-        }
-        (false, false) => {
-            let module = check!(
-                namespace.check_submodule_mut(enum_module_path),
-                return err(warnings, errors),
-                warnings,
-                errors,
-            );
-            check!(
-                enum_decl.monomorphize_with_type_arguments(
-                    module,
-                    &type_arguments,
-                    Some(self_type)
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-    };
-
-    let (enum_field_type, tag, variant_name) = match new_decl
-        .variants
-        .iter()
-        .find(|x| x.name.as_str() == enum_field_name.as_str())
-    {
-        Some(o) => (o.r#type, o.tag, o.name.clone()),
-        None => {
-            errors.push(CompileError::UnknownEnumVariant {
-                enum_name: new_decl.name.clone(),
-                variant_name: enum_field_name.clone(),
-                span: enum_field_name.span().clone(),
-            });
-            return err(warnings, errors);
-        }
-    };
+    let enum_variant = check!(
+        enum_decl
+            .expect_variant_from_name(&enum_field_name)
+            .cloned(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], look_up_type_id(enum_field_type)) {
+    match (&args[..], look_up_type_id(enum_variant.r#type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: new_decl.type_id(),
+                return_type: enum_decl.type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
-                    tag,
+                    tag: enum_variant.tag,
                     contents: None,
-                    enum_decl: new_decl,
-                    variant_name,
-                    instantiation_span: instantiation_span.clone(),
+                    enum_decl,
+                    variant_name: enum_variant.name,
+                    instantiation_span: enum_field_name.span().clone(),
                 },
                 is_constant: IsConstant::No,
                 span: enum_field_name.span().clone(),
@@ -117,7 +71,7 @@ pub(crate) fn instantiate_enum(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
                     namespace,
-                    return_type_annotation: enum_field_type,
+                    return_type_annotation: enum_variant.r#type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
                     build_config,
@@ -135,13 +89,13 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: new_decl.type_id(),
+                    return_type: enum_decl.type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
-                        tag,
+                        tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl: new_decl,
-                        variant_name,
-                        instantiation_span: instantiation_span.clone(),
+                        enum_decl,
+                        variant_name: enum_variant.name,
+                        instantiation_span: enum_field_name.span().clone(),
                     },
                     is_constant: IsConstant::No,
                     span: enum_field_name.span().clone(),
