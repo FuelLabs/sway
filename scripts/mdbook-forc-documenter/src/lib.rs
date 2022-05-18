@@ -2,7 +2,7 @@ use crate::formatter::{format_header_line, format_index_entry, format_line};
 
 use anyhow::anyhow;
 use commands::call_possible_forc_commands;
-use mdbook::book::{Book, BookItem};
+use mdbook::book::{Book, BookItem, Chapter};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use std::collections::HashMap;
@@ -36,34 +36,42 @@ fn get_contents_from_commands(commands: &Vec<String>) -> HashMap<String, String>
     contents
 }
 
+fn get_official_plugin_commands() -> Vec<String> {
+    vec!["fmt".to_string(), "explore".to_string(), "lsp".to_string()]
+}
+
+fn inject_content(chapter: &mut Chapter, content: &str, examples: &HashMap<String, String>) {
+    chapter.content = content.to_string();
+
+    if let Some(example_content) = examples.get(&chapter.name) {
+        chapter.content += example_content;
+    }
+}
+
 impl Preprocessor for ForcDocumenter {
     fn name(&self) -> &str {
         "forc-documenter"
     }
 
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
-        let plugins: Vec<String> =
-            vec!["fmt".to_string(), "explore".to_string(), "lsp".to_string()];
-
         let possible_native_commands: Vec<String> = call_possible_forc_commands();
-        let command_examples: HashMap<String, String> = load_examples()?;
+        let examples: HashMap<String, String> = load_examples()?;
 
         let mut native_command_contents: HashMap<String, String> =
             get_contents_from_commands(&possible_native_commands);
         let mut plugin_command_contents: HashMap<String, String> =
-            get_contents_from_commands(&plugins);
+            get_contents_from_commands(&get_official_plugin_commands());
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
             if let BookItem::Chapter(ref mut chapter) = item {
                 if chapter.name == "Plugins" {
-                    eprintln!("{:?}", chapter.name);
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
                             if let Some(content) =
                                 plugin_command_contents.remove(&plugin_chapter.name)
                             {
-                                plugin_chapter.content = content.to_string();
+                                inject_content(plugin_chapter, &content, &examples);
                             } else {
                                 removed_commands.push(plugin_chapter.name.clone());
                             };
@@ -80,13 +88,7 @@ impl Preprocessor for ForcDocumenter {
                             {
                                 command_index_content
                                     .push_str(&format_index_entry(&command_chapter.name));
-                                command_chapter.content = content.to_string();
-
-                                if let Some(example_content) =
-                                    command_examples.get(&command_chapter.name)
-                                {
-                                    command_chapter.content += example_content;
-                                }
+                                inject_content(command_chapter, &content, &examples);
                             } else {
                                 removed_commands.push(command_chapter.name.clone());
                             };
