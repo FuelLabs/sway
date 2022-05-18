@@ -36,8 +36,8 @@ pub struct Punct {
     pub spacing: Spacing,
 }
 
-impl Punct {
-    pub fn span(&self) -> Span {
+impl Spanned for Punct {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
@@ -75,8 +75,8 @@ pub struct Group {
     pub span: Span,
 }
 
-impl Group {
-    pub fn span(&self) -> Span {
+impl Spanned for Group {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
@@ -106,8 +106,8 @@ pub enum TokenTree {
     Literal(Literal),
 }
 
-impl TokenTree {
-    pub fn span(&self) -> Span {
+impl Spanned for TokenTree {
+    fn span(&self) -> Span {
         match self {
             TokenTree::Punct(punct) => punct.span(),
             TokenTree::Ident(ident) => ident.span().clone(),
@@ -957,8 +957,10 @@ impl TokenStream {
     pub fn token_trees(&self) -> &[TokenTree] {
         &self.token_trees
     }
+}
 
-    pub fn span(&self) -> Span {
+impl Spanned for TokenStream {
+    fn span(&self) -> Span {
         self.full_span.clone()
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    fmt::{self, Debug},
+    fmt::{self, Debug, Write},
     ops::Sub,
 };
 
@@ -553,13 +553,13 @@ where
         if self.first == T::global_min() {
             builder.push_str("MIN");
         } else {
-            builder.push_str(&format!("{}", self.first));
+            write!(builder, "{}", self.first)?;
         }
         builder.push_str("...");
         if self.last == T::global_max() {
             builder.push_str("MAX");
         } else {
-            builder.push_str(&format!("{}", self.last));
+            write!(builder, "{}", self.last)?;
         }
         builder.push(']');
         write!(f, "{}", builder)

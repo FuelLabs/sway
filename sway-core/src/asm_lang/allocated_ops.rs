@@ -14,7 +14,7 @@ use super::*;
 use crate::asm_generation::DataSection;
 use either::Either;
 use fuel_asm::Opcode as VmOp;
-use std::fmt;
+use std::fmt::{self, Write};
 use sway_types::span::Span;
 
 const COMMENT_START_COLUMN: usize = 30;
@@ -280,7 +280,7 @@ impl fmt::Display for AllocatedOp {
             while op_and_comment.len() < COMMENT_START_COLUMN {
                 op_and_comment.push(' ');
             }
-            op_and_comment.push_str(&format!("; {}", self.comment))
+            write!(op_and_comment, "; {}", self.comment)?;
         }
 
         write!(fmtr, "{}", op_and_comment)

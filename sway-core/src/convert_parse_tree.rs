@@ -25,7 +25,7 @@ use {
         ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
         UseTree,
     },
-    sway_types::{Ident, Span},
+    sway_types::{Ident, Span, Spanned},
     thiserror::Error,
 };
 
@@ -2629,7 +2629,7 @@ fn path_type_to_type_info(
                 };
                 TypeInfo::ContractCaller {
                     abi_name,
-                    address: String::new(),
+                    address: None,
                 }
             } else {
                 let type_arguments = match generics_opt {
