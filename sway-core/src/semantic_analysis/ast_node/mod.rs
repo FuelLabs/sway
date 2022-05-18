@@ -92,6 +92,29 @@ impl std::fmt::Display for TypedAstNode {
     }
 }
 
+impl CopyTypes for TypedAstNode {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> bool {
@@ -122,6 +145,7 @@ impl TypedAstNode {
             _ => false,
         }
     }
+
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -137,6 +161,7 @@ impl TypedAstNode {
             SideEffect => false,
         }
     }
+
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -167,27 +192,6 @@ impl TypedAstNode {
             )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
-            TypedAstNodeContent::SideEffect => (),
         }
     }
 

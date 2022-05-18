@@ -146,18 +146,6 @@ pub struct TypedEnumVariant {
     pub(crate) span: Span,
 }
 
-impl CopyTypes for TypedEnumVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        };
-    }
-}
-
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
@@ -180,8 +168,8 @@ impl PartialEq for TypedEnumVariant {
     }
 }
 
-impl TypedEnumVariant {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedEnumVariant {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
@@ -190,7 +178,9 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
+}
 
+impl TypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.to_string(),
