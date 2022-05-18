@@ -44,12 +44,14 @@ impl Preprocessor for ForcDocumenter {
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
         let plugins: Vec<String> =
             vec!["fmt".to_string(), "explore".to_string(), "lsp".to_string()];
-        let possible_commands: Vec<String> = call_possible_forc_commands();
+
+        let possible_native_commands: Vec<String> = call_possible_forc_commands();
         let command_examples: HashMap<String, String> = load_examples()?;
 
-        let mut command_contents: HashMap<String, String> =
-            get_contents_from_commands(&possible_commands);
-        let mut plugin_contents: HashMap<String, String> = get_contents_from_commands(&plugins);
+        let mut native_command_contents: HashMap<String, String> =
+            get_contents_from_commands(&possible_native_commands);
+        let mut plugin_command_contents: HashMap<String, String> =
+            get_contents_from_commands(&plugins);
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
@@ -58,7 +60,9 @@ impl Preprocessor for ForcDocumenter {
                     eprintln!("{:?}", chapter.name);
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
-                            if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
+                            if let Some(content) =
+                                plugin_command_contents.remove(&plugin_chapter.name)
+                            {
                                 plugin_chapter.content = content.to_string();
                             } else {
                                 removed_commands.push(plugin_chapter.name.clone());
@@ -71,7 +75,9 @@ impl Preprocessor for ForcDocumenter {
 
                     for sub_item in chapter.sub_items.iter_mut() {
                         if let BookItem::Chapter(ref mut command_chapter) = sub_item {
-                            if let Some(content) = command_contents.remove(&command_chapter.name) {
+                            if let Some(content) =
+                                native_command_contents.remove(&command_chapter.name)
+                            {
                                 command_index_content
                                     .push_str(&format_index_entry(&command_chapter.name));
                                 command_chapter.content = content.to_string();
@@ -94,25 +100,25 @@ impl Preprocessor for ForcDocumenter {
 
         let mut error_message = String::new();
 
-        if !command_contents.is_empty() {
-            let missing_entries_text: String = command_contents
+        if !native_command_contents.is_empty() {
+            let missing_entries_text: String = native_command_contents
                 .keys()
                 .map(|c| format_index_entry(c))
                 .collect();
 
             let missing_summary_entries_text = format!("\nSome forc commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
+                native_command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
             error_message.push_str(&missing_summary_entries_text);
         };
 
-        if !plugin_contents.is_empty() {
-            let missing_entries_text: String = plugin_contents
+        if !plugin_command_contents.is_empty() {
+            let missing_entries_text: String = plugin_command_contents
                 .keys()
                 .map(|c| format_index_entry(c))
                 .collect();
 
             let missing_summary_entries_text = format!("\nSome forc plugins were missing from SUMMARY.md:\n\n{}\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                plugin_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
+                plugin_command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
             error_message.push_str(&missing_summary_entries_text);
         }
 
