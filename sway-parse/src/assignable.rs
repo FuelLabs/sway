@@ -14,8 +14,8 @@ pub enum Assignable {
     },
 }
 
-impl Assignable {
-    pub fn span(&self) -> Span {
+impl Spanned for Assignable {
+    fn span(&self) -> Span {
         match self {
             Assignable::Var(name) => name.span().clone(),
             Assignable::Index { target, arg } => Span::join(target.span(), arg.span()),

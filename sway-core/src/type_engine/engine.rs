@@ -262,7 +262,7 @@ impl Engine {
                     abi_name: ref abi_name_b,
                     ..
                 },
-            ) if (abi_name_a == abi_name_b && address.is_empty())
+            ) if (abi_name_a == abi_name_b && address.is_none())
                 || matches!(abi_name_a, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
@@ -280,7 +280,7 @@ impl Engine {
                     abi_name: ref abi_name_b,
                     address,
                 },
-            ) if (abi_name_a == abi_name_b && address.is_empty())
+            ) if (abi_name_a == abi_name_b && address.is_none())
                 || matches!(abi_name_b, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
@@ -330,7 +330,6 @@ impl Engine {
         } else {
             expected
         };
-
         self.unify(received, expected, span, help_text)
     }
 

@@ -7,8 +7,8 @@ macro_rules! define_keyword (
             span: Span,
         }
 
-        impl $ty_name {
-            pub fn span(&self) -> Span {
+        impl Spanned for $ty_name {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
         }
@@ -76,11 +76,13 @@ macro_rules! define_token (
             span: Span,
         }
 
-        impl $ty_name {
-            pub fn span(&self) -> Span {
+        impl Spanned for  $ty_name {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
+        }
 
+        impl $ty_name {
             pub fn ident(&self) -> Ident {
                 Ident::new(self.span())
             }

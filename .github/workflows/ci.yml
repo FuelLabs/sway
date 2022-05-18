@@ -113,10 +113,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Install mdbook-forc-documenter
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./scripts/mdbook-forc-documenter
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.7'
+          mdbook-version: '0.4.15'
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           mdbook build docs &> tmp.txt
@@ -154,7 +169,7 @@ jobs:
       - name: Update project cargo manifest with workspace
         run: |
           echo "
-          
+
           [workspace]" >> test-proj/Cargo.toml
       - name: Build test project
         run: forc build --path test-proj
@@ -344,27 +359,6 @@ jobs:
         with:
           command: test
           args: --locked
-
-  forc-documenter-dry-run:
-    needs: cancel-previous-runs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Run forc-documenter in dry run mode
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin forc-documenter write-docs --dry-run
 
   cargo-unused-deps-check:
     needs: cancel-previous-runs
@@ -631,3 +625,111 @@ jobs:
           notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
+  install-and-upload-forc-binaries:
+    name: Install and upload forc binaries to release
+    runs-on: ${{ matrix.job.os }}
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [
+      cancel-previous-runs,
+      publish,
+    ]
+    strategy:
+      matrix:
+        job:
+          - os: ubuntu-latest
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            arch: amd64
+            svm_target_platform: linux-amd64
+          - os: ubuntu-latest
+            platform: linux
+            target: aarch64-unknown-linux-gnu
+            arch: arm64
+            svm_target_platform: linux-aarch64
+          - os: macos-latest
+            platform: darwin
+            target: x86_64-apple-darwin
+            arch: amd64
+            svm_target_platform: macosx-amd64
+          - os: macos-latest
+            platform: darwin
+            target: aarch64-apple-darwin
+            arch: arm64
+            svm_target_platform: macosx-aarch64
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+
+      - name: Apple M1 setup
+        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        run: |
+          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+      - name: Linux ARM setup
+        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc
+
+      - name: Install Forc-Fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-fmt
+
+      - name: Install Forc-LSP
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-lsp
+
+      - name: Install Forc-Explore
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-explore
+
+      - name: Prep Assets
+        id: prep_assets
+        env:
+          PLATFORM_NAME: ${{ matrix.job.platform }}
+          TARGET: ${{ matrix.job.target }}
+          ARCH: ${{ matrix.job.arch }}
+        run: |
+          ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
+          echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
+          mkdir -pv ./forc-binaries
+          for binary in forc forc-fmt forc-lsp forc-explore; do
+            cp $(which ${binary}) ./forc-binaries
+          done
+          tar -czvf $ZIP_FILE_NAME ./forc-binaries
+
+      - name: Archive forc binaries
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ env.ZIP_FILE_NAME }}
+          asset_name: ${{ env.ZIP_FILE_NAME }}
+          asset_content_type: application/gzip
