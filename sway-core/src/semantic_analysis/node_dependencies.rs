@@ -477,7 +477,7 @@ impl Dependencies {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.name, false, false),
+                |deps, constraint| deps.gather_from_call_path(&constraint.call_path, false, false),
             )
         })
     }

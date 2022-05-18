@@ -719,7 +719,7 @@ fn generic_params_opt_to_type_parameters(
                 traits_to_call_paths(ec, bounds)?
                     .iter()
                     .map(|call_path| TraitConstraint {
-                        name: call_path.clone(),
+                        call_path: call_path.clone(),
                     }),
             );
     }

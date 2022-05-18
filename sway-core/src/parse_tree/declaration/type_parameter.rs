@@ -59,5 +59,5 @@ impl TypeParameter {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
-    pub(crate) name: CallPath,
+    pub(crate) call_path: CallPath,
 }
