@@ -60,7 +60,9 @@ impl Preprocessor for ForcDocumenter {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
                             if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 plugin_chapter.content = content.to_string();
-                            }
+                            } else {
+                                removed_commands.push(plugin_chapter.name.clone());
+                            };
                         }
                     }
                 }
@@ -102,6 +104,17 @@ impl Preprocessor for ForcDocumenter {
                 command_contents.into_keys().collect::<String>(), missing_entries_text);
             error_message.push_str(&missing_summary_entries_text);
         };
+
+        if !plugin_contents.is_empty() {
+            let missing_entries_text: String = plugin_contents
+                .keys()
+                .map(|c| format_index_entry(c))
+                .collect();
+
+            let missing_summary_entries_text = format!("\nSome forc plugins were missing from SUMMARY.md:\n\n{}\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
+                plugin_contents.into_keys().collect::<String>(), missing_entries_text);
+            error_message.push_str(&missing_summary_entries_text);
+        }
 
         if !removed_commands.is_empty() {
             let removed_commands_text = format!("\nSome commands were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the above command(s) from SUMMARY.md.\n", 
