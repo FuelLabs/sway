@@ -14,15 +14,15 @@ pub fn possible_forc_commands() -> Vec<String> {
     let output_str = String::from_utf8_lossy(&output.stdout);
     let lines = output_str.lines();
 
-    let mut subcommand_is_parsed = false;
+    let mut has_parsed_subcommand_header = false;
 
     for line in lines {
-        if subcommand_is_parsed {
+        if has_parsed_subcommand_header {
             let (command, _) = line.trim().split_once(' ').unwrap_or(("", ""));
             possible_commands.push(command.to_string());
         }
         if line == "SUBCOMMANDS:" {
-            subcommand_is_parsed = true;
+            has_parsed_subcommand_header = true;
         }
     }
 
