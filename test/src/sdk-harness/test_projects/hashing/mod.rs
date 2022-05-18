@@ -80,6 +80,10 @@ fn hash_b256(arr: [u8; 32]) -> [u8; 32] {
     Sha256::digest(arr).into()
 }
 
+fn hash_struct(arr: [u8; 88]) -> [u8; 32] {
+    Sha256::digest(arr).into()
+}
+
 async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
@@ -306,11 +310,19 @@ async fn test_sha256_array() {
 #[tokio::test]
 async fn test_sha256_struct() {
     let (instance, _id) = get_hashing_instance().await;
-    let result1 = instance.sha256_struct(true).call().await.unwrap();
-    let result2 = instance.sha256_struct(true).call().await.unwrap();
-    let result3 = instance.sha256_struct(false).call().await.unwrap();
-    assert_eq!(result1.value, result2.value);
-    assert_ne!(result1.value, result3.value);
+
+    let expected_1 = hash_struct([74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let expected_2 = hash_struct([78, 105, 99, 107, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+    let call_1 = instance.sha256_struct(true).call().await.unwrap();
+    let call_2 = instance.sha256_struct(true).call().await.unwrap();
+    let call_3 = instance.sha256_struct(false).call().await.unwrap();
+    
+    assert_eq!(call_1.value, call_2.value);
+    assert_ne!(call_1.value, call_3.value);
+
+    assert_eq!(expected_1, call_1.value);
+    assert_eq!(expected_2, call_3.value);
 }
 
 #[tokio::test]
