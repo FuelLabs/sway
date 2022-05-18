@@ -71,16 +71,148 @@ impl TypedDeclaration {
 
     /// Attempt to retrieve the declaration as an enum declaration.
     ///
-    /// Returns `None` if `self` is not of variant `EnumDeclaration`.
+    /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
     pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
         match self {
-            TypedDeclaration::EnumDeclaration(ref decl) => Some(decl),
+            TypedDeclaration::EnumDeclaration(decl) => Some(decl),
             _ => None,
         }
     }
-}
 
-impl TypedDeclaration {
+    /// Attempt to retrieve the declaration as a struct declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedStructDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_struct(&self) -> Option<&TypedStructDeclaration> {
+        match self {
+            TypedDeclaration::StructDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as a function declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedFunctionDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_function(&self) -> Option<&TypedFunctionDeclaration> {
+        match self {
+            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as a variable declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedVariableDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_variable(&self) -> Option<&TypedVariableDeclaration> {
+        match self {
+            TypedDeclaration::VariableDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as an Abi declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Retrieves the declaration as an enum declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedEnumDeclaration`.
+    pub(crate) fn expect_enum(&self) -> CompileResult<&TypedEnumDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::EnumDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAnEnum {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a struct declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedStructDeclaration`.
+    pub(crate) fn expect_struct(&self) -> CompileResult<&TypedStructDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::StructDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAStruct {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a function declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedFunctionDeclaration`.
+    pub(crate) fn expect_function(&self) -> CompileResult<&TypedFunctionDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::FunctionDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAFunction {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a variable declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedVariableDeclaration`.
+    pub(crate) fn expect_variable(&self) -> CompileResult<&TypedVariableDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAVariable {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as an Abi declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedAbiDeclaration`.
+    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAnAbi {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
     /// friendly name string used for error reporting.
     pub(crate) fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
