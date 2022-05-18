@@ -88,7 +88,6 @@ async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
     let compiled =
         Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
 
-    // Hacky way to get 2 addresses
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
 
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
