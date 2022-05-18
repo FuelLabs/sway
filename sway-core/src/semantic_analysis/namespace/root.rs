@@ -310,19 +310,21 @@ impl Root {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let local_methods = self[mod_path].get_methods_for_type(r#type);
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
-
-        // Ensure there's a module for the given method prefix.
-        check!(
-            self.check_submodule(method_prefix),
+        // grab the local module
+        let local_module = check!(
+            self.check_submodule(mod_path),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // This is a hack and I don't think it should be used.  We check the local namespace first,
-        // but if nothing turns up then we try the namespace where the type itself is declared.
+        // grab the local methods from the local module
+        let local_methods = local_module.get_methods_for_type(r#type);
+
+        // split into the method name and method prefix
+        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
+
+        // resolve the type
         let r#type = check!(
             self.resolve_type_with_self(
                 method_prefix,
@@ -335,10 +337,20 @@ impl Root {
             warnings,
             errors
         );
-        let mut ns_methods = self[method_prefix].get_methods_for_type(r#type);
+
+        // grab the module where the type itself is declared
+        let type_module = check!(
+            self.check_submodule(method_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // grab the methods from where the type is declared
+        let mut type_methods = type_module.get_methods_for_type(r#type);
 
         let mut methods = local_methods;
-        methods.append(&mut ns_methods);
+        methods.append(&mut type_methods);
 
         match methods
             .into_iter()

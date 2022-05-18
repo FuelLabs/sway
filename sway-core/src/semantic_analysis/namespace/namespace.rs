@@ -50,6 +50,14 @@ impl Namespace {
         &self.mod_path
     }
 
+    /// Find the module that these prefixes point to
+    pub fn find_module_path<'a, T>(&'a self, prefixes: T) -> PathBuf
+    where
+        T: IntoIterator<Item = &'a Ident>,
+    {
+        self.mod_path.iter().chain(prefixes).cloned().collect()
+    }
+
     /// A reference to the root of the project namespace.
     pub fn root(&self) -> &Root {
         &self.root
