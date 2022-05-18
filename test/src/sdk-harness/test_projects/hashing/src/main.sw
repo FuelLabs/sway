@@ -1,6 +1,6 @@
 contract;
 
-use std::{hash::{HashMethod, hash_u64, sha256}};
+use std::hash::{HashMethod, hash_u64, sha256};
 use core::num::*;
 
 abi MyContract {

@@ -73,7 +73,7 @@ impl u8 {
 }
 
 impl b256 {
-     /// The smallest value that can be represented by this type.
+    /// The smallest value that can be represented by this type.
     pub fn min() -> b256 {
         0x0000000000000000000000000000000000000000000000000000000000000000
     }
