@@ -37,7 +37,7 @@ pub fn is_arg(token: &str) -> bool {
 }
 
 pub fn format_header_line(header_line: &str) -> String {
-    "\n# ".to_owned() + header_line + "\n"
+    return "\n# ".to_owned() + header_line.split_whitespace().next().unwrap() + "\n";
 }
 
 pub fn format_line(line: &str) -> String {
