@@ -6,7 +6,7 @@ use commands::{
 use mdbook::book::{Book, BookItem, Chapter};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
-use plugins::official_plugin_commands;
+use plugins::plugin_commands;
 use std::collections::HashMap;
 use std::fs;
 
@@ -43,7 +43,7 @@ impl Preprocessor for ForcDocumenter {
         let mut command_contents: HashMap<String, String> =
             get_contents_from_commands(&possible_commands);
         let mut plugin_contents: HashMap<String, String> =
-            get_contents_from_commands(&official_plugin_commands());
+            get_contents_from_commands(&plugin_commands());
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
