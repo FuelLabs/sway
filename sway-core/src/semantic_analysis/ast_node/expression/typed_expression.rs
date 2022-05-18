@@ -32,6 +32,18 @@ impl PartialEq for TypedExpression {
     }
 }
 
+impl CopyTypes for TypedExpression {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.return_type)),
+            };
+
+        self.expression.copy_types(type_mapping);
+    }
+}
+
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
@@ -561,17 +573,6 @@ impl TypedExpression {
         }
 
         ok(typed_expression, warnings, errors)
-    }
-
-    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
-            };
-
-        self.expression.copy_types(type_mapping);
     }
 
     fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {

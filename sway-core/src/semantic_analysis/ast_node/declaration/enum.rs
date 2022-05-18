@@ -1,9 +1,16 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::namespace, type_engine::*, Ident};
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{
+        ast_node::copy_types::{insert_type_parameters, TypeMapping},
+        namespace, CopyTypes,
+    },
+    type_engine::*,
+    Ident,
+};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
-
-use super::insert_type_parameters;
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -23,6 +30,14 @@ impl PartialEq for TypedEnumDeclaration {
             && self.type_parameters == other.type_parameters
             && self.variants == other.variants
             && self.visibility == other.visibility
+    }
+}
+
+impl CopyTypes for TypedEnumDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
     }
 }
 
@@ -102,7 +117,7 @@ impl TypedEnumDeclaration {
     fn monomorphize_inner(
         &self,
         namespace: &mut namespace::Items,
-        type_mapping: &[(TypeParameter, TypeId)],
+        type_mapping: &TypeMapping,
     ) -> Self {
         let old_type_id = self.type_id();
         let mut new_decl = self.clone();
@@ -113,12 +128,6 @@ impl TypedEnumDeclaration {
             type_mapping,
         );
         new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
     }
 
     pub(crate) fn type_id(&self) -> TypeId {
@@ -135,6 +144,18 @@ pub struct TypedEnumVariant {
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
+}
+
+impl CopyTypes for TypedEnumVariant {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -1,14 +1,9 @@
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::*,
-    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
-    style::*,
-    type_engine::*,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_engine::*, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -49,6 +44,9 @@ pub(crate) use return_statement::TypedReturnStatement;
 
 mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
+
+mod copy_types;
+pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -172,7 +170,7 @@ impl TypedAstNode {
         }
     }
 
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &TypeMapping) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
                 ret_stmt.copy_types(type_mapping)
