@@ -5,6 +5,7 @@ use commands::call_possible_forc_commands;
 use mdbook::book::{Book, BookItem};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
@@ -100,8 +101,8 @@ impl Preprocessor for ForcDocumenter {
                 .map(|c| format_index_entry(c))
                 .collect();
 
-            let missing_summary_entries_text = format!("\nSome commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                command_contents.into_keys().collect::<String>(), missing_entries_text);
+            let missing_summary_entries_text = format!("\nSome forc commands were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
+                command_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
             error_message.push_str(&missing_summary_entries_text);
         };
 
@@ -112,7 +113,7 @@ impl Preprocessor for ForcDocumenter {
                 .collect();
 
             let missing_summary_entries_text = format!("\nSome forc plugins were missing from SUMMARY.md:\n\n{}\nTo fix this, add the above command(s) in SUMMARY.md, like so:\n\n{}\n",
-                plugin_contents.into_keys().collect::<String>(), missing_entries_text);
+                plugin_contents.into_keys().map(|s| s + "\n").collect::<String>(), missing_entries_text);
             error_message.push_str(&missing_summary_entries_text);
         }
 
