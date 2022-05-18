@@ -6,8 +6,8 @@ use crate::{
     },
     utils::common::extract_var_body,
 };
-use sway_core::parse_tree::MethodName;
 use sway_core::type_engine::TypeInfo;
+use sway_core::{parse_tree::MethodName, Scrutinee};
 use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
     VariableDeclaration, WhileLoop,
@@ -351,8 +351,14 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(*r#else, tokens);
             }
         }
-        Expression::MatchExp { if_exp, .. } => {
-            handle_expression(*if_exp, tokens);
+        Expression::MatchExp {
+            value, branches, ..
+        } => {
+            handle_expression(*value, tokens);
+            for branch in branches {
+                handle_scrutinee(branch.scrutinee, tokens);
+                handle_expression(branch.result, tokens);
+            }
         }
         Expression::AsmExpression { .. } => {
             //TODO handle asm expressions
@@ -451,6 +457,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle built in get type property?
         }
     }
+}
+
+fn handle_scrutinee(_scrutinee: Scrutinee, _tokens: &mut [Token]) {
+    // TODO: handle scrutinees here
 }
 
 fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {

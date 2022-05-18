@@ -754,6 +754,80 @@ impl TypeInfo {
             | ErrorRecovery => None,
         }
     }
+
+    pub(crate) fn apply_subfields(
+        &self,
+        subfields: &[Ident],
+        span: &Span,
+    ) -> CompileResult<TypedStructField> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match (self, subfields.split_first()) {
+            (TypeInfo::Struct { .. }, None) => err(warnings, errors),
+            (TypeInfo::Struct { name, fields, .. }, Some((first, rest))) => {
+                let field = match fields
+                    .iter()
+                    .find(|field| field.name.as_str() == first.as_str())
+                {
+                    Some(field) => field.clone(),
+                    None => {
+                        // gather available fields for the error message
+                        let available_fields =
+                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
+                        errors.push(CompileError::FieldNotFound {
+                            field_name: first.clone(),
+                            struct_name: name.clone(),
+                            available_fields: available_fields.join(", "),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let field = if rest.is_empty() {
+                    field
+                } else {
+                    check!(
+                        look_up_type_id(field.r#type).apply_subfields(rest, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                };
+                ok(field, warnings, errors)
+            }
+            (TypeInfo::ErrorRecovery, _) => {
+                // dont create a new error in this case
+                err(warnings, errors)
+            }
+            (type_info, _) => {
+                errors.push(CompileError::FieldAccessOnNonStruct {
+                    actually: type_info.friendly_type_str(),
+                    span: span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    pub(crate) fn expect_tuple_args(
+        &self,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<&Vec<TypeArgument>> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotATuple {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {

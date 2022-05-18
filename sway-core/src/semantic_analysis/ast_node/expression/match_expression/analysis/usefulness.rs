@@ -1,10 +1,3 @@
-mod constructor_factory;
-mod matrix;
-mod patstack;
-mod pattern;
-mod range;
-mod witness_report;
-
 use sway_types::Span;
 
 use crate::{
@@ -12,7 +5,7 @@ use crate::{
     CompileError, CompileResult, Scrutinee,
 };
 
-use self::{
+use super::{
     constructor_factory::ConstructorFactory, matrix::Matrix, patstack::PatStack, pattern::Pattern,
     witness_report::WitnessReport,
 };

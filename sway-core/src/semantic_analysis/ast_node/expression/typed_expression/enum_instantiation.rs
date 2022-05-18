@@ -1,8 +1,9 @@
-use ast_node::declaration::CreateTypeId;
+use ast_node::declaration::EnforceTypeArguments;
 
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
+use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
 use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
 use crate::type_engine::{look_up_type_id, TypeId};
 

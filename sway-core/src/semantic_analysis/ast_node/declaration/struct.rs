@@ -1,10 +1,10 @@
 use crate::{
-    error::ok,
+    error::{err, ok},
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
     type_engine::*,
-    CompileResult, Ident, Namespace,
+    CompileError, CompileResult, Ident, Namespace,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
@@ -80,7 +80,7 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 }
 
 impl TypedStructDeclaration {
-    pub fn type_check(
+    pub(crate) fn type_check(
         decl: StructDeclaration,
         namespace: &mut Namespace,
         self_type: TypeId,
@@ -143,6 +143,31 @@ impl TypedStructDeclaration {
         };
 
         ok(decl, warnings, errors)
+    }
+
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TypedStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .fields
+            .iter()
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    available_fields: self
+                        .fields
+                        .iter()
+                        .map(|TypedStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: self.name.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
     }
 }
 
