@@ -11,7 +11,7 @@ pub type MatchReqMap = Vec<(Expression, Expression)>;
 /// List of variable declarations that must be placed inside of the body of the if expression.
 pub type MatchImplMap = Vec<(Ident, Expression)>;
 /// This is the result type given back by the matcher.
-pub type MatcherResult = Option<(MatchReqMap, MatchImplMap)>;
+pub type MatcherResult = (MatchReqMap, MatchImplMap);
 
 /// This algorithm desugars pattern matching into a [MatcherResult], by creating two lists,
 /// the [MatchReqMap] which is a list of requirements that a desugared if expression
@@ -85,7 +85,7 @@ fn match_literal(
         },
     )];
     let match_impl_map = vec![];
-    ok(Some((match_req_map, match_impl_map)), vec![], vec![])
+    ok((match_req_map, match_impl_map), vec![], vec![])
 }
 
 fn match_variable(
@@ -95,7 +95,7 @@ fn match_variable(
 ) -> CompileResult<MatcherResult> {
     let match_req_map = vec![];
     let match_impl_map = vec![(scrutinee_name.to_owned(), exp.to_owned())];
-    ok(Some((match_req_map, match_impl_map)), vec![], vec![])
+    ok((match_req_map, match_impl_map), vec![], vec![])
 }
 
 fn match_struct(
@@ -126,24 +126,19 @@ fn match_struct(
             }
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
-                let new_matches = check!(
+                let (mut new_match_req_map, mut new_match_impl_map) = check!(
                     matcher(&delayed_resolution_exp, &scrutinee),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                match new_matches {
-                    Some((mut new_match_req_map, mut new_match_impl_map)) => {
-                        match_req_map.append(&mut new_match_req_map);
-                        match_impl_map.append(&mut new_match_impl_map);
-                    }
-                    None => return ok(None, warnings, errors),
-                }
+                match_req_map.append(&mut new_match_req_map);
+                match_impl_map.append(&mut new_match_impl_map);
             }
         }
     }
 
-    ok(Some((match_req_map, match_impl_map)), warnings, errors)
+    ok((match_req_map, match_impl_map), warnings, errors)
 }
 
 fn match_enum(
@@ -174,20 +169,15 @@ fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileRes
             }),
             span: span.clone(),
         };
-        let new_matches = check!(
+        let (mut new_match_req_map, mut new_match_impl_map) = check!(
             matcher(&delayed_resolution_exp, elem),
             return err(warnings, errors),
             warnings,
             errors
         );
-        match new_matches {
-            Some((mut new_match_req_map, mut new_match_impl_map)) => {
-                match_req_map.append(&mut new_match_req_map);
-                match_impl_map.append(&mut new_match_impl_map);
-            }
-            None => return ok(None, warnings, errors),
-        }
+        match_req_map.append(&mut new_match_req_map);
+        match_impl_map.append(&mut new_match_impl_map);
     }
 
-    ok(Some((match_req_map, match_impl_map)), warnings, errors)
+    ok((match_req_map, match_impl_map), warnings, errors)
 }

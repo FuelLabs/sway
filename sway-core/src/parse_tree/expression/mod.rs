@@ -411,8 +411,8 @@ pub(crate) fn desugar_match_expression(
         span: branch_span,
     } in branches.iter()
     {
-        let matches = match condition {
-            MatchCondition::CatchAll(_) => Some((vec![], vec![])),
+        let (match_req_map, match_impl_map) = match condition {
+            MatchCondition::CatchAll(_) => (vec![], vec![]),
             MatchCondition::Scrutinee(scrutinee) => check!(
                 matcher(&var_decl_exp, scrutinee),
                 return err(warnings, errors),
@@ -420,24 +420,12 @@ pub(crate) fn desugar_match_expression(
                 errors
             ),
         };
-        match matches {
-            Some((match_req_map, match_impl_map)) => {
-                matched_branches.push(MatchedBranch {
-                    result: result.to_owned(),
-                    match_req_map,
-                    match_impl_map,
-                    branch_span: branch_span.to_owned(),
-                });
-            }
-            None => {
-                let errors = vec![CompileError::Internal("found None", branch_span.clone())];
-                let exp = Expression::Tuple {
-                    fields: vec![],
-                    span: branch_span.clone(),
-                };
-                return ok((exp, var_decl_name, vec![]), vec![], errors);
-            }
-        }
+        matched_branches.push(MatchedBranch {
+            result: result.to_owned(),
+            match_req_map,
+            match_impl_map,
+            branch_span: branch_span.to_owned(),
+        });
     }
 
     // 2. Assemble the possibly nested giant if statement using the matched branches.
