@@ -140,9 +140,6 @@
                         <h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
 <p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="../blockchain-development/storage.html#manual-storage-management">manual storage management</a>. Moreover, storage mappings have to be managed manually for now as shown in the <a href="../examples/subcurrency.html">Subcurrency</a> example.</p>
-<h2 id="serialization-and-deserialization"><a class="header" href="#serialization-and-deserialization">Serialization and Deserialization</a></h2>
-<p>Serialization/encoding of structures (Solidity's <code>abi.encode()</code> and <code>abi.encodePacked()</code>) is not yet implemented. Therefore, hashing an encoded struct is not possible without some manual work.</p>
-<p>Serializing arbitrary structures can be accomplished manually by composition of recursive <code>hash_pair()</code> invocations. See the above example for hashing a pair of values.</p>
 <h2 id="optimizer"><a class="header" href="#optimizer">Optimizer</a></h2>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 <h2 id="formatter"><a class="header" href="#formatter">Formatter</a></h2>

@@ -475,7 +475,7 @@ use std::{
     address::Address,
     assert::assert,
     chain::auth::{AuthError, Sender, msg_sender},
-    hash::*,
+    hash::sha256,
     result::*,
     revert::revert,
     storage::{get, store}
@@ -543,7 +543,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        let storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
+        let storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
         let mut receiver_amount = get::&lt;u64&gt;(storage_slot);
         store(storage_slot, receiver_amount + amount);
     }
@@ -557,13 +557,13 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender.into(), HashMethod::Sha256);
+        let sender_storage_slot = sha256((STORAGE_BALANCES, sender.into()));
         let mut sender_amount = get::&lt;u64&gt;(sender_storage_slot);
         assert(sender_amount &gt; amount);
         store(sender_storage_slot, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
+        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
         let mut receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
         store(receiver_storage_slot, receiver_amount + amount);
     }
@@ -1305,7 +1305,7 @@ while counter &lt; 10 {
 <pre><code class="language-sway">script;
 
 use core::num::*;
-use std::{hash::{HashMethod, hash_pair, hash_u64, hash_value, keccak256, sha256}, logging::log};
+use std::{hash::{keccak256, sha256}, logging::log};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
@@ -1420,17 +1420,6 @@ fn main() {
     log(keccak_hashed_array);
     log(keccak_hashed_enum);
     log(keccak_hashed_struct);
-
-    // Hash a single u64 value.
-    let hashed_u64 = hash_u64(100, HashMethod::Sha256);
-
-    // Hash a single b256 value.
-    let hashed_b256 = hash_value(hashed_u64, HashMethod::Keccak256);
-
-    // Hash two b256 values.
-    let hashed_pair = hash_pair(hashed_b256, VALUE_A, HashMethod::Sha256);
-
-    log(hashed_pair);
 }
 </code></pre>
 <h2 id="signature-recovery"><a class="header" href="#signature-recovery">Signature Recovery</a></h2>
@@ -2725,9 +2714,6 @@ fn main() -&gt; bool {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="temporary-workarounds"><a class="header" href="#temporary-workarounds">Temporary Workarounds</a></h1>
 <h2 id="storage-variables-and-mappings"><a class="header" href="#storage-variables-and-mappings">Storage Variables and Mappings</a></h2>
 <p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="reference/../blockchain-development/storage.html#manual-storage-management">manual storage management</a>. Moreover, storage mappings have to be managed manually for now as shown in the <a href="reference/../examples/subcurrency.html">Subcurrency</a> example.</p>
-<h2 id="serialization-and-deserialization"><a class="header" href="#serialization-and-deserialization">Serialization and Deserialization</a></h2>
-<p>Serialization/encoding of structures (Solidity's <code>abi.encode()</code> and <code>abi.encodePacked()</code>) is not yet implemented. Therefore, hashing an encoded struct is not possible without some manual work.</p>
-<p>Serializing arbitrary structures can be accomplished manually by composition of recursive <code>hash_pair()</code> invocations. See the above example for hashing a pair of values.</p>
 <h2 id="optimizer"><a class="header" href="#optimizer">Optimizer</a></h2>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 <h2 id="formatter"><a class="header" href="#formatter">Formatter</a></h2>

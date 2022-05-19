@@ -143,7 +143,7 @@
 <pre><code class="language-sway">script;
 
 use core::num::*;
-use std::{hash::{HashMethod, hash_pair, hash_u64, hash_value, keccak256, sha256}, logging::log};
+use std::{hash::{keccak256, sha256}, logging::log};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
@@ -258,17 +258,6 @@ fn main() {
     log(keccak_hashed_array);
     log(keccak_hashed_enum);
     log(keccak_hashed_struct);
-
-    // Hash a single u64 value.
-    let hashed_u64 = hash_u64(100, HashMethod::Sha256);
-
-    // Hash a single b256 value.
-    let hashed_b256 = hash_value(hashed_u64, HashMethod::Keccak256);
-
-    // Hash two b256 values.
-    let hashed_pair = hash_pair(hashed_b256, VALUE_A, HashMethod::Sha256);
-
-    log(hashed_pair);
 }
 </code></pre>
 <h2 id="signature-recovery"><a class="header" href="#signature-recovery">Signature Recovery</a></h2>
