@@ -28,7 +28,7 @@ impl Formatter {
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
-                Ok(match item.kind {
+                Ok(match item.value {
                     Use(item_use) => item_use.format(self),
                     Struct(item_struct) => item_struct.format(self),
                     Enum(item_enum) => item_enum.format(self),
