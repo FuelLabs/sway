@@ -1,6 +1,7 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
@@ -889,8 +890,33 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
-    PureCalledImpure { span: Span },
+    #[error(
+        "Storage attribute access mismatch. Try giving the surrounding function more access by \
+        adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
+    )]
+    StorageAccessMismatch { attrs: String, span: Span },
+    #[error(
+        "The trait function \"{fn_name}\" in trait \"{trait_name}\" is pure, but this \
+        implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
+        removed, or the trait declaration must be changed to \
+        \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\"."
+    )]
+    TraitDeclPureImplImpure {
+        fn_name: Ident,
+        trait_name: Ident,
+        attrs: String,
+        span: Span,
+    },
+    #[error(
+        "Storage attribute access mismatch. The trait function \"{fn_name}\" in trait \
+        \"{trait_name}\" requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
+    )]
+    TraitImplPurityMismatch {
+        fn_name: Ident,
+        trait_name: Ident,
+        attrs: String,
+        span: Span,
+    },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
@@ -1116,12 +1142,14 @@ impl CompileError {
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
+            StorageAccessMismatch { span, .. } => span.clone(),
+            TraitDeclPureImplImpure { span, .. } => span.clone(),
+            TraitImplPurityMismatch { span, .. } => span.clone(),
             DeclIsNotAnEnum { span, .. } => span.clone(),
             DeclIsNotAStruct { span, .. } => span.clone(),
             DeclIsNotAFunction { span, .. } => span.clone(),
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
-            PureCalledImpure { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
