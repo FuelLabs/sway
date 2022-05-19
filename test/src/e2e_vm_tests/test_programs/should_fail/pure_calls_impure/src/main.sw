@@ -10,4 +10,5 @@ fn pure_function() {
   impure_function();
 }
 
-impure fn impure_function() {}
+#[storage(write)]
+fn impure_function() {}

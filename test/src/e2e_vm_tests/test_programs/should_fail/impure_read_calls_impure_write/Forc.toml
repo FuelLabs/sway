@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "impure_read_calls_impure_write"
+entry = "main.sw"
+implicit-std = false

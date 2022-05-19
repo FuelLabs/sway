@@ -23,6 +23,7 @@ pub mod where_clause;
 
 pub use crate::{
     assignable::Assignable,
+    attribute::AttributeDecl,
     brackets::{AngleBrackets, Braces},
     dependency::Dependency,
     error::{ParseError, ParseErrorKind},
@@ -44,9 +45,9 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        FnArg, FnArgs, FnSignature, ItemKind, TypeField,
+        FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
-    keywords::{DoubleColonToken, ImpureToken, PubToken},
+    keywords::{DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},
     parse::Parse,
     parser::Parser,

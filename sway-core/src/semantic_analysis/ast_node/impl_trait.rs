@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::{FunctionDeclaration, ImplTrait},
+    parse_tree::{FunctionDeclaration, ImplTrait, Purity},
     semantic_analysis::*,
     type_engine::*,
     CallPath, Ident,
@@ -237,6 +237,7 @@ fn type_check_trait_implementation(
         // in the trait
         let TypedTraitFn {
             name: _,
+            purity,
             parameters,
             return_type,
             return_type_span: _,
@@ -279,6 +280,24 @@ fn type_check_trait_implementation(
             }
         }
 
+        if fn_decl.purity != *purity {
+            errors.push(if *purity == Purity::Pure {
+                CompileError::TraitDeclPureImplImpure {
+                    fn_name: fn_decl.name.clone(),
+                    trait_name: trait_name.suffix.clone(),
+                    attrs: fn_decl.purity.to_attribute_syntax(),
+                    span: fn_decl.span.clone(),
+                }
+            } else {
+                CompileError::TraitImplPurityMismatch {
+                    fn_name: fn_decl.name.clone(),
+                    trait_name: trait_name.suffix.clone(),
+                    attrs: purity.to_attribute_syntax(),
+                    span: fn_decl.span.clone(),
+                }
+            });
+        }
+
         let (mut new_warnings, new_errors) = unify_with_self(
             *return_type,
             fn_decl.return_type,
@@ -293,6 +312,7 @@ fn type_check_trait_implementation(
                 expected: return_type.friendly_type_str(),
                 given: fn_decl.return_type.friendly_type_str(),
             });
+
             continue;
         }
 

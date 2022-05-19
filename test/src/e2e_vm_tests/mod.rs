@@ -457,6 +457,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/double_underscore_enum",
         "should_fail/abi_method_signature_mismatch",
         "should_fail/trait_method_signature_mismatch",
+        "should_fail/impure_read_calls_impure_write",
+        "should_fail/abi_impl_purity_mismatch",
+        "should_fail/abi_pure_calls_impure",
+        "should_fail/impure_abi_read_calls_impure_write",
+        "should_fail/impure_trait_read_calls_impure_write",
+        "should_fail/trait_impl_purity_mismatch",
+        "should_fail/trait_pure_calls_impure",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
