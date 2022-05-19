@@ -11,4 +11,5 @@ impl ImpurityTest for Contract {
     }
 }
 
-impure fn foo() {}
+#[storage(read, write)]
+fn foo() {}

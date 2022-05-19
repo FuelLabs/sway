@@ -8,7 +8,7 @@ use fuels_types::{Function, Property};
 use sway_types::{ident::Ident, span::Span};
 
 mod purity;
-pub use purity::Purity;
+pub use purity::{promote_purity, Purity};
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
