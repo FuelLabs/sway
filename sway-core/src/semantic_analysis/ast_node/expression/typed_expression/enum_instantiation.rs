@@ -53,7 +53,7 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_variant.r#type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: enum_decl.type_id(),
+                return_type: enum_decl.create_type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -90,7 +90,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.type_id(),
+                    return_type: enum_decl.create_type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),

@@ -1421,7 +1421,7 @@ impl TypedExpression {
                 struct_name: struct_decl.name.clone(),
                 fields: typed_fields_buf,
             },
-            return_type: struct_decl.type_id(),
+            return_type: struct_decl.create_type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -2378,7 +2378,7 @@ fn check_scrutinee_type(
         }
     };
 
-    ok((ty.type_id(), enum_variant), warnings, errors)
+    ok((ty.create_type_id(), enum_variant), warnings, errors)
 }
 
 fn check_enum_scrutinee_type(

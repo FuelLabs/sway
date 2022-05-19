@@ -122,7 +122,7 @@ impl TypedScrutinee {
                 }
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::StructScrutinee(typed_fields),
-                    type_id: struct_decl.type_id(),
+                    type_id: struct_decl.create_type_id(),
                     span,
                 }
             }

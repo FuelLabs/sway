@@ -10,7 +10,7 @@ use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::{CreateTypeId, EnforceTypeArguments, MonomorphizeHelper};
+use super::{monomorphize_inner, CreateTypeId, EnforceTypeArguments, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
@@ -42,7 +42,7 @@ impl CopyTypes for TypedStructDeclaration {
 }
 
 impl CreateTypeId for TypedStructDeclaration {
-    fn type_id(&self) -> TypeId {
+    fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
@@ -67,15 +67,7 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        let old_type_id = self.type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
+        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 

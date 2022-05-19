@@ -63,6 +63,14 @@ pub(crate) fn type_check_method_application(
         None
     };
 
+    // 'method.purity' is that of the callee, 'opts.purity' of the caller.
+    if !opts.purity.can_call(method.purity) {
+        errors.push(CompileError::StorageAccessMismatch {
+            attrs: promote_purity(opts.purity, method.purity).to_attribute_syntax(),
+            span: method_name.easy_name().span().clone(),
+        });
+    }
+
     if !method.is_contract_call {
         if !contract_call_params.is_empty() {
             errors.push(CompileError::CallParamForNonContractCallMethod {

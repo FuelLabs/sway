@@ -103,7 +103,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let new_decl = check!(
@@ -119,7 +119,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         insert_type(TypeInfo::UnknownGeneric { name })
@@ -200,7 +200,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
                         let new_decl = check!(
@@ -216,7 +216,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     }
                     _ => insert_type(TypeInfo::Unknown),
                 }

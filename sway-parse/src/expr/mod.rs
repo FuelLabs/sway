@@ -442,7 +442,6 @@ impl ParseToEnd for CodeBlockContents {
                 || parser.peek::<EnumToken>().is_some()
                 || parser.peek::<FnToken>().is_some()
                 || parser.peek::<PubToken>().is_some()
-                || parser.peek::<ImpureToken>().is_some()
                 || parser.peek::<TraitToken>().is_some()
                 || parser.peek::<ImplToken>().is_some()
                 || parser.peek2::<AbiToken, Ident>().is_some()
@@ -1126,6 +1125,25 @@ impl Expr {
                     target: Box::new(target),
                     dot_token,
                     name,
+                }),
+            },
+            Expr::TupleFieldProjection {
+                target,
+                dot_token,
+                field,
+                field_span,
+            } => match target.try_into_assignable() {
+                Ok(target) => Ok(Assignable::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
+                }),
+                Err(target) => Err(Expr::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
                 }),
             },
             expr => Err(expr),
