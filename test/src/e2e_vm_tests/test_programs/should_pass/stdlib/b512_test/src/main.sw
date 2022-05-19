@@ -2,7 +2,7 @@ script;
 
 use std::b512::B512;
 use std::assert::assert;
-use std::constants::ZERO;
+use core::num::*;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
@@ -19,13 +19,14 @@ fn are_fields_contiguous(big_value: B512) -> bool {
 }
 
 fn main() -> bool {
+    let zero = ~b256::min();
     let hi_bits: b256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
     let lo_bits: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let modified: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     // it allows creation of new empty type:
     let mut a = ~B512::new();
-    assert(((a.bytes)[0] == ZERO) && ((a.bytes)[1] == ZERO));
+    assert(((a.bytes)[0] == zero) && ((a.bytes)[1] == zero));
 
     // it allows reassignment of fields:
     a.bytes = [hi_bits, lo_bits];

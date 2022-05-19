@@ -15,6 +15,8 @@ fuels = "0.12"
 fuels-abigen-macro = "0.12"
 hex = "0.4.3"
 rand = "0.8"
+sha2 = "0.10"
+sha3 = "0.10.1"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [dev-dependencies]

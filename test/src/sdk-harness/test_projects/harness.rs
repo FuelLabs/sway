@@ -7,6 +7,7 @@ mod context;
 mod contract_id_type;
 mod evm_ecr;
 mod hashing;
+mod intrinsics;
 mod logging;
 mod option;
 mod reentrancy;

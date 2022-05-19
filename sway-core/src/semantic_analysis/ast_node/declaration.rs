@@ -436,6 +436,7 @@ impl CopyTypes for TypedTraitDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
     pub(crate) name: Ident,
+    pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
@@ -461,7 +462,7 @@ impl TypedTraitFn {
     /// interface surface.
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
         TypedFunctionDeclaration {
-            purity: Default::default(),
+            purity: self.purity,
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],
