@@ -1030,7 +1030,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
- "forc-util",
 ]
 
 [[package]]
