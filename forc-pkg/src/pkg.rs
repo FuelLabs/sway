@@ -617,7 +617,7 @@ pub(crate) fn fetch_deps(
 /// Produce a unique ID for a particular fetch pass.
 ///
 /// This is used in the temporary git directory and allows for avoiding contention over the git repo directory.
-fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
+pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     let mut hasher = hash_map::DefaultHasher::new();
     path.hash(&mut hasher);
     timestamp.hash(&mut hasher);
@@ -703,7 +703,7 @@ fn hash_url(url: &Url) -> u64 {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
+pub fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
@@ -779,7 +779,7 @@ where
 ///
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
-fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
+pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
     let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
         // Resolve the reference to the commit ID.
         let commit_id = source
@@ -854,7 +854,7 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str)
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
+pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
     let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
@@ -864,7 +864,7 @@ fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
+pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
     // Checkout the pinned hash to the path.
