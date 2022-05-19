@@ -2,7 +2,6 @@ contract;
 
 use std::{
     chain::auth::*,
-    constants::ZERO,
     context::call_frames::contract_id,
     contract_id::ContractId,
     result::*,
