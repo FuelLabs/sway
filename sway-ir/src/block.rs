@@ -259,10 +259,26 @@ impl Block {
 #[doc(hidden)]
 impl BlockContent {
     pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        match &context.values[self.instructions[0].0].value {
-            ValueDatum::Instruction(Instruction::Phi(list)) => list.len(),
-            _ => unreachable!("First value in block instructions is not a phi."),
-        }
+        self.function.block_iter(context).fold(0, |mut acc, b| {
+            acc += b.instruction_iter(context).fold(0, |mut acc, i| {
+                acc += match context.values[i.0].value {
+                    ValueDatum::Instruction(Instruction::ConditionalBranch {
+                        true_block,
+                        false_block,
+                        ..
+                    }) => {
+                        true_block.get_label(context) == self.label
+                            || false_block.get_label(context) == self.label
+                    }
+                    ValueDatum::Instruction(Instruction::Branch(block)) => {
+                        block.get_label(context) == self.label
+                    }
+                    _ => false,
+                } as usize;
+                acc
+            });
+            acc
+        })
     }
 }
 
