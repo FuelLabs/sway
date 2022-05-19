@@ -44,7 +44,7 @@ impl CopyTypes for TypedEnumDeclaration {
 }
 
 impl CreateTypeId for TypedEnumDeclaration {
-    fn type_id(&self) -> TypeId {
+    fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
@@ -131,12 +131,12 @@ impl TypedEnumDeclaration {
         namespace: &mut namespace::Items,
         type_mapping: &TypeMapping,
     ) -> Self {
-        let old_type_id = self.type_id();
+        let old_type_id = self.create_type_id();
         let mut new_decl = self.clone();
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
+            look_up_type_id(new_decl.create_type_id()),
             type_mapping,
         );
         new_decl

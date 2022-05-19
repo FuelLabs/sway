@@ -253,7 +253,7 @@ impl TypedDeclaration {
                     )],
                 )
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.type_id(),
+            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
