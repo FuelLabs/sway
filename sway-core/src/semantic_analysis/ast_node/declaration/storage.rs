@@ -46,8 +46,7 @@ impl TypedStorageDeclaration {
             Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
-                    name: first_field.as_str().to_string(),
-                    span: first_field.span().clone(),
+                    name: first_field.clone(),
                 });
                 return err(warnings, errors);
             }
@@ -93,8 +92,7 @@ impl TypedStorageDeclaration {
                     errors.push(CompileError::FieldNotFound {
                         field_name: field.clone(),
                         available_fields: available_fields.join(", "),
-                        struct_name: type_checked_buf.last().unwrap().name.as_str().to_string(),
-                        span: field.span().clone(),
+                        struct_name: type_checked_buf.last().unwrap().name.clone(),
                     });
                     return err(warnings, errors);
                 }

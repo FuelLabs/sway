@@ -1,6 +1,13 @@
 contract;
 
-use std::{chain::auth::*, constants::ZERO, context::call_frames::contract_id, contract_id::ContractId, panic::panic, result::*};
+use std::{
+    chain::auth::*,
+    context::call_frames::contract_id,
+    contract_id::ContractId,
+    result::*,
+    revert::revert,
+};
+
 use reentrancy_target_abi::Target;
 use reentrancy_attacker_abi::Attacker;
 
@@ -10,10 +17,10 @@ fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
         if let Sender::ContractId(v) = s {
             v
         } else {
-            panic(0);
+            revert(0);
         }
     } else {
-        panic(0);
+        revert(0);
     }
 }
 

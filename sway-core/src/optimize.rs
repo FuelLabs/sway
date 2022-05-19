@@ -24,7 +24,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             main_function,
             declarations,
             all_nodes: _,
-        } => compile_script(&mut ctx, main_function, namespace, declarations),
+        } => compile_script(&mut ctx, main_function, &namespace, declarations),
         TypedParseTree::Predicate {
             namespace: _,
             main_function: _,
@@ -36,7 +36,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             namespace,
             declarations,
             all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, namespace, declarations),
+        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
         TypedParseTree::Library {
             namespace: _,
             all_nodes: _,
@@ -51,7 +51,7 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -66,7 +66,7 @@ fn compile_script(
 fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: NamespaceRef,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -85,49 +85,43 @@ fn compile_contract(
 fn compile_constants(
     context: &mut Context,
     module: Module,
-    namespace: NamespaceRef,
+    module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
-    read_module(
-        |ns| -> Result<(), CompileError> {
-            for decl in ns.get_all_declared_symbols() {
-                let decl_name_value = match decl {
-                    TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                        name,
-                        value,
-                        visibility,
-                    }) => {
-                        // XXX Do we really only add public constants?
-                        if !public_only || matches!(visibility, Visibility::Public) {
-                            Some((name, value))
-                        } else {
-                            None
-                        }
-                    }
-
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        name,
-                        body,
-                        const_decl_origin,
-                        ..
-                    }) if *const_decl_origin => Some((name, body)),
-
-                    _otherwise => None,
-                };
-
-                if let Some((name, value)) = decl_name_value {
-                    let const_val = compile_constant_expression(context, value)?;
-                    module.add_global_constant(context, name.as_str().to_owned(), const_val);
+    for decl in module_ns.get_all_declared_symbols() {
+        let decl_name_value = match decl {
+            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                name,
+                value,
+                visibility,
+            }) => {
+                // XXX Do we really only add public constants?
+                if !public_only || matches!(visibility, Visibility::Public) {
+                    Some((name, value))
+                } else {
+                    None
                 }
             }
 
-            for ns_ix in ns.get_all_imported_modules().filter(|x| **x != namespace) {
-                compile_constants(context, module, *ns_ix, true)?;
-            }
-            Ok(())
-        },
-        namespace,
-    )?;
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                name,
+                body,
+                const_decl_origin,
+                ..
+            }) if *const_decl_origin => Some((name, body)),
+
+            _otherwise => None,
+        };
+
+        if let Some((name, value)) = decl_name_value {
+            let const_val = compile_constant_expression(context, value)?;
+            module.add_global_constant(context, name.as_str().to_owned(), const_val);
+        }
+    }
+
+    for submodule_ns in module_ns.submodules().values() {
+        compile_constants(context, module, submodule_ns, true)?;
+    }
 
     Ok(())
 }
@@ -2276,7 +2270,7 @@ fn get_struct_name_and_field_index(
     resolve_type(field_type, field_name.span())
         .ok()
         .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields } => Some((
+            TypeInfo::Struct { name, fields, .. } => Some((
                 name.as_str().to_owned(),
                 fields
                     .iter()
@@ -2525,10 +2519,11 @@ mod tests {
 
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
-        parser::{Rule, SwayParser},
-        semantic_analysis::{TreeType, TypedParseTree},
+        semantic_analysis::{
+            namespace::{self, Namespace},
+            TypedParseTree,
+        },
     };
-    use pest::Parser;
 
     // -------------------------------------------------------------------------------------------------
 
@@ -2638,24 +2633,6 @@ mod tests {
     // -------------------------------------------------------------------------------------------------
 
     fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let mut parsed =
-            SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
-
-        let program_type = match parsed
-            .peek()
-            .unwrap()
-            .into_inner()
-            .peek()
-            .unwrap()
-            .as_rule()
-        {
-            Rule::script => TreeType::Script,
-            Rule::contract => TreeType::Contract,
-            Rule::predicate => TreeType::Predicate,
-            Rule::library => todo!(),
-            _ => unreachable!("unexpected program type"),
-        };
-
         let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
         let file_name = std::sync::Arc::new(path);
 
@@ -2664,29 +2641,29 @@ mod tests {
             dir_of_code,
             manifest_path: std::sync::Arc::new(".".into()),
             use_orig_asm: false,
-            use_orig_parser: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
             generated_names: Default::default(),
         };
-
         let mut warnings = vec![];
         let mut errors = vec![];
+
         let parse_tree =
-            crate::parse_root_from_pairs(parsed.next().unwrap().into_inner(), Some(&build_config))
-                .unwrap(&mut warnings, &mut errors);
+            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
+        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
+            .unwrap(&mut warnings, &mut errors);
 
         let mut dead_code_graph = ControlFlowGraph {
             graph: Graph::new(),
             entry_points: vec![],
             namespace: Default::default(),
         };
+        let mut namespace = Namespace::init_root(namespace::Module::default());
         TypedParseTree::type_check(
             parse_tree.tree,
-            crate::create_module(),
-            crate::create_module(),
-            &program_type,
+            &mut namespace,
+            &parse_tree.tree_type,
             &build_config,
             &mut dead_code_graph,
         )

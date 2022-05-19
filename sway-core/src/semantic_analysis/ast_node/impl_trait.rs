@@ -4,7 +4,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::{FunctionDeclaration, ImplTrait},
+    parse_tree::{FunctionDeclaration, ImplTrait, Purity},
     semantic_analysis::*,
     type_engine::*,
     CallPath, Ident,
@@ -14,8 +14,7 @@ use sway_types::span::Span;
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
@@ -49,8 +48,9 @@ pub(crate) fn implementation_of_trait(
         }
     }
     match namespace
-        .get_call_path(&trait_name)
+        .resolve_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
+        .cloned()
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
             let functions_buf = check!(
@@ -60,7 +60,6 @@ pub(crate) fn implementation_of_trait(
                     &tr.methods,
                     &trait_name,
                     namespace,
-                    crate_namespace,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -118,7 +117,6 @@ pub(crate) fn implementation_of_trait(
                     &abi.methods,
                     &trait_name,
                     namespace,
-                    crate_namespace,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -179,8 +177,7 @@ fn type_check_trait_implementation(
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],
     trait_name: &CallPath,
-    namespace: NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -194,12 +191,12 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
     let self_type_id = type_implementing_for;
-    // this list keeps track of the remaining functions in the
+    // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: Vec<&Ident> = interface_surface
+    let mut function_checklist: std::collections::BTreeMap<&Ident, _> = interface_surface
         .iter()
-        .map(|TypedTraitFn { name, .. }| name)
+        .map(|decl| (&decl.name, decl))
         .collect();
     for fn_decl in functions {
         // replace SelfType with type of implementor
@@ -210,7 +207,6 @@ fn type_check_trait_implementation(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: fn_decl.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,
@@ -225,11 +221,8 @@ fn type_check_trait_implementation(
         );
         let fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
-        let ix_of_thing_to_remove = match function_checklist
-            .iter()
-            .position(|name| **name == fn_decl.name)
-        {
-            Some(ix) => ix,
+        let trait_fn = match function_checklist.remove(&fn_decl.name) {
+            Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
@@ -239,111 +232,109 @@ fn type_check_trait_implementation(
                 return err(warnings, errors);
             }
         };
-        function_checklist.remove(ix_of_thing_to_remove);
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
-        if let Some(mut l_e) = interface_surface.iter().find_map(
-            |TypedTraitFn {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span: _,
-             }| {
-                if fn_decl.name == *name {
-                    if fn_decl.parameters.len() != parameters.len() {
-                        errors.push(
-                            CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-                                span: fn_decl.parameters_span(),
-                                fn_name: fn_decl.name.clone(),
-                                trait_name: trait_name.suffix.clone(),
-                                num_args: parameters.len(),
-                                provided_args: fn_decl.parameters.len(),
-                            },
-                        );
-                    }
-                    let mut errors = vec![];
-                    if let Some(mut maybe_err) = parameters
-                        .iter()
-                        .zip(fn_decl.parameters.iter())
-                        .find_map(|(fn_decl_param, trait_param)| {
-                            let mut errors = vec![];
-                            // TODO use trait constraints as part of the type here to
-                            // implement trait constraint solver */
-                            let fn_decl_param_type = fn_decl_param.r#type;
-                            let trait_param_type = trait_param.r#type;
+        let TypedTraitFn {
+            name: _,
+            purity,
+            parameters,
+            return_type,
+            return_type_span: _,
+        } = trait_fn;
 
-                            let (mut new_warnings, new_errors) = unify_with_self(
-                                fn_decl_param_type,
-                                trait_param_type,
-                                self_type_id,
-                                &trait_param.type_span,
-                                "",
-                            );
-                            warnings.append(&mut new_warnings);
-                            if new_errors.is_empty() {
-                                None
-                            } else {
-                                errors.push(CompileError::MismatchedTypeInTrait {
-                                    span: trait_param.type_span.clone(),
-                                    given: fn_decl_param_type.friendly_type_str(),
-                                    expected: trait_param_type.friendly_type_str(),
-                                });
-                                Some(errors)
-                            }
-                        })
-                    {
-                        errors.append(&mut maybe_err);
-                    }
+        if fn_decl.parameters.len() != parameters.len() {
+            errors.push(
+                CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
+                    span: fn_decl.parameters_span(),
+                    fn_name: fn_decl.name.clone(),
+                    trait_name: trait_name.suffix.clone(),
+                    num_args: parameters.len(),
+                    provided_args: fn_decl.parameters.len(),
+                },
+            );
+        }
 
-                    let (mut new_warnings, new_errors) = unify_with_self(
-                        *return_type,
-                        fn_decl.return_type,
-                        self_type_id,
-                        &fn_decl.return_type_span,
-                        "",
-                    );
-                    warnings.append(&mut new_warnings);
-                    if new_errors.is_empty() {
-                        None
-                    } else {
-                        errors.push(CompileError::MismatchedTypeInTrait {
-                            span: fn_decl.return_type_span.clone(),
-                            expected: return_type.friendly_type_str(),
-                            given: fn_decl.return_type.friendly_type_str(),
-                        });
-                        Some(errors)
-                    }
-                } else {
-                    None
+        for (trait_param, fn_decl_param) in parameters.iter().zip(&fn_decl.parameters) {
+            // TODO use trait constraints as part of the type here to
+            // implement trait constraint solver */
+            let fn_decl_param_type = fn_decl_param.r#type;
+            let trait_param_type = trait_param.r#type;
+
+            let (mut new_warnings, new_errors) = unify_with_self(
+                fn_decl_param_type,
+                trait_param_type,
+                self_type_id,
+                &trait_param.type_span,
+                "",
+            );
+
+            warnings.append(&mut new_warnings);
+            if !new_errors.is_empty() {
+                errors.push(CompileError::MismatchedTypeInTrait {
+                    span: fn_decl_param.type_span.clone(),
+                    given: fn_decl_param_type.friendly_type_str(),
+                    expected: trait_param_type.friendly_type_str(),
+                });
+                break;
+            }
+        }
+
+        if fn_decl.purity != *purity {
+            errors.push(if *purity == Purity::Pure {
+                CompileError::TraitDeclPureImplImpure {
+                    fn_name: fn_decl.name.clone(),
+                    trait_name: trait_name.suffix.clone(),
+                    attrs: fn_decl.purity.to_attribute_syntax(),
+                    span: fn_decl.span.clone(),
                 }
-            },
-        ) {
-            errors.append(&mut l_e);
+            } else {
+                CompileError::TraitImplPurityMismatch {
+                    fn_name: fn_decl.name.clone(),
+                    trait_name: trait_name.suffix.clone(),
+                    attrs: purity.to_attribute_syntax(),
+                    span: fn_decl.span.clone(),
+                }
+            });
+        }
+
+        let (mut new_warnings, new_errors) = unify_with_self(
+            *return_type,
+            fn_decl.return_type,
+            self_type_id,
+            &fn_decl.return_type_span,
+            "",
+        );
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(CompileError::MismatchedTypeInTrait {
+                span: fn_decl.return_type_span.clone(),
+                expected: return_type.friendly_type_str(),
+                given: fn_decl.return_type.friendly_type_str(),
+            });
+
             continue;
         }
 
         functions_buf.push(fn_decl);
     }
 
-    // this name space is temporary! It is used only so that the below methods
+    // This name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let local_namespace: NamespaceRef = create_new_scope(namespace);
+    let mut impl_trait_namespace = namespace.clone();
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
     // First, get the path to where the trait is declared. This is a combination of the path stored
     // in the symbols map and the path stored in the CallPath.
-    local_namespace.star_import(
-        Some(crate_namespace),
-        [
-            &trait_name.prefixes[..],
-            &local_namespace.get_canonical_path(&trait_name.suffix)[..],
-        ]
-        .concat(),
-    );
+    let trait_path = [
+        &trait_name.prefixes[..],
+        impl_trait_namespace.get_canonical_path(&trait_name.suffix),
+    ]
+    .concat();
+    impl_trait_namespace.star_import(&trait_path);
 
-    local_namespace.insert_trait_implementation(
+    impl_trait_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.suffix.clone(),
@@ -367,8 +358,7 @@ fn type_check_trait_implementation(
         let method = check!(
             TypedFunctionDeclaration::type_check(TypeCheckArguments {
                 checkee: method.clone(),
-                namespace: local_namespace,
-                crate_namespace,
+                namespace: &mut impl_trait_namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,
@@ -391,7 +381,7 @@ fn type_check_trait_implementation(
             span: block_span.clone(),
             missing_functions: function_checklist
                 .into_iter()
-                .map(|ident| ident.as_str().to_string())
+                .map(|(ident, _)| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });

@@ -6,11 +6,11 @@ pub struct ItemImpl {
     pub generic_params_opt: Option<GenericParams>,
     pub trait_opt: Option<(PathType, ForToken)>,
     pub ty: Ty,
-    pub contents: Braces<Vec<ItemFn>>,
+    pub contents: Braces<Vec<Annotated<ItemFn>>>,
 }
 
-impl ItemImpl {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemImpl {
+    fn span(&self) -> Span {
         Span::join(self.impl_token.span(), self.contents.span())
     }
 }

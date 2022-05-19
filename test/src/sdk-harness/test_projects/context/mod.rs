@@ -1,4 +1,4 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::ContractId;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
 use fuels_abigen_macro::abigen;
@@ -22,13 +22,11 @@ async fn get_contracts() -> (
     TestContextCallerContract,
     ContractId,
 ) {
-    let salt = Salt::from([0u8; 32]);
     let (provider, wallet) = setup_test_provider_and_wallet().await;
     let compiled_1 =
-        Contract::load_sway_contract("test_projects/context/out/debug/context.bin", salt).unwrap();
+        Contract::load_sway_contract("test_projects/context/out/debug/context.bin").unwrap();
     let compiled_2 = Contract::load_sway_contract(
         "test_artifacts/context_caller_contract/out/debug/context_caller_contract.bin",
-        salt,
     )
     .unwrap();
 

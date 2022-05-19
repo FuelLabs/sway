@@ -22,8 +22,8 @@ pub enum Pattern {
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
 }
 
-impl Pattern {
-    pub fn span(&self) -> Span {
+impl Spanned for Pattern {
+    fn span(&self) -> Span {
         match self {
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var { mutable, name } => match mutable {
@@ -79,8 +79,8 @@ pub struct PatternStructField {
     pub pattern_opt: Option<(ColonToken, Box<Pattern>)>,
 }
 
-impl PatternStructField {
-    pub fn span(&self) -> Span {
+impl Spanned for PatternStructField {
+    fn span(&self) -> Span {
         match &self.pattern_opt {
             Some((_colon_token, pattern)) => {
                 Span::join(self.field_name.span().clone(), pattern.span())

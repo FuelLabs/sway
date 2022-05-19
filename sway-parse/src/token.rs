@@ -26,6 +26,7 @@ pub enum PunctKind {
     Pipe,
     Tilde,
     Underscore,
+    Sharp,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -35,8 +36,8 @@ pub struct Punct {
     pub spacing: Spacing,
 }
 
-impl Punct {
-    pub fn span(&self) -> Span {
+impl Spanned for Punct {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
@@ -62,6 +63,7 @@ impl PunctKind {
             PunctKind::Pipe => '|',
             PunctKind::Tilde => '~',
             PunctKind::Underscore => '_',
+            PunctKind::Sharp => '#',
         }
     }
 }
@@ -73,8 +75,8 @@ pub struct Group {
     pub span: Span,
 }
 
-impl Group {
-    pub fn span(&self) -> Span {
+impl Spanned for Group {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
@@ -84,17 +86,14 @@ pub enum Delimiter {
     Parenthesis,
     Brace,
     Bracket,
-    //None,
 }
 
 impl Delimiter {
-    //pub fn as_open_char(self) -> Option<char> {
     pub fn as_open_char(self) -> char {
         match self {
             Delimiter::Parenthesis => '(',
             Delimiter::Brace => '{',
             Delimiter::Bracket => '[',
-            //Delimiter::None => None,
         }
     }
 }
@@ -107,8 +106,8 @@ pub enum TokenTree {
     Literal(Literal),
 }
 
-impl TokenTree {
-    pub fn span(&self) -> Span {
+impl Spanned for TokenTree {
+    fn span(&self) -> Span {
         match self {
             TokenTree::Punct(punct) => punct.span(),
             TokenTree::Ident(ident) => ident.span().clone(),
@@ -232,6 +231,7 @@ impl CharExt for char {
             '|' => Some(PunctKind::Pipe),
             '~' => Some(PunctKind::Tilde),
             '_' => Some(PunctKind::Underscore),
+            '#' => Some(PunctKind::Sharp),
             _ => None,
         }
     }
@@ -957,8 +957,10 @@ impl TokenStream {
     pub fn token_trees(&self) -> &[TokenTree] {
         &self.token_trees
     }
+}
 
-    pub fn span(&self) -> Span {
+impl Spanned for TokenStream {
+    fn span(&self) -> Span {
         self.full_span.clone()
     }
 }

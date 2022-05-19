@@ -1,4 +1,4 @@
-use fuel_tx::{ContractId, Salt};
+use fuel_tx::ContractId;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
 use fuels::test_helpers;
@@ -10,9 +10,8 @@ abigen!(
 );
 
 async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled =
-        Contract::load_sway_contract("test_projects/call_frames/out/debug/call_frames.bin", salt)
+        Contract::load_sway_contract("test_projects/call_frames/out/debug/call_frames.bin")
             .unwrap();
     let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
     let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())

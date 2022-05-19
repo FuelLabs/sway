@@ -6,8 +6,8 @@ pub struct ItemStorage {
     pub fields: Braces<Punctuated<StorageField, CommaToken>>,
 }
 
-impl ItemStorage {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemStorage {
+    fn span(&self) -> Span {
         Span::join(self.storage_token.span(), self.fields.span())
     }
 }

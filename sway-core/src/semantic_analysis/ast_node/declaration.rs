@@ -1,20 +1,21 @@
+mod r#enum;
+mod function;
+mod storage;
+mod r#struct;
+mod variable;
+pub use function::*;
+pub use r#enum::*;
+pub use r#struct::*;
+pub use storage::*;
+pub use variable::*;
+
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident, NamespaceRef, NamespaceWrapper,
+    Ident,
 };
-
-use sway_types::{Property, Span};
-
 use derivative::Derivative;
-use std::hash::{Hash, Hasher};
-
-mod function;
-mod storage;
-mod variable;
-pub use function::*;
-pub use storage::*;
-pub use variable::*;
+use sway_types::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -67,9 +68,151 @@ impl TypedDeclaration {
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
     }
-}
 
-impl TypedDeclaration {
+    /// Attempt to retrieve the declaration as an enum declaration.
+    ///
+    /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
+    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
+        match self {
+            TypedDeclaration::EnumDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as a struct declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedStructDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_struct(&self) -> Option<&TypedStructDeclaration> {
+        match self {
+            TypedDeclaration::StructDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as a function declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedFunctionDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_function(&self) -> Option<&TypedFunctionDeclaration> {
+        match self {
+            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as a variable declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedVariableDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_variable(&self) -> Option<&TypedVariableDeclaration> {
+        match self {
+            TypedDeclaration::VariableDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Attempt to retrieve the declaration as an Abi declaration.
+    ///
+    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
+    #[allow(dead_code)]
+    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
+            _ => None,
+        }
+    }
+
+    /// Retrieves the declaration as an enum declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedEnumDeclaration`.
+    pub(crate) fn expect_enum(&self) -> CompileResult<&TypedEnumDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::EnumDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAnEnum {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a struct declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedStructDeclaration`.
+    pub(crate) fn expect_struct(&self) -> CompileResult<&TypedStructDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::StructDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAStruct {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a function declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedFunctionDeclaration`.
+    pub(crate) fn expect_function(&self) -> CompileResult<&TypedFunctionDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::FunctionDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAFunction {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as a variable declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedVariableDeclaration`.
+    pub(crate) fn expect_variable(&self) -> CompileResult<&TypedVariableDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAVariable {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Retrieves the declaration as an Abi declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedAbiDeclaration`.
+    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
+            decl => {
+                errors.push(CompileError::DeclIsNotAnAbi {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
     /// friendly name string used for error reporting.
     pub(crate) fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
@@ -240,315 +383,9 @@ impl TypedAbiDeclaration {
     pub(crate) fn as_type(&self) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
-            address: String::new(),
+            address: None,
         };
         insert_type(ty)
-    }
-}
-
-#[derive(Clone, Debug, Eq)]
-pub struct TypedStructDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) fields: Vec<TypedStructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) visibility: Visibility,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.fields == other.fields
-            && self.type_parameters == other.type_parameters
-            && self.visibility == other.visibility
-    }
-}
-
-impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(
-        &self,
-        namespace: &NamespaceRef,
-        type_arguments: &[TypeArgument],
-        self_type: Option<TypeId>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
-        let type_arguments_span = type_arguments
-            .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if !type_arguments.is_empty() {
-            if type_mapping.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: type_mapping.len(),
-                    span: type_arguments_span,
-                });
-                return err(warnings, errors);
-            }
-            for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter())
-            {
-                match self_type {
-                    Some(self_type) => {
-                        let (mut new_warnings, new_errors) = unify_with_self(
-                            *interim_type,
-                            type_argument.type_id,
-                            self_type,
-                            &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                    }
-                    None => {
-                        let (mut new_warnings, new_errors) = unify(
-                            *interim_type,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                    }
-                }
-            }
-        }
-        ok(new_decl, warnings, errors)
-    }
-
-    fn monomorphize_inner(
-        &self,
-        namespace: &NamespaceRef,
-        type_mapping: &[(TypeParameter, usize)],
-    ) -> Self {
-        let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Eq)]
-pub struct TypedStructField {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypedStructField {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        look_up_type_id(self.r#type).hash(state);
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
-    }
-}
-
-impl TypedStructField {
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
-        };
-    }
-}
-
-#[derive(Clone, Debug, Eq)]
-pub struct TypedEnumDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) variants: Vec<TypedEnumVariant>,
-    pub(crate) span: Span,
-    pub(crate) visibility: Visibility,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.type_parameters == other.type_parameters
-            && self.variants == other.variants
-            && self.visibility == other.visibility
-    }
-}
-
-impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &crate::semantic_analysis::NamespaceRef) -> Self {
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        Self::monomorphize_inner(self, namespace, &type_mapping)
-    }
-
-    pub(crate) fn monomorphize_with_type_arguments(
-        &self,
-        namespace: &crate::semantic_analysis::NamespaceRef,
-        type_arguments: &[TypeArgument],
-        self_type: Option<TypeId>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
-        let type_arguments_span = type_arguments
-            .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if type_mapping.len() != type_arguments.len() {
-            errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                given: type_arguments.len(),
-                expected: type_mapping.len(),
-                span: type_arguments_span,
-            });
-            return err(warnings, errors);
-        }
-        for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-            match self_type {
-                Some(self_type) => {
-                    let (mut new_warnings, new_errors) = unify_with_self(
-                        *interim_type,
-                        type_argument.type_id,
-                        self_type,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
-                None => {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
-            }
-        }
-        ok(new_decl, warnings, errors)
-    }
-
-    fn monomorphize_inner(
-        &self,
-        namespace: &NamespaceRef,
-        type_mapping: &[(TypeParameter, usize)],
-    ) -> Self {
-        let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
-        })
-    }
-}
-#[derive(Debug, Clone, Eq)]
-pub struct TypedEnumVariant {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
-    pub(crate) tag: usize,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypedEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        look_up_type_id(self.r#type).hash(state);
-        self.tag.hash(state);
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumVariant {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
-            && self.tag == other.tag
-    }
-}
-
-impl TypedEnumVariant {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.r#type))
-        };
-    }
-
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
     }
 }
 
@@ -593,6 +430,7 @@ impl TypedTraitDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
     pub(crate) name: Ident,
+    pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
@@ -664,7 +502,7 @@ impl TypedTraitFn {
     /// interface surface.
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
         TypedFunctionDeclaration {
-            purity: Default::default(),
+            purity: self.purity,
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],

@@ -10,8 +10,8 @@ pub struct ItemStruct {
     pub fields: Braces<Punctuated<TypeField, CommaToken>>,
 }
 
-impl ItemStruct {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemStruct {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => self.struct_token.span(),

@@ -1,4 +1,4 @@
-use fuel_tx::{AssetId, ContractId, Salt};
+use fuel_tx::{AssetId, ContractId};
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels_abigen_macro::abigen;
@@ -184,10 +184,8 @@ async fn get_fuelcoin_instance(
     provider: Provider,
     wallet: Wallet,
 ) -> (TestFuelCoinContract, ContractId) {
-    let salt = Salt::from([0u8; 32]);
     let compiled =
-        Contract::load_sway_contract("test_projects/token_ops/out/debug/token_ops.bin", salt)
-            .unwrap();
+        Contract::load_sway_contract("test_projects/token_ops/out/debug/token_ops.bin").unwrap();
     let fuelcoin_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
         .await
         .unwrap();
@@ -198,10 +196,8 @@ async fn get_fuelcoin_instance(
 }
 
 async fn get_balance_contract_id(provider: Provider, wallet: Wallet) -> ContractId {
-    let salt = Salt::from([0u8; 32]);
     let compiled = Contract::load_sway_contract(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
-        salt,
     )
     .unwrap();
     let balance_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())

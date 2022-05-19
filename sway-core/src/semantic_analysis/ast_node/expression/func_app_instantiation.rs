@@ -1,10 +1,11 @@
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-use crate::error::*;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
-use crate::type_engine::TypeId;
-use std::cmp::Ordering;
-use std::collections::HashMap;
+use crate::{
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    error::*,
+    semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments},
+    type_engine::TypeId,
+};
+use std::{cmp::Ordering, collections::HashMap};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -12,8 +13,7 @@ pub(crate) fn instantiate_function_application(
     name: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    namespace: crate::semantic_analysis::NamespaceRef,
-    crate_namespace: NamespaceRef,
+    namespace: &mut Namespace,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph,
@@ -70,8 +70,12 @@ pub(crate) fn instantiate_function_application(
         ..
     } = typed_function_decl;
 
-    if opts.purity != purity {
-        errors.push(CompileError::PureCalledImpure { span: name.span() });
+    // 'purity' is that of the callee, 'opts.purity' of the caller.
+    if !opts.purity.can_call(purity) {
+        errors.push(CompileError::StorageAccessMismatch {
+            attrs: promote_purity(opts.purity, purity).to_attribute_syntax(),
+            span: name.span(),
+        });
     }
 
     match arguments.len().cmp(&parameters.len()) {
@@ -118,7 +122,6 @@ pub(crate) fn instantiate_function_application(
             let args = TypeCheckArguments {
                 checkee: arg.clone(),
                 namespace,
-                crate_namespace,
                 return_type_annotation: param.r#type,
                 help_text: "The argument that has been provided to this function's type does \
                     not match the declared type of the parameter in the function \

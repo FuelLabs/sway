@@ -7,6 +7,62 @@ lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
 }
 
+pub struct Position {
+    input: Arc<str>,
+    pos: usize,
+}
+
+impl Position {
+    pub fn new(input: Arc<str>, pos: usize) -> Option<Position> {
+        input.clone().get(pos..).map(|_| Position { input, pos })
+    }
+    #[inline]
+    pub fn line_col(&self) -> (usize, usize) {
+        if self.pos > self.input.len() {
+            panic!("position out of bounds");
+        }
+
+        let mut pos = self.pos;
+        // Position's pos is always a UTF-8 border.
+        let slice = &self.input[..pos];
+        let mut chars = slice.chars().peekable();
+
+        let mut line_col = (1, 1);
+
+        while pos != 0 {
+            match chars.next() {
+                Some('\r') => {
+                    if let Some(&'\n') = chars.peek() {
+                        chars.next();
+
+                        if pos == 1 {
+                            pos -= 1;
+                        } else {
+                            pos -= 2;
+                        }
+
+                        line_col = (line_col.0 + 1, 1);
+                    } else {
+                        pos -= 1;
+                        line_col = (line_col.0, line_col.1 + 1);
+                    }
+                }
+                Some('\n') => {
+                    pos -= 1;
+                    line_col = (line_col.0 + 1, 1);
+                }
+                Some(c) => {
+                    pos -= c.len_utf8();
+                    line_col = (line_col.0, line_col.1 + 1);
+                }
+                None => unreachable!(),
+            }
+        }
+
+        line_col
+    }
+}
+
 /// Represents a span of the source code in a specific file.
 #[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
 pub struct Span {
@@ -23,15 +79,6 @@ pub struct Span {
 impl Span {
     pub fn dummy() -> Span {
         DUMMY_SPAN.clone()
-    }
-
-    pub fn from_pest(pest_span: pest::Span, path: Option<Arc<PathBuf>>) -> Span {
-        Span {
-            src: pest_span.input().clone(),
-            start: pest_span.start(),
-            end: pest_span.end(),
-            path,
-        }
     }
 
     pub fn new(
@@ -69,15 +116,15 @@ impl Span {
         self.path.as_deref().map(|path| path.to_string_lossy())
     }
 
-    pub fn start_pos(&self) -> pest::Position {
-        pest::Position::new(self.src.clone(), self.start).unwrap()
+    pub fn start_pos(&self) -> Position {
+        Position::new(self.src.clone(), self.start).unwrap()
     }
 
-    pub fn end_pos(&self) -> pest::Position {
-        pest::Position::new(self.src.clone(), self.end).unwrap()
+    pub fn end_pos(&self) -> Position {
+        Position::new(self.src.clone(), self.end).unwrap()
     }
 
-    pub fn split(&self) -> (pest::Position, pest::Position) {
+    pub fn split(&self) -> (Position, Position) {
         let start = self.start_pos();
         let end = self.end_pos();
         (start, end)
@@ -110,6 +157,7 @@ impl Span {
     /// only be used on spans that are actually next to each other.
     pub fn join(s1: Span, s2: Span) -> Span {
         // FIXME(canndrew): This is horrifying. Where did it come from and why is it needed?
+        // FIXME(sezna): I don't know, but I'm on the blame for it. Ah. We should remove this.
         if s1.as_str() == "core" {
             return s2;
         }
@@ -138,4 +186,8 @@ impl fmt::Debug for Span {
             .field("as_str()", &self.as_str())
             .finish()
     }
+}
+
+pub trait Spanned {
+    fn span(&self) -> Span;
 }
