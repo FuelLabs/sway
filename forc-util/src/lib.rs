@@ -10,7 +10,6 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::str::FromStr;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
