@@ -7,7 +7,7 @@ pub struct ItemImpl {
     pub trait_opt: Option<(PathType, ForToken)>,
     pub ty: Ty,
     pub where_clause_opt: Option<WhereClause>,
-    pub contents: Braces<Vec<ItemFn>>,
+    pub contents: Braces<Vec<Annotated<ItemFn>>>,
 }
 
 impl Spanned for ItemImpl {

@@ -1,6 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
+        constants::{
+            STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
         parse_tree::desugar_match_expression,
         type_engine::{insert_type, AbiName, IntegerBits},
@@ -14,14 +17,14 @@ use {
         SwayParseTree, TraitConstraint, TraitDeclaration, TraitFn, TreeType, TypeArgument,
         TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility, WhileLoop,
     },
-    std::{convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
+    std::{collections::HashMap, convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
-        AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, Dependency,
-        DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
-        FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImpureToken,
-        Instruction, Intrinsic, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-        ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, PathExpr,
-        PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
+        AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
+        Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
+        ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
+        IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
+        ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
+        PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
         ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
         UseTree, WhereClause,
     },
@@ -172,6 +175,8 @@ pub enum ConvertParseTreeError {
     ContractCallerOneGenericArg { span: Span },
     #[error("ContractCaller requires a named type for its generic argument")]
     ContractCallerNamedTypeGenericArg { span: Span },
+    #[error("invalid argument for '{attribute}' attribute")]
+    InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
 }
@@ -221,6 +226,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
             ConvertParseTreeError::ContractCallerOneGenericArg { span } => span.clone(),
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
         }
     }
@@ -267,7 +273,7 @@ pub fn program_to_sway_parse_tree(
                 .collect()
         };
         for item in program.items {
-            let ast_nodes = item_to_ast_nodes(ec, item.kind)?;
+            let ast_nodes = item_to_ast_nodes(ec, item)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
@@ -278,9 +284,11 @@ pub fn program_to_sway_parse_tree(
     })
 }
 
-fn item_to_ast_nodes(ec: &mut ErrorContext, item: ItemKind) -> Result<Vec<AstNode>, ErrorEmitted> {
+fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
+    let attributes = item_attrs_to_map(&item.attribute_list)?;
+
     let span = item.span();
-    let contents = match item {
+    let contents = match item.value {
         ItemKind::Use(item_use) => {
             let use_statements = item_use_to_use_statements(ec, item_use)?;
             use_statements
@@ -301,7 +309,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: ItemKind) -> Result<Vec<AstNod
             ))]
         }
         ItemKind::Fn(item_fn) => {
-            let function_declaration = item_fn_to_function_declaration(ec, item_fn)?;
+            let function_declaration = item_fn_to_function_declaration(ec, item_fn, &attributes)?;
             vec![AstNodeContent::Declaration(
                 Declaration::FunctionDeclaration(function_declaration),
             )]
@@ -342,6 +350,52 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: ItemKind) -> Result<Vec<AstNod
             content,
         })
         .collect())
+}
+
+// Each item may have a list of attributes, each with a name (the key to the hashmap) and a list of
+// zero or more args.  Attributes may be specified more than once in which case we use the union of
+// their args.
+//
+// E.g.,
+//
+//   #[foo(bar)]
+//   #[foo(baz, xyzzy)]
+//
+// is essentially equivalent to
+//
+//   #[foo(bar, baz, xyzzy)]
+//
+// but no uniquing is done so
+//
+//   #[foo(bar)]
+//   #[foo(bar)]
+//
+// is
+//
+//   #[foo(bar, bar)]
+
+type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
+
+fn item_attrs_to_map(attribute_list: &[AttributeDecl]) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map = AttributesMap::new();
+    for attr_decl in attribute_list {
+        let attr = attr_decl.attribute.get();
+        let name = attr.name.as_str();
+        let mut args = attr
+            .args
+            .as_ref()
+            .map(|parens| parens.get().into_iter().collect())
+            .unwrap_or_else(Vec::new);
+        match attrs_map.get_mut(name) {
+            Some(old_args) => {
+                old_args.append(&mut args);
+            }
+            None => {
+                attrs_map.insert(name, args);
+            }
+        }
+    }
+    Ok(attrs_map)
 }
 
 fn item_use_to_use_statements(
@@ -476,6 +530,7 @@ fn item_enum_to_enum_declaration(
 fn item_fn_to_function_declaration(
     ec: &mut ErrorContext,
     item_fn: ItemFn,
+    attributes: &AttributesMap,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type_span = match &item_fn.fn_signature.return_type_opt {
@@ -483,7 +538,7 @@ fn item_fn_to_function_declaration(
         None => item_fn.fn_signature.span(),
     };
     Ok(FunctionDeclaration {
-        purity: impure_token_opt_to_purity(item_fn.fn_signature.impure),
+        purity: get_attributed_purity(ec, attributes)?,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
         body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
@@ -505,6 +560,38 @@ fn item_fn_to_function_declaration(
     })
 }
 
+fn get_attributed_purity(
+    ec: &mut ErrorContext,
+    attributes: &AttributesMap,
+) -> Result<Purity, ErrorEmitted> {
+    let mut purity = Purity::Pure;
+    let mut add_impurity = |new_impurity, counter_impurity| {
+        if purity == Purity::Pure {
+            purity = new_impurity;
+        } else if purity == counter_impurity {
+            purity = Purity::ReadsWrites;
+        }
+    };
+    match attributes.get(STORAGE_PURITY_ATTRIBUTE_NAME) {
+        Some(args) if !args.is_empty() => {
+            for arg in args {
+                match arg.as_str() {
+                    STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
+                    STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
+                    _otherwise => {
+                        return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
+                            attribute: "storage".to_owned(),
+                            span: arg.span().clone(),
+                        }));
+                    }
+                }
+            }
+            Ok(purity)
+        }
+        _otherwise => Ok(Purity::Pure),
+    }
+}
+
 fn item_trait_to_trait_declaration(
     ec: &mut ErrorContext,
     item_trait: ItemTrait,
@@ -515,7 +602,10 @@ fn item_trait_to_trait_declaration(
             .trait_items
             .into_inner()
             .into_iter()
-            .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
+            .map(|(fn_signature, _semicolon_token)| {
+                let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
+            })
             .collect::<Result<_, _>>()?
     };
     let methods = match item_trait.trait_defs_opt {
@@ -523,7 +613,10 @@ fn item_trait_to_trait_declaration(
         Some(trait_defs) => trait_defs
             .into_inner()
             .into_iter()
-            .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
+            .map(|item_fn| {
+                let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                item_fn_to_function_declaration(ec, item_fn.value, &attributes)
+            })
             .collect::<Result<_, _>>()?,
     };
     let supertraits = match item_trait.super_traits {
@@ -545,7 +638,6 @@ fn item_impl_to_declaration(
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
-    //let type_arguments_span = item_impl.ty.span();
     let type_implementing_for_span = item_impl.ty.span();
     let type_implementing_for = ty_to_type_info(ec, item_impl.ty)?;
     let functions = {
@@ -553,7 +645,10 @@ fn item_impl_to_declaration(
             .contents
             .into_inner()
             .into_iter()
-            .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
+            .map(|item| {
+                let attributes = item_attrs_to_map(&item.attribute_list)?;
+                item_fn_to_function_declaration(ec, item.value, &attributes)
+            })
             .collect::<Result<_, _>>()?
     };
 
@@ -600,7 +695,10 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(fn_signature, _semicolon_token)| fn_signature_to_trait_fn(ec, fn_signature))
+                .map(|(fn_signature, _semicolon_token)| {
+                    let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                    fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
+                })
                 .collect::<Result<_, _>>()?
         },
         methods: match item_abi.abi_defs_opt {
@@ -608,7 +706,10 @@ fn item_abi_to_abi_declaration(
             Some(abi_defs) => abi_defs
                 .into_inner()
                 .into_iter()
-                .map(|item_fn| item_fn_to_function_declaration(ec, item_fn))
+                .map(|item_fn| {
+                    let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                    item_fn_to_function_declaration(ec, item_fn.value, &attributes)
+                })
                 .collect::<Result<_, _>>()?,
         },
         span,
@@ -752,13 +853,6 @@ fn type_field_to_enum_variant(
     Ok(enum_variant)
 }
 
-fn impure_token_opt_to_purity(impure_token_opt: Option<ImpureToken>) -> Purity {
-    match impure_token_opt {
-        Some(..) => Purity::Impure,
-        None => Purity::Pure,
-    }
-}
-
 fn braced_code_block_contents_to_code_block(
     ec: &mut ErrorContext,
     braced_code_block_contents: Braces<CodeBlockContents>,
@@ -863,6 +957,7 @@ fn ty_to_type_argument(ec: &mut ErrorContext, ty: Ty) -> Result<TypeArgument, Er
 fn fn_signature_to_trait_fn(
     ec: &mut ErrorContext,
     fn_signature: FnSignature,
+    attributes: &AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
     let return_type_span = match &fn_signature.return_type_opt {
         Some((_right_arrow_token, ty)) => ty.span(),
@@ -870,6 +965,7 @@ fn fn_signature_to_trait_fn(
     };
     let trait_fn = TraitFn {
         name: fn_signature.name,
+        purity: get_attributed_purity(ec, attributes)?,
         parameters: fn_args_to_function_parameters(ec, fn_signature.arguments.into_inner())?,
         return_type: match fn_signature.return_type_opt {
             Some((_right_arrow_token, ty)) => ty_to_type_info(ec, ty)?,
@@ -2596,6 +2692,26 @@ fn assignable_to_expression(
             field_to_access: name,
             span,
         },
+        Assignable::TupleFieldProjection {
+            target,
+            field,
+            field_span,
+            ..
+        } => {
+            let index = match usize::try_from(field) {
+                Ok(index) => index,
+                Err(..) => {
+                    let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                    return Err(ec.error(error));
+                }
+            };
+            Expression::TupleIndex {
+                prefix: Box::new(assignable_to_expression(ec, *target)?),
+                index,
+                index_span: field_span,
+                span,
+            }
+        }
     };
     Ok(expression)
 }
@@ -2620,6 +2736,7 @@ fn assignable_to_reassignment_target(
                 break;
             }
             Assignable::Index { .. } => break,
+            Assignable::TupleFieldProjection { .. } => break,
         }
     }
     let expression = assignable_to_expression(ec, assignable)?;
