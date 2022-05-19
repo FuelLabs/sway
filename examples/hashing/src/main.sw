@@ -45,7 +45,7 @@ fn main() {
     let sha_hashed_bool = sha256(true);
 
     // Strings are not a problem either
-    let sha_hashed_str = sha256( "Fastest Modular Execution Layer!");
+    let sha_hashed_str = sha256("Fastest Modular Execution Layer!");
 
     // Tuples of any size work too
     let sha_hashed_tuple = sha256((true, 7));
