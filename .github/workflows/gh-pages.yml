@@ -27,7 +27,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path forc-plugins/forc-fmt forc-plugins/forc-lsp forc-plugins/forc-explore
+          args: --debug --path ./forc-plugins/forc-fmt ./forc-plugins/forc-lsp ./forc-plugins/forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
