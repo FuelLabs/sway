@@ -1,6 +1,6 @@
 contract;
 
-use std::hash::{HashMethod, hash_u64, keccak256, sha256};
+use std::hash::{keccak256, sha256};
 use core::num::*;
 
 abi MyContract {
@@ -27,9 +27,6 @@ abi MyContract {
     fn keccak256_array(value1: u64, value2: u64) -> b256;
     fn keccak256_enum(location: bool) -> b256;
     fn keccak256_struct(location: bool) -> b256;
-
-    fn get_s256_hash_u64(value: u64) -> b256;
-    fn get_k256_hash_u64(value: u64) -> b256;
 }
 
 enum Location {
@@ -166,13 +163,5 @@ impl MyContract for Contract {
             },
             alive: true, random_b256: ~b256::min()
         })
-    }
-
-    fn get_s256_hash_u64(value: u64) -> b256 {
-        hash_u64(value, HashMethod::Sha256)
-    }
-
-    fn get_k256_hash_u64(value: u64) -> b256 {
-        hash_u64(value, HashMethod::Keccak256)
     }
 }
