@@ -9,10 +9,14 @@ fn foo() {
     baz();
 }
 
+// Although annotated, with no args is pure.
+#[storage()]
 fn bar() {
     let z = baz();
 }
 
-impure fn baz() -> u64 {
+// Explicitly impure.
+#[storage(read)]
+fn baz() -> u64 {
   5
 }

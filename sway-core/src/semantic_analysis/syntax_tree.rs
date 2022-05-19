@@ -391,7 +391,7 @@ fn disallow_impure_functions(
         .chain(mains);
     fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
-            if *purity == Purity::Impure {
+            if *purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract {
                     span: name.span().clone(),
                 })
