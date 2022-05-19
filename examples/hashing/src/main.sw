@@ -1,7 +1,10 @@
 script;
 
-use std::{chain::log_b256, core::num::*, hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256}};
-use core::num::*;
+use std::{
+    core::num::*,
+    hash::{HashMethod, hash_pair, hash_u64, hash_value, sha256},
+    logging::log,
+};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
@@ -61,17 +64,17 @@ fn main() {
         some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
     });
 
-    log_b256(sha_hashed_u8);
-    log_b256(sha_hashed_u16);
-    log_b256(sha_hashed_u32);
-    log_b256(sha_hashed_u64);
-    log_b256(sha_hashed_b256);
-    log_b256(sha_hashed_bool);
-    log_b256(sha_hashed_str);
-    log_b256(sha_hashed_tuple);
-    log_b256(sha_hashed_array);
-    log_b256(sha_hashed_enum);
-    log_b256(sha_hashed_struct);
+    log(sha_hashed_u8);
+    log(sha_hashed_u16);
+    log(sha_hashed_u32);
+    log(sha_hashed_u64);
+    log(sha_hashed_b256);
+    log(sha_hashed_bool);
+    log(sha_hashed_str);
+    log(sha_hashed_tuple);
+    log(sha_hashed_array);
+    log(sha_hashed_enum);
+    log(sha_hashed_struct);
 
     // Hash a single u64 value.
     let hashed_u64 = hash_u64(100, HashMethod::Sha256);
@@ -82,5 +85,5 @@ fn main() {
     // Hash two b256 values.
     let hashed_pair = hash_pair(hashed_b256, VALUE_A, HashMethod::Sha256);
 
-    log_b256(hashed_pair);
+    log(hashed_pair);
 }
