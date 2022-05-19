@@ -293,10 +293,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        /*
+         * This test is disabled because in order to work correctly it requires that we implement
+         * `&mut self` methods.
+         *
+         * See: #1188
         (
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
+        */
         (
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
@@ -455,6 +461,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/double_underscore_var",
         "should_fail/double_underscore_struct",
         "should_fail/double_underscore_enum",
+        "should_fail/assign_to_field_of_non_mutable_struct",
         "should_fail/abi_method_signature_mismatch",
         "should_fail/trait_method_signature_mismatch",
         "should_fail/impure_read_calls_impure_write",

@@ -961,6 +961,30 @@ fn reassignment(
 
                         match expr {
                             Expression::VariableExpression { name, .. } => {
+                                match namespace.clone().resolve_symbol(&name).value {
+                                    Some(TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration { is_mutable, .. },
+                                    )) => {
+                                        if !is_mutable.is_mutable() {
+                                            errors.push(CompileError::AssignmentToNonMutable {
+                                                name: name.clone(),
+                                            });
+                                        }
+                                    }
+                                    Some(other) => {
+                                        errors.push(CompileError::ReassignmentToNonVariable {
+                                            name: name.clone(),
+                                            kind: other.friendly_name(),
+                                            span,
+                                        });
+                                        return err(warnings, errors);
+                                    }
+                                    None => {
+                                        errors
+                                            .push(CompileError::UnknownVariable { var_name: name });
+                                        return err(warnings, errors);
+                                    }
+                                }
                                 names_vec.push(ReassignmentLhs {
                                     name,
                                     r#type: type_checked.return_type,
