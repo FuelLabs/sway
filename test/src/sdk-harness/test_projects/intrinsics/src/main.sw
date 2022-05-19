@@ -2,7 +2,7 @@ script;
 
 use std::intrinsics::*;
 use std::assert::assert;
-use std::constants::ZERO;
+use core::num::*;
 
 struct TestStruct {
     field_1: bool,
@@ -17,11 +17,12 @@ fn get_size_of<T>(param: T) -> u64 {
 }
 
 fn main() -> bool {
+    let zero = ~b256::min();
     let a: u64 = 1;
     let b: u32 = 1;
     let c: u16 = 1;
     let d: u8 = 1;
-    let e: b256 = ZERO;
+    let e: b256 = zero;
     let f: str[11] = "Fuel rocks!";
 
     let test_array = [42u16;
@@ -38,7 +39,7 @@ fn main() -> bool {
     assert(!is_ref_type(11u8));
     assert(is_ref_type(test_array));
     assert(is_ref_type(test_struct));
-    assert(is_ref_type((true, 11, ZERO, 255u8)));
+    assert(is_ref_type((true, 11, zero, 255u8)));
     assert(is_ref_type(e));
     assert(is_ref_type(f));
 
