@@ -4,13 +4,11 @@
 
 use anyhow::{anyhow, Result};
 use clap::{ArgEnum, ArgGroup, Parser};
-use forc_util::set_subscriber;
 use std::{
     fs,
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use tracing::{error, info};
 
 #[derive(Parser)]
 #[clap(name = "examples-checker", about = "Forc Examples Checker")]
@@ -97,7 +95,7 @@ fn run_forc_fmt(path: &Path) -> bool {
 }
 
 fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Result<()> {
-    info!("\nSummary for command {}:", command_kind);
+    println!("\nSummary for command {}:", command_kind);
     let mut successes = 0;
     for (path, success) in summary {
         let (checkmark, status) = if *success {
@@ -105,7 +103,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
         } else {
             ("[x]", "failed")
         };
-        info!("  {}: {} {}!", checkmark, path.display(), status);
+        println!("  {}: {} {}!", checkmark, path.display(), status);
         if *success {
             successes += 1;
         }
@@ -117,7 +115,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
         "successes"
     };
     let failures_str = if failures == 1 { "failure" } else { "failures" };
-    info!(
+    println!(
         "{} {}, {} {}",
         successes, successes_str, failures, failures_str
     );
@@ -165,11 +163,8 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     Ok(())
 }
 
-fn main() {
-    set_subscriber();
+fn main() -> Result<()> {
     let cli = Cli::parse();
-    if let Err(err) = exec(cli.paths, cli.all_examples, cli.command_kind) {
-        error!("{:?}", err);
-        std::process::exit(1);
-    }
+    exec(cli.paths, cli.all_examples, cli.command_kind)?;
+    Ok(())
 }

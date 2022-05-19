@@ -4,8 +4,8 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use forc_util::init_tracing_subscriber;
 use forc_util::println_green;
-use forc_util::set_subscriber;
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -70,7 +70,7 @@ fn clean() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    set_subscriber();
+    init_tracing_subscriber();
     let App { port, .. } = app;
     let releases = get_github_releases().await?;
     let release = releases

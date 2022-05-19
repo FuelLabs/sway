@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_util::{find_manifest_dir, println_green, println_red, set_subscriber};
+use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::path::PathBuf;
@@ -32,7 +32,7 @@ pub struct App {
 }
 
 fn main() {
-    set_subscriber();
+    init_tracing_subscriber();
     let app = App::parse();
     let dir = match app.path.clone() {
         Some(p) => PathBuf::from(p),

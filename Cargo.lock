@@ -1031,7 +1031,6 @@ dependencies = [
  "anyhow",
  "clap 3.1.8",
  "forc-util",
- "tracing",
 ]
 
 [[package]]
@@ -2126,7 +2125,6 @@ dependencies = [
  "semver 1.0.7",
  "serde",
  "serde_json",
- "tracing",
 ]
 
 [[package]]

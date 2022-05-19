@@ -411,38 +411,22 @@ fn construct_window<'a>(
 }
 
 const LOG_FILTER: &str = "RUST_LOG";
-const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
 
-pub fn set_subscriber() {
+pub fn init_tracing_subscriber() {
     let filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
-    let human_logging = env::var_os(HUMAN_LOGGING)
-        .map(|s| {
-            bool::from_str(s.to_str().unwrap())
-                .expect("Expected `true` or `false` to be provided for `HUMAN_LOGGING`")
-        })
-        .unwrap_or(true);
-
-    let sub = tracing_subscriber::fmt::Subscriber::builder().with_env_filter(filter);
-
-    if human_logging {
-        sub.with_ansi(true)
-            .with_level(false)
-            .with_file(false)
-            .with_line_number(false)
-            .without_time()
-            .with_target(false)
-            .init();
-    } else {
-        sub.with_ansi(false)
-            .with_level(true)
-            .with_line_number(true)
-            .json()
-            .init();
-    }
+    tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter(filter)
+        .with_ansi(true)
+        .with_level(false)
+        .with_file(false)
+        .with_line_number(false)
+        .without_time()
+        .with_target(false)
+        .init();
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
