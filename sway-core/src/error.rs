@@ -1150,7 +1150,6 @@ impl CompileError {
             DeclIsNotAFunction { span, .. } => span.clone(),
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
-            PureCalledImpure { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
