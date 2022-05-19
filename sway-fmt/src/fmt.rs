@@ -715,4 +715,29 @@ fn main() {
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
     }
+
+    #[test]
+    fn test_string_in_brackets() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let sha_hashed_str = sha256("Fastest Modular Execution Layer!");
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+fn main() {
+    let sha_hashed_str = sha256(  "Fastest Modular Execution Layer!"  );
+}
+"#;
+
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
 }
