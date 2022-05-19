@@ -1,27 +1,27 @@
 library u128;
 
+use core::num::*;
 use ::assert::assert;
+use ::result::Result;
 
-// U128 represented as two components of a base-(2**64) number : (upper, lower) , where value = (2**64)^upper + lower
+/// The 128-bit unsigned integer type.
+/// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
 pub struct U128 {
     upper: u64,
     lower: u64,
 }
 
 pub trait From {
-    fn from(h: u64, l: u64) -> Self;
+    /// Function for creating U128 from its u64 components.
+    pub fn from(h: u64, l: u64) -> Self;
 } {
-}
-
-impl core::ops::Eq for U128 {
-    fn eq(self, other: Self) -> bool {
-        self.lower == other.lower && self.upper == other.upper
+    fn into(v: U128) -> (u64, u64) {
+        (v.upper, v.lower)
     }
 }
 
-/// Function for creating U128 from its u64 components
 impl From for U128 {
-    fn from(h: u64, l: u64) -> U128 {
+    pub fn from(h: u64, l: u64) -> U128 {
         U128 {
             upper: h,
             lower: l,
@@ -29,118 +29,190 @@ impl From for U128 {
     }
 }
 
+impl core::ops::Eq for U128 {
+    pub fn eq(self, other: Self) -> bool {
+        self.lower == other.lower && self.upper == other.upper
+    }
+}
 
-/// Methods on the U128 type
+impl core::ops::Ord for U128 {
+    pub fn gt(self, other: Self) -> bool {
+        self.upper > other.upper || self.upper == other.upper && self.lower > self.lower
+    }
+
+    pub fn lt(self, other: Self) -> bool {
+        self.upper < other.upper || self.upper == other.upper && self.lower < self.lower
+    }
+}
+
+// TODO this doesn't work?
+// impl core::ops::OrdEq for U128 {
+// }
+
+fn disable_overflow() {
+    asm(r1) {
+        movi r1 i3;
+        flag r1;
+    }
+}
+
+fn enable_overflow() {
+    asm(r1) {
+        movi r1 i0;
+        flag r1;
+    }
+}
+
+impl u64 {
+    pub fn overflowing_add(a: u64, b: u64) -> U128 {
+        disable_overflow();
+        let mut v = U128 {
+            upper: 0,
+            lower: 0,
+        };
+        asm(r1, r2, a: a, b: b, v_ptr: v) {
+            add r1 a b;
+            move r2 of;
+            sw v_ptr r2 i0;
+            sw v_ptr r1 i1;
+        };
+        enable_overflow();
+        v
+    }
+
+    pub fn overflowing_mul(self, b: Self) -> U128 {
+        disable_overflow();
+        let mut v = U128 {
+            upper: 0,
+            lower: 0,
+        };
+        asm(r1, r2, a: self, b: b, v_ptr: v) {
+            mul r1 a b;
+            move r2 of;
+            sw v_ptr r2 i0;
+            sw v_ptr r1 i1;
+        };
+        enable_overflow();
+        v
+    }
+}
+
 impl U128 {
-
     /// Initializes a new, zeroed U128.
-    fn new() -> U128 {
+    pub fn new() -> U128 {
         U128 {
             upper: 0,
             lower: 0,
         }
     }
 
-    // Add a U128 to a U128
-    fn add(self, other: U128) -> U128 {
-        let lower = self.lower + other.lower;
-        let mut upper = self.upper + other.upper;
-
-        // If overflow has occurred in the lower component addition, carry
-        if lower <= self.lower {
-            upper = upper + 1;
-        };
-
-        // If overflow has occurred in the upper component addition, panic
-        assert(upper >= self.upper);
-
-        U128 {
-            upper: upper,
-            lower: lower,
+    /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
+    pub fn to_u64(self) -> Result<u64, ()> {
+        match self.upper {
+            0 => {
+                Result::Ok(self.lower)
+            },
+            _ => {
+                Result::Err(())
+            },
         }
     }
 
-    // Add a u64 to a U128
-    // TO DO : blocked by https://github.com/FuelLabs/sway/issues/1548
-    // fn add_u64(self, other: u64) -> U128 {
-    //     let other_u128 = U128{upper: 0, lower: other};
-    //     self.sub(other_u128)
-    // }
+    /// Divide self by a 64-bit number. Err if result cannot fit in 64 bits, Ok
+    /// otherwise.
+    pub fn divide_u64(self, other: u64) -> Result<u64, ()> {
+        // If the upper 64 bits aren't smaller than the divisor, then cannot fit.
+        if self.upper >= other {
+            return Result::Err(());
+        }
 
-    // Subtract a U128 from a U128
-    fn sub(self, other: U128) -> U128 {
+        // TODO implement
+        let div_lower = self.lower / other;
+
+        return Result::Ok(42);
+    }
+
+    /// The smallest value that can be represented by this integer type.
+    pub fn min() -> U128 {
+        U128 {
+            upper: 0,
+            lower: 0,
+        }
+    }
+
+    /// The largest value that can be represented by this type,
+    /// 2<sup>128</sup> - 1.
+    pub fn max() -> U128 {
+        U128 {
+            upper: ~u64::max(),
+            lower: ~u64::max(),
+        }
+    }
+
+    /// The size of this type in bits.
+    pub fn bits() -> u32 {
+        128
+    }
+}
+
+impl core::ops::Add for U128 {
+    // Add a U128 to a U128. Panics on overflow.
+    pub fn add(self, other: Self) -> Self {
+        let mut upper_128 = self.upper.overflowing_add(other.upper);
+
+        // If the upper overflows, then the number cannot fit in 128 bits, so panic.
+        assert(upper_128.upper == 0);
+        let lower_128 = self.lower.overflowing_add(other.lower);
+
+        // If overflow has occurred in the lower component addition, carry.
+        // Note: carry can be at most 1.
+        if lower_128.upper > 0 {
+            upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
+        };
+
+        // If overflow has occurred in the upper component addition, panic.
+        assert(upper_128.upper == 0);
+
+        U128 {
+            upper: upper_128.lower,
+            lower: lower_128.lower,
+        }
+    }
+}
+
+impl core::ops::Subtract for U128 {
+    // Subtract a U128 from a U128. Panics of overflow.
+    pub fn subtract(self, other: Self) -> Self {
+        // If trying to subtract a larger number, panic.
+        assert(!(self < other));
+
         let mut upper = self.upper - other.upper;
         let mut lower = 0;
 
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
-            let max = 18446744073709551615;
-            let lower = max - (other.lower - self.lower - 1);
+            lower = ~u64::max() - (other.lower - self.lower - 1);
             upper = upper - 1;
         } else {
-            let lower = self.lower - other.lower;
+            lower = self.lower - other.lower;
         };
-
-        // If upper component has underflowed, panic
-        assert(upper < self.upper);
 
         U128 {
             upper: upper,
             lower: lower,
         }
     }
+}
 
-    // Subtract a u64 from a U128
-    // TO DO : blocked by https://github.com/FuelLabs/sway/issues/1548
-    // fn sub_u64(self, other: u64) -> U128 {
-    //     let other_u128 = U128{upper: 0, lower: other};
-    //     self.sub(other_u128)
-    // }
+impl core::ops::Shiftable for U128 {
+    pub fn lsh(self, other: u64) -> Self {
+        // Save highest bits of low half.
+        let highest_low_bit = (self.lower & (1<<63)) != 0;
 
-    // Divide a U128 by a U64, returning a U64
-    fn div_by_u64(self, other: u64) -> u64 {
-        // TO DO
-        42
+        self
     }
 
-    // TO DO : Other U128 ops : mul, div, inequalities, etc.
-}
-
-// Get lower 32 bits of a u64
-fn lower(a: u64) -> u64 {
-    (a << 32) >> 32
-}
-
-// Get upper 32 bits of a u64
-fn upper(a: u64) -> u64 {
-    a >> 32
-}
-
-// Multiply two u64 values, producing a U128
-pub fn mul64(a: u64, b: u64) -> U128 {
-    // Split a and b into 32-bit low and high components
-    let a_lo: u64 = lower(a);
-    let a_hi: u64 = upper(a);
-    let b_lo: u64 = lower(b);
-    let b_hi: u64 = upper(b);
-
-    // Calculate low, high, and mid multiplications
-    let ab_hi: u64 = a_hi * b_hi;
-    let ab_mid: u64 = a_hi * b_lo;
-    let ba_mid: u64 = b_hi * a_lo;
-    let ab_lo: u64 = a_lo * b_lo;
-
-    // low result is just the overflow from the multiplication of a and b
-    let result_lo = a * b;
-
-    // Calculate the carry
-    let carry: u64 = upper(lower(ab_mid) + upper(ab_lo) + lower(ba_mid));
-
-    // High result
-    let result_hi = ab_hi + upper(ab_mid) + upper(ba_mid) + carry;
-
-    U128 {
-        upper: result_hi,
-        lower: result_lo,
+    pub fn rsh(self, other: u64) -> Self {
+        self
     }
 }
