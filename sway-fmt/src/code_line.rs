@@ -81,11 +81,10 @@ impl CodeLine {
 
     pub fn append_with_whitespace(&mut self, value: &str) {
         let last = self.text.chars().last();
+        let is_previous_whitespace = Some(' ') == last;
 
-        if let Some(c) = last {
-            if c != ' ' && c != '(' {
-                self.push_char(' ');
-            }
+        if !is_previous_whitespace && last != None {
+            self.push_char(' ');
         }
 
         self.push_str(value);
