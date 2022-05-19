@@ -236,6 +236,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(42), // true
         ),
         (
+            "should_pass/language/new_allocator_test_2",
+            ProgramState::Return(42), // true
+        ),
+        (
             "should_pass/language/chained_if_let",
             ProgramState::Return(5), // true
         ),
