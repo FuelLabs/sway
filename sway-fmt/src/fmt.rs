@@ -50,13 +50,7 @@ pub fn get_formatted_data(
         None => Err(parsed_res
             .errors
             .iter()
-            .map(|e| {
-                format!(
-                    "{:?} at line: {}",
-                    e.to_friendly_error_string(),
-                    e.line_col().0.line,
-                )
-            })
+            .map(|e| format!("{} at line: {}", e, e.line_col().0.line,))
             .collect()),
     }
 }
@@ -661,7 +655,7 @@ fn one_liner() -> bool {
         let test_sway = r#"script;
 use std::chain::{panic,log_u8};
 use std::chain::assert;
-use std::hash::{HashMethod,    hash_value,               hash_pair    };
+use std::hash::{sha256,               keccak256    };
 use a::b::{c,d::{f,e}};
 use a::b::{c,d::{f,self}};
 
@@ -671,7 +665,7 @@ fn main() {
         let expected_sway = r#"script;
 use std::chain::{log_u8, panic};
 use std::chain::assert;
-use std::hash::{HashMethod, hash_pair, hash_value};
+use std::hash::{keccak256, sha256};
 use a::b::{c, d::{e, f}};
 use a::b::{c, d::{self, f}};
 
@@ -681,6 +675,7 @@ fn main() {
         let result = get_formatted_data(test_sway.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
+        println!("{}\n{}", formatted_code, expected_sway);
         assert_eq!(formatted_code, expected_sway);
     }
 
@@ -712,6 +707,31 @@ fn main() {
     } else if ! (   !  
         a ) {
     } else if !   ( a == b) {}
+}
+"#;
+
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    fn test_string_in_brackets() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let sha_hashed_str = sha256("Fastest Modular Execution Layer!");
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+fn main() {
+    let sha_hashed_str = sha256(  "Fastest Modular Execution Layer!"  );
 }
 "#;
 

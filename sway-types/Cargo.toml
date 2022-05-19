@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.12.2"
+version = "0.13.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -13,5 +13,4 @@ fuel-asm = "0.4"
 fuel-crypto = "0.4"
 fuel-tx = "0.9"
 lazy_static = "1.4"
-pest = { version = "3.0.4", package = "fuel-pest" }
 serde = { version = "1.0", features = ["derive"] }

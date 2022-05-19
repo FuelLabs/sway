@@ -40,7 +40,7 @@ pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
 }
 /// Continually go up in the file tree until a Cargo manifest file is found.
 pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, "Cargo.toml")
+    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -267,7 +267,7 @@ fn format_err(err: &sway_core::CompileError) {
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
-    let friendly_str = maybe_uwuify(&err.to_friendly_error_string());
+    let friendly_str = maybe_uwuify(&format!("{}", err));
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
             label: None,

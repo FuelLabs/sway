@@ -23,8 +23,10 @@ macro_rules! define_brackets (
             pub fn into_inner(self) -> T {
                 self.inner
             }
+        }
 
-            pub fn span(&self) -> Span {
+        impl<T> Spanned for $ty_name<T> {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
         }
@@ -118,8 +120,10 @@ impl<T> AngleBrackets<T> {
     pub fn into_inner(self) -> T {
         self.inner
     }
+}
 
-    pub fn span(&self) -> Span {
+impl<T> Spanned for AngleBrackets<T> {
+    fn span(&self) -> Span {
         Span::join(
             self.open_angle_bracket_token.span(),
             self.close_angle_bracket_token.span(),

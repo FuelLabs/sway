@@ -87,8 +87,18 @@ impl Peek for Ident {
 
 impl Parse for Ident {
     fn parse(parser: &mut Parser) -> ParseResult<Ident> {
-        match parser.take() {
-            Some(ident) => Ok(ident),
+        match parser.take::<Ident>() {
+            Some(ident) => {
+                let ident_str = ident.as_str();
+                if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::InvalidDoubleUnderscore,
+                        ident.span().clone(),
+                    ));
+                }
+
+                Ok(ident)
+            }
             None => Err(parser.emit_error(ParseErrorKind::ExpectedIdent)),
         }
     }

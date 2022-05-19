@@ -6,6 +6,7 @@ use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
+    style::*,
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
 };
@@ -258,12 +259,7 @@ impl TypedAstNode {
                     let path = if a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        namespace
-                            .mod_path()
-                            .iter()
-                            .chain(&a.call_path)
-                            .cloned()
-                            .collect()
+                        namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(&path),
@@ -277,7 +273,7 @@ impl TypedAstNode {
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = check!(
+                    check!(
                         import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
@@ -355,6 +351,7 @@ impl TypedAstNode {
                         }) => {
                             let result =
                                 type_check_ascribed_expr(namespace, type_ascription.clone(), value);
+                            is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value = check!(
                                 result,
                                 error_recovery_expr(name.span().clone()),
@@ -377,11 +374,12 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
+                            is_upper_camel_case(&e.name).ok(&mut warnings, &mut errors);
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(e.name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -413,6 +411,7 @@ impl TypedAstNode {
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
+                            is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
                             check!(
                                 type_check_trait_decl(TypeCheckArguments {
                                     checkee: trait_decl,
@@ -556,6 +555,7 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
+                            is_upper_camel_case(&decl.name).ok(&mut warnings, &mut errors);
                             // look up any generic or struct types in the namespace
                             // insert type parameters
                             let type_mapping = insert_type_parameters(&decl.type_parameters);
@@ -595,7 +595,7 @@ impl TypedAstNode {
                             };
 
                             // insert struct into namespace
-                            let _ = check!(
+                            check!(
                                 namespace.insert_symbol(
                                     decl.name.clone(),
                                     TypedDeclaration::StructDeclaration(decl.clone()),
@@ -801,7 +801,7 @@ impl TypedAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: node.type_info(),
+                r#type: Box::new(node.type_info()),
             };
             assert_or_warn!(
                 node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
@@ -886,36 +886,23 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.resolve_symbol(&name).cloned().value {
-                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable,
-                            name,
-                            ..
-                        })) => {
-                            if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
-                            }
-
-                            body
-                        }
-                        Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
-                                name: name.clone(),
-                                kind: o.friendly_name(),
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownVariable {
-                                var_name: name.clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                    let unknown_decl = check!(
+                        namespace.resolve_symbol(&name).cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let variable_decl = check!(
+                        unknown_decl.expect_variable().cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if !variable_decl.is_mutable.is_mutable() {
+                        errors.push(CompileError::AssignmentToNonMutable { name });
+                    }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {
@@ -938,8 +925,8 @@ fn reassignment(
                     ok(
                         TypedDeclaration::Reassignment(TypedReassignment {
                             lhs: vec![ReassignmentLhs {
-                                name,
-                                r#type: thing_to_reassign.return_type,
+                                name: variable_decl.name,
+                                r#type: rhs_type_id,
                             }],
                             rhs,
                         }),
@@ -974,6 +961,30 @@ fn reassignment(
 
                         match expr {
                             Expression::VariableExpression { name, .. } => {
+                                match namespace.clone().resolve_symbol(&name).value {
+                                    Some(TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration { is_mutable, .. },
+                                    )) => {
+                                        if !is_mutable.is_mutable() {
+                                            errors.push(CompileError::AssignmentToNonMutable {
+                                                name: name.clone(),
+                                            });
+                                        }
+                                    }
+                                    Some(other) => {
+                                        errors.push(CompileError::ReassignmentToNonVariable {
+                                            name: name.clone(),
+                                            kind: other.friendly_name(),
+                                            span,
+                                        });
+                                        return err(warnings, errors);
+                                    }
+                                    None => {
+                                        errors
+                                            .push(CompileError::UnknownVariable { var_name: name });
+                                        return err(warnings, errors);
+                                    }
+                                }
                                 names_vec.push(ReassignmentLhs {
                                     name,
                                     r#type: type_checked.return_type,
@@ -1215,11 +1226,13 @@ fn type_check_interface_surface(
         .map(
             |TraitFn {
                  name,
+                 purity,
                  parameters,
                  return_type,
                  return_type_span,
              }| TypedTraitFn {
                 name,
+                purity,
                 return_type_span: return_type_span.clone(),
                 parameters: parameters
                     .into_iter()

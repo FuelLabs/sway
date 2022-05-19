@@ -6,12 +6,12 @@ pub struct ItemTrait {
     pub trait_token: TraitToken,
     pub name: Ident,
     pub super_traits: Option<(ColonToken, Traits)>,
-    pub trait_items: Braces<Vec<(FnSignature, SemicolonToken)>>,
-    pub trait_defs_opt: Option<Braces<Vec<ItemFn>>>,
+    pub trait_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
-impl ItemTrait {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemTrait {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => self.trait_token.span(),

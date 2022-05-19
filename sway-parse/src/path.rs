@@ -14,8 +14,8 @@ pub struct PathExprSegment {
     pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
 }
 
-impl PathExpr {
-    pub fn span(&self) -> Span {
+impl Spanned for PathExpr {
+    fn span(&self) -> Span {
         let start = match &self.root_opt {
             Some((qualified_path_root_opt, double_colon_token)) => match qualified_path_root_opt {
                 Some(qualified_path_root) => qualified_path_root.span(),
@@ -29,7 +29,9 @@ impl PathExpr {
         };
         Span::join(start, end)
     }
+}
 
+impl PathExpr {
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
         if self.root_opt.is_none()
             && self.suffix.is_empty()
@@ -42,8 +44,8 @@ impl PathExpr {
     }
 }
 
-impl PathExprSegment {
-    pub fn span(&self) -> Span {
+impl Spanned for PathExprSegment {
+    fn span(&self) -> Span {
         let start = match &self.fully_qualified {
             Some(tilde_token) => tilde_token.span(),
             None => self.name.span().clone(),
@@ -117,8 +119,8 @@ pub struct PathType {
     pub suffix: Vec<(DoubleColonToken, PathTypeSegment)>,
 }
 
-impl PathType {
-    pub fn span(&self) -> Span {
+impl Spanned for PathType {
+    fn span(&self) -> Span {
         let start = match &self.root_opt {
             Some((qualified_path_root_opt, double_colon_token)) => match qualified_path_root_opt {
                 Some(qualified_path_root) => qualified_path_root.span(),
@@ -141,8 +143,8 @@ pub struct PathTypeSegment {
     pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
 }
 
-impl PathTypeSegment {
-    pub fn span(&self) -> Span {
+impl Spanned for PathTypeSegment {
+    fn span(&self) -> Span {
         let start = match &self.fully_qualified {
             Some(tilde_token) => tilde_token.span(),
             None => self.name.span().clone(),
