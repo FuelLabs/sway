@@ -703,7 +703,7 @@ fn hash_url(url: &Url) -> u64 {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-pub fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
+fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
