@@ -448,7 +448,10 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
-    fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError> where F: FnOnce(&mut FnCompiler) -> Result<T, CompileError> {
+    fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError>
+    where
+        F: FnOnce(&mut FnCompiler) -> Result<T, CompileError>,
+    {
         self.lexical_map.enter_scope();
         let result = inner(self);
         self.lexical_map.leave_scope();
@@ -1255,12 +1258,14 @@ impl FnCompiler {
         );
         let (true_value, true_block_end) = self.compile_with_new_scope(|fn_compiler| {
             let local_name = fn_compiler
-            .lexical_map
-            .insert(variable_to_assign.as_str().to_owned());
+                .lexical_map
+                .insert(variable_to_assign.as_str().to_owned());
             let variable_ptr = fn_compiler
                 .function
                 .new_local_ptr(context, local_name, variable_type, false, None)
-                .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
             let variable_ptr_ty = *variable_ptr.get_type(context);
             let variable_ptr_val = fn_compiler.current_block.ins(context).get_ptr(
                 variable_ptr,
@@ -1268,9 +1273,11 @@ impl FnCompiler {
                 0,
                 var_span_md_idx,
             );
-            fn_compiler.current_block
-                .ins(context)
-                .store(variable_ptr_val, var_init_value, var_span_md_idx);
+            fn_compiler.current_block.ins(context).store(
+                variable_ptr_val,
+                var_init_value,
+                var_span_md_idx,
+            );
             let true_value = fn_compiler.compile_code_block_inner(context, ast_then)?;
             let true_block_end = fn_compiler.current_block;
             Result::Ok((true_value, true_block_end))
