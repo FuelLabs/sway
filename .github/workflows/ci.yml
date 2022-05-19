@@ -109,7 +109,6 @@ jobs:
           args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -125,9 +124,7 @@ jobs:
           args: --debug --path ./forc
       - name: Install Forc plugins
         uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt ./forc-plugins/forc-lsp ./forc-plugins/forc-explore
+        run: cargo install --debug --path ./forc-plugins/forc-fmt ./forc-plugins/forc-lsp ./forc-plugins/forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -200,7 +197,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-fmt
+          args: --debug --path ./forc-plugins/forc-fmt
       - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
@@ -232,7 +229,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-fmt
+          args: --debug --path ./forc-plugins/forc-fmt
       - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
@@ -385,7 +382,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-fmt
+          args: --debug --path ./forc-plugins/forc-fmt
       - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
@@ -465,9 +462,9 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-explore/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-fmt/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-lsp/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
@@ -700,19 +697,19 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --profile=release --path ./forc-fmt
+          args: --profile=release --path ./forc-plugins/forc-fmt
 
       - name: Install Forc-LSP
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --profile=release --path ./forc-lsp
+          args: --profile=release --path ./forc-plugins/forc-lsp
 
       - name: Install Forc-Explore
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --profile=release --path ./forc-explore
+          args: --profile=release --path ./forc-plugins/forc-explore
 
       - name: Prep Assets
         id: prep_assets
