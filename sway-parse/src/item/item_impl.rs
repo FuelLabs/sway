@@ -6,7 +6,7 @@ pub struct ItemImpl {
     pub generic_params_opt: Option<GenericParams>,
     pub trait_opt: Option<(PathType, ForToken)>,
     pub ty: Ty,
-    pub contents: Braces<Vec<ItemFn>>,
+    pub contents: Braces<Vec<Annotated<ItemFn>>>,
 }
 
 impl Spanned for ItemImpl {

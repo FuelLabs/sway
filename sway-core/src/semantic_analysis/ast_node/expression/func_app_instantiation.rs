@@ -1,10 +1,11 @@
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-use crate::error::*;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
-use crate::type_engine::TypeId;
-use std::collections::hash_map::RandomState;
-use std::collections::HashMap;
+use crate::{
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    error::*,
+    semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments},
+    type_engine::TypeId,
+};
+use std::collections::{hash_map::RandomState, HashMap};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -34,12 +35,6 @@ pub(crate) fn instantiate_function_application(
         warnings,
         errors
     );
-
-    if opts.purity != function_decl.purity {
-        errors.push(CompileError::PureCalledImpure {
-            span: call_path.span(),
-        });
-    }
 
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the

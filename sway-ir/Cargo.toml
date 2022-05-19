@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir"
-version = "0.12.2"
+version = "0.13.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -12,4 +12,4 @@ description = "Sway intermediate representation."
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
-sway-types = { version = "0.12.2", path = "../sway-types" }
+sway-types = { version = "0.13.0", path = "../sway-types" }

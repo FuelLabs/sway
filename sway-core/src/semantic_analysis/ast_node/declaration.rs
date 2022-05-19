@@ -255,7 +255,7 @@ impl TypedDeclaration {
                     )],
                 )
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.type_id(),
+            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
@@ -438,6 +438,7 @@ impl CopyTypes for TypedTraitDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
     pub(crate) name: Ident,
+    pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
@@ -463,7 +464,7 @@ impl TypedTraitFn {
     /// interface surface.
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
         TypedFunctionDeclaration {
-            purity: Default::default(),
+            purity: self.purity,
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],

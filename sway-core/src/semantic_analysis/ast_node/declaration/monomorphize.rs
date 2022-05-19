@@ -5,11 +5,13 @@ use crate::{
     semantic_analysis::{
         insert_type_parameters,
         namespace::{Items, Path, Root},
-        TypeMapping,
+        CopyTypes, TypeMapping,
     },
     type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
     CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
 };
+
+use super::CreateTypeId;
 
 #[derive(Clone, Copy)]
 pub(crate) enum EnforceTypeArguments {
@@ -164,4 +166,19 @@ pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn span(&self) -> &Span;
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
+}
+
+pub(crate) fn monomorphize_inner<T>(decl: T, type_mapping: &TypeMapping, namespace: &mut Items) -> T
+where
+    T: CopyTypes + CreateTypeId,
+{
+    let old_type_id = decl.create_type_id();
+    let mut new_decl = decl;
+    new_decl.copy_types(type_mapping);
+    namespace.copy_methods_to_type(
+        look_up_type_id(old_type_id),
+        look_up_type_id(new_decl.create_type_id()),
+        type_mapping,
+    );
+    new_decl
 }
