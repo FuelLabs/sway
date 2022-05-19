@@ -115,7 +115,11 @@ impl CodeBuilder {
                         // handle beginning of the string
                         '"' => {
                             if !code_line.is_string() {
-                                code_line.append_with_whitespace("\"");
+                                if code_line.get_last_char() == Some('(') {
+                                    code_line.push_char('"');
+                                } else {
+                                    code_line.append_with_whitespace("\"");
+                                }
                                 code_line.become_string();
                             }
                         }

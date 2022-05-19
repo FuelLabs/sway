@@ -13,7 +13,7 @@ use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::{CreateTypeId, MonomorphizeHelper};
+use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -45,7 +45,7 @@ impl CopyTypes for TypedEnumDeclaration {
 }
 
 impl CreateTypeId for TypedEnumDeclaration {
-    fn type_id(&self) -> TypeId {
+    fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
@@ -70,15 +70,7 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        let old_type_id = self.type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
+        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
