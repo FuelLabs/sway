@@ -36,6 +36,14 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // 'purity' is that of the callee, 'opts.purity' of the caller.
+    if !opts.purity.can_call(function_decl.purity) {
+        errors.push(CompileError::StorageAccessMismatch {
+            attrs: promote_purity(opts.purity, function_decl.purity).to_attribute_syntax(),
+            span: function_decl.name.span().clone(),
+        });
+    }
+
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the
     // arguments
