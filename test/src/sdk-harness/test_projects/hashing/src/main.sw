@@ -1,6 +1,7 @@
 contract;
 
-use std::{constants::ZERO, hash::{HashMethod, hash_u64, sha256}};
+use std::hash::{HashMethod, hash_u64, sha256};
+use core::num::*;
 
 abi MyContract {
     fn sha256_u8(value: u8) -> b256;
@@ -84,7 +85,7 @@ impl MyContract for Contract {
             stats: Stats {
                 strength: 10, agility: 9
             },
-            alive: true, random_b256: ZERO
+            alive: true, random_b256: ~b256::min()
         })
     }
 

@@ -1,6 +1,6 @@
 library hash;
 
-use ::constants::ZERO;
+use ::core::num::*;
 
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
@@ -129,7 +129,7 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
 
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
-    let mut result_buffer: b256 = ZERO;
+    let mut result_buffer: b256 = ~b256::min();
     if !__is_reference_type::<T>() {
         asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
             move buffer sp; // Make `buffer` point to the current top of the stack

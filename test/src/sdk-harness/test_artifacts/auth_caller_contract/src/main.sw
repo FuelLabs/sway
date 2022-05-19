@@ -3,7 +3,6 @@ contract;
 use auth_testing_abi::*;
 use std::contract_id::ContractId;
 use std::chain::auth::*;
-use std::constants::ZERO;
 use std::result::*;
 
 abi AuthCaller {
