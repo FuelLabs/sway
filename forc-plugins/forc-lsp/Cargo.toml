@@ -11,5 +11,5 @@ description = "A simple `forc` plugin for starting the sway language server."
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-sway-lsp = { version = "0.12.2", path = "../sway-lsp" }
+sway-lsp = { version = "0.12.2", path = "../../sway-lsp" }
 tokio = { version = "1.8" }
