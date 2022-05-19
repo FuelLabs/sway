@@ -124,7 +124,6 @@ jobs:
           command: install
           args: --debug --path ./forc
       - name: Install Forc plugins
-        uses: actions-rs/cargo@v1
         run: |
           cargo install --debug --path ./forc-plugins/forc-fmt 
           cargo install --debug --path ./forc-plugins/forc-lsp 
