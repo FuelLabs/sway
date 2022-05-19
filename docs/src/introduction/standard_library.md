@@ -2,7 +2,7 @@
 
 Similar to Rust, Sway comes with its own standard library.
 
-The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like Result<T, E> and Option<T>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control and storage management, among many other things.
+The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like `Result<T, E>` and `Option<T>`, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control and storage management, among many other things.
 
 The standard library is made available to all Forc projects as the `std` dependency.
 
