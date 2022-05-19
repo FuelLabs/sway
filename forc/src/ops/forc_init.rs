@@ -359,7 +359,7 @@ fn parse_github_link(url: &Url) -> Result<GitPathInfo> {
     })
 }
 
-fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
+pub fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
     let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
     file.read_to_string(&mut toml)?;
@@ -402,7 +402,7 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     Ok(())
 }
 
-fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
+pub fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
     let mut file = File::open(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
     file.read_to_string(&mut toml)?;

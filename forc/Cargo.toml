@@ -43,6 +43,7 @@ url = "2.2"
 uwuify = { version = "^0.2", optional = true }
 walkdir = "2.3"
 whoami = "1.1"
+fs_extra = "1.2"
 
 [features]
 default = []
