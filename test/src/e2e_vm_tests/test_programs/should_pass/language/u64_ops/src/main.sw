@@ -2,7 +2,6 @@ script;
 
 use core::ops::*;
 use std::assert::assert;
-use std::chain::log_u64;
 
 fn main() -> bool {
     // 0b0000_1111 = 15

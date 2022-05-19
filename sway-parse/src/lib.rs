@@ -61,11 +61,14 @@ pub use crate::{
     where_clause::{WhereBound, WhereClause},
 };
 
+use crate::priv_prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash, Error)]
 pub enum ParseFileError {
+    #[error(transparent)]
     Lex(LexError),
+    #[error("Unable to parse: {}", .0.iter().map(|x| x.kind.to_string()).collect::<Vec<String>>().join("\n"))]
     Parse(Vec<ParseError>),
 }
 

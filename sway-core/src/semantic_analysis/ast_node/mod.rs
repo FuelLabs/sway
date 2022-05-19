@@ -259,12 +259,7 @@ impl TypedAstNode {
                     let path = if a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        namespace
-                            .mod_path()
-                            .iter()
-                            .chain(&a.call_path)
-                            .cloned()
-                            .collect()
+                        namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(&path),
@@ -891,36 +886,23 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.resolve_symbol(&name).cloned().value {
-                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable,
-                            name,
-                            ..
-                        })) => {
-                            if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
-                            }
-
-                            body
-                        }
-                        Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
-                                name: name.clone(),
-                                kind: o.friendly_name(),
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownVariable {
-                                var_name: name.clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                    let unknown_decl = check!(
+                        namespace.resolve_symbol(&name).cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let variable_decl = check!(
+                        unknown_decl.expect_variable().cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if !variable_decl.is_mutable.is_mutable() {
+                        errors.push(CompileError::AssignmentToNonMutable { name });
+                    }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {
@@ -943,8 +925,8 @@ fn reassignment(
                     ok(
                         TypedDeclaration::Reassignment(TypedReassignment {
                             lhs: vec![ReassignmentLhs {
-                                name,
-                                r#type: thing_to_reassign.return_type,
+                                name: variable_decl.name,
+                                r#type: rhs_type_id,
                             }],
                             rhs,
                         }),

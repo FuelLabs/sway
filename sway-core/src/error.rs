@@ -590,6 +590,11 @@ pub enum CompileError {
     )]
     StructNotFound { name: Ident, span: Span },
     #[error(
+        "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
+         it?"
+    )]
+    EnumNotFound { name: Ident, span: Span },
+    #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
@@ -637,6 +642,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
         name: String,
@@ -649,6 +656,16 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not an enum.")]
+    DeclIsNotAnEnum { actually: String, span: Span },
+    #[error("This is a {actually}, not a struct.")]
+    DeclIsNotAStruct { actually: String, span: Span },
+    #[error("This is a {actually}, not a function.")]
+    DeclIsNotAFunction { actually: String, span: Span },
+    #[error("This is a {actually}, not a variable.")]
+    DeclIsNotAVariable { actually: String, span: Span },
+    #[error("This is a {actually}, not an ABI.")]
+    DeclIsNotAnAbi { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -851,7 +868,7 @@ pub enum CompileError {
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
-    TupleOutOfBounds {
+    TupleIndexOutOfBounds {
         index: usize,
         count: usize,
         span: Span,
@@ -986,6 +1003,17 @@ pub enum TypeError {
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
 }
 
 impl TypeError {
@@ -994,6 +1022,7 @@ impl TypeError {
         match self {
             MismatchedType { span, .. } => span.clone(),
             UnknownType { span } => span.clone(),
+            MatchArmScrutineeWrongType { span, .. } => span.clone(),
         }
     }
 }
@@ -1052,6 +1081,7 @@ impl CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span().clone(),
             SymbolNotFound { name, .. } => name.span().clone(),
             ImportPrivateSymbol { name } => name.span().clone(),
@@ -1106,7 +1136,6 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            TupleOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span().clone(),
             GenericShadowsGeneric { name } => name.span().clone(),
             StarImportShadowsOtherSymbol { name } => name.span().clone(),
@@ -1116,6 +1145,12 @@ impl CompileError {
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
             TraitImplPurityMismatch { span, .. } => span.clone(),
+            DeclIsNotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAStruct { span, .. } => span.clone(),
+            DeclIsNotAFunction { span, .. } => span.clone(),
+            DeclIsNotAVariable { span, .. } => span.clone(),
+            DeclIsNotAnAbi { span, .. } => span.clone(),
+            PureCalledImpure { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
@@ -1137,6 +1172,8 @@ impl CompileError {
             ConvertParseTree { error } => error.span(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
+            EnumNotFound { span, .. } => span.clone(),
+            TupleIndexOutOfBounds { span, .. } => span.clone(),
         }
     }
 
