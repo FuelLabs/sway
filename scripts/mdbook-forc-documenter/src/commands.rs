@@ -29,7 +29,7 @@ pub fn possible_forc_commands() -> Vec<String> {
     possible_commands
 }
 
-pub fn get_contents_from_commands(commands: &Vec<String>) -> HashMap<String, String> {
+pub fn get_contents_from_commands(commands: &[String]) -> HashMap<String, String> {
     let mut contents: HashMap<String, String> = HashMap::new();
 
     for command in commands {
