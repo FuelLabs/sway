@@ -1,9 +1,18 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::namespace, type_engine::*, Ident};
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{
+        ast_node::copy_types::{insert_type_parameters, TypeMapping},
+        namespace, CopyTypes,
+    },
+    type_engine::*,
+    Ident,
+};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::insert_type_parameters;
+use super::CreateTypeId;
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -23,6 +32,24 @@ impl PartialEq for TypedEnumDeclaration {
             && self.type_parameters == other.type_parameters
             && self.variants == other.variants
             && self.visibility == other.visibility
+    }
+}
+
+impl CopyTypes for TypedEnumDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedEnumDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Enum {
+            name: self.name.clone(),
+            variant_types: self.variants.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -102,31 +129,17 @@ impl TypedEnumDeclaration {
     fn monomorphize_inner(
         &self,
         namespace: &mut namespace::Items,
-        type_mapping: &[(TypeParameter, TypeId)],
+        type_mapping: &TypeMapping,
     ) -> Self {
-        let old_type_id = self.type_id();
+        let old_type_id = self.create_type_id();
         let mut new_decl = self.clone();
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
+            look_up_type_id(new_decl.create_type_id()),
             type_mapping,
         );
         new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
     }
 }
 #[derive(Debug, Clone, Eq)]
@@ -159,8 +172,8 @@ impl PartialEq for TypedEnumVariant {
     }
 }
 
-impl TypedEnumVariant {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedEnumVariant {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
@@ -169,7 +182,9 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
+}
 
+impl TypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.to_string(),

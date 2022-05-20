@@ -102,9 +102,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.57"
+version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
+checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
 
 [[package]]
 name = "arrayref"
@@ -1106,7 +1106,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1129,6 +1129,7 @@ dependencies = [
  "tokio",
  "toml",
  "toml_edit",
+ "tracing",
  "ureq",
  "url",
  "uwuify",
@@ -1138,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1147,12 +1148,13 @@ dependencies = [
  "serde",
  "tar",
  "tokio",
+ "tracing",
  "warp",
 ]
 
 [[package]]
 name = "forc-fmt"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1162,18 +1164,19 @@ dependencies = [
  "sway-fmt",
  "sway-utils",
  "taplo",
+ "tracing",
 ]
 
 [[package]]
 name = "forc-gm"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "clap 3.1.8",
 ]
 
 [[package]]
 name = "forc-lsp"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1183,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1196,13 +1199,14 @@ dependencies = [
  "sway-core",
  "sway-utils",
  "toml",
+ "tracing",
  "url",
  "walkdir",
 ]
 
 [[package]]
 name = "forc-util"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1210,6 +1214,8 @@ dependencies = [
  "sway-core",
  "sway-utils",
  "termcolor",
+ "tracing",
+ "tracing-subscriber",
  "unicode-xid",
 ]
 
@@ -2068,6 +2074,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
+name = "matchers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
+dependencies = [
+ "regex-automata",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2764,6 +2779,9 @@ name = "regex-automata"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
+ "regex-syntax",
+]
 
 [[package]]
 name = "regex-syntax"
@@ -3217,6 +3235,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sharded-slab"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "shlex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3432,7 +3459,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "clap 3.1.8",
  "derivative",
@@ -3458,11 +3485,12 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
 name = "sway-fmt"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3486,17 +3514,18 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "filecheck",
  "generational-arena",
  "peg",
  "sway-types",
+ "tracing",
 ]
 
 [[package]]
 name = "sway-lsp"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
@@ -3515,7 +3544,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3527,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3538,7 +3567,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.12.2"
+version = "0.13.0"
 
 [[package]]
 name = "syn"
@@ -3637,6 +3666,7 @@ dependencies = [
  "regex",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3651,6 +3681,7 @@ dependencies = [
  "hex",
  "secp256k1",
  "sha3 0.10.1",
+ "tracing",
 ]
 
 [[package]]
@@ -3692,6 +3723,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
+dependencies = [
+ "once_cell",
 ]
 
 [[package]]
@@ -3968,6 +4008,49 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90442985ee2f57c9e1b548ee72ae842f4a9a20e3f417cc38dbc5dc684d9bb4ee"
 dependencies = [
  "lazy_static",
+ "valuable",
+]
+
+[[package]]
+name = "tracing-log"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
+dependencies = [
+ "lazy_static",
+ "log",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-serde"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc6b213177105856957181934e4920de57730fc69bf42c37ee5bb664d406d9e1"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bc28f93baff38037f64e6f43d34cfa1605f27a49c34e8a04c5e78b0babf2596"
+dependencies = [
+ "ansi_term",
+ "lazy_static",
+ "matchers",
+ "regex",
+ "serde",
+ "serde_json",
+ "sharded-slab",
+ "smallvec",
+ "thread_local",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-serde",
 ]
 
 [[package]]
@@ -4138,6 +4221,12 @@ dependencies = [
  "parking_lot 0.11.2",
  "thiserror",
 ]
+
+[[package]]
+name = "valuable"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "value-bag"
