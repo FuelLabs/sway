@@ -1,8 +1,7 @@
 use crate::{
     semantic_analysis::{CopyTypes, TypeMapping},
     type_engine::*,
-    CallPath,
-    TypedDeclaration,
+    CallPath, TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
