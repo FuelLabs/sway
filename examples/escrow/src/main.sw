@@ -2,12 +2,12 @@ contract;
 
 use std::{
     address::Address,
-    assert::assert,
+    assert::require,
     chain::auth::{AuthError, Sender, msg_sender},
     context::{msg_amount, call_frames::{contract_id, msg_asset_id}},
     contract_id::ContractId,
-    panic::panic,
     result::*,
+    revert::revert,
     token::transfer_to_output,
 };
 
@@ -24,6 +24,16 @@ abi Escrow {
 //     Pending: (),
 //     Completed: (),
 // }
+
+enum Error {
+    AlreadyDeposited: (),
+    CannotReinitialize: (),
+    DepositRequired: (),
+    IncorrectAssetAmount: (),
+    IncorrectAssetId: (),
+    StateNotPending: (),
+    UnauthorizedUser: (),
+}
 
 struct User {
     address: Address,
@@ -43,8 +53,8 @@ storage {
 impl Escrow for Contract {
 
     fn constructor(buyer: Address, seller: Address, asset: ContractId, asset_amount: u64) -> bool {
-        // assert(storage.state == State::Void);
-        assert(storage.state == 0);
+        // require(storage.state == State::Void, Error::CannotReinitialize);
+        require(storage.state == 0, Error::CannotReinitialize);
 
         storage.asset_amount = asset_amount;
         storage.buyer = User { address: buyer, approved: false, deposited: false };
@@ -57,49 +67,49 @@ impl Escrow for Contract {
     }
 
     fn deposit() -> bool {
-        // assert(storage.state == State::Pending);
-        assert(storage.state == 1);
-        assert(storage.asset == msg_asset_id());
-        assert(storage.asset_amount == msg_amount());
+        // require(storage.state == State::Pending, Error::StateNotPending);
+        require(storage.state == 1, Error::StateNotPending);
+        require(storage.asset == msg_asset_id(), Error::IncorrectAssetId);
+        require(storage.asset_amount == msg_amount(), Error::IncorrectAssetAmount);
 
         let sender: Result<Sender, AuthError> = msg_sender();
 
         if let Sender::Address(address) = sender.unwrap() {
-            assert(address == storage.buyer.address || address == storage.seller.address);
+            require(address == storage.buyer.address || address == storage.seller.address, Error::UnauthorizedUser);
 
             if address == storage.buyer.address {
-                assert(!storage.buyer.deposited);
+                require(!storage.buyer.deposited, Error::AlreadyDeposited);
 
                 storage.buyer.deposited = true;
             }
             else if address == storage.seller.address {
-                assert(!storage.seller.deposited);
+                require(!storage.seller.deposited, Error::AlreadyDeposited);
 
                 storage.seller.deposited = true;
             }
         } else {
-            panic(0);
+            revert(0);
         };
 
         true
     }
 
     fn approve() -> bool {
-        // assert(storage.state == State::Pending);
-        assert(storage.state == 1);
+        // require(storage.state == State::Pending, Error::StateNotPending);
+        require(storage.state == 1, Error::StateNotPending);
 
         let sender: Result<Sender, AuthError> = msg_sender();
 
         if let Sender::Address(address) = sender.unwrap() {
-            assert(address == storage.buyer.address || address == storage.seller.address);
+            require(address == storage.buyer.address || address == storage.seller.address, Error::UnauthorizedUser);
 
             if address == storage.buyer.address {
-                assert(storage.buyer.deposited);
+                require(storage.buyer.deposited, Error::DepositRequired);
 
                 storage.buyer.approved = true;
             } 
             else if address == storage.seller.address {
-                assert(storage.seller.deposited);
+                require(storage.seller.deposited, Error::DepositRequired);
 
                 storage.seller.approved = true;
             }
@@ -112,23 +122,23 @@ impl Escrow for Contract {
                 transfer_to_output(storage.asset_amount, storage.asset, storage.seller.address);
             }
         } else {
-            panic(0);
+            revert(0);
         };
 
         true
     }
 
     fn withdraw() -> bool {
-        // assert(storage.state == State::Pending);
-        assert(storage.state == 1);
+        // require(storage.state == State::Pending, Error::StateNotPending);
+        require(storage.state == 1, Error::StateNotPending);
 
         let sender: Result<Sender, AuthError> = msg_sender();
 
         if let Sender::Address(address) = sender.unwrap() {
-            assert(address == storage.buyer.address || address == storage.seller.address);
+            require(address == storage.buyer.address || address == storage.seller.address, Error::UnauthorizedUser);
 
             if address == storage.buyer.address {
-                assert(storage.buyer.deposited);
+                require(storage.buyer.deposited, Error::DepositRequired);
 
                 storage.buyer.deposited = false;
                 storage.buyer.approved = false;
@@ -136,7 +146,7 @@ impl Escrow for Contract {
                 transfer_to_output(storage.asset_amount, storage.asset, storage.buyer.address);
             } 
             else if address == storage.seller.address {
-                assert(storage.seller.deposited);
+                require(storage.seller.deposited, Error::DepositRequired);
 
                 storage.seller.deposited = false;
                 storage.seller.approved = false;
@@ -144,7 +154,7 @@ impl Escrow for Contract {
                 transfer_to_output(storage.asset_amount, storage.asset, storage.seller.address);
             }
         } else {
-            panic(0);
+            revert(0);
         };
 
         true
