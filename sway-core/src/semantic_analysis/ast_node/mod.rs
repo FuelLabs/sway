@@ -844,7 +844,9 @@ fn reassignment(
                                 ..
                             } => {
                                 names_vec.push(ReassignmentLhs {
-                                    name: field_to_access,
+                                    kind: ReassignmentLhsKind::StructField {
+                                        name: field_to_access,
+                                    },
                                     r#type: type_checked.return_type,
                                 });
                                 expr = *prefix;
@@ -858,18 +860,20 @@ fn reassignment(
 
                     let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
                     names_vec.push(ReassignmentLhs {
-                        name: field_to_access,
+                        kind: ReassignmentLhsKind::StructField {
+                            name: field_to_access,
+                        },
                         r#type: final_return_type,
                     });
 
                     let (ty_of_field, _ty_of_parent) = check!(
                         namespace.find_subfield_type(
                             std::iter::once(base_name.clone())
-                                .chain(
-                                    names_vec
-                                        .iter()
-                                        .map(|ReassignmentLhs { name, .. }| name.clone())
-                                )
+                                .chain(names_vec.iter().map(|ReassignmentLhs { kind, .. }| {
+                                    match kind {
+                                        ReassignmentLhsKind::StructField { name } => name.clone(),
+                                    }
+                                }))
                                 .collect::<Vec<_>>()
                                 .as_slice()
                         ),

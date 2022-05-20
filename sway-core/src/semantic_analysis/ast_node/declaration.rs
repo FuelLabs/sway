@@ -343,7 +343,7 @@ impl TypedDeclaration {
                     ..
                 }) => {
                     std::iter::once(lhs_base_name.as_str())
-                        .chain(lhs_indices.iter().flat_map(|x| [".", x.name.as_str()]))
+                        .chain(lhs_indices.iter().flat_map(|x| [".", x.pretty_print()]))
                         .collect::<String>()
                 }
                 _ => String::new(),
@@ -482,8 +482,13 @@ impl TypedTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub name: Ident,
+    pub kind: ReassignmentLhsKind,
     pub r#type: TypeId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReassignmentLhsKind {
+    StructField { name: Ident },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -491,13 +496,31 @@ pub struct ReassignmentLhs {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.kind == other.kind && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
     }
 }
 
 impl ReassignmentLhs {
     pub(crate) fn span(&self) -> Span {
-        self.name.span().clone()
+        self.kind.span()
+    }
+
+    pub(crate) fn pretty_print(&self) -> &str {
+        self.kind.pretty_print()
+    }
+}
+
+impl ReassignmentLhsKind {
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            ReassignmentLhsKind::StructField { name } => name.span().clone(),
+        }
+    }
+
+    pub(crate) fn pretty_print(&self) -> &str {
+        match self {
+            ReassignmentLhsKind::StructField { name } => name.as_str(),
+        }
     }
 }
 
@@ -519,10 +542,14 @@ impl CopyTypes for TypedReassignment {
         self.lhs_indices.iter_mut().for_each(
             |ReassignmentLhs {
                  ref mut r#type,
-                 name,
+                 kind,
                  ..
              }| {
-                r#type.update_type(type_mapping, name.span());
+                match kind {
+                    ReassignmentLhsKind::StructField { name } => {
+                        r#type.update_type(type_mapping, name.span());
+                    }
+                }
             },
         );
     }

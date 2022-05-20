@@ -1485,7 +1485,7 @@ impl FnCompiler {
                         .lhs_indices
                         .iter()
                         .fold(ast_reassignment.lhs_base_name.span().clone(), |acc, lhs| {
-                            Span::join(acc, lhs.name.span().clone())
+                            Span::join(acc, lhs.span())
                         });
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
@@ -1715,7 +1715,10 @@ impl FnCompiler {
             )),
         }?;
 
-        let field_idx = match get_struct_name_and_field_index(struct_type_id, &ast_field.name) {
+        let field_kind = ReassignmentLhsKind::StructField {
+            name: ast_field.name.clone(),
+        };
+        let field_idx = match get_struct_name_and_field_index(struct_type_id, field_kind) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
@@ -2356,21 +2359,23 @@ impl LexicalMap {
 
 fn get_struct_name_and_field_index(
     field_type: TypeId,
-    field_name: &Ident,
+    field_kind: ReassignmentLhsKind,
 ) -> Option<(String, Option<u64>)> {
-    resolve_type(field_type, field_name.span())
-        .ok()
-        .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields, .. } => Some((
-                name.as_str().to_owned(),
-                fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, field)| &field.name == field_name)
-                    .map(|(idx, _)| idx as u64),
-            )),
-            _otherwise => None,
-        })
+    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
+    match (ty_info, field_kind) {
+        (
+            TypeInfo::Struct { name, fields, .. },
+            ReassignmentLhsKind::StructField { name: field_name },
+        ) => Some((
+            name.as_str().to_owned(),
+            fields
+                .iter()
+                .enumerate()
+                .find(|(_, field)| field.name == field_name)
+                .map(|(idx, _)| idx as u64),
+        )),
+        _otherwise => None,
+    }
 }
 
 // To gather the indices into nested structs for the struct oriented IR instructions we need to
@@ -2380,7 +2385,7 @@ fn get_struct_name_and_field_index(
 
 trait TypedNamedField {
     fn get_type(&self) -> TypeId;
-    fn get_name(&self) -> &Ident;
+    fn get_field_kind(&self) -> ReassignmentLhsKind;
 }
 
 macro_rules! impl_typed_named_field_for {
@@ -2389,14 +2394,24 @@ macro_rules! impl_typed_named_field_for {
             fn get_type(&self) -> TypeId {
                 self.r#type
             }
-            fn get_name(&self) -> &Ident {
-                &self.name
+            fn get_field_kind(&self) -> ReassignmentLhsKind {
+                ReassignmentLhsKind::StructField {
+                    name: self.name.clone(),
+                }
             }
         }
     };
 }
 
-impl_typed_named_field_for!(ReassignmentLhs);
+impl TypedNamedField for ReassignmentLhs {
+    fn get_type(&self) -> TypeId {
+        self.r#type
+    }
+    fn get_field_kind(&self) -> ReassignmentLhsKind {
+        self.kind.clone()
+    }
+}
+
 impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
 impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
 
@@ -2410,7 +2425,7 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
             // Make sure we have an aggregate to index into.
             acc.and_then(|(mut fld_idcs, prev_type_id)| {
                 // Get the field index and also its type for the next iteration.
-                match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
+                match get_struct_name_and_field_index(prev_type_id, field.get_field_kind()) {
                     None => Err(CompileError::Internal(
                         "Unknown struct in in reassignment.",
                         Span::dummy(),
@@ -2418,10 +2433,10 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
                     Some((struct_name, field_idx)) => match field_idx {
                         None => Err(CompileError::InternalOwned(
                             format!(
-                                "Unknown field name '{}' for struct {struct_name} in reassignment.",
-                                field.get_name(),
+                                "Unknown field '{}' for struct {struct_name} in reassignment.",
+                                field.get_field_kind().pretty_print(),
                             ),
-                            field.get_name().span().clone(),
+                            field.get_field_kind().span(),
                         )),
                         Some(field_idx) => {
                             // Save the field index.
