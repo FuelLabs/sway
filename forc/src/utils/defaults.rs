@@ -105,19 +105,16 @@ abigen!(MyContract, "out/debug/"#,
         r#"-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
-    // Deploy the compiled contract
-    let compiled = Contract::load_sway_contract("./out/debug/"#,
-        project_name,
-        r#".bin").unwrap();
-
     // Launch a local network and deploy the contract
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+    let id = Contract::deploy("./out/debug/"#,
+    project_name,
+    r#".bin", &wallet, TxParameters::default())
         .await
         .unwrap();
 
-    let instance = MyContract::new(id.to_string(), provider, wallet);
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
