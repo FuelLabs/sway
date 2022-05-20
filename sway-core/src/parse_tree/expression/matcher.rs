@@ -72,7 +72,7 @@ pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<Matcher
         } => match_enum(exp, call_path, variable_to_assign, span),
         Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
         scrutinee => {
-            eprintln!("Unimplemented scrutinee: {:?}", scrutinee,);
+            tracing::error!("Unimplemented scrutinee: {:?}", scrutinee,);
             errors.push(CompileError::Unimplemented(
                 "this match expression scrutinee is not implemented",
                 scrutinee.span(),

@@ -15,4 +15,6 @@ dirs = "3.0.2"
 sway-core = { version = "0.13.0", path = "../sway-core" }
 sway-utils = { version = "0.13.0", path = "../sway-utils" }
 termcolor = "1.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
