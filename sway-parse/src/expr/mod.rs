@@ -170,8 +170,8 @@ pub enum Expr {
     },
 }
 
-impl Expr {
-    pub fn span(&self) -> Span {
+impl Spanned for Expr {
+    fn span(&self) -> Span {
         match self {
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
@@ -290,8 +290,8 @@ pub enum IfCondition {
     },
 }
 
-impl IfExpr {
-    pub fn span(&self) -> Span {
+impl Spanned for IfExpr {
+    fn span(&self) -> Span {
         let start = self.if_token.span();
         let end = match &self.else_opt {
             Some((_else_token, tail)) => match tail {
@@ -380,8 +380,8 @@ pub struct MatchBranch {
     pub kind: MatchBranchKind,
 }
 
-impl MatchBranch {
-    pub fn span(&self) -> Span {
+impl Spanned for MatchBranch {
+    fn span(&self) -> Span {
         Span::join(self.pattern.span(), self.kind.span())
     }
 }
@@ -399,8 +399,8 @@ pub enum MatchBranchKind {
     },
 }
 
-impl MatchBranchKind {
-    pub fn span(&self) -> Span {
+impl Spanned for MatchBranchKind {
+    fn span(&self) -> Span {
         match self {
             MatchBranchKind::Block {
                 block,
@@ -442,7 +442,6 @@ impl ParseToEnd for CodeBlockContents {
                 || parser.peek::<EnumToken>().is_some()
                 || parser.peek::<FnToken>().is_some()
                 || parser.peek::<PubToken>().is_some()
-                || parser.peek::<ImpureToken>().is_some()
                 || parser.peek::<TraitToken>().is_some()
                 || parser.peek::<ImplToken>().is_some()
                 || parser.peek2::<AbiToken, Ident>().is_some()
@@ -993,8 +992,8 @@ pub struct ExprStructField {
     pub expr_opt: Option<(ColonToken, Box<Expr>)>,
 }
 
-impl ExprStructField {
-    pub fn span(&self) -> Span {
+impl Spanned for ExprStructField {
+    fn span(&self) -> Span {
         match &self.expr_opt {
             None => self.field_name.span().clone(),
             Some((_colon_token, expr)) => Span::join(self.field_name.span().clone(), expr.span()),
@@ -1126,6 +1125,25 @@ impl Expr {
                     target: Box::new(target),
                     dot_token,
                     name,
+                }),
+            },
+            Expr::TupleFieldProjection {
+                target,
+                dot_token,
+                field,
+                field_span,
+            } => match target.try_into_assignable() {
+                Ok(target) => Ok(Assignable::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
+                }),
+                Err(target) => Err(Expr::TupleFieldProjection {
+                    target: Box::new(target),
+                    dot_token,
+                    field,
+                    field_span,
                 }),
             },
             expr => Err(expr),

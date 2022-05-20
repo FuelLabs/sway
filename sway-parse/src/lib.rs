@@ -23,6 +23,7 @@ pub mod where_clause;
 
 pub use crate::{
     assignable::Assignable,
+    attribute::AttributeDecl,
     brackets::{AngleBrackets, Braces},
     dependency::Dependency,
     error::{ParseError, ParseErrorKind},
@@ -44,9 +45,9 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        FnArg, FnArgs, FnSignature, ItemKind, TypeField,
+        FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
-    keywords::{DoubleColonToken, ImpureToken, PubToken},
+    keywords::{DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},
     parse::Parse,
     parser::Parser,
@@ -60,11 +61,14 @@ pub use crate::{
     where_clause::{WhereBound, WhereClause},
 };
 
+use crate::priv_prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash, Error)]
 pub enum ParseFileError {
+    #[error(transparent)]
     Lex(LexError),
+    #[error("Unable to parse: {}", .0.iter().map(|x| x.kind.to_string()).collect::<Vec<String>>().join("\n"))]
     Parse(Vec<ParseError>),
 }
 

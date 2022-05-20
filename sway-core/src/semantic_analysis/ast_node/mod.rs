@@ -1,14 +1,9 @@
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::*,
-    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
-    style::*,
-    type_engine::*,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_engine::*, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -49,6 +44,9 @@ pub(crate) use return_statement::TypedReturnStatement;
 
 mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
+
+mod copy_types;
+pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -94,6 +92,29 @@ impl std::fmt::Display for TypedAstNode {
     }
 }
 
+impl CopyTypes for TypedAstNode {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> bool {
@@ -124,6 +145,7 @@ impl TypedAstNode {
             _ => false,
         }
     }
+
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -139,6 +161,7 @@ impl TypedAstNode {
             SideEffect => false,
         }
     }
+
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -169,27 +192,6 @@ impl TypedAstNode {
             )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
-            TypedAstNodeContent::SideEffect => (),
         }
     }
 
@@ -259,12 +261,7 @@ impl TypedAstNode {
                     let path = if a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        namespace
-                            .mod_path()
-                            .iter()
-                            .chain(&a.call_path)
-                            .cloned()
-                            .collect()
+                        namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(&path),
@@ -891,36 +888,23 @@ fn reassignment(
             match *var {
                 Expression::VariableExpression { name, span } => {
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.resolve_symbol(&name).cloned().value {
-                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                            body,
-                            is_mutable,
-                            name,
-                            ..
-                        })) => {
-                            if !is_mutable.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
-                            }
-
-                            body
-                        }
-                        Some(o) => {
-                            errors.push(CompileError::ReassignmentToNonVariable {
-                                name: name.clone(),
-                                kind: o.friendly_name(),
-                                span,
-                            });
-                            return err(warnings, errors);
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownVariable {
-                                var_name: name.clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
+                    let unknown_decl = check!(
+                        namespace.resolve_symbol(&name).cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let variable_decl = check!(
+                        unknown_decl.expect_variable().cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if !variable_decl.is_mutable.is_mutable() {
+                        errors.push(CompileError::AssignmentToNonMutable { name });
+                    }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {
@@ -943,8 +927,8 @@ fn reassignment(
                     ok(
                         TypedDeclaration::Reassignment(TypedReassignment {
                             lhs: vec![ReassignmentLhs {
-                                name,
-                                r#type: thing_to_reassign.return_type,
+                                name: variable_decl.name,
+                                r#type: rhs_type_id,
                             }],
                             rhs,
                         }),
@@ -979,6 +963,30 @@ fn reassignment(
 
                         match expr {
                             Expression::VariableExpression { name, .. } => {
+                                match namespace.clone().resolve_symbol(&name).value {
+                                    Some(TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration { is_mutable, .. },
+                                    )) => {
+                                        if !is_mutable.is_mutable() {
+                                            errors.push(CompileError::AssignmentToNonMutable {
+                                                name: name.clone(),
+                                            });
+                                        }
+                                    }
+                                    Some(other) => {
+                                        errors.push(CompileError::ReassignmentToNonVariable {
+                                            name: name.clone(),
+                                            kind: other.friendly_name(),
+                                            span,
+                                        });
+                                        return err(warnings, errors);
+                                    }
+                                    None => {
+                                        errors
+                                            .push(CompileError::UnknownVariable { var_name: name });
+                                        return err(warnings, errors);
+                                    }
+                                }
                                 names_vec.push(ReassignmentLhs {
                                     name,
                                     r#type: type_checked.return_type,
@@ -1220,11 +1228,13 @@ fn type_check_interface_surface(
         .map(
             |TraitFn {
                  name,
+                 purity,
                  parameters,
                  return_type,
                  return_type_span,
              }| TypedTraitFn {
                 name,
+                purity,
                 return_type_span: return_type_span.clone(),
                 parameters: parameters
                     .into_iter()

@@ -201,18 +201,18 @@ impl Mod for u8 {
 }
 
 pub trait Shiftable {
-    fn lsh(self, other: Self) -> Self;
-    fn rsh(self, other: Self) -> Self;
+    fn lsh(self, other: u64) -> Self;
+    fn rsh(self, other: u64) -> Self;
 }
 
 impl Shiftable for u64 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u64
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u64
@@ -221,13 +221,13 @@ impl Shiftable for u64 {
 }
 
 impl Shiftable for u32 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u32
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u32
@@ -236,13 +236,13 @@ impl Shiftable for u32 {
 }
 
 impl Shiftable for u16 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u16
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u16
@@ -251,13 +251,13 @@ impl Shiftable for u16 {
 }
 
 impl Shiftable for u8 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u8
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u8
@@ -432,7 +432,7 @@ impl Ord for b256 {
             self_word_1.lt(other_word_1)
         } else if self_word_2.neq(other_word_2) {
             self_word_2.lt(other_word_2)
-        } else if self_word_3.neq(other_word_3){
+        } else if self_word_3.neq(other_word_3) {
             self_word_3.lt(other_word_3)
         } else {
             self_word_4.lt(other_word_4)
@@ -557,7 +557,7 @@ impl OrdEq for b256 {
 /// Extract a single 64 bit word from a b256 value using the specified offset.
 fn get_word_from_b256(val: b256, offset: u64) -> u64 {
     let mut empty: u64 = 0;
-    asm(r1: val, offset: offset, r2,  res: empty) {
+    asm(r1: val, offset: offset, r2, res: empty) {
         add r2 r1 offset;
         lw res r2 i0;
         res: u64

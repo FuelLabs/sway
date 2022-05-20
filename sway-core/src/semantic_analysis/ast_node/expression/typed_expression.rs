@@ -9,6 +9,7 @@ use crate::{
 
 mod method_application;
 use crate::type_engine::TypeId;
+use ast_node::declaration::CreateTypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug, Eq)]
@@ -29,6 +30,18 @@ impl PartialEq for TypedExpression {
         self.expression == other.expression
             && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
             && self.is_constant == other.is_constant
+    }
+}
+
+impl CopyTypes for TypedExpression {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.return_type)),
+            };
+
+        self.expression.copy_types(type_mapping);
     }
 }
 
@@ -563,17 +576,6 @@ impl TypedExpression {
         ok(typed_expression, warnings, errors)
     }
 
-    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
-            };
-
-        self.expression.copy_types(type_mapping);
-    }
-
     fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
@@ -662,24 +664,20 @@ impl TypedExpression {
             opts,
             ..
         } = arguments;
-        let function_declaration = check!(
+        let unknown_decl = check!(
             namespace.resolve_call_path(&name).cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_function_decl = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => decl,
-            _ => {
-                errors.push(CompileError::NotAFunction {
-                    name,
-                    what_it_is: function_declaration.friendly_name(),
-                });
-                return err(warnings, errors);
-            }
-        };
+        let function_decl = check!(
+            unknown_decl.expect_function(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         instantiate_function_application(
-            typed_function_decl,
+            function_decl.clone(),
             name,
             type_arguments,
             arguments,
@@ -1292,47 +1290,38 @@ impl TypedExpression {
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
 
-        let decl = {
-            let module_path: Vec<_> = namespace
-                .mod_path()
-                .iter()
-                .chain(&call_path.prefixes)
-                .cloned()
-                .collect();
-            check!(
-                namespace.root().check_submodule(&module_path),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            match namespace
+        let module_path: Vec<_> = namespace.find_module_path(&call_path.prefixes);
+        check!(
+            namespace.root().check_submodule(&module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let unknown_decl = check!(
+            namespace
                 .root()
                 .resolve_symbol(&module_path, &call_path.suffix)
-                .value
-            {
-                Some(TypedDeclaration::StructDeclaration(decl)) => decl.clone(),
-                Some(_) => {
-                    errors.push(CompileError::DeclaredNonStructAsStruct {
-                        name: call_path.suffix.clone(),
-                        span,
-                    });
-                    return err(warnings, errors);
-                }
-                None => {
-                    errors.push(CompileError::StructNotFound {
-                        name: call_path.suffix.clone(),
-                        span,
-                    });
-                    return err(warnings, errors);
-                }
-            }
-        };
+                .cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let struct_decl = check!(
+            unknown_decl.expect_struct(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+        .clone();
 
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types
-        let mut new_decl = match (decl.type_parameters.is_empty(), type_arguments.is_empty()) {
-            (true, true) => decl,
+        let mut new_decl = match (
+            struct_decl.type_parameters.is_empty(),
+            type_arguments.is_empty(),
+        ) {
+            (true, true) => struct_decl,
             (true, false) => {
                 let type_arguments_span = type_arguments
                     .iter()
@@ -1362,7 +1351,7 @@ impl TypedExpression {
                 }
                 // perform the monomorphization
                 check!(
-                    decl.monomorphize(
+                    struct_decl.monomorphize(
                         &mut namespace[&call_path.prefixes],
                         &type_arguments,
                         Some(self_type)
@@ -1439,7 +1428,7 @@ impl TypedExpression {
         };
         let exp = TypedExpression {
             expression,
-            return_type: new_decl.type_id(),
+            return_type: new_decl.create_type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -1667,7 +1656,7 @@ impl TypedExpression {
         let tuple_elem_to_access = match tuple_elem_to_access {
             Some(tuple_elem_to_access) => tuple_elem_to_access,
             None => {
-                errors.push(CompileError::TupleOutOfBounds {
+                errors.push(CompileError::TupleIndexOutOfBounds {
                     index,
                     count: tuple_elems.len(),
                     span: index_span,
@@ -1721,12 +1710,7 @@ impl TypedExpression {
 
         // Check if the call path refers to an enum in another module.
         let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
-        let abs_enum_mod_path: Vec<_> = namespace
-            .mod_path()
-            .iter()
-            .chain(enum_mod_path)
-            .cloned()
-            .collect();
+        let abs_enum_mod_path: Vec<_> = namespace.find_module_path(enum_mod_path);
         let exp = if let Some(enum_decl) = namespace
             .check_submodule_mut(enum_mod_path)
             .ok(&mut warnings, &mut errors)
@@ -1768,15 +1752,12 @@ impl TypedExpression {
             .ok(&mut probe_warnings, &mut probe_errors)
             .is_some()
         {
-            let decl = match namespace.resolve_call_path(&call_path).value {
-                Some(decl) => decl.clone(),
-                None => {
-                    errors.push(CompileError::SymbolNotFound {
-                        name: call_path.suffix.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-            };
+            let decl = check!(
+                namespace.resolve_call_path(&call_path).cloned(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             match decl {
                 TypedDeclaration::EnumDeclaration(enum_decl) => {
                     check!(
@@ -1896,23 +1877,19 @@ impl TypedExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let decl = check!(
+                        let unknown_decl = check!(
                             namespace.resolve_call_path(&abi_name).cloned(),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        let abi = match decl {
-                            TypedDeclaration::AbiDeclaration(abi) => abi,
-                            _ => {
-                                errors.push(CompileError::NotAnAbi {
-                                    span: abi_name.span(),
-                                    actually_is: abi.friendly_name(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        };
-                        abi
+                        check!(
+                            unknown_decl.expect_abi(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                        .clone()
                     }
                     AbiName::Deferred => {
                         return ok(
@@ -2515,7 +2492,7 @@ fn check_scrutinee_type(
         }
     };
 
-    ok((ty.type_id(), enum_variant), warnings, errors)
+    ok((ty.create_type_id(), enum_variant), warnings, errors)
 }
 
 fn check_enum_scrutinee_type(
@@ -2526,21 +2503,19 @@ fn check_enum_scrutinee_type(
     let mut errors = vec![];
     let enum_variant = call_path.suffix.clone();
     let call_path = call_path.rshift();
-    let decl: TypedDeclaration = check!(
+    let unknown_decl = check!(
         namespace.resolve_call_path(&call_path).cloned(),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let enum_decl = match decl {
-        TypedDeclaration::EnumDeclaration(decl) => decl,
-        _ => {
-            errors.push(CompileError::IfLetNonEnum {
-                span: call_path.span(),
-            });
-            return err(warnings, errors);
-        }
-    };
+    let enum_decl = check!(
+        unknown_decl.expect_enum(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    )
+    .clone();
     let enum_decl = if !enum_decl.type_parameters.is_empty() {
         enum_decl.monomorphize(namespace)
     } else {
@@ -2550,7 +2525,7 @@ fn check_enum_scrutinee_type(
     let matching_variant = enum_decl
         .variants
         .iter()
-        .find(|TypedEnumVariant { name, .. }| *name == enum_variant)
+        .find(|TypedEnumVariant { name, .. }| name.as_str() == enum_variant.as_str())
         .cloned();
     match matching_variant {
         Some(variant) => ok((enum_decl, variant), warnings, errors),

@@ -448,12 +448,35 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError>
+    where
+        F: FnOnce(&mut FnCompiler) -> Result<T, CompileError>,
+    {
+        self.lexical_map.enter_scope();
+        let result = inner(self);
+        self.lexical_map.leave_scope();
+        result
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
     fn compile_code_block(
         &mut self,
         context: &mut Context,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
-        ast_block
+        self.compile_with_new_scope(|fn_compiler| {
+            fn_compiler.compile_code_block_inner(context, ast_block)
+        })
+    }
+
+    fn compile_code_block_inner(
+        &mut self,
+        context: &mut Context,
+        ast_block: TypedCodeBlock,
+    ) -> Result<Value, CompileError> {
+        self.lexical_map.enter_scope();
+        let value = ast_block
             .contents
             .into_iter()
             .map(|ast_node| {
@@ -555,7 +578,9 @@ impl FnCompiler {
             .collect::<Result<Vec<_>, CompileError>>()
             .map(|vals| vals.last().cloned())
             .transpose()
-            .unwrap_or_else(|| Ok(Constant::get_unit(context, None)))
+            .unwrap_or_else(|| Ok(Constant::get_unit(context, None)));
+        self.lexical_map.leave_scope();
+        value
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1231,27 +1256,32 @@ impl FnCompiler {
             vec![1, variant_tag],
             var_span_md_idx,
         );
-        let local_name = self
-            .lexical_map
-            .enter_scope()
-            .insert(variable_to_assign.as_str().to_owned());
-        let variable_ptr = self
-            .function
-            .new_local_ptr(context, local_name, variable_type, false, None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let variable_ptr_ty = *variable_ptr.get_type(context);
-        let variable_ptr_val = self.current_block.ins(context).get_ptr(
-            variable_ptr,
-            variable_ptr_ty,
-            0,
-            var_span_md_idx,
-        );
-        self.current_block
-            .ins(context)
-            .store(variable_ptr_val, var_init_value, var_span_md_idx);
-        let true_value = self.compile_code_block(context, ast_then)?;
-        let true_block_end = self.current_block;
-        self.lexical_map.leave_scope();
+        let (true_value, true_block_end) = self.compile_with_new_scope(|fn_compiler| {
+            let local_name = fn_compiler
+                .lexical_map
+                .insert(variable_to_assign.as_str().to_owned());
+            let variable_ptr = fn_compiler
+                .function
+                .new_local_ptr(context, local_name, variable_type, false, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+            let variable_ptr_ty = *variable_ptr.get_type(context);
+            let variable_ptr_val = fn_compiler.current_block.ins(context).get_ptr(
+                variable_ptr,
+                variable_ptr_ty,
+                0,
+                var_span_md_idx,
+            );
+            fn_compiler.current_block.ins(context).store(
+                variable_ptr_val,
+                var_init_value,
+                var_span_md_idx,
+            );
+            let true_value = fn_compiler.compile_code_block_inner(context, ast_then)?;
+            let true_block_end = fn_compiler.current_block;
+            Result::Ok((true_value, true_block_end))
+        })?;
 
         // The optional false/else block.  Does not have access to the variable.
         let false_block_begin = self.function.create_block(context, None);

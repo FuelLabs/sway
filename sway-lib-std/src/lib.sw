@@ -1,6 +1,8 @@
 library std;
 
+dep intrinsics;
 dep revert;
+dep logging;
 dep assert;
 dep option;
 dep result;

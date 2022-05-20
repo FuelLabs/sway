@@ -4,12 +4,12 @@ use crate::priv_prelude::*;
 pub struct ItemAbi {
     pub abi_token: AbiToken,
     pub name: Ident,
-    pub abi_items: Braces<Vec<(FnSignature, SemicolonToken)>>,
-    pub abi_defs_opt: Option<Braces<Vec<ItemFn>>>,
+    pub abi_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
-impl ItemAbi {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemAbi {
+    fn span(&self) -> Span {
         let start = self.abi_token.span();
         let end = match &self.abi_defs_opt {
             Some(abi_defs) => abi_defs.span(),
