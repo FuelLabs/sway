@@ -1,3 +1,5 @@
+use ast_node::declaration::CreateTypeId;
+
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
@@ -96,7 +98,7 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_field_type)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: new_decl.type_id(),
+                return_type: new_decl.create_type_id(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -133,7 +135,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: new_decl.type_id(),
+                    return_type: new_decl.create_type_id(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),

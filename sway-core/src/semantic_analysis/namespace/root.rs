@@ -1,6 +1,9 @@
 use crate::{
-    error::*, semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath,
-    CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*,
+    semantic_analysis::{ast_node::TypedExpression, declaration::CreateTypeId},
+    type_engine::*,
+    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -130,9 +133,9 @@ impl Root {
                                 warnings,
                                 errors
                             );
-                            new_decl.type_id()
+                            new_decl.create_type_id()
                         } else {
-                            decl.type_id()
+                            decl.create_type_id()
                         }
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
@@ -157,9 +160,9 @@ impl Root {
                                 warnings,
                                 errors
                             );
-                            new_decl.type_id()
+                            new_decl.create_type_id()
                         } else {
-                            decl.type_id()
+                            decl.create_type_id()
                         }
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
@@ -235,9 +238,9 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     } else {
-                        decl.type_id()
+                        decl.create_type_id()
                     }
                 }
                 Some(TypedDeclaration::EnumDeclaration(decl)) => {
@@ -269,9 +272,9 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
+                        new_decl.create_type_id()
                     } else {
-                        decl.type_id()
+                        decl.create_type_id()
                     }
                 }
                 _ => insert_type(TypeInfo::Unknown),

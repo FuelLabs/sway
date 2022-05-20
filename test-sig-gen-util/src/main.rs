@@ -39,15 +39,15 @@ fn main() -> Result<()> {
     let sig = crypto::secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref())
         .expect("Failed to generate signature");
 
-    println!("Secret Key: {:?}", secret);
-    println!("Public Key: {:?}", public);
-    println!("Fuel Address (sha2-256): {:?}", address);
-    println!(
+    tracing::info!("Secret Key: {:?}", secret);
+    tracing::info!("Public Key: {:?}", public);
+    tracing::info!("Fuel Address (sha2-256): {:?}", address);
+    tracing::info!(
         "Ethereum pubkey hash (keccak256): {:?}",
         ethereum_pubkeyhash
     );
-    println!("Message Hash: {:?}", e);
-    println!("Signature: {:?}", sig);
+    tracing::info!("Message Hash: {:?}", e);
+    tracing::info!("Signature: {:?}", sig);
 
     Ok(())
 }

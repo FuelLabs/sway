@@ -590,7 +590,7 @@ pub(crate) fn desugar_match_expression(
                 });
             }
             Some(if_statement) => {
-                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
+                tracing::error!("Unimplemented if_statement_pattern: {:?}", if_statement,);
                 errors.push(CompileError::Unimplemented(
                     "this desugared if expression pattern is not implemented",
                     if_statement.span(),

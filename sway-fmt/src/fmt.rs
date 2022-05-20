@@ -655,7 +655,7 @@ fn one_liner() -> bool {
         let test_sway = r#"script;
 use std::chain::{panic,log_u8};
 use std::chain::assert;
-use std::hash::{HashMethod,    hash_value,               hash_pair    };
+use std::hash::{sha256,               keccak256    };
 use a::b::{c,d::{f,e}};
 use a::b::{c,d::{f,self}};
 
@@ -665,7 +665,7 @@ fn main() {
         let expected_sway = r#"script;
 use std::chain::{log_u8, panic};
 use std::chain::assert;
-use std::hash::{HashMethod, hash_pair, hash_value};
+use std::hash::{keccak256, sha256};
 use a::b::{c, d::{e, f}};
 use a::b::{c, d::{self, f}};
 

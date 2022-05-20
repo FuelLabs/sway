@@ -9,6 +9,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 use sway_utils::constants;
+use tracing::info;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -89,7 +90,7 @@ fn print_welcome_message() {
 
     let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
 
-    println!(
+    info!(
         "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
         try_forc, read_the_docs, join_the_community, report_bugs
     );

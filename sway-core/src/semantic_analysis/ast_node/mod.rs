@@ -1,14 +1,9 @@
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::*,
-    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
-    style::*,
-    type_engine::*,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_engine::*, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -49,6 +44,9 @@ pub(crate) use return_statement::TypedReturnStatement;
 
 mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
+
+mod copy_types;
+pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -94,6 +92,29 @@ impl std::fmt::Display for TypedAstNode {
     }
 }
 
+impl CopyTypes for TypedAstNode {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> bool {
@@ -124,6 +145,7 @@ impl TypedAstNode {
             _ => false,
         }
     }
+
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -139,6 +161,7 @@ impl TypedAstNode {
             SideEffect => false,
         }
     }
+
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -169,27 +192,6 @@ impl TypedAstNode {
             )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
-            TypedAstNodeContent::SideEffect => (),
         }
     }
 
@@ -374,6 +376,15 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
+                            for type_parameter in e.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             is_upper_camel_case(&e.name).ok(&mut warnings, &mut errors);
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
@@ -388,6 +399,15 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
+                            for type_parameter in fn_decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
@@ -474,10 +494,9 @@ impl TypedAstNode {
                         }) => {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
-                                        "Where clauses are not supported yet.",
-                                        type_parameter.name_ident.span().clone(),
-                                    ));
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
                                     break;
                                 }
                             }
@@ -555,6 +574,15 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
+                            for type_parameter in decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             is_upper_camel_case(&decl.name).ok(&mut warnings, &mut errors);
                             // look up any generic or struct types in the namespace
                             // insert type parameters
