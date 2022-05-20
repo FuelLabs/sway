@@ -409,10 +409,10 @@ fn construct_window<'a>(
     &input[calculated_start_ix..calculated_end_ix]
 }
 
-/// A subscriber built from default tracing_subscriber::fmt::SubscriberBuilder such that it would match directly using println! throughout the repo
-/// RUST_LOG environment variable can be used to set different minimum level for the subscriber, default is INFO
 const LOG_FILTER: &str = "RUST_LOG";
 
+/// A subscriber built from default tracing_subscriber::fmt::SubscriberBuilder such that it would match directly using println! throughout the repo
+/// RUST_LOG environment variable can be used to set different minimum level for the subscriber, default is INFO
 pub fn init_tracing_subscriber() {
     let filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
