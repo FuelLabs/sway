@@ -30,8 +30,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.6", default-features = false }}
-fuel-tx = "0.9"
+fuel-gql-client = {{ version = "0.7", default-features = false }}
+fuel-tx = "0.10"
 fuels = "0.12"
 fuels-abigen-macro = "0.12"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}

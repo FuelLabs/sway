@@ -13,9 +13,9 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.4"
-fuel-crypto = "0.4"
-fuel-vm = "0.8"
+fuel-asm = "0.5"
+fuel-crypto = "0.5"
+fuel-vm = "0.9"
 fuels-types = "0.12"
 hex = { version = "0.4", optional = true }
 im = "15.0"
