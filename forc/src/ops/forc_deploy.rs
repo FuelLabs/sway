@@ -34,6 +34,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         output_directory,
         minify_json_abi,
         locked,
+        url,
     } = command;
 
     let build_command = BuildCommand {
@@ -61,6 +62,11 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let node_url = match &manifest.network {
         Some(network) => &network.url,
         _ => DEFAULT_NODE_URL,
+    };
+
+    let node_url = match url {
+        Some(url_str) => url_str,
+        None => node_url.to_string(),
     };
 
     let client = FuelClient::new(node_url)?;
