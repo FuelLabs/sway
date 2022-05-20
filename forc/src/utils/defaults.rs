@@ -109,8 +109,8 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
 
     let id = Contract::deploy("./out/debug/"#,
-    project_name,
-    r#".bin", &wallet, TxParameters::default())
+        project_name,
+        r#".bin", &wallet, TxParameters::default())
         .await
         .unwrap();
 
