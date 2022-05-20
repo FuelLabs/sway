@@ -1,28 +1,27 @@
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::PathBuf;
 
-fn find_forc_plugins_dir() -> Result<PathBuf, Error> {
-    let curr_path_buf = std::env::current_dir().unwrap();
-    let mut curr_dir = curr_path_buf.as_path();
-    while fs::read_dir(curr_dir)?.any(|f| {
-        let file = f.unwrap();
-        file.file_name().to_str().unwrap() == "Cargo.toml"
-    }) {
-        if fs::read_dir(curr_dir).unwrap().any(|f| {
-            let file = f.unwrap();
-            file.file_type().unwrap().is_dir()
-                && file.file_name().to_str().unwrap() == "forc-plugins"
-        }) {
-            return Ok(curr_dir.join("forc-plugins"));
+fn find_forc_plugins_dir() -> Result<PathBuf> {
+    let mut curr_path = std::env::current_dir().unwrap();
+
+    loop {
+        if let Ok(entries) = fs::read_dir(&curr_path) {
+            if !curr_path.join("Cargo.toml").exists() {
+                continue;
+            }
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if path.is_dir() && path.ends_with("forc-plugins") {
+                    return Ok(path);
+                }
+            }
         }
-
-        curr_dir = curr_path_buf.parent().unwrap();
+        curr_path = curr_path
+            .parent()
+            .ok_or_else(|| anyhow!("Could not find Cargo.toml in the project directory"))?
+            .to_path_buf();
     }
-
-    Err(anyhow!(
-        "Could not find Cargo.toml in the project directory"
-    ))
 }
 
 pub fn plugin_commands() -> Vec<String> {
