@@ -33,3 +33,4 @@ sway-parse = { version = "0.13.0", path = "../sway-parse" }
 sway-types = { version = "0.13.0", path = "../sway-types" }
 sway-utils = { version = "0.13.0", path = "../sway-utils" }
 thiserror = "1.0"
+tracing = "0.1"

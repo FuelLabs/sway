@@ -10,6 +10,7 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
+use tracing::info;
 
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
@@ -52,7 +53,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     );
 
     if command.dry_run {
-        println!("{:?}", tx);
+        info!("{:?}", tx);
         Ok(vec![])
     } else {
         let node_url = match &manifest.network {
@@ -89,9 +90,9 @@ async fn send_tx(
     {
         Ok(logs) => {
             if pretty_print {
-                println!("{:#?}", logs);
+                info!("{:#?}", logs);
             } else {
-                println!("{:?}", logs);
+                info!("{:?}", logs);
             }
             Ok(logs)
         }
