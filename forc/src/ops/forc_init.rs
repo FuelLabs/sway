@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
+use tracing::info;
 use url::Url;
 
 #[derive(Debug)]
@@ -100,7 +101,7 @@ fn print_welcome_message() {
 
     let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
 
-    println!(
+    info!(
         "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
         try_forc, read_the_docs, join_the_community, report_bugs
     );
@@ -162,7 +163,6 @@ pub fn init(command: InitCommand) -> Result<()> {
         }
     }
 }
-
 fn get_sway_examples() -> Result<Vec<String>> {
     // Query the main repo so that we can search for the "sha" that belongs to "examples"
     let sway_response: GithubRepoResponse = ureq::get(

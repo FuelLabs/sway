@@ -5,6 +5,7 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
+use std::env;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,7 @@ use std::str;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
 
@@ -40,7 +42,7 @@ pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
 }
 /// Continually go up in the file tree until a Cargo manifest file is found.
 pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, "Cargo.toml")
+    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -310,7 +312,7 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
@@ -352,7 +354,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the
@@ -405,6 +407,28 @@ fn construct_window<'a>(
     *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
+}
+
+const LOG_FILTER: &str = "RUST_LOG";
+
+/// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
+///
+/// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
+pub fn init_tracing_subscriber() {
+    let filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
+
+    tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter(filter)
+        .with_ansi(true)
+        .with_level(false)
+        .with_file(false)
+        .with_line_number(false)
+        .without_time()
+        .with_target(false)
+        .init();
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]

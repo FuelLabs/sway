@@ -1,13 +1,18 @@
 use crate::{
     error::*,
     parse_tree::*,
-    semantic_analysis::{ast_node::insert_type_parameters, namespace},
+    semantic_analysis::{
+        ast_node::{copy_types::TypeMapping, insert_type_parameters},
+        namespace, CopyTypes,
+    },
     type_engine::*,
     Ident,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
+
+use super::CreateTypeId;
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
@@ -26,6 +31,24 @@ impl PartialEq for TypedStructDeclaration {
             && self.fields == other.fields
             && self.type_parameters == other.type_parameters
             && self.visibility == other.visibility
+    }
+}
+
+impl CopyTypes for TypedStructDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedStructDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Struct {
+            name: self.name.clone(),
+            fields: self.fields.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -101,31 +124,17 @@ impl TypedStructDeclaration {
     fn monomorphize_inner(
         &self,
         namespace: &mut namespace::Items,
-        type_mapping: &[(TypeParameter, TypeId)],
+        type_mapping: &TypeMapping,
     ) -> Self {
-        let old_type_id = self.type_id();
+        let old_type_id = self.create_type_id();
         let mut new_decl = self.clone();
         new_decl.copy_types(type_mapping);
         namespace.copy_methods_to_type(
             look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
+            look_up_type_id(new_decl.create_type_id()),
             type_mapping,
         );
         new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
     }
 }
 
@@ -155,6 +164,15 @@ impl PartialEq for TypedStructField {
     }
 }
 
+impl CopyTypes for TypedStructField {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            None => insert_type(look_up_type_id_raw(self.r#type)),
+        };
+    }
+}
+
 impl TypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
@@ -162,12 +180,5 @@ impl TypedStructField {
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
-        };
     }
 }
