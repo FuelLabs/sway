@@ -3,6 +3,7 @@ use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::lock_path;
 use std::{fs, path::PathBuf};
+use tracing::info;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
 /// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated
@@ -45,9 +46,9 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         let string = toml::ser::to_string_pretty(&new_lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
+        info!("   Created new lock file at {}", lock_path.display());
     } else {
-        println!(" `--check` enabled: `Forc.lock` was not changed");
+        info!(" `--check` enabled: `Forc.lock` was not changed");
     }
 
     Ok(())

@@ -56,7 +56,7 @@ fn to_bytecode_mut(
 ) -> CompileResult<Vec<u8>> {
     let mut errors = vec![];
     if program_section.ops.len() & 1 != 0 {
-        println!("ops len: {}", program_section.ops.len());
+        tracing::info!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
             Span::new(" ".into(), 0, 0, None).unwrap(),
