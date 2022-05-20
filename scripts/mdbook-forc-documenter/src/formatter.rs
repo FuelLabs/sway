@@ -40,7 +40,7 @@ pub fn is_arg(token: &str) -> bool {
 }
 
 pub fn format_header_line(header_line: &str) -> String {
-    return "\n# ".to_owned() + header_line.split_whitespace().next().unwrap() + "\n";
+    "\n# ".to_owned() + header_line.split_whitespace().next().unwrap() + "\n"
 }
 
 pub fn format_line(line: &str, has_parsed_subcommand_header: bool) -> String {
