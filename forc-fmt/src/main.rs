@@ -33,15 +33,19 @@ pub struct App {
 
 fn main() {
     init_tracing_subscriber();
-    let app = App::parse();
-    let dir = match app.path.clone() {
-        Some(p) => PathBuf::from(p),
-        None => std::env::current_dir().expect("cannot get current dir"),
-    };
-    if let Err(err) = format_pkg_at_dir(app, &dir) {
+    if let Err(err) = run() {
         error!("Error: {:?}", err);
         std::process::exit(1);
     }
+}
+
+fn run() -> Result<()> {
+    let app = App::parse();
+    let dir = match app.path.clone() {
+        Some(p) => PathBuf::from(p),
+        None => std::env::current_dir()?,
+    };
+    format_pkg_at_dir(app, &dir)
 }
 
 /// Format the package at the given directory.
