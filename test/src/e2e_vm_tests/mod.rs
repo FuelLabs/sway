@@ -339,6 +339,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/multi_impl_self",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/implicit_return",
+            ProgramState::Return(42),
+        ),
     ];
 
     let mut number_of_tests_run =
