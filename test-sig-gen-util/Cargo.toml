@@ -13,3 +13,4 @@ fuel-vm = "0.9"
 hex = "0.4"
 secp256k1 = { version = "0.20", features = ["recovery"] }
 sha3 = "0.10"
+tracing = "0.1"
