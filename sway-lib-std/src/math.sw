@@ -54,24 +54,12 @@ pub trait Exponentiate {
     fn pow(self, exponent: Self) -> Self;
 }
 
-
-// NOTE shouldn't have to check `$of` when vm implements flags.
-// the impl below would only be needed when setting the flag to allow overflow.
 impl Exponentiate for u64 {
     fn pow(self, exponent: Self) -> Self {
-        let empty_return = (0u64, 0u64);
-        let(value, overflow) = asm(r1: self, r2: exponent, r3, output: empty_return, r4: OVERFLOW_BIT) {
-            flag r4;
+        asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            sw output r3 i0; // store the word at r3 in output + 0 words
-            sw output of i1; // store the word at `of` in output + 1 word
-            output: (u64, u64)
-        };
-        if overflow != 0 {
-            revert(EXPONENTIATION_OVERFLOW);
-        };
-
-        value
+            r3: Self
+        }
     }
 }
 
