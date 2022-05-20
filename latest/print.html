@@ -2059,6 +2059,9 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
+<p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
+overrides network url in manifest file (if there is one)</p>
 <h2 id="example-3"><a class="header" href="#example-3">EXAMPLE:</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
