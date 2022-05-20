@@ -2,6 +2,7 @@ use crate::cli::PluginsCommand;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::path::PathBuf;
+use tracing::info;
 
 /// Find all forc plugins available via `PATH`.
 ///
@@ -22,9 +23,9 @@ pub(crate) fn exec(command: PluginsCommand) -> Result<()> {
         describe,
     } = command;
 
-    println!("Installed Plugins:");
+    info!("Installed Plugins:");
     for path in crate::cli::plugin::find_all() {
-        println!("{}", print_plugin(path, print_full_path, describe)?);
+        info!("{}", print_plugin(path, print_full_path, describe)?);
     }
     Ok(())
 }

@@ -23,6 +23,8 @@ use sway_core::{
 use sway_utils::constants;
 use url::Url;
 
+use tracing::info;
+
 type GraphIx = u32;
 type Node = Pinned;
 type Edge = DependencyName;
@@ -513,7 +515,7 @@ pub fn graph_to_path_map(
             SourcePinned::Git(git) => {
                 let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
                 if !repo_path.exists() {
-                    println!("  Fetching {}", git.to_string());
+                    info!("  Fetching {}", git.to_string());
                     fetch_git(fetch_id, &dep.name, git)?;
                 }
                 find_dir_within(&repo_path, &dep.name, sway_git_tag).ok_or_else(|| {
@@ -821,7 +823,7 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str)
                 // to validate this. E.g. can we recreate the git hash by hashing the directory or something
                 // along these lines using git?
                 if !repo_path.exists() {
-                    println!("  Fetching {}", pinned_git.to_string());
+                    info!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
                 let path =
