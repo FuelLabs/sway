@@ -259,9 +259,10 @@ impl Block {
 #[doc(hidden)]
 impl BlockContent {
     pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        self.function.block_iter(context).fold(0, |mut acc, b| {
-            acc += b.instruction_iter(context).fold(0, |mut acc, i| {
-                acc += match context.values[i.0].value {
+        self.function
+            .instruction_iter(context)
+            .filter(
+                |(_block, ins_value)| match &context.values[ins_value.0].value {
                     ValueDatum::Instruction(Instruction::ConditionalBranch {
                         true_block,
                         false_block,
@@ -273,12 +274,10 @@ impl BlockContent {
                     ValueDatum::Instruction(Instruction::Branch(block)) => {
                         block.get_label(context) == self.label
                     }
-                    _ => false,
-                } as usize;
-                acc
-            });
-            acc
-        })
+                    _otherwise => false,
+                },
+            )
+            .count()
     }
 }
 
