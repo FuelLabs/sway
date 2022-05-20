@@ -2,7 +2,7 @@ use crate::ops::forc_template;
 use anyhow::Result;
 use clap::Parser;
 
-/// Create a new Forc project from template.
+/// Create a new Forc project from a git template.
 #[derive(Debug, Parser)]
 pub struct Command {
     /// The template url, should be a git repo.

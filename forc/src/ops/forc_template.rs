@@ -63,6 +63,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     // Create the target dir
     let target_dir = current_dir.join(&command.project_name);
 
+    println!("Creating {} from template", &command.project_name);
     // Copy contents from template to target dir
     copy_template_to_target(&from_path, &target_dir)?;
 
