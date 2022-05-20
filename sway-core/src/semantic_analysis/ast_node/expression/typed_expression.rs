@@ -9,6 +9,7 @@ use crate::{
 
 mod method_application;
 use crate::type_engine::TypeId;
+use ast_node::declaration::CreateTypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug, Eq)]
@@ -29,6 +30,18 @@ impl PartialEq for TypedExpression {
         self.expression == other.expression
             && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
             && self.is_constant == other.is_constant
+    }
+}
+
+impl CopyTypes for TypedExpression {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                None => insert_type(look_up_type_id_raw(self.return_type)),
+            };
+
+        self.expression.copy_types(type_mapping);
     }
 }
 
@@ -561,17 +574,6 @@ impl TypedExpression {
         }
 
         ok(typed_expression, warnings, errors)
-    }
-
-    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
-            };
-
-        self.expression.copy_types(type_mapping);
     }
 
     fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
@@ -1426,7 +1428,7 @@ impl TypedExpression {
         };
         let exp = TypedExpression {
             expression,
-            return_type: new_decl.type_id(),
+            return_type: new_decl.create_type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -2490,7 +2492,7 @@ fn check_scrutinee_type(
         }
     };
 
-    ok((ty.type_id(), enum_variant), warnings, errors)
+    ok((ty.create_type_id(), enum_variant), warnings, errors)
 }
 
 fn check_enum_scrutinee_type(

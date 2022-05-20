@@ -1,15 +1,19 @@
+mod create_type_id;
 mod r#enum;
 mod function;
 mod storage;
 mod r#struct;
 mod variable;
+pub(crate) use create_type_id::*;
 pub use function::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
+use super::{
+    copy_types::TypeMapping, impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression,
+};
 use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
     Ident,
@@ -43,10 +47,10 @@ pub enum TypedDeclaration {
     StorageReassignment(TypeCheckedStorageReassignment),
 }
 
-impl TypedDeclaration {
+impl CopyTypes for TypedDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
@@ -68,7 +72,9 @@ impl TypedDeclaration {
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
     }
+}
 
+impl TypedDeclaration {
     /// Attempt to retrieve the declaration as an enum declaration.
     ///
     /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
@@ -247,7 +253,7 @@ impl TypedDeclaration {
                     )],
                 )
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.type_id(),
+            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
@@ -396,8 +402,8 @@ pub struct TypedConstantDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-impl TypedConstantDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedConstantDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.value.copy_types(type_mapping);
     }
 }
@@ -417,8 +423,8 @@ pub struct TypedTraitDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-impl TypedTraitDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedTraitDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.interface_surface
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -436,6 +442,41 @@ pub struct TypedTraitFn {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) return_type_span: Span,
+}
+
+impl CopyTypes for TypedTraitFn {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+    }
+}
+
+impl TypedTraitFn {
+    /// This function is used in trait declarations to insert "placeholder" functions
+    /// in the methods. This allows the methods to use functions declared in the
+    /// interface surface.
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
+        TypedFunctionDeclaration {
+            purity: self.purity,
+            name: self.name.clone(),
+            body: TypedCodeBlock {
+                contents: vec![],
+                whole_block_span: self.name.span().clone(),
+            },
+            parameters: self.parameters.clone(),
+            span: self.name.span().clone(),
+            return_type: self.return_type,
+            return_type_span: self.return_type_span.clone(),
+            visibility: Visibility::Public,
+            type_parameters: vec![],
+            is_contract_call: mode == Mode::ImplAbiFn,
+        }
+    }
 }
 
 /// Represents the left hand side of a reassignment -- a name to locate it in the
@@ -470,8 +511,8 @@ pub struct TypedReassignment {
     pub(crate) rhs: TypedExpression,
 }
 
-impl TypedReassignment {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedReassignment {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
         self.lhs
             .iter_mut()
@@ -484,37 +525,5 @@ impl TypedReassignment {
                     insert_type(look_up_type_id_raw(*r#type))
                 };
             });
-    }
-}
-
-impl TypedTraitFn {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.return_type))
-        };
-    }
-    /// This function is used in trait declarations to insert "placeholder" functions
-    /// in the methods. This allows the methods to use functions declared in the
-    /// interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
-        TypedFunctionDeclaration {
-            purity: self.purity,
-            name: self.name.clone(),
-            body: TypedCodeBlock {
-                contents: vec![],
-                whole_block_span: self.name.span().clone(),
-            },
-            parameters: self.parameters.clone(),
-            span: self.name.span().clone(),
-            return_type: self.return_type,
-            return_type_span: self.return_type_span.clone(),
-            visibility: Visibility::Public,
-            type_parameters: vec![],
-            is_contract_call: mode == Mode::ImplAbiFn,
-        }
     }
 }

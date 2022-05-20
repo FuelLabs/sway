@@ -12,6 +12,12 @@ pub enum Assignable {
         dot_token: DotToken,
         name: Ident,
     },
+    TupleFieldProjection {
+        target: Box<Assignable>,
+        dot_token: DotToken,
+        field: BigUint,
+        field_span: Span,
+    },
 }
 
 impl Spanned for Assignable {
@@ -22,6 +28,9 @@ impl Spanned for Assignable {
             Assignable::FieldProjection { target, name, .. } => {
                 Span::join(target.span(), name.span().clone())
             }
+            Assignable::TupleFieldProjection {
+                target, field_span, ..
+            } => Span::join(target.span(), field_span.clone()),
         }
     }
 }

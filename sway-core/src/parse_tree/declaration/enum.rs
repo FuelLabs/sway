@@ -2,7 +2,8 @@ use crate::{
     error::*,
     parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::{
-        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
+        ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+        insert_type_parameters,
         namespace::Namespace,
     },
     type_engine::*,
