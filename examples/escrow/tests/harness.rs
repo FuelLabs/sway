@@ -17,12 +17,12 @@ async fn setup() -> (Metadata, Metadata, Metadata, ContractId) {
     // Create some addresses with the minimum amount of asset: 1 Million
     let (pk1, mut coins1) = setup_address_and_coins(1, 1000000);
     let (pk2, coins2) = setup_address_and_coins(1, 1000000);
-    let (pk3, coins3) = setup_address_and_coins(1, 110000000);
+    let (pk3, coins3) = setup_address_and_coins(1, 1000000);
 
     coins1.extend(coins2);
     coins1.extend(coins3);
 
-    // Launch a provider with those addresses
+    // Launch a provider with those coins
     let (provider, _) = setup_test_provider(coins1).await;
 
     // Get the wallets from that provider
@@ -114,6 +114,7 @@ mod deposit {
             .call()
             .await
             .unwrap();
+
         deployer
             .asset
             .unwrap()
@@ -123,18 +124,8 @@ mod deposit {
             .await
             .unwrap();
 
-        // assert_eq!(
-        //     buyer.wallet
-        //         .get_spendable_coins(&AssetId::from(*asset_id), amount)
-        //         .await
-        //         .unwrap()[0]
-        //         .amount,
-        //     amount.into()
-        // );
-
-        // TODO: add 2 assertions
-        //       - 1) buyer has asset amount
-        //       - 2) contract does not have asset amount
+        // TODO
+        //       -contract does not have asset amount
 
         // Test
         let tx_params = TxParameters::new(None, Some(1_000_000), None, None);
@@ -152,9 +143,8 @@ mod deposit {
                 .value
         );
 
-        // TODO: add 2 assertions
-        //       - 1) buyer no longer has asset amount
-        //       - 2) contract has asset amount
+        // TODO:
+        //       - contract has asset amount
     }
 
     #[tokio::test]
@@ -368,9 +358,8 @@ mod approve {
             .await
             .unwrap();
 
-        // TODO: add 2 assertions
-        //       - 1) buyer & seller no longer has asset amount
-        //       - 2) contract has asset 2*amount
+        // TODO:
+        //       -contract has asset 2*amount
 
         // Test
         assert!(buyer.escrow.approve().call().await.unwrap().value);
@@ -385,9 +374,8 @@ mod approve {
                 .value
         );
 
-        // TODO: add 2 assertions
-        //       - 1) buyer & seller each have their asset amount back
-        //       - 2) contract has no asset amount
+        // TODO:
+        //       - contract has 0 asset amount
     }
 
     #[tokio::test]
@@ -487,9 +475,8 @@ mod withdraw {
             .await
             .unwrap();
 
-        // TODO: add 2 assertions
-        //       - 1) buyer no longer has asset amount
-        //       - 2) contract has asset amount
+        // TODO
+        //       - contract has asset amount
 
         // Test
         assert!(
@@ -503,9 +490,8 @@ mod withdraw {
                 .value
         );
 
-        // TODO: add 2 assertions
-        //       - 1) buyer has their asset amount back
-        //       - 2) contract no longer has asset amount
+        // TODO:
+        //       -contract no longer has asset amount
     }
 
     #[tokio::test]
