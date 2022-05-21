@@ -4,7 +4,7 @@ use std::{
     address::Address,
     assert::require,
     chain::auth::{AuthError, Sender, msg_sender},
-    context::{msg_amount, call_frames::{contract_id, msg_asset_id}},
+    context::{call_frames::{contract_id, msg_asset_id}, msg_amount},
     contract_id::ContractId,
     result::*,
     revert::revert,
@@ -47,18 +47,21 @@ storage {
     seller: User,
     asset: ContractId,
     // state: State,
-    state: u64
+    state: u64,
 }
 
 impl Escrow for Contract {
-
     fn constructor(buyer: Address, seller: Address, asset: ContractId, asset_amount: u64) -> bool {
         // require(storage.state == State::Void, Error::CannotReinitialize);
         require(storage.state == 0, Error::CannotReinitialize);
 
         storage.asset_amount = asset_amount;
-        storage.buyer = User { address: buyer, approved: false, deposited: false };
-        storage.seller = User { address: seller, approved: false, deposited: false };
+        storage.buyer = User {
+            address: buyer, approved: false, deposited: false
+        };
+        storage.seller = User {
+            address: seller, approved: false, deposited: false
+        };
         storage.asset = asset;
         storage.state = 1;
         // storage.state = State::Pending;
@@ -81,8 +84,7 @@ impl Escrow for Contract {
                 require(!storage.buyer.deposited, Error::AlreadyDeposited);
 
                 storage.buyer.deposited = true;
-            }
-            else if address == storage.seller.address {
+            } else if address == storage.seller.address {
                 require(!storage.seller.deposited, Error::AlreadyDeposited);
 
                 storage.seller.deposited = true;
@@ -107,8 +109,7 @@ impl Escrow for Contract {
                 require(storage.buyer.deposited, Error::DepositRequired);
 
                 storage.buyer.approved = true;
-            } 
-            else if address == storage.seller.address {
+            } else if address == storage.seller.address {
                 require(storage.seller.deposited, Error::DepositRequired);
 
                 storage.seller.approved = true;
@@ -144,8 +145,7 @@ impl Escrow for Contract {
                 storage.buyer.approved = false;
 
                 transfer_to_output(storage.asset_amount, storage.asset, storage.buyer.address);
-            } 
-            else if address == storage.seller.address {
+            } else if address == storage.seller.address {
                 require(storage.seller.deposited, Error::DepositRequired);
 
                 storage.seller.deposited = false;
@@ -159,5 +159,4 @@ impl Escrow for Contract {
 
         true
     }
-
 }
