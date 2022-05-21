@@ -8,4 +8,4 @@ edition = "2021"
 fuel-core = { version = "0.6", default-features = false }
 fuel-gql-client = { version = "0.6", default-features = false }
 fuel-tx = "0.9"
-fuels = "0.12"
+fuels = "0.13"

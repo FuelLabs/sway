@@ -4,6 +4,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use forc_util::init_tracing_subscriber;
 use forc_util::println_green;
 use serde::Deserialize;
 use std::{
@@ -11,6 +12,7 @@ use std::{
     io::{self, Cursor},
 };
 use tar::Archive;
+use tracing::{error, info};
 use warp::Filter;
 
 #[derive(Debug, Parser)]
@@ -47,11 +49,15 @@ struct GitHubReleaseAsset {
 const REPO_RELEASES_URL: &str = "https://api.github.com/repos/FuelLabs/block-explorer-v2/releases";
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     let app = App::parse();
-    match app.subcmd {
+    let result = match app.subcmd {
         Some(Subcommand::Clean) => clean(),
         None => run(app).await,
+    };
+    if let Err(err) = result {
+        error!("Error: {:?}", err);
+        std::process::exit(1);
     }
 }
 
@@ -64,6 +70,7 @@ fn clean() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
+    init_tracing_subscriber();
     let App { port, .. } = app;
     let releases = get_github_releases().await?;
     let release = releases
@@ -139,7 +146,7 @@ async fn start_server(port: &str, version: &str) -> Result<()> {
     let port_number = port
         .parse::<u16>()
         .with_context(|| "invalid port number, expected integer value in the range [0, 65535]")?;
-    println!("Running server on http://127.0.0.1:{}", port_number);
+    info!("Running server on http://127.0.0.1:{}", port_number);
     warp::serve(routes).run(([127, 0, 0, 1], port_number)).await;
     Ok(())
 }
