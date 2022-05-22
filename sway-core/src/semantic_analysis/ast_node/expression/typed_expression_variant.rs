@@ -110,6 +110,9 @@ pub(crate) enum TypedExpressionVariant {
         type_id: TypeId,
         span: Span,
     },
+    GenerateB256Seed {
+        span: Span,
+    },
     SizeOfValue {
         expr: Box<TypedExpression>,
     },
@@ -471,6 +474,7 @@ impl CopyTypes for TypedExpressionVariant {
                 };
                 variant.copy_types(type_mapping);
             }
+            GenerateB256Seed { .. } => (),
             AbiName(_) => (),
         }
     }
@@ -642,6 +646,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::SizeOfValue { expr } => {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
+            TypedExpressionVariant::GenerateB256Seed { .. } => "generate_b256_seed".to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
         }
     }

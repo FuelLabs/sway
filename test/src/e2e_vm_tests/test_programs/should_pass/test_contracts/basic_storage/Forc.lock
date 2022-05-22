@@ -1,18 +1,11 @@
 [[package]]
 name = 'basic_storage'
-dependencies = [
-    'basic_storage_abi',
-    'std',
-]
+dependencies = ['basic_storage_abi']
 
 [[package]]
 name = 'basic_storage_abi'
-dependencies = []
+dependencies = ['core']
 
 [[package]]
 name = 'core'
 dependencies = []
-
-[[package]]
-name = 'std'
-dependencies = ['core']

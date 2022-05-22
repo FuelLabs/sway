@@ -6,6 +6,9 @@ use crate::{
     ReturnStatement,
 };
 
+use crate::semantic_analysis::ast_node::expression::typed_expression::method_application::type_check_method_application;
+
+use fuel_crypto::Hasher;
 use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
@@ -1098,8 +1101,7 @@ fn reassignment(
             dead_code_graph,
             mode: Mode::NonAbi,
             opts,
-        })
-        .map(TypedDeclaration::StorageReassignment),
+        }),
     }
 }
 
@@ -1617,7 +1619,7 @@ impl PartialEq for TypeCheckedStorageReassignDescriptor {
 
 fn reassign_storage_subfield(
     arguments: TypeCheckArguments<'_, (Vec<Ident>, Span, Expression)>,
-) -> CompileResult<TypeCheckedStorageReassignment> {
+) -> CompileResult<TypedDeclaration> {
     let TypeCheckArguments {
         checkee: (fields, span, rhs),
         namespace,
@@ -1673,7 +1675,6 @@ fn reassign_storage_subfield(
             _ => vec![],
         }
     }
-    let mut curr_type = *initial_field_type;
 
     // if the previously iterated type was a struct, put its fields here so we know that,
     // in the case of a subfield, we can type check the that the subfield exists and its type.
@@ -1687,7 +1688,6 @@ fn reassign_storage_subfield(
             .find(|x| x.name.as_str() == field.as_str())
         {
             Some(struct_field) => {
-                curr_type = struct_field.r#type;
                 type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
                     name: field.clone(),
                     r#type: struct_field.r#type,
@@ -1709,29 +1709,62 @@ fn reassign_storage_subfield(
             }
         }
     }
+
+    // Function call
+    let method_name = MethodName::FromType {
+        call_path: CallPath {
+            prefixes: vec![
+                Ident::new_with_override("core", span.clone()),
+                Ident::new_with_override("storable", span.clone()),
+            ],
+            suffix: Ident::new_with_override("write", span.clone()),
+            is_absolute: false,
+        },
+        type_name: None,      //TypeInfo::Tuple(Vec::new()),
+        type_name_span: None, //Some(span.clone()),
+    };
+
+    // Calculate the storage location hash for the given field
+    let storage_slot_to_hash = format!(
+        "{}{}",
+        sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+        ix.to_usize()
+    );
+    let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+    dbg!(hashed_storage_slot);
+
     let rhs = check!(
-        TypedExpression::type_check(TypeCheckArguments {
-            checkee: rhs,
+        type_check_method_application(
+            method_name,
+            vec![],
+            vec![
+                rhs,
+                Expression::Literal {
+                    value: Literal::B256(hashed_storage_slot.into()),
+                    span: span.clone(),
+                }
+            ],
+            vec![],
+            span.clone(),
             namespace,
-            return_type_annotation: curr_type,
-            help_text: Default::default(),
             self_type,
             build_config,
             dead_code_graph,
-            mode: Mode::NonAbi,
             opts,
-        }),
-        error_recovery_expr(span),
+        ),
+        return err(warnings, errors),
         warnings,
         errors
     );
 
     ok(
-        TypeCheckedStorageReassignment {
-            fields: type_checked_buf,
-            ix,
-            rhs,
-        },
+        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+            name: Ident::new_with_override("r#storage_reassignment", span),
+            body: rhs,
+            is_mutable: VariableMutability::Immutable,
+            const_decl_origin: false,
+            type_ascription: insert_type(TypeInfo::Tuple(vec![])),
+        }),
         warnings,
         errors,
     )

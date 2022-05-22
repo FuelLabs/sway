@@ -416,6 +416,7 @@ impl Dependencies {
                 .gather_from_opt_expr(r#else.as_deref()),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
+            Expression::BuiltinGenerateB256Seed { .. } => self,
         }
     }
 

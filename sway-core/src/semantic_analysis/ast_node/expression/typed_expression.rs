@@ -6,8 +6,9 @@ use crate::{
     semantic_analysis::ast_node::*,
     type_engine::{insert_type, AbiName, IntegerBits},
 };
+use fuel_crypto::Hasher;
 
-mod method_application;
+pub mod method_application;
 use crate::type_engine::TypeId;
 use ast_node::declaration::CreateTypeId;
 use method_application::type_check_method_application;
@@ -86,6 +87,7 @@ impl TypedExpression {
             | Literal(_)
             | StorageAccess { .. }
             | TypeProperty { .. }
+            | GenerateB256Seed { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -191,6 +193,7 @@ impl TypedExpression {
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
+            | TypedExpressionVariant::GenerateB256Seed { .. }
             | TypedExpressionVariant::FunctionApplication { .. } => vec![],
         }
     }
@@ -515,6 +518,16 @@ impl TypedExpression {
                     help_text: Default::default(),
                 },
                 span,
+            ),
+            Expression::BuiltinGenerateB256Seed { span } => ok(
+                TypedExpression {
+                    expression: TypedExpressionVariant::GenerateB256Seed { span: span.clone() },
+                    return_type: insert_type(TypeInfo::B256),
+                    is_constant: IsConstant::No,
+                    span,
+                },
+                vec![],
+                vec![],
             ),
         };
         let mut typed_expression = match res.value {
@@ -1575,12 +1588,19 @@ impl TypedExpression {
         arguments: TypeCheckArguments<'_, Vec<Ident>>,
         span: &Span,
     ) -> CompileResult<TypedExpression> {
-        let TypeCheckArguments {
-            checkee, namespace, ..
-        } = arguments;
-
         let mut warnings = vec![];
         let mut errors = vec![];
+        let checkee_copy = arguments.checkee.clone();
+        let TypeCheckArguments {
+            checkee: _field_names,
+            namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            opts,
+            ..
+        } = arguments;
+
         if !namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
@@ -1595,20 +1615,48 @@ impl TypedExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            namespace.apply_storage_load(checkee, &storage_fields),
+            namespace.apply_storage_load(checkee_copy, &storage_fields),
             return err(warnings, errors),
             warnings,
             errors
         );
-        ok(
-            TypedExpression {
-                expression: TypedExpressionVariant::StorageAccess(storage_access),
-                return_type,
-                is_constant: IsConstant::No,
-                span: span.clone(),
+
+        let method_name = MethodName::FromType {
+            call_path: CallPath {
+                prefixes: vec![
+                    Ident::new_with_override("core", span.clone()),
+                    Ident::new_with_override("storable", span.clone()),
+                ],
+                suffix: Ident::new_with_override("read", span.clone()),
+                is_absolute: false,
             },
-            warnings,
-            errors,
+            type_name: Some(look_up_type_id(return_type)),
+            type_name_span: Some(span.clone()),
+        };
+
+        // Calculate the storage location hash for the given field
+        let storage_slot_to_hash = format!(
+            "{}{}",
+            sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+            storage_access.ix.to_usize()
+        );
+        let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+        dbg!(hashed_storage_slot);
+
+        type_check_method_application(
+            method_name,
+            vec![],
+            vec![Expression::Literal {
+                value: Literal::B256(hashed_storage_slot.into()),
+                span: span.clone(),
+            }],
+            vec![],
+            span.clone(),
+            namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            opts,
         )
     }
 

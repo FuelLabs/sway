@@ -170,6 +170,9 @@ pub enum Expression {
         type_span: Span,
         span: Span,
     },
+    BuiltinGenerateB256Seed {
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -273,6 +276,7 @@ impl Expression {
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             BuiltinGetTypeProperty { span, .. } => span,
+            BuiltinGenerateB256Seed { span, .. } => span,
         })
         .clone()
     }

@@ -1,7 +1,7 @@
 mod enum_instantiation;
 mod func_app_instantiation;
 mod struct_expr_field;
-mod typed_expression;
+pub mod typed_expression;
 mod typed_expression_variant;
 mod usefulness;
 pub(crate) use enum_instantiation::instantiate_enum;

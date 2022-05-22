@@ -1035,6 +1035,13 @@ fn connect_expression(
             )?;
             Ok(expr)
         }
+        GenerateB256Seed { .. } => {
+            let node = graph.add_node("Generate B256 Seed".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
+        }
         AbiName(abi_name) => {
             if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
                 // abis are treated as traits here

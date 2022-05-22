@@ -9,6 +9,7 @@ mod evm_ecr;
 mod hashing;
 mod intrinsics;
 mod logging;
+mod mapping;
 mod option;
 mod reentrancy;
 mod registers;
