@@ -68,7 +68,7 @@ pub(crate) fn type_check_method_application(
                     if type_args.is_empty() {
                         TypeInfo::Custom {
                             name,
-                            type_arguments,
+                            type_arguments: type_arguments.clone(),
                         }
                     } else {
                         let type_args_span = type_args
@@ -111,6 +111,44 @@ pub(crate) fn type_check_method_application(
             let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
             check!(
                 namespace.find_method_for_type(ty, &abs_path, self_type, &args_buf),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+    };
+    // if this is a generic function, monomorphize its internal types
+    let method = match (method.type_parameters.is_empty(), type_arguments.is_empty()) {
+        (true, true) => method,
+        (true, false) => {
+            let type_arguments_span = type_arguments
+                .iter()
+                .map(|x| x.span.clone())
+                .reduce(Span::join)
+                .unwrap_or_else(|| method.name.span().clone());
+            errors.push(CompileError::DoesNotTakeTypeArguments {
+                name: method.name,
+                span: type_arguments_span,
+            });
+            return err(warnings, errors);
+        }
+        _ => {
+            let mut type_arguments = type_arguments;
+            for type_argument in type_arguments.iter_mut() {
+                type_argument.type_id = check!(
+                    namespace.resolve_type_with_self(
+                        look_up_type_id(type_argument.type_id),
+                        self_type,
+                        type_argument.span.clone(),
+                        true,
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            check!(
+                method.monomorphize(type_arguments, self_type),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -201,6 +239,10 @@ pub(crate) fn type_check_method_application(
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
+        /*
+        let mut param = param.clone();
+        param.r#type = insert_type(look_up_type_id(param.r#type));
+        */
         // if the return type cannot be cast into the annotation type then it is a type error
         let (mut new_warnings, new_errors) = unify_with_self(
             arg.return_type,
