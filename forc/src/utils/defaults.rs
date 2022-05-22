@@ -32,8 +32,8 @@ license = "Apache-2.0"
 [dependencies]
 fuel-gql-client = {{ version = "0.6", default-features = false }}
 fuel-tx = "0.9"
-fuels = "0.12"
-fuels-abigen-macro = "0.12"
+fuels = "0.13"
+fuels-abigen-macro = "0.13"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -105,19 +105,16 @@ abigen!(MyContract, "out/debug/"#,
         r#"-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
-    // Deploy the compiled contract
-    let compiled = Contract::load_sway_contract("./out/debug/"#,
-        project_name,
-        r#".bin").unwrap();
-
     // Launch a local network and deploy the contract
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+    let id = Contract::deploy("./out/debug/"#,
+        project_name,
+        r#".bin", &wallet, TxParameters::default())
         .await
         .unwrap();
 
-    let instance = MyContract::new(id.to_string(), provider, wallet);
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
@@ -145,7 +142,7 @@ fn get_author() -> String {
 #[test]
 fn parse_default_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
-    println!(
+    tracing::info!(
         "{:#?}",
         toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
     )
@@ -153,7 +150,7 @@ fn parse_default_manifest() {
 
 #[test]
 fn parse_default_tests_manifest() {
-    println!(
+    tracing::info!(
         "{:#?}",
         toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
     )

@@ -5,6 +5,7 @@ use crate::asm_lang::{
     ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     VirtualRegister,
 };
+use crate::semantic_analysis::declaration::CreateTypeId;
 use crate::{
     error::*,
     semantic_analysis::ast_node::{TypedEnumDeclaration, TypedExpression},
@@ -44,7 +45,7 @@ pub(crate) fn convert_enum_instantiation_to_asm(
         VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
-    let ty = match resolve_type(decl.type_id(), &decl.span) {
+    let ty = match resolve_type(decl.create_type_id(), &decl.span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());

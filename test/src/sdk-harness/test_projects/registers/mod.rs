@@ -1,6 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
-use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -13,14 +12,16 @@ abigen!(
 //    -  Ability to return any type of Contract.
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract {
-    let compiled =
-        Contract::load_sway_contract("test_projects/registers/out/debug/registers.bin").unwrap();
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let wallet = launch_provider_and_get_wallet().await;
+    let id = Contract::deploy(
+        "test_projects/registers/out/debug/registers.bin",
+        &wallet,
+        TxParameters::default(),
+    )
+    .await
+    .unwrap();
 
-    TestRegistersContract::new(id.to_string(), provider, wallet)
+    TestRegistersContract::new(id.to_string(), wallet)
 }
 
 #[tokio::test]

@@ -1,7 +1,7 @@
 pub use {
     crate::{
         assignable::Assignable,
-        attribute::{Attribute, AttributeDecl},
+        attribute::{Annotated, Attribute, AttributeDecl},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
         dependency::Dependency,
         error::{ParseError, ParseErrorKind},

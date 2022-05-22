@@ -11,15 +11,16 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let compiled =
-        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin")
-            .unwrap();
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    let instance = TxContractTest::new(contract_id.to_string(), provider.clone(), wallet.clone());
+    let contract_id = Contract::deploy(
+        "test_artifacts/tx_contract/out/debug/tx_contract.bin",
+        &wallet,
+        TxParameters::default(),
+    )
+    .await
+    .unwrap();
+    let instance = TxContractTest::new(contract_id.to_string(), wallet.clone());
 
     (instance, contract_id, wallet)
 }

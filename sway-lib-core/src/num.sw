@@ -71,3 +71,21 @@ impl u8 {
         8
     }
 }
+
+impl b256 {
+    /// The smallest value that can be represented by this type.
+    pub fn min() -> b256 {
+        0x0000000000000000000000000000000000000000000000000000000000000000
+    }
+
+    /// The largest value that can be represented by this type,
+    /// 2<sup>256</sup> - 1.
+    pub fn max() -> b256 {
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    }
+
+    /// The size of this type in bits.
+    pub fn bits() -> u64 {
+        256
+    }
+}

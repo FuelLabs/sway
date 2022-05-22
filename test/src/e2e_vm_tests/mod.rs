@@ -293,10 +293,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        /*
+         * This test is disabled because in order to work correctly it requires that we implement
+         * `&mut self` methods.
+         *
+         * See: #1188
         (
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
+        */
         (
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
@@ -328,6 +334,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x85, 0xd7, 0x60, 0xb8, 0xef, 0x93, 0xdc, 0x70, 0xe0, 0xfb, 0xc3, 0x06, 0xed, 0x9b,
                 0x67, 0x6e, 0x5f, 0x13,
             ])),
+        ),
+        (
+            "should_pass/language/multi_impl_self",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/implicit_return",
+            ProgramState::Return(42),
         ),
     ];
 
@@ -455,8 +469,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/double_underscore_var",
         "should_fail/double_underscore_struct",
         "should_fail/double_underscore_enum",
+        "should_fail/assign_to_field_of_non_mutable_struct",
         "should_fail/abi_method_signature_mismatch",
         "should_fail/trait_method_signature_mismatch",
+        "should_fail/impure_read_calls_impure_write",
+        "should_fail/abi_impl_purity_mismatch",
+        "should_fail/abi_pure_calls_impure",
+        "should_fail/impure_abi_read_calls_impure_write",
+        "should_fail/impure_trait_read_calls_impure_write",
+        "should_fail/trait_impl_purity_mismatch",
+        "should_fail/trait_pure_calls_impure",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -563,14 +585,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     }
 
     if number_of_tests_run == 0 {
-        println!(
+        tracing::info!(
             "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
             filter_regex.map(|x| x.to_string()).unwrap_or_default(),
             total_number_of_tests
         );
     } else {
-        println!("_________________________________\nTests passed.");
-        println!(
+        tracing::info!("_________________________________\nTests passed.");
+        tracing::info!(
             "{} tests run ({} skipped)",
             number_of_tests_run,
             total_number_of_tests - number_of_tests_run
