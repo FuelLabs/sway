@@ -165,7 +165,7 @@ async fn can_get_receipts_root() {
         .call()
         .await
         .unwrap();
-    assert_ne!(Bytes32::from(result.value), zero_receipts_root);
+    assert_eq!(Bytes32::from(result.value), zero_receipts_root);
 }
 
 #[tokio::test]
