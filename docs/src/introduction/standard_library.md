@@ -8,6 +8,7 @@ The standard library is made implicitly available to all Forc projects created u
 
 ```sway
 use std::address::Address;
+```
 
 ## Using the Standard Library
 
