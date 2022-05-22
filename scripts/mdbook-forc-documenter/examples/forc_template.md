@@ -2,8 +2,8 @@
 ## EXAMPLE:
 
 
-```console
-$ forc template --url https://github.com/owner/template/ --project_name my_example_project
+```sh
+forc template --url https://github.com/owner/template/ --project_name my_example_project
 ```
 
 The command above fetches the HEAD of the `template` repo and searchs for `Forc.toml` at the root of the fetched repo. It will fetch the repo and preapare a new `Forc.toml` with new project name. Outputs everthing to `current_dir/project_name`.
