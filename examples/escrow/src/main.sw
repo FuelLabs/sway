@@ -16,7 +16,7 @@ abi Escrow {
     fn deposit() -> bool;
     fn approve() -> bool;
     fn withdraw() -> bool;
-    fn get_balance(asset_id: ContractId) -> u64;
+    fn get_balance() -> u64;
     fn get_user_data(user: Address) -> (bool, bool);
     fn get_state() -> u64;
 }
@@ -200,8 +200,8 @@ impl Escrow for Contract {
     }
 
     /// Returns the amount of the specified asset in this contract
-    fn get_balance(asset_id: ContractId) -> u64 {
-        this_balance(asset_id)
+    fn get_balance() -> u64 {
+        this_balance(storage.asset)
     }
 
     /// Returns data regarding the state of a user i.e. whether they have (deposited, approved)
