@@ -1,5 +1,6 @@
 use crate::{
     error::*,
+    namespace::Items,
     parse_tree::*,
     semantic_analysis::{
         ast_node::{
@@ -19,6 +20,8 @@ use sway_types::Span;
 
 mod function_parameter;
 pub use function_parameter::*;
+
+use super::MonomorphizeHelper;
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -90,6 +93,32 @@ impl CopyTypes for TypedFunctionDeclaration {
             };
 
         self.body.copy_types(type_mapping);
+    }
+}
+
+impl MonomorphizeHelper for TypedFunctionDeclaration {
+    type Output = TypedFunctionDeclaration;
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+
+    fn monomorphize_inner(
+        self,
+        type_mapping: &TypeMapping,
+        _namespace: &mut Items,
+    ) -> Self::Output {
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        new_decl
     }
 }
 

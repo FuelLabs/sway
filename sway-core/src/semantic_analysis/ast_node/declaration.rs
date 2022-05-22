@@ -1,9 +1,13 @@
+mod create_type_id;
 mod r#enum;
 mod function;
+mod monomorphize;
 mod storage;
 mod r#struct;
 mod variable;
+pub(crate) use create_type_id::*;
 pub use function::*;
+pub(crate) use monomorphize::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use storage::*;
@@ -251,7 +255,7 @@ impl TypedDeclaration {
                     )],
                 )
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.type_id(),
+            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),

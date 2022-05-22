@@ -827,7 +827,7 @@ pub(crate) fn compile_ast_to_asm(
     };
 
     if build_config.print_intermediate_asm {
-        println!("{}", asm);
+        tracing::info!("{}", asm);
     }
 
     let finalized_asm = asm
@@ -836,7 +836,7 @@ pub(crate) fn compile_ast_to_asm(
         .optimize();
 
     if build_config.print_finalized_asm {
-        println!("{}", finalized_asm);
+        tracing::info!("{}", finalized_asm);
     }
 
     check!(
@@ -1120,7 +1120,7 @@ fn convert_node_to_asm(
             ok(NodeAsmResult::JustAsm(asm), warnings, errors)
         }
         a => {
-            println!("Unimplemented: {:?}", a);
+            tracing::error!("Unimplemented: {:?}", a);
             errors.push(CompileError::Unimplemented(
                 "The ASM for this construct has not been written yet.",
                 node.clone().span,
