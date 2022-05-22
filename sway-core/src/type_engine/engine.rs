@@ -24,7 +24,7 @@ impl Engine {
 
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         match self.slab.get(id) {
-            TypeInfo::Ref(other) => self.look_up_type_id(other),
+            TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
     }
@@ -66,9 +66,9 @@ impl Engine {
             //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
 
             // Follow any references
-            (Ref(received), Ref(expected)) if received == expected => (vec![], vec![]),
-            (Ref(received), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
+            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
+            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -77,7 +77,7 @@ impl Engine {
             (Unknown, _) => {
                 match self
                     .slab
-                    .replace(received, &Unknown, TypeInfo::Ref(expected))
+                    .replace(received, &Unknown, TypeInfo::Ref(expected, span.clone()))
                 {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
@@ -86,7 +86,7 @@ impl Engine {
             (_, Unknown) => {
                 match self
                     .slab
-                    .replace(expected, &Unknown, TypeInfo::Ref(received))
+                    .replace(expected, &Unknown, TypeInfo::Ref(received, span.clone()))
                 {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
@@ -140,14 +140,20 @@ impl Engine {
                 (vec![], vec![])
             }
             (ref received_info @ UnknownGeneric { .. }, _) => {
-                self.slab
-                    .replace(received, received_info, TypeInfo::Ref(expected));
+                self.slab.replace(
+                    received,
+                    received_info,
+                    TypeInfo::Ref(expected, span.clone()),
+                );
                 (vec![], vec![])
             }
 
             (_, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab
-                    .replace(expected, expected_info, TypeInfo::Ref(received));
+                self.slab.replace(
+                    expected,
+                    expected_info,
+                    TypeInfo::Ref(received, span.clone()),
+                );
                 (vec![], vec![])
             }
 

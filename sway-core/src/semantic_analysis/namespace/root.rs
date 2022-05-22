@@ -187,7 +187,7 @@ impl Root {
                 insert_type(TypeInfo::Array(elem_type_id, size))
             }
             TypeInfo::SelfType => self_type,
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Ref(id, _sp) => id,
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
@@ -285,7 +285,7 @@ impl Root {
                 );
                 insert_type(TypeInfo::Array(elem_type_id, size))
             }
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Ref(id, _sp) => id,
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
