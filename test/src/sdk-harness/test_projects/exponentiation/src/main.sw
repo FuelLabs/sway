@@ -16,6 +16,7 @@ fn main() -> bool {
     assert(2.pow(3) == 8);
     assert(42.pow(2) == 1764);
     assert(42.pow(3) == 74088);
+    assert(100.pow(100) > 100);
     assert(100.pow(5) == 10000000000);
     assert(100.pow(8) == 10000000000000000);
     assert(100.pow(9) == 1000000000000000000);
