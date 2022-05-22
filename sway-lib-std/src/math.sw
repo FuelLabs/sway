@@ -1,11 +1,5 @@
 library math;
 
-use ::revert::revert;
-use ::logging::log;
-
-const EXPONENTIATION_OVERFLOW = 11;
-const OVERFLOW_BIT = 2;
-
 pub trait Root {
     fn sqrt(self) -> Self;
 }
