@@ -15,9 +15,10 @@ use url::Url;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
     validate_name(&command.project_name, "project name")?;
-    let template_name = match command.template_name.clone() {
+    // The name used for the temporary local repo directory used for fetching the template.
+    let local_repo_name = match command.template_name.clone() {
         Some(temp_name) => temp_name,
-        None => "DEFAULT_TEMP_NAME".to_string(),
+        None => format!("{}-template-source", command.project_name),
     };
 
     let source = SourceGit {
@@ -25,29 +26,29 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         reference: forc_pkg::GitReference::DefaultBranch,
     };
 
-    let current_dir = &env::current_dir().expect("cant get current dir");
+    let current_dir = &env::current_dir()?;
 
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(current_dir, fetch_ts);
 
     println!("Resolving the HEAD of {}", source.repo);
-    let git_source = pin_git(fetch_id, &template_name, source)?;
+    let git_source = pin_git(fetch_id, &local_repo_name, source)?;
 
     let repo_path = git_commit_path(
-        &template_name,
+        &local_repo_name,
         &git_source.source.repo,
         &git_source.commit_hash,
     );
     if !repo_path.exists() {
         println!("  Fetching {}", git_source.to_string());
-        fetch_git(fetch_id, &template_name, &git_source)?;
+        fetch_git(fetch_id, &local_repo_name, &git_source)?;
     }
 
     let from_path = match command.template_name {
-        Some(_) => find_dir_within(&repo_path, &template_name, SWAY_GIT_TAG).ok_or_else(|| {
+        Some(ref template_name) => find_dir_within(&repo_path, template_name, SWAY_GIT_TAG).ok_or_else(|| {
             anyhow!(
                 "failed to find a template `{}` in {}",
-                template_name,
+                local_repo_name,
                 command.url
             )
         })?,
