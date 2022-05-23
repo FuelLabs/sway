@@ -844,7 +844,7 @@ fn reassignment(
                                 ..
                             } => {
                                 names_vec.push(ReassignmentLhs {
-                                    kind: ReassignmentLhsKind::StructField {
+                                    kind: ProjectionKind::StructField {
                                         name: field_to_access,
                                     },
                                     r#type: type_checked.return_type,
@@ -860,7 +860,7 @@ fn reassignment(
 
                     let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
                     names_vec.push(ReassignmentLhs {
-                        kind: ReassignmentLhsKind::StructField {
+                        kind: ProjectionKind::StructField {
                             name: field_to_access,
                         },
                         r#type: final_return_type,
@@ -871,7 +871,7 @@ fn reassignment(
                             std::iter::once(base_name.clone())
                                 .chain(names_vec.iter().map(|ReassignmentLhs { kind, .. }| {
                                     match kind {
-                                        ReassignmentLhsKind::StructField { name } => name.clone(),
+                                        ProjectionKind::StructField { name } => name.clone(),
                                     }
                                 }))
                                 .collect::<Vec<_>>()

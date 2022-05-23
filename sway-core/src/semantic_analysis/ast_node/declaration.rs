@@ -482,12 +482,12 @@ impl TypedTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub kind: ReassignmentLhsKind,
+    pub kind: ProjectionKind,
     pub r#type: TypeId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ReassignmentLhsKind {
+pub enum ProjectionKind {
     StructField { name: Ident },
 }
 
@@ -510,16 +510,16 @@ impl ReassignmentLhs {
     }
 }
 
-impl ReassignmentLhsKind {
+impl ProjectionKind {
     pub(crate) fn span(&self) -> Span {
         match self {
-            ReassignmentLhsKind::StructField { name } => name.span().clone(),
+            ProjectionKind::StructField { name } => name.span().clone(),
         }
     }
 
     pub(crate) fn pretty_print(&self) -> &str {
         match self {
-            ReassignmentLhsKind::StructField { name } => name.as_str(),
+            ProjectionKind::StructField { name } => name.as_str(),
         }
     }
 }
@@ -546,7 +546,7 @@ impl CopyTypes for TypedReassignment {
                  ..
              }| {
                 match kind {
-                    ReassignmentLhsKind::StructField { name } => {
+                    ProjectionKind::StructField { name } => {
                         r#type.update_type(type_mapping, name.span());
                     }
                 }

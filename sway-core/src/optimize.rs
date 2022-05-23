@@ -1715,7 +1715,7 @@ impl FnCompiler {
             )),
         }?;
 
-        let field_kind = ReassignmentLhsKind::StructField {
+        let field_kind = ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
         let field_idx = match get_struct_name_and_field_index(struct_type_id, field_kind) {
@@ -2359,13 +2359,13 @@ impl LexicalMap {
 
 fn get_struct_name_and_field_index(
     field_type: TypeId,
-    field_kind: ReassignmentLhsKind,
+    field_kind: ProjectionKind,
 ) -> Option<(String, Option<u64>)> {
     let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
     match (ty_info, field_kind) {
         (
             TypeInfo::Struct { name, fields, .. },
-            ReassignmentLhsKind::StructField { name: field_name },
+            ProjectionKind::StructField { name: field_name },
         ) => Some((
             name.as_str().to_owned(),
             fields
@@ -2385,7 +2385,7 @@ fn get_struct_name_and_field_index(
 
 trait TypedNamedField {
     fn get_type(&self) -> TypeId;
-    fn get_field_kind(&self) -> ReassignmentLhsKind;
+    fn get_field_kind(&self) -> ProjectionKind;
 }
 
 macro_rules! impl_typed_named_field_for {
@@ -2394,8 +2394,8 @@ macro_rules! impl_typed_named_field_for {
             fn get_type(&self) -> TypeId {
                 self.r#type
             }
-            fn get_field_kind(&self) -> ReassignmentLhsKind {
-                ReassignmentLhsKind::StructField {
+            fn get_field_kind(&self) -> ProjectionKind {
+                ProjectionKind::StructField {
                     name: self.name.clone(),
                 }
             }
@@ -2407,7 +2407,7 @@ impl TypedNamedField for ReassignmentLhs {
     fn get_type(&self) -> TypeId {
         self.r#type
     }
-    fn get_field_kind(&self) -> ReassignmentLhsKind {
+    fn get_field_kind(&self) -> ProjectionKind {
         self.kind.clone()
     }
 }
