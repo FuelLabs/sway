@@ -11,6 +11,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use sway_utils::constants;
+use tracing::info;
 use url::Url;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
@@ -31,7 +32,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(current_dir, fetch_ts);
 
-    println!("Resolving the HEAD of {}", source.repo);
+    info!("Resolving the HEAD of {}", source.repo);
     let git_source = pin_git(fetch_id, &local_repo_name, source)?;
 
     let repo_path = git_commit_path(
@@ -40,7 +41,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         &git_source.commit_hash,
     );
     if !repo_path.exists() {
-        println!("  Fetching {}", git_source.to_string());
+        info!("  Fetching {}", git_source.to_string());
         fetch_git(fetch_id, &local_repo_name, &git_source)?;
     }
 
@@ -65,7 +66,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     // Create the target dir
     let target_dir = current_dir.join(&command.project_name);
 
-    println!("Creating {} from template", &command.project_name);
+    info!("Creating {} from template", &command.project_name);
     // Copy contents from template to target dir
     copy_template_to_target(&from_path, &target_dir)?;
 
