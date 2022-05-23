@@ -26,6 +26,8 @@ async fn overflowing_pow_u64_panics() {
         .await
         .unwrap();
     dbg!(&result);
+
+    // assert_eq!(result.value, 100);
 }
 
 #[tokio::test]
@@ -62,7 +64,7 @@ async fn overflowing_pow_u8_panics() {
 }
 
 async fn get_pow_test_instance(wallet: Wallet) -> (TestPowContract, ContractId) {
-    let fuelcoin_id = Contract::deploy(
+    let pow_id = Contract::deploy(
         "test_artifacts/pow/out/debug/pow.bin",
         &wallet,
         TxParameters::default(),
@@ -70,7 +72,7 @@ async fn get_pow_test_instance(wallet: Wallet) -> (TestPowContract, ContractId) 
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestPowContract::new(fuelcoin_id.to_string(), wallet);
+    let pow_instance = TestPowContract::new(pow_id.to_string(), wallet);
 
-    (fuelcoin_instance, fuelcoin_id)
+    (pow_instance, pow_id)
 }
