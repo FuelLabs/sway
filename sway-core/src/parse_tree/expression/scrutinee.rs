@@ -79,7 +79,7 @@ impl Scrutinee {
             Scrutinee::EnumScrutinee {
                 call_path, value, ..
             } => {
-                let enum_name = call_path.prefixes.last().unwrap();
+                let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
                 let name = vec![TypeInfo::Custom {
                     name: enum_name.clone(),
                     type_arguments: vec![],

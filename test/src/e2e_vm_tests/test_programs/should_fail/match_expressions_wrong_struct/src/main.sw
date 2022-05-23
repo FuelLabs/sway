@@ -1,5 +1,13 @@
 script;
 
+enum Wow {
+}
+
+enum Foo {
+    Bar: u32,
+    Zoom: Wow,
+}
+
 struct Point {
     x: u64,
     y: u64
@@ -7,6 +15,10 @@ struct Point {
 
 fn main() -> u64 {
     let p = 6;
+    let g = Foo::Bar(30);
+    let h = match g {
+        Bar(x) => x,
+    };
 
     match p {
         Point { x: 3, y } => { y },

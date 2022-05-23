@@ -3,6 +3,7 @@ use sway_types::{Ident, Span};
 use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TypedEnumVariant;
+use crate::CompileError;
 use crate::{
     error::{err, ok},
     type_engine::{insert_type, TypeId},
@@ -129,7 +130,16 @@ impl TypedScrutinee {
                 value,
                 span,
             } => {
-                let enum_name = call_path.prefixes.last().unwrap();
+                let enum_name = match call_path.prefixes.last() {
+                    Some(enum_name) => enum_name,
+                    None => {
+                        errors.push(CompileError::EnumNotFound {
+                            name: call_path.suffix.clone(),
+                            span: call_path.suffix.span().clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
                 let variant_name = call_path.suffix;
                 // find the enum definition from the name
                 let unknown_decl = check!(
