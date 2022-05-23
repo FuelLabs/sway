@@ -24,74 +24,21 @@ pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
-pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
+pub use crate::parse_tree::{
+    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, WhileLoop, *,
+};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
-use sway_types::{ident::Ident, span};
+use sway_types::{ident::Ident, span, Spanned};
 pub use type_engine::TypeInfo;
-
-/// Represents a parsed, but not yet type-checked, Sway program.
-/// A Sway program can be either a contract, script, predicate, or
-/// it can be a library to be imported into one of the aforementioned
-/// program types.
-#[derive(Debug)]
-pub struct SwayParseTree {
-    pub tree_type: TreeType,
-    pub tree: ParseTree,
-}
-
-/// Represents some exportable information that results from compiling some
-/// Sway source code.
-#[derive(Debug)]
-pub struct ParseTree {
-    /// The untyped AST nodes that constitute this tree's root nodes.
-    pub root_nodes: Vec<AstNode>,
-    /// The [span::Span] of the entire tree.
-    pub span: span::Span,
-}
-
-/// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
-/// is a recursive type and can contain other [AstNode], thus populating the tree.
-#[derive(Debug, Clone)]
-pub struct AstNode {
-    /// The content of this ast node, which could be any control flow structure or other
-    /// basic organizational component.
-    pub content: AstNodeContent,
-    /// The [span::Span] representing this entire [AstNode].
-    pub span: span::Span,
-}
-
-/// Represents the various structures that constitute a Sway program.
-#[derive(Debug, Clone)]
-pub enum AstNodeContent {
-    /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
-    UseStatement(UseStatement),
-    /// A statement of the form `return foo;`
-    ReturnStatement(ReturnStatement),
-    /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
-    /// on the possible variants.
-    Declaration(Declaration),
-    /// Any type of expression, of which there are quite a few. See [Expression] for more details.
-    Expression(Expression),
-    /// An implicit return expression is different from a [AstNodeContent::ReturnStatement] because
-    /// it is not a control flow item. Therefore it is a different variant.
-    ///
-    /// An implicit return expression is an [Expression] at the end of a code block which has no
-    /// semicolon, denoting that it is the [Expression] to be returned from that block.
-    ImplicitReturnExpression(Expression),
-    /// A control flow element which loops continually until some boolean expression evaluates as
-    /// `false`.
-    WhileLoop(WhileLoop),
-    /// A statement of the form `dep foo::bar;` which imports/includes another source file.
-    IncludeStatement(IncludeStatement),
-}
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -106,31 +53,106 @@ pub enum AstNodeContent {
 ///
 /// # Panics
 /// Panics if the parser panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let path = config.map(|config| config.path());
-    let program = match sway_parse::parse_file(input, path) {
-        Ok(program) => program,
-        Err(error) => {
-            let errors = match error {
-                sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-                sway_parse::ParseFileError::Parse(errors) => errors
-                    .into_iter()
-                    .map(|error| CompileError::Parse { error })
-                    .collect(),
-            };
-            return err(vec![], errors);
-        }
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<ParseProgram> {
+    match config {
+        None => parse_in_memory(input),
+        Some(config) => parse_files(input, config),
+    }
+}
+
+/// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
+fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
+    let module = match sway_parse::parse_file(src, None) {
+        Ok(module) => module,
+        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
     };
-    let mut errors = Vec::new();
-    let mut warnings = Vec::new();
-    let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
-    let sway_parse_tree = check!(
-        compile_result,
-        return err(warnings, errors),
-        warnings,
-        errors,
-    );
-    ok(sway_parse_tree, warnings, errors)
+    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+        let submodules = Default::default();
+        let root = ParseModule { tree, submodules };
+        let program = ParseProgram { kind, root };
+        ok(program, vec![], vec![])
+    })
+}
+
+/// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
+/// other files.
+fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
+    parse_module_tree(src, config.path()).flat_map(|(kind, root)| {
+        let program = ParseProgram { kind, root };
+        ok(program, vec![], vec![])
+    })
+}
+
+/// Given the source of the module along with its path, parse this module including all of its
+/// submodules.
+fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+    // Parse this module first.
+    let module = match sway_parse::parse_file(src, Some(path.clone())) {
+        Ok(module) => module,
+        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
+    };
+    let module_dir = path.parent().expect("module file has no parent directory");
+
+    // Parse all submodules before converting to the `ParseTree`.
+    let init_res = ok(HashMap::default(), vec![], vec![]);
+    let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
+        let dep_path = Arc::new(module_path(module_dir, dep));
+        let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
+            Ok(s) => Arc::from(s),
+            Err(e) => {
+                let error = CompileError::FileCouldNotBeRead {
+                    span: dep.path.span(),
+                    file_path: dep_path.to_string_lossy().to_string(),
+                    stringified_error: e.to_string(),
+                };
+                return res.flat_map(|_| err(vec![], vec![error]));
+            }
+        };
+        parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
+            let library_name = match kind {
+                TreeType::Library { name } => name.to_string(),
+                _ => {
+                    let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
+                    let error = CompileError::ImportMustBeLibrary { span };
+                    return err(vec![], vec![error]);
+                }
+            };
+            let submodule = ParseSubmodule {
+                library_name,
+                module,
+            };
+            let key = dep.path.span().as_str().to_string();
+            res.flat_map(|mut submods| {
+                submods.insert(key, submodule);
+                ok(submods, vec![], vec![])
+            })
+        })
+    });
+
+    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+        submodules_res.flat_map(|submodules| {
+            let parse_module = ParseModule { tree, submodules };
+            ok((prog_kind, parse_module), vec![], vec![])
+        })
+    })
+}
+
+fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+    parent_module_dir
+        .iter()
+        .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
+        .collect()
+}
+
+fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
+    match error {
+        sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
+        sway_parse::ParseFileError::Parse(errors) => errors
+            .into_iter()
+            .map(|error| CompileError::Parse { error })
+            .collect(),
+    }
 }
 
 /// Represents the result of compiling Sway code via [compile_to_asm].
@@ -197,7 +219,7 @@ pub(crate) fn compile_inner_dependency(
     let mut errors = vec![];
 
     // Parse the file.
-    let parse_tree = check!(
+    let parse_program = check!(
         parse(input.clone(), Some(&dep_build_config)),
         return err(warnings, errors),
         warnings,
@@ -205,7 +227,7 @@ pub(crate) fn compile_inner_dependency(
     );
 
     // Check we have a library, and retrieve the name.
-    let library_name = match &parse_tree.tree_type {
+    let library_name = match &parse_program.kind {
         TreeType::Library { name } => name.clone(),
         TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
@@ -226,9 +248,9 @@ pub(crate) fn compile_inner_dependency(
     // Type-check the module, populating its namespace.
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
-            parse_tree.tree,
+            parse_program.root.tree,
             &mut dep_namespace,
-            &parse_tree.tree_type,
+            &parse_program.kind,
             &dep_build_config,
             dead_code_graph,
         ),
@@ -245,7 +267,7 @@ pub(crate) fn compile_inner_dependency(
     // since we can't tell what is dead and what isn't just from looking at this file
     if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
         &typed_parse_tree,
-        &parse_tree.tree_type,
+        &parse_program.kind,
         dead_code_graph,
     ) {
         errors.push(e)
@@ -263,14 +285,14 @@ pub fn compile_to_ast(
     let mut errors = Vec::new();
 
     let CompileResult {
-        value: parse_tree_result,
+        value: parse_program_opt,
         warnings: new_warnings,
         errors: new_errors,
     } = parse(input, Some(build_config));
     warnings.extend(new_warnings);
     errors.extend(new_errors);
-    let parse_tree = match parse_tree_result {
-        Some(parse_tree) => parse_tree,
+    let parse_program = match parse_program_opt {
+        Some(parse_program) => parse_program,
         None => {
             errors = dedup_unsorted(errors);
             warnings = dedup_unsorted(warnings);
@@ -290,9 +312,9 @@ pub fn compile_to_ast(
         warnings: new_warnings,
         errors: new_errors,
     } = TypedParseTree::type_check(
-        parse_tree.tree,
+        parse_program.root.tree,
         &mut namespace,
-        &parse_tree.tree_type,
+        &parse_program.kind,
         &build_config.clone(),
         &mut dead_code_graph,
     );
@@ -307,11 +329,8 @@ pub fn compile_to_ast(
         }
     };
 
-    let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
-        &typed_parse_tree,
-        &parse_tree.tree_type,
-        &mut dead_code_graph,
-    );
+    let (mut l_warnings, mut l_errors) =
+        perform_control_flow_analysis(&typed_parse_tree, &parse_program.kind, &mut dead_code_graph);
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
@@ -323,7 +342,7 @@ pub fn compile_to_ast(
 
     CompileAstResult::Success {
         parse_tree: Box::new(typed_parse_tree),
-        tree_type: parse_tree.tree_type,
+        tree_type: parse_program.kind,
         warnings,
     }
 }

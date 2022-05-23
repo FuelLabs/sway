@@ -183,16 +183,16 @@ impl TextDocument {
                 parsed_result.warnings,
                 parsed_result.errors,
             )),
-            Some(value) => {
+            Some(parse_program) => {
                 let mut tokens = vec![];
 
-                if let TreeType::Library { name } = value.tree_type {
+                if let TreeType::Library { name } = parse_program.kind {
                     // TODO
                     // Is library name necessary to store for the LSP?
                     let token = Token::from_ident(&name, TokenType::Library);
                     tokens.push(token);
                 };
-                for node in value.tree.root_nodes {
+                for node in parse_program.root.tree.root_nodes {
                     traverse_node(node, &mut tokens);
                 }
 

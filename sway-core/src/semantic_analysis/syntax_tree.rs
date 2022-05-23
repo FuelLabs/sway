@@ -7,7 +7,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::Purity,
+    parse_tree::{Purity, TreeType},
     semantic_analysis::{
         ast_node::Mode,
         namespace::{self, Namespace},
@@ -16,16 +16,7 @@ use crate::{
     type_engine::*,
     AstNode, ParseTree,
 };
-use sway_types::{ident::Ident, span::Span};
-
-/// Represents the different variants of the AST.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TreeType {
-    Predicate,
-    Script,
-    Contract,
-    Library { name: Ident },
-}
+use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
 pub enum TypedParseTree {
