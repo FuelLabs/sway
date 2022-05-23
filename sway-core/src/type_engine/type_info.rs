@@ -448,6 +448,14 @@ impl TypeInfo {
 
                 format!("e({})", variant_names.join(","))
             }
+            Array(type_id, size) => {
+                let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
+                let name = match name.value {
+                    Some(name) => name,
+                    None => return name,
+                };
+                dbg!(format!("a[{}; {}]", name, size))
+            }
             _ => {
                 return err(
                     vec![],
