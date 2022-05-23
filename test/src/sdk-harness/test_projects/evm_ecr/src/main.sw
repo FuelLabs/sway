@@ -5,7 +5,7 @@ use std::b512::B512;
 use std::ecr::EcRecoverError;
 use std::result::*;
 use std::vm::evm::evm_address::EvmAddress;
-use std::vm::evm::ecr::ec_recover_address;
+use std::vm::evm::ecr::ec_recover_evm_address;
 
 fn main() -> bool {
     //======================================================
@@ -31,7 +31,7 @@ fn main() -> bool {
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // recover the address:
-    let result: Result<EvmAddress, EcRecoverError> = ec_recover_address(signature, msg_hash);
+    let result: Result<EvmAddress, EcRecoverError> = ec_recover_evm_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
     recovered_address == ethereum_address
