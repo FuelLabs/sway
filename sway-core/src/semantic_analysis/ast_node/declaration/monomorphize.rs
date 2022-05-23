@@ -13,6 +13,35 @@ use crate::{
 
 use super::CreateTypeId;
 
+/// This type is used to denote if, during monomorphization, the compiler
+/// should enforce that type arguments be provided. An example of that
+/// might be this:
+///
+/// ```ignore
+/// struct Point<T> {
+///   x: u64,
+///   y: u64
+/// }
+///
+/// fn add<T>(p1: Point<T>, p2: Point<T>) -> Point<T> {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+///
+/// `EnforeTypeArguments` would require that the type annotations
+/// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
+///
+/// ```ignore
+/// fn add(p1: Point, p2: Point) -> Point {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
 #[derive(Clone, Copy)]
 pub(crate) enum EnforceTypeArguments {
     Yes,
