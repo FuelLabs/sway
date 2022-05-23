@@ -395,6 +395,15 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
+                            for type_parameter in fn_decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
@@ -481,10 +490,9 @@ impl TypedAstNode {
                         }) => {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
-                                        "Where clauses are not supported yet.",
-                                        type_parameter.name_ident.span().clone(),
-                                    ));
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
                                     break;
                                 }
                             }
@@ -874,7 +882,10 @@ fn reassignment(
                         errors.push(CompileError::AssignmentToNonMutable { name });
                     }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(
+                        variable_decl.body.return_type,
+                        variable_decl.body.span.clone(),
+                    ));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {

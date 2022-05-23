@@ -131,7 +131,7 @@ impl Root {
                 }
             }
             TypeInfo::SelfType => self_type,
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
                     self.resolve_type_with_self(
@@ -221,7 +221,7 @@ impl Root {
                     _ => insert_type(TypeInfo::Unknown),
                 }
             }
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
                     self.resolve_type_without_self(look_up_type_id(type_id), mod_path),
