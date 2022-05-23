@@ -29,6 +29,12 @@ fn main() -> u64 {
         _ => { 0 },
     };
 
+    match true {
+        true => (),
+        false => (),
+        foo => (), // should give an unreachable warning
+    }
+
     if b == 6 && c == 42 && d == 42 && f == 42 {
         42
     } else {
