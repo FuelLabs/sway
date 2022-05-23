@@ -1,7 +1,7 @@
 library ops;
 
 // @todo remove !
-fn log_u64(val: u64) {
+fn log(val: u64) {
     asm(r1: val) {
         log r1 zero zero zero;
     }
@@ -204,103 +204,6 @@ impl Mod for u8 {
             mod r3 r1 r2;
             r3: u8
         }
-    }
-}
-
-pub trait Shiftable {
-    fn lsh(self, other: u64) -> Self;
-    fn rsh(self, other: u64) -> Self;
-}
-
-impl Shiftable for u64 {
-    fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u64
-        }
-    }
-    fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u64
-        }
-    }
-}
-
-impl Shiftable for u32 {
-    fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u32
-        }
-    }
-    fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u32
-        }
-    }
-}
-
-impl Shiftable for u16 {
-    fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u16
-        }
-    }
-    fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u16
-        }
-    }
-}
-
-impl Shiftable for u8 {
-    fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u8
-        }
-    }
-    fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u8
-        }
-    }
-}
-
-impl Shiftable for b256 {
-    fn lsh(self, n: u64) -> Self {
-        let (w1, w2, w3, w4) = decompose(self);
-        // get each shifted word and associated overflow in turn
-        let (word_1, _) = lsh_with_carry(w1, n);
-        let (word_2, overflow_2) = lsh_with_carry(w2, n);
-        let (word_3, overflow_3) = lsh_with_carry(w3, n);
-        let (word_4, overflow_4) = lsh_with_carry(w4, n);
-        // Add overflow from word on the right to each shifted word
-        let w1_shifted = word_1.add(overflow_2);
-        let w2_shifted = word_2.add(overflow_3);
-        let w3_shifted = word_3.add(overflow_4);
-
-        compose(w1_shifted, w2_shifted, w3_shifted, word_4)
-    }
-
-    fn rsh(self, n: u64) -> Self {
-        let (w1, w2, w3, w4) = decompose(self);
-        // get each shifted word and associated overflow in turn
-        let (word_1, overflow_1) = rsh_with_carry(w1, n);
-        let (word_2, overflow_2) = rsh_with_carry(w2, n);
-        let (word_3, overflow_3) = rsh_with_carry(w3, n);
-        let (word_4, _) = rsh_with_carry(w4, n);
-        // Add overflow from the word on the left to each shifted word
-        let w4_shifted = word_4.add(overflow_3);
-        let w3_shifted = word_3.add(overflow_2);
-        let w2_shifted = word_2.add(overflow_1);
-
-        compose(word_1, w2_shifted, w3_shifted, w4_shifted)
     }
 }
 
@@ -589,6 +492,158 @@ impl OrdEq for u8 {
 impl OrdEq for b256 {
 }
 
+pub trait Shiftable {
+    fn lsh(self, other: u64) -> Self;
+    fn rsh(self, other: u64) -> Self;
+}
+
+impl Shiftable for u64 {
+    fn lsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u64
+        }
+    }
+    fn rsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
+impl Shiftable for u32 {
+    fn lsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u32
+        }
+    }
+    fn rsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl Shiftable for u16 {
+    fn lsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u16
+        }
+    }
+    fn rsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl Shiftable for u8 {
+    fn lsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u8
+        }
+    }
+    fn rsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u8
+        }
+    }
+}
+
+impl Shiftable for b256 {
+    fn lsh(self, shift_amount: u64) -> Self {
+        let (w_one, w_two, w_three, w_four) = decompose(self);
+
+        let mut w1 = w_one;
+        let mut c1 = 0;
+        let mut w2 = w_two;
+        let mut c2 = 0;
+        let mut w3 = w_three;
+        let mut c3 = 0;
+        let mut w4 = w_four;
+        let mut c4 = 0;
+        let mut n = shift_amount;
+
+        // get each shifted word and associated carry in turn, shifting one word at a time.
+        if n.gt(64) {
+            let mut i = n;
+            n = shift_amount.modulo(64);
+
+            if n.divide(64) == 3 {
+                // zero the first 3 words, shift the 4th and discard the carry
+            } else if n.divide(64) == 2 {
+                // zero the first 2 words, shift the 4th and 3rd
+            } else if n.divide(64) == 1 {
+                // zero the first word, shift the 4th, 3rd & 2nd
+            } else if n.gt(256) {
+                // all words will be zeroed. vm might panic, undertermined for now.
+            }
+
+            while i.gt(64) {
+                let (w_1, _) = lsh_with_carry(w1, n);
+                w1 = w_1;
+                let (w_2, c_2) = lsh_with_carry(w2, n);
+                w2 = w_2;
+                c2 = c_2;
+                let (w_3, c_3) = lsh_with_carry(w3, n);
+                w3 = w_3;
+                c3 = c_3;
+                let (w_4, c_4) = lsh_with_carry(w4, n);
+                w4 = w_4;
+                c4 = c_4;
+
+                // Add overflow from word on the right to each shifted word
+                w1 = w1.add(c2);
+                w2 = w2.add(c3);
+                w3 = w3.add(c4);
+
+                i = i.subtract(64);
+            }
+        } else {
+            // handle the simple case where shift is less than 64 bits first !
+            let (w_1, _) = lsh_with_carry(w1, n);
+            w1 = w_1;
+            let (w_2, c_2) = lsh_with_carry(w2, n);
+            w2 = w_2;
+            c2 = c_2;
+            let (w_3, c_3) = lsh_with_carry(w3, n);
+            w3 = w_3;
+            c3 = c_3;
+            let (w_4, c_4) = lsh_with_carry(w4, n);
+            w4 = w_4;
+            c4 = c_4;
+
+            w1 = w1.add(c2);
+            w2 = w2.add(c3);
+            w3 = w3.add(c4);
+        }
+
+        compose(w1, w2, w3, w4)
+    }
+
+    fn rsh(self, n: u64) -> Self {
+        let (w1, w2, w3, w4) = decompose(self);
+        // get each shifted word and associated overflow in turn
+        let (word_1, overflow_1) = rsh_with_carry(w1, n);
+        let (word_2, overflow_2) = rsh_with_carry(w2, n);
+        let (word_3, overflow_3) = rsh_with_carry(w3, n);
+        let (word_4, _) = rsh_with_carry(w4, n);
+        // Add overflow from the word on the left to each shifted word
+        let w4_shifted = word_4.add(overflow_3);
+        let w3_shifted = word_3.add(overflow_2);
+        let w2_shifted = word_2.add(overflow_1);
+
+        compose(word_1, w2_shifted, w3_shifted, w4_shifted)
+    }
+}
+
 /////////////////////////////////////////////////
 // Internal Helpers
 /////////////////////////////////////////////////
@@ -600,7 +655,6 @@ const FLAG = 2;
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     // @todo try to remove copy once this is working.
-    // i think the issue atm is that there is wrapping occoring. Wait till vm fix with safe math flags lands.
     let word_copy = word;
     let right_shift_amount = 64.subtract(shift_amount);
     let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
