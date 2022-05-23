@@ -1,5 +1,5 @@
 use crate::{
-    error::{err, ok},
+    error::*,
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
@@ -108,7 +108,7 @@ impl TypedStructDeclaration {
                     type_span,
                 } = field;
                 let r#type = match r#type.matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, type_span)),
                     None => check!(
                         decl_namespace.resolve_type_with_self(
                             r#type,
@@ -192,8 +192,14 @@ impl PartialEq for TypedStructField {
 impl CopyTypes for TypedStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(
+                    insert_type(look_up_type_id_raw(self.r#type)),
+                    self.span.clone(),
+                );
+                insert_type(ty)
+            }
         };
     }
 }

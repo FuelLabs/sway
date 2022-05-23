@@ -162,8 +162,8 @@ fn chain_of_refs() {
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
@@ -182,8 +182,8 @@ fn chain_of_refs_2() {
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...

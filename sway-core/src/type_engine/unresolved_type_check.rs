@@ -14,10 +14,15 @@ pub(crate) trait UnresolvedTypeCheck {
 impl UnresolvedTypeCheck for TypeId {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
         use TypeInfo::*;
+        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
+            Some(span)
+        } else {
+            None
+        };
         match look_up_type_id(*self) {
             UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
-                span: name.span().clone(),
+                span: span_override.unwrap_or_else(|| name.span().clone()),
             }],
             _ => vec![],
         }
