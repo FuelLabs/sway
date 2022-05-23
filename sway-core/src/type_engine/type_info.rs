@@ -454,7 +454,7 @@ impl TypeInfo {
                     Some(name) => name,
                     None => return name,
                 };
-                dbg!(format!("a[{}; {}]", name, size))
+                format!("a[{}; {}]", name, size)
             }
             _ => {
                 return err(

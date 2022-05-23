@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "array_of_structs_caller"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
 array_of_structs_abi = { path = "../../test_abis/array_of_structs_abi" }
+std = { path = "../../../../../../../sway-lib-std" }

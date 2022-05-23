@@ -2,40 +2,53 @@
   {
     "inputs": [
       {
-        "components": null,
-        "name": "storage_key",
-        "type": "b256"
+        "components": [
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "number",
+                    "type": "u64"
+                  }
+                ],
+                "name": "id",
+                "type": "struct Id"
+              }
+            ],
+            "name": "r#array_element",
+            "type": "struct Wrapper"
+          }
+        ],
+        "name": "param",
+        "type": "[struct Wrapper; 2]"
       }
     ],
-    "name": "get_u64",
+    "name": "return_array_of_structs",
     "outputs": [
       {
-        "components": null,
+        "components": [
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "number",
+                    "type": "u64"
+                  }
+                ],
+                "name": "id",
+                "type": "struct Id"
+              }
+            ],
+            "name": "r#array_element",
+            "type": "struct Wrapper"
+          }
+        ],
         "name": "",
-        "type": "u64"
-      }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "key",
-        "type": "b256"
-      },
-      {
-        "components": null,
-        "name": "value",
-        "type": "u64"
-      }
-    ],
-    "name": "store_u64",
-    "outputs": [
-      {
-        "components": null,
-        "name": "",
-        "type": "()"
+        "type": "[struct Wrapper; 2]"
       }
     ],
     "type": "function"
