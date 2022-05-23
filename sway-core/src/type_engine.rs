@@ -76,7 +76,7 @@ impl ToJsonAbi for TypeId {
                     .collect(),
             ),
             TypeInfo::Array(type_id, _) => Some(vec![Property {
-                name: "r#array_element".to_string(),
+                name: "__array_element".to_string(),
                 type_field: type_id.json_abi_str(),
                 components: type_id.generate_json_abi(),
             }]),

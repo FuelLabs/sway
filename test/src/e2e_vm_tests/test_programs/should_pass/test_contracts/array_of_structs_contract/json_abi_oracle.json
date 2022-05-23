@@ -17,7 +17,7 @@
                 "type": "struct Id"
               }
             ],
-            "name": "r#array_element",
+            "name": "__array_element",
             "type": "struct Wrapper"
           }
         ],
@@ -43,7 +43,7 @@
                 "type": "struct Id"
               }
             ],
-            "name": "r#array_element",
+            "name": "__array_element",
             "type": "struct Wrapper"
           }
         ],
