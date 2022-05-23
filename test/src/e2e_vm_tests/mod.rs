@@ -343,6 +343,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/implicit_return",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/break_and_continue",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =
