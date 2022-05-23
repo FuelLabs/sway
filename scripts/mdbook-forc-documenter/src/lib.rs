@@ -1,5 +1,6 @@
 use crate::formatter::format_index_entry;
 
+use anyhow::{anyhow, bail};
 use commands::{
     get_contents_from_commands, get_forc_command_from_file_name, possible_forc_commands,
 };
@@ -9,6 +10,7 @@ use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use plugins::plugin_commands;
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 
 mod commands;
 mod formatter;
@@ -115,21 +117,56 @@ fn missing_entries_msg(missing: &[String]) -> String {
 }
 
 fn dangling_chapters_msg(commands: &[String]) -> String {
-    format!("\nSome commands/plugins were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the corresponding entries from SUMMARY.md.\n", 
+    format!("\nSome commands/plugins were removed from the Forc toolchain, but still exist in SUMMARY.md:\n\n{}\n\nTo fix this, remove the corresponding entries from SUMMARY.md.\n",
         commands
         .iter()
         .map(|s| s.to_owned() + "\n")
         .collect::<String>())
 }
 
+fn find_sway_repo_root() -> anyhow::Result<PathBuf> {
+    let mut curr_path = std::env::current_dir().unwrap();
+    loop {
+        if curr_path.is_dir() {
+            // Some heuristics that should pass if we've found the sway repo.
+            if curr_path.join("Cargo.toml").exists()
+                && curr_path.join("forc-plugins").exists()
+                && curr_path
+                    .join("scripts")
+                    .join("mdbook-forc-documenter")
+                    .exists()
+            {
+                return Ok(curr_path);
+            }
+        }
+        curr_path = curr_path
+            .parent()
+            .ok_or_else(|| anyhow!("Could not find Sway repo root directory"))?
+            .to_path_buf();
+    }
+}
+
+fn find_forc_cmd_examples_dir() -> anyhow::Result<PathBuf> {
+    let sway_dir = find_sway_repo_root()?;
+    let examples_dir = sway_dir
+        .join("scripts")
+        .join("mdbook-forc-documenter")
+        .join("examples");
+    if !examples_dir.exists() || !examples_dir.is_dir() {
+        bail!(
+            "Failed to find examples directory at {}",
+            examples_dir.display()
+        );
+    }
+    Ok(examples_dir)
+}
+
 fn load_examples() -> Result<HashMap<String, String>> {
-    let curr_path = std::env::current_dir()
-        .unwrap()
-        .join("scripts/mdbook-forc-documenter/examples");
+    let examples_dir = find_forc_cmd_examples_dir().unwrap();
 
     let mut command_examples: HashMap<String, String> = HashMap::new();
 
-    for entry in curr_path
+    for entry in examples_dir
         .read_dir()
         .expect("read dir examples failed")
         .flatten()
