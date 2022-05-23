@@ -2519,7 +2519,7 @@ fn convert_resolved_type(
                 span.clone(),
             ))
         }
-        TypeInfo::Ref(_) => {
+        TypeInfo::Ref(..) => {
             return Err(CompileError::Internal(
                 "Ref type cannot be resolved in IR.",
                 span.clone(),

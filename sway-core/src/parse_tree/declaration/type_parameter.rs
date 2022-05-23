@@ -1,7 +1,7 @@
 use crate::{
     semantic_analysis::{CopyTypes, TypeMapping},
     type_engine::*,
-    TypedDeclaration,
+    CallPath, TypedDeclaration,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -51,8 +51,13 @@ impl From<&TypeParameter> for TypedDeclaration {
 impl CopyTypes for TypeParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.type_id)),
+            Some(matching_id) => {
+                insert_type(TypeInfo::Ref(matching_id, self.name_ident.span().clone()))
+            }
+            None => {
+                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());
+                insert_type(ty)
+            }
         };
     }
 }
@@ -65,5 +70,5 @@ impl TypeParameter {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
-    pub(crate) name: Ident,
+    pub(crate) call_path: CallPath,
 }
