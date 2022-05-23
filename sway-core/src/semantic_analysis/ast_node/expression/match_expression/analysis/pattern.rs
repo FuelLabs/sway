@@ -3,6 +3,8 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
+use crate::type_engine::look_up_type_id;
+use crate::TypeInfo;
 use crate::{
     error::{err, ok},
     CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
@@ -652,6 +654,46 @@ impl Pattern {
         match self {
             Pattern::Or(pats) => pats.to_owned(),
             pat => PatStack::from_pattern(pat.to_owned()),
+        }
+    }
+
+    pub(crate) fn matches_type_info(
+        &self,
+        type_info: &TypeInfo,
+        span: &Span,
+    ) -> CompileResult<bool> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match (self, type_info) {
+            (pattern, TypeInfo::Ref(type_id, _)) => {
+                pattern.matches_type_info(&look_up_type_id(*type_id), span)
+            }
+            (
+                Pattern::Enum(EnumPattern {
+                    enum_name: l_enum_name,
+                    variant_name,
+                    ..
+                }),
+                TypeInfo::Enum {
+                    name: r_enum_name,
+                    variant_types,
+                    ..
+                },
+            ) => {
+                let res = l_enum_name.as_str() == r_enum_name.as_str()
+                    && variant_types
+                        .iter()
+                        .map(|x| x.name.clone())
+                        .any(|x| x.as_str() == variant_name.as_str());
+                ok(res, warnings, errors)
+            }
+            _ => {
+                errors.push(CompileError::Unimplemented(
+                    "cannot yet compare this patter with this type",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
         }
     }
 

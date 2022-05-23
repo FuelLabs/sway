@@ -765,6 +765,132 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn expect_is_supported_in_match_expressions(
+        &self,
+        span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypeInfo::Ref(type_id, _) => {
+                look_up_type_id(*type_id).expect_is_supported_in_match_expressions(span)
+            }
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Enum { .. }
+            | TypeInfo::Struct { .. }
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric => ok((), warnings, errors),
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Str(_)
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Array(_, _)
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "matching on this type is unsupported right now",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
+    }
+
+    pub(crate) fn extract_nested_types(self, span: &Span) -> CompileResult<Vec<TypeInfo>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut all_nested_types = vec![self.clone()];
+        match self {
+            TypeInfo::Enum { variant_types, .. } => {
+                for variant_type in variant_types.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(variant_type.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Struct { fields, .. } => {
+                for field in fields.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Ref(type_id, _) => {
+                let mut nested_types = check!(
+                    look_up_type_id(type_id).extract_nested_types(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                all_nested_types.append(&mut nested_types);
+            }
+            TypeInfo::Tuple(type_arguments) => {
+                for type_argument in type_arguments.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_argument.type_id).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Array(type_id, _) => {
+                let mut nested_types = check!(
+                    look_up_type_id(type_id).extract_nested_types(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                all_nested_types.append(&mut nested_types);
+            }
+            TypeInfo::Storage { fields } => {
+                for field in fields.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery => {}
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+                errors.push(CompileError::Internal(
+                    "did not expect to find this type here",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
+        }
+        ok(all_nested_types, warnings, errors)
+    }
+
     pub(crate) fn apply_subfields(
         &self,
         subfields: &[Ident],
@@ -818,7 +944,7 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn expect_tuple_args(
+    pub(crate) fn expect_tuple(
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
@@ -831,6 +957,31 @@ impl TypeInfo {
             a => err(
                 vec![],
                 vec![CompileError::NotATuple {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
+
+    pub(crate) fn expect_enum(
+        &self,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedEnumVariant>)> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Enum {
+                name,
+                variant_types,
+                ..
+            } => ok((name, variant_types), warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
                     actually: a.friendly_type_str(),

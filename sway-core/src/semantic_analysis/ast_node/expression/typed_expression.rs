@@ -935,6 +935,13 @@ impl TypedExpression {
         );
         let type_id = typed_value.return_type;
 
+        check!(
+            look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         // gather the scrutinees
         let scrutinees = branches
             .iter()

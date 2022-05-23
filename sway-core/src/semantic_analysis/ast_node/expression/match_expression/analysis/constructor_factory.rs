@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
+    semantic_analysis::TypedEnumVariant,
     type_engine::{look_up_type_id, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
@@ -15,14 +16,21 @@ use super::{
 };
 
 pub(crate) struct ConstructorFactory {
-    value_type: TypeInfo,
+    possible_types: Vec<TypeInfo>,
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(type_id: TypeId) -> Self {
-        ConstructorFactory {
-            value_type: look_up_type_id(type_id),
-        }
+    pub(crate) fn new(type_id: TypeId, span: &Span) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let possible_types = check!(
+            look_up_type_id(type_id).extract_nested_types(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let factory = ConstructorFactory { possible_types };
+        ok(factory, warnings, errors)
     }
 
     /// Given Σ, computes a `Pattern` not present in Σ from the type of the
@@ -285,42 +293,31 @@ impl ConstructorFactory {
                     fields,
                 ))
             }
-            Pattern::Enum(enum_pattern) => {
-                let (enum_name, enum_variants) = match &self.value_type {
-                    TypeInfo::Enum {
-                        name,
-                        variant_types,
-                        ..
-                    } => (name, variant_types),
-                    _ => {
-                        errors.push(CompileError::Internal("type mismatch", span.clone()));
-                        return err(warnings, errors);
-                    }
-                };
-                if enum_pattern.enum_name.as_str() != enum_name.as_str() {
-                    errors.push(CompileError::Internal("type mismatch", span.clone()));
-                    return err(warnings, errors);
-                }
-                let mut all_variants: HashSet<String> = HashSet::new();
-                for variant in enum_variants.iter() {
-                    all_variants.insert(variant.name.to_string().clone());
-                }
-                let mut variant_tracker: HashSet<String> = HashSet::new();
-                for pat in rest.iter() {
-                    match pat {
-                        Pattern::Enum(enum_pattern2) => {
-                            if enum_pattern2.enum_name.as_str() != enum_name.as_str() {
-                                errors.push(CompileError::Internal("type mismatch", span.clone()));
-                                return err(warnings, errors);
-                            }
-                            variant_tracker.insert(enum_pattern2.variant_name.to_string());
-                        }
-                        _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
-                            return err(warnings, errors);
-                        }
-                    }
-                }
+            ref pat @ Pattern::Enum(ref enum_pattern) => {
+                let type_info = check!(
+                    self.resolve_possible_types(pat, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (enum_name, enum_variants) = check!(
+                    type_info.expect_enum("", span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (all_variants, variant_tracker) = check!(
+                    ConstructorFactory::resolve_enum(
+                        enum_name,
+                        enum_variants,
+                        enum_pattern,
+                        rest,
+                        span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 check!(
                     Pattern::from_pat_stack(
                         PatStack::from(
@@ -522,43 +519,31 @@ impl ConstructorFactory {
                 }
                 ok(true_found && false_found, warnings, errors)
             }
-            Pattern::Enum(enum_pattern) => {
-                let (enum_name, enum_variants) = match &self.value_type {
-                    TypeInfo::Enum {
-                        name,
-                        variant_types,
-                        ..
-                    } => (name, variant_types),
-                    _ => {
-                        errors.push(CompileError::Internal("type mismatch", span.clone()));
-                        return err(warnings, errors);
-                    }
-                };
-                if enum_pattern.enum_name.as_str() != enum_name.as_str() {
-                    errors.push(CompileError::Internal("type mismatch", span.clone()));
-                    return err(warnings, errors);
-                }
-                let mut all_variants: HashSet<String> = HashSet::new();
-                for variant in enum_variants.iter() {
-                    all_variants.insert(variant.name.to_string().clone());
-                }
-                let mut variant_tracker: HashSet<String> = HashSet::new();
-                variant_tracker.insert(enum_pattern.variant_name);
-                for pat in rest.iter() {
-                    match pat {
-                        Pattern::Enum(enum_pattern2) => {
-                            if enum_pattern2.enum_name.as_str() != enum_name.as_str() {
-                                errors.push(CompileError::Internal("type mismatch", span.clone()));
-                                return err(warnings, errors);
-                            }
-                            variant_tracker.insert(enum_pattern2.variant_name.to_string());
-                        }
-                        _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
-                            return err(warnings, errors);
-                        }
-                    }
-                }
+            ref pat @ Pattern::Enum(ref enum_pattern) => {
+                let type_info = check!(
+                    self.resolve_possible_types(pat, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (enum_name, enum_variants) = check!(
+                    type_info.expect_enum("", span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (all_variants, variant_tracker) = check!(
+                    ConstructorFactory::resolve_enum(
+                        enum_name,
+                        enum_variants,
+                        enum_pattern,
+                        rest,
+                        span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 ok(
                     all_variants.difference(&variant_tracker).next().is_none(),
                     warnings,
@@ -584,5 +569,67 @@ impl ConstructorFactory {
             Pattern::Wildcard => unreachable!(),
             Pattern::Or(_) => unreachable!(),
         }
+    }
+
+    fn resolve_possible_types(&self, pattern: &Pattern, span: &Span) -> CompileResult<&TypeInfo> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut type_info = None;
+        for possible_type in self.possible_types.iter() {
+            let matches = check!(
+                pattern.matches_type_info(possible_type, span),
+                continue,
+                warnings,
+                errors
+            );
+            if matches {
+                type_info = Some(possible_type);
+                break;
+            }
+        }
+        match type_info {
+            Some(type_info) => ok(type_info, warnings, errors),
+            None => {
+                errors.push(CompileError::Internal("type mismatch", span.clone()));
+                err(warnings, errors)
+            }
+        }
+    }
+
+    fn resolve_enum(
+        enum_name: &Ident,
+        enum_variants: &[TypedEnumVariant],
+        enum_pattern: &EnumPattern,
+        rest: PatStack,
+        span: &Span,
+    ) -> CompileResult<(HashSet<String>, HashSet<String>)> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        if enum_pattern.enum_name.as_str() != enum_name.as_str() {
+            errors.push(CompileError::Internal("type mismatch", span.clone()));
+            return err(warnings, errors);
+        }
+        let mut all_variants: HashSet<String> = HashSet::new();
+        for variant in enum_variants.iter() {
+            all_variants.insert(variant.name.to_string().clone());
+        }
+        let mut variant_tracker: HashSet<String> = HashSet::new();
+        variant_tracker.insert(enum_pattern.variant_name.clone());
+        for pat in rest.iter() {
+            match pat {
+                Pattern::Enum(enum_pattern2) => {
+                    if enum_pattern2.enum_name.as_str() != enum_name.as_str() {
+                        errors.push(CompileError::Internal("type mismatch", span.clone()));
+                        return err(warnings, errors);
+                    }
+                    variant_tracker.insert(enum_pattern2.variant_name.to_string());
+                }
+                _ => {
+                    errors.push(CompileError::Internal("type mismatch", span.clone()));
+                    return err(warnings, errors);
+                }
+            }
+        }
+        ok((all_variants, variant_tracker), warnings, errors)
     }
 }

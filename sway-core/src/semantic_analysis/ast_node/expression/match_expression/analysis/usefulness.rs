@@ -204,7 +204,12 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
-    let factory = ConstructorFactory::new(type_id);
+    let factory = check!(
+        ConstructorFactory::new(type_id, &span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     for scrutinee in scrutinees.iter() {
         let pat = check!(
             Pattern::from_scrutinee(scrutinee.clone()),

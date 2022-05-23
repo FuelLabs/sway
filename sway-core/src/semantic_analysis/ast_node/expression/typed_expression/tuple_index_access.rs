@@ -18,7 +18,7 @@ pub(crate) fn instantiate_tuple_index_access(
     let mut tuple_type_arg_to_access = None;
     let type_info = look_up_type_id(parent.return_type);
     let type_args = check!(
-        type_info.expect_tuple_args(parent.span.as_str(), &parent.span),
+        type_info.expect_tuple(parent.span.as_str(), &parent.span),
         return err(warnings, errors),
         warnings,
         errors
