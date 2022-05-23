@@ -1,20 +1,44 @@
 use crate::error::*;
-use std::iter::FromIterator;
-use sway_types::span::Span;
+use std::fmt::{Debug, Display};
 
 mod engine;
 mod integer_bits;
 mod type_info;
 mod unresolved_type_check;
 pub use engine::*;
+use fuels_types::Property;
 pub use integer_bits::*;
-use sway_types::Property;
 pub use type_info::*;
 pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
 
 /// A identifier to uniquely refer to our type terms
-pub type TypeId = usize;
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub struct TypeId(usize);
 
+impl std::ops::Deref for TypeId {
+    type Target = usize;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for TypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
+    }
+}
+
+impl Debug for TypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
+    }
+}
+
+impl From<usize> for TypeId {
+    fn from(o: usize) -> Self {
+        TypeId(o)
+    }
+}
 pub(crate) trait JsonAbiString {
     fn json_abi_str(&self) -> String;
 }
@@ -59,7 +83,7 @@ impl ToJsonAbi for TypeId {
 #[test]
 fn generic_enum_resolution() {
     use crate::semantic_analysis::ast_node::TypedEnumVariant;
-    use crate::Ident;
+    use crate::{span::Span, Ident};
     let engine = Engine::default();
 
     let sp = Span::dummy();
@@ -76,6 +100,7 @@ fn generic_enum_resolution() {
     let ty_1 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
+        type_parameters: vec![],
     });
 
     let variant_types = vec![TypedEnumVariant {
@@ -88,6 +113,7 @@ fn generic_enum_resolution() {
     let ty_2 = engine.insert_type(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
+        type_parameters: vec![],
     });
 
     // Unify them together...
@@ -97,6 +123,7 @@ fn generic_enum_resolution() {
     if let TypeInfo::Enum {
         name,
         variant_types,
+        ..
     } = engine.look_up_type_id(ty_1)
     {
         assert_eq!(name.as_str(), "Result");
@@ -111,6 +138,7 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
+    use sway_types::Span;
     let engine = Engine::default();
 
     let sp = Span::dummy();
@@ -129,12 +157,13 @@ fn basic_numeric_unknown() {
 }
 #[test]
 fn chain_of_refs() {
+    use sway_types::Span;
     let engine = Engine::default();
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
@@ -148,12 +177,13 @@ fn chain_of_refs() {
 }
 #[test]
 fn chain_of_refs_2() {
+    use sway_types::Span;
     let engine = Engine::default();
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
@@ -164,60 +194,4 @@ fn chain_of_refs_2() {
         engine.resolve_type(id3, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
-}
-
-fn parse_str_type(raw: &str, span: Span) -> CompileResult<TypeInfo> {
-    if raw.starts_with("str[") {
-        let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
-        if let Some(']') = rest.pop() {
-            if let Ok(num) = String::from_iter(rest).parse() {
-                return ok(TypeInfo::Str(num), vec![], vec![]);
-            }
-        }
-        return err(
-            vec![],
-            vec![CompileError::InvalidStrType {
-                raw: raw.to_string(),
-                span,
-            }],
-        );
-    }
-    err(vec![], vec![CompileError::UnknownType { span }])
-}
-
-#[test]
-fn test_str_parse() {
-    match parse_str_type("str[20]", Span::dummy()).value {
-        Some(value) if value == TypeInfo::Str(20) => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str[]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str[ab]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("str [ab]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-
-    match parse_str_type("not even a str[ type", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("20", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
-    match parse_str_type("[20]", Span::dummy()).value {
-        None => (),
-        _ => panic!("failed test"),
-    }
 }

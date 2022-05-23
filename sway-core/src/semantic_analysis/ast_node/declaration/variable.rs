@@ -1,6 +1,10 @@
 use crate::{
-    constants::*, error::*, semantic_analysis::TypedExpression, type_engine::TypeId,
-    type_engine::*, Ident, TypeParameter, Visibility,
+    constants::*,
+    error::*,
+    semantic_analysis::{CopyTypes, TypeMapping, TypedExpression},
+    type_engine::TypeId,
+    type_engine::*,
+    Ident, Visibility,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,13 +75,20 @@ impl PartialEq for TypedVariableDeclaration {
     }
 }
 
-impl TypedVariableDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.type_ascription =
-            match look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.type_ascription)),
-            };
+impl CopyTypes for TypedVariableDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_ascription = match look_up_type_id(self.type_ascription)
+            .matches_type_parameter(type_mapping)
+        {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.body.span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(
+                    insert_type(look_up_type_id_raw(self.type_ascription)),
+                    self.body.span.clone(),
+                );
+                insert_type(ty)
+            }
+        };
         self.body.copy_types(type_mapping)
     }
 }
@@ -91,11 +102,7 @@ pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
             if *x == name.as_str() {
                 Some(err(
                     vec![],
-                    [CompileError::InvalidVariableName {
-                        name: x.to_string(),
-                        span: name.span().clone(),
-                    }]
-                    .to_vec(),
+                    [CompileError::InvalidVariableName { name: name.clone() }].to_vec(),
                 ))
             } else {
                 None

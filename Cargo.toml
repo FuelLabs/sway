@@ -3,16 +3,17 @@ resolver = "2"
 members = [
     "docstrings",
     "forc",
-    "forc-explore",
-    "forc-fmt",
     "forc-gm",
-    "forc-lsp",
     "forc-pkg",
+    "forc-plugins/forc-explore",
+    "forc-plugins/forc-fmt",
+    "forc-plugins/forc-lsp",
     "forc-util",
     "scripts/examples-checker",
-    "scripts/forc-documenter",
+    "scripts/mdbook-forc-documenter",
     "sway-core",
     "sway-fmt",
+    "sway-fmt-v2",
     "sway-ir",
     "sway-lsp",
     "sway-parse",
@@ -22,10 +23,7 @@ members = [
     "test-sig-gen-util",
 ]
 exclude = [
-    "examples/fizzbuzz",
-    "examples/hello_world",
-    "examples/subcurrency",
-    "examples/wallet_smart_contract",
+    "examples/*"
 ]
 
 [profile.dev.package.sway-lsp]

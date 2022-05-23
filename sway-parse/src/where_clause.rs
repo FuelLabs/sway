@@ -45,8 +45,8 @@ impl Parse for WhereClause {
     }
 }
 
-impl WhereClause {
-    pub fn span(&self) -> Span {
+impl Spanned for WhereClause {
+    fn span(&self) -> Span {
         let where_token_span = self.where_token.span();
         match &self.bounds.final_value_opt {
             Some(where_bound) => Span::join(where_token_span, where_bound.span()),

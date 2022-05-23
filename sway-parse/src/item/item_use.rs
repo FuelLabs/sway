@@ -9,8 +9,8 @@ pub struct ItemUse {
     pub semicolon_token: SemicolonToken,
 }
 
-impl ItemUse {
-    pub fn span(&self) -> Span {
+impl Spanned for ItemUse {
+    fn span(&self) -> Span {
         let start = match &self.visibility {
             Some(pub_token) => pub_token.span(),
             None => self.use_token.span(),

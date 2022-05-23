@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.41"
-forc = { version = "0.11.0", path = "../forc", features = ["test"], default-features = false }
+forc = { path = "../forc", features = ["test"], default-features = false }
 fuel-asm = "0.4"
 fuel-tx = "0.9"
 fuel-vm = { version = "0.8", features = ["random"] }
@@ -15,3 +15,4 @@ rand = "0.8"
 regex = "1"
 serde_json = "1.0.73"
 tokio = "1.12"
+tracing = "0.1"

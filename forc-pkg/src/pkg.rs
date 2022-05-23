@@ -7,6 +7,7 @@ use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
 };
+use fuels_types::JsonABI;
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,12 +17,13 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    source_map::SourceMap, BytecodeCompilationResult, CompileAstResult, CompileError, NamespaceRef,
-    NamespaceWrapper, TreeType, TypedParseTree,
+    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
+    CompileAstResult, CompileError, TreeType, TypedParseTree,
 };
-use sway_types::JsonABI;
 use sway_utils::constants;
 use url::Url;
+
+use tracing::info;
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -143,7 +145,6 @@ pub struct BuildPlan {
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 pub struct BuildConfig {
     pub use_orig_asm: bool,
-    pub use_orig_parser: bool,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
@@ -514,7 +515,7 @@ pub fn graph_to_path_map(
             SourcePinned::Git(git) => {
                 let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
                 if !repo_path.exists() {
-                    println!("  Fetching {}", git.to_string());
+                    info!("  Fetching {}", git.to_string());
                     fetch_git(fetch_id, &dep.name, git)?;
                 }
                 find_dir_within(&repo_path, &dep.name, sway_git_tag).ok_or_else(|| {
@@ -822,7 +823,7 @@ fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str)
                 // to validate this. E.g. can we recreate the git hash by hashing the directory or something
                 // along these lines using git?
                 if !repo_path.exists() {
-                    println!("  Fetching {}", pinned_git.to_string());
+                    info!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
                 let path =
@@ -943,7 +944,6 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
     )
     .use_orig_asm(build_conf.use_orig_asm)
-    .use_orig_parser(build_conf.use_orig_parser)
     .print_finalized_asm(build_conf.print_finalized_asm)
     .print_intermediate_asm(build_conf.print_intermediate_asm)
     .print_ir(build_conf.print_ir);
@@ -954,31 +954,31 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, NamespaceRef>,
+    namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
     compilation_order: &[NodeIx],
     node: NodeIx,
-) -> NamespaceRef {
+) -> namespace::Module {
     use petgraph::visit::{Dfs, Walker};
 
     // Find all nodes that are a dependency of this one with a depth-first search.
     let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
 
-    // In order of compilation, accumulate dependency namespace refs.
-    let namespace = sway_core::create_module();
+    // In order of compilation, accumulate dependency namespaces as submodules.
+    let mut namespace = namespace::Module::default();
     for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
         if dep_node == node {
             break;
         }
         // Add the namespace once for each of its names.
-        let namespace_ref = namespace_map[&dep_node];
+        let dep_namespace = &namespace_map[&dep_node];
         let dep_names: BTreeSet<_> = graph
             .edges_directed(dep_node, Direction::Incoming)
             .map(|e| e.weight())
             .collect();
         for dep_name in dep_names {
             let dep_name = kebab_to_snake_case(dep_name);
-            namespace.insert_module_ref(dep_name.to_string(), namespace_ref);
+            namespace.insert_submodule(dep_name.to_string(), dep_namespace.clone());
         }
     }
 
@@ -1007,9 +1007,9 @@ pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
-    namespace: NamespaceRef,
+    namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(Compiled, Option<NamespaceRef>)> {
+) -> Result<(Compiled, Option<namespace::Root>)> {
     let entry_path = manifest.entry_path();
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
@@ -1034,9 +1034,9 @@ pub fn compile(
                 TreeType::Library { .. } => {
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
-                    let lib_namespace = parse_tree.clone().get_namespace_ref();
+                    let lib_namespace = parse_tree.namespace().clone();
                     let compiled = Compiled { json_abi, bytecode };
-                    Ok((compiled, Some(lib_namespace)))
+                    Ok((compiled, Some(lib_namespace.into())))
                 }
 
                 // For all other program types, we'll compile the bytecode.
@@ -1088,7 +1088,7 @@ pub fn build(
         let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace);
+            namespace_map.insert(node, namespace.into());
         }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;
@@ -1204,7 +1204,7 @@ pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
 pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
-        .map(|e| e.to_friendly_error_string())
+        .map(|e| format!("{}", e))
         .collect::<Vec<String>>()
         .join("\n");
     let message = format!("Parsing {} failed: \n{}", project_name, error);

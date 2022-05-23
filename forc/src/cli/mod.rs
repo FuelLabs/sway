@@ -35,7 +35,6 @@ enum Forc {
     #[clap(visible_alias = "b")]
     Build(BuildCommand),
     Clean(CleanCommand),
-    #[clap(after_help = completions::COMPLETIONS_HELP)]
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
     Init(InitCommand),

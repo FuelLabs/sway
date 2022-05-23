@@ -1,15 +1,15 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
+    constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
-    parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
     VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};
 
-use std::{borrow::Cow, fmt, path::PathBuf, sync::Arc};
+use std::{fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
 
 macro_rules! check {
@@ -82,6 +82,7 @@ pub struct ParserLifter<T> {
 }
 
 impl<T> ParserLifter<T> {
+    #[allow(dead_code)]
     pub(crate) fn empty(value: T) -> Self {
         ParserLifter {
             var_decls: vec![],
@@ -115,6 +116,14 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
 }
 
 impl<T> CompileResult<T> {
+    pub fn is_ok(&self) -> bool {
+        self.value.is_some() && self.errors.is_empty()
+    }
+
+    pub fn is_ok_no_warn(&self) -> bool {
+        self.value.is_some() && self.warnings.is_empty() && self.errors.is_empty()
+    }
+
     pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
         CompileResult {
             value,
@@ -169,6 +178,27 @@ impl<T> CompileResult<T> {
     }
 }
 
+impl<'a, T> CompileResult<&'a T>
+where
+    T: Clone,
+{
+    /// Converts a `CompileResult` around a reference value to an owned value by cloning the type
+    /// behind the reference.
+    pub fn cloned(self) -> CompileResult<T> {
+        let CompileResult {
+            value,
+            warnings,
+            errors,
+        } = self;
+        let value = value.cloned();
+        CompileResult {
+            value,
+            warnings,
+            errors,
+        }
+    }
+}
+
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -197,16 +227,12 @@ impl CompileWarning {
         self.warning_content.to_string()
     }
 
-    pub fn span(&self) -> (usize, usize) {
-        (self.span.start(), self.span.end())
+    pub fn span(&self) -> Span {
+        self.span.clone()
     }
 
-    pub fn path(&self) -> Option<&Arc<PathBuf>> {
-        self.span.path()
-    }
-
-    pub fn path_str(&self) -> Option<Cow<'_, str>> {
-        self.span.path_str()
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span.path().cloned()
     }
 
     /// Returns the line and column start and end
@@ -249,7 +275,7 @@ pub enum Warning {
         cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: TypeInfo,
+        r#type: Box<TypeInfo>,
     },
     SimilarMethodFound {
         lib: Ident,
@@ -257,7 +283,7 @@ pub enum Warning {
         name: Ident,
     },
     ShadowsOtherSymbol {
-        name: String,
+        name: Ident,
     },
     OverridingTraitImplementation,
     DeadDeclaration,
@@ -266,7 +292,7 @@ pub enum Warning {
     DeadTrait,
     UnreachableCode,
     DeadEnumVariant {
-        variant_name: String,
+        variant_name: Ident,
     },
     DeadMethod,
     StructFieldNeverRead,
@@ -400,15 +426,14 @@ impl fmt::Display for Warning {
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariable { var_name: String, span: Span },
+    UnknownVariable { var_name: Ident },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariablePath { var_name: Ident, span: Span },
     #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
-        name: String,
-        span: Span,
+        name: Ident,
         what_it_is: &'static str,
     },
     #[error(
@@ -416,26 +441,15 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: String,
-        span: Span,
+        name: crate::parse_tree::CallPath,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
-    #[error("Error parsing input: expected {err:?}")]
-    ParseFailure {
-        span: Span,
-        err: pest::error::Error<Rule>,
-    },
     #[error("Error parsing input: {err:?}")]
     ParseError { span: Span, err: String },
-    #[error(
-        "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
-         predicate at the top level."
-    )]
-    InvalidTopLevelItem(Rule, Span),
     #[error(
         "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
          code that triggered this error."
@@ -446,8 +460,6 @@ pub enum CompileError {
          code that triggered this error."
     )]
     InternalOwned(String, Span),
-    #[error("Unimplemented feature: {0:?}")]
-    UnimplementedRule(Rule, Span),
     #[error(
         "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
          binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
@@ -457,16 +469,6 @@ pub enum CompileError {
     ExpectedExprAfterOp { op: String, span: Span },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
     ExpectedOp { op: String, span: Span },
-    #[error(
-        "Where clause was specified but there are no generic type parameters. Where clauses can \
-         only be applied to generic type parameters."
-    )]
-    UnexpectedWhereClause(Span),
-    #[error(
-        "Specified generic type in where clause \"{type_name}\" not found in generic type \
-         arguments of function."
-    )]
-    UndeclaredGenericTypeInWhereClause { type_name: Ident, span: Span },
     #[error(
         "Program contains multiple contracts. A valid program should only contain at most one \
          contract."
@@ -482,16 +484,6 @@ pub enum CompileError {
          predicate."
     )]
     MultiplePredicates(Span),
-    #[error(
-        "Trait constraint was applied to generic type that is not in scope. Trait \
-         \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist \
-         in this scope."
-    )]
-    ConstrainedNonExistentType {
-        trait_name: Ident,
-        type_name: Ident,
-        span: Span,
-    },
     #[error(
         "Predicate definition contains multiple main functions. Multiple functions in the same \
          scope cannot have the same name."
@@ -519,15 +511,15 @@ pub enum CompileError {
         kind: &'static str,
         span: Span,
     },
-    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(String, Span),
+    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
+    AssignmentToNonMutable { name: Ident },
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
     )]
     TypeParameterNotInTypeScope {
-        name: String,
+        name: Ident,
         span: Span,
         comma_separated_generic_params: String,
         fn_name: Ident,
@@ -578,6 +570,11 @@ pub enum CompileError {
     )]
     StructNotFound { name: Ident, span: Span },
     #[error(
+        "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
+         it?"
+    )]
+    EnumNotFound { name: Ident, span: Span },
+    #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
@@ -614,12 +611,9 @@ pub enum CompileError {
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
-        span: Span,
-        method_name: String,
+        method_name: Ident,
         type_name: String,
     },
-    #[error("Duplicate definitions with name \"{method_name}\".")]
-    DuplicateMethodDefinitions { method_name: String, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -628,6 +622,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
         name: String,
@@ -640,6 +636,16 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not an enum.")]
+    DeclIsNotAnEnum { actually: String, span: Span },
+    #[error("This is a {actually}, not a struct.")]
+    DeclIsNotAStruct { actually: String, span: Span },
+    #[error("This is a {actually}, not a function.")]
+    DeclIsNotAFunction { actually: String, span: Span },
+    #[error("This is a {actually}, not a variable.")]
+    DeclIsNotAVariable { actually: String, span: Span },
+    #[error("This is a {actually}, not an ABI.")]
+    DeclIsNotAnAbi { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -647,13 +653,12 @@ pub enum CompileError {
     FieldNotFound {
         field_name: Ident,
         available_fields: String,
-        struct_name: String,
-        span: Span,
+        struct_name: Ident,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span, name: String },
+    SymbolNotFound { name: Ident },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { span: Span, name: String },
+    ImportPrivateSymbol { name: Ident },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -772,7 +777,7 @@ pub enum CompileError {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
     #[error("Cannot find trait \"{name}\" in this scope.")]
-    TraitNotFound { name: String, span: Span },
+    TraitNotFound { name: crate::parse_tree::CallPath },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -843,17 +848,17 @@ pub enum CompileError {
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
-    TupleOutOfBounds {
+    TupleIndexOutOfBounds {
         index: usize,
         count: usize,
         span: Span,
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
-    ShadowsOtherSymbol { name: String, span: Span },
+    ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
-    GenericShadowsGeneric { name: String, span: Span },
+    GenericShadowsGeneric { name: Ident },
     #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
-    StarImportShadowsOtherSymbol { name: String, span: Span },
+    StarImportShadowsOtherSymbol { name: Ident },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -865,8 +870,33 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
-    PureCalledImpure { span: Span },
+    #[error(
+        "Storage attribute access mismatch. Try giving the surrounding function more access by \
+        adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
+    )]
+    StorageAccessMismatch { attrs: String, span: Span },
+    #[error(
+        "The trait function \"{fn_name}\" in trait \"{trait_name}\" is pure, but this \
+        implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
+        removed, or the trait declaration must be changed to \
+        \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\"."
+    )]
+    TraitDeclPureImplImpure {
+        fn_name: Ident,
+        trait_name: Ident,
+        attrs: String,
+        span: Span,
+    },
+    #[error(
+        "Storage attribute access mismatch. The trait function \"{fn_name}\" in trait \
+        \"{trait_name}\" requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
+    )]
+    TraitImplPurityMismatch {
+        fn_name: Ident,
+        trait_name: Ident,
+        attrs: String,
+        span: Span,
+    },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
@@ -879,15 +909,9 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The name \"{fn_name}\" is defined multiple times for trait \"{trait_name}\".")]
-    NameDefinedMultipleTimesForTrait {
-        fn_name: String,
-        trait_name: String,
-        span: Span,
-    },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
-        supertrait_name: String,
+        supertrait_name: crate::parse_tree::CallPath,
         type_name: String,
         span: Span,
     },
@@ -895,8 +919,8 @@ pub enum CompileError {
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
-        supertrait_name: String,
-        trait_name: String,
+        supertrait_name: crate::parse_tree::CallPath,
+        trait_name: Ident,
         span: Span,
     },
     #[error("Cannot use `if let` on a non-enum type.")]
@@ -912,13 +936,13 @@ pub enum CompileError {
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: String, span: Span },
+    StorageFieldDoesNotExist { name: Ident },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
-    InvalidVariableName { name: String, span: Span },
+    InvalidVariableName { name: Ident },
     #[error(
         "Internal compiler error: Unexpected {decl_type} declaration found.\n\
         Please file an issue on the repository and include the code that triggered this error."
@@ -935,6 +959,8 @@ pub enum CompileError {
     Lex { error: sway_parse::LexError },
     #[error("{}", error)]
     Parse { error: sway_parse::ParseError },
+    #[error("\"where\" clauses are not yet supported")]
+    WhereClauseNotYetSupported { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -959,216 +985,182 @@ pub enum TypeError {
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
 }
 
 impl TypeError {
-    pub(crate) fn internal_span(&self) -> &Span {
+    pub(crate) fn span(&self) -> Span {
         use TypeError::*;
         match self {
-            MismatchedType { span, .. } => span,
-            UnknownType { span } => span,
+            MismatchedType { span, .. } => span.clone(),
+            UnknownType { span } => span.clone(),
+            MatchArmScrutineeWrongType { span, .. } => span.clone(),
         }
     }
 }
 
 impl CompileError {
-    pub fn to_friendly_error_string(&self) -> String {
-        match self {
-            CompileError::ParseFailure { err, .. } => format!(
-                "Error parsing input: {}",
-                match &err.variant {
-                    pest::error::ErrorVariant::ParsingError {
-                        positives,
-                        negatives,
-                    } => {
-                        let mut buf = String::new();
-                        if !positives.is_empty() {
-                            buf.push_str(&format!(
-                                "expected one of [{}]",
-                                positives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        if !negatives.is_empty() {
-                            buf.push_str(&format!(
-                                "did not expect any of [{}]",
-                                negatives
-                                    .iter()
-                                    .map(|x| format!("{:?}", x))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ));
-                        }
-                        buf
-                    }
-                    pest::error::ErrorVariant::CustomError { message } => message.to_string(),
-                }
-            ),
-            a => format!("{}", a),
-        }
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span().path().cloned()
     }
 
-    pub fn span(&self) -> (usize, usize) {
-        let sp = self.internal_span();
-        (sp.start(), sp.end())
-    }
-
-    pub fn path(&self) -> Option<&Arc<PathBuf>> {
-        self.internal_span().path()
-    }
-
-    pub fn path_str(&self) -> Option<Cow<'_, str>> {
-        self.internal_span().path_str()
-    }
-
-    pub fn internal_span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { span, .. } => span,
-            UnknownVariablePath { span, .. } => span,
-            UnknownFunction { span, .. } => span,
-            NotAVariable { span, .. } => span,
-            NotAFunction { span, .. } => span,
-            Unimplemented(_, span) => span,
-            TypeError(err) => err.internal_span(),
-            ParseFailure { span, .. } => span,
-            ParseError { span, .. } => span,
-            InvalidTopLevelItem(_, span) => span,
-            Internal(_, span) => span,
-            InternalOwned(_, span) => span,
-            UnimplementedRule(_, span) => span,
-            InvalidByteLiteralLength { span, .. } => span,
-            ExpectedExprAfterOp { span, .. } => span,
-            ExpectedOp { span, .. } => span,
-            UnexpectedWhereClause(span) => span,
-            UndeclaredGenericTypeInWhereClause { span, .. } => span,
-            MultiplePredicates(span) => span,
-            MultipleScripts(span) => span,
-            MultipleContracts(span) => span,
-            ConstrainedNonExistentType { span, .. } => span,
-            MultiplePredicateMainFunctions(span) => span,
-            NoPredicateMainFunction(span) => span,
-            PredicateMainDoesNotReturnBool(span) => span,
-            NoScriptMainFunction(span) => span,
-            MultipleScriptMainFunctions(span) => span,
-            ReassignmentToNonVariable { span, .. } => span,
-            AssignmentToNonMutable(_, span) => span,
-            TypeParameterNotInTypeScope { span, .. } => span,
-            MultipleImmediates(span) => span,
-            MismatchedTypeInTrait { span, .. } => span,
-            NotATrait { span, .. } => span,
-            UnknownTrait { span, .. } => span,
-            FunctionNotAPartOfInterfaceSurface { span, .. } => span,
-            MissingInterfaceSurfaceMethods { span, .. } => span,
-            IncorrectNumberOfTypeArguments { span, .. } => span,
-            DoesNotTakeTypeArguments { span, .. } => span,
-            NeedsTypeArguments { span, .. } => span,
-            StructNotFound { span, .. } => span,
-            DeclaredNonStructAsStruct { span, .. } => span,
-            AccessedFieldOfNonStruct { span, .. } => span,
-            MethodOnNonValue { span, .. } => span,
-            StructMissingField { span, .. } => span,
-            StructDoesNotHaveField { span, .. } => span,
-            MethodNotFound { span, .. } => span,
-            DuplicateMethodDefinitions { span, .. } => span,
-            ModuleNotFound { span, .. } => span,
-            NotATuple { span, .. } => span,
-            NotAStruct { span, .. } => span,
-            FieldNotFound { span, .. } => span,
-            SymbolNotFound { span, .. } => span,
-            ImportPrivateSymbol { span, .. } => span,
-            NoElseBranch { span, .. } => span,
-            UnqualifiedSelfType { span, .. } => span,
-            NotAType { span, .. } => span,
-            MissingEnumInstantiator { span, .. } => span,
-            PathDoesNotReturn { span, .. } => span,
-            ExpectedImplicitReturnFromBlockWithType { span, .. } => span,
-            ExpectedImplicitReturnFromBlock { span, .. } => span,
-            UnknownRegister { span, .. } => span,
-            MissingImmediate { span, .. } => span,
-            InvalidImmediateValue { span, .. } => span,
-            InvalidAssemblyMismatchedReturn { span, .. } => span,
-            UnknownEnumVariant { span, .. } => span,
-            UnrecognizedOp { span, .. } => span,
-            UnableToInferGeneric { span, .. } => span,
-            Immediate06TooLarge { span, .. } => span,
-            Immediate12TooLarge { span, .. } => span,
-            Immediate18TooLarge { span, .. } => span,
-            Immediate24TooLarge { span, .. } => span,
-            DisallowedJi { span, .. } => span,
-            DisallowedJnei { span, .. } => span,
-            DisallowedJnzi { span, .. } => span,
-            DisallowedLw { span, .. } => span,
-            IncorrectNumberOfAsmRegisters { span, .. } => span,
-            UnnecessaryImmediate { span, .. } => span,
-            AmbiguousPath { span, .. } => span,
-            UnknownType { span, .. } => span,
-            InvalidStrType { span, .. } => span,
-            TooManyInstructions { span, .. } => span,
-            FileNotFound { span, .. } => span,
-            FileCouldNotBeRead { span, .. } => span,
-            ImportMustBeLibrary { span, .. } => span,
-            MoreThanOneEnumInstantiator { span, .. } => span,
-            UnnecessaryEnumInstantiator { span, .. } => span,
-            TraitNotFound { span, .. } => span,
-            InvalidExpressionOnLhs { span, .. } => span,
-            TooManyArgumentsForFunction { span, .. } => span,
-            TooFewArgumentsForFunction { span, .. } => span,
-            InvalidAbiType { span, .. } => span,
-            NotAnAbi { span, .. } => span,
-            ImplAbiForNonContract { span, .. } => span,
-            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
-            ArgumentParameterTypeMismatch { span, .. } => span,
-            RecursiveCall { span, .. } => span,
-            RecursiveCallChain { span, .. } => span,
-            TypeWithUnknownSize { span, .. } => span,
-            InfiniteDependencies { span, .. } => span,
-            GMFromExternalContract { span, .. } => span,
-            MintFromExternalContext { span, .. } => span,
-            BurnFromExternalContext { span, .. } => span,
-            ContractStorageFromExternalContext { span, .. } => span,
-            ArrayOutOfBounds { span, .. } => span,
-            TupleOutOfBounds { span, .. } => span,
-            ShadowsOtherSymbol { span, .. } => span,
-            GenericShadowsGeneric { span, .. } => span,
-            StarImportShadowsOtherSymbol { span, .. } => span,
-            MatchWrongType { span, .. } => span,
-            MatchExpressionNonExhaustive { span, .. } => span,
-            NotAnEnum { span, .. } => span,
-            PureCalledImpure { span, .. } => span,
-            ImpureInNonContract { span, .. } => span,
-            IntegerTooLarge { span, .. } => span,
-            IntegerTooSmall { span, .. } => span,
-            IntegerContainsInvalidDigit { span, .. } => span,
-            AsteriskWithAlias { span, .. } => span,
-            AbiAsSupertrait { span, .. } => span,
-            NameDefinedMultipleTimesForTrait { span, .. } => span,
-            SupertraitImplMissing { span, .. } => span,
-            SupertraitImplRequired { span, .. } => span,
-            IfLetNonEnum { span, .. } => span,
-            ContractCallParamRepeated { span, .. } => span,
-            UnrecognizedContractParam { span, .. } => span,
-            CallParamForNonContractCallMethod { span, .. } => span,
-            StorageFieldDoesNotExist { span, .. } => span,
-            NoDeclaredStorage { span, .. } => span,
-            MultipleStorageDeclarations { span, .. } => span,
-            InvalidVariableName { span, .. } => span,
-            UnexpectedDeclaration { span, .. } => span,
-            ContractAddressMustBeKnown { span, .. } => span,
-            ConvertParseTree { error } => error.span_ref(),
-            Lex { error } => error.span_ref(),
-            Parse { error } => &error.span,
+            UnknownVariable { var_name } => var_name.span().clone(),
+            UnknownVariablePath { span, .. } => span.clone(),
+            UnknownFunction { span, .. } => span.clone(),
+            NotAVariable { name, .. } => name.span().clone(),
+            NotAFunction { name, .. } => name.span(),
+            Unimplemented(_, span) => span.clone(),
+            TypeError(err) => err.span(),
+            ParseError { span, .. } => span.clone(),
+            Internal(_, span) => span.clone(),
+            InternalOwned(_, span) => span.clone(),
+            InvalidByteLiteralLength { span, .. } => span.clone(),
+            ExpectedExprAfterOp { span, .. } => span.clone(),
+            ExpectedOp { span, .. } => span.clone(),
+            MultiplePredicates(span) => span.clone(),
+            MultipleScripts(span) => span.clone(),
+            MultipleContracts(span) => span.clone(),
+            MultiplePredicateMainFunctions(span) => span.clone(),
+            NoPredicateMainFunction(span) => span.clone(),
+            PredicateMainDoesNotReturnBool(span) => span.clone(),
+            NoScriptMainFunction(span) => span.clone(),
+            MultipleScriptMainFunctions(span) => span.clone(),
+            ReassignmentToNonVariable { span, .. } => span.clone(),
+            AssignmentToNonMutable { name } => name.span().clone(),
+            TypeParameterNotInTypeScope { span, .. } => span.clone(),
+            MultipleImmediates(span) => span.clone(),
+            MismatchedTypeInTrait { span, .. } => span.clone(),
+            NotATrait { span, .. } => span.clone(),
+            UnknownTrait { span, .. } => span.clone(),
+            FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
+            IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
+            DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            NeedsTypeArguments { span, .. } => span.clone(),
+            StructNotFound { span, .. } => span.clone(),
+            DeclaredNonStructAsStruct { span, .. } => span.clone(),
+            AccessedFieldOfNonStruct { span, .. } => span.clone(),
+            MethodOnNonValue { span, .. } => span.clone(),
+            StructMissingField { span, .. } => span.clone(),
+            StructDoesNotHaveField { span, .. } => span.clone(),
+            MethodNotFound { method_name, .. } => method_name.span().clone(),
+            ModuleNotFound { span, .. } => span.clone(),
+            NotATuple { span, .. } => span.clone(),
+            NotAStruct { span, .. } => span.clone(),
+            FieldAccessOnNonStruct { span, .. } => span.clone(),
+            FieldNotFound { field_name, .. } => field_name.span().clone(),
+            SymbolNotFound { name, .. } => name.span().clone(),
+            ImportPrivateSymbol { name } => name.span().clone(),
+            NoElseBranch { span, .. } => span.clone(),
+            UnqualifiedSelfType { span, .. } => span.clone(),
+            NotAType { span, .. } => span.clone(),
+            MissingEnumInstantiator { span, .. } => span.clone(),
+            PathDoesNotReturn { span, .. } => span.clone(),
+            ExpectedImplicitReturnFromBlockWithType { span, .. } => span.clone(),
+            ExpectedImplicitReturnFromBlock { span, .. } => span.clone(),
+            UnknownRegister { span, .. } => span.clone(),
+            MissingImmediate { span, .. } => span.clone(),
+            InvalidImmediateValue { span, .. } => span.clone(),
+            InvalidAssemblyMismatchedReturn { span, .. } => span.clone(),
+            UnknownEnumVariant { span, .. } => span.clone(),
+            UnrecognizedOp { span, .. } => span.clone(),
+            UnableToInferGeneric { span, .. } => span.clone(),
+            Immediate06TooLarge { span, .. } => span.clone(),
+            Immediate12TooLarge { span, .. } => span.clone(),
+            Immediate18TooLarge { span, .. } => span.clone(),
+            Immediate24TooLarge { span, .. } => span.clone(),
+            DisallowedJi { span, .. } => span.clone(),
+            DisallowedJnei { span, .. } => span.clone(),
+            DisallowedJnzi { span, .. } => span.clone(),
+            DisallowedLw { span, .. } => span.clone(),
+            IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
+            UnnecessaryImmediate { span, .. } => span.clone(),
+            AmbiguousPath { span, .. } => span.clone(),
+            UnknownType { span, .. } => span.clone(),
+            InvalidStrType { span, .. } => span.clone(),
+            TooManyInstructions { span, .. } => span.clone(),
+            FileNotFound { span, .. } => span.clone(),
+            FileCouldNotBeRead { span, .. } => span.clone(),
+            ImportMustBeLibrary { span, .. } => span.clone(),
+            MoreThanOneEnumInstantiator { span, .. } => span.clone(),
+            UnnecessaryEnumInstantiator { span, .. } => span.clone(),
+            TraitNotFound { name } => name.span(),
+            InvalidExpressionOnLhs { span, .. } => span.clone(),
+            TooManyArgumentsForFunction { span, .. } => span.clone(),
+            TooFewArgumentsForFunction { span, .. } => span.clone(),
+            InvalidAbiType { span, .. } => span.clone(),
+            NotAnAbi { span, .. } => span.clone(),
+            ImplAbiForNonContract { span, .. } => span.clone(),
+            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
+            ArgumentParameterTypeMismatch { span, .. } => span.clone(),
+            RecursiveCall { span, .. } => span.clone(),
+            RecursiveCallChain { span, .. } => span.clone(),
+            TypeWithUnknownSize { span, .. } => span.clone(),
+            InfiniteDependencies { span, .. } => span.clone(),
+            GMFromExternalContract { span, .. } => span.clone(),
+            MintFromExternalContext { span, .. } => span.clone(),
+            BurnFromExternalContext { span, .. } => span.clone(),
+            ContractStorageFromExternalContext { span, .. } => span.clone(),
+            ArrayOutOfBounds { span, .. } => span.clone(),
+            ShadowsOtherSymbol { name } => name.span().clone(),
+            GenericShadowsGeneric { name } => name.span().clone(),
+            StarImportShadowsOtherSymbol { name } => name.span().clone(),
+            MatchWrongType { span, .. } => span.clone(),
+            MatchExpressionNonExhaustive { span, .. } => span.clone(),
+            NotAnEnum { span, .. } => span.clone(),
+            StorageAccessMismatch { span, .. } => span.clone(),
+            TraitDeclPureImplImpure { span, .. } => span.clone(),
+            TraitImplPurityMismatch { span, .. } => span.clone(),
+            DeclIsNotAnEnum { span, .. } => span.clone(),
+            DeclIsNotAStruct { span, .. } => span.clone(),
+            DeclIsNotAFunction { span, .. } => span.clone(),
+            DeclIsNotAVariable { span, .. } => span.clone(),
+            DeclIsNotAnAbi { span, .. } => span.clone(),
+            ImpureInNonContract { span, .. } => span.clone(),
+            IntegerTooLarge { span, .. } => span.clone(),
+            IntegerTooSmall { span, .. } => span.clone(),
+            IntegerContainsInvalidDigit { span, .. } => span.clone(),
+            AsteriskWithAlias { span, .. } => span.clone(),
+            AbiAsSupertrait { span, .. } => span.clone(),
+            SupertraitImplMissing { span, .. } => span.clone(),
+            SupertraitImplRequired { span, .. } => span.clone(),
+            IfLetNonEnum { span, .. } => span.clone(),
+            ContractCallParamRepeated { span, .. } => span.clone(),
+            UnrecognizedContractParam { span, .. } => span.clone(),
+            CallParamForNonContractCallMethod { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { name } => name.span().clone(),
+            NoDeclaredStorage { span, .. } => span.clone(),
+            MultipleStorageDeclarations { span, .. } => span.clone(),
+            InvalidVariableName { name } => name.span().clone(),
+            UnexpectedDeclaration { span, .. } => span.clone(),
+            ContractAddressMustBeKnown { span, .. } => span.clone(),
+            ConvertParseTree { error } => error.span(),
+            WhereClauseNotYetSupported { span, .. } => span.clone(),
+            Lex { error } => error.span(),
+            Parse { error } => error.span.clone(),
+            EnumNotFound { span, .. } => span.clone(),
+            TupleIndexOutOfBounds { span, .. } => span.clone(),
         }
     }
 
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
-            self.internal_span().start_pos().line_col().into(),
-            self.internal_span().end_pos().line_col().into(),
+            self.span().start_pos().line_col().into(),
+            self.span().end_pos().line_col().into(),
         )
     }
 }

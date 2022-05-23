@@ -1,0 +1,8 @@
+[project]
+name = "implicit_return"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[dependencies]

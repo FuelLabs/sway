@@ -52,8 +52,7 @@ pub enum ControlFlowGraphNode {
     #[allow(clippy::large_enum_variant)]
     ProgramNode(TypedAstNode),
     EnumVariant {
-        span: Span,
-        variant_name: String,
+        variant_name: Ident,
         is_public: bool,
     },
     MethodDeclaration {
@@ -148,7 +147,7 @@ impl ControlFlowGraph {
     /// Prints out graphviz for this graph
     pub(crate) fn visualize(&self) {
         use petgraph::dot::Dot;
-        println!("{:?}", Dot::with_config(&self.graph, &[]));
+        tracing::info!("{:?}", Dot::with_config(&self.graph, &[]));
     }
 }
 
@@ -158,8 +157,7 @@ impl ControlFlowGraphNode {
         is_public: bool,
     ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::EnumVariant {
-            variant_name: other.name.as_str().to_string(),
-            span: other.span.clone(),
+            variant_name: other.name.clone(),
             is_public,
         }
     }

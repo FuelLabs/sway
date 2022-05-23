@@ -3,8 +3,7 @@ library ecr;
 use ::b512::B512;
 use ::context::registers::error;
 use ::ecr::{EcRecoverError, ec_recover};
-use ::evm_address::EvmAddress;
-use ::hash::{HashMethod, hash_pair, hash_value};
+use ::hash::keccak256;
 use ::result::*;
 
 /// Recover the ethereum address derived from the private key used to sign a message.
@@ -19,7 +18,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<EvmAddress,
         let pub_key = pub_key_result.unwrap();
 
         // Note that Ethereum addresses are derived from the Keccak256 hash of the pubkey (not sha256)
-        let pubkey_hash = hash_pair((pub_key.bytes)[0], (pub_key.bytes)[1], HashMethod::Keccak256);
+        let address = keccak256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
 
         Result::Ok(~EvmAddress::from(pubkey_hash))
     }

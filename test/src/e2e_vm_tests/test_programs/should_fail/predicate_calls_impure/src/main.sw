@@ -1,10 +1,13 @@
 predicate;
 
 // In a script, there can be no impurity since storage is only available in contracts.
-fn main() {
-  foo()
+#[storage(read, write)]
+fn main() -> bool {
+  foo();
+  false
 }
 
-impure fn foo() {
-  
+#[storage(read,write)]
+fn foo() {
+
 }

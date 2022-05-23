@@ -42,7 +42,7 @@ struct S {
 }
 
 fn main() -> bool {
-    let s = S {
+    let mut s = S {
         t0: W {
             t5: 5,
             t6: T6 {

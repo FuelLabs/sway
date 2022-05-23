@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate pest_derive;
-#[macro_use]
 pub mod error;
 
 mod asm_generation;
@@ -12,13 +10,11 @@ mod control_flow_analysis;
 mod convert_parse_tree;
 mod optimize;
 pub mod parse_tree;
-mod parser;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
 
-pub use crate::parser::{Rule, SwayParser};
 use crate::{
     asm_generation::{checks, compile_ast_to_asm},
     error::*,
@@ -27,14 +23,12 @@ use crate::{
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
-use pest::iterators::Pair;
-use pest::Parser;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use semantic_analysis::{
-    create_module, retrieve_module, Namespace, NamespaceRef, NamespaceWrapper, TreeType,
-    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    namespace::{self, Namespace},
+    TreeType, TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
@@ -99,22 +93,6 @@ pub enum AstNodeContent {
     IncludeStatement(IncludeStatement),
 }
 
-impl ParseTree {
-    /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
-    /// cover.
-    pub(crate) fn new(span: span::Span) -> Self {
-        ParseTree {
-            root_nodes: Vec::new(),
-            span,
-        }
-    }
-
-    /// Push a new [AstNode] on to the end of a [ParseTree]'s root nodes.
-    pub(crate) fn push(&mut self, new_node: AstNode) {
-        self.root_nodes.push(new_node);
-    }
-}
-
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
@@ -127,60 +105,32 @@ impl ParseTree {
 /// ```
 ///
 /// # Panics
-/// Panics if the generated parser from Pest panics.
+/// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
-    let use_orig_parser = config
-        .map(|config| config.use_orig_parser)
-        .unwrap_or_default();
-    if use_orig_parser {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
-        let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
-            Ok(o) => o,
-            Err(e) => {
-                let path = config.map(|config| config.path());
-                return err(
-                    Vec::new(),
-                    vec![CompileError::ParseFailure {
-                        span: span::Span::new(input, get_start(&e), get_end(&e), path).unwrap(),
-                        err: e,
-                    }],
-                );
-            }
-        };
-        let parsed_root = check!(
-            parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        ok(parsed_root, warnings, errors)
-    } else {
-        let path = config.map(|config| config.path());
-        let program = match sway_parse::parse_file(input, path) {
-            Ok(program) => program,
-            Err(error) => {
-                let errors = match error {
-                    sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-                    sway_parse::ParseFileError::Parse(errors) => errors
-                        .into_iter()
-                        .map(|error| CompileError::Parse { error })
-                        .collect(),
-                };
-                return err(vec![], errors);
-            }
-        };
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
-        let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
-        let sway_parse_tree = check!(
-            compile_result,
-            return err(warnings, errors),
-            warnings,
-            errors,
-        );
-        ok(sway_parse_tree, warnings, errors)
-    }
+    let path = config.map(|config| config.path());
+    let program = match sway_parse::parse_file(input, path) {
+        Ok(program) => program,
+        Err(error) => {
+            let errors = match error {
+                sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
+                sway_parse::ParseFileError::Parse(errors) => errors
+                    .into_iter()
+                    .map(|error| CompileError::Parse { error })
+                    .collect(),
+            };
+            return err(vec![], errors);
+        }
+    };
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    let compile_result = crate::convert_parse_tree::convert_parse_tree(program);
+    let sway_parse_tree = check!(
+        compile_result,
+        return err(warnings, errors),
+        warnings,
+        errors,
+    );
+    ok(sway_parse_tree, warnings, errors)
 }
 
 /// Represents the result of compiling Sway code via [compile_to_asm].
@@ -192,7 +142,7 @@ pub enum CompilationResult {
     },
     Library {
         name: Ident,
-        namespace: NamespaceRef,
+        namespace: Box<namespace::Root>,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -229,41 +179,8 @@ pub enum BytecodeCompilationResult {
     },
 }
 
-/// If a given [Rule] exists in the input text, return
-/// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
-pub fn extract_keyword(line: &str, rule: Rule) -> Option<String> {
-    if let Ok(pair) = SwayParser::parse(rule, Arc::from(line)) {
-        Some(pair.as_str().trim().to_string())
-    } else {
-        None
-    }
-}
-
-/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the start position of the span of text that the error occurs.
-fn get_start(err: &pest::error::Error<Rule>) -> usize {
-    match err.location {
-        pest::error::InputLocation::Pos(num) => num,
-        pest::error::InputLocation::Span((start, _)) => start,
-    }
-}
-
-/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the end position of the span of text that the error occurs.
-fn get_end(err: &pest::error::Error<Rule>) -> usize {
-    match err.location {
-        pest::error::InputLocation::Pos(num) => num,
-        pest::error::InputLocation::Span((_, end)) => end,
-    }
-}
-
-/// This struct represents the compilation of an internal dependency
-/// defined through an include statement (the `dep` keyword).
-pub(crate) struct InnerDependencyCompileResult {
-    name: Ident,
-    namespace: Namespace,
-}
-
 /// For internal compiler use.
-/// Compiles an included file and returns its control flow and dead code graphs.
+/// Compiles an included file and creates its control flow and dead code graphs.
 /// These graphs are merged into the parent program's graphs for accurate analysis.
 ///
 /// TODO -- there is _so_ much duplicated code and messiness in this file around the
@@ -271,34 +188,48 @@ pub(crate) struct InnerDependencyCompileResult {
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency(
     input: Arc<str>,
-    initial_namespace: NamespaceRef,
-    build_config: BuildConfig,
+    alias: Option<&Ident>,
+    dep_build_config: BuildConfig,
+    parent_namespace: &mut Namespace,
     dead_code_graph: &mut ControlFlowGraph,
-) -> CompileResult<InnerDependencyCompileResult> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    // Parse the file.
     let parse_tree = check!(
-        parse(input.clone(), Some(&build_config)),
+        parse(input.clone(), Some(&dep_build_config)),
         return err(warnings, errors),
         warnings,
         errors
     );
+
+    // Check we have a library, and retrieve the name.
     let library_name = match &parse_tree.tree_type {
-        TreeType::Library { name } => name,
+        TreeType::Library { name } => name.clone(),
         TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
-                span: span::Span::new(input, 0, 0, Some(build_config.path())).unwrap(),
+                span: span::Span::new(input, 0, 0, Some(dep_build_config.path())).unwrap(),
             });
             return err(warnings, errors);
         }
     };
+
+    // Fetch the name for the dep library module.
+    let dep_name = match alias {
+        Some(alias) => alias.clone(),
+        None => library_name,
+    };
+
+    let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
+
+    // Type-check the module, populating its namespace.
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
             parse_tree.tree,
-            initial_namespace,
-            initial_namespace,
+            &mut dep_namespace,
             &parse_tree.tree_type,
-            &build_config,
+            &dep_build_config,
             dead_code_graph,
         ),
         return err(warnings, errors),
@@ -320,19 +251,12 @@ pub(crate) fn compile_inner_dependency(
         errors.push(e)
     };
 
-    ok(
-        InnerDependencyCompileResult {
-            name: library_name.clone(),
-            namespace: typed_parse_tree.into_namespace(),
-        },
-        warnings,
-        errors,
-    )
+    ok((), warnings, errors)
 }
 
 pub fn compile_to_ast(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: namespace::Module,
     build_config: &BuildConfig,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -360,14 +284,14 @@ pub fn compile_to_ast(
         namespace: Default::default(),
     };
 
+    let mut namespace = Namespace::init_root(initial_namespace);
     let CompileResult {
         value: typed_parse_tree_result,
         warnings: new_warnings,
         errors: new_errors,
     } = TypedParseTree::type_check(
         parse_tree.tree,
-        initial_namespace,
-        initial_namespace,
+        &mut namespace,
         &parse_tree.tree_type,
         &build_config.clone(),
         &mut dead_code_graph,
@@ -408,7 +332,7 @@ pub fn compile_to_ast(
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompilationResult {
     let ast_res = compile_to_ast(input, initial_namespace, &build_config);
@@ -448,7 +372,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: parse_tree.get_namespace_ref(),
+                    namespace: Box::new(parse_tree.into_namespace().into()),
                 },
             }
         }
@@ -521,7 +445,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     if build_config.print_ir {
-        println!("{}", ir);
+        tracing::info!("{}", ir);
     }
 
     crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)
@@ -561,7 +485,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
 /// bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
-    initial_namespace: crate::semantic_analysis::NamespaceRef,
+    initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
@@ -621,118 +545,6 @@ fn perform_control_flow_analysis(
     let graph = ControlFlowGraph::construct_return_path_graph(tree);
     errors.append(&mut graph.analyze_return_paths());
     (warnings, errors)
-}
-
-/// The basic recursive parser which handles the top-level parsing given the output of the
-/// pest-generated parser.
-fn parse_root_from_pairs(
-    input: impl Iterator<Item = Pair<Rule>>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<SwayParseTree> {
-    let path = config.map(|config| config.dir_of_code.clone());
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-    let mut fuel_ast_opt = None;
-    for block in input {
-        let mut parse_tree = ParseTree::new(span::Span::from_pest(block.as_span(), path.clone()));
-        let rule = block.as_rule();
-        let input = block.clone().into_inner();
-        let mut library_name = None;
-        for pair in input {
-            match pair.as_rule() {
-                Rule::non_var_decl => {
-                    let span = span::Span::from_pest(pair.as_span(), path.clone());
-                    let decls = check!(
-                        Declaration::parse_non_var_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    for decl in decls.into_iter() {
-                        parse_tree.push(AstNode {
-                            content: AstNodeContent::Declaration(decl),
-                            span: span.clone(),
-                        });
-                    }
-                }
-                Rule::use_statement => {
-                    let stmt = check!(
-                        UseStatement::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    for entry in stmt {
-                        parse_tree.push(AstNode {
-                            content: AstNodeContent::UseStatement(entry.clone()),
-                            span: span::Span::from_pest(pair.as_span(), path.clone()),
-                        });
-                    }
-                }
-                Rule::library_name => {
-                    let lib_pair = pair.into_inner().next().unwrap();
-                    library_name = Some(check!(
-                        parse_tree::ident::parse_from_pair(lib_pair, config),
-                        continue,
-                        warnings,
-                        errors
-                    ));
-                }
-                Rule::include_statement => {
-                    // parse the include statement into a reference to a specific file
-                    let include_statement = check!(
-                        IncludeStatement::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    parse_tree.push(AstNode {
-                        content: AstNodeContent::IncludeStatement(include_statement),
-                        span: span::Span::from_pest(pair.as_span(), path.clone()),
-                    });
-                }
-                _ => unreachable!("{:?}", pair.as_str()),
-            }
-        }
-        match rule {
-            Rule::contract => {
-                fuel_ast_opt = Some(SwayParseTree {
-                    tree_type: TreeType::Contract,
-                    tree: parse_tree,
-                });
-            }
-            Rule::script => {
-                fuel_ast_opt = Some(SwayParseTree {
-                    tree_type: TreeType::Script,
-                    tree: parse_tree,
-                });
-            }
-            Rule::predicate => {
-                fuel_ast_opt = Some(SwayParseTree {
-                    tree_type: TreeType::Predicate,
-                    tree: parse_tree,
-                });
-            }
-            Rule::library => {
-                fuel_ast_opt = Some(SwayParseTree {
-                    tree_type: TreeType::Library {
-                        name: library_name.expect(
-                            "Safe unwrap, because the sway-core enforces the library keyword is \
-                             followed by a name. This is an invariant",
-                        ),
-                    },
-                    tree: parse_tree,
-                });
-            }
-            Rule::EOI => (),
-            a => errors.push(CompileError::InvalidTopLevelItem(
-                a,
-                span::Span::from_pest(block.as_span(), path.clone()),
-            )),
-        }
-    }
-
-    CompileResult::new(fuel_ast_opt, warnings, errors)
 }
 
 #[test]

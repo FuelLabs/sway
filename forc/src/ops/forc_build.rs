@@ -1,18 +1,18 @@
 use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
 use std::{
     fs::{self, File},
     path::PathBuf,
 };
+use tracing::info;
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
         path,
         binary_outfile,
         use_orig_asm,
-        use_orig_parser,
         debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
@@ -21,11 +21,11 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        locked,
     } = command;
 
     let config = pkg::BuildConfig {
         use_orig_asm,
-        use_orig_parser,
         print_ir,
         print_finalized_asm,
         print_intermediate_asm,
@@ -57,12 +57,19 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // If necessary, construct a new build plan.
     let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+        if locked {
+            bail!(
+                "The lock file {} needs to be updated but --locked was passed to prevent this.",
+                lock_path.to_string_lossy()
+            );
+        }
+
         let cause = if e.to_string().contains("No such file or directory") {
             anyhow!("lock file did not exist")
         } else {
             e
         };
-        println!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+        info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);
@@ -70,7 +77,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         let string = toml::ser::to_string_pretty(&lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
+        info!("   Created new lock file at {}", lock_path.display());
         Ok(plan)
     })?;
 
@@ -114,7 +121,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         res?;
     }
 
-    println!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
     Ok(compiled)
 }
