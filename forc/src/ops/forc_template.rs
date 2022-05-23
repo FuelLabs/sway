@@ -50,7 +50,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
             .ok_or_else(|| {
                 anyhow!(
                     "failed to find a template `{}` in {}",
-                    local_repo_name,
+                    template_name,
                     command.url
                 )
             })?,
