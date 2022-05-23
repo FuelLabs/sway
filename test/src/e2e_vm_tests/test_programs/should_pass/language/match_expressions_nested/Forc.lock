@@ -1,10 +1,10 @@
 [[package]]
-name = 'abort_control_flow'
-dependencies = ['std']
-
-[[package]]
 name = 'core'
 dependencies = []
+
+[[package]]
+name = 'match_expressions_nested'
+dependencies = ['std']
 
 [[package]]
 name = 'std'

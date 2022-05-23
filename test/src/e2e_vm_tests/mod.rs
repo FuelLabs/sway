@@ -356,10 +356,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(123),
         ),
         (
-            "should_pass/language/match_expressions_empty_arms",
-            ProgramState::Return(42),
-        ),
-        (
             "should_pass/language/match_expressions_mismatched",
             ProgramState::Return(5),
         ),
@@ -499,6 +495,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/impure_trait_read_calls_impure_write",
         "should_fail/trait_impl_purity_mismatch",
         "should_fail/trait_pure_calls_impure",
+        "should_fail/match_expressions_empty_arms",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
