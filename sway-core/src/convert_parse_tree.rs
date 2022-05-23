@@ -1939,12 +1939,12 @@ fn path_expr_to_expression(
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
-        match name.as_str() {
-            "true" => Expression::Literal {
+        match Intrinsic::try_from_str(name.as_str()) {
+            Some(Intrinsic::True) => Expression::Literal {
                 value: Literal::Boolean(true),
                 span,
             },
-            "false" => Expression::Literal {
+            Some(Intrinsic::False) => Expression::Literal {
                 value: Literal::Boolean(false),
                 span,
             },
