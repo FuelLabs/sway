@@ -1,5 +1,5 @@
 [[package]]
-name = 'abort_control_flow'
+name = 'abort_control_flow_good'
 dependencies = ['std']
 
 [[package]]
