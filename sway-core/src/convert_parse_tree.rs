@@ -30,9 +30,9 @@ use {
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
         IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
-        PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree, WhereClause,
+        Module, ModuleKind, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
+        PatternStructField, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty,
+        TypeField, UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -235,12 +235,12 @@ impl ConvertParseTreeError {
     }
 }
 
-pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
+pub fn convert_parse_tree(module: Module) -> CompileResult<SwayParseTree> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
     };
-    let res = program_to_sway_parse_tree(&mut ec, program);
+    let res = module_to_sway_parse_tree(&mut ec, module);
     let ErrorContext { warnings, errors } = ec;
     match res {
         Ok(sway_parse_tree) => ok(sway_parse_tree, warnings, errors),
@@ -248,20 +248,20 @@ pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
     }
 }
 
-pub fn program_to_sway_parse_tree(
+pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
-    program: Program,
+    module: Module,
 ) -> Result<SwayParseTree, ErrorEmitted> {
-    let span = program.span();
-    let tree_type = match program.kind {
-        ProgramKind::Script { .. } => TreeType::Script,
-        ProgramKind::Contract { .. } => TreeType::Contract,
-        ProgramKind::Predicate { .. } => TreeType::Predicate,
-        ProgramKind::Library { name, .. } => TreeType::Library { name },
+    let span = module.span();
+    let tree_type = match module.kind {
+        ModuleKind::Script { .. } => TreeType::Script,
+        ModuleKind::Contract { .. } => TreeType::Contract,
+        ModuleKind::Predicate { .. } => TreeType::Predicate,
+        ModuleKind::Library { name, .. } => TreeType::Library { name },
     };
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = {
-            program
+            module
                 .dependencies
                 .into_iter()
                 .map(|dependency| {
@@ -275,7 +275,7 @@ pub fn program_to_sway_parse_tree(
                 })
                 .collect()
         };
-        for item in program.items {
+        for item in module.items {
             let ast_nodes = item_to_ast_nodes(ec, item)?;
             root_nodes.extend(ast_nodes);
         }
