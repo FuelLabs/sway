@@ -617,7 +617,7 @@ impl TypedAstNode {
                                     let r#type = match r#type.matches_type_parameter(&type_mapping)
                                     {
                                         Some(matching_id) => {
-                                            insert_type(TypeInfo::Ref(matching_id))
+                                            insert_type(TypeInfo::Ref(matching_id, type_span))
                                         }
                                         None => check!(
                                             namespace.resolve_type_with_self(
@@ -947,7 +947,10 @@ fn reassignment(
                         errors.push(CompileError::AssignmentToNonMutable { name });
                     }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(
+                        variable_decl.body.return_type,
+                        variable_decl.body.span.clone(),
+                    ));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {
