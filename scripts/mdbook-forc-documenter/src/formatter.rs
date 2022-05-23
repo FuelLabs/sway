@@ -3,16 +3,19 @@ pub enum LineKind {
     SubHeader,
     Arg,
     Option,
+    Subcommand,
     Text,
 }
 
-fn get_line_kind(line: &str) -> LineKind {
+fn get_line_kind(line: &str, has_parsed_subcommand_header: bool) -> LineKind {
     if SUBHEADERS.contains(&line) {
         LineKind::SubHeader
     } else if is_args_line(line) {
         LineKind::Arg
     } else if is_options_line(line) {
         LineKind::Option
+    } else if has_parsed_subcommand_header {
+        LineKind::Subcommand
     } else {
         LineKind::Text
     }
@@ -37,20 +40,28 @@ pub fn is_arg(token: &str) -> bool {
 }
 
 pub fn format_header_line(header_line: &str) -> String {
-    "\n# ".to_owned() + header_line + "\n"
+    "\n# ".to_owned() + header_line.split_whitespace().next().unwrap() + "\n"
 }
 
-pub fn format_line(line: &str) -> String {
-    match get_line_kind(line) {
+pub fn format_line(line: &str, has_parsed_subcommand_header: bool) -> String {
+    match get_line_kind(line, has_parsed_subcommand_header) {
         LineKind::SubHeader => format_subheader_line(line),
         LineKind::Option => format_option_line(line),
         LineKind::Arg => format_arg_line(line),
+        LineKind::Subcommand => format_subcommand_line(line),
         LineKind::Text => line.to_string(),
     }
 }
 
 fn format_subheader_line(subheader_line: &str) -> String {
     "\n## ".to_owned() + subheader_line + "\n"
+}
+
+fn format_subcommand_line(line: &str) -> String {
+    let mut line_iter = line.trim().splitn(2, ' ');
+    let name = "`".to_owned() + line_iter.next().unwrap() + "`\n\n";
+    let text = line_iter.collect::<String>().trim_start().to_owned() + "\n\n";
+    name + &text
 }
 
 fn format_arg_line(arg_line: &str) -> String {
@@ -212,6 +223,19 @@ mod tests {
         assert_eq!(
             expected_option_line_2,
             format_option_line(example_option_line_2)
+        );
+    }
+
+    #[test]
+    fn test_format_subcommand_line() {
+        let example_subcommand =
+            "   clean     Cleans up any existing state associated with the fuel block explorer";
+        let expected_subcommand =
+            "`clean`\n\nCleans up any existing state associated with the fuel block explorer\n\n";
+
+        assert_eq!(
+            expected_subcommand,
+            format_subcommand_line(example_subcommand)
         );
     }
 }
