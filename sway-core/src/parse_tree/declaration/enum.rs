@@ -2,7 +2,8 @@ use crate::{
     error::*,
     parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::{
-        ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant},
+        ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+        insert_type_parameters,
         namespace::Namespace,
     },
     type_engine::*,
@@ -70,7 +71,7 @@ impl EnumVariant {
         let mut errors = vec![];
         let enum_variant_type =
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
-                insert_type(TypeInfo::Ref(matching_id))
+                insert_type(TypeInfo::Ref(matching_id, span))
             } else {
                 check!(
                     namespace.resolve_type_with_self(self.r#type.clone(), self_type, span, false),

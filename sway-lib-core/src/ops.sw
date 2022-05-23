@@ -208,18 +208,18 @@ impl Mod for u8 {
 }
 
 pub trait Shiftable {
-    fn lsh(self, other: Self) -> Self;
-    fn rsh(self, other: Self) -> Self;
+    fn lsh(self, other: u64) -> Self;
+    fn rsh(self, other: u64) -> Self;
 }
 
 impl Shiftable for u64 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u64
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u64
@@ -228,13 +228,13 @@ impl Shiftable for u64 {
 }
 
 impl Shiftable for u32 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u32
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u32
@@ -243,13 +243,13 @@ impl Shiftable for u32 {
 }
 
 impl Shiftable for u16 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u16
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u16
@@ -258,13 +258,13 @@ impl Shiftable for u16 {
 }
 
 impl Shiftable for u8 {
-    fn lsh(self, other: Self) -> Self {
+    fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
             r3: u8
         }
     }
-    fn rsh(self, other: Self) -> Self {
+    fn rsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             srl r3 r1 r2;
             r3: u8

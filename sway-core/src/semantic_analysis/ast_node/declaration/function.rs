@@ -1,13 +1,14 @@
 use crate::{
     error::*,
+    namespace::Items,
     parse_tree::*,
     semantic_analysis::{
         ast_node::{
-            IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
-            TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
-            VariableMutability,
+            copy_types::insert_type_parameters, IsConstant, Mode, TypedCodeBlock, TypedDeclaration,
+            TypedExpression, TypedExpressionVariant, TypedReturnStatement,
+            TypedVariableDeclaration, VariableMutability,
         },
-        TypeCheckArguments, TypedAstNode, TypedAstNodeContent,
+        CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
     },
     style::*,
     type_engine::*,
@@ -19,6 +20,8 @@ use sway_types::Span;
 
 mod function_parameter;
 pub use function_parameter::*;
+
+use super::MonomorphizeHelper;
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -62,6 +65,60 @@ impl PartialEq for TypedFunctionDeclaration {
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
+    }
+}
+
+impl CopyTypes for TypedFunctionDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+
+        self.return_type =
+            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
+                Some(matching_id) => {
+                    insert_type(TypeInfo::Ref(matching_id, self.return_type_span.clone()))
+                }
+                None => {
+                    let ty = TypeInfo::Ref(
+                        insert_type(look_up_type_id_raw(self.return_type)),
+                        self.return_type_span.clone(),
+                    );
+                    insert_type(ty)
+                }
+            };
+
+        self.body.copy_types(type_mapping);
+    }
+}
+
+impl MonomorphizeHelper for TypedFunctionDeclaration {
+    type Output = TypedFunctionDeclaration;
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+
+    fn monomorphize_inner(
+        self,
+        type_mapping: &TypeMapping,
+        _namespace: &mut Items,
+    ) -> Self::Output {
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        new_decl
     }
 }
 
@@ -116,7 +173,9 @@ impl TypedFunctionDeclaration {
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    Some(matching_id) => {
+                        insert_type(TypeInfo::Ref(matching_id, parameter.type_span.clone()))
+                    }
                     None => check!(
                         fn_namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
@@ -150,7 +209,7 @@ impl TypedFunctionDeclaration {
         }
 
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, return_type_span.clone())),
             None => check!(
                 fn_namespace.resolve_type_with_self(
                     return_type,
@@ -241,24 +300,6 @@ impl TypedFunctionDeclaration {
             warnings,
             errors,
         )
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
-            };
-
-        self.body.copy_types(type_mapping);
     }
 
     /// Given a typed function declaration with type parameters, make a copy of it and update the
@@ -490,22 +531,4 @@ fn test_function_selector_behavior() {
     };
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
-}
-
-/// Insert all type parameters as unknown types. Return a mapping of type parameter to
-/// [TypeId]
-pub(crate) fn insert_type_parameters(
-    type_parameters: &[TypeParameter],
-) -> Vec<(TypeParameter, TypeId)> {
-    type_parameters
-        .iter()
-        .map(|x| {
-            (
-                x.clone(),
-                insert_type(TypeInfo::UnknownGeneric {
-                    name: x.name_ident.clone(),
-                }),
-            )
-        })
-        .collect()
 }

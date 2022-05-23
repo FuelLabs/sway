@@ -1,13 +1,20 @@
 use crate::{
     error::*,
+    namespace::Items,
     parse_tree::*,
-    semantic_analysis::{ast_node::insert_type_parameters, namespace},
+    semantic_analysis::{
+        ast_node::{copy_types::TypeMapping, insert_type_parameters},
+        namespace, CopyTypes,
+    },
     type_engine::*,
     Ident,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
+
+use super::{CreateTypeId, MonomorphizeHelper};
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub(crate) name: Ident,
@@ -29,6 +36,52 @@ impl PartialEq for TypedStructDeclaration {
     }
 }
 
+impl CopyTypes for TypedStructDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl CreateTypeId for TypedStructDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Struct {
+            name: self.name.clone(),
+            fields: self.fields.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
+    }
+}
+
+impl MonomorphizeHelper for TypedStructDeclaration {
+    type Output = TypedStructDeclaration;
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
+    }
+
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
+
+    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
+        let old_type_id = self.create_type_id();
+        let mut new_decl = self;
+        new_decl.copy_types(type_mapping);
+        namespace.copy_methods_to_type(
+            look_up_type_id(old_type_id),
+            look_up_type_id(new_decl.create_type_id()),
+            type_mapping,
+        );
+        new_decl
+    }
+}
+
 impl TypedStructDeclaration {
     pub(crate) fn monomorphize(
         &self,
@@ -39,7 +92,7 @@ impl TypedStructDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_mapping = insert_type_parameters(&self.type_parameters);
-        let mut new_decl = Self::monomorphize_inner(self, namespace, &type_mapping);
+        let mut new_decl = self.clone().monomorphize_inner(&type_mapping, namespace);
         let type_arguments_span = type_arguments
             .iter()
             .map(|x| x.span.clone())
@@ -98,35 +151,6 @@ impl TypedStructDeclaration {
         }
         ok(new_decl, warnings, errors)
     }
-    fn monomorphize_inner(
-        &self,
-        namespace: &mut namespace::Items,
-        type_mapping: &[(TypeParameter, TypeId)],
-    ) -> Self {
-        let old_type_id = self.type_id();
-        let mut new_decl = self.clone();
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.type_id()),
-            type_mapping,
-        );
-        new_decl
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-
-    pub(crate) fn type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
-    }
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -155,6 +179,21 @@ impl PartialEq for TypedStructField {
     }
 }
 
+impl CopyTypes for TypedStructField {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(
+                    insert_type(look_up_type_id_raw(self.r#type)),
+                    self.span.clone(),
+                );
+                insert_type(ty)
+            }
+        };
+    }
+}
+
 impl TypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
@@ -162,12 +201,5 @@ impl TypedStructField {
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
-        };
     }
 }
