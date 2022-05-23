@@ -276,10 +276,10 @@ impl Shiftable for b256 {
     fn lsh(self, n: u64) -> Self {
         let (w1, w2, w3, w4) = decompose(self);
         // get each shifted word and associated overflow in turn
-        let (word_1, _) = lsh_with_overflow(w1, n);
-        let (word_2, overflow_2) = lsh_with_overflow(w2, n);
-        let (word_3, overflow_3) = lsh_with_overflow(w3, n);
-        let (word_4, overflow_4) = lsh_with_overflow(w4, n);
+        let (word_1, _) = lsh_with_carry(w1, n);
+        let (word_2, overflow_2) = lsh_with_carry(w2, n);
+        let (word_3, overflow_3) = lsh_with_carry(w3, n);
+        let (word_4, overflow_4) = lsh_with_carry(w4, n);
         // Add overflow from word on the right to each shifted word
         let w1_shifted = word_1.add(overflow_2);
         let w2_shifted = word_2.add(overflow_3);
@@ -291,10 +291,10 @@ impl Shiftable for b256 {
     fn rsh(self, n: u64) -> Self {
         let (w1, w2, w3, w4) = decompose(self);
         // get each shifted word and associated overflow in turn
-        let (word_1, overflow_1) = rsh_with_overflow(w1, n);
-        let (word_2, overflow_2) = rsh_with_overflow(w2, n);
-        let (word_3, overflow_3) = rsh_with_overflow(w3, n);
-        let (word_4, _) = rsh_with_overflow(w4, n);
+        let (word_1, overflow_1) = rsh_with_carry(w1, n);
+        let (word_2, overflow_2) = rsh_with_carry(w2, n);
+        let (word_3, overflow_3) = rsh_with_carry(w3, n);
+        let (word_4, _) = rsh_with_carry(w4, n);
         // Add overflow from the word on the left to each shifted word
         let w4_shifted = word_4.add(overflow_3);
         let w3_shifted = word_3.add(overflow_2);
@@ -589,23 +589,6 @@ impl OrdEq for u8 {
 impl OrdEq for b256 {
 }
 
-// @todo move up with other impl adds when possible
-impl Add for b256 {
-    fn add(self, other: Self) -> Self {
-        let mut sum: b256 = 0x0000000000000000_0000000000000000_0000000000000000_0000000000000000;
-        let mut a = self;
-        let mut b = other;
-
-        while not(b.eq(0x0000000000000000_0000000000000000_0000000000000000_0000000000000000)) {
-            let carry = a.binary_and(b);
-            sum = a.binary_or(b);
-            b = carry.lsh(1);
-        }
-
-        sum
-    }
-}
-
 /////////////////////////////////////////////////
 // Internal Helpers
 /////////////////////////////////////////////////
@@ -614,38 +597,38 @@ impl Add for b256 {
 const FLAG = 2;
 
 /// Left shift a u64 and preserve the overflow amount if any
-fn lsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     // @todo try to remove copy once this is working.
     // i think the issue atm is that there is wrapping occoring. Wait till vm fix with safe math flags lands.
     let word_copy = word;
     let right_shift_amount = 64.subtract(shift_amount);
-    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
+    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
        flag r5;        // set flag to allow overflow without panic
-       srl r3 copy r6; // shift right to get overflow, put result in r3
+       srl r3 copy r6; // shift right to get carry, put result in r3
        sll r4 r1 r2;   // shift left, put result in r4
        sw out r4 i0;   // store word at r4 in output
        sw out r3 i1;   // store word at r3 in output + 1 word offset
        out: (u64, u64) // return both values
     };
 
-    (shifted, overflow)
+    (shifted, carry)
 }
 
 /// Right shift a u64 and preserve the overflow amount if any
-fn rsh_with_overflow(word: u64, shift_amount: u64) -> (u64, u64) {
+fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let left_shift_amount = 64.subtract(shift_amount);
-    let (shifted, overflow) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: left_shift_amount) {
+    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: left_shift_amount) {
        flag r5;        // set flag to allow overflow without panic
-       sll r3 r1 r6;   // shift left to get overflow, put result in r3
+       sll r3 r1 r6;   // shift left to get carry, put result in r3
        srl r4 r1 r2;   // shift right, put result in r4
        sw out r4 i0;   // store word at r4 in output
        sw out r3 i1;   // store word at r3 in output + 1 word offset
        out: (u64, u64) // return both values
     };
 
-    (shifted, overflow)
+    (shifted, carry)
 }
 
 /// Extract a single 64 bit word from a b256 value using the specified offset.
