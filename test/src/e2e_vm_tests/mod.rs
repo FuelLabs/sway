@@ -355,6 +355,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_nested",
             ProgramState::Return(123),
         ),
+        (
+            "should_pass/language/match_expressions_empty_arms",
+            ProgramState::Return(42),
+        ),
     ];
 
     let mut number_of_tests_run =
