@@ -273,6 +273,19 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
+    pub(crate) fn type_parameters(&self) -> Vec<TypeParameter> {
+        if let TypeInfo::Enum {
+            type_parameters, ..
+        }
+        | TypeInfo::Struct {
+            type_parameters, ..
+        } = self
+        {
+            type_parameters.clone()
+        } else {
+            Default::default()
+        }
+    }
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {

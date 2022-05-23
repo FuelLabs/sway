@@ -89,6 +89,10 @@ pub enum Expression {
         contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
+        // These are used for providing type arguments to the parent
+        // self type. E.g. ~Foo::<A, B>::new::<C, D>()
+        // Here, `A` and `B` would be `parent_type_arguments` and `C, D` would be `type_arguments`.
+        parent_type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     /// A _subfield expression_ is anything of the form:
@@ -244,6 +248,7 @@ impl Expression {
             contract_call_params: vec![],
             arguments,
             type_arguments: vec![],
+            parent_type_arguments: vec![],
             span,
         }
     }

@@ -1,5 +1,6 @@
 script;
 
+/*
 struct Data<T> {
   value: T
 }
@@ -78,6 +79,7 @@ fn crazy<T, F>(x: T, y: F) -> F {
   foo.get_second()
 }
 
+*/
 enum Result<T> {
   Ok: T,
   Err: u8 // err code
@@ -99,6 +101,7 @@ enum Option<T> {
 }
 
 impl<T> Option<T> {
+/*
   fn some(value: T) -> Self {
     Option::Some::<T>(value)
   }
@@ -106,15 +109,20 @@ impl<T> Option<T> {
   fn none() -> Self {
     Option::None::<T>(())
   }
+  */
 
-  fn to_result(self) -> Result<T> {
+  fn to_result(self) -> u64  {
     if let Option::Some(value) = self {
-      ~Result::ok(value)
+      ~Result::<T>::ok::<T>(value);
+      5
     } else {
-      ~Result::err(99u8)
+      
+      4
+//      ~Result::<T>::err(99u8)
     }
   }
 }
+/*
 
 fn main() -> u32 {
   let a = double_identity(true, true);
@@ -142,7 +150,7 @@ fn main() -> u32 {
     },
     third: 1u64
   };
-  let n: DoubleIdentity<Data<u8>, Data<u8>> = ~DoubleIdentity::new(~Data::new(3u8), ~Data::new(4u8));
+  let n = ~DoubleIdentity::<Data<u8>, Data<u8>>::new(~Data::new(3u8), ~Data::new(4u8));
   let o: DoubleIdentity<bool, bool> = double_identity(true, true);
   let p = Option::Some::<bool>(false);
   let q = Option::Some::<()>(());
@@ -153,3 +161,5 @@ fn main() -> u32 {
 
   b.get_first()
 }
+*/
+fn main() {}

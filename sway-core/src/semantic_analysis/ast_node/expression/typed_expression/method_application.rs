@@ -12,6 +12,7 @@ pub(crate) fn type_check_method_application(
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
+    parent_type_arguments: Vec<TypeArgument>,
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,
@@ -117,6 +118,32 @@ pub(crate) fn type_check_method_application(
             )
         }
     };
+
+    // if there are generic arguments for the parent, apply them there.
+    let parent_type_parameters = look_up_type_id(self_type).type_parameters();
+    dbg!(&parent_type_parameters);
+    for (param, arg) in parent_type_parameters
+        .into_iter()
+        .zip(parent_type_arguments.into_iter())
+    {
+        let (mut new_warnings, new_errors) = unify_with_self(
+            arg.type_id,
+            param.type_id,
+            self_type,
+            &arg.span,
+            "This type argument is incompatible with the parent type's type parameters.",
+        );
+
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(CompileError::ArgumentParameterTypeMismatch {
+                span: arg.span.clone(),
+                provided: arg.type_id.friendly_type_str(),
+                should_be: param.type_id.friendly_type_str(),
+            });
+        }
+    }
+
     // if this is a generic function, monomorphize its internal types
     let method = match (method.type_parameters.is_empty(), type_arguments.is_empty()) {
         (true, true) => method,

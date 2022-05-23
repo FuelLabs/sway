@@ -104,6 +104,9 @@ impl TypedEnumDeclaration {
             .reduce(Span::join)
             .unwrap_or_else(|| self.span.clone());
         if type_mapping.len() != type_arguments.len() {
+            println!("Here");
+            dbg!(&type_mapping);
+            dbg!(&type_arguments);
             errors.push(CompileError::IncorrectNumberOfTypeArguments {
                 given: type_arguments.len(),
                 expected: type_mapping.len(),

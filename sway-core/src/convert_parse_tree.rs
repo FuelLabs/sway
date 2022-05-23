@@ -1246,53 +1246,60 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 mut suffix,
             } = path_expr;
             let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-            let (prefixes, method_type_opt, suffix_path_expr) = match suffix.pop() {
-                Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
-                    Some((_double_colon_token, maybe_method_segment)) => {
-                        let PathExprSegment {
-                            fully_qualified,
-                            name,
-                            generics_opt,
-                        } = maybe_method_segment;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
+            let (prefixes, method_type_opt, suffix_path_expr, parent_type_arguments) =
+                match suffix.pop() {
+                    Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
+                        Some((_double_colon_token, maybe_method_segment)) => {
+                            let PathExprSegment {
+                                fully_qualified,
+                                name,
+                                generics_opt,
+                            } = maybe_method_segment;
+                            if let Some((_double_colon_token, generic_args)) = generics_opt {
+                                println!("here?1");
+                                let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                                    span: generic_args.span(),
+                                };
+                                return Err(ec.error(error));
+                            }
+                            let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
+                            for (_double_colon_token, call_path_prefix) in suffix {
+                                let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
+                                prefixes.push(ident);
+                            }
+                            if fully_qualified.is_some() {
+                                (prefixes, Some(name), call_path_suffix, Default::default())
+                            } else {
+                                prefixes.push(name);
+                                (prefixes, None, call_path_suffix, Default::default())
+                            }
                         }
-                        let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-                        for (_double_colon_token, call_path_prefix) in suffix {
-                            let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
-                            prefixes.push(ident);
+                        None => {
+                            let PathExprSegment {
+                                fully_qualified,
+                                name,
+                                generics_opt,
+                            } = prefix;
+                            let parent_type_arguments = generics_opt
+                                .map(|(_double_colon_token, generic_args)| {
+                                    generic_args_to_type_arguments(ec, generic_args)
+                                })
+                                .transpose()?
+                                .unwrap_or_default();
+                            if fully_qualified.is_some() {
+                                (
+                                    Vec::new(),
+                                    Some(name),
+                                    call_path_suffix,
+                                    parent_type_arguments,
+                                )
+                            } else {
+                                (vec![name], None, call_path_suffix, parent_type_arguments)
+                            }
                         }
-                        if fully_qualified.is_some() {
-                            (prefixes, Some(name), call_path_suffix)
-                        } else {
-                            prefixes.push(name);
-                            (prefixes, None, call_path_suffix)
-                        }
-                    }
-                    None => {
-                        let PathExprSegment {
-                            fully_qualified,
-                            name,
-                            generics_opt,
-                        } = prefix;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
-                        if fully_qualified.is_some() {
-                            (Vec::new(), Some(name), call_path_suffix)
-                        } else {
-                            (vec![name], None, call_path_suffix)
-                        }
-                    }
-                },
-                None => (Vec::new(), None, prefix),
-            };
+                    },
+                    None => (Vec::new(), None, prefix, Default::default()),
+                };
             let PathExprSegment {
                 fully_qualified,
                 name,
@@ -1339,6 +1346,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         },
                         contract_call_params: Vec::new(),
                         arguments,
+                        // generics that are applied to the method's self type instead of the function
+                        // type parameters
+                        parent_type_arguments,
                         type_arguments,
                         span,
                     }
@@ -1470,6 +1480,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     .collect::<Result<_, _>>()?
             },
             type_arguments: Vec::new(),
+            parent_type_arguments: Default::default(),
             span,
         },
         Expr::FieldProjection { target, name, .. } => {
@@ -1674,7 +1685,8 @@ fn binary_op_call(
         },
         contract_call_params: Vec::new(),
         arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],
-        type_arguments: Vec::new(),
+        type_arguments: Default::default(),
+        parent_type_arguments: Default::default(),
         span,
     })
 }
@@ -1876,6 +1888,7 @@ fn path_type_segment_to_ident(
         return Err(ec.error(error));
     }
     if let Some((_double_colon_token, generic_args)) = generics_opt {
+        println!("here?3");
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
             span: generic_args.span(),
         };
@@ -1924,6 +1937,7 @@ fn path_expr_segment_to_ident(
         return Err(ec.error(error));
     }
     if let Some((_double_colon_token, generic_args)) = generics_opt {
+        println!("here?4");
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
             span: generic_args.span(),
         };
@@ -2787,6 +2801,7 @@ fn path_type_to_type_info(
     let type_info = match type_name_to_type_info_opt(&name) {
         Some(type_info) => {
             if let Some((_double_colon_token, generic_args)) = generics_opt {
+                println!("here?5");
                 let error = ConvertParseTreeError::GenericsNotSupportedHere {
                     span: generic_args.span(),
                 };
