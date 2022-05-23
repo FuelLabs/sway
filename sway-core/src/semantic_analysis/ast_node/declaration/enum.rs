@@ -1,5 +1,5 @@
 use crate::{
-    error::{err, ok},
+    error::*,
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{
@@ -184,9 +184,13 @@ impl CopyTypes for TypedEnumVariant {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
-            insert_type(TypeInfo::Ref(matching_id))
+            insert_type(TypeInfo::Ref(matching_id, self.span.clone()))
         } else {
-            insert_type(look_up_type_id_raw(self.r#type))
+            let ty = TypeInfo::Ref(
+                insert_type(look_up_type_id_raw(self.r#type)),
+                self.span.clone(),
+            );
+            insert_type(ty)
         };
     }
 }
@@ -202,7 +206,7 @@ impl TypedEnumVariant {
         let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type = match variant.r#type.matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span)),
             None => {
                 check!(
                     namespace.resolve_type_with_self(

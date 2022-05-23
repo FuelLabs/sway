@@ -490,15 +490,13 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_type_parameters(mut self, type_parameters: &[TypeParameter]) -> Self {
-        for type_param in type_parameters {
-            for constraint in &type_param.trait_constraints {
-                self.deps.insert(DependentSymbol::Symbol(
-                    constraint.name.as_str().to_string(),
-                ));
-            }
-        }
-        self
+    fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
+        self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
+            deps.gather_from_iter(
+                type_parameter.trait_constraints.iter(),
+                |deps, constraint| deps.gather_from_call_path(&constraint.call_path, false, false),
+            )
+        })
     }
 
     fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
@@ -664,7 +662,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x) => return format!("T{}", x),
+        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {

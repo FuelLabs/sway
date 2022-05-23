@@ -312,7 +312,7 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    tracing::error!("{}\n____\n", DisplayList::from(snippet))
+    println!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
@@ -354,7 +354,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    tracing::error!("{}\n____\n", DisplayList::from(snippet))
+    println!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the

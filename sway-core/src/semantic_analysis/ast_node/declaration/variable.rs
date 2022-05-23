@@ -77,11 +77,18 @@ impl PartialEq for TypedVariableDeclaration {
 
 impl CopyTypes for TypedVariableDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_ascription =
-            match look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.type_ascription)),
-            };
+        self.type_ascription = match look_up_type_id(self.type_ascription)
+            .matches_type_parameter(type_mapping)
+        {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.body.span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(
+                    insert_type(look_up_type_id_raw(self.type_ascription)),
+                    self.body.span.clone(),
+                );
+                insert_type(ty)
+            }
+        };
         self.body.copy_types(type_mapping)
     }
 }
