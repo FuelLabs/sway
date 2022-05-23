@@ -103,32 +103,39 @@ fn instantiate_function_application_inner(
 ) -> CompileResult<TypedExpression> {
     let warnings = vec![];
     let mut errors = vec![];
-    if arguments.len() > function_decl.parameters.len() {
-        errors.push(CompileError::TooManyArgumentsForFunction {
-            span: span.clone(),
-            method_name: function_decl.name,
-            expected: function_decl.parameters.len(),
-            received: arguments.len(),
-        });
-    } else if arguments.len() < function_decl.parameters.len() {
-        errors.push(CompileError::TooFewArgumentsForFunction {
-            span: span.clone(),
-            method_name: function_decl.name,
-            expected: function_decl.parameters.len(),
-            received: arguments.len(),
-        });
+    match arguments.len().cmp(&function_decl.parameters.len()) {
+        std::cmp::Ordering::Equal => {
+            let exp = TypedExpression {
+                expression: TypedExpressionVariant::FunctionApplication {
+                    call_path,
+                    contract_call_params,
+                    arguments,
+                    function_body: function_decl.body.clone(),
+                    selector,
+                },
+                return_type: function_decl.return_type,
+                is_constant,
+                span,
+            };
+            ok(exp, warnings, errors)
+        }
+        std::cmp::Ordering::Less => {
+            errors.push(CompileError::TooFewArgumentsForFunction {
+                span,
+                method_name: function_decl.name,
+                expected: function_decl.parameters.len(),
+                received: arguments.len(),
+            });
+            err(warnings, errors)
+        }
+        std::cmp::Ordering::Greater => {
+            errors.push(CompileError::TooManyArgumentsForFunction {
+                span,
+                method_name: function_decl.name,
+                expected: function_decl.parameters.len(),
+                received: arguments.len(),
+            });
+            err(warnings, errors)
+        }
     }
-    let exp = TypedExpression {
-        expression: TypedExpressionVariant::FunctionApplication {
-            call_path,
-            contract_call_params,
-            arguments,
-            function_body: function_decl.body.clone(),
-            selector,
-        },
-        return_type: function_decl.return_type,
-        is_constant,
-        span,
-    };
-    ok(exp, warnings, errors)
 }
