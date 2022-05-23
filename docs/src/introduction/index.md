@@ -6,3 +6,4 @@ To get started with Forc and Sway smart contract development, install the Sway t
 - [Getting Started](./overview.md)
 - [The Sway Toolchain](./sway-toolchain.md)
 - [A Forc Project](./forc_project.md)
+- [Standard Library](./standard_library.md)

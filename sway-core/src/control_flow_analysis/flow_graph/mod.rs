@@ -147,7 +147,7 @@ impl ControlFlowGraph {
     /// Prints out graphviz for this graph
     pub(crate) fn visualize(&self) {
         use petgraph::dot::Dot;
-        println!("{:?}", Dot::with_config(&self.graph, &[]));
+        tracing::info!("{:?}", Dot::with_config(&self.graph, &[]));
     }
 }
 

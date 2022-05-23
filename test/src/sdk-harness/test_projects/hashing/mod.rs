@@ -1,6 +1,5 @@
 use fuel_tx::ContractId;
 use fuels::prelude::*;
-use fuels::test_helpers;
 use fuels_abigen_macro::abigen;
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
@@ -124,15 +123,16 @@ fn hash_struct(arr: [u8; 88], algorithm: Hash) -> [u8; 32] {
 }
 
 async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
-    let compiled =
-        Contract::load_sway_contract("test_projects/hashing/out/debug/hashing.bin").unwrap();
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
-
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    let instance = HashingTestContract::new(id.to_string(), provider, wallet);
+    let id = Contract::deploy(
+        "test_projects/hashing/out/debug/hashing.bin",
+        &wallet,
+        TxParameters::default(),
+    )
+    .await
+    .unwrap();
+    let instance = HashingTestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
