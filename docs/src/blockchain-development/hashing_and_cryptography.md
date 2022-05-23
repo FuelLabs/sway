@@ -13,3 +13,5 @@ The Sway standard library provides easy access to a selection of cryptographic h
 ```sway
 {{#include ../../../examples/signatures/src/main.sw}}
 ```
+
+Note: Recovery of consensus layer addresses (e.g. 20-byte Ethereum addresses) is also supported via modules in `std::vm`
