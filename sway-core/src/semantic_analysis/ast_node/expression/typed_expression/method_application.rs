@@ -278,7 +278,7 @@ pub(crate) fn type_check_method_application(
             };
 
             let expression = TypedExpressionVariant::FunctionApplication {
-                name: CallPath {
+                call_path: CallPath {
                     prefixes: vec![],
                     suffix: method_name,
                     is_absolute: false,
@@ -355,7 +355,7 @@ pub(crate) fn type_check_method_application(
             };
 
             let expression = TypedExpressionVariant::FunctionApplication {
-                name: call_path.clone(),
+                call_path: call_path.clone(),
                 contract_call_params: contract_call_params_map,
                 arguments: args_and_names,
                 function_body: method.body.clone(),

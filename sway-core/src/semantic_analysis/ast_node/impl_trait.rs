@@ -31,7 +31,7 @@ pub(crate) fn implementation_of_trait(
         ..
     } = impl_trait;
     let type_implementing_for = check!(
-        namespace.resolve_type_without_self(&type_implementing_for),
+        namespace.resolve_type_without_self(type_implementing_for),
         return err(warnings, errors),
         warnings,
         errors

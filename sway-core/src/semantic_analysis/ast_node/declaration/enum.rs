@@ -3,17 +3,17 @@ use crate::{
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{
-        ast_node::copy_types::{insert_type_parameters, TypeMapping},
-        namespace, CopyTypes,
+        ast_node::copy_types::TypeMapping, declaration::EnforceTypeArguments,
+        insert_type_parameters, CopyTypes,
     },
     type_engine::*,
-    Ident,
+    CompileError, CompileResult, Ident, Namespace,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::{CreateTypeId, MonomorphizeHelper};
+use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -70,89 +70,82 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        let old_type_id = self.create_type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.create_type_id()),
-            type_mapping,
-        );
-        new_decl
+        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
 impl TypedEnumDeclaration {
-    pub(crate) fn monomorphize(&self, namespace: &mut namespace::Items) -> Self {
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        self.clone().monomorphize_inner(&type_mapping, namespace)
+    pub fn type_check(
+        decl: EnumDeclaration,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedEnumDeclaration> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+
+        // create a namespace for the decl, used to create a scope for generics
+        let mut decl_namespace = namespace.clone();
+
+        // insert the generics into the decl namespace and
+        // check to see if the type parameters shadow one another
+        for type_parameter in decl.type_parameters.iter() {
+            check!(
+                decl_namespace
+                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        let mut variants_buf = vec![];
+        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        for variant in decl.variants {
+            variants_buf.push(check!(
+                TypedEnumVariant::type_check(
+                    variant.clone(),
+                    &mut decl_namespace,
+                    self_type,
+                    variant.span,
+                    &type_mapping
+                ),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        let decl = TypedEnumDeclaration {
+            name: decl.name.clone(),
+            type_parameters: decl.type_parameters.clone(),
+            variants: variants_buf,
+            span: decl.span.clone(),
+            visibility: decl.visibility,
+        };
+        ok(decl, warnings, errors)
     }
 
-    pub(crate) fn monomorphize_with_type_arguments(
+    pub(crate) fn expect_variant_from_name(
         &self,
-        namespace: &mut namespace::Items,
-        type_arguments: &[TypeArgument],
-        self_type: Option<TypeId>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
+        variant_name: &Ident,
+    ) -> CompileResult<&TypedEnumVariant> {
+        let warnings = vec![];
         let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let mut new_decl = self.clone().monomorphize_inner(&type_mapping, namespace);
-        let type_arguments_span = type_arguments
+        match self
+            .variants
             .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if type_mapping.len() != type_arguments.len() {
-            errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                given: type_arguments.len(),
-                expected: type_mapping.len(),
-                span: type_arguments_span,
-            });
-            return err(warnings, errors);
-        }
-        for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-            match self_type {
-                Some(self_type) => {
-                    let (mut new_warnings, new_errors) = unify_with_self(
-                        *interim_type,
-                        type_argument.type_id,
-                        self_type,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
-                None => {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
+            .find(|x| x.name.as_str() == variant_name.as_str())
+        {
+            Some(variant) => ok(variant, warnings, errors),
+            None => {
+                errors.push(CompileError::UnknownEnumVariant {
+                    enum_name: self.name.clone(),
+                    variant_name: variant_name.clone(),
+                    span: self.span.clone(),
+                });
+                err(warnings, errors)
             }
         }
-        // associate the type arguments with the parameters in the struct decl
-        new_decl
-            .type_parameters
-            .iter_mut()
-            .zip(type_arguments.iter())
-            .for_each(
-                |(
-                    TypeParameter {
-                        ref mut type_id, ..
-                    },
-                    arg,
-                )| {
-                    *type_id = arg.type_id;
-                },
-            );
-        // perform the monomorphization
-        ok(new_decl, warnings, errors)
     }
 }
 
@@ -203,6 +196,43 @@ impl CopyTypes for TypedEnumVariant {
 }
 
 impl TypedEnumVariant {
+    pub(crate) fn type_check(
+        variant: EnumVariant,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+        span: Span,
+        type_mapping: &TypeMapping,
+    ) -> CompileResult<TypedEnumVariant> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let enum_variant_type = match variant.r#type.matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span)),
+            None => {
+                check!(
+                    namespace.resolve_type_with_self(
+                        variant.r#type.clone(),
+                        self_type,
+                        &span,
+                        EnforceTypeArguments::No
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                )
+            }
+        };
+        ok(
+            TypedEnumVariant {
+                name: variant.name.clone(),
+                r#type: enum_variant_type,
+                tag: variant.tag,
+                span: variant.span,
+            },
+            vec![],
+            errors,
+        )
+    }
+
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.to_string(),

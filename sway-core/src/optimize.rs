@@ -596,7 +596,7 @@ impl FnCompiler {
                 Ok(convert_literal_to_value(context, &l, span_md_idx))
             }
             TypedExpressionVariant::FunctionApplication {
-                name,
+                call_path: name,
                 contract_call_params,
                 arguments,
                 function_body,
