@@ -80,8 +80,16 @@ impl CopyTypes for TypedFunctionDeclaration {
 
         self.return_type =
             match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
+                Some(matching_id) => {
+                    insert_type(TypeInfo::Ref(matching_id, self.return_type_span.clone()))
+                }
+                None => {
+                    let ty = TypeInfo::Ref(
+                        insert_type(look_up_type_id_raw(self.return_type)),
+                        self.return_type_span.clone(),
+                    );
+                    insert_type(ty)
+                }
             };
 
         self.body.copy_types(type_mapping);
@@ -165,7 +173,9 @@ impl TypedFunctionDeclaration {
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    Some(matching_id) => {
+                        insert_type(TypeInfo::Ref(matching_id, parameter.type_span.clone()))
+                    }
                     None => check!(
                         fn_namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
@@ -199,7 +209,7 @@ impl TypedFunctionDeclaration {
         }
 
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, return_type_span.clone())),
             None => check!(
                 fn_namespace.resolve_type_with_self(
                     return_type,

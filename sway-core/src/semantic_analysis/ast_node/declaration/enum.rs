@@ -191,9 +191,13 @@ impl CopyTypes for TypedEnumVariant {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
-            insert_type(TypeInfo::Ref(matching_id))
+            insert_type(TypeInfo::Ref(matching_id, self.span.clone()))
         } else {
-            insert_type(look_up_type_id_raw(self.r#type))
+            let ty = TypeInfo::Ref(
+                insert_type(look_up_type_id_raw(self.r#type)),
+                self.span.clone(),
+            );
+            insert_type(ty)
         };
     }
 }
