@@ -321,24 +321,6 @@ pub(crate) fn convert_expression_to_asm(
         }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
-        TypedExpressionVariant::IfLet {
-            enum_type,
-            variant,
-            then,
-            r#else,
-            variable_to_assign,
-            expr,
-        } => convert_if_let_to_asm(
-            expr,
-            *enum_type,
-            variant,
-            then,
-            r#else,
-            variable_to_assign,
-            return_register,
-            namespace,
-            register_sequencer,
-        ),
         TypedExpressionVariant::TypeProperty {
             property, type_id, ..
         } => match property {

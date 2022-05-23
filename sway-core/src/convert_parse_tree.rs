@@ -1881,8 +1881,11 @@ fn if_expr_to_expression(
         ..
     } = if_expr;
     let then_block_span = then_block.span();
-    let then_block = braced_code_block_contents_to_code_block(ec, then_block)?;
-    let else_opt = match else_opt {
+    let then_block = Expression::CodeBlock {
+        contents: braced_code_block_contents_to_code_block(ec, then_block)?,
+        span: then_block_span.clone(),
+    };
+    let else_block = match else_opt {
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
@@ -1891,26 +1894,52 @@ fn if_expr_to_expression(
                 }
                 ControlFlow::Continue(if_expr) => if_expr_to_expression(ec, *if_expr)?,
             };
-            Some(Box::new(expression))
+            Some(expression)
         }
     };
     let expression = match condition {
         IfCondition::Expr(condition) => Expression::IfExp {
             condition: Box::new(expr_to_expression(ec, *condition)?),
-            then: Box::new(Expression::CodeBlock {
-                contents: then_block,
-                span: then_block_span,
-            }),
-            r#else: else_opt,
+            then: Box::new(then_block),
+            r#else: else_block.map(Box::new),
             span,
         },
-        IfCondition::Let { lhs, rhs, .. } => Expression::IfLet {
-            scrutinee: pattern_to_scrutinee(ec, *lhs)?,
-            expr: Box::new(expr_to_expression(ec, *rhs)?),
-            then: then_block,
-            r#else: else_opt,
-            span,
-        },
+        IfCondition::Let { lhs, rhs, .. } => {
+            let scrutinee = pattern_to_scrutinee(ec, *lhs)?;
+            let scrutinee_span = scrutinee.span();
+            let mut branches = vec![MatchBranch {
+                scrutinee,
+                result: then_block.clone(),
+                span: Span::join(scrutinee_span, then_block_span),
+            }];
+            branches.push(match else_block {
+                Some(else_block) => {
+                    let else_block_span = else_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: else_block,
+                        span: else_block_span,
+                    }
+                }
+                None => {
+                    let else_block_span = then_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: then_block,
+                        span: else_block_span,
+                    }
+                }
+            });
+            Expression::MatchExp {
+                value: Box::new(expr_to_expression(ec, *rhs)?),
+                branches,
+                span,
+            }
+        }
     };
     Ok(expression)
 }
@@ -2441,35 +2470,28 @@ fn pattern_to_scrutinee(
             value: literal_to_literal(ec, literal)?,
             span,
         },
-        Pattern::Constant(path_expr) => Scrutinee::EnumScrutinee {
-            call_path: path_expr_to_call_path(ec, path_expr)?,
-            variable_to_assign: Ident::new_no_span("_"),
-            span,
-        },
+        Pattern::Constant(path_expr) => {
+            let call_path = path_expr_to_call_path(ec, path_expr)?;
+            let call_path_span = call_path.span();
+            Scrutinee::EnumScrutinee {
+                call_path,
+                value: Box::new(Scrutinee::CatchAll {
+                    span: call_path_span,
+                }),
+                span,
+            }
+        }
         Pattern::Constructor { path, args } => {
-            let arg = match iter_to_array(args.into_inner()) {
+            let value = match iter_to_array(args.into_inner()) {
                 Some([arg]) => arg,
                 None => {
                     let error = ConvertParseTreeError::ConstructorPatternOneArg { span };
                     return Err(ec.error(error));
                 }
             };
-            let variable_to_assign = match arg {
-                Pattern::Var { mutable, name } => {
-                    if mutable.is_some() {
-                        let error = ConvertParseTreeError::MutableBindingsNotSupportedHere { span };
-                        return Err(ec.error(error));
-                    }
-                    name
-                }
-                _ => {
-                    let error = ConvertParseTreeError::ConstructorPatternSubPatterns { span };
-                    return Err(ec.error(error));
-                }
-            };
             Scrutinee::EnumScrutinee {
                 call_path: path_expr_to_call_path(ec, path)?,
-                variable_to_assign,
+                value: Box::new(pattern_to_scrutinee(ec, value)?),
                 span,
             }
         }

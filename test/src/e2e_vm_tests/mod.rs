@@ -347,6 +347,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/implicit_return",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/match_expressions_enums",
+            ProgramState::Return(42),
+        ),
     ];
 
     let mut number_of_tests_run =

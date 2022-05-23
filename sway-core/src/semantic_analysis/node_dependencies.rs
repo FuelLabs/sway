@@ -412,14 +412,7 @@ impl Dependencies {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
-            Expression::IfLet {
-                expr, then, r#else, ..
-            } => self
-                .gather_from_expr(expr)
-                .gather_from_block(then)
-                .gather_from_opt_expr(r#else.as_deref()),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }

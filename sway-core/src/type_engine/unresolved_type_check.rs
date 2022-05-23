@@ -131,29 +131,6 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .into_iter(),
                 )
                 .collect(),
-            IfLet {
-                enum_type,
-                expr,
-                then,
-                r#else,
-                ..
-            } => {
-                let mut buf = enum_type
-                    .check_for_unresolved_types()
-                    .into_iter()
-                    .chain(expr.check_for_unresolved_types().into_iter())
-                    .chain(
-                        then.contents
-                            .iter()
-                            .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                            .into_iter(),
-                    )
-                    .collect::<Vec<_>>();
-                if let Some(el) = r#else {
-                    buf.append(&mut el.check_for_unresolved_types());
-                }
-                buf
-            }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
@@ -190,6 +167,12 @@ impl UnresolvedTypeCheck for TypedExpression {
             AbiCast { address, .. } => address.check_for_unresolved_types(),
             // storage access can never be generic
             StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => vec![],
+            EnumTag { exp } => exp.check_for_unresolved_types(),
+            UnsafeDowncast { exp, variant } => exp
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(variant.r#type.check_for_unresolved_types().into_iter())
+                .collect(),
         }
     }
 }

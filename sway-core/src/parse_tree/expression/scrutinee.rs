@@ -1,7 +1,4 @@
-use crate::{
-    error::{err, ok},
-    CallPath, CompileError, CompileResult, Literal, TypeInfo,
-};
+use crate::{CallPath, Literal, TypeInfo};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -29,7 +26,7 @@ pub enum Scrutinee {
     },
     EnumScrutinee {
         call_path: CallPath,
-        variable_to_assign: Ident,
+        value: Box<Scrutinee>,
         span: Span,
     },
     Tuple {
@@ -57,21 +54,6 @@ impl Scrutinee {
         }
     }
 
-    /// If this is an enum scrutinee, returns the name of the inner value that should be
-    /// assigned to upon successful destructuring.
-    /// Should only be used when destructuring enums via `if let`
-    pub fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
-        match self {
-            Scrutinee::EnumScrutinee {
-                variable_to_assign, ..
-            } => ok(variable_to_assign, vec![], vec![]),
-            _ => err(
-                vec![],
-                vec![CompileError::IfLetNonEnum { span: self.span() }],
-            ),
-        }
-    }
-
     pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
         match self {
             Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],
@@ -94,10 +76,17 @@ impl Scrutinee {
                     .collect::<Vec<TypeInfo>>();
                 vec![name, fields].concat()
             }
-            Scrutinee::EnumScrutinee { call_path, .. } => vec![TypeInfo::Custom {
-                name: call_path.prefixes.last().unwrap().clone(),
-                type_arguments: vec![],
-            }],
+            Scrutinee::EnumScrutinee {
+                call_path, value, ..
+            } => {
+                let enum_name = call_path.prefixes.last().unwrap();
+                let name = vec![TypeInfo::Custom {
+                    name: enum_name.clone(),
+                    type_arguments: vec![],
+                }];
+                let value = value.gather_approximate_typeinfo();
+                vec![name, value].concat()
+            }
             Scrutinee::Tuple { elems, .. } => elems
                 .iter()
                 .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo())
