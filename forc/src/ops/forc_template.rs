@@ -45,13 +45,14 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     }
 
     let from_path = match command.template_name {
-        Some(ref template_name) => find_dir_within(&repo_path, template_name, SWAY_GIT_TAG).ok_or_else(|| {
-            anyhow!(
-                "failed to find a template `{}` in {}",
-                local_repo_name,
-                command.url
-            )
-        })?,
+        Some(ref template_name) => find_dir_within(&repo_path, template_name, SWAY_GIT_TAG)
+            .ok_or_else(|| {
+                anyhow!(
+                    "failed to find a template `{}` in {}",
+                    local_repo_name,
+                    command.url
+                )
+            })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
             if Manifest::from_file(&manifest_path, SWAY_GIT_TAG).is_err() {
