@@ -49,12 +49,15 @@ impl<T, F> DoubleIdentity<T, F> {
 
 impl DoubleIdentity<u8, u8> {
   fn add(self) -> u8 {
-    self.first + self.second
+    asm(r1: self.first, r2: self.second, r3) {
+      add r3 r1 r2;
+      r3: u8
+      }
   }
 }
 
 fn double_identity2<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
-  ~DoubleIdentity::new::<T, F>(x, y)
+  ~DoubleIdentity::new(x, y)
 }
 
 fn double_identity<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
@@ -106,9 +109,9 @@ impl<T> Option<T> {
 
   fn to_result(self) -> Result<T> {
     if let Option::Some(value) = self {
-      ~Result::ok::<T>(value)
+      ~Result::ok(value)
     } else {
-      ~Result::err::<T>(99u8)
+      ~Result::err(99u8)
     }
   }
 }
@@ -125,11 +128,11 @@ fn main() -> u32 {
   let e = d.get_second();
   let f: DoubleIdentity<bool, bool> = double_identity(true, true);
   let g: DoubleIdentity<u32, u64> = double_identity(10u32, 43u64);
-  let h = ~DoubleIdentity::new::<u64, bool>(3u64, false);
+  let h = ~DoubleIdentity::new(3u64, false);
   let i = crazy(7u8, 10u8);
-  let j = 10u8 + 11u8;
+  let j = asm(r1: 10u8, r2: 11u8, r3) { add r3 r1 r2; r3: u8 };
   let k = d.add();
-  let l = ~Data::new::<bool>(false);
+  let l: Data<bool>  = ~Data::new(false);
   let m: DoubleIdentity<Data<u8>, Data<u64>> = DoubleIdentity {
     first: Data {
       value: 1u8
@@ -139,14 +142,14 @@ fn main() -> u32 {
     },
     third: 1u64
   };
-  let n = ~DoubleIdentity::new::<Data<u8>, Data<u8>>(~Data::new::<u8>(3u8), ~Data::new::<u8>(4u8));
+  let n: DoubleIdentity<Data<u8>, Data<u8>> = ~DoubleIdentity::new(~Data::new(3u8), ~Data::new(4u8));
   let o: DoubleIdentity<bool, bool> = double_identity(true, true);
   let p = Option::Some::<bool>(false);
   let q = Option::Some::<()>(());
-  let r = ~Option::some::<u32>(5u32);
+  let r: Option<u32> = ~Option::some(5u32);
   let s = Option::Some(0u8);
-  let t = ~Option::none::<u64>();
-  let u = ~DoubleIdentity::new::<Data<u8>, Data<u8>>(~Data::new::<u8>(3u8), ~Data::new::<u8>(4u8));
+  let t: Option<u64> = ~Option::none();
+  let u: DoubleIdentity<Data<u8>, Data<u8>> = ~DoubleIdentity::new(~Data::new(3u8), ~Data::new(4u8));
 
   b.get_first()
 }

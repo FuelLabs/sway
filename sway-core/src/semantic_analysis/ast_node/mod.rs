@@ -520,6 +520,23 @@ impl TypedAstNode {
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
+                                /*
+                                let mut type_parameters_to_append = match type_implementing_for {
+                                    TypeInfo::Struct {
+                                        ref type_parameters,
+                                        ..
+                                    }
+                                    | TypeInfo::Enum {
+                                        ref type_parameters,
+                                        ..
+                                    } => type_parameters.clone(),
+                                    _ => Default::default(),
+                                };
+                                fn_decl
+                                    .type_parameters
+                                    .append(&mut type_parameters_to_append);
+                                dbg!(&fn_decl.type_parameters);
+                                */
                                 // ensure this fn decl's parameters and signature lines up with the
                                 // one in the trait
 

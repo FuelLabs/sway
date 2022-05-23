@@ -1,7 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'generic_impl_self'
-dependencies = ['core']
+dependencies = []

@@ -4,3 +4,4 @@ entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
 name = "issue_1628_repro"
+implicit-std = false

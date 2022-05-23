@@ -352,6 +352,24 @@ fn type_check_trait_implementation(
         // type check the method now that the interface
         // it depends upon has been implemented
 
+        let mut method = method.clone();
+        // the method has type parameters from the self type implicitly.
+        // i.e., if struct Foo<T> has generic type <T> then all functions have
+        // a generic type param T
+        let mut type_parameters_to_append = match look_up_type_id(type_implementing_for) {
+            TypeInfo::Struct {
+                type_parameters, ..
+            }
+            | TypeInfo::Enum {
+                type_parameters, ..
+            } => type_parameters.clone(),
+            _ => Default::default(),
+        };
+
+        method
+            .type_parameters
+            .append(&mut type_parameters_to_append);
+
         // use a local namespace which has the above interface inserted
         // into it as a trait implementation for this
         let method = check!(
