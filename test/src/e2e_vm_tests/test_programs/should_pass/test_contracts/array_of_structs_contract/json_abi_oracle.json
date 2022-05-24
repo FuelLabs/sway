@@ -1,0 +1,56 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "number",
+                    "type": "u64"
+                  }
+                ],
+                "name": "id",
+                "type": "struct Id"
+              }
+            ],
+            "name": "__array_element",
+            "type": "struct Wrapper"
+          }
+        ],
+        "name": "param",
+        "type": "[struct Wrapper; 2]"
+      }
+    ],
+    "name": "return_array_of_structs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "number",
+                    "type": "u64"
+                  }
+                ],
+                "name": "id",
+                "type": "struct Id"
+              }
+            ],
+            "name": "__array_element",
+            "type": "struct Wrapper"
+          }
+        ],
+        "name": "",
+        "type": "[struct Wrapper; 2]"
+      }
+    ],
+    "type": "function"
+  }
+]
