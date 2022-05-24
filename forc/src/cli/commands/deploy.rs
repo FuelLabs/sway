@@ -47,6 +47,10 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// The node url to deploy, if not specified uses DEFAULT_NODE_URL.
+    /// If url is specified overrides network url in manifest file (if there is one).
+    #[clap(long, short)]
+    pub url: Option<String>,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

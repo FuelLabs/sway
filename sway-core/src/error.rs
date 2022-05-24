@@ -470,16 +470,6 @@ pub enum CompileError {
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
     ExpectedOp { op: String, span: Span },
     #[error(
-        "Where clause was specified but there are no generic type parameters. Where clauses can \
-         only be applied to generic type parameters."
-    )]
-    UnexpectedWhereClause(Span),
-    #[error(
-        "Specified generic type in where clause \"{type_name}\" not found in generic type \
-         arguments of function."
-    )]
-    UndeclaredGenericTypeInWhereClause { type_name: Ident, span: Span },
-    #[error(
         "Program contains multiple contracts. A valid program should only contain at most one \
          contract."
     )]
@@ -494,16 +484,6 @@ pub enum CompileError {
          predicate."
     )]
     MultiplePredicates(Span),
-    #[error(
-        "Trait constraint was applied to generic type that is not in scope. Trait \
-         \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist \
-         in this scope."
-    )]
-    ConstrainedNonExistentType {
-        trait_name: Ident,
-        type_name: Ident,
-        span: Span,
-    },
     #[error(
         "Predicate definition contains multiple main functions. Multiple functions in the same \
          scope cannot have the same name."
@@ -979,6 +959,8 @@ pub enum CompileError {
     Lex { error: sway_parse::LexError },
     #[error("{}", error)]
     Parse { error: sway_parse::ParseError },
+    #[error("\"where\" clauses are not yet supported")]
+    WhereClauseNotYetSupported { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1048,12 +1030,9 @@ impl CompileError {
             InvalidByteLiteralLength { span, .. } => span.clone(),
             ExpectedExprAfterOp { span, .. } => span.clone(),
             ExpectedOp { span, .. } => span.clone(),
-            UnexpectedWhereClause(span) => span.clone(),
-            UndeclaredGenericTypeInWhereClause { span, .. } => span.clone(),
             MultiplePredicates(span) => span.clone(),
             MultipleScripts(span) => span.clone(),
             MultipleContracts(span) => span.clone(),
-            ConstrainedNonExistentType { span, .. } => span.clone(),
             MultiplePredicateMainFunctions(span) => span.clone(),
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
@@ -1169,6 +1148,7 @@ impl CompileError {
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
+            WhereClauseNotYetSupported { span, .. } => span.clone(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),

@@ -4,7 +4,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal, MatchCondition, Scrutinee, StructScrutineeField,
+    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
 };
 
 use super::{patstack::PatStack, range::Range};
@@ -112,19 +112,12 @@ pub(crate) enum Pattern {
 }
 
 impl Pattern {
-    /// Converts a `MatchCondition` to a `Pattern`.
-    pub(crate) fn from_match_condition(match_condition: MatchCondition) -> CompileResult<Self> {
-        match match_condition {
-            MatchCondition::CatchAll(_) => ok(Pattern::Wildcard, vec![], vec![]),
-            MatchCondition::Scrutinee(scrutinee) => Pattern::from_scrutinee(scrutinee),
-        }
-    }
-
     /// Converts a `Scrutinee` to a `Pattern`.
-    fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match scrutinee {
+            Scrutinee::CatchAll { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Variable { .. } => ok(Pattern::Wildcard, warnings, errors),
             Scrutinee::Literal { value, .. } => match value {
                 Literal::U8(x) => ok(Pattern::U8(Range::from_single(x)), warnings, errors),
@@ -177,13 +170,6 @@ impl Pattern {
                     ));
                 }
                 ok(Pattern::Tuple(new_elems), warnings, errors)
-            }
-            Scrutinee::Unit { span } => {
-                errors.push(CompileError::Unimplemented(
-                    "unit exhaustivity checking",
-                    span,
-                ));
-                err(warnings, errors)
             }
             Scrutinee::EnumScrutinee { span, .. } => {
                 errors.push(CompileError::Unimplemented(

@@ -473,15 +473,13 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_type_parameters(mut self, type_parameters: &[TypeParameter]) -> Self {
-        for type_param in type_parameters {
-            for constraint in &type_param.trait_constraints {
-                self.deps.insert(DependentSymbol::Symbol(
-                    constraint.name.as_str().to_string(),
-                ));
-            }
-        }
-        self
+    fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
+        self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
+            deps.gather_from_iter(
+                type_parameter.trait_constraints.iter(),
+                |deps, constraint| deps.gather_from_call_path(&constraint.call_path, false, false),
+            )
+        })
     }
 
     fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
@@ -503,6 +501,10 @@ impl Dependencies {
                 self.deps.insert(DependentSymbol::Symbol(name.to_string()));
                 self.gather_from_type_arguments(type_arguments)
             }
+            TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
+                deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
+            }),
+            TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             _ => self,
         }
     }
@@ -525,7 +527,7 @@ impl Dependencies {
 enum DependentSymbol {
     Symbol(String),
     Fn(Ident, Option<Span>),
-    Impl(Ident, String), // Trait or self, and type implementing for.
+    Impl(Ident, String, String), // Trait or self, type implementing for, and method names concatenated.
 }
 
 // We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
@@ -535,8 +537,8 @@ impl PartialEq for DependentSymbol {
         match (self, rhs) {
             (DependentSymbol::Symbol(l), DependentSymbol::Symbol(r)) => l.eq(r),
             (DependentSymbol::Fn(l, _), DependentSymbol::Fn(r, _)) => l.eq(r),
-            (DependentSymbol::Impl(lt, ls), DependentSymbol::Impl(rt, rs)) => {
-                lt.eq(rt) && ls.eq(rs)
+            (DependentSymbol::Impl(lt, ls, lm), DependentSymbol::Impl(rt, rs, rm)) => {
+                lt.eq(rt) && ls.eq(rs) && lm.eq(rm)
             }
             _ => false,
         }
@@ -550,9 +552,10 @@ impl Hash for DependentSymbol {
         match self {
             DependentSymbol::Symbol(s) => s.hash(state),
             DependentSymbol::Fn(s, _) => s.hash(state),
-            DependentSymbol::Impl(t, s) => {
+            DependentSymbol::Impl(t, s, m) => {
                 t.hash(state);
-                s.hash(state)
+                s.hash(state);
+                m.hash(state)
             }
         }
     }
@@ -560,8 +563,15 @@ impl Hash for DependentSymbol {
 
 fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
-    let impl_sym = |trait_name, type_info: &TypeInfo| {
-        Some(DependentSymbol::Impl(trait_name, type_info_name(type_info)))
+    // `method_names` is the concatenation of all the method names defined in an impl block.
+    // This is needed because there can exist multiple impl self blocks for a single type in a
+    // file and we need some way to disambiguate them.
+    let impl_sym = |trait_name, type_info: &TypeInfo, method_names| {
+        Some(DependentSymbol::Impl(
+            trait_name,
+            type_info_name(type_info),
+            method_names,
+        ))
     };
 
     match decl {
@@ -580,11 +590,27 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::ImplSelf(decl) => {
             let trait_name =
                 Ident::new_with_override("self", decl.type_implementing_for_span.clone());
-            impl_sym(trait_name, &decl.type_implementing_for)
+            impl_sym(
+                trait_name,
+                &decl.type_implementing_for,
+                decl.functions
+                    .iter()
+                    .map(|x| x.name.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(""),
+            )
         }
         Declaration::ImplTrait(decl) => {
             if decl.trait_name.prefixes.is_empty() {
-                impl_sym(decl.trait_name.suffix.clone(), &decl.type_implementing_for)
+                impl_sym(
+                    decl.trait_name.suffix.clone(),
+                    &decl.type_implementing_for,
+                    decl.functions
+                        .iter()
+                        .map(|x| x.name.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(""),
+                )
             } else {
                 None
             }
@@ -619,7 +645,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x) => return format!("T{}", x),
+        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {

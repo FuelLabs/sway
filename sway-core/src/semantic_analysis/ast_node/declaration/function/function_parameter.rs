@@ -1,4 +1,8 @@
-use crate::{type_engine::*, Ident, TypeParameter};
+use crate::{
+    semantic_analysis::{CopyTypes, TypeMapping},
+    type_engine::*,
+    Ident,
+};
 
 use sway_types::span::Span;
 
@@ -18,11 +22,17 @@ impl PartialEq for TypedFunctionParameter {
     }
 }
 
-impl TypedFunctionParameter {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedFunctionParameter {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.r#type)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.type_span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(
+                    insert_type(look_up_type_id_raw(self.r#type)),
+                    self.type_span.clone(),
+                );
+                insert_type(ty)
+            }
         };
     }
 }

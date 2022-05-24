@@ -50,7 +50,7 @@ pub(crate) fn convert_expression_to_asm(
             errors,
         ),
         TypedExpressionVariant::FunctionApplication {
-            name,
+            call_path: name,
             contract_call_params,
             arguments,
             function_body,

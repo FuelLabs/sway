@@ -3,10 +3,10 @@ use crate::{
     semantic_analysis::{
         ast_node::{TypedStorageDeclaration, TypedStructField},
         declaration::TypedStorageField,
-        TypeCheckedStorageAccess,
+        CopyTypes, TypeCheckedStorageAccess, TypeMapping,
     },
     type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypeParameter, TypedDeclaration,
+    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
     TypedFunctionDeclaration,
 };
 
@@ -161,7 +161,7 @@ impl Items {
         &mut self,
         old_type: TypeInfo,
         new_type: TypeInfo,
-        type_mapping: &[(TypeParameter, TypeId)],
+        type_mapping: &TypeMapping,
     ) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.

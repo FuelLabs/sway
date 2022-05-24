@@ -1,4 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use crate::TraitConstraint;
 use {
     crate::{
         constants::{
@@ -8,14 +10,14 @@ use {
         parse_tree::desugar_match_expression,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
-        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
-        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
-        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
-        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-        SwayParseTree, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter,
-        UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
+        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
+        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
+        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
+        StructScrutineeField, Supertrait, SwayParseTree, TraitDeclaration, TraitFn, TreeType,
+        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
+        WhileLoop,
     },
     std::{collections::HashMap, convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
     sway_parse::{
@@ -26,7 +28,7 @@ use {
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
         PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
         ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree,
+        UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -177,6 +179,8 @@ pub enum ConvertParseTreeError {
     ContractCallerNamedTypeGenericArg { span: Span },
     #[error("invalid argument for '{attribute}' attribute")]
     InvalidAttributeArgument { attribute: String, span: Span },
+    #[error("cannot find type \"{ty_name}\" in this scope")]
+    ConstrainedNonExistentType { ty_name: Ident, span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -225,6 +229,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerOneGenericArg { span } => span.clone(),
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
+            ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
         }
     }
 }
@@ -486,7 +491,11 @@ fn item_struct_to_struct_declaration(
                 .map(|type_field| type_field_to_struct_field(ec, type_field))
                 .collect::<Result<_, _>>()?
         },
-        type_parameters: generic_params_opt_to_type_parameters(item_struct.generics),
+        type_parameters: generic_params_opt_to_type_parameters(
+            ec,
+            item_struct.generics,
+            item_struct.where_clause_opt,
+        )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     };
@@ -500,7 +509,11 @@ fn item_enum_to_enum_declaration(
     let span = item_enum.span();
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
-        type_parameters: generic_params_opt_to_type_parameters(item_enum.generics),
+        type_parameters: generic_params_opt_to_type_parameters(
+            ec,
+            item_enum.generics,
+            item_enum.where_clause_opt,
+        )?,
         variants: {
             item_enum
                 .fields
@@ -540,7 +553,11 @@ fn item_fn_to_function_declaration(
             Some((_right_arrow, ty)) => ty_to_type_info(ec, ty)?,
             None => TypeInfo::Tuple(Vec::new()),
         },
-        type_parameters: generic_params_opt_to_type_parameters(item_fn.fn_signature.generics),
+        type_parameters: generic_params_opt_to_type_parameters(
+            ec,
+            item_fn.fn_signature.generics,
+            item_fn.fn_signature.where_clause_opt,
+        )?,
         return_type_span,
     })
 }
@@ -636,7 +653,13 @@ fn item_impl_to_declaration(
             })
             .collect::<Result<_, _>>()?
     };
-    let type_parameters = generic_params_opt_to_type_parameters(item_impl.generic_params_opt);
+
+    let type_parameters = generic_params_opt_to_type_parameters(
+        ec,
+        item_impl.generic_params_opt,
+        item_impl.where_clause_opt,
+    )?;
+
     match item_impl.trait_opt {
         Some((path_type, _for_token)) => {
             let impl_trait = ImplTrait {
@@ -747,25 +770,67 @@ fn type_field_to_struct_field(
 }
 
 fn generic_params_opt_to_type_parameters(
+    ec: &mut ErrorContext,
     generic_params_opt: Option<GenericParams>,
-) -> Vec<TypeParameter> {
-    let generic_params = match generic_params_opt {
-        Some(generic_params) => generic_params,
-        None => return Vec::new(),
+    where_clause_opt: Option<WhereClause>,
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+    let trait_constraints = match where_clause_opt {
+        Some(where_clause) => where_clause
+            .bounds
+            .into_iter()
+            .map(|where_bound| (where_bound.ty_name, where_bound.bounds))
+            .collect::<Vec<_>>(),
+        None => Vec::new(),
     };
-    generic_params
-        .parameters
-        .into_inner()
-        .into_iter()
-        .map(|ident| TypeParameter {
-            type_id: insert_type(TypeInfo::Custom {
-                name: ident.clone(),
-                type_arguments: Vec::new(),
-            }),
-            name_ident: ident,
-            trait_constraints: Vec::new(),
-        })
-        .collect()
+
+    let mut params = match generic_params_opt {
+        Some(generic_params) => generic_params
+            .parameters
+            .into_inner()
+            .into_iter()
+            .map(|ident| TypeParameter {
+                type_id: insert_type(TypeInfo::Custom {
+                    name: ident.clone(),
+                    type_arguments: Vec::new(),
+                }),
+                name_ident: ident,
+                trait_constraints: Vec::new(),
+            })
+            .collect::<Vec<_>>(),
+        None => Vec::new(),
+    };
+
+    let mut errors = Vec::new();
+    for (ty_name, bounds) in trait_constraints.into_iter() {
+        let param_to_edit = match params
+            .iter_mut()
+            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+        {
+            Some(o) => o,
+            None => {
+                errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
+                    ty_name: ty_name.clone(),
+                    span: ty_name.span().clone(),
+                });
+                continue;
+            }
+        };
+
+        param_to_edit
+            .trait_constraints
+            .extend(
+                traits_to_call_paths(ec, bounds)?
+                    .iter()
+                    .map(|call_path| TraitConstraint {
+                        call_path: call_path.clone(),
+                    }),
+            );
+    }
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
+    Ok(params)
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -911,6 +976,18 @@ fn fn_signature_to_trait_fn(
         return_type_span,
     };
     Ok(trait_fn)
+}
+
+fn traits_to_call_paths(
+    ec: &mut ErrorContext,
+    traits: Traits,
+) -> Result<Vec<CallPath>, ErrorEmitted> {
+    let mut call_paths = vec![path_type_to_call_path(ec, traits.prefix)?];
+    for (_add_token, suffix) in traits.suffixes {
+        let supertrait = path_type_to_call_path(ec, suffix)?;
+        call_paths.push(supertrait);
+    }
+    Ok(call_paths)
 }
 
 fn traits_to_supertraits(
@@ -2252,7 +2329,7 @@ fn match_branch_to_match_branch(
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
-        condition: pattern_to_match_condition(ec, match_branch.pattern)?,
+        condition: pattern_to_scrutinee(ec, match_branch.pattern)?,
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
@@ -2446,31 +2523,26 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     }
 }
 
-fn pattern_to_match_condition(
-    ec: &mut ErrorContext,
-    pattern: Pattern,
-) -> Result<MatchCondition, ErrorEmitted> {
-    let match_condition = match pattern {
-        Pattern::Wildcard { underscore_token } => {
-            let span = underscore_token.span();
-            MatchCondition::CatchAll(CatchAll { span })
-        }
-        _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
-    };
-    Ok(match_condition)
-}
-
 fn pattern_to_scrutinee(
     ec: &mut ErrorContext,
     pattern: Pattern,
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
-        Pattern::Wildcard { .. } => {
-            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
-            return Err(ec.error(error));
-        }
-        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
+        Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
+            span: underscore_token.span(),
+        },
+        Pattern::Var { name, .. } => match name.as_str() {
+            "true" => Scrutinee::Literal {
+                value: Literal::Boolean(true),
+                span,
+            },
+            "false" => Scrutinee::Literal {
+                value: Literal::Boolean(false),
+                span,
+            },
+            _ => Scrutinee::Variable { name, span },
+        },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,

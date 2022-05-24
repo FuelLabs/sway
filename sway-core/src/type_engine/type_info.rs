@@ -49,7 +49,7 @@ pub enum TypeInfo {
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
-    Ref(TypeId),
+    Ref(TypeId, Span),
 
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
@@ -169,7 +169,7 @@ impl Hash for TypeInfo {
                 name.hash(state);
                 type_arguments.hash(state);
             }
-            TypeInfo::Ref(id) => {
+            TypeInfo::Ref(id, _sp) => {
                 state.write_u8(17);
                 look_up_type_id(*id).hash(state);
             }
@@ -237,7 +237,7 @@ impl PartialEq for TypeInfo {
                     ..
                 },
             ) => l_name == r_name && l_fields == r_fields,
-            (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
+            (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
@@ -288,7 +288,7 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -337,7 +337,7 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -448,6 +448,14 @@ impl TypeInfo {
 
                 format!("e({})", variant_names.join(","))
             }
+            Array(type_id, size) => {
+                let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
+                let name = match name.value {
+                    Some(name) => name,
+                    None => return name,
+                };
+                format!("a[{};{}]", name, size)
+            }
             _ => {
                 return err(
                     vec![],
@@ -518,7 +526,7 @@ impl TypeInfo {
                 ty: self.friendly_type_str(),
                 span: err_span.clone(),
             }),
-            TypeInfo::Ref(id) => look_up_type_id(*id).size_in_words(err_span),
+            TypeInfo::Ref(id, _sp) => look_up_type_id(*id).size_in_words(err_span),
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
             }
@@ -656,7 +664,8 @@ impl TypeInfo {
                     if let Some(matching_id) =
                         look_up_type_id(new_field.r#type).matches_type_parameter(mapping)
                     {
-                        new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
+                        new_field.r#type =
+                            insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
                     }
                 }
                 let mut new_type_parameters = type_parameters.clone();
@@ -664,7 +673,8 @@ impl TypeInfo {
                     if let Some(matching_id) =
                         look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
                     {
-                        new_param.type_id = insert_type(TypeInfo::Ref(matching_id));
+                        new_param.type_id =
+                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
                 Some(insert_type(TypeInfo::Struct {
@@ -683,7 +693,8 @@ impl TypeInfo {
                     if let Some(matching_id) =
                         look_up_type_id(new_variant.r#type).matches_type_parameter(mapping)
                     {
-                        new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
+                        new_variant.r#type =
+                            insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
                     }
                 }
                 let mut new_type_parameters = type_parameters.clone();
@@ -691,7 +702,8 @@ impl TypeInfo {
                     if let Some(matching_id) =
                         look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
                     {
-                        new_param.type_id = insert_type(TypeInfo::Ref(matching_id));
+                        new_param.type_id =
+                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
                 Some(insert_type(TypeInfo::Enum {
@@ -712,7 +724,10 @@ impl TypeInfo {
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         new_fields.push(TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            type_id: insert_type(TypeInfo::Ref(
+                                new_field_id,
+                                fields[index].span.clone(),
+                            )),
                             span: fields[index].span.clone(),
                         });
                         index += 1;
@@ -725,7 +740,10 @@ impl TypeInfo {
                         .matches_type_parameter(mapping)
                     {
                         Some(new_field_id) => TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            type_id: insert_type(TypeInfo::Ref(
+                                new_field_id,
+                                fields[index].span.clone(),
+                            )),
                             span: fields[index].span.clone(),
                         },
                         None => fields[index].clone(),

@@ -122,8 +122,7 @@ pub fn tx_witnesses_count() -> u64 {
 
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
-    asm(r1, r2: TX_RECEIPTS_ROOT_OFFSET) {
-        lw r1 r2 i0;
+    asm(r1: TX_RECEIPTS_ROOT_OFFSET) {
         r1: b256
     }
 }

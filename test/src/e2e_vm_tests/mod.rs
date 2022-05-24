@@ -335,6 +335,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x67, 0x6e, 0x5f, 0x13,
             ])),
         ),
+        (
+            "should_pass/language/match_expressions_simple",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/multi_impl_self",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/implicit_return",
+            ProgramState::Return(42),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -392,6 +404,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/issue_1512_repro",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/array_of_structs_contract",
             ProgramState::Revert(0),
         ),
     ];
@@ -539,6 +555,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ),
             1,
         ),
+        (
+            (
+                "should_pass/test_contracts/array_of_structs_contract",
+                "should_pass/require_contract_deployment/array_of_structs_caller",
+            ),
+            1,
+        ),
     ];
 
     let total_number_of_tests = positive_project_names_no_abi.len()
@@ -577,14 +600,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     }
 
     if number_of_tests_run == 0 {
-        println!(
+        tracing::info!(
             "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
             filter_regex.map(|x| x.to_string()).unwrap_or_default(),
             total_number_of_tests
         );
     } else {
-        println!("_________________________________\nTests passed.");
-        println!(
+        tracing::info!("_________________________________\nTests passed.");
+        tracing::info!(
             "{} tests run ({} skipped)",
             number_of_tests_run,
             total_number_of_tests - number_of_tests_run

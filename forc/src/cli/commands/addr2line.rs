@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
+use tracing::info;
 
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
@@ -69,7 +70,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                 ..Default::default()
             },
         };
-        println!("{}", DisplayList::from(snippet));
+        info!("{}", DisplayList::from(snippet));
 
         Ok(())
     } else {

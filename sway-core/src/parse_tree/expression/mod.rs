@@ -9,14 +9,11 @@ use sway_types::{ident::Ident, Span};
 
 mod asm;
 mod match_branch;
-mod match_condition;
 mod matcher;
 mod method_name;
 mod scrutinee;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
-pub(crate) use match_condition::CatchAll;
-pub(crate) use match_condition::MatchCondition;
 use matcher::matcher;
 pub use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
@@ -76,7 +73,7 @@ pub enum Expression {
     },
     MatchExp {
         if_exp: Box<Expression>,
-        cases_covered: Vec<MatchCondition>,
+        cases_covered: Vec<Scrutinee>,
         span: Span,
     },
     // separated into other struct for parsing reasons
@@ -391,7 +388,7 @@ pub(crate) fn desugar_match_expression(
     primary_expression: &Expression,
     branches: Vec<MatchBranch>,
     config: Option<&BuildConfig>,
-) -> CompileResult<(Expression, Ident, Vec<MatchCondition>)> {
+) -> CompileResult<(Expression, Ident, Vec<Scrutinee>)> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -411,33 +408,18 @@ pub(crate) fn desugar_match_expression(
         span: branch_span,
     } in branches.iter()
     {
-        let matches = match condition {
-            MatchCondition::CatchAll(_) => Some((vec![], vec![])),
-            MatchCondition::Scrutinee(scrutinee) => check!(
-                matcher(&var_decl_exp, scrutinee),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-        };
-        match matches {
-            Some((match_req_map, match_impl_map)) => {
-                matched_branches.push(MatchedBranch {
-                    result: result.to_owned(),
-                    match_req_map,
-                    match_impl_map,
-                    branch_span: branch_span.to_owned(),
-                });
-            }
-            None => {
-                let errors = vec![CompileError::Internal("found None", branch_span.clone())];
-                let exp = Expression::Tuple {
-                    fields: vec![],
-                    span: branch_span.clone(),
-                };
-                return ok((exp, var_decl_name, vec![]), vec![], errors);
-            }
-        }
+        let (match_req_map, match_impl_map) = check!(
+            matcher(&var_decl_exp, condition),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        matched_branches.push(MatchedBranch {
+            result: result.to_owned(),
+            match_req_map,
+            match_impl_map,
+            branch_span: branch_span.to_owned(),
+        });
     }
 
     // 2. Assemble the possibly nested giant if statement using the matched branches.
@@ -590,7 +572,7 @@ pub(crate) fn desugar_match_expression(
                 });
             }
             Some(if_statement) => {
-                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
+                tracing::error!("Unimplemented if_statement_pattern: {:?}", if_statement,);
                 errors.push(CompileError::Unimplemented(
                     "this desugared if expression pattern is not implemented",
                     if_statement.span(),

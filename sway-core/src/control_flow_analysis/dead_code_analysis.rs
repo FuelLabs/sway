@@ -647,7 +647,9 @@ fn connect_expression(
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication {
-            name, arguments, ..
+            call_path: name,
+            arguments,
+            ..
         } => {
             let mut is_external = false;
             // find the function in the namespace

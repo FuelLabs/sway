@@ -1,6 +1,11 @@
 use crate::{
-    error::*, semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath,
-    CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*,
+    semantic_analysis::{
+        ast_node::TypedExpression,
+        declaration::{CreateTypeId, EnforceTypeArguments, Monomorphize},
+    },
+    type_engine::*,
+    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -64,130 +69,101 @@ impl Root {
         })
     }
 
-    /// This function either returns a struct (i.e. custom type), `None`, denoting the type that is
-    /// being looked for is actually a generic, not-yet-resolved type.
-    ///
-    /// If a self type is given and anything on this ref chain refers to self, update the chain.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        mod_path: &Path,
-        ty: TypeInfo,
+        type_info: TypeInfo,
         self_type: TypeId,
-        span: Span,
-        enforce_type_args: bool,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match ty {
+        let type_id = match type_info {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
             } => {
-                let mut new_type_arguments = vec![];
-                for type_argument in type_arguments.into_iter() {
-                    let new_type_id = check!(
-                        self.resolve_type_with_self(
-                            mod_path,
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            type_argument.span.clone(),
-                            enforce_type_args
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                    let type_argument = TypeArgument {
-                        type_id: new_type_id,
-                        span: type_argument.span,
-                    };
-                    new_type_arguments.push(type_argument);
-                }
                 match self
                     .resolve_symbol(mod_path, name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
                     Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize(
-                                    &mut self[mod_path],
-                                    &new_type_arguments,
-                                    Some(self_type)
-                                ),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                enforce_type_arguments,
+                                Some(self_type),
+                                Some(span),
+                                self,
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.create_type_id()
                     }
                     Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        if enforce_type_args
-                            && new_type_arguments.is_empty()
-                            && !decl.type_parameters.is_empty()
-                        {
-                            errors.push(CompileError::NeedsTypeArguments {
-                                name: name.clone(),
-                                span: name.span().clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                        if !decl.type_parameters.is_empty() {
-                            let new_decl = check!(
-                                decl.monomorphize_with_type_arguments(
-                                    &mut self[mod_path],
-                                    &new_type_arguments,
-                                    Some(self_type)
-                                ),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            new_decl.type_id()
-                        } else {
-                            decl.type_id()
-                        }
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                enforce_type_arguments,
+                                Some(self_type),
+                                Some(span),
+                                self,
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.create_type_id()
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                         insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => {
-                        errors.push(CompileError::UnknownType { span });
+                        errors.push(CompileError::UnknownType { span: span.clone() });
                         return err(warnings, errors);
                     }
                 }
             }
-            TypeInfo::Array(type_id, size) => {
-                let elem_type_id = check!(
+            TypeInfo::SelfType => self_type,
+            TypeInfo::Ref(id, _) => id,
+            TypeInfo::Array(type_id, n) => {
+                let new_type_id = check!(
                     self.resolve_type_with_self(
-                        mod_path,
                         look_up_type_id(type_id),
                         self_type,
                         span,
-                        enforce_type_args
+                        enforce_type_arguments,
+                        mod_path
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Array(elem_type_id, size))
+                insert_type(TypeInfo::Array(new_type_id, n))
             }
-            TypeInfo::SelfType => self_type,
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        self.resolve_type_with_self(
+                            look_up_type_id(type_argument.type_id),
+                            self_type,
+                            span,
+                            enforce_type_arguments,
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Tuple(type_arguments))
+            }
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
@@ -195,97 +171,80 @@ impl Root {
 
     pub(crate) fn resolve_type_without_self(
         &mut self,
+        type_info: TypeInfo,
         mod_path: &Path,
-        ty: &TypeInfo,
     ) -> CompileResult<TypeId> {
-        let ty = ty.clone();
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match ty {
+        let type_id = match type_info {
             TypeInfo::Custom {
                 name,
                 type_arguments,
-            } => match self
-                .resolve_symbol(mod_path, &name)
-                .ok(&mut warnings, &mut errors)
-                .cloned()
-            {
-                Some(TypedDeclaration::StructDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            self.resolve_type_without_self(
-                                mod_path,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
+            } => {
+                match self
+                    .resolve_symbol(mod_path, &name)
+                    .ok(&mut warnings, &mut errors)
+                    .cloned()
+                {
+                    Some(TypedDeclaration::StructDeclaration(decl)) => {
                         let new_decl = check!(
-                            decl.monomorphize(&mut self[mod_path], &new_type_arguments, None),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
-                    }
-                }
-                Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                    let mut new_type_arguments = vec![];
-                    for type_argument in type_arguments.into_iter() {
-                        let new_type_id = check!(
-                            self.resolve_type_without_self(
-                                mod_path,
-                                &look_up_type_id(type_argument.type_id),
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors
-                        );
-                        let type_argument = TypeArgument {
-                            type_id: new_type_id,
-                            span: type_argument.span,
-                        };
-                        new_type_arguments.push(type_argument);
-                    }
-                    if !decl.type_parameters.is_empty() {
-                        let new_decl = check!(
-                            decl.monomorphize_with_type_arguments(
-                                &mut self[mod_path],
-                                &new_type_arguments,
-                                None
+                            decl.monomorphize(
+                                type_arguments,
+                                EnforceTypeArguments::No,
+                                None,
+                                None,
+                                self,
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        new_decl.type_id()
-                    } else {
-                        decl.type_id()
+                        new_decl.create_type_id()
                     }
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                EnforceTypeArguments::No,
+                                None,
+                                None,
+                                self,
+                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.create_type_id()
+                    }
+                    _ => insert_type(TypeInfo::Unknown),
                 }
-                _ => insert_type(TypeInfo::Unknown),
-            },
-            TypeInfo::Array(type_id, size) => {
-                let elem_type_id = check!(
-                    self.resolve_type_without_self(mod_path, &look_up_type_id(type_id)),
+            }
+            TypeInfo::Ref(id, _) => id,
+            TypeInfo::Array(type_id, n) => {
+                let new_type_id = check!(
+                    self.resolve_type_without_self(look_up_type_id(type_id), mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Array(elem_type_id, size))
+                insert_type(TypeInfo::Array(new_type_id, n))
             }
-            TypeInfo::Ref(id) => id,
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        self.resolve_type_without_self(
+                            look_up_type_id(type_argument.type_id),
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Tuple(type_arguments))
+            }
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)
@@ -327,11 +286,11 @@ impl Root {
         // resolve the type
         let r#type = check!(
             self.resolve_type_with_self(
-                method_prefix,
                 look_up_type_id(r#type),
                 self_type,
-                method_name.span().clone(),
-                false
+                method_name.span(),
+                EnforceTypeArguments::No,
+                method_prefix
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

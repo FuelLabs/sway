@@ -1,14 +1,11 @@
+use self::declaration::EnforceTypeArguments;
+
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::*,
-    semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
-    style::*,
-    type_engine::*,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_engine::*, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -49,6 +46,9 @@ pub(crate) use return_statement::TypedReturnStatement;
 
 mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
+
+mod copy_types;
+pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -94,6 +94,29 @@ impl std::fmt::Display for TypedAstNode {
     }
 }
 
+impl CopyTypes for TypedAstNode {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> bool {
@@ -124,6 +147,7 @@ impl TypedAstNode {
             _ => false,
         }
     }
+
     /// if this ast node _deterministically_ panics/aborts, then this is true.
     /// This is used to assist in type checking branches that abort control flow and therefore
     /// don't need to return a type.
@@ -139,6 +163,7 @@ impl TypedAstNode {
             SideEffect => false,
         }
     }
+
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -169,27 +194,6 @@ impl TypedAstNode {
             )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
-            }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
-            TypedAstNodeContent::SideEffect => (),
         }
     }
 
@@ -232,8 +236,8 @@ impl TypedAstNode {
                     namespace.resolve_type_with_self(
                         type_ascription,
                         self_type,
-                        node.span.clone(),
-                        false
+                        &node.span,
+                        EnforceTypeArguments::No
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -299,8 +303,8 @@ impl TypedAstNode {
                                 .resolve_type_with_self(
                                     type_ascription,
                                     self_type,
-                                    type_ascription_span.clone(),
-                                    true,
+                                    &type_ascription_span,
+                                    EnforceTypeArguments::Yes,
                                 )
                                 .value
                             {
@@ -373,14 +377,17 @@ impl TypedAstNode {
                             namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
-                        Declaration::EnumDeclaration(e) => {
-                            is_upper_camel_case(&e.name).ok(&mut warnings, &mut errors);
-                            let decl = TypedDeclaration::EnumDeclaration(
-                                e.to_typed_decl(namespace, self_type),
+                        Declaration::EnumDeclaration(decl) => {
+                            let decl = check!(
+                                TypedEnumDeclaration::type_check(decl, namespace, self_type),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
                             );
-
-                            check!(
-                                namespace.insert_symbol(e.name, decl.clone()),
+                            let name = decl.name.clone();
+                            let decl = TypedDeclaration::EnumDeclaration(decl);
+                            let _ = check!(
+                                namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -388,6 +395,15 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
+                            for type_parameter in fn_decl.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
+                                    break;
+                                }
+                            }
+
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
@@ -474,10 +490,9 @@ impl TypedAstNode {
                         }) => {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::Internal(
-                                        "Where clauses are not supported yet.",
-                                        type_parameter.name_ident.span().clone(),
-                                    ));
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span().clone(),
+                                    });
                                     break;
                                 }
                             }
@@ -493,7 +508,7 @@ impl TypedAstNode {
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.
                             let implementing_for_type_id = check!(
-                                impl_namespace.resolve_type_without_self(&type_implementing_for),
+                                impl_namespace.resolve_type_without_self(type_implementing_for),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -555,57 +570,22 @@ impl TypedAstNode {
                             }
                         }
                         Declaration::StructDeclaration(decl) => {
-                            is_upper_camel_case(&decl.name).ok(&mut warnings, &mut errors);
-                            // look up any generic or struct types in the namespace
-                            // insert type parameters
-                            let type_mapping = insert_type_parameters(&decl.type_parameters);
-                            let fields = decl
-                                .fields
-                                .into_iter()
-                                .map(|field| {
-                                    let StructField {
-                                        name,
-                                        r#type,
-                                        span,
-                                        type_span,
-                                    } = field;
-                                    let r#type = match r#type.matches_type_parameter(&type_mapping)
-                                    {
-                                        Some(matching_id) => {
-                                            insert_type(TypeInfo::Ref(matching_id))
-                                        }
-                                        None => check!(
-                                            namespace.resolve_type_with_self(
-                                                r#type, self_type, type_span, false
-                                            ),
-                                            insert_type(TypeInfo::ErrorRecovery),
-                                            warnings,
-                                            errors,
-                                        ),
-                                    };
-                                    TypedStructField { name, r#type, span }
-                                })
-                                .collect::<Vec<_>>();
-                            let decl = TypedStructDeclaration {
-                                name: decl.name.clone(),
-                                type_parameters: decl.type_parameters.clone(),
-                                fields,
-                                visibility: decl.visibility,
-                                span: decl.span,
-                            };
-
-                            // insert struct into namespace
-                            check!(
-                                namespace.insert_symbol(
-                                    decl.name.clone(),
-                                    TypedDeclaration::StructDeclaration(decl.clone()),
-                                ),
+                            let decl = check!(
+                                TypedStructDeclaration::type_check(decl, namespace, self_type),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-
-                            TypedDeclaration::StructDeclaration(decl)
+                            let name = decl.name.clone();
+                            let decl = TypedDeclaration::StructDeclaration(decl);
+                            // insert the struct decl into namespace
+                            let _ = check!(
+                                namespace.insert_symbol(name, decl.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            decl
                         }
                         Declaration::AbiDeclaration(AbiDeclaration {
                             name,
@@ -652,7 +632,7 @@ impl TypedAstNode {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, r#type } in fields {
                                 let r#type = check!(
-                                    namespace.resolve_type_without_self(&r#type),
+                                    namespace.resolve_type_without_self(r#type),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
@@ -781,7 +761,7 @@ impl TypedAstNode {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span,
                             },
-                            crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
+                            insert_type(TypeInfo::Tuple(Vec::new()))
                         ),
                         warnings,
                         errors
@@ -902,7 +882,10 @@ fn reassignment(
                         errors.push(CompileError::AssignmentToNonMutable { name });
                     }
                     // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(variable_decl.body.return_type));
+                    let rhs_type_id = insert_type(TypeInfo::Ref(
+                        variable_decl.body.return_type,
+                        variable_decl.body.span.clone(),
+                    ));
                     // type check the reassignment
                     let rhs = check!(
                         TypedExpression::type_check(TypeCheckArguments {
@@ -1246,9 +1229,9 @@ fn type_check_interface_surface(
                             r#type: check!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
-                                    crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    type_span.clone(),
-                                    true
+                                    insert_type(TypeInfo::SelfType),
+                                    &type_span,
+                                    EnforceTypeArguments::Yes
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -1261,9 +1244,9 @@ fn type_check_interface_surface(
                 return_type: check!(
                     namespace.resolve_type_with_self(
                         return_type,
-                        crate::type_engine::insert_type(TypeInfo::SelfType),
-                        return_type_span,
-                        true
+                        insert_type(TypeInfo::SelfType),
+                        &return_type_span,
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1306,9 +1289,9 @@ fn type_check_trait_methods(
                 let r#type = check!(
                     namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
-                        crate::type_engine::insert_type(TypeInfo::SelfType),
-                        name.span().clone(),
-                        true
+                        insert_type(TypeInfo::SelfType),
+                        name.span(),
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1385,8 +1368,8 @@ fn type_check_trait_methods(
                             namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
-                                type_span.clone(),
-                                true
+                                &type_span,
+                                EnforceTypeArguments::Yes
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
                             warnings,
@@ -1403,8 +1386,8 @@ fn type_check_trait_methods(
             namespace.resolve_type_with_self(
                 return_type,
                 self_type,
-                return_type_span.clone(),
-                true,
+                &return_type_span,
+                EnforceTypeArguments::Yes
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -1482,9 +1465,9 @@ fn convert_trait_methods_to_dummy_funcs(
                             r#type: check!(
                                 trait_namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),
-                                    crate::type_engine::insert_type(TypeInfo::SelfType),
-                                    type_span.clone(),
-                                    true
+                                    insert_type(TypeInfo::SelfType),
+                                    type_span,
+                                    EnforceTypeArguments::Yes
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -1498,9 +1481,9 @@ fn convert_trait_methods_to_dummy_funcs(
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
                         return_type.clone(),
-                        crate::type_engine::insert_type(TypeInfo::SelfType),
-                        return_type_span.clone(),
-                        true
+                        insert_type(TypeInfo::SelfType),
+                        return_type_span,
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -1540,7 +1523,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: crate::type_engine::insert_type(return_type),
+        return_type: insert_type(return_type),
         type_parameters: Default::default(),
     }
 }

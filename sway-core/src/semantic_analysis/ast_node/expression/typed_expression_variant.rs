@@ -17,7 +17,7 @@ pub(crate) struct ContractCallMetadata {
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        name: CallPath,
+        call_path: CallPath,
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
@@ -126,13 +126,13 @@ impl PartialEq for TypedExpressionVariant {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
                 Self::FunctionApplication {
-                    name: l_name,
+                    call_path: l_name,
                     arguments: l_arguments,
                     function_body: l_function_body,
                     ..
                 },
                 Self::FunctionApplication {
-                    name: r_name,
+                    call_path: r_name,
                     arguments: r_arguments,
                     function_body: r_function_body,
                     ..
@@ -348,6 +348,148 @@ impl PartialEq for TypedExpressionVariant {
     }
 }
 
+impl CopyTypes for TypedExpressionVariant {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        use TypedExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication {
+                arguments,
+                function_body,
+                ..
+            } => {
+                arguments
+                    .iter_mut()
+                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
+                function_body.copy_types(type_mapping);
+            }
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).copy_types(type_mapping);
+                (*rhs).copy_types(type_mapping);
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).copy_types(type_mapping);
+                (*index).copy_types(type_mapping);
+            }
+            StructExpression { fields, .. } => {
+                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
+            }
+            CodeBlock(block) => {
+                block.copy_types(type_mapping);
+            }
+            FunctionParameter => (),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.copy_types(type_mapping);
+                then.copy_types(type_mapping);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.copy_types(type_mapping);
+                }
+            }
+            AsmExpression {
+                registers, //: Vec<TypedAsmRegisterDeclaration>,
+                ..
+            } => {
+                registers
+                    .iter_mut()
+                    .for_each(|x| x.copy_types(type_mapping));
+            }
+            // like a variable expression but it has multiple parts,
+            // like looking up a field in a struct
+            StructFieldAccess {
+                prefix,
+                field_to_access,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id, field_to_access.span.clone()))
+                } else {
+                    let ty = TypeInfo::Ref(
+                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
+                        field_to_access.span.clone(),
+                    );
+                    insert_type(ty)
+                };
+
+                field_to_access.copy_types(type_mapping);
+                prefix.copy_types(type_mapping);
+            }
+            TupleElemAccess {
+                prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id, prefix.span.clone()))
+                } else {
+                    let ty = TypeInfo::Ref(
+                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
+                        prefix.span.clone(),
+                    );
+                    insert_type(ty)
+                };
+
+                prefix.copy_types(type_mapping);
+            }
+            EnumInstantiation {
+                enum_decl,
+                contents,
+                ..
+            } => {
+                enum_decl.copy_types(type_mapping);
+                if let Some(ref mut contents) = contents {
+                    contents.copy_types(type_mapping)
+                };
+            }
+            AbiCast { address, .. } => address.copy_types(type_mapping),
+            // storage is never generic and cannot be monomorphized
+            StorageAccess { .. } => (),
+            TypeProperty { type_id, span, .. } => {
+                *type_id = if let Some(matching_id) =
+                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id, span.clone()))
+                } else {
+                    let ty =
+                        TypeInfo::Ref(insert_type(look_up_type_id_raw(*type_id)), span.clone());
+                    insert_type(ty)
+                };
+            }
+            SizeOfValue { expr } => expr.copy_types(type_mapping),
+            IfLet {
+                ref mut variant,
+                ref mut enum_type,
+                ..
+            } => {
+                *enum_type = if let Some(matching_id) =
+                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id, variant.span.clone()))
+                } else {
+                    let ty = TypeInfo::Ref(
+                        insert_type(look_up_type_id_raw(*enum_type)),
+                        variant.span.clone(),
+                    );
+                    insert_type(ty)
+                };
+                variant.copy_types(type_mapping);
+            }
+            AbiName(_) => (),
+        }
+    }
+}
+
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
@@ -396,8 +538,8 @@ impl PartialEq for TypedAsmRegisterDeclaration {
     }
 }
 
-impl TypedAsmRegisterDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+impl CopyTypes for TypedAsmRegisterDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)
         }
@@ -425,7 +567,9 @@ impl TypedExpressionVariant {
                         .join(", "),
                 }
             ),
-            TypedExpressionVariant::FunctionApplication { name, .. } => {
+            TypedExpressionVariant::FunctionApplication {
+                call_path: name, ..
+            } => {
                 format!("\"{}\" fn entry", name.suffix.as_str())
             }
             TypedExpressionVariant::LazyOperator { op, .. } => match op {
@@ -515,133 +659,6 @@ impl TypedExpressionVariant {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
-        }
-    }
-
-    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        use TypedExpressionVariant::*;
-        match self {
-            Literal(..) => (),
-            FunctionApplication {
-                arguments,
-                function_body,
-                ..
-            } => {
-                arguments
-                    .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_body.copy_types(type_mapping);
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types(type_mapping);
-                (*rhs).copy_types(type_mapping);
-            }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
-            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
-            ArrayIndex { prefix, index } => {
-                (*prefix).copy_types(type_mapping);
-                (*index).copy_types(type_mapping);
-            }
-            StructExpression { fields, .. } => {
-                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
-            }
-            CodeBlock(block) => {
-                block.copy_types(type_mapping);
-            }
-            FunctionParameter => (),
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                condition.copy_types(type_mapping);
-                then.copy_types(type_mapping);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types(type_mapping);
-                }
-            }
-            AsmExpression {
-                registers, //: Vec<TypedAsmRegisterDeclaration>,
-                ..
-            } => {
-                registers
-                    .iter_mut()
-                    .for_each(|x| x.copy_types(type_mapping));
-            }
-            // like a variable expression but it has multiple parts,
-            // like looking up a field in a struct
-            StructFieldAccess {
-                prefix,
-                field_to_access,
-                ref mut resolved_type_of_parent,
-                ..
-            } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
-                };
-
-                field_to_access.copy_types(type_mapping);
-                prefix.copy_types(type_mapping);
-            }
-            IfLet {
-                ref mut variant,
-                ref mut enum_type,
-                ..
-            } => {
-                *enum_type = if let Some(matching_id) =
-                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*enum_type))
-                };
-                variant.copy_types(type_mapping);
-            }
-            TupleElemAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
-                ..
-            } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
-                };
-
-                prefix.copy_types(type_mapping);
-            }
-            EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
-            } => {
-                enum_decl.copy_types(type_mapping);
-                if let Some(ref mut contents) = contents {
-                    contents.copy_types(type_mapping)
-                };
-            }
-            AbiCast { address, .. } => address.copy_types(type_mapping),
-            // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => (),
-            TypeProperty { type_id, .. } => {
-                *type_id = if let Some(matching_id) =
-                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*type_id))
-                };
-            }
-            SizeOfValue { expr } => expr.copy_types(type_mapping),
-            AbiName(_) => (),
         }
     }
 }
