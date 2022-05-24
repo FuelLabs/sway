@@ -18,7 +18,7 @@ pub fn ec_recover_evm_address(signature: B512, msg_hash: b256) -> Result<EvmAddr
     } else {
         let pub_key = pub_key_result.unwrap();
 
-        // Note that Ethereum addresses are derived from the Keccak256 hash of the pubkey (not sha256)
+        // Note that EVM addresses are derived from the Keccak256 hash of the pubkey (not sha256)
         let pubkey_hash = keccak256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
 
         Result::Ok(~EvmAddress::from(pubkey_hash))
