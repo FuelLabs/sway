@@ -46,6 +46,20 @@ impl Parse for Pattern {
             let name = parser.parse()?;
             return Ok(Pattern::Var { mutable, name });
         }
+        if parser.peek::<TrueToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span().clone(),
+                kind: LitBoolType::True,
+            })));
+        }
+        if parser.peek::<FalseToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span().clone(),
+                kind: LitBoolType::False,
+            })));
+        }
         if let Some(literal) = parser.take() {
             return Ok(Pattern::Literal(literal));
         }

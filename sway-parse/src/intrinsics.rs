@@ -3,8 +3,6 @@ pub enum Intrinsic {
     IsReferenceType,
     SizeOf,
     SizeOfVal,
-    True,
-    False,
 }
 
 impl Intrinsic {
@@ -14,8 +12,6 @@ impl Intrinsic {
             "__is_reference_type" => IsReferenceType,
             "__size_of" => SizeOf,
             "__size_of_val" => SizeOfVal,
-            "true" => True,
-            "false" => False,
             _ => return None,
         })
     }

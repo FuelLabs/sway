@@ -1928,17 +1928,7 @@ fn path_expr_to_expression(
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
-        match Intrinsic::try_from_str(name.as_str()) {
-            Some(Intrinsic::True) => Expression::Literal {
-                value: Literal::Boolean(true),
-                span,
-            },
-            Some(Intrinsic::False) => Expression::Literal {
-                value: Literal::Boolean(false),
-                span,
-            },
-            _ => Expression::VariableExpression { name, span },
-        }
+        Expression::VariableExpression { name, span }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
         Expression::DelineatedPath {
@@ -2030,6 +2020,7 @@ fn literal_to_literal(
     literal: sway_parse::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
+        sway_parse::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
         sway_parse::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
@@ -2519,17 +2510,7 @@ fn pattern_to_scrutinee(
         Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
             span: underscore_token.span(),
         },
-        Pattern::Var { name, .. } => match name.as_str() {
-            "true" => Scrutinee::Literal {
-                value: Literal::Boolean(true),
-                span,
-            },
-            "false" => Scrutinee::Literal {
-                value: Literal::Boolean(false),
-                span,
-            },
-            _ => Scrutinee::Variable { name, span },
-        },
+        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,
