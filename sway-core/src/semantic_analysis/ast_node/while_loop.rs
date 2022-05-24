@@ -1,7 +1,7 @@
 use super::{TypedCodeBlock, TypedExpression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct TypedWhileLoop {
+pub struct TypedWhileLoop {
     pub(crate) condition: TypedExpression,
     pub(crate) body: TypedCodeBlock,
 }

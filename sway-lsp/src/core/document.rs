@@ -5,7 +5,17 @@ use ropey::Rope;
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_core::{parse, TreeType};
+use sway_core::{
+    BuildConfig,
+    CompileResult,
+    TypedParseTree,
+    semantic_analysis::{
+        namespace, Namespace,
+        ast_node::TypedAstNode,
+    },
+};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
+
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -83,6 +93,8 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.clear_tokens();
         self.clear_hash_maps();
+        
+        self.test_typed_parse();
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
@@ -103,10 +115,89 @@ impl TextDocument {
     pub fn get_text(&self) -> String {
         self.content.to_string()
     }
+
+    pub fn test_typed_parse(&self) {
+        use sway_types::ident::Ident;
+        use sway_core::semantic_analysis::ast_node::TypedAstNodeContent;
+        use super::traverse_typed_tree as ttt;
+
+        let mut tokens: HashMap<Ident, TypedAstNodeContent> = HashMap::new();
+
+        if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
+            for node in &all_nodes {
+                ttt::traverse_node(node, &mut tokens);
+            }
+        }
+    
+        let file_name = std::path::PathBuf::from(self.get_uri());
+        let cursor_position = Position::new(25, 14); //Cursos hovered over the position var decl in main()
+        let code_pos = ttt::CodeEditorPosition::new(file_name, cursor_position);
+
+        // Check if the code editor's cursor is currently over an of our collected tokens
+        if let Some(ident) = ttt::ident_at_position(&code_pos, &tokens) {
+            // Retrieve the typed_ast_node from our HashMap
+            if let Some(token) = tokens.get(ident) {
+                //eprintln!("token = {:#?}", token);
+
+                // Look up the tokens TypeId
+                let type_id = ttt::type_id(token);
+                eprintln!("type_id = {:#?}", type_id);
+
+                // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
+                let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                eprintln!("type_info = {:#?}", type_info);
+
+                // Find the ident / span on the returned type
+    
+                // Contruct a go_to LSP request from the declerations span
+            }
+        }    
+    }
 }
 
 // private methods
 impl TextDocument {
+    fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
+        let text = Arc::from(self.get_text());
+        let parse_tree = parse(text, None).value.unwrap();
+
+        let program_type = &parse_tree.tree_type;
+        let file_name = std::path::PathBuf::from(self.get_uri());
+        let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+            file_name,
+            Default::default(),
+        );
+        let mut dead_code_graph = Default::default();
+        let mut namespace = Namespace::init_root(namespace::Module::default());
+
+        let CompileResult {
+            value: typed_parse_tree_result,
+            warnings: _new_warnings,
+            errors: _new_errors,
+        } = TypedParseTree::type_check(
+            parse_tree.tree,
+            &mut namespace,
+            program_type,
+            &build_config,
+            &mut dead_code_graph,
+        );
+        //eprintln!("typed_parse_tree_result: {:#?}", typed_parse_tree_result);
+
+        if let Some(typed_parse_tree) = typed_parse_tree_result {
+            match typed_parse_tree {
+                TypedParseTree::Script{ main_function, namespace, declarations, all_nodes } => {
+                    //eprintln!("main_function: {:#?}", main_function);
+                    //eprintln!("namespace: {:#?}", namespace);
+                    //eprintln!("declarations: {:#?}", declarations);
+                    //eprintln!("all_nodes: {:#?}", all_nodes);
+                    return Some(all_nodes);
+                }
+                _ => (),
+            }
+        }
+        None
+    }
+
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
         let text = Arc::from(self.get_text());
         let parsed_result = parse(text, None);

@@ -14,8 +14,8 @@ use super::{monomorphize_inner, CreateTypeId, EnforceTypeArguments, Monomorphize
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) fields: Vec<TypedStructField>,
+    pub name: Ident,
+    pub fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
     pub(crate) span: Span,
@@ -178,7 +178,7 @@ impl TypedStructDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
 }

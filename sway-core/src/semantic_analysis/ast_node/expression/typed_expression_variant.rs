@@ -7,14 +7,14 @@ use sway_types::state::StateIndex;
 use derivative::Derivative;
 
 #[derive(Clone, Debug)]
-pub(crate) struct ContractCallMetadata {
+pub struct ContractCallMetadata {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(Eq)]
-pub(crate) enum TypedExpressionVariant {
+pub enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
@@ -465,7 +465,7 @@ pub struct TypeCheckedStorageAccessDescriptor {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedAsmRegisterDeclaration {
+pub struct TypedAsmRegisterDeclaration {
     pub(crate) initializer: Option<TypedExpression>,
     pub(crate) name: Ident,
 }

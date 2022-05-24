@@ -252,7 +252,7 @@ mod tests {
     // Simple sway script used for testing LSP capabilites
     const SWAY_PROGRAM: &str = r#"script;
 
-use std::*;
+//use std::*;
 
 /// A simple Particle struct
 struct Particle {

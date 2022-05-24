@@ -38,7 +38,7 @@ pub(crate) use impl_trait::Mode;
 mod code_block;
 pub(crate) use code_block::TypedCodeBlock;
 
-mod expression;
+pub mod expression;
 pub(crate) use expression::*;
 
 mod return_statement;
@@ -59,7 +59,7 @@ pub(crate) enum IsConstant {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TypedAstNodeContent {
+pub enum TypedAstNodeContent {
     ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
     Expression(TypedExpression),
@@ -72,7 +72,7 @@ pub(crate) enum TypedAstNodeContent {
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
-    pub(crate) content: TypedAstNodeContent,
+    pub content: TypedAstNodeContent,
     #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }

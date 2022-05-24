@@ -400,7 +400,7 @@ impl TypedAbiDeclaration {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedConstantDeclaration {
     pub(crate) name: Ident,
-    pub(crate) value: TypedExpression,
+    pub value: TypedExpression,
     pub(crate) visibility: Visibility,
 }
 
