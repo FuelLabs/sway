@@ -30,13 +30,12 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 /// Returns a `Result` to let the caller choose an error handling strategy.
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
-
-    if let Result::Err(e) = pub_key_result {
-        // propagate the error if it exists
-        Result::Err(e)
-    } else {
-        let pub_key = pub_key_result.unwrap();
-        let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
-        Result::Ok(~Address::from(address))
+    match pub_key_result {
+        Result::Err(e) => Result::Err(e),
+        _ => {
+            let pub_key = pub_key_result.unwrap();
+            let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+            Result::Ok(~Address::from(address))
+        },
     }
 }

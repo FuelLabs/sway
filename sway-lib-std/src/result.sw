@@ -30,19 +30,17 @@ impl<T, E> Result<T, E> {
 
     /// Returns `true` if the result is [`Ok`].
     fn is_ok(self) -> bool {
-        if let Result::Ok(t) = self {
-            true
-        } else {
-            false
+        match self {
+            Result::Ok(_) => true,
+            _ => false,
         }
     }
 
     /// Returns `true` if the result is [`Err`].
     fn is_err(self) -> bool {
-        if let Result::Ok(t) = self {
-            false
-        } else {
-            true
+        match self {
+            Result::Ok(_) => false,
+            _ => true,
         }
     }
 
@@ -52,10 +50,11 @@ impl<T, E> Result<T, E> {
     /// Instead, prefer to use pattern matching and handle the [`Err`]
     /// case explicitly.
     fn unwrap(self) -> T {
-        if let Result::Ok(inner_value) = self {
-            inner_value
-        } else {
-            revert(0);
+        match self {
+            Result::Ok(inner_value) => inner_value,
+            _ => {
+                revert(0);
+            },
         }
     }
 }

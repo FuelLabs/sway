@@ -12,21 +12,17 @@ use ::result::*;
 /// Ethereum addresses are 20 bytes long, so these are left-padded to fit in a 32 byte Address type.
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
-
-    if let Result::Err(e) = pub_key_result {
-        // propagate the error if it exists
-        Result::Err(e)
-    } else {
-        let pub_key = pub_key_result.unwrap();
-
-        // Note that Ethereum addresses are derived from the Keccak256 hash of the pubkey (not sha256)
-        let address = keccak256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
-
-        // Zero out first 12 bytes for ethereum address
-        asm(r1: address) {
-            mcli r1 i12;
-        };
-
-        Result::Ok(~Address::from(address))
+    match pub_key_result {
+        Result::Err(e) => Result::Err(e),
+        _ => {
+            let pub_key = pub_key_result.unwrap();
+            // Note that Ethereum addresses are derived from the Keccak256 hash of the pubkey (not sha256)
+            let address = keccak256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+            // Zero out first 12 bytes for ethereum address
+            asm(r1: address) {
+                mcli r1 i12;
+            };
+            Result::Ok(~Address::from(address))
+        },
     }
 }
