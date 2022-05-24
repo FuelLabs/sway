@@ -27,11 +27,6 @@ fn main() -> u64 {
         Data { value: false } => { 0 },
         Data { value } => { 4 },
     };
-    // // should fail
-    // let e = match c {
-    //     Data { value: 1u64 } => { false },
-    //     Data { value } => { true },
-    // };
 
     d
 }
