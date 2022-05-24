@@ -81,14 +81,13 @@ impl TypedStructDeclaration {
         let mut errors = vec![];
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
         for type_parameter in decl.type_parameters.iter() {
             check!(
-                decl_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -110,7 +109,7 @@ impl TypedStructDeclaration {
                 let r#type = match r#type.matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, type_span)),
                     None => check!(
-                        decl_namespace.resolve_type_with_self(
+                        namespace.resolve_type_with_self(
                             r#type,
                             self_type,
                             &type_span,

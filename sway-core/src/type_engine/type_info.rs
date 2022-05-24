@@ -464,7 +464,8 @@ impl TypeInfo {
         Ok(self.size_in_words(err_span)? * 8)
     }
 
-    /// Calculates the stack size of this type, to be used when allocating stack memory for it.
+    /// Calculates the stack size of this type in words,
+    /// to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
@@ -765,6 +766,17 @@ impl TypeInfo {
         }
     }
 
+    /// Given a `TypeInfo` `self` and a lists of `Ident`'s `subfields`,
+    /// iterate through the elements of `subfields` as `subfield`,
+    /// and recursively apply `subfield` to `self`.
+    ///
+    /// Returns a `TypedStructField` when all `subfields` could be
+    /// applied without error.
+    ///
+    /// Returns an error when subfields could not be applied:
+    /// 1) in the case where `self` is not a `TypeInfo::Struct`
+    /// 2) in the case where `subfields` is empty
+    /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
         subfields: &[Ident],
@@ -818,7 +830,11 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn expect_tuple_args(
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Tuple`.
+    pub(crate) fn expect_tuple(
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
