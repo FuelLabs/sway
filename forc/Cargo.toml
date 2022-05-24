@@ -23,6 +23,7 @@ clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 clap_complete = "3.1"
 forc-pkg = { version = "0.13.0", path = "../forc-pkg" }
 forc-util = { version = "0.13.0", path = "../forc-util" }
+fs_extra = "1.2"
 fuel-asm = "0.4"
 fuel-gql-client = { version = "0.6", default-features = false }
 fuel-tx = "0.9"
@@ -39,7 +40,6 @@ tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "process"]
 toml = "0.5"
 toml_edit = "0.13"
 tracing = "0.1"
-ureq = { version = "2.4", features = ["json"] }
 url = "2.2"
 uwuify = { version = "^0.2", optional = true }
 walkdir = "2.3"

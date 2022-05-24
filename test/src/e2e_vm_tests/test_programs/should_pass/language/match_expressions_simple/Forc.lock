@@ -3,5 +3,5 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'match_expressions_wrong_struct'
+name = 'simple'
 dependencies = ['core']

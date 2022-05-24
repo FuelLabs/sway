@@ -1,0 +1,172 @@
+use crate::cli::TemplateCommand;
+use crate::utils::{defaults, SWAY_GIT_TAG};
+use anyhow::{anyhow, Context, Result};
+use forc_pkg::{
+    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, Manifest, SourceGit,
+};
+use forc_util::validate_name;
+use fs_extra::dir::{copy, CopyOptions};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::{env, fs};
+use sway_utils::constants;
+use tracing::info;
+use url::Url;
+
+pub fn init(command: TemplateCommand) -> Result<()> {
+    validate_name(&command.project_name, "project name")?;
+    // The name used for the temporary local repo directory used for fetching the template.
+    let local_repo_name = match command.template_name.clone() {
+        Some(temp_name) => temp_name,
+        None => format!("{}-template-source", command.project_name),
+    };
+
+    let source = SourceGit {
+        repo: Url::parse(&command.url)?,
+        reference: forc_pkg::GitReference::DefaultBranch,
+    };
+
+    let current_dir = &env::current_dir()?;
+
+    let fetch_ts = std::time::Instant::now();
+    let fetch_id = fetch_id(current_dir, fetch_ts);
+
+    info!("Resolving the HEAD of {}", source.repo);
+    let git_source = pin_git(fetch_id, &local_repo_name, source)?;
+
+    let repo_path = git_commit_path(
+        &local_repo_name,
+        &git_source.source.repo,
+        &git_source.commit_hash,
+    );
+    if !repo_path.exists() {
+        info!("  Fetching {}", git_source.to_string());
+        fetch_git(fetch_id, &local_repo_name, &git_source)?;
+    }
+
+    let from_path = match command.template_name {
+        Some(ref template_name) => find_dir_within(&repo_path, template_name, SWAY_GIT_TAG)
+            .ok_or_else(|| {
+                anyhow!(
+                    "failed to find a template `{}` in {}",
+                    template_name,
+                    command.url
+                )
+            })?,
+        None => {
+            let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
+            if Manifest::from_file(&manifest_path, SWAY_GIT_TAG).is_err() {
+                anyhow::bail!("failed to find a template in {}", command.url);
+            }
+            repo_path
+        }
+    };
+
+    // Create the target dir
+    let target_dir = current_dir.join(&command.project_name);
+
+    info!("Creating {} from template", &command.project_name);
+    // Copy contents from template to target dir
+    copy_template_to_target(&from_path, &target_dir)?;
+
+    // Edit forc.toml
+    edit_forc_toml(&target_dir, &command.project_name, &whoami::realname())?;
+    if target_dir.join("test").exists() {
+        edit_cargo_toml(&target_dir, &command.project_name, &whoami::realname())?;
+    } else {
+        // Create the tests directory, harness.rs and Cargo.toml file
+        fs::create_dir_all(target_dir.join("tests"))?;
+
+        fs::write(
+            target_dir.join("tests").join("harness.rs"),
+            defaults::default_test_program(&command.project_name),
+        )?;
+
+        fs::write(
+            target_dir.join("Cargo.toml"),
+            defaults::default_tests_manifest(&command.project_name),
+        )?;
+    }
+    Ok(())
+}
+
+fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
+    let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
+    let mut toml = String::new();
+    file.read_to_string(&mut toml)?;
+    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+
+    let mut authors = Vec::new();
+    let forc_toml: toml::Value = toml::de::from_str(&toml)?;
+    if let Some(table) = forc_toml.as_table() {
+        if let Some(package) = table.get("project") {
+            // If authors Vec is currently populated use that
+            if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
+                for author in authors_vec {
+                    if let toml::value::Value::String(name) = &author {
+                        authors.push(name.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // Only append the users name to the authors field if it isn't already in the list
+    if authors.iter().any(|e| e != real_name) {
+        authors.push(real_name.to_string());
+    }
+
+    let authors: toml_edit::Array = authors.iter().collect();
+    manifest_toml["project"]["authors"] = toml_edit::value(authors);
+    manifest_toml["project"]["name"] = toml_edit::value(project_name);
+
+    // Remove explicit std entry from copied template
+    if let Some(project) = manifest_toml.get_mut("dependencies") {
+        let _ = project
+            .as_table_mut()
+            .context("Unable to get forc manifest as table")?
+            .remove("std");
+    }
+
+    let mut file = File::create(out_dir.join(constants::MANIFEST_FILE_NAME))?;
+    file.write_all(manifest_toml.to_string().as_bytes())?;
+    Ok(())
+}
+
+fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
+    let mut file = File::open(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
+    let mut toml = String::new();
+    file.read_to_string(&mut toml)?;
+
+    let mut updated_authors = toml_edit::Array::default();
+
+    let cargo_toml: toml::Value = toml::de::from_str(&toml)?;
+    if let Some(table) = cargo_toml.as_table() {
+        if let Some(package) = table.get("package") {
+            if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
+                for author in authors_vec {
+                    if let toml::value::Value::String(name) = &author {
+                        updated_authors.push(name);
+                    }
+                }
+            }
+        }
+    }
+    updated_authors.push(real_name);
+
+    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    manifest_toml["package"]["authors"] = toml_edit::value(updated_authors);
+    manifest_toml["package"]["name"] = toml_edit::value(project_name);
+
+    let mut file = File::create(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
+    file.write_all(manifest_toml.to_string().as_bytes())?;
+    Ok(())
+}
+
+fn copy_template_to_target(from: &PathBuf, to: &PathBuf) -> Result<()> {
+    let mut copy_options = CopyOptions::new();
+    copy_options.copy_inside = true;
+    copy(from, to, &copy_options)?;
+    Ok(())
+}
