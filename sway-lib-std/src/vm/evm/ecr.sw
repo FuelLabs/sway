@@ -7,7 +7,7 @@ use ::vm::evm::evm_address::EvmAddress;
 use ::hash::keccak256;
 use ::result::*;
 
-/// Recover the ethereum address derived from the private key used to sign a message.
+/// Recover the EVM address derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 pub fn ec_recover_evm_address(signature: B512, msg_hash: b256) -> Result<EvmAddress, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
