@@ -84,14 +84,13 @@ impl TypedEnumDeclaration {
         let mut warnings = vec![];
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
         for type_parameter in decl.type_parameters.iter() {
             check!(
-                decl_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -104,7 +103,7 @@ impl TypedEnumDeclaration {
             variants_buf.push(check!(
                 TypedEnumVariant::type_check(
                     variant.clone(),
-                    &mut decl_namespace,
+                    &mut namespace,
                     self_type,
                     variant.span,
                     &type_mapping

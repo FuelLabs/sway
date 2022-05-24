@@ -1,6 +1,6 @@
 use crate::{
     error::{err, ok},
-    CallPath, CompileError, CompileResult, Literal,
+    CallPath, CompileError, CompileResult, Literal, TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -69,6 +69,40 @@ impl Scrutinee {
                 vec![],
                 vec![CompileError::IfLetNonEnum { span: self.span() }],
             ),
+        }
+    }
+
+    pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
+        match self {
+            Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],
+            Scrutinee::Variable { .. } => vec![TypeInfo::Unknown],
+            Scrutinee::StructScrutinee {
+                struct_name,
+                fields,
+                ..
+            } => {
+                let name = vec![TypeInfo::Custom {
+                    name: struct_name.clone(),
+                    type_arguments: vec![],
+                }];
+                let fields = fields
+                    .iter()
+                    .flat_map(|StructScrutineeField { scrutinee, .. }| match scrutinee {
+                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo(),
+                        None => vec![],
+                    })
+                    .collect::<Vec<TypeInfo>>();
+                vec![name, fields].concat()
+            }
+            Scrutinee::EnumScrutinee { call_path, .. } => vec![TypeInfo::Custom {
+                name: call_path.prefixes.last().unwrap().clone(),
+                type_arguments: vec![],
+            }],
+            Scrutinee::Tuple { elems, .. } => elems
+                .iter()
+                .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo())
+                .collect::<Vec<TypeInfo>>(),
+            Scrutinee::CatchAll { .. } => vec![TypeInfo::Unknown],
         }
     }
 }
