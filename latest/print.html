@@ -433,7 +433,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="introduction/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
 <p>Similar to Rust, Sway comes with its own standard library.</p>
-<p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
+<p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control and storage management, among many other things.</p>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_init.html"><code>forc init</code></a>. Importing items from the standard library can be done using the <code>use</code> keyword. Example:</p>
 <pre><code class="language-sway">use std::address::Address;
 </code></pre>
@@ -1459,9 +1459,6 @@ fn main() {
     };
 }
 </code></pre>
-<blockquote>
-<p><strong>Note</strong> Recovery of EVM addresses is also supported via <code>std::vm::evm</code>.</p>
-</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
 <p>When developing a <a href="blockchain-development/../sway-program-types/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistent storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
