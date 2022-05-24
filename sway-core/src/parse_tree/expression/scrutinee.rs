@@ -54,10 +54,61 @@ impl Scrutinee {
         }
     }
 
-    pub(crate) fn gather_approximate_typeinfo(&self) -> Vec<TypeInfo> {
+    /// Given some `Scrutinee` `self`, analyze `self` and return all instances
+    /// of possible dependencies. A "possible dependency" is a `Scrutinee` that
+    /// resolves to one or more `TypeInfo::Custom`.
+    ///
+    /// For example, this `Scrutinee`:
+    ///
+    /// ```ignore
+    /// Scrutinee::EnumScrutinee {
+    ///   call_path: CallPath {
+    ///     prefixes: ["Data"]
+    ///     suffix: "A"
+    ///   },
+    ///   value: Scrutinee::StructScrutinee {
+    ///     struct_name: "Foo",
+    ///     fields: [
+    ///         StructScrutineeField {
+    ///             scrutinee: Scrutinee::StructScrutinee {
+    ///                 struct_name: "Bar",
+    ///                 fields: [
+    ///                     StructScrutineeField {
+    ///                         scrutinee: Scrutinee::Literal { .. },
+    ///                         ..
+    ///                     }
+    ///                 ],
+    ///                 ..
+    ///             },
+    ///             ..
+    ///         }
+    ///     ],
+    ///     ..
+    ///   }
+    ///   ..
+    /// }
+    /// ```
+    ///
+    /// would resolve to this list of approximate `TypeInfo` dependencies:
+    ///
+    /// ```ignore
+    /// [
+    ///     TypeInfo::Custom {
+    ///         name: "Data",
+    ///         ..
+    ///     },
+    ///     TypeInfo::Custom {
+    ///         name: "Foo",
+    ///         ..
+    ///     },
+    ///     TypeInfo::Custom {
+    ///         name: "Bar",
+    ///         ..
+    ///     },
+    /// ]
+    /// ```
+    pub(crate) fn gather_approximate_typeinfo_dependencies(&self) -> Vec<TypeInfo> {
         match self {
-            Scrutinee::Literal { value, .. } => vec![value.to_typeinfo()],
-            Scrutinee::Variable { .. } => vec![TypeInfo::Unknown],
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
@@ -70,7 +121,7 @@ impl Scrutinee {
                 let fields = fields
                     .iter()
                     .flat_map(|StructScrutineeField { scrutinee, .. }| match scrutinee {
-                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo(),
+                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo_dependencies(),
                         None => vec![],
                     })
                     .collect::<Vec<TypeInfo>>();
@@ -84,14 +135,16 @@ impl Scrutinee {
                     name: enum_name.clone(),
                     type_arguments: vec![],
                 }];
-                let value = value.gather_approximate_typeinfo();
+                let value = value.gather_approximate_typeinfo_dependencies();
                 vec![name, value].concat()
             }
             Scrutinee::Tuple { elems, .. } => elems
                 .iter()
-                .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo())
+                .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo_dependencies())
                 .collect::<Vec<TypeInfo>>(),
-            Scrutinee::CatchAll { .. } => vec![TypeInfo::Unknown],
+            Scrutinee::Literal { .. } | Scrutinee::CatchAll { .. } | Scrutinee::Variable { .. } => {
+                vec![]
+            }
         }
     }
 }

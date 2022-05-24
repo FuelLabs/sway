@@ -774,6 +774,8 @@ impl TypeInfo {
         }
     }
 
+    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// supported in match expressions, and return an error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
         span: &Span,
@@ -811,6 +813,8 @@ impl TypeInfo {
         }
     }
 
+    /// Given a `TypeInfo` `self`, analyze `self` and return all nested
+    /// `TypeInfo`'s found in `self`, including `self`.
     pub(crate) fn extract_nested_types(self, span: &Span) -> CompileResult<Vec<TypeInfo>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -900,7 +904,7 @@ impl TypeInfo {
         ok(all_nested_types, warnings, errors)
     }
 
-    /// Given a `TypeInfo` `self` and a lists of `Ident`'s `subfields`,
+    /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
@@ -989,6 +993,10 @@ impl TypeInfo {
         }
     }
 
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Enum`.
     pub(crate) fn expect_enum(
         &self,
         debug_string: impl Into<String>,

@@ -423,7 +423,7 @@ impl Dependencies {
             scrutinee, result, ..
         } = branch;
         self.gather_from_iter(
-            scrutinee.gather_approximate_typeinfo().iter(),
+            scrutinee.gather_approximate_typeinfo_dependencies().iter(),
             |deps, type_info| deps.gather_from_typeinfo(type_info),
         )
         .gather_from_expr(result)
@@ -515,6 +515,14 @@ impl Dependencies {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
             }),
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
+            TypeInfo::Struct { fields, .. } => self
+                .gather_from_iter(fields.iter(), |deps, field| {
+                    deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
+                }),
+            TypeInfo::Enum { variant_types, .. } => self
+                .gather_from_iter(variant_types.iter(), |deps, variant| {
+                    deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
+                }),
             _ => self,
         }
     }
