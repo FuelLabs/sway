@@ -27,7 +27,7 @@ pub enum Expr {
     If(IfExpr),
     Match {
         match_token: MatchToken,
-        condition: Box<Expr>,
+        value: Box<Expr>,
         branches: Braces<Vec<MatchBranch>>,
     },
     While {
@@ -954,7 +954,7 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
         let branches = parser.parse()?;
         return Ok(Expr::Match {
             match_token,
-            condition,
+            value: condition,
             branches,
         });
     }

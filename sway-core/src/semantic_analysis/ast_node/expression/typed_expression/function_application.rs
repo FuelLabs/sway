@@ -5,7 +5,7 @@ use crate::{
     semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments},
     type_engine::TypeId,
 };
-use std::collections::{hash_map::RandomState, HashMap};
+use std::collections::{hash_map::RandomState, HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -89,6 +89,32 @@ pub(crate) fn instantiate_function_application(
         errors
     );
     ok(exp, warnings, errors)
+}
+
+pub(crate) fn instantiate_function_application_simple(
+    call_path: CallPath,
+    contract_call_params: HashMap<String, TypedExpression, RandomState>,
+    arguments: VecDeque<TypedExpression>,
+    function_decl: TypedFunctionDeclaration,
+    selector: Option<ContractCallMetadata>,
+    is_constant: IsConstant,
+    span: Span,
+) -> CompileResult<TypedExpression> {
+    let args_and_names = function_decl
+        .parameters
+        .iter()
+        .zip(arguments.into_iter())
+        .map(|(param, arg)| (param.name.clone(), arg))
+        .collect::<Vec<(_, _)>>();
+    instantiate_function_application_inner(
+        call_path,
+        contract_call_params,
+        args_and_names,
+        function_decl,
+        selector,
+        is_constant,
+        span,
+    )
 }
 
 #[allow(clippy::comparison_chain)]
