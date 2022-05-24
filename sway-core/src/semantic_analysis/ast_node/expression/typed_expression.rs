@@ -942,7 +942,6 @@ impl TypedExpression {
             errors
         );
 
-        // gather the scrutinees
         let scrutinees = branches
             .iter()
             .map(|branch| branch.scrutinee.clone())

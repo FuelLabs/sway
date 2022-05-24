@@ -1,16 +1,13 @@
-use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
     core::token_type::{
         get_const_details, get_enum_details, get_function_details, get_struct_details,
-        get_struct_field_details,
+        get_struct_field_details, get_trait_details, TokenType, VariableDetails,
     },
     utils::common::extract_var_body,
 };
-use sway_core::type_engine::TypeInfo;
-use sway_core::{parse_tree::MethodName, Scrutinee};
 use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
-    VariableDeclaration, WhileLoop,
+    parse_tree::MethodName, type_engine::TypeInfo, AstNode, AstNodeContent, Declaration,
+    Expression, FunctionDeclaration, FunctionParameter, VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
@@ -356,7 +353,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         } => {
             handle_expression(*value, tokens);
             for branch in branches {
-                handle_scrutinee(branch.scrutinee, tokens);
+                // TODO: handle_scrutinee(branch.scrutinee, tokens);
                 handle_expression(branch.result, tokens);
             }
         }
@@ -441,10 +438,6 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle built in get type property?
         }
     }
-}
-
-fn handle_scrutinee(_scrutinee: Scrutinee, _tokens: &mut [Token]) {
-    // TODO: handle scrutinees here
 }
 
 fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {

@@ -24,13 +24,15 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> 
             main_function,
             declarations,
             all_nodes: _,
-        } => compile_script(&mut ctx, main_function, &namespace, declarations),
-        TypedParseTree::Predicate {
-            namespace: _,
-            main_function: _,
-            declarations: _,
+        }
+        | TypedParseTree::Predicate {
+            namespace,
+            main_function,
+            declarations,
             all_nodes: _,
-        } => unimplemented!("compile predicate to ir"),
+            // predicates and scripts have the same codegen, their only difference is static
+            // type-check time checks.
+        } => compile_script(&mut ctx, main_function, &namespace, declarations),
         TypedParseTree::Contract {
             abi_entries,
             namespace,
