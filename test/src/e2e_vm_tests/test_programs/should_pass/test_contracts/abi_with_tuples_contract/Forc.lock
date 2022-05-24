@@ -1,0 +1,14 @@
+[[package]]
+name = 'abi_with_tuples'
+dependencies = ['core']
+
+[[package]]
+name = 'abi_with_tuples_contract'
+dependencies = [
+    'abi_with_tuples',
+    'core',
+]
+
+[[package]]
+name = 'core'
+dependencies = []

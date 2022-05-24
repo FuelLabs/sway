@@ -549,8 +549,8 @@ impl TypedExpression {
             namespace.resolve_type_with_self(
                 look_up_type_id(typed_expression.return_type),
                 self_type,
-                expr_span.clone(),
-                false
+                &expr_span,
+                EnforceTypeArguments::No
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -847,7 +847,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (enum_type, variant) = check!(
-            check_scrutinee_type(&scrutinee, namespace),
+            check_scrutinee_type(&scrutinee, namespace, self_type),
             return err(warnings, errors),
             warnings,
             errors
@@ -1155,7 +1155,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_match_expression(
-        arguments: TypeCheckArguments<'_, (Expression, Vec<MatchCondition>)>,
+        arguments: TypeCheckArguments<'_, (Expression, Vec<Scrutinee>)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
@@ -1229,7 +1229,12 @@ impl TypedExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            namespace.resolve_type_with_self(asm.return_type.clone(), self_type, asm_span, false),
+            namespace.resolve_type_with_self(
+                asm.return_type.clone(),
+                self_type,
+                &asm_span,
+                EnforceTypeArguments::No
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -1294,15 +1299,17 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut typed_fields_buf = vec![];
 
-        let module_path: Vec<_> = namespace.find_module_path(&call_path.prefixes);
+        // find the module that the symbol is in
+        let module_path = namespace.find_module_path(&call_path.prefixes);
         check!(
             namespace.root().check_submodule(&module_path),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // find the struct definition from the name
         let unknown_decl = check!(
             namespace
                 .root()
@@ -1320,64 +1327,30 @@ impl TypedExpression {
         )
         .clone();
 
-        // if this is a generic struct, i.e. it has some type
-        // parameters, monomorphize it before unifying the
-        // types
-        let mut new_decl = match (
-            struct_decl.type_parameters.is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => struct_decl,
-            (true, false) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or_else(|| call_path.suffix.span().clone());
-                errors.push(CompileError::DoesNotTakeTypeArguments {
-                    name: call_path.suffix,
-                    span: type_arguments_span,
-                });
-                return err(warnings, errors);
-            }
-            _ => {
-                let mut type_arguments = type_arguments;
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            type_argument.span.clone(),
-                            true,
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                }
-                // perform the monomorphization
-                check!(
-                    struct_decl.monomorphize(
-                        &mut namespace[&call_path.prefixes],
-                        &type_arguments,
-                        Some(self_type)
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
-        };
+        // monomorphize the struct definition
+        let mut struct_decl = check!(
+            namespace.monomorphize(
+                struct_decl,
+                type_arguments,
+                EnforceTypeArguments::No,
+                Some(self_type),
+                None
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // match up the names with their type annotations from the declaration
-        for def_field in new_decl.fields.iter_mut() {
+        let mut typed_fields_buf = vec![];
+        for def_field in struct_decl.fields.iter_mut() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
-                            struct_name: new_decl.name.clone(),
+                            struct_name: struct_decl.name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -1420,21 +1393,20 @@ impl TypedExpression {
 
         // check that there are no extra fields
         for field in fields {
-            if !new_decl.fields.iter().any(|x| x.name == field.name) {
+            if !struct_decl.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: new_decl.name.clone(),
+                    struct_name: struct_decl.name.clone(),
                     span: field.span,
                 });
             }
         }
-        let expression = TypedExpressionVariant::StructExpression {
-            struct_name: new_decl.name.clone(),
-            fields: typed_fields_buf,
-        };
         let exp = TypedExpression {
-            expression,
-            return_type: new_decl.create_type_id(),
+            expression: TypedExpressionVariant::StructExpression {
+                struct_name: struct_decl.name.clone(),
+                fields: typed_fields_buf,
+            },
+            return_type: struct_decl.create_type_id(),
             is_constant: IsConstant::No,
             span,
         };
@@ -1736,7 +1708,6 @@ impl TypedExpression {
             }
             check!(
                 instantiate_enum(
-                    enum_mod_path,
                     enum_decl,
                     call_path.suffix,
                     args,
@@ -1768,7 +1739,6 @@ impl TypedExpression {
                 TypedDeclaration::EnumDeclaration(enum_decl) => {
                     check!(
                         instantiate_enum(
-                            &call_path.prefixes,
                             enum_decl,
                             call_path.suffix,
                             args,
@@ -2358,7 +2328,12 @@ impl TypedExpression {
             ..
         } = arguments;
         let type_id = check!(
-            namespace.resolve_type_with_self(type_name, self_type, type_span, true),
+            namespace.resolve_type_with_self(
+                type_name,
+                self_type,
+                &type_span,
+                EnforceTypeArguments::Yes
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
@@ -2479,12 +2454,13 @@ impl TypedExpression {
 fn check_scrutinee_type(
     scrutinee: &Scrutinee,
     namespace: &mut Namespace,
+    self_type: TypeId,
 ) -> CompileResult<(TypeId, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (ty, enum_variant) = match scrutinee {
         Scrutinee::EnumScrutinee { ref call_path, .. } => check!(
-            check_enum_scrutinee_type(call_path, namespace),
+            check_enum_scrutinee_type(call_path, namespace, self_type),
             return err(warnings, errors),
             warnings,
             errors
@@ -2504,10 +2480,11 @@ fn check_scrutinee_type(
 fn check_enum_scrutinee_type(
     call_path: &CallPath,
     namespace: &mut Namespace,
+    self_type: TypeId,
 ) -> CompileResult<(TypedEnumDeclaration, TypedEnumVariant)> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let enum_variant = call_path.suffix.clone();
+    let variant_name = call_path.suffix.clone();
     let call_path = call_path.rshift();
     let unknown_decl = check!(
         namespace.resolve_call_path(&call_path).cloned(),
@@ -2516,34 +2493,30 @@ fn check_enum_scrutinee_type(
         errors
     );
     let enum_decl = check!(
-        unknown_decl.expect_enum(),
+        unknown_decl.expect_enum().cloned(),
         return err(warnings, errors),
         warnings,
         errors
-    )
-    .clone();
-    let enum_decl = if !enum_decl.type_parameters.is_empty() {
-        enum_decl.monomorphize(namespace)
-    } else {
-        enum_decl
-    };
-    // ensure the variant is in the decl
-    let matching_variant = enum_decl
-        .variants
-        .iter()
-        .find(|TypedEnumVariant { name, .. }| name.as_str() == enum_variant.as_str())
-        .cloned();
-    match matching_variant {
-        Some(variant) => ok((enum_decl, variant), warnings, errors),
-        None => {
-            errors.push(CompileError::UnknownEnumVariant {
-                variant_name: enum_variant,
-                enum_name: enum_decl.name,
-                span: call_path.span(),
-            });
-            err(warnings, errors)
-        }
-    }
+    );
+    let enum_decl = check!(
+        namespace.monomorphize(
+            enum_decl,
+            vec!(),
+            EnforceTypeArguments::No,
+            Some(self_type),
+            Some(&call_path.span())
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let variant = check!(
+        enum_decl.expect_variant_from_name(&variant_name).cloned(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok((enum_decl, variant), warnings, errors)
 }
 
 #[cfg(test)]

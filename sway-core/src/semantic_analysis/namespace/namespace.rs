@@ -1,6 +1,11 @@
 use crate::{
-    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    semantic_analysis::{
+        ast_node::TypedExpression,
+        declaration::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
+    },
+    type_engine::*,
+    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -95,13 +100,49 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        ty: TypeInfo,
+        type_info: TypeInfo,
         self_type: TypeId,
-        span: Span,
-        enforce_type_args: bool,
+        span: &Span,
+        enforce_type_args: EnforceTypeArguments,
+    ) -> CompileResult<TypeId> {
+        self.root.resolve_type_with_self(
+            type_info,
+            self_type,
+            span,
+            enforce_type_args,
+            &self.mod_path,
+        )
+    }
+
+    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        type_info: TypeInfo,
     ) -> CompileResult<TypeId> {
         self.root
-            .resolve_type_with_self(&self.mod_path, ty, self_type, span, enforce_type_args)
+            .resolve_type_without_self(type_info, &self.mod_path)
+    }
+
+    /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.
+    pub(crate) fn monomorphize<T>(
+        &mut self,
+        decl: T,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: Option<TypeId>,
+        call_site_span: Option<&Span>,
+    ) -> CompileResult<T>
+    where
+        T: MonomorphizeHelper<Output = T>,
+    {
+        decl.monomorphize(
+            type_arguments,
+            enforce_type_arguments,
+            self_type,
+            call_site_span,
+            &mut self.root,
+            &self.mod_path,
+        )
     }
 
     /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.
@@ -114,11 +155,6 @@ impl Namespace {
     ) -> CompileResult<TypedFunctionDeclaration> {
         self.root
             .find_method_for_type(&self.mod_path, r#type, method_path, self_type, args_buf)
-    }
-
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(&mut self, ty: &TypeInfo) -> CompileResult<TypeId> {
-        self.root.resolve_type_without_self(&self.mod_path, ty)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

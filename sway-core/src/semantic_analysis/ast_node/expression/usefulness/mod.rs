@@ -9,7 +9,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, MatchCondition,
+    CompileError, CompileResult, Scrutinee,
 };
 
 use self::{
@@ -202,47 +202,31 @@ use self::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    arms: Vec<MatchCondition>,
+    scrutinees: Vec<Scrutinee>,
     span: Span,
-) -> CompileResult<(WitnessReport, Vec<(MatchCondition, bool)>)> {
+) -> CompileResult<(WitnessReport, Vec<(Scrutinee, bool)>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
     let factory = ConstructorFactory::new();
-    match arms.split_first() {
-        Some((first_arm, arms_rest)) => {
-            let pat = check!(
-                Pattern::from_match_condition(first_arm.clone()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            matrix.push(PatStack::from_pattern(pat));
-            arms_reachability.push((first_arm.clone(), true));
-            for arm in arms_rest.iter() {
-                let pat = check!(
-                    Pattern::from_match_condition(arm.clone()),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let v = PatStack::from_pattern(pat);
-                let witness_report = check!(
-                    is_useful(&factory, &matrix, &v, &span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                matrix.push(v);
-                // if an arm has witnesses to its usefulness then it is reachable
-                arms_reachability.push((arm.clone(), witness_report.has_witnesses()));
-            }
-        }
-        None => {
-            errors.push(CompileError::Internal("empty match arms", span));
-            return err(warnings, errors);
-        }
+    for scrutinee in scrutinees.iter() {
+        let pat = check!(
+            Pattern::from_scrutinee(scrutinee.clone()),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let v = PatStack::from_pattern(pat);
+        let witness_report = check!(
+            is_useful(&factory, &matrix, &v, &span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        matrix.push(v);
+        // if an arm has witnesses to its usefulness then it is reachable
+        arms_reachability.push((scrutinee.clone(), witness_report.has_witnesses()));
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(
