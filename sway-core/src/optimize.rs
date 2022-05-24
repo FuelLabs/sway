@@ -748,6 +748,7 @@ impl FnCompiler {
             TypedExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(), None))
             }
+            TypedExpressionVariant::ControlFlow(_) => unimplemented!()
         }
     }
 

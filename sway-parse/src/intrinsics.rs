@@ -5,6 +5,8 @@ pub enum Intrinsic {
     SizeOfVal,
     True,
     False,
+    Break,
+    Continue
 }
 
 impl Intrinsic {
@@ -16,6 +18,8 @@ impl Intrinsic {
             "__size_of_val" => SizeOfVal,
             "true" => True,
             "false" => False,
+            "break" => Break,
+            "continue" => Continue,
             _ => return None,
         })
     }

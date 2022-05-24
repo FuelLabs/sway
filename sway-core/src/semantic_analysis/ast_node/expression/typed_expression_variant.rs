@@ -115,6 +115,8 @@ pub(crate) enum TypedExpressionVariant {
     },
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
+    /// an expression that affects control flow
+    ControlFlow(ControlFlowKind)
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

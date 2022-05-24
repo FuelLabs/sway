@@ -13,10 +13,12 @@ mod match_condition;
 mod matcher;
 mod method_name;
 mod scrutinee;
+mod control_flow_kind;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
+pub(crate) use control_flow_kind::*;
 use matcher::matcher;
 pub use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
@@ -170,6 +172,10 @@ pub enum Expression {
         type_span: Span,
         span: Span,
     },
+    ControlFlow {
+        kind: ControlFlowKind,
+        span: Span
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -273,6 +279,7 @@ impl Expression {
             IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             BuiltinGetTypeProperty { span, .. } => span,
+            ControlFlow { span, .. } => span,
         })
         .clone()
     }

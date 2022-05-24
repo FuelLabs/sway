@@ -522,6 +522,23 @@ impl TypedExpression {
                 },
                 span,
             ),
+            Expression::ControlFlow {
+                kind,
+                span
+            } => Self::type_check_control_flow(
+                TypeCheckArguments {
+                    checkee: kind,
+                    namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
+                span,
+            ),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -2351,6 +2368,25 @@ impl TypedExpression {
                 span: span.clone(),
             },
             return_type,
+            is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_control_flow(
+        arguments: TypeCheckArguments<'_, ControlFlowKind>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let warnings = vec![];
+        let errors = vec![];
+        let TypeCheckArguments {
+            checkee: kind,
+            ..
+        } = arguments;
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::ControlFlow(kind),
+            return_type: insert_type(TypeInfo::Tuple(vec!())),
             is_constant: IsConstant::No,
             span,
         };
