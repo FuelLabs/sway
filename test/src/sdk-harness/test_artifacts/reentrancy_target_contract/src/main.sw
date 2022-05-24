@@ -1,14 +1,6 @@
 contract;
 
-use std::{
-    assert::assert,
-    chain::auth::*,
-    context::{call_frames::contract_id, gas},
-    contract_id::ContractId,
-    reentrancy::*,
-    result::*,
-    revert::revert,
-};
+use std::{assert::assert, chain::auth::*, context::{call_frames::contract_id, gas}, contract_id::ContractId, reentrancy::*, result::*, revert::revert};
 
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;

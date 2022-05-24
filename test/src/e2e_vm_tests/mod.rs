@@ -406,6 +406,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/issue_1512_repro",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/array_of_structs_contract",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -548,6 +552,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             (
                 "should_pass/test_contracts/nested_struct_args_contract",
                 "should_pass/require_contract_deployment/nested_struct_args_caller",
+            ),
+            1,
+        ),
+        (
+            (
+                "should_pass/test_contracts/array_of_structs_contract",
+                "should_pass/require_contract_deployment/array_of_structs_caller",
             ),
             1,
         ),
