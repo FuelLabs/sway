@@ -605,73 +605,65 @@ fn parse_logical_and(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr
 }
 
 fn parse_comparison(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_bit_or(parser, ctx)?;
+    let expr = parse_bit_or(parser, ctx)?;
     if expr.is_control_flow() && ctx.at_start_of_statement {
         return Ok(expr);
     }
-    loop {
-        if let Some(double_eq_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::Equal {
-                lhs,
-                double_eq_token,
-                rhs,
-            };
-            continue;
-        }
-        if let Some(bang_eq_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::NotEqual {
-                lhs,
-                bang_eq_token,
-                rhs,
-            };
-            continue;
-        }
-        if let Some(less_than_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::LessThan {
-                lhs,
-                less_than_token,
-                rhs,
-            };
-            continue;
-        }
-        if let Some(greater_than_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::GreaterThan {
-                lhs,
-                greater_than_token,
-                rhs,
-            };
-            continue;
-        }
-        if let Some(less_than_eq_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::LessThanEq {
-                lhs,
-                less_than_eq_token,
-                rhs,
-            };
-            continue;
-        }
-        if let Some(greater_than_eq_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-            expr = Expr::GreaterThanEq {
-                lhs,
-                greater_than_eq_token,
-                rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
+    if let Some(double_eq_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::Equal {
+            lhs,
+            double_eq_token,
+            rhs,
+        });
     }
+    if let Some(bang_eq_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::NotEqual {
+            lhs,
+            bang_eq_token,
+            rhs,
+        });
+    }
+    if let Some(less_than_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::LessThan {
+            lhs,
+            less_than_token,
+            rhs,
+        });
+    }
+    if let Some(greater_than_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::GreaterThan {
+            lhs,
+            greater_than_token,
+            rhs,
+        });
+    }
+    if let Some(less_than_eq_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::LessThanEq {
+            lhs,
+            less_than_eq_token,
+            rhs,
+        });
+    }
+    if let Some(greater_than_eq_token) = parser.take() {
+        let lhs = Box::new(expr);
+        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
+        return Ok(Expr::GreaterThanEq {
+            lhs,
+            greater_than_eq_token,
+            rhs,
+        });
+    }
+    Ok(expr)
 }
 
 fn parse_bit_or(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
