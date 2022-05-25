@@ -2,7 +2,7 @@ use super::token::Token;
 use super::token_type::TokenType;
 use crate::{capabilities, core::token::traverse_node};
 use ropey::Rope;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use sway_core::{parse, TreeType};
 use sway_core::{
@@ -121,7 +121,7 @@ impl TextDocument {
         use sway_core::semantic_analysis::ast_node::TypedAstNodeContent;
         use super::traverse_typed_tree as ttt;
 
-        let mut tokens: HashMap<Ident, TypedAstNodeContent> = HashMap::new();
+        let mut tokens: BTreeMap<Ident, TypedAstNodeContent> = BTreeMap::new();
 
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
@@ -140,7 +140,7 @@ impl TextDocument {
 
         // Check if the code editor's cursor is currently over an of our collected tokens
         if let Some(ident) = ttt::ident_at_position(cursor_position, &tokens) {
-            // Retrieve the typed_ast_node from our HashMap
+            // Retrieve the typed_ast_node from our BTreeMap
             if let Some(token) = tokens.get(ident) {
                 //eprintln!("token = {:#?}", token);
 

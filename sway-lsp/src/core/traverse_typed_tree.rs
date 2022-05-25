@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
 };
 use sway_types::{
     ident::Ident,
@@ -17,7 +17,7 @@ use sway_core::type_engine::TypeId;
 use sway_core::parse_tree::literal::Literal;
 use tower_lsp::lsp_types::{Position, Range, SymbolKind};
 
-pub fn traverse_node(node: &TypedAstNode, tokens: &mut HashMap<Ident, TypedAstNodeContent>) {
+pub fn traverse_node(node: &TypedAstNode, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
     match &node.content {
         TypedAstNodeContent::ReturnStatement(return_statement) => handle_expression(&return_statement.expr, tokens),
         TypedAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
@@ -28,7 +28,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut HashMap<Ident, TypedAstNo
     };
 }
 
-fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut HashMap<Ident, TypedAstNodeContent>) {
+fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
     match declaration {
         TypedDeclaration::VariableDeclaration(variable) => {
             tokens.insert(variable.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
@@ -100,7 +100,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut HashMap<Ident
     }
 }
 
-fn handle_expression(expression: &TypedExpression, tokens: &mut HashMap<Ident, TypedAstNodeContent>) {
+fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
     match &expression.expression {
         TypedExpressionVariant::Literal{..} => {}
         TypedExpressionVariant::FunctionApplication{name, contract_call_params, arguments,function_body, ..} => {
@@ -201,7 +201,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut HashMap<Ident, T
     }
 }
 
-fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut HashMap<Ident, TypedAstNodeContent>) {
+fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
     handle_expression(&while_loop.condition, tokens);
     for node in &while_loop.body.contents {
         traverse_node(node, tokens);
@@ -268,7 +268,7 @@ fn to_symbol_kind(typed_ast_node: &TypedAstNodeContent) -> SymbolKind {
     }
 }
 
-pub fn ident_at_position<'a>(cursor_position: Position, tokens: &'a HashMap<Ident, TypedAstNodeContent>) -> Option<&'a Ident> {
+pub fn ident_at_position<'a>(cursor_position: Position, tokens: &'a BTreeMap<Ident, TypedAstNodeContent>) -> Option<&'a Ident> {
     for ident in tokens.keys() {
         let range = get_range_from_span(ident.span());
         if cursor_position >= range.start && cursor_position <= range.end {
