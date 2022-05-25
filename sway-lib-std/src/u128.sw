@@ -118,20 +118,6 @@ impl U128 {
         }
     }
 
-    /// Divide self by a 64-bit number. Err if result cannot fit in 64 bits, Ok
-    /// otherwise.
-    pub fn divide_by_u64(self, other: u64) -> Result<u64, ()> {
-        // If the upper 64 bits aren't smaller than the divisor, then cannot fit.
-        if self.upper >= other {
-            return Result::Err(());
-        }
-
-        // TODO implement
-        let div_lower = self.lower / other;
-
-        return Result::Ok(42);
-    }
-
     /// The smallest value that can be represented by this integer type.
     pub fn min() -> U128 {
         U128 {
