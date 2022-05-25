@@ -9,5 +9,6 @@ pub mod new;
 pub mod parse_bytecode;
 pub mod plugins;
 pub mod run;
+pub mod template;
 pub mod test;
 pub mod update;

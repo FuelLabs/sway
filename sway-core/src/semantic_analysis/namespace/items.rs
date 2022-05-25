@@ -6,8 +6,7 @@ use crate::{
         CopyTypes, TypeCheckedStorageAccess, TypeMapping,
     },
     type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
-    TypedFunctionDeclaration,
+    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::trait_map::TraitMap;
@@ -177,29 +176,6 @@ impl Items {
                 .for_each(|method| method.copy_types(type_mapping));
             self.implemented_traits
                 .insert(trait_name, new_type.clone(), trait_methods);
-        }
-    }
-
-    pub(crate) fn get_tuple_elems(
-        &self,
-        ty: TypeId,
-        debug_string: impl Into<String>,
-        debug_span: &Span,
-    ) -> CompileResult<Vec<TypeArgument>> {
-        let warnings = vec![];
-        let errors = vec![];
-        let ty = crate::type_engine::look_up_type_id(ty);
-        match ty {
-            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
-            TypeInfo::ErrorRecovery => err(warnings, errors),
-            a => err(
-                vec![],
-                vec![CompileError::NotATuple {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
-                }],
-            ),
         }
     }
 

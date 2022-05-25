@@ -1,16 +1,13 @@
-use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
     core::token_type::{
         get_const_details, get_enum_details, get_function_details, get_struct_details,
-        get_struct_field_details,
+        get_struct_field_details, get_trait_details, TokenType, VariableDetails,
     },
     utils::common::extract_var_body,
 };
-use sway_core::parse_tree::MethodName;
-use sway_core::type_engine::TypeInfo;
 use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
-    VariableDeclaration, WhileLoop,
+    parse_tree::MethodName, type_engine::TypeInfo, AstNode, AstNodeContent, Declaration,
+    Expression, FunctionDeclaration, FunctionParameter, VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
@@ -351,8 +348,14 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(*r#else, tokens);
             }
         }
-        Expression::MatchExp { if_exp, .. } => {
-            handle_expression(*if_exp, tokens);
+        Expression::MatchExp {
+            value, branches, ..
+        } => {
+            handle_expression(*value, tokens);
+            for branch in branches {
+                // TODO: handle_scrutinee(branch.scrutinee, tokens);
+                handle_expression(branch.result, tokens);
+            }
         }
         Expression::AsmExpression { .. } => {
             //TODO handle asm expressions

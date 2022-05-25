@@ -121,6 +121,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
@@ -336,6 +339,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ])),
         ),
         (
+            "should_pass/language/match_expressions_simple",
+            ProgramState::Return(42),
+        ),
+        (
             "should_pass/language/multi_impl_self",
             ProgramState::Return(42),
         ),
@@ -400,6 +407,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/issue_1512_repro",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/array_of_structs_contract",
             ProgramState::Revert(0),
         ),
     ];
@@ -544,6 +555,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             (
                 "should_pass/test_contracts/nested_struct_args_contract",
                 "should_pass/require_contract_deployment/nested_struct_args_caller",
+            ),
+            1,
+        ),
+        (
+            (
+                "should_pass/test_contracts/array_of_structs_contract",
+                "should_pass/require_contract_deployment/array_of_structs_caller",
             ),
             1,
         ),

@@ -1,0 +1,7 @@
+[[package]]
+name = 'array_of_structs_abi'
+dependencies = []
+
+[[package]]
+name = 'basic_storage'
+dependencies = ['array_of_structs_abi']

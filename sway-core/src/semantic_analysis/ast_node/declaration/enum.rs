@@ -3,8 +3,7 @@ use crate::{
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{
-        ast_node::copy_types::TypeMapping, declaration::EnforceTypeArguments,
-        insert_type_parameters, CopyTypes,
+        declaration::EnforceTypeArguments, insert_type_parameters, CopyTypes, TypeMapping,
     },
     type_engine::*,
     CompileError, CompileResult, Ident, Namespace,
@@ -84,14 +83,13 @@ impl TypedEnumDeclaration {
         let mut warnings = vec![];
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
         for type_parameter in decl.type_parameters.iter() {
             check!(
-                decl_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -104,7 +102,7 @@ impl TypedEnumDeclaration {
             variants_buf.push(check!(
                 TypedEnumVariant::type_check(
                     variant.clone(),
-                    &mut decl_namespace,
+                    &mut namespace,
                     self_type,
                     variant.span,
                     &type_mapping
@@ -181,17 +179,7 @@ impl PartialEq for TypedEnumVariant {
 
 impl CopyTypes for TypedEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id, self.span.clone()))
-        } else {
-            let ty = TypeInfo::Ref(
-                insert_type(look_up_type_id_raw(self.r#type)),
-                self.span.clone(),
-            );
-            insert_type(ty)
-        };
+        self.r#type.update_type(type_mapping, &self.span);
     }
 }
 

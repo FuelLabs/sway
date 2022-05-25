@@ -1,23 +1,29 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
         constants::{
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        parse_tree::desugar_match_expression,
+        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
-        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
-        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
-        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
-        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-        SwayParseTree, TraitConstraint, TraitDeclaration, TraitFn, TreeType, TypeArgument,
-        TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
+        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
+        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
+        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
+        StructScrutineeField, Supertrait, SwayParseTree, TraitConstraint, TraitDeclaration,
+        TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement,
+        VariableDeclaration, Visibility, WhileLoop,
     },
-    std::{collections::HashMap, convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
+    std::{
+        collections::HashMap,
+        convert::TryFrom,
+        iter,
+        mem::MaybeUninit,
+        ops::ControlFlow,
+        sync::atomic::{AtomicUsize, Ordering},
+    },
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
         Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
@@ -64,15 +70,6 @@ impl ErrorContext {
     {
         self.errors.push(error.into());
         ErrorEmitted { _priv: () }
-    }
-
-    pub fn warnings<I, W>(&mut self, warnings: I)
-    where
-        I: IntoIterator<Item = W>,
-        W: Into<CompileWarning>,
-    {
-        self.warnings
-            .extend(warnings.into_iter().map(|warning| warning.into()));
     }
 
     pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
@@ -1170,29 +1167,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         }
         Expr::If(if_expr) => if_expr_to_expression(ec, if_expr)?,
         Expr::Match {
-            condition,
-            branches,
-            ..
+            value, branches, ..
         } => {
-            let condition = expr_to_expression(ec, *condition)?;
+            let value = expr_to_expression(ec, *value)?;
+            let var_decl_span = value.span();
+            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+            let var_decl_exp = Expression::VariableExpression {
+                name: var_decl_name.clone(),
+                span: var_decl_span,
+            };
             let branches = {
                 branches
                     .into_inner()
                     .into_iter()
                     .map(|match_branch| match_branch_to_match_branch(ec, match_branch))
                     .collect::<Result<_, _>>()?
-            };
-            let desugar_result = desugar_match_expression(&condition, branches, None);
-            let CompileResult {
-                value,
-                warnings,
-                errors,
-            } = desugar_result;
-            ec.warnings(warnings);
-            let error_emitted_opt = ec.errors(errors);
-            let (if_exp, var_decl_name, cases_covered) = match value {
-                Some(stuff) => stuff,
-                None => return Err(error_emitted_opt.unwrap()),
             };
             Expression::CodeBlock {
                 contents: CodeBlock {
@@ -1204,7 +1193,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                     type_ascription: TypeInfo::Unknown,
                                     type_ascription_span: None,
                                     is_mutable: false,
-                                    body: condition,
+                                    body: value,
                                 },
                             )),
                             span: span.clone(),
@@ -1212,8 +1201,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         AstNode {
                             content: AstNodeContent::ImplicitReturnExpression(
                                 Expression::MatchExp {
-                                    if_exp: Box::new(if_exp),
-                                    cases_covered,
+                                    value: Box::new(var_decl_exp),
+                                    branches,
                                     span: span.clone(),
                                 },
                             ),
@@ -1939,17 +1928,7 @@ fn path_expr_to_expression(
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
-        match name.as_str() {
-            "true" => Expression::Literal {
-                value: Literal::Boolean(true),
-                span,
-            },
-            "false" => Expression::Literal {
-                value: Literal::Boolean(false),
-                span,
-            },
-            _ => Expression::VariableExpression { name, span },
-        }
+        Expression::VariableExpression { name, span }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
         Expression::DelineatedPath {
@@ -2041,6 +2020,7 @@ fn literal_to_literal(
     literal: sway_parse::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
+        sway_parse::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
         sway_parse::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
@@ -2327,7 +2307,7 @@ fn match_branch_to_match_branch(
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
-        condition: pattern_to_match_condition(ec, match_branch.pattern)?,
+        scrutinee: pattern_to_scrutinee(ec, match_branch.pattern)?,
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
@@ -2521,30 +2501,15 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     }
 }
 
-fn pattern_to_match_condition(
-    ec: &mut ErrorContext,
-    pattern: Pattern,
-) -> Result<MatchCondition, ErrorEmitted> {
-    let match_condition = match pattern {
-        Pattern::Wildcard { underscore_token } => {
-            let span = underscore_token.span();
-            MatchCondition::CatchAll(CatchAll { span })
-        }
-        _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
-    };
-    Ok(match_condition)
-}
-
 fn pattern_to_scrutinee(
     ec: &mut ErrorContext,
     pattern: Pattern,
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
-        Pattern::Wildcard { .. } => {
-            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
-            return Err(ec.error(error));
-        }
+        Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
+            span: underscore_token.span(),
+        },
         Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
