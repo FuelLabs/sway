@@ -4,7 +4,7 @@ use super::{Expression, Scrutinee};
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch {
-    pub(crate) condition: Scrutinee,
-    pub(crate) result: Expression,
+    pub scrutinee: Scrutinee,
+    pub result: Expression,
     pub(crate) span: span::Span,
 }
