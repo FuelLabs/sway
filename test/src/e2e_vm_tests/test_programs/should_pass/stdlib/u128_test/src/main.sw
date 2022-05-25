@@ -72,5 +72,9 @@ fn main() -> bool {
     let left_shift_one_upper_right_shift = right_shift_one_upper << 1;
     assert(left_shift_one_upper_right_shift == one_upper);
 
+    let one_left_shift_64 = one << 64;
+    assert(one_left_shift_64.upper == 1);
+    assert(one_left_shift_64.lower == 0);
+
     true
 }

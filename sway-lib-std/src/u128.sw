@@ -169,19 +169,16 @@ impl core::ops::BitwiseOr for U128 {
 
 impl core::ops::Shiftable for U128 {
     pub fn lsh(self, other: u64) -> Self {
-        let mut ret = ~Self::new();
-
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
         if (other >= 128) {
-            return ret;
+            return ~Self::new();
         };
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
         if (other >= 64) {
-            ret.upper = self.lower << (other - 64);
-            return ret;
+            return ~Self::from(self.lower << (other - 64), 0);
         };
 
         // If shifting by less than half the number of bits, then need to
@@ -190,26 +187,23 @@ impl core::ops::Shiftable for U128 {
         // Save highest bits of lower half.
         let highest_lower_bits = self.lower >> (64 - other);
 
-        ret.upper = (self.upper << other) + highest_lower_bits;
-        ret.lower = self.lower << other;
+        let upper = (self.upper << other) + highest_lower_bits;
+        let lower = self.lower << other;
 
-        ret
+        ~Self::from(upper, lower)
     }
 
     pub fn rsh(self, other: u64) -> Self {
-        let mut ret = ~Self::new();
-
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
         if (other >= 128) {
-            return ret;
+            return ~Self::new();
         };
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
         if (other >= 64) {
-            ret.lower = self.upper >> (other - 64);
-            return ret;
+            return ~Self::from(0, self.upper >> (other - 64));
         };
 
         // If shifting by less than half the number of bits, then need to
@@ -218,10 +212,10 @@ impl core::ops::Shiftable for U128 {
         // Save lowest bits of upper half.
         let lowest_upper_bits = self.upper << (64 - other);
 
-        ret.upper = self.upper >> other;
-        ret.lower = (self.lower >> other) + lowest_upper_bits;
+        let upper = self.upper >> other;
+        let lower = (self.lower >> other) + lowest_upper_bits;
 
-        ret
+        ~Self::from(upper, lower)
     }
 }
 
@@ -299,9 +293,12 @@ impl core::ops::Multiply for U128 {
 }
 
 impl core::ops::Divide for U128 {
-    // Divide a U128 by a U128.
-    pub fn divide(self, other: Self) -> Self {
+    // Divide a U128 by a U128. Panics if divisor is zero.
+    pub fn divide(self, divisor: Self) -> Self {
+        let zero = ~U128::from(0, 0);
         let one = ~U128::from(0, 1);
+
+        assert(divisor != zero);
 
         let mut quotient = ~U128::new();
         let mut remainder = ~U128::new();
@@ -314,8 +311,8 @@ impl core::ops::Divide for U128 {
             remainder = remainder << 1;
             remainder = remainder | ((self & (one << shift)) >> shift);
             // TODO use >= once OrdEq can be implemented.
-            if remainder > other || remainder == other {
-                remainder = remainder - other;
+            if remainder > divisor || remainder == divisor {
+                remainder = remainder - divisor;
                 quotient = quotient | one;
             }
 
