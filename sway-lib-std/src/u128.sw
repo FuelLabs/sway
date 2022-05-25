@@ -2,6 +2,7 @@ library u128;
 
 use core::num::*;
 use ::assert::assert;
+use ::context::registers::flags;
 use ::result::Result;
 
 /// The 128-bit unsigned integer type.
@@ -49,16 +50,26 @@ impl core::ops::Ord for U128 {
 // }
 
 fn disable_overflow() {
-    asm(r1) {
-        movi r1 i3;
-        flag r1;
+    // Mask second bit, which is `F_WRAPPING`.
+    // 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010
+    let mask = 2;
+    // Get the current value of the flags register and mask it, setting the
+    // masked bit. Flags are inverted, so set = off.
+    let flag_val = flags() | mask;
+    asm(flag_val: flag_val) {
+        flag flag_val;
     }
 }
 
 fn enable_overflow() {
-    asm(r1) {
-        movi r1 i0;
-        flag r1;
+    // Mask second bit, which is `F_WRAPPING`.
+    // 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101
+    let mask = 18446744073709551613;
+    // Get the current value of the flags register and mask it, unsetting the
+    // masked bit. Flags are inverted, so unset = on.
+    let flag_val = flags() & mask;
+    asm(flag_val: flag_val) {
+        flag flag_val;
     }
 }
 
