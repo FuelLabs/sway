@@ -166,9 +166,9 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        if (msg_asset_id()).into() == NATIVE_ASSET_ID {
+        if msg_asset_id().into() == NATIVE_ASSET_ID {
             storage.balance = storage.balance + msg_amount();
-        };
+        }
     }
 
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
@@ -177,7 +177,7 @@ impl Wallet for Contract {
             assert(addr.into() == OWNER_ADDRESS);
         } else {
             revert(0);
-        };
+        }
 
         let current_balance = storage.balance;
         assert(current_balance &gt; amount_to_send);

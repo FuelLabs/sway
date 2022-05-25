@@ -150,11 +150,9 @@
         // do something else
     } else {
         // do something else
-    }; // &lt;------------ note this semicolon
+    }
 }
 </code></pre>
-<p>In Sway, note that a <em>statement</em> is a <em>declaration <strong>or</strong> expression with a semicolon after it</em>. This means that you need to add a semicolon after an <code>if</code> to turn it into a statement, if it is being used for control flow.</p>
-<p>This need for a semicolon after if expressions to turn them into statements may be removed eventually.</p>
 <h3 id="using-if-in-a-let-statement"><a class="header" href="#using-if-in-a-let-statement">Using <code>if</code> in a <code>let</code> statement</a></h3>
 <p>Like Rust, <code>if</code>s are expressions in Sway. What this means is you can use <code>if</code> expressions on the right side of a <code>let</code> statement to assign the outcome to a variable.</p>
 <pre><code class="language-sway">let my_data = if some_bool &lt; 10 { foo() } else { bar() };
@@ -221,7 +219,7 @@ fn main() -&gt; u64 {
 <p>You need the <code>while</code> keyword, some condition (<code>value &lt; 10</code> in this case) which will be evaluated each iteration, and a block of code inside the curly braces (<code>{...}</code>) to execute each iteration.</p>
 <h3 id="break-and-continue"><a class="header" href="#break-and-continue"><code>break</code> and <code>continue</code></a></h3>
 <p>There are no <code>break</code> or <code>continue</code> keywords yet, but <a href="https://github.com/FuelLabs/sway/issues/587">they're coming</a>.</p>
-<p>For now, the way to break out of a <code>while</code> loop early is to manually invalidate the condition. In this case, that just means setting <code>counter</code> to be &gt;= 10.</p>
+<p>For now, the way to break out of a <code>while</code> loop early is to manually invalidate the condition. In this case, that just means setting <code>counter</code> to be <code>&gt;= 10</code>.</p>
 <p>Building on the previous example, here's what that might look like:</p>
 <pre><code class="language-sway">let mut counter = 0;
 let mut break_early = false;
@@ -233,7 +231,7 @@ while counter &lt; 10 {
         // calling some other function to set the bool value
         break_early = get_bool_value();
         counter = counter + 1;
-    };
+    }
 }
 </code></pre>
 <h3 id="nested-loops"><a class="header" href="#nested-loops">Nested loops</a></h3>

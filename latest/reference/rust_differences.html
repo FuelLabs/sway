@@ -165,21 +165,6 @@ struct MyStruct {
     field_two: bool,
 }
 </code></pre>
-<h2 id="if-expressions"><a class="header" href="#if-expressions">If Expressions</a></h2>
-<p>In Sway, a <em>statement</em> is a <em>declaration <strong>or</strong> expression with a semicolon after it</em>. This means that you need to add a semicolon after an <code>if</code> to turn it into a statement, if it is being used for control flow:</p>
-<pre><code class="language-sway">fn main() {
-    let number = 6;
-
-    if number % 4 == 0 {
-        // do something
-    } else if number % 3 == 0 {
-        // do something else
-    } else {
-        // do something else
-    };  // &lt;------------ note this semicolon
-}
-</code></pre>
-<p>This need for a semicolon after if expressions to turn them into statements will be removed eventually, but it hasn't been removed yet.</p>
 
                     </main>
 
