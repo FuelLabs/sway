@@ -46,8 +46,8 @@ impl core::ops::Ord for U128 {
 }
 
 // TODO this doesn't work?
-impl core::ops::OrdEq for U128 {
-}
+// impl core::ops::OrdEq for U128 {
+// }
 
 fn disable_overflow() {
     asm(r1) {
@@ -155,98 +155,15 @@ impl U128 {
     }
 }
 
-impl core::ops::Add for U128 {
-    // Add a U128 to a U128. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
-        let mut upper_128 = self.upper.overflowing_add(other.upper);
-
-        // If the upper overflows, then the number cannot fit in 128 bits, so panic.
-        assert(upper_128.upper == 0);
-        let lower_128 = self.lower.overflowing_add(other.lower);
-
-        // If overflow has occurred in the lower component addition, carry.
-        // Note: carry can be at most 1.
-        if lower_128.upper > 0 {
-            upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
-        };
-
-        // If overflow has occurred in the upper component addition, panic.
-        assert(upper_128.upper == 0);
-
-        U128 {
-            upper: upper_128.lower,
-            lower: lower_128.lower,
-        }
+impl core::ops::BitwiseAnd for U128 {
+    pub fn binary_and(self, other: Self) -> Self {
+        ~U128::from(self.upper & other.upper, self.lower & other.lower)
     }
 }
 
-impl core::ops::Subtract for U128 {
-    // Subtract a U128 from a U128. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
-        // If trying to subtract a larger number, panic.
-        assert(!(self < other));
-
-        let mut upper = self.upper - other.upper;
-        let mut lower = 0;
-
-        // If necessary, borrow and carry for lower subtraction
-        if self.lower < other.lower {
-            lower = ~u64::max() - (other.lower - self.lower - 1);
-            upper = upper - 1;
-        } else {
-            lower = self.lower - other.lower;
-        };
-
-        U128 {
-            upper: upper,
-            lower: lower,
-        }
-    }
-}
-
-impl core::ops::Multiply for U128 {
-    // Multiply a U128 with a U128. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
-        let one = ~U128::from_u64(1);
-
-        let mut total = ~U128::new();
-        let mut i = 128;
-
-        while i >= 0 {
-            total = total << 1;
-            if (other & (one << i)) >> i {
-                total = total + self;
-            }
-
-            i = i -1;
-        }
-
-        total
-    }
-}
-
-impl core::ops::Divide for U128 {
-    // Divide a U128 by a U128.
-    pub fn divide(self, other: Self) -> Self {
-        let one = ~U128::from_u64(1);
-
-        let mut quotient = ~U128::new();
-        let mut remainder = ~U128::new();
-        let mut i = 128 - 1;
-
-        while i >= 0 {
-            quotient = quotient << 1;
-            remainder = remainder << 1;
-            remainder = remainder | ((self & (one << i)) >> i);
-            if remainder >= other {
-                remainder = remainder - other;
-                quotient = quotient | one;
-            }
-
-            i = i -1;
-        }
-
-        quotient
+impl core::ops::BitwiseOr for U128 {
+    pub fn binary_or(self, other: Self) -> Self {
+        ~U128::from(self.upper | other.upper, self.lower | other.lower)
     }
 }
 
@@ -305,5 +222,101 @@ impl core::ops::Shiftable for U128 {
         ret.lower = (self.lower >> other) + lowest_upper_bits;
 
         ret
+    }
+}
+
+impl core::ops::Add for U128 {
+    // Add a U128 to a U128. Panics on overflow.
+    pub fn add(self, other: Self) -> Self {
+        let mut upper_128 = self.upper.overflowing_add(other.upper);
+
+        // If the upper overflows, then the number cannot fit in 128 bits, so panic.
+        assert(upper_128.upper == 0);
+        let lower_128 = self.lower.overflowing_add(other.lower);
+
+        // If overflow has occurred in the lower component addition, carry.
+        // Note: carry can be at most 1.
+        if lower_128.upper > 0 {
+            upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
+        };
+
+        // If overflow has occurred in the upper component addition, panic.
+        assert(upper_128.upper == 0);
+
+        U128 {
+            upper: upper_128.lower,
+            lower: lower_128.lower,
+        }
+    }
+}
+
+impl core::ops::Subtract for U128 {
+    // Subtract a U128 from a U128. Panics of overflow.
+    pub fn subtract(self, other: Self) -> Self {
+        // If trying to subtract a larger number, panic.
+        assert(!(self < other));
+
+        let mut upper = self.upper - other.upper;
+        let mut lower = 0;
+
+        // If necessary, borrow and carry for lower subtraction
+        if self.lower < other.lower {
+            lower = ~u64::max() - (other.lower - self.lower - 1);
+            upper = upper - 1;
+        } else {
+            lower = self.lower - other.lower;
+        };
+
+        U128 {
+            upper: upper,
+            lower: lower,
+        }
+    }
+}
+
+impl core::ops::Multiply for U128 {
+    // Multiply a U128 with a U128. Panics of overflow.
+    pub fn multiply(self, other: Self) -> Self {
+        let one = ~U128::from(0, 1);
+
+        let mut total = ~U128::new();
+        let mut i = 128;
+
+        while i >= 0 {
+            total = total << 1;
+            if ((other & (one << i)) >> i) == one {
+                total = total + self;
+            }
+
+            i = i -1;
+        }
+
+        total
+    }
+}
+
+impl core::ops::Divide for U128 {
+    // Divide a U128 by a U128.
+    pub fn divide(self, other: Self) -> Self {
+        let one = ~U128::from(0, 1);
+
+        let mut quotient = ~U128::new();
+        let mut remainder = ~U128::new();
+        let mut i = 128 - 1;
+
+        while i >= 0 {
+            quotient = quotient << 1;
+            remainder = remainder << 1;
+            remainder = remainder | ((self & (one << i)) >> i);
+            // TODO use >= once OrdEq can be implemented.
+            if remainder > other || remainder == other {
+                remainder = remainder - other;
+                quotient = quotient | one;
+            }
+
+            i = i -1;
+        }
+
+        quotient
     }
 }
