@@ -4,7 +4,7 @@ use crate::utils::{
     program_type::{ProgramType, ProgramType::*},
 };
 use anyhow::Result;
-use forc_util::{println_green, println_light_blue, println_light_green, validate_name};
+use forc_util::{println_light_blue, println_light_green, validate_name};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
