@@ -69,7 +69,7 @@ struct GithubTree {
 }
 
 fn print_welcome_message() {
-    println_green("To compile, use `forc build`, and to run tests use `forc test`\n");
+    println_light_green("To compile, use `forc build`, and to run tests use `forc test`\n\n");
 
     println_light_blue("Read the Docs:\n");
     println_light_green("- Sway Book: ");
@@ -180,8 +180,8 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
         defaults::default_gitignore(),
     )?;
 
-    println_green(&format!(
-        "\nSuccessfully created {program_type}: {project_name}",
+    println_light_green(&format!(
+        "\nSuccessfully created {program_type}: {project_name}\n",
     ));
 
     print_welcome_message();
