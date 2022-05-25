@@ -67,6 +67,8 @@ define_keyword!(WhileToken, "while");
 define_keyword!(WhereToken, "where");
 define_keyword!(RefToken, "ref");
 define_keyword!(DerefToken, "deref");
+define_keyword!(TrueToken, "true");
+define_keyword!(FalseToken, "false");
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
