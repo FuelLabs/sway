@@ -120,7 +120,7 @@ impl U128 {
 
     /// Divide self by a 64-bit number. Err if result cannot fit in 64 bits, Ok
     /// otherwise.
-    pub fn divide_u64(self, other: u64) -> Result<u64, ()> {
+    pub fn divide_by_u64(self, other: u64) -> Result<u64, ()> {
         // If the upper 64 bits aren't smaller than the divisor, then cannot fit.
         if self.upper >= other {
             return Result::Err(());
@@ -206,13 +206,52 @@ impl core::ops::Subtract for U128 {
 
 impl core::ops::Shiftable for U128 {
     pub fn lsh(self, other: u64) -> Self {
-        // Save highest bits of low half.
-        let highest_low_bit = (self.lower & (1<<63)) != 0;
+        let mut ret = ~Self::new();
 
-        self
+        // If shifting by at least the number of bits, then saturate with
+        // zeroes.
+        if (other >= 128) {
+            return ret;
+        };
+
+        // If shifting by at least half the number of bits, then upper word can
+        // be discarded.
+        if (other >= 64) {
+            ret.upper = self.lower << (other - 64);
+            return ret;
+        };
+
+        // If shifting by less than half the number of bits, then need to
+        // partially shift both upper and lower.
+
+        // Save highest bits of lower half.
+        let highest_lower_bits = self.lower >> (64 - other);
+
+        ret.upper = self.upper << other + highest_lower_bits;
+        ret.lower = self.lower << other;
+
+        ret
     }
 
     pub fn rsh(self, other: u64) -> Self {
-        self
+        let mut ret = ~Self::new();
+
+        // If shifting by at least half the number of bits, then lower word can
+        // be discarded.
+        if (other >= 64) {
+            ret.lower = self.upper >> (other - 64);
+            return ret;
+        };
+
+        // If shifting by less than half the number of bits, then need to
+        // partially shift both upper and lower.
+
+        // Save lowest bits of upper half.
+        let lowest_upper_bits = self.upper << (64 - other);
+
+        ret.upper = self.upper >> other;
+        ret.lower = self.lower >> other + lowest_upper_bits;
+
+        ret
     }
 }
