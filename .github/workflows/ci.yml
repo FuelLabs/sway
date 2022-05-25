@@ -168,7 +168,7 @@ jobs:
           command: install
           args: --debug --path ./forc-plugins/forc-fmt
       - name: Initialize test project
-        run: forc init test-proj
+        run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
         run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
       - name: Update project cargo manifest with workspace

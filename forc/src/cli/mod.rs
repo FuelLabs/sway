@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, template, init, json_abi, new, parse_bytecode, plugins,
-    run, test, update,
+    addr2line, build, clean, completions, deploy, init, json_abi, new, parse_bytecode, plugins,
+    run, template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};

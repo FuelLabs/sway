@@ -33,9 +33,9 @@ To deploy a wallet on Fuel, we will need to write a library, a contract, and a s
 First, let's [install the Sway toolchain](./installation.md). Then with `forc` installed, let's create three different sibling projects:
 
 ```sh
-forc init wallet_lib
-forc init wallet_contract
-forc init wallet_script
+forc new wallet_lib
+forc new wallet_contract
+forc new wallet_script
 ```
 
 See [here](./forc_project.md) for more information on Forc project structure.

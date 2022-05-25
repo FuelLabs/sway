@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType::*};
 use anyhow::Result;
-use forc_util::{println_green, validate_name};
+use forc_util::{println_green, println_light_blue, validate_name};
 use std::fs;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
@@ -34,15 +34,33 @@ fn print_welcome_message() {
     );
 }
 
+pub fn canonicalize(path: &PathBuf) -> Result<String> {
+    match std::fs::canonicalize(path) {
+        Ok(p) => {
+            let as_str = String::from(p.to_string_lossy());
+            Ok(as_str)
+        }
+        Err(e) => anyhow::bail!("Could not derive canonical path: '{}'", e),
+    }
+}
+
 pub fn init(command: InitCommand) -> Result<()> {
     let project_dir = match &command.path {
         Some(p) => PathBuf::from(p),
-        _ => std::env::current_dir().unwrap(),
+        None => std::env::current_dir().unwrap(),
     };
 
-    let project_name = project_dir.to_str().unwrap().split('/').last().unwrap();
+    let project_name = command.name.unwrap_or_else(|| {
+        project_dir
+            .to_str()
+            .unwrap()
+            .split('/')
+            .last()
+            .unwrap()
+            .to_string()
+    });
 
-    validate_name(project_name, "project name")?;
+    validate_name(&project_name, "project name")?;
 
     let program_type = match (
         command.contract,
@@ -63,17 +81,33 @@ pub fn init(command: InitCommand) -> Result<()> {
     // Make a new directory for the project
     fs::create_dir_all(Path::new(&project_dir).join("src"))?;
 
+    if command.verbose {
+        println_light_blue(&format!(
+            "\nUsing project directory at {}",
+            canonicalize(&project_dir)?
+        ))
+    }
+
+    // Make directory for tests
+    fs::create_dir_all(Path::new(&project_dir).join("tests"))?;
+
     // Insert default manifest file
     match program_type {
         Library => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(project_name, constants::LIB_ENTRY),
+            defaults::default_manifest(&project_name, constants::LIB_ENTRY),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(project_name, constants::MAIN_ENTRY),
+            defaults::default_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
+
+    // Insert default test manifest file
+    fs::write(
+        Path::new(&project_dir).join(constants::TEST_MANIFEST_FILE_NAME),
+        defaults::default_tests_manifest(&project_name),
+    )?;
 
     match program_type {
         Contract => fs::write(
@@ -92,7 +126,7 @@ pub fn init(command: InitCommand) -> Result<()> {
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
-            defaults::default_library(project_name),
+            defaults::default_library(&project_name),
         )?,
         Predicate => fs::write(
             Path::new(&project_dir)
@@ -102,8 +136,30 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
     }
 
+    // Insert default test function
+    let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
+    fs::write(&harness_path, defaults::default_test_program(&project_name))?;
+
+    if command.verbose {
+        println_light_blue(&format!(
+            "\nCreating test harness at {}",
+            canonicalize(&harness_path)?
+        ));
+    }
+
+    // Ignore default `out` and `target` directories created by forc and cargo.
+    let gitignore_path = Path::new(&project_dir).join(".gitignore");
+    fs::write(&gitignore_path, defaults::default_gitignore())?;
+
+    if command.verbose {
+        println_light_blue(&format!(
+            "\nCreating .gitignore at {}",
+            canonicalize(&gitignore_path)?
+        ));
+    }
+
     println_green(&format!(
-        "Successfully created {program_type}: {project_name}",
+        "\nSuccessfully created {program_type}: {project_name}",
     ));
 
     print_welcome_message();
