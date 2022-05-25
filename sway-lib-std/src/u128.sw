@@ -46,8 +46,8 @@ impl core::ops::Ord for U128 {
 }
 
 // TODO this doesn't work?
-// impl core::ops::OrdEq for U128 {
-// }
+impl core::ops::OrdEq for U128 {
+}
 
 fn disable_overflow() {
     asm(r1) {
@@ -201,6 +201,52 @@ impl core::ops::Subtract for U128 {
             upper: upper,
             lower: lower,
         }
+    }
+}
+
+impl core::ops::Multiply for U128 {
+    // Multiply a U128 with a U128. Panics of overflow.
+    pub fn multiply(self, other: Self) -> Self {
+        let one = ~U128::from_u64(1);
+
+        let mut total = ~U128::new();
+        let mut i = 128;
+
+        while i >= 0 {
+            total = total << i;
+            if (other & (one << i)) >> i {
+                total = total + self;
+            }
+
+            i = i -1;
+        }
+
+        total
+    }
+}
+
+impl core::ops::Divide for U128 {
+    // Divide a U128 by a U128.
+    pub fn divide(self, other: Self) -> Self {
+        let one = ~U128::from_u64(1);
+
+        let mut quotient = ~U128::new();
+        let mut remainder = ~U128::new();
+        let mut i = 128 - 1;
+
+        while i >= 0 {
+            quotient = quotient << i;
+            remainder = remainder << i;
+            remainder = remainder | ((self & (one << i)) >> i);
+            if remainder >= other {
+                remainder = remainder - other;
+                quotient = quotient | one;
+            }
+
+            i = i -1;
+        }
+
+        quotient
     }
 }
 
