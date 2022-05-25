@@ -525,13 +525,16 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/fuellabs/sway
+            ghcr.io/fuellabs/forc
           tags: |
             type=sha
             type=ref,event=branch
             type=ref,event=tag
           flavor: |
             latest=${{ github.ref == 'refs/heads/master' }}
+          labels: |
+            org.opencontainers.image.title=forc
+            org.opencontainers.image.description=Fuel Orchestrator.
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
