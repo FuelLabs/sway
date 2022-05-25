@@ -920,6 +920,20 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
             parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression)
         );
     }
+    if parser.peek::<TrueToken>().is_some() {
+        let ident = parser.parse::<Ident>()?;
+        return Ok(Expr::Literal(Literal::Bool(LitBool {
+            span: ident.span().clone(),
+            kind: LitBoolType::True,
+        })));
+    }
+    if parser.peek::<FalseToken>().is_some() {
+        let ident = parser.parse::<Ident>()?;
+        return Ok(Expr::Literal(Literal::Bool(LitBool {
+            span: ident.span().clone(),
+            kind: LitBoolType::False,
+        })));
+    }
     if parser.peek::<AsmToken>().is_some() {
         let asm_block = parser.parse()?;
         return Ok(Expr::Asm(asm_block));

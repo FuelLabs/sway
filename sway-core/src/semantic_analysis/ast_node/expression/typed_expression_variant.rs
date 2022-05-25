@@ -391,18 +391,7 @@ impl CopyTypes for TypedExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, field_to_access.span.clone()))
-                } else {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
-                        field_to_access.span.clone(),
-                    );
-                    insert_type(ty)
-                };
-
+                resolved_type_of_parent.update_type(type_mapping, &field_to_access.span);
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
@@ -411,18 +400,7 @@ impl CopyTypes for TypedExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, prefix.span.clone()))
-                } else {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
-                        prefix.span.clone(),
-                    );
-                    insert_type(ty)
-                };
-
+                resolved_type_of_parent.update_type(type_mapping, &prefix.span);
                 prefix.copy_types(type_mapping);
             }
             EnumInstantiation {
@@ -439,15 +417,7 @@ impl CopyTypes for TypedExpressionVariant {
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             TypeProperty { type_id, span, .. } => {
-                *type_id = if let Some(matching_id) =
-                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, span.clone()))
-                } else {
-                    let ty =
-                        TypeInfo::Ref(insert_type(look_up_type_id_raw(*type_id)), span.clone());
-                    insert_type(ty)
-                };
+                type_id.update_type(type_mapping, span);
             }
             SizeOfValue { expr } => expr.copy_types(type_mapping),
             EnumTag { exp } => {

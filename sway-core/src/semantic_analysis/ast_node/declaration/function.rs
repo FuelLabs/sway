@@ -78,20 +78,8 @@ impl CopyTypes for TypedFunctionDeclaration {
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
 
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => {
-                    insert_type(TypeInfo::Ref(matching_id, self.return_type_span.clone()))
-                }
-                None => {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(self.return_type)),
-                        self.return_type_span.clone(),
-                    );
-                    insert_type(ty)
-                }
-            };
-
+        self.return_type
+            .update_type(type_mapping, &self.return_type_span);
         self.body.copy_types(type_mapping);
     }
 }

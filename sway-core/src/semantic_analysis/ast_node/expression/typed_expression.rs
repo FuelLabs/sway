@@ -49,18 +49,7 @@ impl PartialEq for TypedExpression {
 
 impl CopyTypes for TypedExpression {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span.clone())),
-                None => {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(self.return_type)),
-                        self.span.clone(),
-                    );
-                    insert_type(ty)
-                }
-            };
-
+        self.return_type.update_type(type_mapping, &self.span);
         self.expression.copy_types(type_mapping);
     }
 }

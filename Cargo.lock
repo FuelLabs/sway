@@ -1082,7 +1082,7 @@ dependencies = [
  "forc-pkg",
  "forc-util",
  "fs_extra",
- "fuel-asm",
+ "fuel-asm 0.5.2",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm",
@@ -1208,7 +1208,17 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad9b05ccc6a243e54e86880e0b2a328da580f5aed5d44ff569d42f1f5f72471"
 dependencies = [
- "fuel-types",
+ "fuel-types 0.3.1",
+ "serde",
+]
+
+[[package]]
+name = "fuel-asm"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eaa9ef12093772c88ddee15a214826527ad09fead79105f352d15ab4f271d5b5"
+dependencies = [
+ "fuel-types 0.5.0",
  "serde",
 ]
 
@@ -1219,7 +1229,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55e0f5a52d0dc3ac1e3cb57ef85955d5e87225b95a6b4718e4c81ae0423609c9"
 dependencies = [
  "borrown",
- "fuel-types",
+ "fuel-types 0.3.1",
  "rand 0.8.5",
  "secp256k1",
  "serde",
@@ -1239,7 +1249,7 @@ dependencies = [
  "derive_more",
  "fuel-storage",
  "fuel-tx",
- "fuel-types",
+ "fuel-types 0.3.1",
  "fuel-vm",
  "futures",
  "hex",
@@ -1279,9 +1289,9 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85c62513f723eeed70c806581d40d93856654e13bb9858dc8cb3fe4b49518be9"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.4.0",
  "fuel-crypto",
- "fuel-types",
+ "fuel-types 0.3.1",
  "itertools",
  "rand 0.8.5",
  "serde",
@@ -1299,17 +1309,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-types"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b253058fc10bdc066f22d33df764de72601558b61efd1769475b21311332a15"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "fuel-vm"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69fc8370f862046b8c3e81a97be12f29581406eb4ed81dabf5df90b105312316"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.4.0",
  "fuel-crypto",
  "fuel-merkle",
  "fuel-storage",
  "fuel-tx",
- "fuel-types",
+ "fuel-types 0.3.1",
  "itertools",
  "rand 0.8.5",
  "secp256k1",
@@ -3428,7 +3447,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-asm",
+ "fuel-asm 0.5.2",
  "fuel-crypto",
  "fuel-vm",
  "fuels-types",
@@ -3521,7 +3540,7 @@ dependencies = [
 name = "sway-types"
 version = "0.13.1"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.5.2",
  "fuel-crypto",
  "fuel-tx",
  "lazy_static",
@@ -3622,7 +3641,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "forc",
- "fuel-asm",
+ "fuel-asm 0.5.2",
  "fuel-tx",
  "fuel-vm",
  "rand 0.8.5",
@@ -3639,7 +3658,7 @@ dependencies = [
  "anyhow",
  "fuel-crypto",
  "fuel-tx",
- "fuel-types",
+ "fuel-types 0.3.1",
  "fuel-vm",
  "hex",
  "secp256k1",

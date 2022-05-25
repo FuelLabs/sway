@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']
+
+[[package]]
+name = 'u128_mul_test_pass'
+dependencies = ['std']
