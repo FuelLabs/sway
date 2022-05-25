@@ -123,6 +123,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         (
+            "should_pass/stdlib/u128_complex_test",
+            ProgramState::Return(1),
+        ), // true
+        (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
         ),

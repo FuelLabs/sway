@@ -8,8 +8,6 @@ fn main() -> bool {
     let first = ~U128::from(0, 0);
     let second = ~U128::from(0, 1);
     let max_u64 = ~U128::from(0, ~u64::max());
-    // TODO Can't test panic on adding anything to max in Sway, need to use Rust
-    let max_u128 = ~U128::from(~u64::max(), ~u64::max());
 
     let one = first + second;
     assert(one.upper == 0);
@@ -73,18 +71,6 @@ fn main() -> bool {
 
     let left_shift_one_upper_right_shift = right_shift_one_upper << 1;
     assert(left_shift_one_upper_right_shift == one_upper);
-
-    let mul_128_of_two = max_u64 * two;
-    assert(mul_of_two.upper == 1);
-    assert(mul_of_two.lower == ~u64::max() - 1);
-
-    let mul_128_of_four = mul_128_of_two * two;
-    assert(mul_128_of_four.upper == 3);
-    assert(mul_128_of_four.lower == ~u64::max() - 3);
-
-    // let mul_128_max = max_u64 * max_u64;
-    // assert(mul_128_max.upper == ~u64::max() - 1);
-    // assert(mul_128_max.lower == 1);
 
     true
 }
