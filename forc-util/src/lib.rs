@@ -207,12 +207,12 @@ pub fn println_green(txt: &str) {
     println_std_out(txt, TermColor::Green);
 }
 
-pub fn println_light_blue(txt: &str) {
+pub fn print_light_blue(txt: &str) {
     let stdout = StandardStream::stdout(ColorChoice::Always);
     print_with_color(txt, TermColor::Rgb(40, 200, 255), stdout);
 }
 
-pub fn println_light_green(txt: &str) {
+pub fn print_light_green(txt: &str) {
     let stdout = StandardStream::stdout(ColorChoice::Always);
     print_with_color(txt, TermColor::Rgb(90, 255, 40), stdout);
 }
