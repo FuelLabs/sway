@@ -13,18 +13,17 @@ pub struct U128 {
 
 pub trait From {
     /// Function for creating U128 from its u64 components.
-    pub fn from(h: u64, l: u64) -> Self;
+    pub fn from(upper: u64, lower: u64) -> Self;
 } {
-    fn into(v: U128) -> (u64, u64) {
-        (v.upper, v.lower)
+    fn into(val: U128) -> (u64, u64) {
+        (val.upper, val.lower)
     }
 }
 
 impl From for U128 {
-    pub fn from(h: u64, l: u64) -> U128 {
+    pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper: h,
-            lower: l,
+            upper, lower,
         }
     }
 }
@@ -64,36 +63,36 @@ fn enable_overflow() {
 }
 
 impl u64 {
-    pub fn overflowing_add(a: u64, b: u64) -> U128 {
+    pub fn overflowing_add(self, right: Self) -> U128 {
         disable_overflow();
-        let mut v = U128 {
+        let mut result = U128 {
             upper: 0,
             lower: 0,
         };
-        asm(r1, r2, a: a, b: b, v_ptr: v) {
-            add r1 a b;
-            move r2 of;
-            sw v_ptr r2 i0;
-            sw v_ptr r1 i1;
+        asm(sum, overflow, left: self, right: right, result_ptr: result) {
+            add sum left right;
+            move overflow of;
+            sw result_ptr overflow i0;
+            sw result_ptr sum i1;
         };
         enable_overflow();
-        v
+        result
     }
 
-    pub fn overflowing_mul(self, b: Self) -> U128 {
+    pub fn overflowing_mul(self, right: Self) -> U128 {
         disable_overflow();
-        let mut v = U128 {
+        let mut result = U128 {
             upper: 0,
             lower: 0,
         };
-        asm(r1, r2, a: self, b: b, v_ptr: v) {
-            mul r1 a b;
-            move r2 of;
-            sw v_ptr r2 i0;
-            sw v_ptr r1 i1;
+        asm(product, overflow, left: self, right: right, result_ptr: result) {
+            mul product left right;
+            move overflow of;
+            sw result_ptr overflow i0;
+            sw result_ptr product i1;
         };
         enable_overflow();
-        v
+        result
     }
 }
 
@@ -154,52 +153,52 @@ impl core::ops::BitwiseOr for U128 {
 }
 
 impl core::ops::Shiftable for U128 {
-    pub fn lsh(self, other: u64) -> Self {
+    pub fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
-        if (other >= 128) {
+        if (rhs >= 128) {
             return ~Self::new();
         };
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
-        if (other >= 64) {
-            return ~Self::from(self.lower << (other - 64), 0);
+        if (rhs >= 64) {
+            return ~Self::from(self.lower << (rhs - 64), 0);
         };
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save highest bits of lower half.
-        let highest_lower_bits = self.lower >> (64 - other);
+        let highest_lower_bits = self.lower >> (64 - rhs);
 
-        let upper = (self.upper << other) + highest_lower_bits;
-        let lower = self.lower << other;
+        let upper = (self.upper << rhs) + highest_lower_bits;
+        let lower = self.lower << rhs;
 
         ~Self::from(upper, lower)
     }
 
-    pub fn rsh(self, other: u64) -> Self {
+    pub fn rsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
-        if (other >= 128) {
+        if (rhs >= 128) {
             return ~Self::new();
         };
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
-        if (other >= 64) {
-            return ~Self::from(0, self.upper >> (other - 64));
+        if (rhs >= 64) {
+            return ~Self::from(0, self.upper >> (rhs - 64));
         };
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save lowest bits of upper half.
-        let lowest_upper_bits = self.upper << (64 - other);
+        let lowest_upper_bits = self.upper << (64 - rhs);
 
-        let upper = self.upper >> other;
-        let lower = (self.lower >> other) + lowest_upper_bits;
+        let upper = self.upper >> rhs;
+        let lower = (self.lower >> rhs) + lowest_upper_bits;
 
         ~Self::from(upper, lower)
     }
@@ -248,8 +247,7 @@ impl core::ops::Subtract for U128 {
         };
 
         U128 {
-            upper: upper,
-            lower: lower,
+            upper, lower,
         }
     }
 }
