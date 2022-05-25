@@ -399,7 +399,7 @@ impl TypedAbiDeclaration {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedConstantDeclaration {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub value: TypedExpression,
     pub(crate) visibility: Visibility,
 }
@@ -413,7 +413,7 @@ impl CopyTypes for TypedConstantDeclaration {
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitDeclaration {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) interface_surface: Vec<TypedTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
@@ -481,7 +481,7 @@ impl TypedTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
 }
 
@@ -504,8 +504,8 @@ impl ReassignmentLhs {
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
-    pub(crate) lhs: Vec<ReassignmentLhs>,
-    pub(crate) rhs: TypedExpression,
+    pub lhs: Vec<ReassignmentLhs>,
+    pub rhs: TypedExpression,
 }
 
 impl CopyTypes for TypedReassignment {

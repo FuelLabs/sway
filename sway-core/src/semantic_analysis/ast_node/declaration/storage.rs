@@ -14,7 +14,7 @@ use derivative::Derivative;
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedStorageDeclaration {
-    pub(crate) fields: Vec<TypedStorageField>,
+    pub fields: Vec<TypedStorageField>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     span: Span,
@@ -138,7 +138,7 @@ impl TypedStorageDeclaration {
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
 }

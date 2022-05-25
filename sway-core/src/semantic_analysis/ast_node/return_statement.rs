@@ -2,7 +2,7 @@ use super::{CopyTypes, TypeMapping, TypedExpression};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypedReturnStatement {
-    pub(crate) expr: TypedExpression,
+    pub expr: TypedExpression,
 }
 
 impl CopyTypes for TypedReturnStatement {

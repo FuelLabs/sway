@@ -425,7 +425,7 @@ fn main() {
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
-
+    
     #[tokio::test]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));

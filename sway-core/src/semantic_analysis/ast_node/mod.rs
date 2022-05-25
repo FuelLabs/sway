@@ -44,7 +44,7 @@ pub(crate) use expression::*;
 mod return_statement;
 pub(crate) use return_statement::TypedReturnStatement;
 
-mod while_loop;
+pub mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
 
 mod copy_types;
@@ -1533,7 +1533,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
 pub struct TypeCheckedStorageReassignment {
     pub(crate) fields: Vec<TypeCheckedStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
-    pub(crate) rhs: TypedExpression,
+    pub rhs: TypedExpression,
 }
 
 impl TypeCheckedStorageReassignment {
@@ -1556,7 +1556,7 @@ impl TypeCheckedStorageReassignment {
 /// storage.
 #[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
 }

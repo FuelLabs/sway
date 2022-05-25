@@ -128,13 +128,14 @@ impl TextDocument {
                 ttt::traverse_node(node, &mut tokens);
             }
         }
+
+        eprintln!("{:#?}", tokens.keys());
     
-        let file_name = std::path::PathBuf::from(self.get_uri());
-        let cursor_position = Position::new(25, 14); //Cursos hovered over the position var decl in main()
-        let code_pos = ttt::CodeEditorPosition::new(file_name, cursor_position);
+        let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
+        //let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
         // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some(ident) = ttt::ident_at_position(&code_pos, &tokens) {
+        if let Some(ident) = ttt::ident_at_position(cursor_position, &tokens) {
             // Retrieve the typed_ast_node from our HashMap
             if let Some(token) = tokens.get(ident) {
                 //eprintln!("token = {:#?}", token);

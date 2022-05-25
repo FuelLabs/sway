@@ -439,7 +439,7 @@ impl CopyTypes for TypedExpressionVariant {
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
-    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub fields: Vec<TypeCheckedStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
 }
 
@@ -459,7 +459,7 @@ impl TypeCheckedStorageAccess {
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccessDescriptor {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
 }
