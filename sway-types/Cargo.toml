@@ -9,7 +9,7 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway core types."
 
 [dependencies]
-fuel-asm = "0.4"
+fuel-asm = "0.5"
 fuel-crypto = "0.4"
 fuel-tx = "0.9"
 lazy_static = "1.4"
