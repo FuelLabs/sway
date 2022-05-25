@@ -277,16 +277,17 @@ impl core::ops::Subtract for U128 {
 impl core::ops::Multiply for U128 {
     // Multiply a U128 with a U128. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
+        let zero = ~U128::from(0, 0);
         let one = ~U128::from(0, 1);
 
         let mut total = ~U128::new();
-        let mut i = 128 + 1;
+        let mut i = 128 - 1 + 1;
 
         while i > 0 {
             // Workaround for not having break keyword
             let shift = i - 1;
             total = total << 1;
-            if ((other & (one << shift)) >> shift) == one {
+            if (other & (one << shift)) != zero {
                 total = total + self;
             }
 

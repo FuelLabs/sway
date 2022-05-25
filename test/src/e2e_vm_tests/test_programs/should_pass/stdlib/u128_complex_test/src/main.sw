@@ -18,9 +18,9 @@ fn main() -> bool {
     assert(mul_128_of_four.upper == 3);
     assert(mul_128_of_four.lower == ~u64::max() - 3);
 
-    // let mul_128_max = max_u64 * max_u64;
-    // assert(mul_128_max.upper == ~u64::max() - 1);
-    // assert(mul_128_max.lower == 1);
+    let mul_128_max = max_u64 * max_u64;
+    assert(mul_128_max.upper == ~u64::max() - 1);
+    assert(mul_128_max.lower == 1);
 
     true
 }
