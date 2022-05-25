@@ -94,7 +94,7 @@ impl TypedExpression {
             resolve_method_name(
                 &method_name,
                 arguments.clone(),
-                vec![],
+                &[],
                 span.clone(),
                 namespace,
                 self_type,

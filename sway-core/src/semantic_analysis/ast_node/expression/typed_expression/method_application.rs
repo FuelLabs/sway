@@ -47,7 +47,7 @@ pub(crate) fn type_check_method_application(
         resolve_method_name(
             &method_name,
             args_buf.clone(),
-            type_arguments,
+            &type_arguments,
             span.clone(),
             namespace,
             self_type
@@ -62,6 +62,19 @@ pub(crate) fn type_check_method_application(
     } else {
         None
     };
+    // monomorphize the function declaration
+    let method = check!(
+        namespace.monomorphize(
+            method,
+            type_arguments,
+            EnforceTypeArguments::No,
+            Some(self_type),
+            Some(&span)
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // 'method.purity' is that of the callee, 'opts.purity' of the caller.
     if !opts.purity.can_call(method.purity) {
@@ -268,7 +281,7 @@ pub(crate) fn type_check_method_application(
 pub(crate) fn resolve_method_name(
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,
@@ -301,7 +314,7 @@ pub(crate) fn resolve_method_name(
                     if type_args.is_empty() {
                         TypeInfo::Custom {
                             name,
-                            type_arguments,
+                            type_arguments: type_arguments.to_vec(),
                         }
                     } else {
                         let type_args_span = type_args
