@@ -2,31 +2,30 @@ use crate::ops::forc_init;
 use anyhow::Result;
 use clap::Parser;
 
-const TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
-
-Example Templates: 
- - counter"#;
-
 /// Create a new Forc project.
 #[derive(Debug, Parser)]
 pub struct Command {
-    /// Initialize a new project from a template
-    #[clap(short, long, help = TEMPLATE_HELP)]
-    pub template: Option<String>,
-    /// The default program type, excluding all flags or adding this flag creates a basic contract program.
+    /// The path at which to create the manifest
     #[clap(long)]
-    pub contract: bool,
-    /// Adding this flag creates an empty script program.
+    pub path: Option<String>,
+    /// Create a package with a binary target (src/main.sw). This is the default behavior
     #[clap(long)]
     pub script: bool,
-    /// Adding this flag creates an empty predicate program.
-    #[clap(long)]
-    pub predicate: bool,
-    /// Adding this flag creates an empty library program.
+    /// Create a package with a library target (src/lib.sw).
     #[clap(long)]
     pub library: bool,
-    /// The name of your project
-    pub project_name: String,
+    /// Create a package with a contract target (src/contract.rs).
+    #[clap(long)]
+    pub contract: bool,
+    /// Create a package with a contract target (src/predicate.rs).
+    #[clap(long)]
+    pub predicate: bool,
+    /// Use verbose output.
+    #[clap(short = 'v', long = "verbose")]
+    pub verbose: bool,
+    /// Set the package name. Defaults to the directory name
+    #[clap(long = "name")]
+    pub name: Option<String>,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

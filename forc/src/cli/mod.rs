@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, init, json_abi, parse_bytecode, plugins, run,
-    test, update,
+    addr2line, build, clean, completions, deploy, init, json_abi, new, parse_bytecode, plugins,
+    run, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -11,6 +11,7 @@ pub use completions::Command as CompletionsCommand;
 pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
+pub use new::Command as NewComand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
@@ -37,6 +38,7 @@ enum Forc {
     Clean(CleanCommand),
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
+    New(NewComand),
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
@@ -65,6 +67,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Clean(command) => clean::exec(command),
         Forc::Completions(command) => completions::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
+        Forc::New(command) => new::exec(command),
         Forc::Init(command) => init::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins(command) => plugins::exec(command),
