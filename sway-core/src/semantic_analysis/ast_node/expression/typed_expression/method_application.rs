@@ -21,6 +21,7 @@ pub(crate) fn type_check_method_application(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
+    dbg!(&parent_type_arguments);
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
@@ -63,6 +64,9 @@ pub(crate) fn type_check_method_application(
     } else {
         None
     };
+
+    dbg!(&self_type);
+    // monomorphize the parent type
     // monomorphize the function declaration
     let method = check!(
         namespace.monomorphize(
@@ -152,6 +156,8 @@ pub(crate) fn type_check_method_application(
             };
         }
     }
+
+    todo!("monomorphize parent type");
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
