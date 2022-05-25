@@ -3,8 +3,7 @@ use crate::{
     namespace::Items,
     parse_tree::*,
     semantic_analysis::{
-        ast_node::copy_types::TypeMapping, declaration::EnforceTypeArguments,
-        insert_type_parameters, CopyTypes,
+        declaration::EnforceTypeArguments, insert_type_parameters, CopyTypes, TypeMapping,
     },
     type_engine::*,
     CompileError, CompileResult, Ident, Namespace,
@@ -181,17 +180,7 @@ impl PartialEq for TypedEnumVariant {
 
 impl CopyTypes for TypedEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id, self.span.clone()))
-        } else {
-            let ty = TypeInfo::Ref(
-                insert_type(look_up_type_id_raw(self.r#type)),
-                self.span.clone(),
-            );
-            insert_type(ty)
-        };
+        self.r#type.update_type(type_mapping, &self.span);
     }
 }
 
