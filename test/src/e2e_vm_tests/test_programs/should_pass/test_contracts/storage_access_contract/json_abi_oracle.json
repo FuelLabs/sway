@@ -10,7 +10,7 @@
     "name": "set_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -28,7 +28,7 @@
     "name": "set_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -103,7 +103,7 @@
     "name": "set_s",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -121,7 +121,7 @@
     "name": "set_boolean",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -139,7 +139,7 @@
     "name": "set_int8",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -157,7 +157,7 @@
     "name": "set_int16",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -175,7 +175,7 @@
     "name": "set_int32",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -193,7 +193,7 @@
     "name": "set_s_dot_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -211,7 +211,7 @@
     "name": "set_s_dot_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -229,7 +229,7 @@
     "name": "set_s_dot_z",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -283,7 +283,7 @@
     "name": "set_s_dot_t",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -301,7 +301,7 @@
     "name": "set_s_dot_t_dot_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -319,7 +319,7 @@
     "name": "set_s_dot_t_dot_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -337,7 +337,7 @@
     "name": "set_s_dot_t_dot_z",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -355,7 +355,7 @@
     "name": "set_s_dot_t_dot_boolean",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -373,7 +373,7 @@
     "name": "set_s_dot_t_dot_int8",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -391,7 +391,7 @@
     "name": "set_s_dot_t_dot_int16",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -409,7 +409,7 @@
     "name": "set_s_dot_t_dot_int32",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }

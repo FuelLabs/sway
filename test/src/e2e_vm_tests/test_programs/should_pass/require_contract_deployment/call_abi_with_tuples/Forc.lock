@@ -1,11 +1,11 @@
 [[package]]
-name = 'basic_storage_abi'
-dependencies = []
+name = 'abi_with_tuples'
+dependencies = ['core']
 
 [[package]]
-name = 'call_basic_storage'
+name = 'call_abi_with_tuples'
 dependencies = [
-    'basic_storage_abi',
+    'abi_with_tuples',
     'std',
 ]
 
