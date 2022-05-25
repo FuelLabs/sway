@@ -4,12 +4,11 @@ use crate::utils::{
     program_type::{ProgramType, ProgramType::*},
 };
 use anyhow::Result;
-use forc_util::{println_green, validate_name};
+use forc_util::{println_green, println_light_blue, println_light_green, validate_name};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 use sway_utils::constants;
-use tracing::info;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -70,30 +69,25 @@ struct GithubTree {
 }
 
 fn print_welcome_message() {
-    let read_the_docs = format!(
-        "Read the Docs:\n- {}\n- {}\n- {}",
-        "Sway Book: https://fuellabs.github.io/sway/latest",
-        "Rust SDK Book: https://fuellabs.github.io/fuels-rs/latest",
-        "TypeScript SDK: https://github.com/FuelLabs/fuels-ts"
-    );
+    println_green("To compile, use `forc build`, and to run tests use `forc test`\n");
 
-    let join_the_community = format!(
-        "Join the Community:\n- Follow us {}
-- Ask questions in dev-chat on {}",
-        "@SwayLang: https://twitter.com/SwayLang", "Discord: https://discord.com/invite/xfpK4Pe"
-    );
+    println_light_blue("Read the Docs:\n");
+    println_light_green("- Sway Book: ");
+    println_light_blue("https://fuellabs.github.io/sway/latest\n");
+    println_light_green("- Rust SDK Book: ");
+    println_light_blue("https://fuellabs.github.io/fuels-rs/latest\n");
+    println_light_green("- TypeScript SDK: ");
+    println_light_blue("https://github.com/FuelLabs/fuels-ts\n\n");
 
-    let report_bugs = format!(
-        "Report Bugs:\n- {}",
-        "Sway Issues: https://github.com/FuelLabs/sway/issues/new"
-    );
+    println_light_blue("Join the Community:\n");
+    println_light_green("- Follow us @SwayLang: ");
+    println_light_blue("https://twitter.com/SwayLang\n");
+    println_light_green("- Ask questions in dev-chat on Discord: ");
+    println_light_blue("https://discord.com/invite/xfpK4Pe\n\n");
 
-    let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
-
-    info!(
-        "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
-        try_forc, read_the_docs, join_the_community, report_bugs
-    );
+    println_light_blue("Report Bugs:\n");
+    println_light_green("- Sway Issues: ");
+    println_light_blue("https://github.com/FuelLabs/sway/issues/new\n");
 }
 
 pub fn init(command: InitCommand) -> Result<()> {
@@ -187,7 +181,7 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
     )?;
 
     println_green(&format!(
-        "Successfully created {program_type}: {project_name}",
+        "\nSuccessfully created {program_type}: {project_name}",
     ));
 
     print_welcome_message();
