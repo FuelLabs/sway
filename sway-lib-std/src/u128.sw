@@ -259,6 +259,9 @@ impl core::ops::Multiply for U128 {
         let one = ~U128::from(0, 1);
 
         let mut total = ~U128::new();
+        // The algorithm loops <from number of bits - 1> to <zero>.
+        // Need to add 1 here to invalidate the while loop once i == 0 since we
+        // don't have a break keyword.
         let mut i = 128 - 1 + 1;
 
         while i > 0 {
@@ -286,6 +289,9 @@ impl core::ops::Divide for U128 {
 
         let mut quotient = ~U128::new();
         let mut remainder = ~U128::new();
+        // The algorithm loops <from number of bits - 1> to <zero>.
+        // Need to add 1 here to invalidate the while loop once i == 0 since we
+        // don't have a break keyword.
         let mut i = 128 - 1 + 1;
 
         while i > 0 {
