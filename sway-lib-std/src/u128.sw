@@ -37,11 +37,11 @@ impl core::ops::Eq for U128 {
 
 impl core::ops::Ord for U128 {
     pub fn gt(self, other: Self) -> bool {
-        self.upper > other.upper || self.upper == other.upper && self.lower > self.lower
+        self.upper > other.upper || self.upper == other.upper && self.lower > other.lower
     }
 
     pub fn lt(self, other: Self) -> bool {
-        self.upper < other.upper || self.upper == other.upper && self.lower < self.lower
+        self.upper < other.upper || self.upper == other.upper && self.lower < other.lower
     }
 }
 

@@ -76,5 +76,9 @@ fn main() -> bool {
     assert(one_left_shift_64.upper == 1);
     assert(one_left_shift_64.lower == 0);
 
+    let three_left_shift_one = ~U128::from(0, 3) << 1;
+    assert(three_left_shift_one.upper == 0);
+    assert(three_left_shift_one.lower == 6);
+
     true
 }
