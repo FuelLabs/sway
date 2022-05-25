@@ -32,10 +32,32 @@ pub enum LitIntType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct LitBool {
+    pub span: Span,
+    pub kind: LitBoolType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum LitBoolType {
+    True,
+    False,
+}
+
+impl From<LitBoolType> for bool {
+    fn from(item: LitBoolType) -> Self {
+        match item {
+            LitBoolType::True => true,
+            LitBoolType::False => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum Literal {
     String(LitString),
     Char(LitChar),
     Int(LitInt),
+    Bool(LitBool),
 }
 
 impl Peek for Literal {
@@ -74,12 +96,19 @@ impl Spanned for LitInt {
     }
 }
 
+impl Spanned for LitBool {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl Spanned for Literal {
     fn span(&self) -> Span {
         match self {
             Literal::String(lit_string) => lit_string.span(),
             Literal::Char(lit_char) => lit_char.span(),
             Literal::Int(lit_int) => lit_int.span(),
+            Literal::Bool(lit_bool) => lit_bool.span(),
         }
     }
 }
