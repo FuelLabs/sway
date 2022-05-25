@@ -4,7 +4,7 @@ use crate::{
     parse_tree::*,
     semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
     type_engine::*,
-    CompileResult, Ident, Namespace,
+    CompileError, CompileResult, Ident, Namespace,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
@@ -72,7 +72,7 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 }
 
 impl TypedStructDeclaration {
-    pub fn type_check(
+    pub(crate) fn type_check(
         decl: StructDeclaration,
         namespace: &mut Namespace,
         self_type: TypeId,
@@ -81,14 +81,13 @@ impl TypedStructDeclaration {
         let mut errors = vec![];
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
         for type_parameter in decl.type_parameters.iter() {
             check!(
-                decl_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -110,7 +109,7 @@ impl TypedStructDeclaration {
                 let r#type = match r#type.matches_type_parameter(&type_mapping) {
                     Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, type_span)),
                     None => check!(
-                        decl_namespace.resolve_type_with_self(
+                        namespace.resolve_type_with_self(
                             r#type,
                             self_type,
                             &type_span,
@@ -135,6 +134,31 @@ impl TypedStructDeclaration {
         };
 
         ok(decl, warnings, errors)
+    }
+
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TypedStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .fields
+            .iter()
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    available_fields: self
+                        .fields
+                        .iter()
+                        .map(|TypedStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: self.name.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
     }
 }
 
