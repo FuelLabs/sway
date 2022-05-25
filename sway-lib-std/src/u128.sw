@@ -227,7 +227,7 @@ impl core::ops::Shiftable for U128 {
         // Save highest bits of lower half.
         let highest_lower_bits = self.lower >> (64 - other);
 
-        ret.upper = self.upper << other + highest_lower_bits;
+        ret.upper = (self.upper << other) + highest_lower_bits;
         ret.lower = self.lower << other;
 
         ret
@@ -235,6 +235,12 @@ impl core::ops::Shiftable for U128 {
 
     pub fn rsh(self, other: u64) -> Self {
         let mut ret = ~Self::new();
+
+        // If shifting by at least the number of bits, then saturate with
+        // zeroes.
+        if (other >= 128) {
+            return ret;
+        };
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
@@ -250,7 +256,7 @@ impl core::ops::Shiftable for U128 {
         let lowest_upper_bits = self.upper << (64 - other);
 
         ret.upper = self.upper >> other;
-        ret.lower = self.lower >> other + lowest_upper_bits;
+        ret.lower = (self.lower >> other) + lowest_upper_bits;
 
         ret
     }

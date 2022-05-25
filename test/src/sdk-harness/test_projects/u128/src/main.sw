@@ -64,4 +64,13 @@ fn main() {
     // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/121
     // assert(mul_max.upper == ~u64::max() - 1);
     assert(mul_max.lower == 1);
+
+    let one_upper = ~U128::from(1, 0);
+
+    let right_shift_one_upper = one_upper >> 1;
+    assert(right_shift_one_upper.upper == 0);
+    assert(right_shift_one_upper.lower == (1 << 63));
+
+    let left_shift_one_upper_right_shift = right_shift_one_upper << 1;
+    assert(left_shift_one_upper_right_shift == one_upper);
 }
