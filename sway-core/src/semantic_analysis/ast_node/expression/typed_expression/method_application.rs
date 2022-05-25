@@ -13,6 +13,7 @@ pub(crate) fn type_check_method_application(
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
+    parent_type_arguments: Vec<TypeArgument>,
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,

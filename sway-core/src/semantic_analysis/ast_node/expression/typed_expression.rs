@@ -399,12 +399,14 @@ impl TypedExpression {
                 contract_call_params,
                 arguments,
                 type_arguments,
+                parent_type_arguments,
                 span,
             } => type_check_method_application(
                 method_name,
                 contract_call_params,
                 arguments,
                 type_arguments,
+                parent_type_arguments,
                 span,
                 namespace,
                 self_type,
@@ -2062,9 +2064,10 @@ impl TypedExpression {
             };
             type_check_method_application(
                 method_name,
-                vec![],
+                Default::default(),
                 vec![prefix, index],
-                vec![],
+                Default::default(),
+                Default::default(),
                 span,
                 namespace,
                 self_type,

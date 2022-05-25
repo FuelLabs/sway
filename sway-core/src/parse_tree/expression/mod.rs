@@ -82,6 +82,7 @@ pub enum Expression {
         contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
+        parent_type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     /// A _subfield expression_ is anything of the form:
