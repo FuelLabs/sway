@@ -83,9 +83,14 @@ impl u64 {
             lower: 0,
         };
         asm(sum, overflow, left: self, right: right, result_ptr: result) {
+            // Add left and right.
             add sum left right;
+            // Immediately copy the overflow of the addition from `$of` into
+            // `overflow` so that it's not lost.
             move overflow of;
+            // Store the overflow into the first word of result.
             sw result_ptr overflow i0;
+            // Store the sum into the second word of result.
             sw result_ptr sum i1;
         };
         enable_overflow();
@@ -99,9 +104,14 @@ impl u64 {
             lower: 0,
         };
         asm(product, overflow, left: self, right: right, result_ptr: result) {
+            // Multiply left and right.
             mul product left right;
+            // Immediately copy the overflow of the multiplication from `$of` into
+            // `overflow` so that it's not lost.
             move overflow of;
+            // Store the overflow into the first word of result.
             sw result_ptr overflow i0;
+            // Store the product into the second word of result.
             sw result_ptr product i1;
         };
         enable_overflow();
