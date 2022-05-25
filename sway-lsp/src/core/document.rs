@@ -129,7 +129,11 @@ impl TextDocument {
             }
         }
 
-        eprintln!("{:#?}", tokens.keys());
+        for (ident, token) in &tokens {
+            ttt::debug_print_ident(ident, token);
+        }
+
+        //eprintln!("{:#?}", tokens.keys());
     
         let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         //let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()

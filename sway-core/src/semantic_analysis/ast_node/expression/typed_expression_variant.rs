@@ -493,7 +493,7 @@ impl CopyTypes for TypedAsmRegisterDeclaration {
 }
 
 impl TypedExpressionVariant {
-    pub(crate) fn pretty_print(&self) -> String {
+    pub fn pretty_print(&self) -> String {
         match self {
             TypedExpressionVariant::Literal(lit) => format!(
                 "literal {}",

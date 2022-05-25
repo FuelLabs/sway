@@ -222,7 +222,7 @@ impl TypedDeclaration {
     }
 
     /// friendly name string used for error reporting.
-    pub(crate) fn friendly_name(&self) -> &'static str {
+    pub fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",

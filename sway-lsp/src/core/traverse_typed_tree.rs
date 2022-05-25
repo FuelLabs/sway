@@ -65,8 +65,23 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut HashMap<Ident
                 tokens.insert(lhs.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
             }
         }  
-        TypedDeclaration::ImplTrait{..} => {}  
-        TypedDeclaration::AbiDeclaration(abi_decl) => {}  
+        TypedDeclaration::ImplTrait{trait_name, methods,..} => {
+            for ident in &trait_name.prefixes {
+                tokens.insert(ident.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            }
+            tokens.insert(trait_name.suffix.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+
+            for method in methods {
+                tokens.insert(method.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                for node in &method.body.contents {
+                    traverse_node(node, tokens);
+                }
+                for paramater in &method.parameters {
+                    tokens.insert(paramater.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                }
+            }
+        }  
+        TypedDeclaration::AbiDeclaration(_abi_decl) => {}  
         TypedDeclaration::GenericTypeForFunctionScope{name} => {
             tokens.insert(name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
         }  
@@ -276,5 +291,29 @@ fn get_range_from_span(span: &Span) -> Range {
     Range {
         start: Position::new(start_line, start_character),
         end: Position::new(end_line, end_character),
+    }
+}
+
+// DEBUG 
+pub fn debug_print_ident(ident: &Ident, token: &TypedAstNodeContent) {
+	let pos = ident.span().start_pos().line_col();
+	let line_num = pos.0 as u32;	
+    eprintln!("line num = {:?} | name: = {:?} | ast_node_type = {:?} | type_id = {:?}", 
+        line_num,
+        ident.as_str(),
+        ast_node_type(&token),
+        "",//type_id(&token),
+    );
+}
+
+fn ast_node_type(token: &TypedAstNodeContent) -> String {
+    match &token {
+        TypedAstNodeContent::Declaration(dec) => {
+            dec.friendly_name().to_string()
+        }
+        TypedAstNodeContent::Expression(exp) => {
+            exp.expression.pretty_print()
+        }
+        _ => "".to_string()
     }
 }

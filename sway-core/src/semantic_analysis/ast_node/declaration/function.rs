@@ -27,7 +27,7 @@ use super::{EnforceTypeArguments, MonomorphizeHelper};
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
     pub body: TypedCodeBlock,
-    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub parameters: Vec<TypedFunctionParameter>,
     pub(crate) span: Span,
     pub(crate) return_type: TypeId,
     pub(crate) type_parameters: Vec<TypeParameter>,
