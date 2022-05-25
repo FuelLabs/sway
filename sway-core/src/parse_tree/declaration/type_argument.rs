@@ -1,11 +1,10 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::Span;
-
 use crate::{
-    type_engine::{insert_type, look_up_type_id, TypeId},
+    type_engine::{insert_type, look_up_type_id, JsonAbiString, ToJsonAbi, TypeId},
     TypeInfo,
 };
+use fuels_types::Property;
+use std::hash::{Hash, Hasher};
+use sway_types::Span;
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
@@ -47,5 +46,13 @@ impl TypeArgument {
 
     pub(crate) fn json_abi_str(&self) -> String {
         look_up_type_id(self.type_id).json_abi_str()
+    }
+
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: "__tuple_element".to_string(),
+            type_field: self.type_id.json_abi_str(),
+            components: self.type_id.generate_json_abi(),
+        }
     }
 }

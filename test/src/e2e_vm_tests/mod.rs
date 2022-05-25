@@ -163,7 +163,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("should_pass/language/array_basics", ProgramState::Return(1)), // true
         // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
         (
-            "should_pass/language/abort_control_flow",
+            "should_pass/language/abort_control_flow_good",
             ProgramState::Revert(42),
         ),
         (
@@ -350,6 +350,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/implicit_return",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/match_expressions_enums",
+            ProgramState::Return(42),
+        ),
+        (
+            "should_pass/language/match_expressions_nested",
+            ProgramState::Return(123),
+        ),
+        (
+            "should_pass/language/match_expressions_mismatched",
+            ProgramState::Return(5),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -413,6 +425,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/array_of_structs_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/abi_with_tuples_contract",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -465,7 +481,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/missing_func_from_supertrait_impl",
         "should_fail/supertrait_does_not_exist",
         "should_fail/chained_if_let_missing_branch",
-        "should_fail/abort_control_flow",
+        "should_fail/abort_control_flow_bad",
         "should_fail/match_expressions_non_exhaustive",
         "should_fail/empty_impl",
         "should_fail/disallow_turbofish",
@@ -490,6 +506,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/impure_trait_read_calls_impure_write",
         "should_fail/trait_impl_purity_mismatch",
         "should_fail/trait_pure_calls_impure",
+        "should_fail/match_expressions_empty_arms",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -562,6 +579,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             (
                 "should_pass/test_contracts/array_of_structs_contract",
                 "should_pass/require_contract_deployment/array_of_structs_caller",
+            ),
+            1,
+        ),
+        (
+            (
+                "should_pass/test_contracts/abi_with_tuples_contract",
+                "should_pass/require_contract_deployment/call_abi_with_tuples",
             ),
             1,
         ),

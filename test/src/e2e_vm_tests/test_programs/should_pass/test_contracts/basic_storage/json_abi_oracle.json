@@ -33,7 +33,7 @@
     "name": "store_u64",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }

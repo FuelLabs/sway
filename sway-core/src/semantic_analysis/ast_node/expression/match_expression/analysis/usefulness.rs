@@ -2,6 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    type_engine::TypeId,
     CompileError, CompileResult, Scrutinee,
 };
 
@@ -195,6 +196,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
+    type_id: TypeId,
     scrutinees: Vec<Scrutinee>,
     span: Span,
 ) -> CompileResult<(WitnessReport, Vec<(Scrutinee, bool)>)> {
@@ -202,7 +204,12 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
-    let factory = ConstructorFactory::new();
+    let factory = check!(
+        ConstructorFactory::new(type_id, &span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     for scrutinee in scrutinees.iter() {
         let pat = check!(
             Pattern::from_scrutinee(scrutinee.clone()),
@@ -350,11 +357,12 @@ fn is_useful_wildcard(
 
     // 2. Determine if Σ is a complete signature.
     let is_complete_signature = check!(
-        sigma.is_complete_signature(span),
+        factory.is_complete_signature(&sigma, span),
         return err(warnings, errors),
         warnings,
         errors
     );
+
     if is_complete_signature {
         // 3. If it is a complete signature:
 

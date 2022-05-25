@@ -425,26 +425,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             handle_expression(*prefix, tokens);
             handle_expression(*index, tokens);
         }
-        Expression::DelayedMatchTypeResolution { .. } => {
-            //Should we handle this since it gets removed during type checking anyway?
-        }
         Expression::StorageAccess { field_names, .. } => {
             for field in field_names {
                 let token = Token::from_ident(&field, TokenType::StorageAccess);
                 tokens.push(token);
-            }
-        }
-        Expression::IfLet {
-            expr, then, r#else, ..
-        } => {
-            handle_expression(*expr, tokens);
-
-            if let Some(r#else) = r#else {
-                handle_expression(*r#else, tokens);
-            }
-
-            for node in then.contents {
-                traverse_node(node, tokens);
             }
         }
         Expression::SizeOfVal { exp, .. } => {
