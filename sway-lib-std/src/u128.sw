@@ -205,7 +205,7 @@ impl core::ops::Shiftable for U128 {
 }
 
 impl core::ops::Add for U128 {
-    // Add a U128 to a U128. Panics on overflow.
+    /// Add a U128 to a U128. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
 
@@ -230,7 +230,7 @@ impl core::ops::Add for U128 {
 }
 
 impl core::ops::Subtract for U128 {
-    // Subtract a U128 from a U128. Panics of overflow.
+    /// Subtract a U128 from a U128. Panics of overflow.
     pub fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
@@ -253,7 +253,7 @@ impl core::ops::Subtract for U128 {
 }
 
 impl core::ops::Multiply for U128 {
-    // Multiply a U128 with a U128. Panics of overflow.
+    /// Multiply a U128 with a U128. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
         let zero = ~U128::from(0, 0);
         let one = ~U128::from(0, 1);
@@ -280,7 +280,7 @@ impl core::ops::Multiply for U128 {
 }
 
 impl core::ops::Divide for U128 {
-    // Divide a U128 by a U128. Panics if divisor is zero.
+    /// Divide a U128 by a U128. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
         let zero = ~U128::from(0, 0);
         let one = ~U128::from(0, 1);
