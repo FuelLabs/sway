@@ -280,15 +280,17 @@ impl core::ops::Multiply for U128 {
         let one = ~U128::from(0, 1);
 
         let mut total = ~U128::new();
-        let mut i = 128;
+        let mut i = 128 + 1;
 
-        while i >= 0 {
+        while i > 0 {
+            // Workaround for not having break keyword
+            let shift = i - 1;
             total = total << 1;
-            if ((other & (one << i)) >> i) == one {
+            if ((other & (one << shift)) >> shift) == one {
                 total = total + self;
             }
 
-            i = i -1;
+            i = i - 1;
         }
 
         total
@@ -302,19 +304,21 @@ impl core::ops::Divide for U128 {
 
         let mut quotient = ~U128::new();
         let mut remainder = ~U128::new();
-        let mut i = 128 - 1;
+        let mut i = 128 - 1 + 1;
 
-        while i >= 0 {
+        while i > 0 {
+            // Workaround for not having break keyword
+            let shift = i - 1;
             quotient = quotient << 1;
             remainder = remainder << 1;
-            remainder = remainder | ((self & (one << i)) >> i);
+            remainder = remainder | ((self & (one << shift)) >> shift);
             // TODO use >= once OrdEq can be implemented.
             if remainder > other || remainder == other {
                 remainder = remainder - other;
                 quotient = quotient | one;
             }
 
-            i = i -1;
+            i = i - 1;
         }
 
         quotient
