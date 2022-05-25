@@ -1190,7 +1190,7 @@ impl FnCompiler {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal(
-                    "Enum type for `if let` is not an enum.",
+                    "Enum type for `unsafe downcast` is not an enum.",
                     exp.span,
                 ));
             }

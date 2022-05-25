@@ -689,7 +689,7 @@ impl Pattern {
             }
             _ => {
                 errors.push(CompileError::Unimplemented(
-                    "cannot yet compare this patter with this type",
+                    "cannot yet compare this pattern with this type",
                     span.clone(),
                 ));
                 err(warnings, errors)
@@ -747,8 +747,10 @@ impl fmt::Display for Pattern {
 
 impl std::cmp::Ord for Pattern {
     fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+
         match (self, other) {
-            (Pattern::Wildcard, Pattern::Wildcard) => Ordering::Equal,
+            (Pattern::Wildcard, Pattern::Wildcard) => Equal,
             (Pattern::U8(x), Pattern::U8(y)) => x.cmp(y),
             (Pattern::U16(x), Pattern::U16(y)) => x.cmp(y),
             (Pattern::U32(x), Pattern::U32(y)) => x.cmp(y),
@@ -849,8 +851,10 @@ impl fmt::Display for StructPattern {
 
 impl std::cmp::Ord for StructPattern {
     fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+
         match self.struct_name.cmp(&other.struct_name) {
-            Ordering::Equal => self.fields.cmp(&other.fields),
+            Equal => self.fields.cmp(&other.fields),
             res => res,
         }
     }
@@ -871,18 +875,25 @@ pub(crate) struct EnumPattern {
 
 impl std::cmp::Ord for EnumPattern {
     fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+
         match (
             self.enum_name.cmp(&other.enum_name),
             self.variant_name.cmp(&other.variant_name),
             (*self.value).cmp(&*other.value),
         ) {
-            (Ordering::Less, _, _) => Ordering::Less,
-            (Ordering::Greater, _, _) => Ordering::Greater,
-            (Ordering::Equal, Ordering::Less, _) => Ordering::Less,
-            (Ordering::Equal, Ordering::Equal, Ordering::Less) => Ordering::Less,
-            (Ordering::Equal, Ordering::Equal, Ordering::Equal) => Ordering::Equal,
-            (Ordering::Equal, Ordering::Equal, Ordering::Greater) => Ordering::Greater,
-            (Ordering::Equal, Ordering::Greater, _) => Ordering::Greater,
+            // enum name is the first element to order by
+            (Less, _, _) => Less,
+            (Greater, _, _) => Greater,
+
+            // variant name is the second element to order by
+            (Equal, Less, _) => Less,
+            (Equal, Greater, _) => Greater,
+
+            // value is the last element to order by
+            (Equal, Equal, Less) => Less,
+            (Equal, Equal, Equal) => Equal,
+            (Equal, Equal, Greater) => Greater,
         }
     }
 }

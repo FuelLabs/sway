@@ -90,7 +90,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -118,7 +121,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -146,7 +152,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -174,7 +183,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -202,7 +214,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -226,7 +241,7 @@ impl ConstructorFactory {
             }
             // we will not present every string case
             Pattern::String(_) => Pattern::Wildcard,
-            Pattern::Wildcard => unreachable!(),
+            Pattern::Wildcard => Pattern::Wildcard,
             // we will not present every b256 case
             Pattern::B256(_) => Pattern::Wildcard,
             Pattern::Boolean(b) => {
@@ -260,7 +275,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -341,7 +359,13 @@ impl ConstructorFactory {
                 )
             }
             Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Or(_) => {
+                errors.push(CompileError::Unimplemented(
+                    "or patterns are not supported",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
         };
         ok(pat, warnings, errors)
     }
@@ -426,7 +450,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -439,7 +466,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -452,7 +482,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -465,7 +498,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -478,7 +514,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Byte(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -491,7 +530,10 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -512,7 +554,10 @@ impl ConstructorFactory {
                             false => false_found = true,
                         },
                         _ => {
-                            errors.push(CompileError::Internal("type mismatch", span.clone()));
+                            errors.push(CompileError::Internal(
+                                "expected all patterns to be of the same type",
+                                span.clone(),
+                            ));
                             return err(warnings, errors);
                         }
                     }
@@ -566,8 +611,20 @@ impl ConstructorFactory {
                 }
                 ok(true, warnings, errors)
             }
-            Pattern::Wildcard => unreachable!(),
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Wildcard => {
+                errors.push(CompileError::Internal(
+                    "expected the wildcard pattern to be filtered out here",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+            Pattern::Or(_) => {
+                errors.push(CompileError::Unimplemented(
+                    "or patterns are not supported",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
         }
     }
 
@@ -590,7 +647,10 @@ impl ConstructorFactory {
         match type_info {
             Some(type_info) => ok(type_info, warnings, errors),
             None => {
-                errors.push(CompileError::Internal("type mismatch", span.clone()));
+                errors.push(CompileError::Internal(
+                    "there is no type that matches this pattern",
+                    span.clone(),
+                ));
                 err(warnings, errors)
             }
         }
@@ -606,7 +666,10 @@ impl ConstructorFactory {
         let warnings = vec![];
         let mut errors = vec![];
         if enum_pattern.enum_name.as_str() != enum_name.as_str() {
-            errors.push(CompileError::Internal("type mismatch", span.clone()));
+            errors.push(CompileError::Internal(
+                "expected matching enum names",
+                span.clone(),
+            ));
             return err(warnings, errors);
         }
         let mut all_variants: HashSet<String> = HashSet::new();
@@ -619,13 +682,19 @@ impl ConstructorFactory {
             match pat {
                 Pattern::Enum(enum_pattern2) => {
                     if enum_pattern2.enum_name.as_str() != enum_name.as_str() {
-                        errors.push(CompileError::Internal("type mismatch", span.clone()));
+                        errors.push(CompileError::Internal(
+                            "expected matching enum names",
+                            span.clone(),
+                        ));
                         return err(warnings, errors);
                     }
                     variant_tracker.insert(enum_pattern2.variant_name.to_string());
                 }
                 _ => {
-                    errors.push(CompileError::Internal("type mismatch", span.clone()));
+                    errors.push(CompileError::Internal(
+                        "expected all patterns to be of the same type",
+                        span.clone(),
+                    ));
                     return err(warnings, errors);
                 }
             }

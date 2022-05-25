@@ -582,16 +582,18 @@ where
         + Into<u64>,
 {
     fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+
         match (self.first.cmp(&other.first), self.last.cmp(&other.last)) {
-            (Ordering::Less, Ordering::Less) => Ordering::Less,
-            (Ordering::Less, Ordering::Equal) => Ordering::Less,
-            (Ordering::Less, Ordering::Greater) => Ordering::Less,
-            (Ordering::Equal, Ordering::Less) => Ordering::Less,
-            (Ordering::Equal, Ordering::Equal) => Ordering::Equal,
-            (Ordering::Equal, Ordering::Greater) => Ordering::Greater,
-            (Ordering::Greater, Ordering::Less) => Ordering::Greater,
-            (Ordering::Greater, Ordering::Equal) => Ordering::Greater,
-            (Ordering::Greater, Ordering::Greater) => Ordering::Greater,
+            (Less, Less) => Less,
+            (Less, Equal) => Less,
+            (Less, Greater) => Less,
+            (Equal, Less) => Less,
+            (Equal, Equal) => Equal,
+            (Equal, Greater) => Greater,
+            (Greater, Less) => Greater,
+            (Greater, Equal) => Greater,
+            (Greater, Greater) => Greater,
         }
     }
 }
