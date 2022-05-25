@@ -7,5 +7,5 @@ name = 'std'
 dependencies = ['core']
 
 [[package]]
-name = 'u128_complex_test_pass'
+name = 'u128_mul_test_pass'
 dependencies = ['std']
