@@ -213,7 +213,7 @@ impl core::ops::Multiply for U128 {
         let mut i = 128;
 
         while i >= 0 {
-            total = total << i;
+            total = total << 1;
             if (other & (one << i)) >> i {
                 total = total + self;
             }
@@ -235,8 +235,8 @@ impl core::ops::Divide for U128 {
         let mut i = 128 - 1;
 
         while i >= 0 {
-            quotient = quotient << i;
-            remainder = remainder << i;
+            quotient = quotient << 1;
+            remainder = remainder << 1;
             remainder = remainder | ((self & (one << i)) >> i);
             if remainder >= other {
                 remainder = remainder - other;
