@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'size_of'
+name = 'generate_uid'
 dependencies = ['std']
 
 [[package]]

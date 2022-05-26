@@ -2329,7 +2329,7 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            tracing::error!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            print!("{}", prettydiff::diff_lines(&expected, &asm_script));
             panic!();
         }
     }

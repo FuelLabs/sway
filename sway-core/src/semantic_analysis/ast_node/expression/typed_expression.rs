@@ -233,7 +233,7 @@ impl TypedExpression {
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. } 
+            | TypedExpressionVariant::UnsafeDowncast { .. }
             | TypedExpressionVariant::GenerateUid { .. } => vec![],
         }
     }
