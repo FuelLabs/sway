@@ -45,6 +45,8 @@ pub(crate) fn type_check_method_application(
         ));
     }
 
+    maybe_monomorphize_parent_type(&method_name, &type_arguments, &args_buf, namespace);
+
     let method = check!(
         resolve_method_name(
             &method_name,
@@ -184,8 +186,7 @@ pub(crate) fn type_check_method_application(
         // something like a.b(c)
         MethodName::FromModule { method_name } => {
             let selector = if method.is_contract_call {
-                let contract_address = match contract_caller
-                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
+                let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type))
                 {
                     Some(TypeInfo::ContractCaller { address, .. }) => address,
                     _ => {
@@ -371,4 +372,32 @@ pub(crate) fn resolve_method_name(
         }
     };
     ok(func_decl, warnings, errors)
+}
+
+/// if the method name is fromtype and the type has
+/// generic type parameters, monomorphize the declaration of that type and replace the method name type with
+/// that new definition. Then, monomorphize all the impls for that type.
+///
+/// if the method name is frommodule and the first argument has generic type parameters,
+/// monomorphize that first argument's impls.
+
+fn maybe_monomorphize_parent_type(
+    method_name: &MethodName,
+    type_arguments: &[TypeArgument],
+    args_buf: &VecDeque<TypedExpression>,
+    namespace: &mut Namespace,
+) {
+    match method_name {
+        // like ~Foo::bar()
+        MethodName::FromType {
+            call_path,
+            type_name,
+            ..
+        } => {
+            let type_name: String = type_name;
+        }
+        // like a.b.c(d)
+        MethodName::FromModule { method_name } => todo!(),
+    }
+    todo!()
 }
