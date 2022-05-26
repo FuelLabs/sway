@@ -4,3 +4,6 @@ license = "Apache-2.0"
 name = "match_expressions_wrong_struct"
 entry = "main.sw"
 implicit-std = false
+
+[dependencies]
+core = { path = "../../../../../../sway-lib-core" }

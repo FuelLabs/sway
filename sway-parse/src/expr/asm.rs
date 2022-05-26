@@ -31,14 +31,14 @@ pub struct AsmImmediate {
     pub parsed: BigUint,
 }
 
-impl AsmImmediate {
-    pub fn span(&self) -> Span {
+impl Spanned for AsmImmediate {
+    fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl AsmBlock {
-    pub fn span(&self) -> Span {
+impl Spanned for AsmBlock {
+    fn span(&self) -> Span {
         Span::join(self.asm_token.span(), self.contents.span())
     }
 }

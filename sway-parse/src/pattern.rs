@@ -22,8 +22,8 @@ pub enum Pattern {
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
 }
 
-impl Pattern {
-    pub fn span(&self) -> Span {
+impl Spanned for Pattern {
+    fn span(&self) -> Span {
         match self {
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var { mutable, name } => match mutable {
@@ -45,6 +45,20 @@ impl Parse for Pattern {
             let mutable = Some(mut_token);
             let name = parser.parse()?;
             return Ok(Pattern::Var { mutable, name });
+        }
+        if parser.peek::<TrueToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span().clone(),
+                kind: LitBoolType::True,
+            })));
+        }
+        if parser.peek::<FalseToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span().clone(),
+                kind: LitBoolType::False,
+            })));
         }
         if let Some(literal) = parser.take() {
             return Ok(Pattern::Literal(literal));
@@ -79,8 +93,8 @@ pub struct PatternStructField {
     pub pattern_opt: Option<(ColonToken, Box<Pattern>)>,
 }
 
-impl PatternStructField {
-    pub fn span(&self) -> Span {
+impl Spanned for PatternStructField {
+    fn span(&self) -> Span {
         match &self.pattern_opt {
             Some((_colon_token, pattern)) => {
                 Span::join(self.field_name.span().clone(), pattern.span())

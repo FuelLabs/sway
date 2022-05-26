@@ -1,6 +1,8 @@
 library std;
 
-dep panic;
+dep intrinsics;
+dep revert;
+dep logging;
 dep assert;
 dep option;
 dep result;
@@ -19,5 +21,6 @@ dep token;
 dep ecr;
 dep reentrancy;
 dep vm/mod;
+dep u128;
 
 use core::*;

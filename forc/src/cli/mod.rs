@@ -1,6 +1,6 @@
 use self::commands::{
     addr2line, build, clean, completions, deploy, init, json_abi, parse_bytecode, plugins, run,
-    test, update,
+    template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -14,6 +14,7 @@ pub use json_abi::Command as JsonAbiCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
+pub use template::Command as TemplateCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
 
@@ -35,7 +36,6 @@ enum Forc {
     #[clap(visible_alias = "b")]
     Build(BuildCommand),
     Clean(CleanCommand),
-    #[clap(after_help = completions::COMPLETIONS_HELP)]
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
     Init(InitCommand),
@@ -46,6 +46,7 @@ enum Forc {
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
     Plugins(PluginsCommand),
+    Template(TemplateCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -73,6 +74,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
+        Forc::Template(command) => template::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
             let code = output

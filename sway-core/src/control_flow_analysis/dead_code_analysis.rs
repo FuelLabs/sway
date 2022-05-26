@@ -8,7 +8,7 @@ use crate::{
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, TypedWhileLoop,
+            TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
         TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
@@ -42,13 +42,12 @@ impl ControlFlowGraph {
             .iter()
             .filter_map(|x| match &self.graph[*x] {
                 ControlFlowGraphNode::EnumVariant {
-                    span,
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: span.clone(),
+                    span: variant_name.span().clone(),
                     warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
+                        variant_name: variant_name.clone(),
                     },
                 }),
                 _ => None,
@@ -62,13 +61,12 @@ impl ControlFlowGraph {
                     construct_dead_code_warning_from_node(node)
                 }
                 ControlFlowGraphNode::EnumVariant {
-                    span,
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: span.clone(),
+                    span: variant_name.span().clone(),
                     warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
+                        variant_name: variant_name.clone(),
                     },
                 }),
                 ControlFlowGraphNode::EnumVariant { .. } => None,
@@ -340,15 +338,27 @@ fn connect_declaration(
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
-            &body.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable instantiation",
-            tree_type,
-            body.clone().span,
-        ),
+        VariableDeclaration(TypedVariableDeclaration {
+            name,
+            body,
+            is_mutable,
+            ..
+        }) => {
+            if matches!(is_mutable, VariableMutability::ExportedConst) {
+                graph.namespace.insert_constant(name.clone(), entry_node);
+                Ok(leaves.to_vec())
+            } else {
+                connect_expression(
+                    &body.expression,
+                    graph,
+                    &[entry_node],
+                    exit_node,
+                    "variable instantiation",
+                    tree_type,
+                    body.clone().span,
+                )
+            }
+        }
         ConstantDeclaration(TypedConstantDeclaration { name, .. }) => {
             graph.namespace.insert_constant(name.clone(), entry_node);
             Ok(leaves.to_vec())
@@ -637,7 +647,9 @@ fn connect_expression(
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication {
-            name, arguments, ..
+            call_path: name,
+            arguments,
+            ..
         } => {
             let mut is_external = false;
             // find the function in the namespace
@@ -951,35 +963,6 @@ fn connect_expression(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
-        IfLet {
-            expr, then, r#else, ..
-        } => {
-            let leaves = connect_expression(
-                &expr.expression,
-                graph,
-                leaves,
-                exit_node,
-                "if let expr",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            let then_expr = connect_code_block(then, graph, &leaves, exit_node, tree_type)?;
-
-            let else_expr = if let Some(else_expr) = r#else {
-                connect_expression(
-                    &else_expr.expression,
-                    graph,
-                    &leaves,
-                    exit_node,
-                    "if let: else branch",
-                    tree_type,
-                    (**else_expr).span.clone(),
-                )?
-            } else {
-                vec![]
-            };
-            Ok([then_expr, else_expr].concat())
-        }
         TupleElemAccess { prefix, .. } => {
             let prefix_idx = connect_expression(
                 &prefix.expression,
@@ -1038,6 +1021,24 @@ fn connect_expression(
             Ok(leaves.to_vec())
         }
         FunctionParameter => Ok(leaves.to_vec()),
+        EnumTag { exp } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "enum tag exp",
+            tree_type,
+            exp.span.clone(),
+        ),
+        UnsafeDowncast { exp, .. } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "unsafe downcast exp",
+            tree_type,
+            exp.span.clone(),
+        ),
     }
 }
 

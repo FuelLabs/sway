@@ -21,8 +21,8 @@ pub struct StatementLet {
     pub semicolon_token: SemicolonToken,
 }
 
-impl Statement {
-    pub fn span(&self) -> Span {
+impl Spanned for Statement {
+    fn span(&self) -> Span {
         match self {
             Statement::Let(statement_let) => statement_let.span(),
             Statement::Item(item) => item.span(),
@@ -37,8 +37,8 @@ impl Statement {
     }
 }
 
-impl StatementLet {
-    pub fn span(&self) -> Span {
+impl Spanned for StatementLet {
+    fn span(&self) -> Span {
         Span::join(self.let_token.span(), self.semicolon_token.span())
     }
 }

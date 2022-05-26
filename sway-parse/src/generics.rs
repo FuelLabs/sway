@@ -38,8 +38,8 @@ pub struct GenericArgs {
     pub parameters: AngleBrackets<Punctuated<Ty, CommaToken>>,
 }
 
-impl GenericArgs {
-    pub fn span(&self) -> Span {
+impl Spanned for GenericArgs {
+    fn span(&self) -> Span {
         self.parameters.span()
     }
 }

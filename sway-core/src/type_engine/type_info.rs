@@ -1,15 +1,13 @@
 use super::*;
 
 use crate::{
-    build_config::BuildConfig,
-    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
-    CallPath, Ident, Rule, TypeArgument, TypeParameter,
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
+    CallPath, Ident, TypeArgument, TypeParameter,
 };
 
 use sway_types::span::Span;
 
 use derivative::Derivative;
-use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, Hash, PartialEq)]
@@ -41,26 +39,25 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
+        type_parameters: Vec<TypeParameter>,
         variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
         name: Ident,
+        type_parameters: Vec<TypeParameter>,
         fields: Vec<TypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
-    Ref(TypeId),
+    Ref(TypeId, Span),
 
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
         abi_name: AbiName,
-        // this is raw source code to be evaluated later.
-        // TODO(static span): we can just use `TypedExpression` here or something more elegant
-        // `TypedExpression` requires implementing a lot of `Hash` all over the place, not the
-        // best...
-        address: String,
+        // boxed for size
+        address: Option<Box<TypedExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -122,19 +119,30 @@ impl Hash for TypeInfo {
             TypeInfo::Enum {
                 name,
                 variant_types,
+                type_parameters,
             } => {
                 state.write_u8(8);
                 name.hash(state);
                 variant_types.hash(state);
+                type_parameters.hash(state);
             }
-            TypeInfo::Struct { name, fields } => {
+            TypeInfo::Struct {
+                name,
+                fields,
+                type_parameters,
+            } => {
                 state.write_u8(9);
                 name.hash(state);
                 fields.hash(state);
+                type_parameters.hash(state);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 state.write_u8(10);
                 abi_name.hash(state);
+                let address = address
+                    .as_ref()
+                    .map(|x| x.span.as_str().to_string())
+                    .unwrap_or_default();
                 address.hash(state);
             }
             TypeInfo::Contract => {
@@ -161,7 +169,7 @@ impl Hash for TypeInfo {
                 name.hash(state);
                 type_arguments.hash(state);
             }
-            TypeInfo::Ref(id) => {
+            TypeInfo::Ref(id, _sp) => {
                 state.write_u8(17);
                 look_up_type_id(*id).hash(state);
             }
@@ -229,7 +237,7 @@ impl PartialEq for TypeInfo {
                     ..
                 },
             ) => l_name == r_name && l_fields == r_fields,
-            (Self::Ref(l), Self::Ref(r)) => look_up_type_id(*l) == look_up_type_id(*r),
+            (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
@@ -265,209 +273,6 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
-    pub(crate) fn parse_from_pair(
-        type_name_pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut iter = type_name_pair.into_inner();
-        let input = iter.next().unwrap();
-        let span = Span::from_pest(
-            input.as_span(),
-            config.map(|config| config.dir_of_code.clone()),
-        );
-        let type_info = match input.as_rule() {
-            Rule::str_type => {
-                let type_info = check!(
-                    parse_str_type(input.as_str(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                type_info
-            }
-            Rule::ident => {
-                let type_info = check!(
-                    TypeInfo::pair_as_str_to_type_info(input, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                match iter.next() {
-                    Some(types) => match type_info {
-                        TypeInfo::Custom { name, .. } => {
-                            let type_arguments = check!(
-                                TypeArgument::parse_arguments_from_pair(types, config),
-                                vec!(),
-                                warnings,
-                                errors
-                            );
-                            TypeInfo::Custom {
-                                name,
-                                type_arguments,
-                            }
-                        }
-                        _ => unimplemented!(),
-                    },
-                    None => type_info,
-                }
-            }
-            Rule::contract_caller_type => check!(
-                parse_contract_caller_type(input, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            Rule::array_type => {
-                let mut array_inner_iter = input.into_inner();
-                let elem_type_info = match array_inner_iter.next() {
-                    None => {
-                        errors.push(CompileError::Internal(
-                            "Missing array element type while parsing array type.",
-                            span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                    Some(array_elem_type_pair) => {
-                        check!(
-                            Self::parse_from_pair(array_elem_type_pair, config),
-                            TypeInfo::ErrorRecovery,
-                            warnings,
-                            errors
-                        )
-                    }
-                };
-                let elem_count: usize = match array_inner_iter.next() {
-                    None => {
-                        errors.push(CompileError::Internal(
-                            "Missing array element count while parsing array type.",
-                            span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                    Some(array_elem_count_pair) => {
-                        match array_elem_count_pair.as_rule() {
-                            Rule::basic_integer => {
-                                // Parse the count directly to a usize.
-                                check!(
-                                    array_elem_count_pair
-                                        .as_str()
-                                        .trim()
-                                        .replace('_', "")
-                                        .parse::<usize>()
-                                        // Could probably just .unwrap() here since it will succeed.
-                                        .map_or_else(
-                                            |_err| {
-                                                err(
-                                                    Vec::new(),
-                                                    vec![CompileError::Internal(
-                                                        "Failed to parse array elem count as \
-                                                        integer while parsing array type.",
-                                                        span,
-                                                    )],
-                                                )
-                                            },
-                                            |count| ok(count, Vec::new(), Vec::new()),
-                                        ),
-                                    return err(warnings, errors),
-                                    warnings,
-                                    errors
-                                )
-                            }
-                            _otherwise => {
-                                errors.push(CompileError::Internal(
-                                    "Unexpected token for array element count \
-                                    while parsing array type.",
-                                    span,
-                                ));
-                                return err(warnings, errors);
-                            }
-                        }
-                    }
-                };
-                TypeInfo::Array(insert_type(elem_type_info), elem_count)
-            }
-            Rule::tuple_type => {
-                let fields = check!(
-                    TypeArgument::parse_arguments_from_pair(input, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                TypeInfo::Tuple(fields)
-            }
-            _ => {
-                errors.push(CompileError::Internal(
-                    "Unexpected token while parsing inner type.",
-                    span,
-                ));
-                return err(warnings, errors);
-            }
-        };
-        ok(type_info, warnings, errors)
-    }
-
-    pub(crate) fn parse_from_type_param_pair(
-        input: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let type_info = match input.as_rule() {
-            Rule::type_param => check!(
-                Self::pair_as_str_to_type_info(input, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            _ => {
-                let span = Span::from_pest(
-                    input.as_span(),
-                    config.map(|config| config.dir_of_code.clone()),
-                );
-                errors.push(CompileError::Internal(
-                    "Unexpected token while parsing type.",
-                    span,
-                ));
-                return err(warnings, errors);
-            }
-        };
-        ok(type_info, warnings, errors)
-    }
-
-    pub fn pair_as_str_to_type_info(
-        input: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
-        let warnings = vec![];
-        let errors = vec![];
-        let span = Span::from_pest(
-            input.as_span(),
-            config.map(|config| config.dir_of_code.clone()),
-        );
-        ok(
-            match input.as_str().trim() {
-                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                "bool" => TypeInfo::Boolean,
-                "unit" => TypeInfo::Tuple(Vec::new()),
-                "byte" => TypeInfo::Byte,
-                "b256" => TypeInfo::B256,
-                "Self" | "self" => TypeInfo::SelfType,
-                "Contract" => TypeInfo::Contract,
-                _other => TypeInfo::Custom {
-                    name: Ident::new(span),
-                    type_arguments: vec![],
-                },
-            },
-            warnings,
-            errors,
-        )
-    }
-
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {
@@ -483,7 +288,7 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -532,7 +337,7 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -643,6 +448,14 @@ impl TypeInfo {
 
                 format!("e({})", variant_names.join(","))
             }
+            Array(type_id, size) => {
+                let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
+                let name = match name.value {
+                    Some(name) => name,
+                    None => return name,
+                };
+                format!("a[{};{}]", name, size)
+            }
             _ => {
                 return err(
                     vec![],
@@ -659,7 +472,8 @@ impl TypeInfo {
         Ok(self.size_in_words(err_span)? * 8)
     }
 
-    /// Calculates the stack size of this type, to be used when allocating stack memory for it.
+    /// Calculates the stack size of this type in words,
+    /// to be used when allocating stack memory for it.
     pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
@@ -713,7 +527,7 @@ impl TypeInfo {
                 ty: self.friendly_type_str(),
                 span: err_span.clone(),
             }),
-            TypeInfo::Ref(id) => look_up_type_id(*id).size_in_words(err_span),
+            TypeInfo::Ref(id, _sp) => look_up_type_id(*id).size_in_words(err_span),
             TypeInfo::Array(elem_ty, count) => {
                 Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
             }
@@ -841,34 +655,61 @@ impl TypeInfo {
                 }
                 None
             }
-            TypeInfo::Struct { fields, name } => {
+            TypeInfo::Struct {
+                fields,
+                name,
+                type_parameters,
+            } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
                     if let Some(matching_id) =
                         look_up_type_id(new_field.r#type).matches_type_parameter(mapping)
                     {
-                        new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
+                        new_field.r#type =
+                            insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
+                    }
+                }
+                let mut new_type_parameters = type_parameters.clone();
+                for new_param in new_type_parameters.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                    {
+                        new_param.type_id =
+                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
                 Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
+                    type_parameters: new_type_parameters,
                 }))
             }
             TypeInfo::Enum {
                 variant_types,
                 name,
+                type_parameters,
             } => {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
                     if let Some(matching_id) =
                         look_up_type_id(new_variant.r#type).matches_type_parameter(mapping)
                     {
-                        new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
+                        new_variant.r#type =
+                            insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
+                    }
+                }
+                let mut new_type_parameters = type_parameters.clone();
+                for new_param in new_type_parameters.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                    {
+                        new_param.type_id =
+                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
                 Some(insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
+                    type_parameters: new_type_parameters,
                     name: name.clone(),
                 }))
             }
@@ -884,7 +725,10 @@ impl TypeInfo {
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         new_fields.push(TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            type_id: insert_type(TypeInfo::Ref(
+                                new_field_id,
+                                fields[index].span.clone(),
+                            )),
                             span: fields[index].span.clone(),
                         });
                         index += 1;
@@ -897,7 +741,10 @@ impl TypeInfo {
                         .matches_type_parameter(mapping)
                     {
                         Some(new_field_id) => TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(new_field_id)),
+                            type_id: insert_type(TypeInfo::Ref(
+                                new_field_id,
+                                fields[index].span.clone(),
+                            )),
                             span: fields[index].span.clone(),
                         },
                         None => fields[index].clone(),
@@ -926,6 +773,254 @@ impl TypeInfo {
             | ErrorRecovery => None,
         }
     }
+
+    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// supported in match expressions, and return an error if it is not.
+    pub(crate) fn expect_is_supported_in_match_expressions(
+        &self,
+        span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypeInfo::Ref(type_id, _) => {
+                look_up_type_id(*type_id).expect_is_supported_in_match_expressions(span)
+            }
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Enum { .. }
+            | TypeInfo::Struct { .. }
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric => ok((), warnings, errors),
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Str(_)
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Array(_, _)
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "matching on this type is unsupported right now",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, analyze `self` and return all nested
+    /// `TypeInfo`'s found in `self`, including `self`.
+    pub(crate) fn extract_nested_types(self, span: &Span) -> CompileResult<Vec<TypeInfo>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut all_nested_types = vec![self.clone()];
+        match self {
+            TypeInfo::Enum { variant_types, .. } => {
+                for variant_type in variant_types.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(variant_type.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Struct { fields, .. } => {
+                for field in fields.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Ref(type_id, _) => {
+                let mut nested_types = check!(
+                    look_up_type_id(type_id).extract_nested_types(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                all_nested_types.append(&mut nested_types);
+            }
+            TypeInfo::Tuple(type_arguments) => {
+                for type_argument in type_arguments.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_argument.type_id).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Array(type_id, _) => {
+                let mut nested_types = check!(
+                    look_up_type_id(type_id).extract_nested_types(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                all_nested_types.append(&mut nested_types);
+            }
+            TypeInfo::Storage { fields } => {
+                for field in fields.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery => {}
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+                errors.push(CompileError::Internal(
+                    "did not expect to find this type here",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
+        }
+        ok(all_nested_types, warnings, errors)
+    }
+
+    /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
+    /// iterate through the elements of `subfields` as `subfield`,
+    /// and recursively apply `subfield` to `self`.
+    ///
+    /// Returns a `TypedStructField` when all `subfields` could be
+    /// applied without error.
+    ///
+    /// Returns an error when subfields could not be applied:
+    /// 1) in the case where `self` is not a `TypeInfo::Struct`
+    /// 2) in the case where `subfields` is empty
+    /// 3) in the case where a `subfield` does not exist on `self`
+    pub(crate) fn apply_subfields(
+        &self,
+        subfields: &[Ident],
+        span: &Span,
+    ) -> CompileResult<TypedStructField> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match (self, subfields.split_first()) {
+            (TypeInfo::Struct { .. }, None) => err(warnings, errors),
+            (TypeInfo::Struct { name, fields, .. }, Some((first, rest))) => {
+                let field = match fields
+                    .iter()
+                    .find(|field| field.name.as_str() == first.as_str())
+                {
+                    Some(field) => field.clone(),
+                    None => {
+                        // gather available fields for the error message
+                        let available_fields =
+                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
+                        errors.push(CompileError::FieldNotFound {
+                            field_name: first.clone(),
+                            struct_name: name.clone(),
+                            available_fields: available_fields.join(", "),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let field = if rest.is_empty() {
+                    field
+                } else {
+                    check!(
+                        look_up_type_id(field.r#type).apply_subfields(rest, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                };
+                ok(field, warnings, errors)
+            }
+            (TypeInfo::ErrorRecovery, _) => {
+                // dont create a new error in this case
+                err(warnings, errors)
+            }
+            (type_info, _) => {
+                errors.push(CompileError::FieldAccessOnNonStruct {
+                    actually: type_info.friendly_type_str(),
+                    span: span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Tuple`.
+    pub(crate) fn expect_tuple(
+        &self,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<&Vec<TypeArgument>> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotATuple {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Enum`.
+    pub(crate) fn expect_enum(
+        &self,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedEnumVariant>)> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Enum {
+                name,
+                variant_types,
+                ..
+            } => ok((name, variant_types), warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotAnEnum {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
@@ -936,41 +1031,5 @@ fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) ->
             .map(|x| x.friendly_type_str())
             .collect::<Vec<_>>()
             .join(", ")
-    )
-}
-
-fn parse_contract_caller_type(
-    raw: Pair<Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<TypeInfo> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let abi_path = match raw.into_inner().next() {
-        Some(x) => x,
-        None => {
-            return ok(
-                TypeInfo::ContractCaller {
-                    address: Default::default(),
-                    abi_name: AbiName::Deferred,
-                },
-                warnings,
-                errors,
-            )
-        }
-    };
-    let abi_path = check!(
-        CallPath::parse_from_pair(abi_path, config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    ok(
-        TypeInfo::ContractCaller {
-            address: Default::default(),
-            abi_name: AbiName::Known(abi_path),
-        },
-        warnings,
-        errors,
     )
 }

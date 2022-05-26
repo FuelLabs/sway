@@ -12,14 +12,20 @@ pub(crate) struct TypedCodeBlock {
     pub(crate) whole_block_span: Span,
 }
 
+impl CopyTypes for TypedCodeBlock {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
     pub(crate) fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())
     }
-    pub fn span(&self) -> &Span {
-        &self.whole_block_span
-    }
+
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
@@ -29,7 +35,6 @@ impl TypedCodeBlock {
         let TypeCheckArguments {
             checkee: other,
             namespace,
-            crate_namespace,
             return_type_annotation: type_annotation,
             help_text,
             self_type,
@@ -39,17 +44,15 @@ impl TypedCodeBlock {
             ..
         } = arguments;
 
-        // Mutable clone, because the interior of a code block must not change the surrounding
-        // namespace.
-        let local_namespace = create_new_scope(namespace);
+        // Create a temp namespace for checking within the code block scope.
+        let mut code_block_namespace = namespace.clone();
         let evaluated_contents = other
             .contents
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
-                    namespace: local_namespace,
-                    crate_namespace,
+                    namespace: &mut code_block_namespace,
                     return_type_annotation: type_annotation,
                     help_text,
                     self_type,
@@ -109,11 +112,5 @@ impl TypedCodeBlock {
             warnings,
             errors,
         )
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
     }
 }

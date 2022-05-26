@@ -1,7 +1,15 @@
 // ANCHOR: body
 contract;
 
-use std::{address::Address, assert::assert, chain::auth::{AuthError, Sender, msg_sender}, hash::*, panic::panic, result::*, storage::{get, store}};
+use std::{
+    address::Address,
+    assert::assert,
+    chain::auth::{AuthError, Sender, msg_sender},
+    hash::sha256,
+    result::*,
+    revert::revert,
+    storage::{get, store}
+};
 
 ////////////////////////////////////////
 // Event declarations
@@ -61,11 +69,11 @@ impl Token for Contract {
         let sender = if let Sender::Address(addr) = sender.unwrap() {
             assert(addr.into() == MINTER);
         } else {
-            panic(0);
+            revert(0);
         };
 
         // Increase the balance of receiver
-        let storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
+        let storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
         let mut receiver_amount = get::<u64>(storage_slot);
         store(storage_slot, receiver_amount + amount);
     }
@@ -75,17 +83,17 @@ impl Token for Contract {
         let sender = if let Sender::Address(addr) = sender.unwrap() {
             addr
         } else {
-            panic(0);
+            revert(0);
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = hash_pair(STORAGE_BALANCES, sender.into(), HashMethod::Sha256);
+        let sender_storage_slot = sha256((STORAGE_BALANCES, sender.into()));
         let mut sender_amount = get::<u64>(sender_storage_slot);
         assert(sender_amount > amount);
         store(sender_storage_slot, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, receiver.into(), HashMethod::Sha256);
+        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
         let mut receiver_amount = get::<u64>(receiver_storage_slot);
         store(receiver_storage_slot, receiver_amount + amount);
     }

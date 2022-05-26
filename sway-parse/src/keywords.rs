@@ -7,8 +7,8 @@ macro_rules! define_keyword (
             span: Span,
         }
 
-        impl $ty_name {
-            pub fn span(&self) -> Span {
+        impl Spanned for $ty_name {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
         }
@@ -49,7 +49,6 @@ define_keyword!(StructToken, "struct");
 define_keyword!(EnumToken, "enum");
 define_keyword!(SelfToken, "self");
 define_keyword!(FnToken, "fn");
-define_keyword!(ImpureToken, "impure");
 define_keyword!(TraitToken, "trait");
 define_keyword!(ImplToken, "impl");
 define_keyword!(ForToken, "for");
@@ -68,6 +67,8 @@ define_keyword!(WhileToken, "while");
 define_keyword!(WhereToken, "where");
 define_keyword!(RefToken, "ref");
 define_keyword!(DerefToken, "deref");
+define_keyword!(TrueToken, "true");
+define_keyword!(FalseToken, "false");
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
@@ -76,11 +77,13 @@ macro_rules! define_token (
             span: Span,
         }
 
-        impl $ty_name {
-            pub fn span(&self) -> Span {
+        impl Spanned for  $ty_name {
+            fn span(&self) -> Span {
                 self.span.clone()
             }
+        }
 
+        impl $ty_name {
             pub fn ident(&self) -> Ident {
                 Ident::new(self.span())
             }
@@ -192,3 +195,4 @@ define_token!(
 );
 define_token!(DoublePipeToken, "`||`", [Pipe, Pipe], [Pipe]);
 define_token!(UnderscoreToken, "`_`", [Underscore], [Underscore]);
+define_token!(HashToken, "`#`", [Sharp], []);

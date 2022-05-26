@@ -59,7 +59,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     };
 
     if build_config.print_intermediate_asm {
-        println!("{}", asm);
+        tracing::info!("{}", asm);
     }
 
     let finalized_asm = asm
@@ -68,7 +68,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         .optimize();
 
     if build_config.print_finalized_asm {
-        println!("{}", finalized_asm);
+        tracing::info!("{}", finalized_asm);
     }
 
     check!(
@@ -1058,6 +1058,15 @@ impl<'ir> AsmBuilder<'ir> {
                             &instr_reg,
                             instr_val.get_span(self.context),
                         );
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADD(
+                                instr_reg.clone(),
+                                self.stack_base_reg.as_ref().unwrap().clone(),
+                                instr_reg.clone(),
+                            )),
+                            comment: "get offset reg for get_ptr".into(),
+                            owning_span: instr_val.get_span(self.context),
+                        });
                     } else {
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADDI(
@@ -1067,7 +1076,7 @@ impl<'ir> AsmBuilder<'ir> {
                                     value: (offset_in_bytes) as u16,
                                 },
                             )),
-                            comment: "get_ptr".into(),
+                            comment: "get offset reg for get_ptr".into(),
                             owning_span: instr_val.get_span(self.context),
                         });
                     }
@@ -1973,7 +1982,7 @@ impl<'ir> AsmBuilder<'ir> {
             ConstantValue::Bool(_) => 8,
             ConstantValue::Uint(_) => 8,
             ConstantValue::B256(_) => 32,
-            ConstantValue::String(_) => 8,
+            ConstantValue::String(v) => size_bytes_round_up_to_word_alignment!(v.len() as u64),
             ConstantValue::Array(elems) => {
                 if elems.is_empty() {
                     0
@@ -1994,6 +2003,7 @@ impl<'ir> AsmBuilder<'ir> {
         offs_in_words: u64,
         span: Option<Span>,
     ) -> u64 {
+        let constant_size = self.constant_size_in_bytes(constant);
         match &constant.value {
             ConstantValue::Undef => {
                 // We don't need to actually create an initialiser, but we do need to return the
@@ -2019,7 +2029,7 @@ impl<'ir> AsmBuilder<'ir> {
 
                 // Write the initialiser to memory.  Most Literals are 1 word, B256 is 32 bytes and
                 // needs to use a MCP instruction.
-                if matches!(lit, Literal::B256(_)) {
+                if matches!(lit, Literal::B256(_)) || matches!(lit, Literal::String(_)) {
                     let offs_reg = self.reg_seqr.next();
                     if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
                         self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
@@ -2049,13 +2059,15 @@ impl<'ir> AsmBuilder<'ir> {
                         opcode: Either::Left(VirtualOp::MCPI(
                             offs_reg,
                             init_reg,
-                            VirtualImmediate12 { value: 32 },
+                            VirtualImmediate12 {
+                                value: constant_size as u16,
+                            },
                         )),
                         comment: "initialise aggregate field".into(),
                         owning_span: span,
                     });
 
-                    4 // 32 bytes is 4 words.
+                    constant_size / 8
                 } else {
                     if offs_in_words > compiler_constants::TWELVE_BITS {
                         let offs_reg = self.reg_seqr.next();
@@ -2245,7 +2257,7 @@ mod tests {
                     //
                     // Run the tests!
                     //
-                    println!("---- IR To ASM: {:?} ----", path);
+                    tracing::info!("---- IR To ASM: {:?} ----", path);
                     test_ir_to_asm(path);
                 }
                 Some("asm") | Some("disabled") => (),
@@ -2274,7 +2286,6 @@ mod tests {
                 dir_of_code: std::sync::Arc::new("".into()),
                 manifest_path: std::sync::Arc::new("".into()),
                 use_orig_asm: false,
-                use_orig_parser: false,
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,
@@ -2289,7 +2300,7 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            println!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            tracing::error!("{}", prettydiff::diff_lines(&expected, &asm_script));
             panic!();
         }
     }

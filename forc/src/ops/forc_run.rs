@@ -10,6 +10,7 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
+use tracing::info;
 
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
@@ -27,7 +28,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let build_command = BuildCommand {
         path: command.path,
         use_orig_asm: command.use_orig_asm,
-        use_orig_parser: command.use_orig_parser,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,
@@ -37,6 +37,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         silent_mode: command.silent_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
+        locked: command.locked,
     };
 
     let compiled = forc_build::build(build_command)?;
@@ -52,7 +53,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     );
 
     if command.dry_run {
-        println!("{:?}", tx);
+        info!("{:?}", tx);
         Ok(vec![])
     } else {
         let node_url = match &manifest.network {
@@ -89,9 +90,9 @@ async fn send_tx(
     {
         Ok(logs) => {
             if pretty_print {
-                println!("{:#?}", logs);
+                info!("{:#?}", logs);
             } else {
-                println!("{:?}", logs);
+                info!("{:?}", logs);
             }
             Ok(logs)
         }

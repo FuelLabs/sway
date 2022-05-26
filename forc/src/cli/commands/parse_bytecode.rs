@@ -4,6 +4,7 @@ use std::fs::{self, File};
 use std::io::Read;
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
+use tracing::info;
 
 /// Parse bytecode file into a debug format.
 #[derive(Debug, Parser)]
@@ -41,8 +42,9 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     for (word_ix, instruction) in instructions.iter().enumerate() {
         use fuel_asm::Opcode::*;
         let notes = match instruction.1 {
-            JI(num) => format!("conditionally jumps to byte {}", num * 4),
-            JNEI(_, _, num) => format!("conditionally jumps to byte {}", num * 4),
+            JI(num) => format!("jump to byte {}", num * 4),
+            JNEI(_, _, num) => format!("conditionally jump to byte {}", num * 4),
+            JNZI(_, num) => format!("conditionally jump to byte {}", num * 4),
             Undefined if word_ix == 2 || word_ix == 3 => {
                 let parsed_raw = u32::from_be_bytes([
                     instruction.0[0],
@@ -70,7 +72,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         ]));
     }
 
-    println!("{}", table.render());
+    info!("{}", table.render());
 
     Ok(())
 }

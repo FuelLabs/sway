@@ -52,7 +52,7 @@ pub(crate) fn convert_contract_call_to_asm(
                     struct_name: Ident::new_with_override("bundled_arguments", span.clone()),
                     fields: typed_fields_buf,
                 },
-                return_type: 0,
+                return_type: 0.into(),
                 is_constant: IsConstant::No,
                 span: span.clone(),
             })

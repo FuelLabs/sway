@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "array_of_structs_caller"
+
+[dependencies]
+array_of_structs_abi = { path = "../../test_abis/array_of_structs_abi" }
+std = { path = "../../../../../../../sway-lib-std" }

@@ -4,7 +4,7 @@ use super::*;
 use crate::{
     asm_lang::*,
     error::*,
-    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, Literal, UnaryOp},
+    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, Literal},
     semantic_analysis::{
         ast_node::{
             TypedAsmRegisterDeclaration, TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant,
