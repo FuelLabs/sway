@@ -2,6 +2,29 @@
 
 Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-lsp`, `forc-explore`), anyone can write their own!
 
+Let's install a plugin, `forc-explore`, and see what's underneath the plugin:
+
+```sh
+cargo install forc-explore
+```
+
+Check that we have installed `forc-explore`:
+
+```console
+$ forc plugins
+Installed Plugins:
+forc-explore
+```
+
+`forc-explore` runs the Forc Network Explorer, which you can run and check out for yourself:
+
+```console
+$ forc explore
+Fuel Network Explorer 0.1.1
+Running server on http://127.0.0.1:3030
+Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
+```
+
 ## Writing your own plugin
 
 We encourage anyone to write and publish their own `forc` plugin to enhance their development experience.
