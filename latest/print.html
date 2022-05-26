@@ -2297,60 +2297,21 @@ will be used</p>
 <p>The command above fetches the HEAD of the <code>sway</code> repo and searchs for <code>counter</code> example inside it (There is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and preapare a new <code>Forc.toml</code> with new project name. Outputs everthing to <code>current_dir/project_name</code>..</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 <p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
-<p>Let's install a starter plugin, <code>forc-gm</code>, and take a look at how it works underneath:</p>
-<pre><code class="language-sh">cargo install forc-gm
+<p>Let's install a plugin, <code>forc-explore</code>, and see what's underneath the plugin:</p>
+<pre><code class="language-sh">cargo install forc-explore
 </code></pre>
-<p>Check that we have installed <code>forc-gm</code>:</p>
+<p>Check that we have installed <code>forc-explore</code>:</p>
 <pre><code class="language-console">$ forc plugins
-/Users/&lt;USER&gt;/.cargo/bin/forc-gm
+Installed Plugins:
+forc-explore
 </code></pre>
-<p>Underneath, <code>forc-gm</code> is a simple CLI app, with <a href="https://docs.rs/clap/latest/clap/">clap</a> as the only dependency:</p>
-<pre><pre class="playground"><code class="language-rust edition2021">//! A sample `forc` plugin that greets you!
-//!
-//! Once installed and available via `PATH`, can be executed via `forc gm`.
-
-use clap::Parser;
-
-#[derive(Debug, Parser)]
-#[clap(
-    name = &quot;forc-gm&quot;,
-    about = &quot;Sample Forc plugin that greets you!&quot;,
-    version
-)]
-struct App {
-    #[clap(subcommand)]
-    pub subcmd: Option&lt;Subcommand&gt;,
-}
-
-#[derive(Debug, Parser)]
-enum Subcommand {
-    /// Say 'gm' to Fuel!
-    Fuel,
-}
-
-fn main() {
-    let app = App::parse();
-
-    match app.subcmd {
-        Some(Subcommand::Fuel) =&gt; greet_fuel(),
-        None =&gt; greet(),
-    }
-}
-
-fn greet_fuel() {
-    println!(&quot;gn from Fuel!&quot;);
-}
-
-fn greet() {
-    println!(&quot;gn!&quot;);
-}
-</code></pre></pre>
-<p>You can say gm, or you can greet Fuel:</p>
-<pre><code class="language-console">$ forc gm
-gn!
-$ forc gm fuel
-gn from Fuel!
+<p><code>forc-explore</code> runs the Fuel Network Explorer, which you can run and check out for yourself:</p>
+<pre><code class="language-console">$ forc explore
+Fuel Network Explorer 0.1.1
+Running server on http://127.0.0.1:3030
+Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 </code></pre>
+<p>You can visit http://127.0.0.1:3030 to check out the network explorer!</p>
 <h2 id="writing-your-own-plugin"><a class="header" href="#writing-your-own-plugin">Writing your own plugin</a></h2>
 <p>We encourage anyone to write and publish their own <code>forc</code> plugin to enhance their development experience.</p>
 <p>Your plugin must be named in the format <code>forc-&lt;MY_PLUGIN&gt;</code> and you may use the above template as a starting point. You can use <a href="https://docs.rs/clap/latest/clap/">clap</a> and add more subcommands, options and configurations to suit your plugin's needs.</p>
