@@ -145,13 +145,14 @@ impl TextDocument {
                 //eprintln!("token = {:#?}", token);
 
                 // Look up the tokens TypeId
-                let type_id = ttt::type_id(token);
-                eprintln!("type_id = {:#?}", type_id);
+                if let Some(type_id) = ttt::type_id(token) {
+                    eprintln!("type_id = {:#?}", type_id);
 
-                // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                eprintln!("type_info = {:#?}", type_info);
-
+                    // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
+                    let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                    eprintln!("type_info = {:#?}", type_info);
+                }
+                
                 // Find the ident / span on the returned type
     
                 // Contruct a go_to LSP request from the declerations span

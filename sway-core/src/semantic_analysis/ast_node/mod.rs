@@ -13,12 +13,12 @@ use sway_types::{span::Span, state::StateIndex};
 use derivative::Derivative;
 use std::sync::Arc;
 
-use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
+pub use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
 
-pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
+pub use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
-use declaration::TypedTraitFn;
+pub use declaration::TypedTraitFn;
 
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,

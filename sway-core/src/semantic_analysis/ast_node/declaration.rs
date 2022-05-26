@@ -374,9 +374,9 @@ impl TypedDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
-    pub(crate) name: Ident,
+    pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub(crate) interface_surface: Vec<TypedTraitFn>,
+    pub interface_surface: Vec<TypedTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
@@ -437,7 +437,7 @@ impl CopyTypes for TypedTraitDeclaration {
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,

@@ -6,7 +6,8 @@ use sway_types::{
     span::Span,
 };
 use sway_core::semantic_analysis::ast_node::{
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    {TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructField, 
+    TypedEnumVariant, TypedTraitFn, TypedStorageField, TypeCheckedStorageReassignDescriptor, ReassignmentLhs},
     expression::{
         typed_expression::TypedExpression,
         typed_expression_variant::TypedExpressionVariant,
@@ -16,6 +17,33 @@ use sway_core::semantic_analysis::ast_node::{
 use sway_core::type_engine::TypeId;
 use sway_core::parse_tree::literal::Literal;
 use tower_lsp::lsp_types::{Position, Range, SymbolKind};
+
+
+// #[derive(Debug, Clone)]
+// pub struct TypedIdent {
+//     pub name: Ident,
+//     pub r#type: TypeId,
+// }
+
+// pub struct Token {
+//     TypedIdent(TypedIdent),
+//     TypedAstNodeContent(TypedAstNodeContent),
+// }
+
+#[derive(Debug, Clone)]
+enum TokenType {
+    TypedDeclaration(TypedDeclaration),
+    TypedExpression(TypedExpression),
+
+    TypedFunctionDeclaration(TypedFunctionDeclaration),
+    TypedFunctionParameter(TypedFunctionParameter),
+    TypedStructField(TypedStructField),
+    TypedEnumVariant(TypedEnumVariant),
+    TypedTraitFn(TypedTraitFn),
+    TypedStorageField(TypedStorageField),
+    TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
+    ReassignmentLhs(ReassignmentLhs),
+}
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
     match &node.content {
@@ -29,6 +57,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut BTreeMap<Ident, TypedAstN
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
+    //eprintln!("DECLARATION = {:#?}", declaration);
     match declaration {
         TypedDeclaration::VariableDeclaration(variable) => {
             tokens.insert(variable.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
@@ -81,7 +110,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut BTreeMap<Iden
                 }
             }
         }  
-        TypedDeclaration::AbiDeclaration(_abi_decl) => {}  
+        TypedDeclaration::AbiDeclaration(abi_decl) => {
+            tokens.insert(abi_decl.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            for trait_fn in &abi_decl.interface_surface {
+                tokens.insert(trait_fn.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            }
+        }  
         TypedDeclaration::GenericTypeForFunctionScope{name} => {
             tokens.insert(name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
         }  
@@ -208,23 +242,25 @@ fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut BTreeMap<Ident, T
     }
 }
 
-pub fn type_id(typed_ast_node: &TypedAstNodeContent) -> TypeId {
+pub fn type_id(typed_ast_node: &TypedAstNodeContent) -> Option<TypeId> {
+    eprintln!("typed_ast_node = {:#?}", typed_ast_node);
+
     match typed_ast_node {
         TypedAstNodeContent::Declaration(dec) => {
             match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
-                    var_decl.type_ascription
+                    Some(var_decl.type_ascription)
                 },
                 TypedDeclaration::ConstantDeclaration(const_decl) => {
-                    const_decl.value.return_type
+                    Some(const_decl.value.return_type)
                 },
-                _ => todo!(),
+                _ => None,
             }
         }
         TypedAstNodeContent::Expression(exp) => {
-            exp.return_type
+            Some(exp.return_type)
         }
-        _ => todo!(),
+        _ => None,
     }
 }
 
@@ -302,7 +338,7 @@ pub fn debug_print_ident(ident: &Ident, token: &TypedAstNodeContent) {
         line_num,
         ident.as_str(),
         ast_node_type(&token),
-        "",//type_id(&token),
+        type_id(&token),
     );
 }
 
