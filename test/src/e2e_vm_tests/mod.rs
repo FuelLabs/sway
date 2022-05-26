@@ -124,6 +124,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/stdlib/b512_struct_alignment",
             ProgramState::Return(1), // true
         ),
+        (
+            "should_pass/stdlib/contract_id_type",
+            ProgramState::Return(1),
+        ), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
         ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
