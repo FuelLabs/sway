@@ -568,77 +568,52 @@ impl Shiftable for b256 {
         let w = shift_amount.divide(64); // num of whole words to shift in addition to b
         let b = shift_amount.modulo(64); // num of bits to shift within each word
 
-        match w {
-            0 => {
-                // we need to preserve the carry for each word here
-                w1 = word_1.lsh(b);
-                let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
-                w1 = w1.add(carry_2);
-                w2 = shifted_2;
-                let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
-                w2 = w2.add(carry_3);
-                w3 = shifted_3;
-                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
-                w3 = w3.add(carry_4);
-                w4 = shifted_4
-            },
-            1 => {
-                // discard the carry for first shift
-                w1 = word_2.lsh(b);
-                let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
-                w2 = shifted_3;
-                w1 = w1.add(carry_3);
-                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
-                w3 = shifted_4;
-                w2 = w2.add(carry_4);
-                w4 = 0; // don't need to do this, already 0 !
-            },
-            2 => {
-                // discard the carry for first shift
-                w1 = word_3.lsh(b);
-                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
-                w2 = shifted_4;
-                w1 = w1.add(carry_4);
-                w3 = 0; // don't need to do this, already 0 !
-                w4 = 0; // don't need to do this, already 0 !
+        // TODO: Use generalized looping version when vec lands !
+        if w.eq(0) {
+            // we need to preserve the carry for each word here
+            w1 = word_1.lsh(b);
+            let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
+            w1 = w1.add(carry_2);
+            w2 = shifted_2;
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            w2 = w2.add(carry_3);
+            w3 = shifted_3;
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            w3 = w3.add(carry_4);
+            w4 = shifted_4
+        } else if w.eq(1) {
+            // discard the carry for first shift
+            w1 = word_2.lsh(b);
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            w2 = shifted_3;
+            w1 = w1.add(carry_3);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            w3 = shifted_4;
+            w2 = w2.add(carry_4);
+            w4 = 0; // don't need to do this, already 0 !
+        } else if w.eq(2) {
+            // discard the carry for first shift
+            w1 = word_3.lsh(b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            w2 = shifted_4;
+            w1 = w1.add(carry_4);
+            w3 = 0; // don't need to do this, already 0 !
+            w4 = 0; // don't need to do this, already 0 !
 
-            },
-            3 => {
-                // discard the carry for first shift
-                w1 = word_4.lsh(b);
-                w2 = 0;
-                w3 = 0;
-                w4 = 0;
-            },
-            _ => {
-                // shift is >= 256 !!!
-                ();
-            },
-        }
-
-        /** TODO: Use generalized looping version when vec lands
-
-        let words: [u64; 4] = [w1, w2, w3, w4];
-        let mut new_words: [u64; 4] = [0, 0, 0, 0];
-
-        // @todo use a vec! here. mutable arrays are not possible yet.
-        // https://github.com/FuelLabs/sway/issues/428
-        // we don't need the the carry here
-        new_words.0 = words[w].lsh(b);
-        let mut i = 1;
-        let mut next = w.add(1);
-
-        while i.lt(4) {
-            let (shifted, carry) = lsh_with_carry(words[next], b);
-            let mut carry_destination = new_words[i.subtract(1)];
-            new_words.i = shifted;
-            carry_destination = carry_destination.add(carry);
-            i = 1.add(1);
-            next = next.add(1);
-        }
-
-        */
-        // compose(new_words.0, new_words.1, new_words.2, new_words.3)
+        } else if w.eq(3) {
+            // discard the carry for first shift
+            w1 = word_4.lsh(b);
+            w2 = 0;
+            w3 = 0;
+            w4 = 0;
+        } else {
+            // shift is >= 256 !!!
+            // ();
+            w1 = 0;
+            w2 = 0;
+            w3 = 0;
+            w4 = 0;
+        };
 
         compose(w1, w2, w3, w4)
     }
