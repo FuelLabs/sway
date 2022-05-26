@@ -315,12 +315,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --release --path ./forc
       - name: Install Forc fmt
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-plugins/forc-fmt
+          args: --release --path ./forc-plugins/forc-fmt
       - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
@@ -332,7 +332,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     needs: cancel-previous-runs
