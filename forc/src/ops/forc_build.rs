@@ -44,7 +44,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     // Load the build plan from the lock file.
     let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
     let mut old_plan = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG)
-        .or_else(|_| pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, command.offline_mode))?;
+        .or_else(|_| pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline))?;
 
     // Retrieve the old lock file state so we can produce a diff.
     let old_lock = plan_result
@@ -71,7 +71,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         } else {
             e
         };
-        let plan = old_plan.from_old_manifest(&manifest, SWAY_GIT_TAG)?;
+        let plan = old_plan.from_old_manifest(&manifest, SWAY_GIT_TAG, offline)?;
         info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let lock = Lock::from_graph(plan.graph());
         let diff = lock.diff(&old_lock);

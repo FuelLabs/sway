@@ -197,6 +197,7 @@ impl BuildPlan {
         &mut self,
         manifest_file: &ManifestFile,
         sway_git_tag: &str,
+        offline_mode: bool,
     ) -> Result<Self> {
         let mut graph = self.graph.clone();
         let manifest = Manifest::from_file(manifest_file.path(), sway_git_tag)?;
@@ -264,13 +265,8 @@ impl BuildPlan {
                 || removed
                     .clone()
                     .into_iter()
-                    .any(|removed_dep| removed_dep.0.to_string() == graph[node].name)
+                    .any(|removed_dep| *removed_dep.0 == graph[node].name)
             {
-                println!(
-                    "Removing {}, incoming edge {}",
-                    graph[node].name,
-                    graph.edges_directed(node, Direction::Incoming).count()
-                );
                 graph.remove_node(node);
             }
         }
@@ -300,7 +296,7 @@ impl BuildPlan {
             let added_package_node = graph.add_node(pinned_pkg.clone());
             fetch_children(
                 fetch_id,
-                false,
+                offline_mode,
                 added_package_node,
                 &manifest,
                 sway_git_tag,
@@ -314,9 +310,6 @@ impl BuildPlan {
                 added_package.0.to_string(),
             );
         }
-        use petgraph::dot::Dot;
-        println!("{:?}", Dot::new(&graph));
-
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -771,7 +764,6 @@ fn fetch_children(
 ) -> Result<()> {
     let parent = &graph[node];
     let parent_path = path_map[&parent.id()].clone();
-    println!("fetch_children fetching {}", manifest.project.name);
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
