@@ -411,11 +411,11 @@ fn find_method_and_monomorphize_parent_type(
                     match decl {
                         TypedDeclaration::StructDeclaration(decl) => check!(
                             namespace.monomorphize(
-                                decl.clone(),
+                                decl,
                                 type_arguments,
                                 EnforceTypeArguments::Yes,
                                 Some(self_type),
-                                Some(&name.span()),
+                                Some(name.span()),
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -424,11 +424,11 @@ fn find_method_and_monomorphize_parent_type(
                         .create_type_id(),
                         TypedDeclaration::EnumDeclaration(decl) => check!(
                             namespace.monomorphize(
-                                decl.clone(),
+                                decl,
                                 type_arguments,
                                 EnforceTypeArguments::Yes,
                                 Some(self_type),
-                                Some(&name.span()),
+                                Some(name.span()),
                             ),
                             return err(warnings, errors),
                             warnings,
