@@ -286,7 +286,7 @@ pub(crate) fn resolve_method_name(
                 type_arguments,
                 namespace,
                 &arguments,
-                &call_path,
+                call_path,
                 self_type
             ),
             return err(warnings, errors),
@@ -305,7 +305,7 @@ pub(crate) fn resolve_method_name(
                     type_arguments,
                     namespace,
                     &arguments,
-                    &call_path,
+                    call_path,
                     self_type
                 ),
                 return err(warnings, errors),
@@ -380,5 +380,5 @@ fn find_method(
     } else {
         namespace.find_module_path(call_path.full_path())
     };
-    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &arguments)
+    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, arguments)
 }
