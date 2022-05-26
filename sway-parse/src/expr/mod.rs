@@ -878,7 +878,6 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                         contract_args_opt,
                         args,
                     };
-                    &expr;
                     continue;
                 }
                 expr = Expr::FieldProjection {

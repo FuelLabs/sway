@@ -366,11 +366,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_mismatched",
             ProgramState::Return(5),
         ),
-        (
-            "should_pass/language/unused_generic",
-            ProgramState::Return(456),
-        ),
-    ];
+    ]t ;
 
     let mut number_of_tests_run =
         positive_project_names_no_abi

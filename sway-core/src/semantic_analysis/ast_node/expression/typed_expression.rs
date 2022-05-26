@@ -94,7 +94,6 @@ impl TypedExpression {
                 &method_name,
                 arguments.clone(),
                 &[],
-                &[],
                 span.clone(),
                 namespace,
                 self_type,

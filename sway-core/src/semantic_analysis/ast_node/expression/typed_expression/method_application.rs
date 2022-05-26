@@ -48,7 +48,6 @@ pub(crate) fn type_check_method_application(
         resolve_method_name(
             &method_name,
             args_buf.clone(),
-            &type_arguments,
             &parent_type_arguments,
             span.clone(),
             namespace,
@@ -284,7 +283,6 @@ pub(crate) fn type_check_method_application(
 pub(crate) fn resolve_method_name(
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
-    type_arguments: &[TypeArgument],
     parent_type_arguments: &[TypeArgument],
     span: Span,
     namespace: &mut Namespace,
@@ -367,7 +365,6 @@ fn find_method_and_monomorphize_parent_type(
             },
             false,
         ) => {
-            let decl = namespace.resolve_symbol(name);
             if type_args.is_empty() {
                 TypeInfo::Custom {
                     name: name.clone(),
@@ -407,7 +404,8 @@ fn find_method_and_monomorphize_parent_type(
                         return ok(insert_type(ty), warnings, errors),
                         warnings,
                         errors
-                    );
+                    )
+                    .clone();
                     // we can only monomorphize structs and enums
                     // and it is nonsensical to monomorphize other stuff anyway
                     match decl {
