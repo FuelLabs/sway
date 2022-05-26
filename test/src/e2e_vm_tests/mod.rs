@@ -125,6 +125,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1), // true
         ),
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true

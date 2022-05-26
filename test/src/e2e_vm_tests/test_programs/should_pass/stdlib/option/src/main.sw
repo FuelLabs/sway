@@ -3,10 +3,12 @@ script;
 use std::option::*;
 use std::revert::revert;
 
-fn main() {
+fn main() -> bool {
     test_some();
     test_none();
     test_unwrap_some();
+
+    true
 }
 
 fn test_some() {
