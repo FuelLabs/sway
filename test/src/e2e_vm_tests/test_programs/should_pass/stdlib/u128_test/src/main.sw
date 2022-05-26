@@ -54,13 +54,11 @@ fn main() -> bool {
     assert(mul_of_two.lower == ~u64::max() - 1);
 
     let mul_of_four = ~u64::max().overflowing_mul(4);
-    // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/121
-    // assert(mul_of_four.upper == 3);
+    assert(mul_of_four.upper == 3);
     assert(mul_of_four.lower == ~u64::max() - 3);
 
     let mul_max = ~u64::max().overflowing_mul(~u64::max());
-    // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/121
-    // assert(mul_max.upper == ~u64::max() - 1);
+    assert(mul_max.upper == ~u64::max() - 1);
     assert(mul_max.lower == 1);
 
     let one_upper = ~U128::from(1, 0);
