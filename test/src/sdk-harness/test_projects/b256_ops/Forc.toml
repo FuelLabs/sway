@@ -1,8 +1,0 @@
-[project]
-authors = ["Nicholas Furfaro"]
-entry = "main.sw"
-license = "Apache-2.0"
-name = "b256_ops"
-
-[dependencies]
-std = { path = "../../../../../sway-lib-std" }

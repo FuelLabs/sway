@@ -1,5 +1,6 @@
 use std::{
-    fmt::{self, Debug, Write},
+    cmp::Ordering,
+    fmt::{self, Write},
     ops::Sub,
 };
 
@@ -102,7 +103,7 @@ impl MyMath<u64> for u64 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -155,7 +156,7 @@ impl Range<u64> {
 
 impl<T> Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -536,7 +537,7 @@ where
 
 impl<T> fmt::Display for Range<T>
 where
-    T: Debug
+    T: fmt::Debug
         + fmt::Display
         + Eq
         + Ord
@@ -563,5 +564,54 @@ where
         }
         builder.push(']');
         write!(f, "{}", builder)
+    }
+}
+
+/// Checks to see if two ranges are greater than or equal to one another.
+impl<T> std::cmp::Ord for Range<T>
+where
+    T: fmt::Debug
+        + fmt::Display
+        + Eq
+        + Ord
+        + PartialEq
+        + PartialOrd
+        + Clone
+        + MyMath<T>
+        + Sub<Output = T>
+        + Into<u64>,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+
+        match (self.first.cmp(&other.first), self.last.cmp(&other.last)) {
+            (Less, Less) => Less,
+            (Less, Equal) => Less,
+            (Less, Greater) => Less,
+            (Equal, Less) => Less,
+            (Equal, Equal) => Equal,
+            (Equal, Greater) => Greater,
+            (Greater, Less) => Greater,
+            (Greater, Equal) => Greater,
+            (Greater, Greater) => Greater,
+        }
+    }
+}
+
+impl<T> std::cmp::PartialOrd for Range<T>
+where
+    T: fmt::Debug
+        + fmt::Display
+        + Eq
+        + Ord
+        + PartialEq
+        + PartialOrd
+        + Clone
+        + MyMath<T>
+        + Sub<Output = T>
+        + Into<u64>,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

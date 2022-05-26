@@ -15,7 +15,18 @@
     "name": "multiply_u64",
     "outputs": [
       {
-        "components": null,
+        "components": [
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64"
+          }
+        ],
         "name": "",
         "type": "(u64, u64)"
       }

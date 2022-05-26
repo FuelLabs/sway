@@ -21,7 +21,7 @@ impl MyOwnedContract for Contract {
             assert(addr.into() == OWNER);
         } else {
             revert(0);
-        };
+        }
 
         true
     }

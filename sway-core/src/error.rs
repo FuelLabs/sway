@@ -554,7 +554,7 @@ pub enum CompileError {
         missing_functions: String,
         span: Span,
     },
-    #[error("Expected {expected} type arguments, but instead found {given}.")]
+    #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
     IncorrectNumberOfTypeArguments {
         given: usize,
         expected: usize,

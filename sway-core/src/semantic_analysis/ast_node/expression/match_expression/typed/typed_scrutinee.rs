@@ -75,12 +75,11 @@ impl TypedScrutinee {
                     errors
                 );
                 let struct_decl = check!(
-                    unknown_decl.expect_struct(),
+                    unknown_decl.expect_struct().cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
-                .clone();
+                );
                 // monomorphize the struct definition
                 let struct_decl = check!(
                     namespace.monomorphize(
@@ -126,12 +125,71 @@ impl TypedScrutinee {
                     span,
                 }
             }
-            Scrutinee::EnumScrutinee { span, .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "matching on enums is unimplemented",
+            Scrutinee::EnumScrutinee {
+                call_path,
+                value,
+                span,
+            } => {
+                let enum_name = match call_path.prefixes.last() {
+                    Some(enum_name) => enum_name,
+                    None => {
+                        errors.push(CompileError::EnumNotFound {
+                            name: call_path.suffix.clone(),
+                            span: call_path.suffix.span().clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let variant_name = call_path.suffix;
+                // find the enum definition from the name
+                let unknown_decl = check!(
+                    namespace.resolve_symbol(enum_name).cloned(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let enum_decl = check!(
+                    unknown_decl.expect_enum().cloned(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // monomorphize the enum definition
+                let enum_decl = check!(
+                    namespace.monomorphize(
+                        enum_decl,
+                        vec!(),
+                        EnforceTypeArguments::No,
+                        Some(self_type),
+                        None
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let enum_type_id = enum_decl.create_type_id();
+                // check to see if the variant exists and grab it if it does
+                let variant = check!(
+                    enum_decl.expect_variant_from_name(&variant_name).cloned(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // type check the nested scrutinee
+                let typed_value = check!(
+                    TypedScrutinee::type_check(*value, namespace, self_type),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedScrutinee {
+                    variant: TypedScrutineeVariant::EnumScrutinee {
+                        variant,
+                        value: Box::new(typed_value),
+                    },
+                    type_id: enum_type_id,
                     span,
-                ));
-                return err(warnings, errors);
+                }
             }
             Scrutinee::Tuple { elems, span } => {
                 let mut typed_elems = vec![];
