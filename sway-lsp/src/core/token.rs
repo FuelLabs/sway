@@ -375,9 +375,23 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             contract_call_params,
             ..
         } => {
-            let ident = method_name.easy_name();
-            let token = Token::from_ident(&ident, TokenType::MethodApplication);
-            tokens.push(token);
+            match &method_name {
+                MethodName::FromType { call_path, .. } => {
+                    if let Some(ident) = call_path.prefixes.iter().nth(1) {
+                        // We want to avoid collecting operator methods such as / + * - etc.
+                        if ident.as_str() != "ops" {
+                            let ident = call_path.suffix.clone();
+                            let token = Token::from_span(ident.span().clone(), TokenType::MethodApplication);
+                            tokens.push(token);
+                        }
+                    }
+                }
+                MethodName::FromModule { method_name, .. } => {
+                    let ident = method_name.clone();
+                    let token = Token::from_ident(&ident, TokenType::MethodApplication);
+                    tokens.push(token);
+                },
+            };            
 
             for exp in arguments {
                 handle_expression(exp, tokens);
@@ -395,7 +409,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             for field in contract_call_params {
                 let token = Token::from_ident(
                     &field.name,
-                    TokenType::StructExpressionField(get_struct_field_details(&ident)),
+                    TokenType::StructExpressionField(get_struct_field_details(&method_name.easy_name())),
                 );
                 tokens.push(token);
                 handle_expression(field.value, tokens);
