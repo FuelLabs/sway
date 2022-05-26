@@ -193,6 +193,137 @@ impl BuildPlan {
         })
     }
 
+    pub fn from_old_manifest(
+        &mut self,
+        manifest_file: &ManifestFile,
+        sway_git_tag: &str,
+    ) -> Result<Self> {
+        let mut graph = self.graph.clone();
+        let manifest = Manifest::from_file(manifest_file.path(), sway_git_tag)?;
+        let proj_node = *self
+            .compilation_order
+            .last()
+            .ok_or_else(|| anyhow!("Invalid Graph"))?;
+
+        // Collect dependency `Source`s from graph.
+        let plan_dep_pkgs: BTreeSet<_> = self
+            .graph
+            .edges_directed(proj_node, Direction::Outgoing)
+            .map(|e| {
+                let dep_name = e.weight();
+                let dep_pkg = graph[e.target()].unpinned(&self.path_map);
+                (dep_name, dep_pkg)
+            })
+            .clone()
+            .collect();
+
+        // Collect dependency `Source`s from manifest.
+        let proj_id = graph[proj_node].id();
+        let proj_path = &self.path_map[&proj_id];
+        let manifest_dep_pkgs = manifest
+            .deps()
+            .map(|(dep_name, dep)| {
+                // NOTE: Temporarily warn about `version` until we have support for registries.
+                if let Dependency::Detailed(det) = dep {
+                    if det.version.is_some() {
+                        println_yellow_err(&format!(
+                            "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
+                        consider using `branch` or `tag` instead",
+                            dep_name
+                        ));
+                    }
+                }
+
+                let name = dep.package().unwrap_or(dep_name).to_string();
+                let source = dep_to_source(proj_path, dep)?;
+                let dep_pkg = Pkg { name, source };
+                Ok((dep_name, dep_pkg))
+            })
+            .collect::<Result<BTreeSet<_>>>()?;
+        let added: Vec<_> = manifest_dep_pkgs
+            .difference(&plan_dep_pkgs)
+            .clone()
+            .collect();
+        let removed: Vec<_> = plan_dep_pkgs
+            .difference(&manifest_dep_pkgs)
+            .clone()
+            .collect();
+
+        use petgraph::visit::{Bfs, Walker};
+        //find root_node_id
+        let root_node_id = *self.compilation_order().last().unwrap();
+        let visited_nodes: Vec<NodeIx> = Bfs::new(&graph, root_node_id).iter(&graph).collect();
+        for node in visited_nodes {
+            if node == root_node_id {
+                continue;
+            }
+            // if a -> b in the graph, a depends on b. if a is removed b will have 0
+            // incoming edge, if there is no other parent dependening on b remove it.
+            // to remove a either it will be in removed list or it needs to have 0 incoming edge.
+            if graph.edges_directed(node, Direction::Incoming).count() == 0
+                || removed
+                    .clone()
+                    .into_iter()
+                    .any(|removed_dep| removed_dep.0.to_string() == graph[node].name)
+            {
+                println!(
+                    "Removing {}, incoming edge {}",
+                    graph[node].name,
+                    graph.edges_directed(node, Direction::Incoming).count()
+                );
+                graph.remove_node(node);
+            }
+        }
+        // I have a new dependency which depends on other stuff so i need a compilation order
+        let compilation_order_after_remove = compilation_order(&graph)?;
+        let mut path_map = graph_to_path_map(
+            manifest_file.dir(),
+            &graph,
+            &compilation_order_after_remove,
+            sway_git_tag,
+        )?;
+        let mut visited_map: HashMap<Pinned, NodeIx> = HashMap::new();
+        compilation_order_after_remove
+            .clone()
+            .into_iter()
+            .for_each(|node_index| {
+                visited_map.insert(graph[node_index].clone(), node_index);
+            });
+
+        let fetch_ts = std::time::Instant::now();
+        let fetch_id = fetch_id(&self.path_map[&proj_id], fetch_ts);
+        let proj_node_after_delete = compilation_order_after_remove.last().unwrap();
+        for added_package in added {
+            let pkg = &added_package.1;
+            let pinned_pkg = pin_pkg(fetch_id, pkg, &mut path_map, sway_git_tag)?;
+            let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
+            let added_package_node = graph.add_node(pinned_pkg.clone());
+            fetch_children(
+                fetch_id,
+                false,
+                added_package_node,
+                &manifest,
+                sway_git_tag,
+                &mut graph,
+                &mut path_map,
+                &mut visited_map,
+            )?;
+            graph.add_edge(
+                *proj_node_after_delete,
+                added_package_node,
+                added_package.0.to_string(),
+            );
+        }
+        use petgraph::dot::Dot;
+        println!("{:?}", Dot::new(&graph));
+
+        let compilation_order = compilation_order(&graph)?;
+        Ok(Self {
+            graph,
+            path_map,
+            compilation_order,
+        })
+    }
     /// Attempt to load the build plan from the `Lock`.
     pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
         let graph = lock.to_graph()?;
@@ -640,6 +771,7 @@ fn fetch_children(
 ) -> Result<()> {
     let parent = &graph[node];
     let parent_path = path_map[&parent.id()].clone();
+    println!("fetch_children fetching {}", manifest.project.name);
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
