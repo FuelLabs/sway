@@ -92,6 +92,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/b256_bad_jumps",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/b256_bitwise_ops",
+            ProgramState::Return(1),
+        ),
         ("should_pass/language/b256_ops", ProgramState::Return(100)),
         (
             "should_pass/language/struct_field_access",
