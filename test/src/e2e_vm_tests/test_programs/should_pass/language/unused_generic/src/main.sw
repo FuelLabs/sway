@@ -17,6 +17,6 @@ impl<T> Vec<T> {
 }
 
 fn main() -> u64 {
-  let z: Vec<u64> = Vec::new();
+  let z = ~Vec::<u64>::new();
   z.foo()
 }

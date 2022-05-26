@@ -215,7 +215,7 @@ impl Module {
                 };
             }
             None => {
-                errors.push(dbg!(CompileError::SymbolNotFound { name: item.clone() }));
+                errors.push(CompileError::SymbolNotFound { name: item.clone() });
                 return err(warnings, errors);
             }
         };
