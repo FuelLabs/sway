@@ -634,31 +634,17 @@ impl Shiftable for b256 {
 
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
-    let mut output = (0, 0);
     let right_shift_amount = 64.subtract(shift_amount);
-    let(shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: right_shift_amount) {
-        srl r3 r1 r5; // shift right to get carry, put result in r3
-        sll r4 r1 r2; // shift left, put result in r4
-        sw out r4 i0; // store word at r4 in output
-        sw out r3 i1; // store word at r3 in output + 1 word offset
-        out: (u64, u64) // return both values
-    };
-
+    let carry = word.rsh(right_shift_amount);
+    let shifted = word.lsh(shift_amount);
     (shifted, carry)
 }
 
 /// Right shift a u64 and preserve the overflow amount if any
 fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
-    let mut output = (0, 0);
     let left_shift_amount = 64.subtract(shift_amount);
-    let(shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: left_shift_amount) {
-        sll r3 r1 r5; // shift left to get carry, put result in r3
-        srl r4 r1 r2; // shift right, put result in r4
-        sw out r4 i0; // store word at r4 in output
-        sw out r3 i1; // store word at r3 in output + 1 word offset
-        out: (u64, u64) // return both values
-    };
-
+    let carry = word.lsh(left_shift_amount);
+    let shifted = word.rsh(shift_amount);
     (shifted, carry)
 }
 
