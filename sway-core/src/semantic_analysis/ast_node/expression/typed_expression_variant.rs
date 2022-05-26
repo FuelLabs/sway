@@ -17,7 +17,7 @@ pub(crate) struct ContractCallMetadata {
 pub(crate) enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        name: CallPath,
+        call_path: CallPath,
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
@@ -71,14 +71,6 @@ pub(crate) enum TypedExpressionVariant {
         field_to_access: TypedStructField,
         resolved_type_of_parent: TypeId,
     },
-    IfLet {
-        enum_type: TypeId,
-        expr: Box<TypedExpression>,
-        variant: TypedEnumVariant,
-        variable_to_assign: Ident,
-        then: TypedCodeBlock,
-        r#else: Option<Box<TypedExpression>>,
-    },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
         elem_to_access_num: usize,
@@ -115,6 +107,15 @@ pub(crate) enum TypedExpressionVariant {
     },
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
+    /// grabs the enum tag from the particular enum and variant of the `exp`
+    EnumTag {
+        exp: Box<TypedExpression>,
+    },
+    /// performs an unsafe cast from the `exp` to the type of the given enum `variant`
+    UnsafeDowncast {
+        exp: Box<TypedExpression>,
+        variant: TypedEnumVariant,
+    },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -126,13 +127,13 @@ impl PartialEq for TypedExpressionVariant {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
                 Self::FunctionApplication {
-                    name: l_name,
+                    call_path: l_name,
                     arguments: l_arguments,
                     function_body: l_function_body,
                     ..
                 },
                 Self::FunctionApplication {
-                    name: r_name,
+                    call_path: r_name,
                     arguments: r_arguments,
                     function_body: r_function_body,
                     ..
@@ -244,35 +245,6 @@ impl PartialEq for TypedExpressionVariant {
                         == look_up_type_id(*r_resolved_type_of_parent)
             }
             (
-                Self::IfLet {
-                    enum_type: l_enum_type,
-                    expr: l_expr,
-                    variant: l_variant,
-                    variable_to_assign: l_variable_to_assign,
-                    then: l_then,
-                    r#else: l_r,
-                },
-                Self::IfLet {
-                    enum_type: r_enum_type,
-                    expr: r_expr,
-                    variant: r_variant,
-                    variable_to_assign: r_variable_to_assign,
-                    then: r_then,
-                    r#else: r_r,
-                },
-            ) => {
-                look_up_type_id(*l_enum_type) == look_up_type_id(*r_enum_type)
-                    && (**l_expr) == (**r_expr)
-                    && l_variant == r_variant
-                    && l_variable_to_assign == r_variable_to_assign
-                    && l_then == r_then
-                    && if let (Some(l_r), Some(r_r)) = (l_r, r_r) {
-                        (**l_r) == (**r_r)
-                    } else {
-                        true
-                    }
-            }
-            (
                 Self::TupleElemAccess {
                     prefix: l_prefix,
                     elem_to_access_num: l_elem_to_access_num,
@@ -343,6 +315,17 @@ impl PartialEq for TypedExpressionVariant {
             (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
                 l_expr == r_expr
             }
+            (
+                Self::UnsafeDowncast {
+                    exp: l_exp,
+                    variant: l_variant,
+                },
+                Self::UnsafeDowncast {
+                    exp: r_exp,
+                    variant: r_variant,
+                },
+            ) => *l_exp == *r_exp && l_variant == r_variant,
+            (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => *l_exp == *r_exp,
             _ => false,
         }
     }
@@ -408,18 +391,7 @@ impl CopyTypes for TypedExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, field_to_access.span.clone()))
-                } else {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
-                        field_to_access.span.clone(),
-                    );
-                    insert_type(ty)
-                };
-
+                resolved_type_of_parent.update_type(type_mapping, &field_to_access.span);
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
@@ -428,18 +400,7 @@ impl CopyTypes for TypedExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, prefix.span.clone()))
-                } else {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(*resolved_type_of_parent)),
-                        prefix.span.clone(),
-                    );
-                    insert_type(ty)
-                };
-
+                resolved_type_of_parent.update_type(type_mapping, &prefix.span);
                 prefix.copy_types(type_mapping);
             }
             EnumInstantiation {
@@ -456,33 +417,14 @@ impl CopyTypes for TypedExpressionVariant {
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             TypeProperty { type_id, span, .. } => {
-                *type_id = if let Some(matching_id) =
-                    look_up_type_id(*type_id).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, span.clone()))
-                } else {
-                    let ty =
-                        TypeInfo::Ref(insert_type(look_up_type_id_raw(*type_id)), span.clone());
-                    insert_type(ty)
-                };
+                type_id.update_type(type_mapping, span);
             }
             SizeOfValue { expr } => expr.copy_types(type_mapping),
-            IfLet {
-                ref mut variant,
-                ref mut enum_type,
-                ..
-            } => {
-                *enum_type = if let Some(matching_id) =
-                    look_up_type_id(*enum_type).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id, variant.span.clone()))
-                } else {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(*enum_type)),
-                        variant.span.clone(),
-                    );
-                    insert_type(ty)
-                };
+            EnumTag { exp } => {
+                exp.copy_types(type_mapping);
+            }
+            UnsafeDowncast { exp, variant } => {
+                exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
             AbiName(_) => (),
@@ -567,7 +509,9 @@ impl TypedExpressionVariant {
                         .join(", "),
                 }
             ),
-            TypedExpressionVariant::FunctionApplication { name, .. } => {
+            TypedExpressionVariant::FunctionApplication {
+                call_path: name, ..
+            } => {
                 format!("\"{}\" fn entry", name.suffix.as_str())
             }
             TypedExpressionVariant::LazyOperator { op, .. } => match op {
@@ -603,15 +547,6 @@ impl TypedExpressionVariant {
                     "\"{}.{}\" struct field access",
                     look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     field_to_access.name
-                )
-            }
-            TypedExpressionVariant::IfLet {
-                enum_type, variant, ..
-            } => {
-                format!(
-                    "if let {}::{}",
-                    enum_type.friendly_type_str(),
-                    variant.name.as_str()
                 )
             }
             TypedExpressionVariant::TupleElemAccess {
@@ -657,6 +592,19 @@ impl TypedExpressionVariant {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TypedExpressionVariant::EnumTag { exp } => {
+                format!(
+                    "({} as tag)",
+                    look_up_type_id(exp.return_type).friendly_type_str()
+                )
+            }
+            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+                format!(
+                    "({} as {})",
+                    look_up_type_id(exp.return_type).friendly_type_str(),
+                    variant.name
+                )
+            }
         }
     }
 }

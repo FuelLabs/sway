@@ -2,18 +2,15 @@ use crate::{
     error::*,
     namespace::Items,
     parse_tree::*,
-    semantic_analysis::{
-        ast_node::{copy_types::TypeMapping, insert_type_parameters},
-        namespace, CopyTypes,
-    },
+    semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
     type_engine::*,
-    Ident,
+    CompileError, CompileResult, Ident, Namespace,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
-use super::{CreateTypeId, MonomorphizeHelper};
+use super::{monomorphize_inner, CreateTypeId, EnforceTypeArguments, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
@@ -70,86 +67,98 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        let old_type_id = self.create_type_id();
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        namespace.copy_methods_to_type(
-            look_up_type_id(old_type_id),
-            look_up_type_id(new_decl.create_type_id()),
-            type_mapping,
-        );
-        new_decl
+        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
 impl TypedStructDeclaration {
-    pub(crate) fn monomorphize(
-        &self,
-        namespace: &mut namespace::Items,
-        type_arguments: &[TypeArgument],
-        self_type: Option<TypeId>,
-    ) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        decl: StructDeclaration,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedStructDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_mapping = insert_type_parameters(&self.type_parameters);
-        let mut new_decl = self.clone().monomorphize_inner(&type_mapping, namespace);
-        let type_arguments_span = type_arguments
-            .iter()
-            .map(|x| x.span.clone())
-            .reduce(Span::join)
-            .unwrap_or_else(|| self.span.clone());
-        if !type_arguments.is_empty() {
-            if type_mapping.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: type_mapping.len(),
-                    span: type_arguments_span,
-                });
-                return err(warnings, errors);
-            }
-            for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter())
-            {
-                match self_type {
-                    Some(self_type) => {
-                        let (mut new_warnings, new_errors) = unify_with_self(
-                            *interim_type,
-                            type_argument.type_id,
-                            self_type,
-                            &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                    }
-                    None => {
-                        let (mut new_warnings, new_errors) = unify(
-                            *interim_type,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            "Type argument is not assignable to generic type parameter.",
-                        );
-                        warnings.append(&mut new_warnings);
-                        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                    }
-                }
-            }
-            // associate the type arguments with the parameters in the struct decl
-            new_decl
-                .type_parameters
-                .iter_mut()
-                .zip(type_arguments.iter())
-                .for_each(
-                    |(
-                        TypeParameter {
-                            ref mut type_id, ..
-                        },
-                        arg,
-                    )| {
-                        *type_id = arg.type_id;
-                    },
-                );
+
+        // create a namespace for the decl, used to create a scope for generics
+        let mut namespace = namespace.clone();
+
+        // insert the generics into the decl namespace and
+        // check to see if the type parameters shadow one another
+        for type_parameter in decl.type_parameters.iter() {
+            check!(
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                continue,
+                warnings,
+                errors
+            );
         }
-        ok(new_decl, warnings, errors)
+
+        // create the type parameters type mapping of custom types to generic types
+        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        let fields = decl
+            .fields
+            .into_iter()
+            .map(|field| {
+                let StructField {
+                    name,
+                    r#type,
+                    span,
+                    type_span,
+                } = field;
+                let r#type = match r#type.matches_type_parameter(&type_mapping) {
+                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, type_span)),
+                    None => check!(
+                        namespace.resolve_type_with_self(
+                            r#type,
+                            self_type,
+                            &type_span,
+                            EnforceTypeArguments::No
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    ),
+                };
+                TypedStructField { name, r#type, span }
+            })
+            .collect::<Vec<_>>();
+
+        // create the struct decl
+        let decl = TypedStructDeclaration {
+            name: decl.name.clone(),
+            type_parameters: decl.type_parameters.clone(),
+            fields,
+            visibility: decl.visibility,
+            span: decl.span,
+        };
+
+        ok(decl, warnings, errors)
+    }
+
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TypedStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .fields
+            .iter()
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    available_fields: self
+                        .fields
+                        .iter()
+                        .map(|TypedStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: self.name.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
     }
 }
 
@@ -181,16 +190,7 @@ impl PartialEq for TypedStructField {
 
 impl CopyTypes for TypedStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type = match look_up_type_id(self.r#type).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span.clone())),
-            None => {
-                let ty = TypeInfo::Ref(
-                    insert_type(look_up_type_id_raw(self.r#type)),
-                    self.span.clone(),
-                );
-                insert_type(ty)
-            }
-        };
+        self.r#type.update_type(type_mapping, &self.span);
     }
 }
 

@@ -10,7 +10,7 @@
     "name": "mint",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -28,7 +28,7 @@
     "name": "burn",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -68,7 +68,7 @@
     "name": "force_transfer",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }

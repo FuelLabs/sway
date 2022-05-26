@@ -3,7 +3,8 @@ use crate::build_config::BuildConfig;
 use crate::constants;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::semantic_analysis::{namespace::Namespace, TCOpts};
+use crate::semantic_analysis::namespace::Namespace;
+use crate::semantic_analysis::TCOpts;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -42,81 +43,20 @@ pub(crate) fn type_check_method_application(
         ));
     }
 
-    let method = match method_name {
-        MethodName::FromType {
-            ref call_path,
-            ref type_name,
-            ref type_name_span,
-        } => {
-            let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
-                (Some(type_name), Some(type_name_span)) => {
-                    (type_name.clone(), type_name_span.clone())
-                }
-                _ => args_buf
-                    .get(0)
-                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
-                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
-            };
-            let ty = match (ty, type_arguments.is_empty()) {
-                (
-                    TypeInfo::Custom {
-                        name,
-                        type_arguments: type_args,
-                    },
-                    false,
-                ) => {
-                    if type_args.is_empty() {
-                        TypeInfo::Custom {
-                            name,
-                            type_arguments,
-                        }
-                    } else {
-                        let type_args_span = type_args
-                            .iter()
-                            .map(|x| x.span.clone())
-                            .fold(type_args[0].span.clone(), Span::join);
-                        errors.push(CompileError::Internal(
-                            "did not expect to find type arguments here",
-                            type_args_span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                }
-                (_, false) => {
-                    errors.push(CompileError::DoesNotTakeTypeArguments {
-                        span: type_name_span,
-                        name: call_path.suffix.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                (ty, true) => ty,
-            };
-            let abs_path: Vec<Ident> = if call_path.is_absolute {
-                call_path.full_path().cloned().collect()
-            } else {
-                namespace.find_module_path(call_path.full_path())
-            };
-            check!(
-                namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &args_buf),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-        MethodName::FromModule { ref method_name } => {
-            let ty = args_buf
-                .get(0)
-                .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
-            check!(
-                namespace.find_method_for_type(ty, &abs_path, self_type, &args_buf),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-    };
+    let method = check!(
+        resolve_method_name(
+            &method_name,
+            args_buf.clone(),
+            type_arguments,
+            span.clone(),
+            namespace,
+            self_type
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     let contract_caller = if method.is_contract_call {
         args_buf.pop_front()
     } else {
@@ -219,34 +159,10 @@ pub(crate) fn type_check_method_application(
         }
         // The annotation may result in a cast, which is handled in the type engine.
     }
-    let exp = match method_name {
+
+    match method_name {
         // something like a.b(c)
         MethodName::FromModule { method_name } => {
-            if args_buf.len() > method.parameters.len() {
-                errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.clone(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
-
-            if args_buf.len() < method.parameters.len() {
-                errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.clone(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
-
-            let args_and_names = method
-                .parameters
-                .iter()
-                .zip(args_buf.into_iter())
-                .map(|(param, arg)| (param.name.clone(), arg))
-                .collect::<Vec<(_, _)>>();
-
             let selector = if method.is_contract_call {
                 let contract_address = match contract_caller
                     .map(|x| crate::type_engine::look_up_type_id(x.return_type))
@@ -277,53 +193,29 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            let expression = TypedExpressionVariant::FunctionApplication {
-                name: CallPath {
-                    prefixes: vec![],
-                    suffix: method_name,
-                    is_absolute: false,
-                },
-                contract_call_params: contract_call_params_map,
-                arguments: args_and_names,
-                function_body: method.body.clone(),
-                selector,
-            };
-
-            TypedExpression {
-                expression,
-                return_type: method.return_type,
-                is_constant: IsConstant::No,
-                span,
-            }
+            let exp = check!(
+                instantiate_function_application_simple(
+                    CallPath {
+                        prefixes: vec![],
+                        suffix: method_name,
+                        is_absolute: false,
+                    },
+                    contract_call_params_map,
+                    args_buf,
+                    method,
+                    selector,
+                    IsConstant::No,
+                    span,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(exp, warnings, errors)
         }
 
         // something like blah::blah::~Type::foo()
-        MethodName::FromType { ref call_path, .. } => {
-            if args_buf.len() > method.parameters.len() {
-                errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.easy_name(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
-
-            if args_buf.len() < method.parameters.len() {
-                errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.easy_name(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
-
-            let args_and_names = method
-                .parameters
-                .iter()
-                .zip(args_buf.into_iter())
-                .map(|(param, arg)| (param.name.clone(), arg))
-                .collect::<Vec<(_, _)>>();
-
+        MethodName::FromType { call_path, .. } => {
             let selector = if method.is_contract_call {
                 let contract_address = match contract_caller
                     .map(|x| crate::type_engine::look_up_type_id(x.return_type))
@@ -354,21 +246,109 @@ pub(crate) fn type_check_method_application(
                 None
             };
 
-            let expression = TypedExpressionVariant::FunctionApplication {
-                name: call_path.clone(),
-                contract_call_params: contract_call_params_map,
-                arguments: args_and_names,
-                function_body: method.body.clone(),
-                selector,
-            };
+            let exp = check!(
+                instantiate_function_application_simple(
+                    call_path,
+                    contract_call_params_map,
+                    args_buf,
+                    method,
+                    selector,
+                    IsConstant::No,
+                    span,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(exp, warnings, errors)
+        }
+    }
+}
 
-            TypedExpression {
-                expression,
-                return_type: method.return_type,
-                is_constant: IsConstant::No,
-                span,
-            }
+pub(crate) fn resolve_method_name(
+    method_name: &MethodName,
+    arguments: VecDeque<TypedExpression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+    namespace: &mut Namespace,
+    self_type: TypeId,
+) -> CompileResult<TypedFunctionDeclaration> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let func_decl = match method_name {
+        MethodName::FromType {
+            call_path,
+            type_name,
+            type_name_span,
+        } => {
+            let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
+                (Some(type_name), Some(type_name_span)) => {
+                    (type_name.clone(), type_name_span.clone())
+                }
+                _ => arguments
+                    .get(0)
+                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
+                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
+            };
+            let ty = match (ty, type_arguments.is_empty()) {
+                (
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments: type_args,
+                    },
+                    false,
+                ) => {
+                    if type_args.is_empty() {
+                        TypeInfo::Custom {
+                            name,
+                            type_arguments,
+                        }
+                    } else {
+                        let type_args_span = type_args
+                            .iter()
+                            .map(|x| x.span.clone())
+                            .fold(type_args[0].span.clone(), Span::join);
+                        errors.push(CompileError::Internal(
+                            "did not expect to find type arguments here",
+                            type_args_span,
+                        ));
+                        return err(warnings, errors);
+                    }
+                }
+                (_, false) => {
+                    errors.push(CompileError::DoesNotTakeTypeArguments {
+                        span: type_name_span,
+                        name: call_path.suffix.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                (ty, true) => ty,
+            };
+            let abs_path: Vec<Ident> = if call_path.is_absolute {
+                call_path.full_path().cloned().collect()
+            } else {
+                namespace.find_module_path(call_path.full_path())
+            };
+            check!(
+                namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &arguments),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+        MethodName::FromModule { method_name } => {
+            let ty = arguments
+                .get(0)
+                .map(|x| x.return_type)
+                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+            let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
+            check!(
+                namespace.find_method_for_type(ty, &abs_path, self_type, &arguments),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
         }
     };
-    ok(exp, warnings, errors)
+    ok(func_decl, warnings, errors)
 }
