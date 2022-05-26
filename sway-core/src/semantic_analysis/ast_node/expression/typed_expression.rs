@@ -2,7 +2,7 @@ mod enum_instantiation;
 mod function_application;
 mod if_expression;
 mod lazy_operator;
-pub mod method_application;
+mod method_application;
 mod struct_field_access;
 mod tuple_index_access;
 mod unsafe_downcast;
@@ -145,7 +145,7 @@ impl TypedExpression {
             | Literal(_)
             | StorageAccess { .. }
             | TypeProperty { .. }
-            | GenerateB256Seed { .. }
+            | GenerateUid { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -234,7 +234,7 @@ impl TypedExpression {
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
             | TypedExpressionVariant::UnsafeDowncast { .. } 
-            | TypedExpressionVariant::GenerateB256Seed { .. } => vec![],
+            | TypedExpressionVariant::GenerateUid { .. } => vec![],
         }
     }
 
@@ -528,9 +528,9 @@ impl TypedExpression {
                 },
                 span,
             ),
-            Expression::BuiltinGenerateB256Seed { span } => ok(
+            Expression::BuiltinGenerateUid { span } => ok(
                 TypedExpression {
-                    expression: TypedExpressionVariant::GenerateB256Seed { span: span.clone() },
+                    expression: TypedExpressionVariant::GenerateUid { span: span.clone() },
                     return_type: insert_type(TypeInfo::B256),
                     is_constant: IsConstant::No,
                     span,

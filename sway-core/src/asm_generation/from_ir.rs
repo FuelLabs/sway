@@ -501,7 +501,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::ExtractValue {
                     aggregate, indices, ..
                 } => self.compile_extract_value(instr_val, aggregate, indices),
-                Instruction::GenerateB256Seed => self.compile_generate_b256_seed(instr_val),
+                Instruction::GenerateUid => self.compile_generate_uid(instr_val),
                 Instruction::GetPointer {
                     base_ptr,
                     ptr_ty,
@@ -1035,12 +1035,12 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_generate_b256_seed(&mut self, instr_val: &Value) {
-        // Replace each call to __generate_b256_seed with a new value
+    fn compile_generate_uid(&mut self, instr_val: &Value) {
+        // Replace each call to __generate_uid with a new value
         static COUNTER: AtomicUsize = AtomicUsize::new(0);
         let storage_slot_to_hash = format!(
             "{}{}",
-            crate::constants::GENERATE_B256_SEED_SEPARATOR,
+            crate::constants::GENERATE_UID_STORAGE_SEPARATOR,
             COUNTER.load(Ordering::SeqCst)
         );
         COUNTER.fetch_add(1, Ordering::SeqCst);

@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'size_of'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

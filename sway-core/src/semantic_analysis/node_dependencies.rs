@@ -415,7 +415,7 @@ impl Dependencies {
             Expression::StorageAccess { .. } => self,
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
-            Expression::BuiltinGenerateB256Seed { .. } => self,
+            Expression::BuiltinGenerateUid { .. } => self,
         }
     }
 

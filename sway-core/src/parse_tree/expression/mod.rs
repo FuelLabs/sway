@@ -146,7 +146,7 @@ pub enum Expression {
         type_span: Span,
         span: Span,
     },
-    BuiltinGenerateB256Seed {
+    BuiltinGenerateUid {
         span: Span,
     },
 }
@@ -225,7 +225,7 @@ impl Expression {
             StorageAccess { span, .. } => span,
             SizeOfVal { span, .. } => span,
             BuiltinGetTypeProperty { span, .. } => span,
-            BuiltinGenerateB256Seed { span, .. } => span,
+            BuiltinGenerateUid { span, .. } => span,
         })
         .clone()
     }
