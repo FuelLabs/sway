@@ -3,7 +3,7 @@ project="highlight.js"
 sway="sway.js"
 
 if ! test -d ./${project}; then
-    git clone --depth 1 --branch 10.7.3 git@github.com:highlightjs/highlight.js.git
+    git clone --depth 1 --branch 11.3.1 git@github.com:highlightjs/highlight.js.git
 fi
 
 cp ${sway} ${project}/src/languages
