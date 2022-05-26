@@ -387,11 +387,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
 
             //TODO handle methods from imported modules
-            if let MethodName::FromType {
-                type_name: Some(type_name),
-                ..
-            } = &method_name
-            {
+            if let MethodName::FromType { type_name, .. } = &method_name {
                 handle_custom_type(type_name, tokens);
             }
 
