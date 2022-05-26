@@ -111,7 +111,7 @@ impl Items {
             Some(decl) => ok(decl, vec![], vec![]),
             None => err(
                 vec![],
-                vec![CompileError::SymbolNotFound { name: name.clone() }],
+                dbg!(vec![CompileError::SymbolNotFound { name: name.clone() }]),
             ),
         }
     }
