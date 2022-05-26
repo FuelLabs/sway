@@ -92,6 +92,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/b256_bad_jumps",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/b256_bitwise_ops",
+            ProgramState::Return(1),
+        ),
         ("should_pass/language/b256_ops", ProgramState::Return(100)),
         (
             "should_pass/language/struct_field_access",
@@ -120,7 +124,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/stdlib/b512_struct_alignment",
             ProgramState::Return(1), // true
         ),
+        (
+            "should_pass/stdlib/contract_id_type",
+            ProgramState::Return(1),
+        ), // true
+        ("should_pass/stdlib/evm_ecr", ProgramState::Return(1)), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
+        ("should_pass/stdlib/require", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/result", ProgramState::Return(1)),  // true
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true

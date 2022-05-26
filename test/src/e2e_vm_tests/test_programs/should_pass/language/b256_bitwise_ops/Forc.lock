@@ -1,5 +1,5 @@
 [[package]]
-name = 'b256_ops'
+name = 'b256_bitwise_ops'
 dependencies = ['std']
 
 [[package]]

@@ -71,7 +71,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
-    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
+    let gas_limit = fuel_tx::default_parameters::MAX_GAS_PER_TX;
     let byte_price = 0;
     let maturity = 0;
     let script_data = vec![];
@@ -90,8 +90,10 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
         witness,
     );
     let block_height = (u32::MAX >> 1) as u64;
-    tx_to_test.validate(block_height).unwrap();
-    let mut i = Interpreter::with_storage(storage);
+    tx_to_test
+        .validate(block_height, &Default::default())
+        .unwrap();
+    let mut i = Interpreter::with_storage(storage, Default::default());
     *i.transact(tx_to_test).unwrap().state()
 }
 

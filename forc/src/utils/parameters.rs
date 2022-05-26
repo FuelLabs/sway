@@ -8,7 +8,7 @@ pub(crate) struct TxParameters {
 impl TxParameters {
     pub const DEFAULT: Self = Self {
         byte_price: 0,
-        gas_limit: fuel_tx::consts::MAX_GAS_PER_TX,
+        gas_limit: fuel_tx::default_parameters::MAX_GAS_PER_TX,
         gas_price: 0,
     };
 
