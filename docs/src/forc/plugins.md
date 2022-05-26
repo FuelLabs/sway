@@ -2,33 +2,30 @@
 
 Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-lsp`, `forc-explore`), anyone can write their own!
 
-Let's install a starter plugin, `forc-gm`, and take a look at how it works underneath:
+Let's install a plugin, `forc-explore`, and see what's underneath the plugin:
 
 ```sh
-cargo install forc-gm
+cargo install forc-explore
 ```
 
-Check that we have installed `forc-gm`:
+Check that we have installed `forc-explore`:
 
 ```console
 $ forc plugins
-/Users/<USER>/.cargo/bin/forc-gm
+Installed Plugins:
+forc-explore
 ```
 
-Underneath, `forc-gm` is a simple CLI app, with [clap](https://docs.rs/clap/latest/clap/) as the only dependency:
-
-```rust
-{{#include ../../../forc-gm/src/main.rs}}
-```
-
-You can say gm, or you can greet Fuel:
+`forc-explore` runs the Fuel Network Explorer, which you can run and check out for yourself:
 
 ```console
-$ forc gm
-gn!
-$ forc gm fuel
-gn from Fuel!
+$ forc explore
+Fuel Network Explorer 0.1.1
+Running server on http://127.0.0.1:3030
+Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 ```
+
+You can visit http://127.0.0.1:3030 to check out the network explorer!
 
 ## Writing your own plugin
 
