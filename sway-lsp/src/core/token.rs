@@ -6,8 +6,9 @@ use crate::{
     utils::common::extract_var_body,
 };
 use sway_core::{
-    parse_tree::MethodName, type_engine::TypeInfo, AstNode, AstNodeContent, Declaration,
-    Expression, FunctionDeclaration, FunctionParameter, VariableDeclaration, WhileLoop,
+    constants::TUPLE_NAME_PREFIX, parse_tree::MethodName, type_engine::TypeInfo, AstNode,
+    AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
+    VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
 use tower_lsp::lsp_types::{Position, Range};
@@ -167,7 +168,13 @@ fn handle_custom_type(type_info: &TypeInfo, tokens: &mut Vec<Token>) {
 fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
     match declaration {
         Declaration::VariableDeclaration(variable) => {
-            tokens.push(Token::from_variable(&variable));
+            let name = variable.name.as_str();
+            // Don't collect tokens if the ident's name contains __tuple_
+            // The individual tuple elements are handled in the subsequent VariableDeclaration's
+            if !name.contains(TUPLE_NAME_PREFIX) {
+                tokens.push(Token::from_variable(&variable));
+            }
+
             handle_expression(variable.body, tokens);
         }
         Declaration::FunctionDeclaration(func_dec) => {
@@ -296,8 +303,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             handle_expression(*rhs, tokens);
         }
         Expression::VariableExpression { name, .. } => {
-            let token = Token::from_ident(&name, TokenType::VariableExpression);
-            tokens.push(token);
+            if !name.as_str().contains(TUPLE_NAME_PREFIX) {
+                let token = Token::from_ident(&name, TokenType::VariableExpression);
+                tokens.push(token);
+            }
         }
         Expression::Tuple { fields, .. } => {
             for exp in fields {
