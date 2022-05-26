@@ -375,26 +375,12 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             contract_call_params,
             ..
         } => {
-            match &method_name {
-                MethodName::FromType { call_path, .. } => {
-                    if let Some(ident) = call_path.prefixes.get(1) {
-                        // We want to avoid collecting operator methods such as / + * - etc.
-                        if ident.as_str() != "ops" {
-                            let ident = call_path.suffix.clone();
-                            let token = Token::from_span(
-                                ident.span().clone(),
-                                TokenType::MethodApplication,
-                            );
-                            tokens.push(token);
-                        }
-                    }
-                }
-                MethodName::FromModule { method_name, .. } => {
-                    let ident = method_name.clone();
-                    let token = Token::from_ident(&ident, TokenType::MethodApplication);
-                    tokens.push(token);
-                }
-            };
+            // Don't collect applications of desugared operators due to mismatched ident lengths.
+            if !desugared_op(&method_name) {
+                let ident = method_name.easy_name();
+                let token = Token::from_ident(&ident, TokenType::MethodApplication);
+                tokens.push(token);
+            }
 
             for exp in arguments {
                 handle_expression(exp, tokens);
@@ -473,6 +459,18 @@ fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {
     for node in while_loop.body.contents {
         traverse_node(node, tokens);
     }
+}
+
+// Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
+fn desugared_op(method_name: &MethodName) -> bool {
+    if let MethodName::FromType { ref call_path, .. } = method_name {
+        let prefix0 = call_path.prefixes.get(0).map(|ident| ident.as_str());
+        let prefix1 = call_path.prefixes.get(1).map(|ident| ident.as_str());
+        if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
+            return true;
+        }
+    }
+    false
 }
 
 fn get_range_from_span(span: &Span) -> Range {
