@@ -89,6 +89,10 @@ impl TraitMap {
 
     pub(crate) fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
+        // small performance gain in bad case
+        if r#type == TypeInfo::ErrorRecovery {
+            return methods;
+        }
         for ((_, type_info), l_methods) in self.trait_map.iter() {
             if *type_info == r#type {
                 methods.append(&mut l_methods.values().cloned().collect());
@@ -102,6 +106,10 @@ impl TraitMap {
         r#type: TypeInfo,
     ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
         let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
+        // small performance gain in bad case
+        if r#type == TypeInfo::ErrorRecovery {
+            return methods;
+        }
         for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
             if *type_info == r#type {
                 methods.insert(
