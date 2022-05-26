@@ -2433,6 +2433,7 @@ async fn get_contract_instance() -&gt; (MyContract, ContractId) {
 #[tokio::test]
 async fn can_get_contract_id() {
     let (contract_instance, _id) = get_contract_instance().await;
+    // Now you have an instance of your contract you can use to test each function
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
@@ -2452,7 +2453,6 @@ async fn can_get_contract_id() {
         .unwrap();
 
     assert_eq!(52, result.value);
-    // Now you have an instance of your contract you can use to test each function
 }
 </code></pre>
 <p>Then, in the root of our project, running <code>forc test</code> will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:</p>
