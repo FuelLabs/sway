@@ -597,22 +597,11 @@ impl Shiftable for b256 {
             let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w2 = shifted_4;
             w1 = w1.add(carry_4);
-            w3 = 0; // don't need to do this, already 0 !
-            w4 = 0; // don't need to do this, already 0 !
-
         } else if w.eq(3) {
             // discard the carry for first shift
             w1 = word_4.lsh(b);
-            w2 = 0;
-            w3 = 0;
-            w4 = 0;
         } else {
-            // shift is >= 256 !!!
-            // ();
-            w1 = 0;
-            w2 = 0;
-            w3 = 0;
-            w4 = 0;
+            ();
         };
 
         compose(w1, w2, w3, w4)
@@ -621,14 +610,14 @@ impl Shiftable for b256 {
     fn rsh(self, n: u64) -> Self {
         let (w1, w2, w3, w4) = decompose(self);
         // get each shifted word and associated overflow in turn
-        let (word_1, overflow_1) = rsh_with_carry(w1, n);
-        let (word_2, overflow_2) = rsh_with_carry(w2, n);
-        let (word_3, overflow_3) = rsh_with_carry(w3, n);
-        let (word_4, _) = rsh_with_carry(w4, n);
+        let (word_1, carry_1) = rsh_with_carry(w1, n);
+        let (word_2, carry_2) = rsh_with_carry(w2, n);
+        let (word_3, carry_3) = rsh_with_carry(w3, n);
+        let (word_4, carry_4) = rsh_with_carry(w4, n);
         // Add overflow from the word on the left to each shifted word
-        let w4_shifted = word_4.add(overflow_3);
-        let w3_shifted = word_3.add(overflow_2);
-        let w2_shifted = word_2.add(overflow_1);
+        let w4_shifted = word_4.add(carry_3);
+        let w3_shifted = word_3.add(carry_2);
+        let w2_shifted = word_2.add(carry_1);
 
         compose(word_1, w2_shifted, w3_shifted, w4_shifted)
     }
@@ -644,12 +633,9 @@ const FLAG = 2;
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
-    // @todo try to remove copy once this is working.
-    let word_copy = word;
     let right_shift_amount = 64.subtract(shift_amount);
-    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: right_shift_amount, copy: word_copy) {
-       flag r5;        // set flag to allow overflow without panic
-       srl r3 copy r6; // shift right to get carry, put result in r3
+    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: right_shift_amount) {
+       srl r3 r1 r5;   // shift right to get carry, put result in r3
        sll r4 r1 r2;   // shift left, put result in r4
        sw out r4 i0;   // store word at r4 in output
        sw out r3 i1;   // store word at r3 in output + 1 word offset
