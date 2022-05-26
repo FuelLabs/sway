@@ -87,7 +87,7 @@ fn create_contract_tx(
     outputs: Vec<Output>,
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
-    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
+    let gas_limit = fuel_tx::default_parameters::MAX_GAS_PER_TX;
     let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;

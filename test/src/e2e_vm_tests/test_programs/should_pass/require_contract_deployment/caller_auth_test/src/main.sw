@@ -4,7 +4,7 @@ use std::assert::assert;
 
 // should be false in the case of a script
 fn main() -> bool {
-    let caller = abi(AuthTesting, 0xac3198df9174e06cef4bc55ebfc006c1bd8d9958d701a8916e062b7459800a6e);
+    let caller = abi(AuthTesting,  0x6868c510e230173e1f788fd7bdba127ffb92b7408d0e7fface1a32d03c004361);
     let result = caller.returns_gm_one();
     assert(result);
     result

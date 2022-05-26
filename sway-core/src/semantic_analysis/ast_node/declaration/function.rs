@@ -78,20 +78,8 @@ impl CopyTypes for TypedFunctionDeclaration {
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
 
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => {
-                    insert_type(TypeInfo::Ref(matching_id, self.return_type_span.clone()))
-                }
-                None => {
-                    let ty = TypeInfo::Ref(
-                        insert_type(look_up_type_id_raw(self.return_type)),
-                        self.return_type_span.clone(),
-                    );
-                    insert_type(ty)
-                }
-            };
-
+        self.return_type
+            .update_type(type_mapping, &self.return_type_span);
         self.body.copy_types(type_mapping);
     }
 }
@@ -154,13 +142,12 @@ impl TypedFunctionDeclaration {
         opts.purity = purity;
 
         // insert parameters and generic type declarations into namespace
-        let mut fn_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
-                fn_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
@@ -177,7 +164,7 @@ impl TypedFunctionDeclaration {
                         insert_type(TypeInfo::Ref(matching_id, parameter.type_span.clone()))
                     }
                     None => check!(
-                        fn_namespace.resolve_type_with_self(
+                        namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
                             self_type,
                             &parameter.type_span,
@@ -191,7 +178,7 @@ impl TypedFunctionDeclaration {
         });
 
         for FunctionParameter { name, type_id, .. } in parameters.clone() {
-            fn_namespace.insert_symbol(
+            namespace.insert_symbol(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -211,7 +198,7 @@ impl TypedFunctionDeclaration {
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, return_type_span.clone())),
             None => check!(
-                fn_namespace.resolve_type_with_self(
+                namespace.resolve_type_with_self(
                     return_type,
                     self_type,
                     &return_type_span,
@@ -228,7 +215,7 @@ impl TypedFunctionDeclaration {
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace: &mut fn_namespace,
+                namespace: &mut namespace,
                 return_type_annotation: return_type,
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",

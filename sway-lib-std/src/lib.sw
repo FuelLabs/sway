@@ -21,5 +21,6 @@ dep token;
 dep ecr;
 dep reentrancy;
 dep vm/mod;
+dep u128;
 
 use core::*;

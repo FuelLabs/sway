@@ -1,15 +1,13 @@
-use super::token_type::{get_trait_details, TokenType, VariableDetails};
 use crate::{
     core::token_type::{
         get_const_details, get_enum_details, get_function_details, get_struct_details,
-        get_struct_field_details,
+        get_struct_field_details, get_trait_details, TokenType, VariableDetails,
     },
     utils::common::extract_var_body,
 };
-use sway_core::parse_tree::MethodName;
-use sway_core::type_engine::TypeInfo;
 use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
+    constants::TUPLE_NAME_PREFIX, parse_tree::MethodName, type_engine::TypeInfo, AstNode,
+    AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
     VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
@@ -170,7 +168,13 @@ fn handle_custom_type(type_info: &TypeInfo, tokens: &mut Vec<Token>) {
 fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
     match declaration {
         Declaration::VariableDeclaration(variable) => {
-            tokens.push(Token::from_variable(&variable));
+            let name = variable.name.as_str();
+            // Don't collect tokens if the ident's name contains __tuple_
+            // The individual tuple elements are handled in the subsequent VariableDeclaration's
+            if !name.contains(TUPLE_NAME_PREFIX) {
+                tokens.push(Token::from_variable(&variable));
+            }
+
             handle_expression(variable.body, tokens);
         }
         Declaration::FunctionDeclaration(func_dec) => {
@@ -299,8 +303,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             handle_expression(*rhs, tokens);
         }
         Expression::VariableExpression { name, .. } => {
-            let token = Token::from_ident(&name, TokenType::VariableExpression);
-            tokens.push(token);
+            if !name.as_str().contains(TUPLE_NAME_PREFIX) {
+                let token = Token::from_ident(&name, TokenType::VariableExpression);
+                tokens.push(token);
+            }
         }
         Expression::Tuple { fields, .. } => {
             for exp in fields {
@@ -351,8 +357,14 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 handle_expression(*r#else, tokens);
             }
         }
-        Expression::MatchExp { if_exp, .. } => {
-            handle_expression(*if_exp, tokens);
+        Expression::MatchExp {
+            value, branches, ..
+        } => {
+            handle_expression(*value, tokens);
+            for branch in branches {
+                // TODO: handle_scrutinee(branch.scrutinee, tokens);
+                handle_expression(branch.result, tokens);
+            }
         }
         Expression::AsmExpression { .. } => {
             //TODO handle asm expressions
@@ -422,26 +434,10 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             handle_expression(*prefix, tokens);
             handle_expression(*index, tokens);
         }
-        Expression::DelayedMatchTypeResolution { .. } => {
-            //Should we handle this since it gets removed during type checking anyway?
-        }
         Expression::StorageAccess { field_names, .. } => {
             for field in field_names {
                 let token = Token::from_ident(&field, TokenType::StorageAccess);
                 tokens.push(token);
-            }
-        }
-        Expression::IfLet {
-            expr, then, r#else, ..
-        } => {
-            handle_expression(*expr, tokens);
-
-            if let Some(r#else) = r#else {
-                handle_expression(*r#else, tokens);
-            }
-
-            for node in then.contents {
-                traverse_node(node, tokens);
             }
         }
         Expression::SizeOfVal { exp, .. } => {

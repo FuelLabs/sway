@@ -356,7 +356,13 @@ impl Dependencies {
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
-            Expression::MatchExp { if_exp, .. } => self.gather_from_expr(if_exp),
+            Expression::MatchExp {
+                value, branches, ..
+            } => self
+                .gather_from_expr(value)
+                .gather_from_iter(branches.iter(), |deps, branch| {
+                    deps.gather_from_match_branch(branch)
+                }),
             Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
             Expression::Array { contents, .. } => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
@@ -406,17 +412,21 @@ impl Dependencies {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelayedMatchTypeResolution { .. } => self,
             Expression::StorageAccess { .. } => self,
-            Expression::IfLet {
-                expr, then, r#else, ..
-            } => self
-                .gather_from_expr(expr)
-                .gather_from_block(then)
-                .gather_from_opt_expr(r#else.as_deref()),
             Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
             Expression::BuiltinGetTypeProperty { .. } => self,
         }
+    }
+
+    fn gather_from_match_branch(self, branch: &MatchBranch) -> Self {
+        let MatchBranch {
+            scrutinee, result, ..
+        } = branch;
+        self.gather_from_iter(
+            scrutinee.gather_approximate_typeinfo_dependencies().iter(),
+            |deps, type_info| deps.gather_from_typeinfo(type_info),
+        )
+        .gather_from_expr(result)
     }
 
     fn gather_from_opt_expr(self, opt_expr: Option<&Expression>) -> Self {
@@ -505,6 +515,14 @@ impl Dependencies {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
             }),
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
+            TypeInfo::Struct { fields, .. } => self
+                .gather_from_iter(fields.iter(), |deps, field| {
+                    deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
+                }),
+            TypeInfo::Enum { variant_types, .. } => self
+                .gather_from_iter(variant_types.iter(), |deps, variant| {
+                    deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
+                }),
             _ => self,
         }
     }
