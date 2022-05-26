@@ -525,7 +525,7 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/fuellabs/sway
+            ghcr.io/fuellabs/forc
           tags: |
             type=sha
             type=ref,event=branch
