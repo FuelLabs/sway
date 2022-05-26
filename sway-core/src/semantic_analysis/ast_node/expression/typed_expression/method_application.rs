@@ -164,8 +164,7 @@ pub(crate) fn type_check_method_application(
         // something like a.b(c)
         MethodName::FromModule { method_name } => {
             let selector = if method.is_contract_call {
-                let contract_address = match contract_caller
-                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
+                let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type))
                 {
                     Some(TypeInfo::ContractCaller { address, .. }) => address,
                     _ => {
@@ -215,7 +214,7 @@ pub(crate) fn type_check_method_application(
         }
 
         // something like blah::blah::~Type::foo()
-        MethodName::FromType { call_path, .. } => {
+        MethodName::FromType { call_path, .. } | MethodName::FromTrait { call_path } => {
             let selector = if method.is_contract_call {
                 let contract_address = match contract_caller
                     .map(|x| crate::type_engine::look_up_type_id(x.return_type))
@@ -280,57 +279,35 @@ pub(crate) fn resolve_method_name(
             call_path,
             type_name,
             type_name_span,
-        } => {
-            let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
-                (Some(type_name), Some(type_name_span)) => {
-                    (type_name.clone(), type_name_span.clone())
-                }
-                _ => arguments
-                    .get(0)
-                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
-                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
-            };
-            let ty = match (ty, type_arguments.is_empty()) {
-                (
-                    TypeInfo::Custom {
-                        name,
-                        type_arguments: type_args,
-                    },
-                    false,
-                ) => {
-                    if type_args.is_empty() {
-                        TypeInfo::Custom {
-                            name,
-                            type_arguments,
-                        }
-                    } else {
-                        let type_args_span = type_args
-                            .iter()
-                            .map(|x| x.span.clone())
-                            .fold(type_args[0].span.clone(), Span::join);
-                        errors.push(CompileError::Internal(
-                            "did not expect to find type arguments here",
-                            type_args_span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                }
-                (_, false) => {
-                    errors.push(CompileError::DoesNotTakeTypeArguments {
-                        span: type_name_span,
-                        name: call_path.suffix.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                (ty, true) => ty,
-            };
-            let abs_path: Vec<Ident> = if call_path.is_absolute {
-                call_path.full_path().cloned().collect()
-            } else {
-                namespace.find_module_path(call_path.full_path())
-            };
+        } => check!(
+            find_method(
+                type_name,
+                type_name_span,
+                type_arguments,
+                namespace,
+                &arguments,
+                &call_path,
+                self_type
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ),
+        MethodName::FromTrait { call_path } => {
+            let (type_name, type_name_span) = arguments
+                .get(0)
+                .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
+                .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
             check!(
-                namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &arguments),
+                find_method(
+                    &type_name,
+                    &type_name_span,
+                    type_arguments,
+                    namespace,
+                    &arguments,
+                    &call_path,
+                    self_type
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -351,4 +328,57 @@ pub(crate) fn resolve_method_name(
         }
     };
     ok(func_decl, warnings, errors)
+}
+
+fn find_method(
+    type_name: &TypeInfo,
+    type_name_span: &Span,
+    type_arguments: Vec<TypeArgument>,
+    namespace: &mut Namespace,
+    arguments: &VecDeque<TypedExpression>,
+    call_path: &CallPath,
+    self_type: TypeId,
+) -> CompileResult<TypedFunctionDeclaration> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    let ty = match (type_name, type_arguments.is_empty()) {
+        (
+            TypeInfo::Custom {
+                name,
+                type_arguments: type_args,
+            },
+            false,
+        ) => {
+            if type_args.is_empty() {
+                TypeInfo::Custom {
+                    name: name.clone(),
+                    type_arguments,
+                }
+            } else {
+                let type_args_span = type_args
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .fold(type_args[0].span.clone(), Span::join);
+                errors.push(CompileError::Internal(
+                    "did not expect to find type arguments here",
+                    type_args_span,
+                ));
+                return err(warnings, errors);
+            }
+        }
+        (_, false) => {
+            errors.push(CompileError::DoesNotTakeTypeArguments {
+                span: type_name_span.clone(),
+                name: call_path.suffix.clone(),
+            });
+            return err(warnings, errors);
+        }
+        (ty, true) => ty.clone(),
+    };
+    let abs_path: Vec<Ident> = if call_path.is_absolute {
+        call_path.full_path().cloned().collect()
+    } else {
+        namespace.find_module_path(call_path.full_path())
+    };
+    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &arguments)
 }
