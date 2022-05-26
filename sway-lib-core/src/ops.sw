@@ -443,8 +443,7 @@ impl BitwiseAnd for b256 {
         let word_2 = value_word_2.binary_and(other_word_2);
         let word_3 = value_word_3.binary_and(other_word_3);
         let word_4 = value_word_4.binary_and(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
-        rebuilt
+        compose(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -456,8 +455,7 @@ impl BitwiseOr for b256 {
         let word_2 = value_word_2.binary_or(other_word_2);
         let word_3 = value_word_3.binary_or(other_word_3);
         let word_4 = value_word_4.binary_or(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
-        rebuilt
+        compose(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -469,8 +467,7 @@ impl BitwiseXor for b256 {
         let word_2 = value_word_2.binary_xor(other_word_2);
         let word_3 = value_word_3.binary_xor(other_word_3);
         let word_4 = value_word_4.binary_xor(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
-        rebuilt
+        compose(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -625,6 +622,20 @@ impl Shiftable for b256 {
         };
 
         compose(w1, w2, w3, w4)
+    }
+}
+
+impl b256 {
+    fn increment(self) -> Self {
+        let mut m: b256 = 0x0000000000000000_0000000000000000_0000000000000000_0000000000000001;
+        let mut x = self;
+
+        while x.binary_and(m).neq(0x0000000000000000_0000000000000000_0000000000000000_0000000000000000) {
+            x = x.binary_xor(m);
+            m = m.lsh(1);
+        };
+
+        x.binary_xor(m)
     }
 }
 
