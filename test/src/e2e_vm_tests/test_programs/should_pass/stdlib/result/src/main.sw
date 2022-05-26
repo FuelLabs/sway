@@ -3,10 +3,12 @@ script;
 use std::result::*;
 use std::revert::revert;
 
-fn main() {
+fn main() -> bool {
     test_ok();
     test_err();
     test_unwrap_ok();
+
+    true
 }
 
 fn test_ok() {
