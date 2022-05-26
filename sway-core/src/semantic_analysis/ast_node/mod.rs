@@ -531,8 +531,10 @@ impl TypedAstNode {
                                         }
                                     })
                                 {
-                                    println!("Setting!! {:?}", type_parameter);
-                                    type_parameter.type_id = id.clone();
+                                    type_parameter.type_id = insert_type(TypeInfo::Ref(
+                                        id.clone(),
+                                        type_parameter.name_ident.span().clone(),
+                                    ));
                                 }
                             }
 
