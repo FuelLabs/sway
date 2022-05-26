@@ -11,7 +11,7 @@ cd ${project}
 npm ci
 
 rm -rf build
-node tools/build.js sway rust ini bash shell
+node tools/build.js sway rust ini bash shell json
 cp build/highlight.min.js ../../../docs/theme/highlight.js
 
 # add "keep" in order to keep highlight.js repo
