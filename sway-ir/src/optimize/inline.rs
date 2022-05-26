@@ -284,6 +284,7 @@ fn inline_instruction(
                     .ins(context)
                     .extract_value(map_value(aggregate), ty, indices, span_md_idx)
             }
+            Instruction::GenerateB256Seed => new_block.ins(context).generate_b256_seed(span_md_idx),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,

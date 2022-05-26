@@ -60,6 +60,8 @@ pub enum Instruction {
         ty: Aggregate,
         indices: Vec<u64>,
     },
+    /// Generate b256 seed
+    GenerateB256Seed,
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
@@ -158,6 +160,7 @@ impl Instruction {
             Instruction::ContractCall { return_type, .. } => Some(*return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
+            Instruction::GenerateB256Seed => Some(Type::B256),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
@@ -281,6 +284,7 @@ impl Instruction {
                 replace(index_val);
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
+            Instruction::GenerateB256Seed => (),
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
@@ -545,6 +549,15 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(extract_value_val);
         extract_value_val
+    }
+
+    pub fn generate_b256_seed(self, span_md_idx: Option<MetadataIndex>) -> Value {
+        let generate_b256_seed_val =
+            Value::new_instruction(self.context, Instruction::GenerateB256Seed, span_md_idx);
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(generate_b256_seed_val);
+        generate_b256_seed_val
     }
 
     pub fn get_ptr(

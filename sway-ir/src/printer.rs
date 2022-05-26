@@ -421,6 +421,11 @@ fn instruction_to_doc<'a>(
                     Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                 }),
             )),
+            Instruction::GenerateB256Seed => Doc::text_line(format!(
+                "{} = generate_b256_seed{}",
+                namer.name(context, ins_value),
+                md_namer.meta_as_string(context, span_md_idx, true),
+            )),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,

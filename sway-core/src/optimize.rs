@@ -738,10 +738,24 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
+            TypedExpressionVariant::GenerateB256Seed { span } => {
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+                self.compile_generate_b256_seed(context, span_md_idx)
+            }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
+    fn compile_generate_b256_seed(
+        &mut self,
+        context: &mut Context,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        Ok(self
+            .current_block
+            .ins(context)
+            .generate_b256_seed(span_md_idx))
+    }
 
     fn compile_return_statement(
         &mut self,
