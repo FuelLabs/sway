@@ -1,12 +1,5 @@
 library ops;
 
-// @todo remove !
-fn log(val: u64) {
-    asm(r1: val) {
-        log r1 zero zero zero;
-    }
-}
-
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
