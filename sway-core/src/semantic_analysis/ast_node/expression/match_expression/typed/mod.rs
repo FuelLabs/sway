@@ -40,4 +40,5 @@ mod typed_match_branch;
 mod typed_match_expression;
 mod typed_scrutinee;
 
+pub(crate) use matcher::MatchReqMap;
 pub(crate) use typed_match_expression::TypedMatchExpression;

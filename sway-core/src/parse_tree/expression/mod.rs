@@ -133,25 +133,8 @@ pub enum Expression {
         index: Box<Expression>,
         span: Span,
     },
-    /// This variant serves as a stand-in for parsing-level match expression desugaring.
-    /// Because types cannot be known at parsing-time, a desugared struct or enum gets
-    /// special cased into this variant. During type checking, this variant is removed
-    /// as is replaced with the corresponding field or argument access (given that the
-    /// expression inside of the delayed resolution has the appropriate struct or enum
-    /// type)
-    DelayedMatchTypeResolution {
-        variant: DelayedResolutionVariant,
-        span: Span,
-    },
     StorageAccess {
         field_names: Vec<Ident>,
-        span: Span,
-    },
-    IfLet {
-        scrutinee: Scrutinee,
-        expr: Box<Expression>,
-        then: CodeBlock,
-        r#else: Option<Box<Expression>>,
         span: Span,
     },
     SizeOfVal {
@@ -237,9 +220,7 @@ impl Expression {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
-            DelayedMatchTypeResolution { span, .. } => span,
             StorageAccess { span, .. } => span,
-            IfLet { span, .. } => span,
             SizeOfVal { span, .. } => span,
             BuiltinGetTypeProperty { span, .. } => span,
         })

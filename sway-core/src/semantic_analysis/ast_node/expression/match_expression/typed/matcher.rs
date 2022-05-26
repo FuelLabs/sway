@@ -3,12 +3,13 @@ use crate::{
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
+            instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
     type_engine::unify,
-    CompileError, CompileResult, Ident, Literal,
+    CompileResult, Ident, Literal,
 };
 
 use sway_types::span::Span;
@@ -85,12 +86,8 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
         TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
-        TypedScrutineeVariant::EnumScrutinee { .. } => {
-            errors.push(CompileError::Unimplemented(
-                "matching on enums not implemented yet",
-                span,
-            ));
-            err(warnings, errors)
+        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
+            match_enum(exp, variant, *value, span, namespace)
         }
         TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
     }
@@ -164,6 +161,26 @@ fn match_struct(
         }
     }
 
+    ok((match_req_map, match_decl_map), warnings, errors)
+}
+
+fn match_enum(
+    exp: &TypedExpression,
+    variant: TypedEnumVariant,
+    scrutinee: TypedScrutinee,
+    span: Span,
+    namespace: &mut Namespace,
+) -> CompileResult<MatcherResult> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let (mut match_req_map, unsafe_downcast) = instantiate_unsafe_downcast(exp, variant, span);
+    let (mut new_match_req_map, match_decl_map) = check!(
+        matcher(&unsafe_downcast, scrutinee, namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    match_req_map.append(&mut new_match_req_map);
     ok((match_req_map, match_decl_map), warnings, errors)
 }
 

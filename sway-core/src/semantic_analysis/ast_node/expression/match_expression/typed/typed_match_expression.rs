@@ -65,6 +65,10 @@ impl TypedMatchExpression {
             typed_branches.push(typed_branch);
         }
 
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
+
         let exp = TypedMatchExpression {
             branches: typed_branches,
             return_type_id: return_type_annotation,

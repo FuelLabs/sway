@@ -612,11 +612,6 @@ impl AsmNamespace {
             ),
         }
     }
-
-    /// In the
-    pub(crate) fn overwrite_data_section(&mut self, other: Self) {
-        self.data_section.value_pairs = other.data_section.value_pairs;
-    }
 }
 
 pub(crate) fn compile_ast_to_asm(

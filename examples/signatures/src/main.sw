@@ -22,5 +22,5 @@ fn main() {
         log(address.value);
     } else {
         revert(0);
-    };
+    }
 }

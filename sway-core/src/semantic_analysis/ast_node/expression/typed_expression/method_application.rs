@@ -49,6 +49,7 @@ pub(crate) fn type_check_method_application(
             &method_name,
             args_buf.clone(),
             &type_arguments,
+            &parent_type_arguments,
             span.clone(),
             namespace,
             self_type
@@ -64,7 +65,6 @@ pub(crate) fn type_check_method_application(
         None
     };
 
-    dbg!(&self_type);
     // monomorphize the parent type
     // monomorphize the function declaration
     let method = check!(
@@ -231,7 +231,7 @@ pub(crate) fn type_check_method_application(
         }
 
         // something like blah::blah::~Type::foo()
-        MethodName::FromType { call_path, .. } => {
+        MethodName::FromType { call_path, .. } | MethodName::FromTrait { call_path } => {
             let selector = if method.is_contract_call {
                 let contract_address = match contract_caller
                     .map(|x| crate::type_engine::look_up_type_id(x.return_type))
@@ -285,6 +285,7 @@ pub(crate) fn resolve_method_name(
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
     type_arguments: &[TypeArgument],
+    parent_type_arguments: &[TypeArgument],
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,
@@ -296,57 +297,35 @@ pub(crate) fn resolve_method_name(
             call_path,
             type_name,
             type_name_span,
-        } => {
-            let (ty, type_name_span): (TypeInfo, Span) = match (type_name, type_name_span) {
-                (Some(type_name), Some(type_name_span)) => {
-                    (type_name.clone(), type_name_span.clone())
-                }
-                _ => arguments
-                    .get(0)
-                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
-                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone())),
-            };
-            let ty = match (ty, type_arguments.is_empty()) {
-                (
-                    TypeInfo::Custom {
-                        name,
-                        type_arguments: type_args,
-                    },
-                    false,
-                ) => {
-                    if type_args.is_empty() {
-                        TypeInfo::Custom {
-                            name,
-                            type_arguments: type_arguments.to_vec(),
-                        }
-                    } else {
-                        let type_args_span = type_args
-                            .iter()
-                            .map(|x| x.span.clone())
-                            .fold(type_args[0].span.clone(), Span::join);
-                        errors.push(CompileError::Internal(
-                            "did not expect to find type arguments here",
-                            type_args_span,
-                        ));
-                        return err(warnings, errors);
-                    }
-                }
-                (_, false) => {
-                    errors.push(CompileError::DoesNotTakeTypeArguments {
-                        span: type_name_span,
-                        name: call_path.suffix.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                (ty, true) => ty,
-            };
-            let abs_path: Vec<Ident> = if call_path.is_absolute {
-                call_path.full_path().cloned().collect()
-            } else {
-                namespace.find_module_path(call_path.full_path())
-            };
+        } => check!(
+            find_method_and_monomorphize_parent_type(
+                type_name,
+                type_name_span,
+                parent_type_arguments.to_vec(),
+                namespace,
+                &arguments,
+                call_path,
+                self_type
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ),
+        MethodName::FromTrait { call_path } => {
+            let (type_name, type_name_span) = arguments
+                .get(0)
+                .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
+                .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
             check!(
-                namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, &arguments),
+                find_method_and_monomorphize_parent_type(
+                    &type_name,
+                    &type_name_span,
+                    parent_type_arguments.to_vec(),
+                    namespace,
+                    &arguments,
+                    call_path,
+                    self_type
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -367,4 +346,111 @@ pub(crate) fn resolve_method_name(
         }
     };
     ok(func_decl, warnings, errors)
+}
+
+fn find_method_and_monomorphize_parent_type(
+    type_name: &TypeInfo,
+    type_name_span: &Span,
+    type_arguments: Vec<TypeArgument>,
+    namespace: &mut Namespace,
+    arguments: &VecDeque<TypedExpression>,
+    call_path: &CallPath,
+    self_type: TypeId,
+) -> CompileResult<TypedFunctionDeclaration> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let ty = match (type_name, type_arguments.is_empty()) {
+        (
+            TypeInfo::Custom {
+                name,
+                type_arguments: type_args,
+            },
+            false,
+        ) => {
+            let decl = namespace.resolve_symbol(name);
+            if type_args.is_empty() {
+                TypeInfo::Custom {
+                    name: name.clone(),
+                    type_arguments: type_arguments.clone(),
+                }
+            } else {
+                let type_args_span = type_args
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .fold(type_args[0].span.clone(), Span::join);
+                errors.push(CompileError::Internal(
+                    "did not expect to find type arguments here",
+                    type_args_span,
+                ));
+                return err(warnings, errors);
+            }
+        }
+        (_, false) => {
+            errors.push(CompileError::DoesNotTakeTypeArguments {
+                span: type_name_span.clone(),
+                name: call_path.suffix.clone(),
+            });
+            return err(warnings, errors);
+        }
+        (ty, true) => ty.clone(),
+    };
+    let ty = (|| -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        ok(
+            match ty {
+                TypeInfo::Custom { ref name, .. }
+                | TypeInfo::Struct { ref name, .. }
+                | TypeInfo::Enum { ref name, .. } => {
+                    let decl = check!(
+                        namespace.resolve_symbol(name),
+                        return ok(insert_type(ty), warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    // we can only monomorphize structs and enums
+                    // and it is nonsensical to monomorphize other stuff anyway
+                    match decl {
+                        TypedDeclaration::StructDeclaration(decl) => check!(
+                            namespace.monomorphize(
+                                decl.clone(),
+                                type_arguments,
+                                EnforceTypeArguments::Yes,
+                                Some(self_type),
+                                Some(&name.span()),
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                        .create_type_id(),
+                        TypedDeclaration::EnumDeclaration(decl) => check!(
+                            namespace.monomorphize(
+                                decl.clone(),
+                                type_arguments,
+                                EnforceTypeArguments::Yes,
+                                Some(self_type),
+                                Some(&name.span()),
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                        .create_type_id(),
+                        _ => insert_type(ty),
+                    }
+                }
+                _ => insert_type(ty),
+            },
+            warnings,
+            errors,
+        )
+    })();
+    let ty = check!(ty, return err(warnings, errors), warnings, errors);
+    let abs_path: Vec<Ident> = if call_path.is_absolute {
+        call_path.full_path().cloned().collect()
+    } else {
+        namespace.find_module_path(call_path.full_path())
+    };
+    namespace.find_method_for_type(ty, &abs_path, self_type, arguments)
 }
