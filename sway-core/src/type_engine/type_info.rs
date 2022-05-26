@@ -273,6 +273,19 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
+    pub(crate) fn type_parameters_mut(&mut self) -> &mut [TypeParameter] {
+        match self {
+            TypeInfo::Struct {
+                ref mut type_parameters,
+                ..
+            }
+            | TypeInfo::Enum {
+                ref mut type_parameters,
+                ..
+            } => type_parameters,
+            _ => &mut [],
+        }
+    }
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {

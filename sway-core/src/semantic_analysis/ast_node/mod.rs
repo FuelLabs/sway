@@ -488,6 +488,7 @@ impl TypedAstNode {
                             type_parameters,
                             ..
                         }) => {
+                            let mut impl_namespace = namespace.clone();
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
@@ -495,10 +496,6 @@ impl TypedAstNode {
                                     });
                                     break;
                                 }
-                            }
-
-                            let mut impl_namespace = namespace.clone();
-                            for type_parameter in type_parameters.iter() {
                                 impl_namespace.insert_symbol(
                                     type_parameter.name_ident.clone(),
                                     type_parameter.into(),
@@ -513,7 +510,32 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            let type_implementing_for = look_up_type_id(implementing_for_type_id);
+
+                            let mut type_implementing_for =
+                                look_up_type_id(implementing_for_type_id);
+
+                            let params_for_type = type_implementing_for.type_parameters_mut();
+
+                            let type_params_in_scope: Vec<(&str, TypeId)> = type_parameters
+                                .iter()
+                                .map(|x| (x.name_ident.as_str(), x.type_id))
+                                .collect();
+                            for ref mut type_parameter in params_for_type.iter_mut() {
+                                // link type from impl scope to type scope if necessary
+                                if let Some(id) =
+                                    type_params_in_scope.iter().find_map(|(name, id)| {
+                                        if &(type_parameter.name_ident.as_str()) == name {
+                                            Some(id)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                {
+                                    println!("Setting!! {:?}", type_parameter);
+                                    type_parameter.type_id = id.clone();
+                                }
+                            }
+
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             for mut fn_decl in functions.into_iter() {
                                 // ensure this fn decl's parameters and signature lines up with the
