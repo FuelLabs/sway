@@ -237,7 +237,6 @@ impl BuildPlan {
 
                 let name = dep.package().unwrap_or(dep_name).to_string();
                 let source = dep_to_source(proj_path, dep)?;
-                println!("heree {:?}", source);
                 let dep_pkg = Pkg { name, source };
                 Ok((dep_name, dep_pkg))
             })
@@ -250,9 +249,6 @@ impl BuildPlan {
             .difference(&manifest_dep_pkgs)
             .clone()
             .collect();
-
-        println!("{:#?}", added);
-        println!("{:#?}", removed);
 
         use petgraph::visit::{Bfs, Walker};
         //find root_node_id
@@ -486,9 +482,7 @@ impl Pinned {
         let id = self.id();
         let source = match &self.source {
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path => {
-                Source::Path(fs::canonicalize(&path_map[&id]).unwrap())
-            }
+            SourcePinned::Path => Source::Path(fs::canonicalize(&path_map[&id]).unwrap()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
