@@ -16,7 +16,7 @@ Installed Plugins:
 forc-explore
 ```
 
-`forc-explore` runs the Forc Network Explorer, which you can run and check out for yourself:
+`forc-explore` runs the Fuel Network Explorer, which you can run and check out for yourself:
 
 ```console
 $ forc explore
