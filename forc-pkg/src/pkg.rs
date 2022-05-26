@@ -12,6 +12,7 @@ use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
+    fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -21,9 +22,8 @@ use sway_core::{
     CompileAstResult, CompileError, TreeType, TypedParseTree,
 };
 use sway_utils::constants;
-use url::Url;
-
 use tracing::info;
+use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -237,6 +237,7 @@ impl BuildPlan {
 
                 let name = dep.package().unwrap_or(dep_name).to_string();
                 let source = dep_to_source(proj_path, dep)?;
+                println!("heree {:?}", source);
                 let dep_pkg = Pkg { name, source };
                 Ok((dep_name, dep_pkg))
             })
@@ -249,6 +250,9 @@ impl BuildPlan {
             .difference(&manifest_dep_pkgs)
             .clone()
             .collect();
+
+        println!("{:#?}", added);
+        println!("{:#?}", removed);
 
         use petgraph::visit::{Bfs, Walker};
         //find root_node_id
@@ -482,7 +486,9 @@ impl Pinned {
         let id = self.id();
         let source = match &self.source {
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path => Source::Path(path_map[&id].to_path_buf()),
+            SourcePinned::Path => {
+                Source::Path(fs::canonicalize(path_map[&id].to_path_buf()).unwrap())
+            }
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
@@ -1029,7 +1035,7 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
             (Some(relative_path), _, _) => {
                 let path = pkg_path.join(relative_path);
-                Source::Path(path)
+                Source::Path(fs::canonicalize(path)?)
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
