@@ -57,6 +57,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
 #[tokio::test]
 async fn can_get_contract_id() {
     let (contract_instance, _id) = get_contract_instance().await;
+    // Now you have an instance of your contract you can use to test each function
 
     // Call `initialize_counter()` method in our deployed contract.
     // Note that, here, you get type-safety for free!
@@ -76,7 +77,6 @@ async fn can_get_contract_id() {
         .unwrap();
 
     assert_eq!(52, result.value);
-    // Now you have an instance of your contract you can use to test each function
 }
 ```
 
