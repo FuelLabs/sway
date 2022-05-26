@@ -571,43 +571,41 @@ impl Shiftable for b256 {
         let mut c4 = 0;
         let mut n = shift_amount;
 
-        // get each shifted word and associated carry in turn, shifting one word at a time.
-        if n.gt(64) {
-            let mut i = n;
-            n = shift_amount.modulo(64);
+        // n = 255, so the only bits that matter are the least significant 256 - n (1)
+        // words_to_clear = n / 64 (3)
+        // m = n % 64 (63)
+        // 64 - m = 1
 
-            if n.divide(64) == 3 {
-                // zero the first 3 words, shift the 4th and discard the carry
-            } else if n.divide(64) == 2 {
-                // zero the first 2 words, shift the 4th and 3rd
-            } else if n.divide(64) == 1 {
-                // zero the first word, shift the 4th, 3rd & 2nd
-            } else if n.gt(256) {
-                // all words will be zeroed. vm might panic, undertermined for now.
-            }
+        // 1111111111111111111111111111111111111111111111111111111111111111 w1
+        // 1111111111111111111111111111111111111111111111111111111111111111 w2
+        // 1111111111111111111111111111111111111111111111111111111111111111 w3
+        // 1111111111111111111111111111111111111111111111111111111111111111 w4
 
-            while i.gt(64) {
-                let (w_1, _) = lsh_with_carry(w1, n);
-                w1 = w_1;
-                let (w_2, c_2) = lsh_with_carry(w2, n);
-                w2 = w_2;
-                c2 = c_2;
-                let (w_3, c_3) = lsh_with_carry(w3, n);
-                w3 = w_3;
-                c3 = c_3;
-                let (w_4, c_4) = lsh_with_carry(w4, n);
-                w4 = w_4;
-                c4 = c_4;
+        // clear words_to_clear words:
+        // 0000000000000000000000000000000000000000000000000000000000000000 w1
+        // 0000000000000000000000000000000000000000000000000000000000000000 w2
+        // 0000000000000000000000000000000000000000000000000000000000000000 w3
+        // 1111111111111111111111111111111111111111111111111111111111111111 w4
 
-                // Add overflow from word on the right to each shifted word
-                w1 = w1.add(c2);
-                w2 = w2.add(c3);
-                w3 = w3.add(c4);
+        // shift w4 by m:
+        // 0000000000000000000000000000000000000000000000000000000000000000 w1
+        // 0000000000000000000000000000000000000000000000000000000000000000 w2
+        // 0000000000000000000000000000000000000000000000000000000000000000 w3
+        // 1000000000000000000000000000000000000000000000000000000000000000 w4
 
-                i = i.subtract(64);
-            }
-        } else {
-            // handle the simple case where shift is less than 64 bits first !
+        // add w4 to w1:
+        // 1000000000000000000000000000000000000000000000000000000000000000 w1
+        // 0000000000000000000000000000000000000000000000000000000000000000 w2
+        // 0000000000000000000000000000000000000000000000000000000000000000 w3
+        // 1000000000000000000000000000000000000000000000000000000000000000 w4
+
+        // clear w4:
+        // 1000000000000000000000000000000000000000000000000000000000000000 w1
+        // 0000000000000000000000000000000000000000000000000000000000000000 w2
+        // 0000000000000000000000000000000000000000000000000000000000000000 w3
+        // 0000000000000000000000000000000000000000000000000000000000000000 w4
+        if n.lt(64) {
+             // handle the case where shift is less than 64 bits first
             let (w_1, _) = lsh_with_carry(w1, n);
             w1 = w_1;
             let (w_2, c_2) = lsh_with_carry(w2, n);
@@ -623,7 +621,44 @@ impl Shiftable for b256 {
             w1 = w1.add(c2);
             w2 = w2.add(c3);
             w3 = w3.add(c4);
-        }
+        } else {
+            let words_to_discard = n.divide(64);
+            let m = 64.subtract(n.modulo(64));
+            match words_to_discard {
+                3 => {
+                    /**
+
+                    */
+                    w1 = 0;
+                    w2 = 0;
+                    w3 = 0;
+                    w4 = w4.lsh(m);
+                    w1 = w1.add(w4);
+                    w4 = 0;
+                },
+                2 => {
+                    w1 = 0;
+                    w2 = 0;
+                    w3 = w3.lsh(m);
+                    w1 = w1.add(w3);
+                    w3 = 0;
+                    let (w_4, c_4) = lsh_with_carry(w4, m);
+                    w4 = 0;
+                    w2 = w2.add()
+                },
+                1 => {
+                    w1 = 0;
+                    w1 = w2.lsh(m);
+                    w1 = w_2;
+                    // let (w_2, _) = lsh_with_carry(w2, m);
+
+                },
+                _ => {
+                    // n.gt(256), all words will be zeroed. vm might panic, undertermined for now.
+                },
+            };
+
+        };
 
         compose(w1, w2, w3, w4)
     }
