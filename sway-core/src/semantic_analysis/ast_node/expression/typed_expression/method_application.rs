@@ -21,7 +21,6 @@ pub(crate) fn type_check_method_application(
     dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
-    dbg!(&parent_type_arguments);
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
@@ -44,8 +43,6 @@ pub(crate) fn type_check_method_application(
             errors
         ));
     }
-
-    maybe_monomorphize_parent_type(&method_name, &type_arguments, &args_buf, namespace);
 
     let method = check!(
         resolve_method_name(
@@ -158,8 +155,6 @@ pub(crate) fn type_check_method_application(
             };
         }
     }
-
-    todo!("monomorphize parent type");
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
@@ -372,32 +367,4 @@ pub(crate) fn resolve_method_name(
         }
     };
     ok(func_decl, warnings, errors)
-}
-
-/// if the method name is fromtype and the type has
-/// generic type parameters, monomorphize the declaration of that type and replace the method name type with
-/// that new definition. Then, monomorphize all the impls for that type.
-///
-/// if the method name is frommodule and the first argument has generic type parameters,
-/// monomorphize that first argument's impls.
-
-fn maybe_monomorphize_parent_type(
-    method_name: &MethodName,
-    type_arguments: &[TypeArgument],
-    args_buf: &VecDeque<TypedExpression>,
-    namespace: &mut Namespace,
-) {
-    match method_name {
-        // like ~Foo::bar()
-        MethodName::FromType {
-            call_path,
-            type_name,
-            ..
-        } => {
-            let type_name: String = type_name;
-        }
-        // like a.b.c(d)
-        MethodName::FromModule { method_name } => todo!(),
-    }
-    todo!()
 }
