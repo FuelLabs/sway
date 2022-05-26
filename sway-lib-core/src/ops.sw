@@ -649,9 +649,8 @@ fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let left_shift_amount = 64.subtract(shift_amount);
-    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: FLAG, r6: left_shift_amount) {
-       flag r5;        // set flag to allow overflow without panic
-       sll r3 r1 r6;   // shift left to get carry, put result in r3
+    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: left_shift_amount) {
+       sll r3 r1 r5;   // shift left to get carry, put result in r3
        srl r4 r1 r2;   // shift right, put result in r4
        sw out r4 i0;   // store word at r4 in output
        sw out r3 i1;   // store word at r3 in output + 1 word offset
