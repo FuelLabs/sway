@@ -559,106 +559,86 @@ impl Shiftable for u8 {
 
 impl Shiftable for b256 {
     fn lsh(self, shift_amount: u64) -> Self {
-        let (w_one, w_two, w_three, w_four) = decompose(self);
+        let (word_1, word_2, word_3, word_4) = decompose(self);
+        let mut w1 = 0;
+        let mut w2 = 0;
+        let mut w3 = 0;
+        let mut w4 = 0;
 
-        let mut w1 = w_one;
-        let mut c1 = 0;
-        let mut w2 = w_two;
-        let mut c2 = 0;
-        let mut w3 = w_three;
-        let mut c3 = 0;
-        let mut w4 = w_four;
-        let mut c4 = 0;
-        let mut n = shift_amount;
+        let w = shift_amount.divide(64); // num of whole words to shift in addition to b
+        let b = shift_amount.modulo(64); // num of bits to shift within each word
 
-        // n = 255, so the only bits that matter are the least significant 256 - n (1)
-        // words_to_clear = n / 64 (3)
-        // m = n % 64 (63)
-        // 64 - m = 1
+        match w {
+            0 => {
+                // we need to preserve the carry for each word here
+                w1 = word_1.lsh(b);
+                let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
+                w1 = w1.add(carry_2);
+                w2 = shifted_2;
+                let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+                w2 = w2.add(carry_3);
+                w3 = shifted_3;
+                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+                w3 = w3.add(carry_4);
+                w4 = shifted_4
+            },
+            1 => {
+                // discard the carry for first shift
+                w1 = word_2.lsh(b);
+                let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+                w2 = shifted_3;
+                w1 = w1.add(carry_3);
+                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+                w3 = shifted_4;
+                w2 = w2.add(carry_4);
+                w4 = 0; // don't need to do this, already 0 !
+            },
+            2 => {
+                // discard the carry for first shift
+                w1 = word_3.lsh(b);
+                let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+                w2 = shifted_4;
+                w1 = w1.add(carry_4);
+                w3 = 0; // don't need to do this, already 0 !
+                w4 = 0; // don't need to do this, already 0 !
 
-        // 1111111111111111111111111111111111111111111111111111111111111111 w1
-        // 1111111111111111111111111111111111111111111111111111111111111111 w2
-        // 1111111111111111111111111111111111111111111111111111111111111111 w3
-        // 1111111111111111111111111111111111111111111111111111111111111111 w4
+            },
+            3 => {
+                // discard the carry for first shift
+                w1 = word_4.lsh(b);
+                w2 = 0;
+                w3 = 0;
+                w4 = 0;
+            },
+            _ => {
+                // shift is >= 256 !!!
+                ();
+            },
+        }
 
-        // clear words_to_clear words:
-        // 0000000000000000000000000000000000000000000000000000000000000000 w1
-        // 0000000000000000000000000000000000000000000000000000000000000000 w2
-        // 0000000000000000000000000000000000000000000000000000000000000000 w3
-        // 1111111111111111111111111111111111111111111111111111111111111111 w4
+        /** TODO: Use generalized looping version when vec lands
 
-        // shift w4 by m:
-        // 0000000000000000000000000000000000000000000000000000000000000000 w1
-        // 0000000000000000000000000000000000000000000000000000000000000000 w2
-        // 0000000000000000000000000000000000000000000000000000000000000000 w3
-        // 1000000000000000000000000000000000000000000000000000000000000000 w4
+        let words: [u64; 4] = [w1, w2, w3, w4];
+        let mut new_words: [u64; 4] = [0, 0, 0, 0];
 
-        // add w4 to w1:
-        // 1000000000000000000000000000000000000000000000000000000000000000 w1
-        // 0000000000000000000000000000000000000000000000000000000000000000 w2
-        // 0000000000000000000000000000000000000000000000000000000000000000 w3
-        // 1000000000000000000000000000000000000000000000000000000000000000 w4
+        // @todo use a vec! here. mutable arrays are not possible yet.
+        // https://github.com/FuelLabs/sway/issues/428
+        // we don't need the the carry here
+        new_words.0 = words[w].lsh(b);
+        let mut i = 1;
+        let mut next = w.add(1);
 
-        // clear w4:
-        // 1000000000000000000000000000000000000000000000000000000000000000 w1
-        // 0000000000000000000000000000000000000000000000000000000000000000 w2
-        // 0000000000000000000000000000000000000000000000000000000000000000 w3
-        // 0000000000000000000000000000000000000000000000000000000000000000 w4
-        if n.lt(64) {
-             // handle the case where shift is less than 64 bits first
-            let (w_1, _) = lsh_with_carry(w1, n);
-            w1 = w_1;
-            let (w_2, c_2) = lsh_with_carry(w2, n);
-            w2 = w_2;
-            c2 = c_2;
-            let (w_3, c_3) = lsh_with_carry(w3, n);
-            w3 = w_3;
-            c3 = c_3;
-            let (w_4, c_4) = lsh_with_carry(w4, n);
-            w4 = w_4;
-            c4 = c_4;
+        while i.lt(4) {
+            let (shifted, carry) = lsh_with_carry(words[next], b);
+            let mut carry_destination = new_words[i.subtract(1)];
+            new_words.i = shifted;
+            carry_destination = carry_destination.add(carry);
+            i = 1.add(1);
+            next = next.add(1);
+        }
 
-            w1 = w1.add(c2);
-            w2 = w2.add(c3);
-            w3 = w3.add(c4);
-        } else {
-            let words_to_discard = n.divide(64);
-            let m = 64.subtract(n.modulo(64));
-            match words_to_discard {
-                3 => {
-                    /**
-
-                    */
-                    w1 = 0;
-                    w2 = 0;
-                    w3 = 0;
-                    w4 = w4.lsh(m);
-                    w1 = w1.add(w4);
-                    w4 = 0;
-                },
-                2 => {
-                    w1 = 0;
-                    w2 = 0;
-                    w3 = w3.lsh(m);
-                    w1 = w1.add(w3);
-                    w3 = 0;
-                    let (w_4, c_4) = lsh_with_carry(w4, m);
-                    w4 = 0;
-                    w2 = w2.add()
-                },
-                1 => {
-                    w1 = 0;
-                    w1 = w2.lsh(m);
-                    w1 = w_2;
-                    // let (w_2, _) = lsh_with_carry(w2, m);
-
-                },
-                _ => {
-                    // n.gt(256), all words will be zeroed. vm might panic, undertermined for now.
-                },
-            };
-
-        };
+        */
+        // compose(new_words.0, new_words.1, new_words.2, new_words.3)
 
         compose(w1, w2, w3, w4)
     }
