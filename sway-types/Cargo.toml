@@ -10,7 +10,7 @@ description = "Sway core types."
 
 [dependencies]
 fuel-asm = "0.5"
-fuel-crypto = "0.4"
-fuel-tx = "0.9"
+fuel-crypto = "0.5"
+fuel-tx = "0.12"
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
