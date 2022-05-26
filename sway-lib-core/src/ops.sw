@@ -570,35 +570,24 @@ impl Shiftable for b256 {
 
         // TODO: Use generalized looping version when vec lands !
         if w.eq(0) {
-            // we need to preserve the carry for each word here
-            w1 = word_1.lsh(b);
             let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
-            w1 = w1.add(carry_2);
-            w2 = shifted_2;
+            w1 = word_1.lsh(b).add(carry_2);
             let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
-            w2 = w2.add(carry_3);
-            w3 = shifted_3;
+            w2 = shifted_2.add(carry_3);
             let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
-            w3 = w3.add(carry_4);
-            w4 = shifted_4
+            w3 = shifted_3.add(carry_4);
+            w4 = shifted_4;
         } else if w.eq(1) {
-            // discard the carry for first shift
-            w1 = word_2.lsh(b);
             let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
-            w2 = shifted_3;
-            w1 = w1.add(carry_3);
+            w1 = word_2.lsh(b).add(carry_3);
             let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            w2 = shifted_3.add(carry_4);
             w3 = shifted_4;
-            w2 = w2.add(carry_4);
-            w4 = 0; // don't need to do this, already 0 !
         } else if w.eq(2) {
-            // discard the carry for first shift
-            w1 = word_3.lsh(b);
             let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            w1 = word_3.lsh(b).add(carry_4);
             w2 = shifted_4;
-            w1 = w1.add(carry_4);
         } else if w.eq(3) {
-            // discard the carry for first shift
             w1 = word_4.lsh(b);
         } else {
             ();
@@ -607,19 +596,42 @@ impl Shiftable for b256 {
         compose(w1, w2, w3, w4)
     }
 
-    fn rsh(self, n: u64) -> Self {
-        let (w1, w2, w3, w4) = decompose(self);
-        // get each shifted word and associated overflow in turn
-        let (word_1, carry_1) = rsh_with_carry(w1, n);
-        let (word_2, carry_2) = rsh_with_carry(w2, n);
-        let (word_3, carry_3) = rsh_with_carry(w3, n);
-        let (word_4, carry_4) = rsh_with_carry(w4, n);
-        // Add overflow from the word on the left to each shifted word
-        let w4_shifted = word_4.add(carry_3);
-        let w3_shifted = word_3.add(carry_2);
-        let w2_shifted = word_2.add(carry_1);
+    fn rsh(self, shift_amount: u64) -> Self {
+        let (word_1, word_2, word_3, word_4) = decompose(self);
+        let mut w1 = 0;
+        let mut w2 = 0;
+        let mut w3 = 0;
+        let mut w4 = 0;
 
-        compose(word_1, w2_shifted, w3_shifted, w4_shifted)
+        let w = shift_amount.divide(64); // num of whole words to shift in addition to b
+        let b = shift_amount.modulo(64); // num of bits to shift within each word
+
+        // TODO: Use generalized looping version when vec lands !
+        if w.eq(0) {
+            let (shifted_3, carry_3) = rsh_with_carry(word_3, b);
+            w4 = word_4.rsh(b).add(carry_3);
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            w3 = shifted_3.add(carry_2);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            w2 = shifted_2.add(carry_1);
+            w1 = shifted_1;
+        } else if w.eq(1) {
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            w4 = word_4.rsh(b).add(carry_2);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            w3 = shifted_2.add(carry_1);
+            w2 = shifted_1;
+        } else if w.eq(2) {
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            w4 = word_2.rsh(b).add(carry_1);
+            w3 = shifted_1;
+        } else if w.eq(3) {
+            w4 = word_1.rsh(b);
+        } else {
+            ();
+        };
+
+        compose(w1, w2, w3, w4)
     }
 }
 
