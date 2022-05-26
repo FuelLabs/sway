@@ -487,7 +487,7 @@ impl Pinned {
         let source = match &self.source {
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
             SourcePinned::Path => {
-                Source::Path(fs::canonicalize(path_map[&id].to_path_buf()).unwrap())
+                Source::Path(fs::canonicalize(&path_map[&id]).unwrap())
             }
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
