@@ -341,8 +341,8 @@ impl Ord for u8 {
 
 impl Ord for b256 {
     fn gt(self, other: Self) -> bool {
-        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let(self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
 
         if self.eq(other) {
             false
@@ -358,8 +358,8 @@ impl Ord for b256 {
     }
 
     fn lt(self, other: Self) -> bool {
-        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let(self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
 
         if self.eq(other) {
             false
@@ -437,8 +437,8 @@ impl BitwiseXor for u64 {
 
 impl BitwiseAnd for b256 {
     pub fn binary_and(val: self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
         let word_2 = value_word_2.binary_and(other_word_2);
         let word_3 = value_word_3.binary_and(other_word_3);
@@ -450,8 +450,8 @@ impl BitwiseAnd for b256 {
 
 impl BitwiseOr for b256 {
     pub fn binary_or(val: self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
         let word_2 = value_word_2.binary_or(other_word_2);
         let word_3 = value_word_3.binary_or(other_word_3);
@@ -463,8 +463,8 @@ impl BitwiseOr for b256 {
 
 impl BitwiseXor for b256 {
     pub fn binary_xor(val: self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
         let word_2 = value_word_2.binary_xor(other_word_2);
         let word_3 = value_word_3.binary_xor(other_word_3);
@@ -552,7 +552,7 @@ impl Shiftable for u8 {
 
 impl Shiftable for b256 {
     fn lsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = decompose(self);
+        let(word_1, word_2, word_3, word_4) = decompose(self);
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -563,21 +563,21 @@ impl Shiftable for b256 {
 
         // TODO: Use generalized looping version when vec lands !
         if w.eq(0) {
-            let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
+            let(shifted_2, carry_2) = lsh_with_carry(word_2, b);
             w1 = word_1.lsh(b).add(carry_2);
-            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w2 = shifted_2.add(carry_3);
-            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w3 = shifted_3.add(carry_4);
             w4 = shifted_4;
         } else if w.eq(1) {
-            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w1 = word_2.lsh(b).add(carry_3);
-            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w2 = shifted_3.add(carry_4);
             w3 = shifted_4;
         } else if w.eq(2) {
-            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w1 = word_3.lsh(b).add(carry_4);
             w2 = shifted_4;
         } else if w.eq(3) {
@@ -590,7 +590,7 @@ impl Shiftable for b256 {
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = decompose(self);
+        let(word_1, word_2, word_3, word_4) = decompose(self);
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -601,21 +601,21 @@ impl Shiftable for b256 {
 
         // TODO: Use generalized looping version when vec lands !
         if w.eq(0) {
-            let (shifted_3, carry_3) = rsh_with_carry(word_3, b);
+            let(shifted_3, carry_3) = rsh_with_carry(word_3, b);
             w4 = word_4.rsh(b).add(carry_3);
-            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w3 = shifted_3.add(carry_2);
-            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w2 = shifted_2.add(carry_1);
             w1 = shifted_1;
         } else if w.eq(1) {
-            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w4 = word_4.rsh(b).add(carry_2);
-            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w3 = shifted_2.add(carry_1);
             w2 = shifted_1;
         } else if w.eq(2) {
-            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w4 = word_2.rsh(b).add(carry_1);
             w3 = shifted_1;
         } else if w.eq(3) {
@@ -639,12 +639,12 @@ const FLAG = 2;
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let right_shift_amount = 64.subtract(shift_amount);
-    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: right_shift_amount) {
-       srl r3 r1 r5;   // shift right to get carry, put result in r3
-       sll r4 r1 r2;   // shift left, put result in r4
-       sw out r4 i0;   // store word at r4 in output
-       sw out r3 i1;   // store word at r3 in output + 1 word offset
-       out: (u64, u64) // return both values
+    let(shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: right_shift_amount) {
+        srl r3 r1 r5; // shift right to get carry, put result in r3
+        sll r4 r1 r2; // shift left, put result in r4
+        sw out r4 i0; // store word at r4 in output
+        sw out r3 i1; // store word at r3 in output + 1 word offset
+        out: (u64, u64) // return both values
     };
 
     (shifted, carry)
@@ -654,12 +654,12 @@ fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let mut output = (0, 0);
     let left_shift_amount = 64.subtract(shift_amount);
-    let (shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: left_shift_amount) {
-       sll r3 r1 r5;   // shift left to get carry, put result in r3
-       srl r4 r1 r2;   // shift right, put result in r4
-       sw out r4 i0;   // store word at r4 in output
-       sw out r3 i1;   // store word at r3 in output + 1 word offset
-       out: (u64, u64) // return both values
+    let(shifted, carry) = asm(out: output, r1: word, r2: shift_amount, r3, r4, r5: left_shift_amount) {
+        sll r3 r1 r5; // shift left to get carry, put result in r3
+        srl r4 r1 r2; // shift right, put result in r4
+        sw out r4 i0; // store word at r4 in output
+        sw out r3 i1; // store word at r3 in output + 1 word offset
+        out: (u64, u64) // return both values
     };
 
     (shifted, carry)
