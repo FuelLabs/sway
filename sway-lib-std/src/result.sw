@@ -52,9 +52,7 @@ impl<T, E> Result<T, E> {
     fn unwrap(self) -> T {
         match self {
             Result::Ok(inner_value) => inner_value,
-            _ => {
-                revert(0);
-            }
+            _ => revert(0),
         }
     }
 }
