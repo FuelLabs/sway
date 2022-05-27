@@ -37,6 +37,8 @@ fn main() {
 
 The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
 
+**_Note that the receipts shown below are being re-worked to become more readable in [#1717](https://github.com/FuelLabs/sway/pull/1717)._**
+
 ### `Log` Receipt
 
 The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`. For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:
@@ -106,4 +108,4 @@ LogData {
 }
 ```
 
-Note that `data` in the receipt above is a essentially a list of bytes where each entry is the decimal representation of a given byte in the data being logged (e.g. `17 = 0x11`).
+Note that `data` in the receipt above is a essentially a list of bytes where each entry is the decimal representation of a given byte in the data being logged (e.g. `17 = 0x11`). 
