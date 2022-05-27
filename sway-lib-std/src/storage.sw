@@ -1,18 +1,6 @@
 library storage;
 
-use core::ops::*;
-
-fn increment_b256(b: b256) -> b256  {
-    let mut m: b256 = 0x0000000000000000_0000000000000000_0000000000000000_0000000000000001;
-    let mut x = b;
-
-    while x.binary_and(m).neq(0x0000000000000000_0000000000000000_0000000000000000_0000000000000000) {
-        x = x.binary_xor(m);
-        m = m.lsh(1);
-    };
-
-    x.binary_xor(m)
-}
+use ::hash::sha256;
 
 /// Store a stack variable in storage.
 pub fn store<T>(key: b256, value: T) {
@@ -36,8 +24,7 @@ pub fn store<T>(key: b256, value: T) {
             };
             ptr = ptr + 32;
             size_left = size_left - 32;
-            local_key = local_key >> 1;
-//            local_key = increment_b256(local_key);
+            local_key = sha256(local_key);
         }
         asm(r1: local_key, r2: ptr) {
             swwq r1 r2;
@@ -68,8 +55,8 @@ pub fn get<T>(key: b256) -> T {
                 cfei i32;
                 srwq r2 r1;
             };
-            local_key = local_key >> 1; //increment_b256(local_key);
             size_left = size_left - 32;
+            local_key = sha256(local_key);
         }
         asm(r1: local_key, r2: result_ptr, r3) {
             move r3 sp;

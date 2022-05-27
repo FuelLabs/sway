@@ -7,6 +7,6 @@ mod hashing;
 mod logging;
 mod reentrancy;
 mod registers;
+mod storage;
 mod token_ops;
 mod tx_fields;
-mod storage;

@@ -1,12 +1,3 @@
-/*#[tokio::test]
-#[tokio::test]
-async fn can_get_b256() {
-    let (instance, id) = get_contract_instance().await;
-    let n: [u8; 32] = id.into();
-    let result = instance.get_b256().call().await.unwrap();
-    assert_eq!(result.value, n);
-}*/
-
 use fuels::prelude::*;
 use fuels_abigen_macro::abigen;
 
@@ -85,9 +76,7 @@ async fn can_store_b256() {
 #[tokio::test]
 async fn can_store_small_struct() {
     let instance = get_test_storage_instance().await;
-    let s = SmallStruct {
-        x: 42,
-    };
+    let s = SmallStruct { x: 42 };
     instance.store_small_struct(s.clone()).call().await.unwrap();
     let result = instance.get_small_struct().call().await.unwrap();
     assert_eq!(result.value, s);
@@ -96,11 +85,12 @@ async fn can_store_small_struct() {
 #[tokio::test]
 async fn can_store_medium_struct() {
     let instance = get_test_storage_instance().await;
-    let s = MediumStruct {
-        x: 42,
-        y: 66,
-    };
-    instance.store_medium_struct(s.clone()).call().await.unwrap();
+    let s = MediumStruct { x: 42, y: 66 };
+    instance
+        .store_medium_struct(s.clone())
+        .call()
+        .await
+        .unwrap();
     let result = instance.get_medium_struct().call().await.unwrap();
     assert_eq!(result.value, s);
 }
@@ -121,124 +111,62 @@ async fn can_store_large_struct() {
 #[tokio::test]
 async fn can_store_very_large_struct() {
     let instance = get_test_storage_instance().await;
-    let s = 
-        VeryLargeStruct {
-            x: 42,
-            y: [9; 32],
-            z: [7; 32],
-            w: LargeStruct {
-                x: 13,
-                y: [6; 32],
-                z: 77,
-            }
+    let s = VeryLargeStruct {
+        x: 42,
+        y: [9; 32],
+        z: [7; 32],
     };
-    instance.store_very_large_struct(s.clone()).call().await.unwrap();
+    instance
+        .store_very_large_struct(s.clone())
+        .call()
+        .await
+        .unwrap();
     let result = instance.get_very_large_struct().call().await.unwrap();
     assert_eq!(result.value, s);
 }
 
-/*#[tokio::test]
-async fn can_get_overflow() {
+#[tokio::test]
+async fn can_store_enum() {
     let instance = get_test_storage_instance().await;
-    let result = instance.get_overflow().call().await.unwrap();
-    assert_eq!(result.value, 0);
+    let e1 = StorageEnum::V1([3; 32]);
+    instance.store_enum(e1.clone()).call().await.unwrap();
+    let result = instance.get_enum().call().await.unwrap();
+    assert_eq!(result.value, e1);
+
+    let e2 = StorageEnum::V2(99);
+    instance.store_enum(e2.clone()).call().await.unwrap();
+    let result = instance.get_enum().call().await.unwrap();
+    assert_eq!(result.value, e2);
+
+    let e3 = StorageEnum::V3([4; 32]);
+    instance.store_enum(e3.clone()).call().await.unwrap();
+    let result = instance.get_enum().call().await.unwrap();
+    assert_eq!(result.value, e3);
 }
 
 #[tokio::test]
-async fn can_get_program_counter() {
+async fn can_store_tuple() {
     let instance = get_test_storage_instance().await;
-    let result = instance.get_program_counter().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    let t = ([7; 32], 8, [6; 32]);
+    instance.store_tuple(t.clone()).call().await.unwrap();
+    let result = instance.get_tuple().call().await.unwrap();
+    assert_eq!(result.value, t);
 }
 
 #[tokio::test]
-async fn can_get_stack_start_ptr() {
+async fn can_store_string() {
     let instance = get_test_storage_instance().await;
-    let result = instance.get_stack_start_ptr().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    let s = "fastest_modular_execution_layer".to_string();
+    instance.store_string(s.clone()).call().await.unwrap();
+    let result = instance.get_string().call().await.unwrap();
+    assert_eq!(result.value, s);
 }
 
 #[tokio::test]
-async fn can_get_stack_ptr() {
+async fn can_store_array() {
     let instance = get_test_storage_instance().await;
-    let result = instance.get_stack_ptr().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    let a = [[153; 32], [136; 32], [119; 32]].to_vec();
+    instance.store_array().call().await.unwrap();
+    let result = instance.get_array().call().await.unwrap();
+    assert_eq!(result.value, a);
 }
-
-#[tokio::test]
-async fn can_get_frame_ptr() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_frame_ptr().call().await.unwrap();
-    assert!(is_within_range(result.value));
-}
-
-#[tokio::test]
-async fn can_get_heap_ptr() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_heap_ptr().call().await.unwrap();
-    assert!(is_within_range(result.value));
-}
-
-#[tokio::test]
-async fn can_get_error() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_error().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
-async fn can_get_global_gas() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_global_gas().call().await.unwrap();
-    assert!(is_within_range(result.value));
-}
-
-#[tokio::test]
-async fn can_get_context_gas() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_context_gas().call().await.unwrap();
-    assert!(is_within_range(result.value));
-}
-
-#[tokio::test]
-async fn can_get_balance() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_balance().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
-async fn can_get_instrs_start() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_instrs_start().call().await.unwrap();
-    assert!(is_within_range(result.value));
-}
-
-#[tokio::test]
-async fn can_get_return_value() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_return_value().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
-async fn can_get_return_length() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_return_length().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
-async fn can_get_flags() {
-    let instance = get_test_storage_instance().await;
-    let result = instance.get_flags().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-fn is_within_range(n: u64) -> bool {
-    if n <= 0 || n > VM_MAX_RAM {
-        false
-    } else {
-        true
-    }
-}*/
