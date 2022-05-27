@@ -1,5 +1,7 @@
 # Purity
 
+**_The attributes `#[storage(read)]` and `#[storage(read, write]` introduced below are still in active development. There is no need to apply them at the moment._**
+
 A function is _pure_ if it does not access any [persistent storage](./storage.md). Conversely, the function is _impure_ if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.
 
 In Sway, functions are pure by default but can be opted into impurity via the `storage` function attribute. The `storage` attribute may take `read` and/or `write` arguments indicating which type of access the function requires.
