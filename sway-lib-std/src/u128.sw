@@ -181,13 +181,14 @@ impl core::ops::Shiftable for U128 {
         // zeroes.
         if (rhs >= 128) {
             return ~Self::new();
-        };
+        }
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
-        if (rhs >= 64) {
+        // TODO remove the `else` once #1682 is fixed
+        else if (rhs >= 64) {
             return ~Self::from(self.lower << (rhs - 64), 0);
-        };
+        }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
@@ -206,13 +207,14 @@ impl core::ops::Shiftable for U128 {
         // zeroes.
         if (rhs >= 128) {
             return ~Self::new();
-        };
+        }
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
-        if (rhs >= 64) {
+        // TODO remove the `else` once #1682 is fixed
+        else if (rhs >= 64) {
             return ~Self::from(0, self.upper >> (rhs - 64));
-        };
+        }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
@@ -240,7 +242,7 @@ impl core::ops::Add for U128 {
         // Note: carry can be at most 1.
         if lower_128.upper > 0 {
             upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
-        };
+        }
 
         // If overflow has occurred in the upper component addition, panic.
         assert(upper_128.upper == 0);
@@ -267,7 +269,7 @@ impl core::ops::Subtract for U128 {
             upper = upper - 1;
         } else {
             lower = self.lower - other.lower;
-        };
+        }
 
         U128 {
             upper, lower,

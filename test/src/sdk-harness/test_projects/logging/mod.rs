@@ -1,7 +1,7 @@
 use fuel_core::service::{Config, FuelService};
 use fuel_gql_client::client::FuelClient;
-use fuel_tx::{consts::MAX_GAS_PER_TX, Transaction};
 use fuels::contract::script::Script;
+use fuels::tx::{default_parameters::MAX_GAS_PER_TX, Transaction};
 use hex;
 
 #[tokio::test]

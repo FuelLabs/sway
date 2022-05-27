@@ -85,10 +85,8 @@ impl TypedExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name = MethodName::FromType {
+        let method_name = MethodName::FromTrait {
             call_path: call_path.clone(),
-            type_name: None,
-            type_name_span: None,
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
@@ -145,6 +143,7 @@ impl TypedExpression {
             | Literal(_)
             | StorageAccess { .. }
             | TypeProperty { .. }
+            | GenerateUid { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -232,7 +231,8 @@ impl TypedExpression {
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
+            | TypedExpressionVariant::UnsafeDowncast { .. }
+            | TypedExpressionVariant::GenerateUid { .. } => vec![],
         }
     }
 
@@ -525,6 +525,16 @@ impl TypedExpression {
                     help_text: Default::default(),
                 },
                 span,
+            ),
+            Expression::BuiltinGenerateUid { span } => ok(
+                TypedExpression {
+                    expression: TypedExpressionVariant::GenerateUid { span: span.clone() },
+                    return_type: insert_type(TypeInfo::B256),
+                    is_constant: IsConstant::No,
+                    span,
+                },
+                vec![],
+                vec![],
             ),
         };
         let mut typed_expression = match res.value {
@@ -924,7 +934,7 @@ impl TypedExpression {
         );
         let type_id = typed_value.return_type;
 
-        check!(
+        let _ = check!(
             look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
             warnings,
@@ -1818,7 +1828,7 @@ impl TypedExpression {
             )
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = MethodName::FromType {
+            let method_name = MethodName::FromTrait {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident::new_with_override("core", span.clone()),
@@ -1827,8 +1837,6 @@ impl TypedExpression {
                     suffix: Ident::new_with_override("index", span.clone()),
                     is_absolute: true,
                 },
-                type_name: None,
-                type_name_span: None,
             };
             type_check_method_application(
                 method_name,

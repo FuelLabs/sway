@@ -1,0 +1,11 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'match_expressions_inside_generic_functions'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+dependencies = ['core']

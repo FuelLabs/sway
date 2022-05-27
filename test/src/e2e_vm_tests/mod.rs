@@ -375,6 +375,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_mismatched",
             ProgramState::Return(5),
         ),
+        (
+            "should_pass/language/generate_uid",
+            ProgramState::ReturnData(Bytes32::from([
+                0x17, 0x6e, 0x57, 0xc7, 0x2a, 0x93, 0x91, 0x74, 0x4a, 0x01, 0x44, 0x98, 0xb6, 0xda,
+                0xee, 0x2f, 0xb5, 0x30, 0x0a, 0x6f, 0x57, 0xd3, 0xf9, 0x24, 0x06, 0x39, 0xcf, 0x3b,
+                0xfb, 0xc7, 0x88, 0x4e,
+            ])),
+        ),
+        (
+            "should_pass/language/match_expressions_inside_generic_functions",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =

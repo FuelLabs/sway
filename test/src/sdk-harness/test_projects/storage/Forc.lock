@@ -3,9 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'sdk-harness'
-dependencies = ['std']
-
-[[package]]
 name = 'std'
 dependencies = ['core']
+
+[[package]]
+name = 'storage'
+dependencies = ['std']

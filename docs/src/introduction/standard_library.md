@@ -10,7 +10,4 @@ The standard library is made implicitly available to all Forc projects created u
 use std::address::Address;
 ```
 
-## Using the Standard Library
-
-Aside from the references to the standard library accross this book, you may also read the `std` library project directly [here](https://github.com/FuelLabs/sway/tree/master/sway-lib-std).
-
+This imports the `Address` type into the current namespace.

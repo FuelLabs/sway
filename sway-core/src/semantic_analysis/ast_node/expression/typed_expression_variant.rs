@@ -102,6 +102,9 @@ pub(crate) enum TypedExpressionVariant {
         type_id: TypeId,
         span: Span,
     },
+    GenerateUid {
+        span: Span,
+    },
     SizeOfValue {
         expr: Box<TypedExpression>,
     },
@@ -427,6 +430,7 @@ impl CopyTypes for TypedExpressionVariant {
                 exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
+            GenerateUid { .. } => (),
             AbiName(_) => (),
         }
     }
@@ -591,6 +595,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::SizeOfValue { expr } => {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
+            TypedExpressionVariant::GenerateUid { .. } => "generate_uid".to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TypedExpressionVariant::EnumTag { exp } => {
                 format!(

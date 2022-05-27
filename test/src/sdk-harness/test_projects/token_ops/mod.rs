@@ -1,6 +1,6 @@
-use fuel_tx::{AssetId, ContractId};
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::tx::{AssetId, ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -10,7 +10,7 @@ abigen!(
 
 #[tokio::test]
 async fn can_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet).await;
 
     let target = fuelcoin_id.clone();
@@ -35,7 +35,7 @@ async fn can_mint() {
 
 #[tokio::test]
 async fn can_burn() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet).await;
 
     let target = fuelcoin_id.clone();
@@ -61,7 +61,7 @@ async fn can_burn() {
 
 #[tokio::test]
 async fn can_force_transfer() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
 
@@ -123,7 +123,7 @@ async fn can_force_transfer() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_contract() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
     let amount = 55u64;
@@ -151,7 +151,7 @@ async fn can_mint_and_send_to_contract() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_address() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let amount = 55u64;
 
