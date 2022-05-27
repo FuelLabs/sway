@@ -37,4 +37,3 @@ Create a new Markdown file within `scripts/mdbook-forc-documenter/examples`, nam
 ### Removing an example
 
 Delete the Markdown file from within the above examples directory.
-
