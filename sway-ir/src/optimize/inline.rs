@@ -284,6 +284,7 @@ fn inline_instruction(
                     .ins(context)
                     .extract_value(map_value(aggregate), ty, indices, span_md_idx)
             }
+            Instruction::GenerateUid => new_block.ins(context).generate_uid(span_md_idx),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,

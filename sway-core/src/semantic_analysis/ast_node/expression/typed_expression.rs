@@ -143,6 +143,7 @@ impl TypedExpression {
             | Literal(_)
             | StorageAccess { .. }
             | TypeProperty { .. }
+            | GenerateUid { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -230,7 +231,8 @@ impl TypedExpression {
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
+            | TypedExpressionVariant::UnsafeDowncast { .. }
+            | TypedExpressionVariant::GenerateUid { .. } => vec![],
         }
     }
 
@@ -525,6 +527,16 @@ impl TypedExpression {
                     help_text: Default::default(),
                 },
                 span,
+            ),
+            Expression::BuiltinGenerateUid { span } => ok(
+                TypedExpression {
+                    expression: TypedExpressionVariant::GenerateUid { span: span.clone() },
+                    return_type: insert_type(TypeInfo::B256),
+                    is_constant: IsConstant::No,
+                    span,
+                },
+                vec![],
+                vec![],
             ),
         };
         let mut typed_expression = match res.value {
