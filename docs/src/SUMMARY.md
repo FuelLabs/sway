@@ -46,7 +46,7 @@
   - [TypeScript SDK](./frontend/typescript_sdk.md)
 - [Sway Reference](./reference/index.md)
   - [Style Guide](./reference/style_guide.md)
-  - [Temporary Workarounds](./reference/temporary_workarounds.md)
+  - [Known Issues and Workarounds](./reference/known_issues_and_workarounds.md)
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
