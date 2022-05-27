@@ -150,7 +150,7 @@ $ tree .
     └── harness.rs
 </code></pre>
 <p>Note that this is also a Rust package, hence the existence of a <code>Cargo.toml</code> (Rust manifest file) in the project root directory. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>, (<code>fuels-rs</code>).</p>
-<p>These tests can be run using <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code>).</p>
+<p>These tests can be run using <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code> and prepopulated with boilerplate code).</p>
 <p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
 <pre><code class="language-sway">contract;
 
@@ -178,27 +178,21 @@ impl TestContract for Contract {
 </code></pre>
 <p>Our <code>tests/harness.rs</code> file could look like:</p>
 <!--TODO add test here once examples are tested-->
-<pre><code class="language-rust ignore">use fuel_tx::{ContractId, Salt};
-use fuels::prelude::*;
-use fuels::test_helpers;
+<pre><code class="language-rust ignore">use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
 
 // Load abi from json
 abigen!(MyContract, &quot;out/debug/my-fuel-project-abi.json&quot;);
 
 async fn get_contract_instance() -&gt; (MyContract, ContractId) {
-    // Deploy the compiled contract
-    let salt = Salt::from([0u8; 32]);
-    let compiled = Contract::load_sway_contract(&quot;./out/debug/my-fuel-project.bin&quot;, salt).unwrap();
-
     // Launch a local network and deploy the contract
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
 
-    let id = Contract::deploy(&amp;compiled, &amp;provider, &amp;wallet, TxParameters::default())
+    let id = Contract::deploy(&quot;./out/debug/my-fuel-project.bin&quot;, &amp;wallet, TxParameters::default())
         .await
         .unwrap();
 
-    let instance = MyContract::new(id.to_string(), provider, wallet);
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
@@ -208,8 +202,6 @@ async fn can_get_contract_id() {
     let (contract_instance, _id) = get_contract_instance().await;
     // Now you have an instance of your contract you can use to test each function
 
-    // Call `initialize_counter()` method in our deployed contract.
-    // Note that, here, you get type-safety for free!
     let result = contract_instance
         .initialize_counter(42)
         .call()
@@ -230,11 +222,11 @@ async fn can_get_contract_id() {
 </code></pre>
 <p>Then, in the root of our project, running <code>forc test</code> will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:</p>
 <pre><code class="language-console">$ forc test
-
+...
 running 1 test
-test harness ... ok
+test can_get_contract_id ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 </code></pre>
 
                     </main>
