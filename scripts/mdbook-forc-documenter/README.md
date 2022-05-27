@@ -28,7 +28,7 @@ Delete the entry from `SUMMARY.md`.
 
 ### Removing a forc plugin
 
-Delete the entry from `SUMMARY.md`, along with the step within `ci.yml` and `gh-pages.yml`.
+Do the same as the above, along with the step within `ci.yml` and `gh-pages.yml`.
 
 ### Adding an example
 
