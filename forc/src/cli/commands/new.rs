@@ -2,17 +2,9 @@ use crate::ops::forc_new;
 use anyhow::Result;
 use clap::Parser;
 
-const TEMPLATE_HELP: &str = r#"Initialize a new project from a template.
-
-Example Templates: 
- - counter"#;
-
-/// Create a new Forc project.
+/// Create a new Forc project at <path>.
 #[derive(Debug, Parser)]
 pub struct Command {
-    /// Initialize a new project from a template
-    #[clap(short, long, help = TEMPLATE_HELP)]
-    pub template: Option<String>,
     /// The default program type, excluding all flags or adding this flag creates a basic contract program.
     #[clap(long)]
     pub contract: bool,

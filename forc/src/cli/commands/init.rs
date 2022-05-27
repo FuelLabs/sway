@@ -2,22 +2,22 @@ use crate::ops::forc_init;
 use anyhow::Result;
 use clap::Parser;
 
-/// Create a new Forc project.
+/// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
 pub struct Command {
-    /// The path at which to create the manifest
+    /// The directory in which the forc project will be initialized.
     #[clap(long)]
     pub path: Option<String>,
-    /// Create a package with a binary target (src/main.sw). This is the default behavior
+    /// Create a package with a script target (src/main.sw).
     #[clap(long)]
     pub script: bool,
-    /// Create a package with a library target (src/lib.sw).
+    /// Create a package with a library target (src/lib.sw). This is the default behavior.
     #[clap(long)]
     pub library: bool,
     /// Create a package with a contract target (src/contract.rs).
     #[clap(long)]
     pub contract: bool,
-    /// Create a package with a contract target (src/predicate.rs).
+    /// Create a package with a predicate target (src/predicate.rs).
     #[clap(long)]
     pub predicate: bool,
     /// Use verbose output.
