@@ -8,20 +8,32 @@ use std::{
 // Helper functions
 ////////////////////////////////////////
 
-/// Compute the storage slot for an address's deposits.
-fn get_storage_key<T>(value: T, delimiter: b256) -> b256 {
-    hash_pair(delimiter, value, HashMethod::Sha256)
-}
-
-pub enum StorageEnum {
+pub enum MediumEnum {
     One: u64,
     Two: bool,
     Three: b256,
 }
 
-pub struct StorageStruct {
-  useless_number: u64,
-  status: bool,
+pub struct SmallStruct {
+  x: u64,
+}
+
+pub struct MediumStruct {
+  x: u64,
+  y: u32,
+}
+
+pub struct LargeStruct {
+  x: u32,
+  y: b256,
+  z: u32,
+}
+
+pub struct VeryLargeStruct {
+  x: u32,
+  y: b256,
+  z: b256,
+  w: LargeStruct,
 }
 
 /// Storage delimiters
@@ -30,25 +42,35 @@ const S_2: b256 = 0x000000000000000000000000000000000000000000000000000000000000
 const S_3: b256 = 0x0000000000000000000000000000000000000000000000000000000000000003;
 const S_4: b256 = 0x0000000000000000000000000000000000000000000000000000000000000004;
 const S_5: b256 = 0x0000000000000000000000000000000000000000000000000000000000000005;
-
-storage {
-    val_1: u64,
-    val_2: b256,
-    val_3: StorageEnum,
-    val_4: StorageStruct,
-    val_5: (bool, u64),
-    val_6: [b256; 7],
-}
+const S_6: b256 = 0x0000000000000000000000000000000000000000000000000000000000000006;
+const S_7: b256 = 0x0000000000000000000000000000000000000000000000000000000000000007;
+const S_8: b256 = 0x0000000000000000000000000000000000000000000000000000000000000008;
+const S_9: b256 = 0x0000000000000000000000000000000000000000000000000000000000000009;
+const S_10: b256 = 0x0000000000000000000000000000000000000000000000000000000000000010;
 
 abi StorageTest {
+    fn store_bool(value: bool);
+    fn get_bool() -> bool;
+    fn store_u8(value: u8);
+    fn get_u8() -> u8;
+    fn store_u16(value: u16);
+    fn get_u16() -> u16;
+    fn store_u32(value: u32);
+    fn get_u32() -> u32;
     fn store_u64(value: u64);
     fn get_u64() -> u64;
     fn store_b256(value: b256);
     fn get_b256() -> b256;
     // fn store_enum(value: StorageEnum);
     // fn get_enum() -> StorageEnum;
-    // fn store_struct(value: StorageStruct);
-    // fn get_struct() -> StorageStruct;
+    fn store_small_struct(value: SmallStruct);
+    fn get_small_struct() -> SmallStruct;
+    fn store_medium_struct(value: MediumStruct);
+    fn get_medium_struct() -> MediumStruct;
+    fn store_large_struct(value: LargeStruct);
+    fn get_large_struct() -> LargeStruct;
+    fn store_very_large_struct(value: VeryLargeStruct);
+    fn get_very_large_struct() -> VeryLargeStruct;
     // fn store_tuple(value: b256);
     // fn get_tuple() -> (bool, u64);
     // fn store_array(value: b256);
@@ -56,21 +78,52 @@ abi StorageTest {
 }
 
 impl StorageTest for Contract {
-    // primitive types can use the new storage syntax
-    fn store_u64(value: u64) {
-        storage.val_1 = value;
-    }
-
-    fn get_u64() -> u64 {
-        storage.val_1
-    }
-
-    fn store_b256(value: b256) {
+    fn store_bool(value: bool) {
         store(S_1, value);
     }
 
+    fn get_bool() -> bool {
+        get(S_1) 
+    }
+
+    fn store_u8(value: u8) {
+        store(S_2, value);
+    }
+
+    fn get_u8() -> u8 {
+        get(S_2) 
+    }
+
+    fn store_u16(value: u16) {
+        store(S_3, value);
+    }
+
+    fn get_u16() -> u16 {
+        get(S_3) 
+    }
+
+    fn store_u32(value: u32) {
+        store(S_4, value);
+    }
+
+    fn get_u32() -> u32 {
+        get(S_4) 
+    }
+
+    fn store_u64(value: u64) {
+        store(S_5, value);
+    }
+
+    fn get_u64() -> u64 {
+        get(S_5) 
+    }
+
+    fn store_b256(value: b256) {
+        store(S_6, value);
+    }
+
     fn get_b256() -> b256 {
-        get::<b256>(S_1)
+        get(S_6)
     }
 
     // fn store_enum(value: StorageEnum) {
@@ -81,13 +134,38 @@ impl StorageTest for Contract {
     //     get::<StorageEnum>(STORAGE_KEY)
     // }
 
-    // fn store_struct(value: StorageStruct) {
-    //     store(STORAGE_KEY, value);
-    // }
+    fn store_small_struct(value: SmallStruct) {
+        store(S_8, value);
+    }
 
-    // fn get_struct() -> StorageStruct {
-    //     get::<StorageStruct>(STORAGE_KEY)
-    // }
+    fn get_small_struct() -> SmallStruct {
+        get(S_8)
+    }
+
+    fn store_medium_struct(value: MediumStruct) {
+        store(S_9, value);
+    }
+
+    fn get_medium_struct() -> MediumStruct {
+        get(S_9)
+    }
+
+    fn store_large_struct(value: LargeStruct) {
+        store(S_9, value);
+    }
+
+    fn get_large_struct() -> LargeStruct {
+        get(S_9)
+    }
+
+    fn store_very_large_struct(value: VeryLargeStruct) {
+        store(S_10, value);
+    }
+
+    fn get_very_large_struct() -> VeryLargeStruct {
+        get(S_10)
+    }
+
 
     // fn store_tuple(value: b256) {
     //     store(STORAGE_KEY, value);
