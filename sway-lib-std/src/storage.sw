@@ -1,6 +1,7 @@
 library storage;
 
 use ::hash::sha256;
+use ::context::registers::stack_ptr;
 
 /// Store a stack variable in storage.
 pub fn store<T>(key: b256, value: T) {
@@ -10,29 +11,35 @@ pub fn store<T>(key: b256, value: T) {
             sww r1 r2;
         };
     } else {
-        // If reference type, then it's more than a word. Loop over every 32 bytes and
-        // store sequentially.
+        // If reference type, then it's more than a word. Loop over every 32
+        // bytes and store sequentially.
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
 
-        let mut ptr = asm(r1, r2: value) {
-            move r1 r2;
-            r1
+        // Cast the the pointer to `value` to a u64. This lets us increment
+        // this pointer later on to iterate over 32 byte chunks of `value`.
+        let mut ptr_to_value = asm(v: value) {
+            v
         };
 
         while size_left > 32 {
-            asm(r1: local_key, r2: ptr) {
-                swwq r1 r2;
+            // Store a 4 words (32 byte) at a time using `swwq`
+            asm(k: local_key, v: ptr_to_value) {
+                swwq k v;
             };
-            ptr = ptr + 32;
+
+            // Move by 32 bytes
+            ptr_to_value = ptr_to_value + 32;
             size_left = size_left - 32;
-            // Generate a new key for each 32 byte chunk
-            // Should eventually replace this with `local_key = local_key + 1
+
+            // Generate a new key for each 32 byte chunk TODO Should eventually
+            // replace this with `local_key = local_key + 1
             local_key = sha256(local_key);
         }
 
-        asm(r1: local_key, r2: ptr) {
-            swwq r1 r2;
+        // Store the leftover bytes using a single `swwq`
+        asm(k: local_key, v: ptr_to_value) {
+            swwq k v;
         };
     };
 }
@@ -40,40 +47,47 @@ pub fn store<T>(key: b256, value: T) {
 /// Load a stack variable from storage.
 pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
-        // If copy type, then it's a single word and can be read with a single SRW.
+        // If copy type, then it's a single word and can be read with a single
+        // SRW.
         asm(r1: key, r2) {
             srw r2 r1;
             r2: T
         }
     } else {
-        // If reference type, then it's more than a word. Loop over every 32 bytes and
-        // read sequentially.
+        // If reference type, then it's more than a word. Loop over every 32
+        // bytes and read sequentially.
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
-        
+
         // Keep track of the base pointer for the final result
-        let result_ptr = asm(r1: size_left, r2) {
-            move r2 sp;
-            r2: u64 
-        };
+        let result_ptr = stack_ptr();
 
         while size_left > 32 {
-            asm(r1: local_key, r2) {
-                move r2 sp;
+            // Read 4 words (32 bytes) at a time using `srwq`
+            let current_pointer = stack_ptr();
+            asm(k: local_key, v: current_pointer) {
                 cfei i32;
-                srwq r2 r1;
+                srwq v k;
             };
+
+            // Move by 32 bytes
             size_left = size_left - 32;
-            // Generate a new key for each 32 byte chunk
-            // Should eventually replace this with `local_key = local_key + 1
+
+            // Generate a new key for each 32 byte chunk TODO Should eventually
+            // replace this with `local_key = local_key + 1
             local_key = sha256(local_key);
         }
 
-        asm(r1: local_key, r2: result_ptr, r3) {
-            move r3 sp;
+        // Read the leftover bytes using a single `srwq`
+        let current_pointer = stack_ptr();
+        asm(k: local_key, v: current_pointer) {
             cfei i32;
-            srwq r3 r1;
-            r2: T // finally return the base pointer
+            srwq v k;
+        }
+
+        // Return the final result as type T
+        asm(res: result_ptr) {
+            res: T
         }
     }
 }
