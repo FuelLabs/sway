@@ -49,7 +49,7 @@ impl core::ops::Ord for U128 {
 // impl core::ops::OrdEq for U128 {
 // }
 
-fn disable_overflow() {
+pub fn disable_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
     // 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010
@@ -62,7 +62,7 @@ fn disable_overflow() {
     }
 }
 
-fn enable_overflow() {
+pub fn enable_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
     // 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101
