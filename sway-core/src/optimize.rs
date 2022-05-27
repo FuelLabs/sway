@@ -738,10 +738,21 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
+            TypedExpressionVariant::GenerateUid { span } => {
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+                self.compile_generate_uid(context, span_md_idx)
+            }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
+    fn compile_generate_uid(
+        &mut self,
+        context: &mut Context,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        Ok(self.current_block.ins(context).generate_uid(span_md_idx))
+    }
 
     fn compile_return_statement(
         &mut self,
@@ -2518,7 +2529,7 @@ mod tests {
         let output = path_converter.replace_all(output.as_str(), "$1/path/to/$2");
 
         if output != expected {
-            tracing::error!("{}", prettydiff::diff_lines(&expected, &output));
+            println!("{}", prettydiff::diff_lines(&expected, &output));
             panic!("{} failed.", sw_path.display());
         }
     }

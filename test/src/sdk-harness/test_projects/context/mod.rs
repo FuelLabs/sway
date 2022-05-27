@@ -1,6 +1,5 @@
-use fuel_tx::ContractId;
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::prelude::*;
+use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -22,7 +21,7 @@ async fn get_contracts() -> (
     TestContextCallerContract,
     ContractId,
 ) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let id_1 = Contract::deploy(
         "test_projects/context/out/debug/context.bin",
         &wallet,

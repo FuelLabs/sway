@@ -447,6 +447,9 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::BuiltinGetTypeProperty { .. } => {
             //TODO handle built in get type property?
         }
+        Expression::BuiltinGenerateUid { .. } => {
+            //TODO handle built in generate uid?
+        }
     }
 }
 

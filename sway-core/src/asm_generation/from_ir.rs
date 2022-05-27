@@ -7,6 +7,8 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
+use fuel_crypto::Hasher;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
@@ -499,6 +501,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::ExtractValue {
                     aggregate, indices, ..
                 } => self.compile_extract_value(instr_val, aggregate, indices),
+                Instruction::GenerateUid => self.compile_generate_uid(instr_val),
                 Instruction::GetPointer {
                     base_ptr,
                     ptr_ty,
@@ -1030,6 +1033,32 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         self.reg_map.insert(*instr_val, instr_reg);
+    }
+
+    fn compile_generate_uid(&mut self, instr_val: &Value) {
+        // Replace each call to __generate_uid with a new value
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let storage_slot_to_hash = format!(
+            "{}{}",
+            crate::constants::GENERATE_UID_STORAGE_SEPARATOR,
+            COUNTER.load(Ordering::SeqCst)
+        );
+        COUNTER.fetch_add(1, Ordering::SeqCst);
+
+        let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+
+        let data_id = self
+            .data_section
+            .insert_data_value(&Literal::B256(hashed_storage_slot.into()));
+
+        // Allocate a register for it, and a load instruction.
+        let reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+            comment: "literal instantiation".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+        self.reg_map.insert(*instr_val, reg);
     }
 
     fn compile_get_pointer(
@@ -2300,7 +2329,7 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            tracing::error!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            print!("{}", prettydiff::diff_lines(&expected, &asm_script));
             panic!();
         }
     }
