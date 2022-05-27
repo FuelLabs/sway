@@ -132,6 +132,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_extract_element()
                 / op_extract_value()
+                / op_generate_uid()
                 / op_get_ptr()
                 / op_insert_element()
                 / op_insert_value()
@@ -204,6 +205,11 @@ mod ir_builder {
             rule op_extract_value() -> IrAstOperation
                 = "extract_value" _ name:id() comma() ty:ast_ty() comma() idcs:(decimal() ++ comma()) {
                     IrAstOperation::ExtractValue(name, ty, idcs)
+                }
+
+            rule op_generate_uid() -> IrAstOperation
+                = "generate_uid" _ {
+                    IrAstOperation::GenerateUid()
                 }
 
             rule op_get_ptr() -> IrAstOperation
@@ -351,7 +357,7 @@ mod ir_builder {
                     *c.as_bytes().get(0).unwrap()
                 }
                 / "\\x" h:hex_digit() l:hex_digit() {
-                    (dbg!(h) << 4) | dbg!(l)
+                    (h << 4) | l
                 }
 
             //  There may be a better way to do this, dunno.  In `str_char()` we're parsing '\xHH'
@@ -541,6 +547,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
+        GenerateUid(),
         GetPtr(String, IrAstTy, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
@@ -913,6 +920,7 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
+                IrAstOperation::GenerateUid() => block.ins(context).generate_uid(opt_ins_md_idx),
                 IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
                     let ptr_ir_ty = ptr_ty.to_ir_type(context);
                     block.ins(context).get_ptr(

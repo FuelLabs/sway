@@ -1,0 +1,40 @@
+script {
+    fn main() -> () {
+        local ptr b256 key1
+        local ptr b256 key2
+        local ptr b256 key3
+
+        entry:
+        v0 = generate_uid
+        v1 = get_ptr ptr b256 key1, ptr b256, 0
+        store v0, ptr v1
+        v2 = generate_uid
+        br block0
+
+        block0:
+        v3 = phi(entry: v2)
+        v4 = get_ptr ptr b256 key2, ptr b256, 0
+        store v3, ptr v4
+        v5 = generate_uid
+        br block1
+
+        block1:
+        v6 = phi(block0: v5)
+        v7 = get_ptr ptr b256 key3, ptr b256, 0
+        store v6, ptr v7
+        v8 = const unit ()
+        ret () v8
+    }
+
+    fn anon_0() -> b256 {
+        entry:
+        v0 = generate_uid
+        ret b256 v0
+    }
+
+    fn anon_1() -> b256 {
+        entry:
+        v0 = generate_uid
+        ret b256 v0
+    }
+}
