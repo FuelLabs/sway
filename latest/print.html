@@ -1190,15 +1190,69 @@ struct Car {
 }
 </code></pre>
 <h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
-<p>To log integers, you can use the <code>log_u64</code>, <code>log_u32</code>, <code>log_u16</code>, or <code>log_u8</code> functions from the standard library.</p>
-<pre><code class="language-sway">use std::chain::log_u64;
-
-fn main() {
-    let baz = 8;
-    log_u64(baz);
+<p>The <code>logging</code> library provides a generic <code>log</code> function that can be imported using <code>use std::logging::log</code> and used to log variables of any type. Each call to <code>log</code> appends a <code>receipt</code> to the list of receipts. There are two types of receipts that a <code>log</code> can generate: <code>Log</code> and <code>LogData</code>.</p>
+<p><strong><em>Note that the receipts shown below are being re-worked to become more readable in <a href="https://github.com/FuelLabs/sway/pull/1717">#1717</a>.</em></strong></p>
+<h3 id="log-receipt"><a class="header" href="#log-receipt"><code>Log</code> Receipt</a></h3>
+<p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>. For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
+<pre><code class="language-console">Log {
+    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ra: 42,
+    rb: 0,
+    rc: 0,
+    rd: 0,
+    pc: 10404,
+    is: 10352,
 }
 </code></pre>
-<p>Note that you cannot log arbitrary structs yet because <a href="basics/../reference/temporary_workarounds.html#serialization-and-deserialization">we do not yet support serialization</a>.</p>
+<p>Note that <code>ra</code> will include the value being logged. The additional registers <code>rb</code> to <code>rd</code> will be zero when using <code>log(x)</code>.</p>
+<h3 id="logdata-receipt"><a class="header" href="#logdata-receipt"><code>LogData</code> Receipt</a></h3>
+<p><code>LogData</code> is generated for <em>reference</em> types which include all types except for the <em>non_reference</em> types mentioned above. For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
+<pre><code class="language-console">LogData {
+    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ra: 0,
+    rb: 0,
+    ptr: 10468,
+    len: 32,
+    digest: 0x02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc,
+    data: [
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+        17,
+    ],
+    pc: 10444,
+    is: 10352,
+}
+</code></pre>
+<p>Note that <code>data</code> in the receipt above is a essentially a list of bytes where each entry is the decimal representation of a given byte in the data being logged (e.g. <code>17 = 0x11</code>). </p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>
