@@ -1,6 +1,6 @@
 # mdbook-forc-preprocessor
 
-A preprocessor for [mdBook](https://github.com/rust-lang/mdBook) to update the Forc commands section of the Sway book based on the output we get when running `forc --help`.
+A preprocessor for [mdBook](https://github.com/rust-lang/mdBook) to update the Forc commands and plugins section of the Sway book based on the output we get when running `forc --help`.
 
 This preprocessor is automatically run on every build, as long as the `book.toml` file contains the preprocessor:
 
@@ -10,21 +10,21 @@ This preprocessor is automatically run on every build, as long as the `book.toml
 
 ## Usage
 
-### Adding a new forc command
+### Adding a new forc command or plugin
 
-Enter a new entry under the `Commands` section within `SUMMARY.md`, in this format:
+Enter a new entry under the `Commands` or `Plugins` section within `SUMMARY.md`, in this format:
 
 ```md
-- [forc gm](./forc_gm.md)
+- [forc explore](./forc_explore.md)
 ```
 
-### Removing a forc command
+### Removing a forc command or plugin
 
-Delete the forc command entry from `SUMMARY.md`.
+Delete the entry from `SUMMARY.md`.
 
 ### Adding an example
 
-Create a new Markdown file within `scripts/mdbook-forc-documenter/examples`, named after the desired forc command in snake case. The preprocessor automatically detects the example if there is a matching forc command with the same name as the file name, and includes it in the build.
+Create a new Markdown file within `scripts/mdbook-forc-documenter/examples`, named after the desired forc command or plugin in snake case. The preprocessor automatically detects the example if there is a matching forc command or plugin with the same name as the file name, and includes it in the build.
 
 ### Removing an example
 
