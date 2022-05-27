@@ -414,7 +414,7 @@ impl CopyTypes for TypedConstantDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitDeclaration {
     pub name: Ident,
-    pub(crate) interface_surface: Vec<TypedTraitFn>,
+    pub interface_surface: Vec<TypedTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
@@ -440,7 +440,7 @@ pub struct TypedTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
-    pub(crate) return_type: TypeId,
+    pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) return_type_span: Span,
@@ -482,7 +482,7 @@ impl TypedTraitFn {
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub r#type: TypeId,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

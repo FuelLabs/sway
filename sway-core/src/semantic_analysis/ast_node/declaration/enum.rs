@@ -184,7 +184,7 @@ impl TypedEnumDeclaration {
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

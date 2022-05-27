@@ -179,7 +179,7 @@ impl TypedStructDeclaration {
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub r#type: TypeId,
     pub(crate) span: Span,
 }
 

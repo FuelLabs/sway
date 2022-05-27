@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
 };
 use sway_types::{
     ident::Ident,
@@ -18,24 +18,21 @@ use sway_core::type_engine::TypeId;
 use sway_core::parse_tree::literal::Literal;
 use tower_lsp::lsp_types::{Position, Range, SymbolKind};
 
-
-// #[derive(Debug, Clone)]
-// pub struct TypedIdent {
-//     pub name: Ident,
-//     pub r#type: TypeId,
-// }
-
-// pub struct Token {
-//     TypedIdent(TypedIdent),
-//     TypedAstNodeContent(TypedAstNodeContent),
-// }
-
 #[derive(Debug, Clone)]
-enum TokenType {
+pub enum TokenType {
     TypedDeclaration(TypedDeclaration),
     TypedExpression(TypedExpression),
 
     TypedFunctionDeclaration(TypedFunctionDeclaration),
+    // TypedVariableDeclaration(TypedVariableDeclaration),
+    // TypedConstantDeclaration(TypedConstantDeclaration),
+    // TypedFunctionDeclaration(TypedFunctionDeclaration),
+    // TypedTraitDeclaration(TypedTraitDeclaration),
+    // TypedStructDeclaration(TypedStructDeclaration),
+    // TypedEnumDeclaration(TypedEnumDeclaration),
+    // TypedReassignment(TypedReassignment),
+    // ImplTrait
+
     TypedFunctionParameter(TypedFunctionParameter),
     TypedStructField(TypedStructField),
     TypedEnumVariant(TypedEnumVariant),
@@ -45,7 +42,9 @@ enum TokenType {
     ReassignmentLhs(ReassignmentLhs),
 }
 
-pub fn traverse_node(node: &TypedAstNode, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
+pub type TokenMap = HashMap<(Ident, Span), TokenType>;
+
+pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
         TypedAstNodeContent::ReturnStatement(return_statement) => handle_expression(&return_statement.expr, tokens),
         TypedAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
@@ -56,99 +55,111 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut BTreeMap<Ident, TypedAstN
     };
 }
 
-fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
+// We need to do this work around as the custom PartialEq for Ident impl
+// only checks for the string, not the span.
+fn to_ident_key(ident: &Ident) -> (Ident, Span) {
+    (ident.clone(), ident.span().clone())
+}
+
+fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
     //eprintln!("DECLARATION = {:#?}", declaration);
     match declaration {
         TypedDeclaration::VariableDeclaration(variable) => {
-            tokens.insert(variable.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&variable.name), TokenType::TypedDeclaration(declaration.clone()));
             handle_expression(&variable.body, tokens);
         }
         TypedDeclaration::ConstantDeclaration(const_decl) => {
-            tokens.insert(const_decl.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&const_decl.name), TokenType::TypedDeclaration(declaration.clone()));
             handle_expression(&const_decl.value, tokens);
         }
         TypedDeclaration::FunctionDeclaration(func) => {
-            tokens.insert(func.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&func.name), TokenType::TypedFunctionDeclaration(func.clone()));
             for node in &func.body.contents {
                 traverse_node(node, tokens);
             }
+            for parameter in &func.parameters {
+                tokens.insert(to_ident_key(&parameter.name), TokenType::TypedFunctionParameter(parameter.clone()));
+            }
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {
-            tokens.insert(trait_decl.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&trait_decl.name), TokenType::TypedDeclaration(declaration.clone()));
+            for train_fn in &trait_decl.interface_surface {
+                tokens.insert(to_ident_key(&train_fn.name), TokenType::TypedTraitFn(train_fn.clone()));
+            }
         }
         TypedDeclaration::StructDeclaration(struct_dec) => {
-            tokens.insert(struct_dec.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&struct_dec.name), TokenType::TypedDeclaration(declaration.clone()));
             for field in &struct_dec.fields {
-                tokens.insert(field.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&field.name), TokenType::TypedStructField(field.clone()));
             }
         }
         TypedDeclaration::EnumDeclaration(enum_decl) => {
-            tokens.insert(enum_decl.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&enum_decl.name), TokenType::TypedDeclaration(declaration.clone()));
             for variant in &enum_decl.variants {
-                tokens.insert(variant.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&variant.name), TokenType::TypedEnumVariant(variant.clone()));
             }
         }  
         TypedDeclaration::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
             for lhs in &reassignment.lhs {
-                tokens.insert(lhs.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&lhs.name), TokenType::ReassignmentLhs(lhs.clone()));
             }
         }  
         TypedDeclaration::ImplTrait{trait_name, methods,..} => {
             for ident in &trait_name.prefixes {
-                tokens.insert(ident.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&ident), TokenType::TypedDeclaration(declaration.clone()));
             }
-            tokens.insert(trait_name.suffix.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&trait_name.suffix), TokenType::TypedDeclaration(declaration.clone()));
 
             for method in methods {
-                tokens.insert(method.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&method.name), TokenType::TypedFunctionDeclaration(method.clone()));
                 for node in &method.body.contents {
                     traverse_node(node, tokens);
                 }
                 for paramater in &method.parameters {
-                    tokens.insert(paramater.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                    tokens.insert(to_ident_key(&paramater.name), TokenType::TypedFunctionParameter(paramater.clone()));
                 }
             }
         }  
         TypedDeclaration::AbiDeclaration(abi_decl) => {
-            tokens.insert(abi_decl.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&abi_decl.name), TokenType::TypedDeclaration(declaration.clone()));
             for trait_fn in &abi_decl.interface_surface {
-                tokens.insert(trait_fn.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&trait_fn.name), TokenType::TypedTraitFn(trait_fn.clone()));
             }
         }  
         TypedDeclaration::GenericTypeForFunctionScope{name} => {
-            tokens.insert(name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+            tokens.insert(to_ident_key(&name), TokenType::TypedDeclaration(declaration.clone()));
         }  
         TypedDeclaration::ErrorRecovery => {}  
         TypedDeclaration::StorageDeclaration(storage_decl) => {
             for field in &storage_decl.fields {
-                tokens.insert(field.name.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+                tokens.insert(to_ident_key(&field.name), TokenType::TypedStorageField(field.clone()));
             }
         }  
-        TypedDeclaration::StorageReassignment(storage_reassignment) => {
-            for ident in &storage_reassignment.names() {
-                tokens.insert(ident.clone(), TypedAstNodeContent::Declaration(declaration.clone()));
+        TypedDeclaration::StorageReassignment(storage_reassignment) => { 
+            for field in &storage_reassignment.fields {
+                tokens.insert(to_ident_key(&field.name), TokenType::TypeCheckedStorageReassignDescriptor(field.clone()));
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }        
     }
 }
 
-fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
+fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
     match &expression.expression {
         TypedExpressionVariant::Literal{..} => {}
         TypedExpressionVariant::FunctionApplication{name, contract_call_params, arguments,function_body, ..} => {
             for ident in &name.prefixes {
-                tokens.insert(ident.clone(), TypedAstNodeContent::Expression(expression.clone()));
+                tokens.insert(to_ident_key(&ident), TokenType::TypedExpression(expression.clone()));
             }
-            tokens.insert(name.suffix.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&name.suffix), TokenType::TypedExpression(expression.clone()));
 
             for exp in contract_call_params.values() {
                 handle_expression(&exp, tokens);
             }
 
             for (ident, exp) in arguments {
-                tokens.insert(ident.clone(), TypedAstNodeContent::Expression(exp.clone()));
+                tokens.insert(to_ident_key(&ident), TokenType::TypedExpression(exp.clone()));
             }
 
             for node in &function_body.contents {
@@ -160,7 +171,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, 
             handle_expression(rhs, tokens);
         }
         TypedExpressionVariant::VariableExpression{ ref name } => {
-            tokens.insert(name.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&name), TokenType::TypedExpression(expression.clone()));
         }
         TypedExpressionVariant::Tuple{fields} => {
             for exp in fields {
@@ -177,9 +188,9 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, 
             handle_expression(index, tokens);
         } 
         TypedExpressionVariant::StructExpression{ ref struct_name, ref fields } => { 
-            tokens.insert(struct_name.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&struct_name), TokenType::TypedExpression(expression.clone()));
             for field in fields { 
-                tokens.insert(field.name.clone(), TypedAstNodeContent::Expression(field.value.clone()));
+                tokens.insert(to_ident_key(&field.name), TokenType::TypedExpression(field.value.clone()));
             }
         }
         TypedExpressionVariant::CodeBlock(code_block) => {
@@ -198,12 +209,12 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, 
         TypedExpressionVariant::AsmExpression{..} => {}
         TypedExpressionVariant::StructFieldAccess{prefix, field_to_access, ..} => {
             handle_expression(prefix, tokens);
-            tokens.insert(field_to_access.name.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&field_to_access.name), TokenType::TypedExpression(expression.clone()));
         }
         TypedExpressionVariant::IfLet{expr, variant, variable_to_assign, then, r#else, ..} => {
             handle_expression(&expr, tokens);
-            tokens.insert(variant.name.clone(), TypedAstNodeContent::Expression(expression.clone()));
-            tokens.insert(variable_to_assign.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&variant.name), TokenType::TypedExpression(expression.clone()));
+            tokens.insert(to_ident_key(&variable_to_assign), TokenType::TypedExpression(expression.clone()));
             for node in &then.contents {
                 traverse_node(node, tokens);
             }
@@ -217,14 +228,14 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, 
         TypedExpressionVariant::EnumInstantiation{..} => {}
         TypedExpressionVariant::AbiCast{abi_name, address, ..} => {
             for ident in &abi_name.prefixes {
-                tokens.insert(ident.clone(), TypedAstNodeContent::Expression(expression.clone()));
+                tokens.insert(to_ident_key(&ident), TokenType::TypedExpression(expression.clone()));
             }
-            tokens.insert(abi_name.suffix.clone(), TypedAstNodeContent::Expression(expression.clone()));
+            tokens.insert(to_ident_key(&abi_name.suffix), TokenType::TypedExpression(expression.clone()));
             handle_expression(address, tokens);
         }
         TypedExpressionVariant::StorageAccess(storage_access) => {
             for field in &storage_access.fields {
-                tokens.insert(field.name.clone(), TypedAstNodeContent::Expression(expression.clone()));
+                tokens.insert(to_ident_key(&field.name), TokenType::TypedExpression(expression.clone()));
             }
         }
         TypedExpressionVariant::TypeProperty{..} => {}
@@ -235,18 +246,18 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut BTreeMap<Ident, 
     }
 }
 
-fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut BTreeMap<Ident, TypedAstNodeContent>) {
+fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut TokenMap) {
     handle_expression(&while_loop.condition, tokens);
     for node in &while_loop.body.contents {
         traverse_node(node, tokens);
     }
 }
 
-pub fn type_id(typed_ast_node: &TypedAstNodeContent) -> Option<TypeId> {
-    eprintln!("typed_ast_node = {:#?}", typed_ast_node);
+pub fn type_id(token: &TokenType) -> Option<TypeId> {
+    //eprintln!("token = {:#?}", token);
 
-    match typed_ast_node {
-        TypedAstNodeContent::Declaration(dec) => {
+    match token {
+        TokenType::TypedDeclaration(dec) => {
             match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
                     Some(var_decl.type_ascription)
@@ -254,61 +265,97 @@ pub fn type_id(typed_ast_node: &TypedAstNodeContent) -> Option<TypeId> {
                 TypedDeclaration::ConstantDeclaration(const_decl) => {
                     Some(const_decl.value.return_type)
                 },
+                TypedDeclaration::FunctionDeclaration(_func_decl) => {
+                    None // Not sure what to do here just yet
+                },
+                TypedDeclaration::TraitDeclaration(_trait_decl) => {
+                    None // Not sure what to do here just yet
+                },
+                TypedDeclaration::StructDeclaration(_struct_decl) => {
+                    None // Not sure what to do here just yet
+                },
+                TypedDeclaration::EnumDeclaration(_enum_decl) => {
+                    None // Not sure what to do here just yet
+                },
+                TypedDeclaration::AbiDeclaration(_abi_decl) => {
+                    None // Not sure what to do here just yet
+                },
                 _ => None,
             }
         }
-        TypedAstNodeContent::Expression(exp) => {
+        TokenType::TypedExpression(exp) => {
             Some(exp.return_type)
+        }
+        TokenType::TypedFunctionParameter(func_param) => {
+            Some(func_param.r#type)
+        }
+        TokenType::TypedStructField(struct_field) => {
+            Some(struct_field.r#type)
+        }
+        TokenType::TypedEnumVariant(enum_var) => {
+            Some(enum_var.r#type)
+        }
+        TokenType::TypedTraitFn(trait_fn) => {
+            Some(trait_fn.return_type)
+        }
+        TokenType::TypedStorageField(storage_field) => {
+            Some(storage_field.r#type)
+        }
+        TokenType::TypeCheckedStorageReassignDescriptor(storage_desc) => {
+            Some(storage_desc.r#type)
+        }
+        TokenType::ReassignmentLhs(lhs) => {
+            Some(lhs.r#type)
         }
         _ => None,
     }
 }
 
-fn to_symbol_kind(typed_ast_node: &TypedAstNodeContent) -> SymbolKind {
-    match typed_ast_node {
-        TypedAstNodeContent::Declaration(dec) => {
-            match dec {
-                TypedDeclaration::VariableDeclaration(_) => SymbolKind::VARIABLE,
-                TypedDeclaration::ConstantDeclaration(_) => SymbolKind::CONSTANT,
-                TypedDeclaration::FunctionDeclaration(_) => SymbolKind::FUNCTION,
-                TypedDeclaration::StructDeclaration(_) => SymbolKind::STRUCT,
-                TypedDeclaration::EnumDeclaration(_) => SymbolKind::ENUM,
-                TypedDeclaration::Reassignment(_) => SymbolKind::OPERATOR,
-                TypedDeclaration::ImplTrait{..} => SymbolKind::INTERFACE,
-                TypedDeclaration::AbiDeclaration(_) => SymbolKind::INTERFACE,
-                TypedDeclaration::GenericTypeForFunctionScope{..} => SymbolKind::TYPE_PARAMETER,
-                // currently we return `variable` type as default
-                _ => SymbolKind::VARIABLE,
-            }
-        }
-        TypedAstNodeContent::Expression(exp) => {
-            match &exp.expression {
-                TypedExpressionVariant::Literal(lit) => {
-                    match lit {
-                        Literal::String(_) => SymbolKind::STRING,
-                        Literal::Boolean(_) => SymbolKind::BOOLEAN,
-                        _ => SymbolKind::NUMBER,
-                    }
-                }
-                TypedExpressionVariant::FunctionApplication{..} => SymbolKind::FUNCTION,
-                TypedExpressionVariant::VariableExpression{..} => SymbolKind::VARIABLE,
-                TypedExpressionVariant::Array{..} => SymbolKind::ARRAY,
-                TypedExpressionVariant::StructExpression{..} => SymbolKind::STRUCT,
-                TypedExpressionVariant::StructFieldAccess{..} => SymbolKind::FIELD,
-                // currently we return `variable` type as default
-                _ => SymbolKind::VARIABLE,
-            }
-        }
-        // currently we return `variable` type as default
-        _ => SymbolKind::VARIABLE,
-    }
-}
+// fn to_symbol_kind(typed_ast_node: &TokenType) -> SymbolKind {
+//     match typed_ast_node {
+//         TypedAstNodeContent::Declaration(dec) => {
+//             match dec {
+//                 TypedDeclaration::VariableDeclaration(_) => SymbolKind::VARIABLE,
+//                 TypedDeclaration::ConstantDeclaration(_) => SymbolKind::CONSTANT,
+//                 TypedDeclaration::FunctionDeclaration(_) => SymbolKind::FUNCTION,
+//                 TypedDeclaration::StructDeclaration(_) => SymbolKind::STRUCT,
+//                 TypedDeclaration::EnumDeclaration(_) => SymbolKind::ENUM,
+//                 TypedDeclaration::Reassignment(_) => SymbolKind::OPERATOR,
+//                 TypedDeclaration::ImplTrait{..} => SymbolKind::INTERFACE,
+//                 TypedDeclaration::AbiDeclaration(_) => SymbolKind::INTERFACE,
+//                 TypedDeclaration::GenericTypeForFunctionScope{..} => SymbolKind::TYPE_PARAMETER,
+//                 // currently we return `variable` type as default
+//                 _ => SymbolKind::VARIABLE,
+//             }
+//         }
+//         TypedAstNodeContent::Expression(exp) => {
+//             match &exp.expression {
+//                 TypedExpressionVariant::Literal(lit) => {
+//                     match lit {
+//                         Literal::String(_) => SymbolKind::STRING,
+//                         Literal::Boolean(_) => SymbolKind::BOOLEAN,
+//                         _ => SymbolKind::NUMBER,
+//                     }
+//                 }
+//                 TypedExpressionVariant::FunctionApplication{..} => SymbolKind::FUNCTION,
+//                 TypedExpressionVariant::VariableExpression{..} => SymbolKind::VARIABLE,
+//                 TypedExpressionVariant::Array{..} => SymbolKind::ARRAY,
+//                 TypedExpressionVariant::StructExpression{..} => SymbolKind::STRUCT,
+//                 TypedExpressionVariant::StructFieldAccess{..} => SymbolKind::FIELD,
+//                 // currently we return `variable` type as default
+//                 _ => SymbolKind::VARIABLE,
+//             }
+//         }
+//         // currently we return `variable` type as default
+//         _ => SymbolKind::VARIABLE,
+//     }
+// }
 
-pub fn ident_at_position<'a>(cursor_position: Position, tokens: &'a BTreeMap<Ident, TypedAstNodeContent>) -> Option<&'a Ident> {
-    for ident in tokens.keys() {
-        let range = get_range_from_span(ident.span());
+pub fn ident_and_span_at_position(cursor_position: Position, tokens: &TokenMap) -> Option<(Ident, Span)> {
+    for (ident,span) in tokens.keys() {
+        let range = get_range_from_span(span);
         if cursor_position >= range.start && cursor_position <= range.end {
-            return Some(ident);
+            return Some((ident.clone(), span.clone()));
         }    
     }
     None
@@ -331,7 +378,7 @@ fn get_range_from_span(span: &Span) -> Range {
 }
 
 // DEBUG 
-pub fn debug_print_ident(ident: &Ident, token: &TypedAstNodeContent) {
+pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
 	let pos = ident.span().start_pos().line_col();
 	let line_num = pos.0 as u32;	
     eprintln!("line num = {:?} | name: = {:?} | ast_node_type = {:?} | type_id = {:?}", 
@@ -342,12 +389,21 @@ pub fn debug_print_ident(ident: &Ident, token: &TypedAstNodeContent) {
     );
 }
 
-fn ast_node_type(token: &TypedAstNodeContent) -> String {
+pub fn debug_print_ident(ident: &Ident) {
+	let pos = ident.span().start_pos().line_col();
+	let line_num = pos.0 as u32;	
+    eprintln!("line num = {:?} | name: = {:?}", 
+        line_num,
+        ident.as_str(),
+    );
+}
+
+fn ast_node_type(token: &TokenType) -> String {
     match &token {
-        TypedAstNodeContent::Declaration(dec) => {
+        TokenType::TypedDeclaration(dec) => {
             dec.friendly_name().to_string()
         }
-        TypedAstNodeContent::Expression(exp) => {
+        TokenType::TypedExpression(exp) => {
             exp.expression.pretty_print()
         }
         _ => "".to_string()

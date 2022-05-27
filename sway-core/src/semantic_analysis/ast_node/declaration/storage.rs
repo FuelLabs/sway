@@ -139,7 +139,7 @@ impl TypedStorageDeclaration {
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub r#type: TypeId,
     pub(crate) span: Span,
 }
 

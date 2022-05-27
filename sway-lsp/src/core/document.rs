@@ -118,10 +118,9 @@ impl TextDocument {
 
     pub fn test_typed_parse(&self) {
         use sway_types::ident::Ident;
-        use sway_core::semantic_analysis::ast_node::TypedAstNodeContent;
         use super::traverse_typed_tree as ttt;
 
-        let mut tokens: BTreeMap<Ident, TypedAstNodeContent> = BTreeMap::new();
+        let mut tokens: ttt::TokenMap = HashMap::new();
 
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
@@ -129,19 +128,19 @@ impl TextDocument {
             }
         }
 
-        for (ident, token) in &tokens {
-            ttt::debug_print_ident(ident, token);
+        for ((ident,span), token) in &tokens {
+            ttt::debug_print_ident_and_token(ident, token);
         }
 
         //eprintln!("{:#?}", tokens.keys());
     
-        let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        //let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
+        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
+        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
         // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some(ident) = ttt::ident_at_position(cursor_position, &tokens) {
+        if let Some( (ident, span) ) = ttt::ident_and_span_at_position(cursor_position, &tokens) {
             // Retrieve the typed_ast_node from our BTreeMap
-            if let Some(token) = tokens.get(ident) {
+            if let Some(token) = tokens.get(&(ident, span)) {
                 //eprintln!("token = {:#?}", token);
 
                 // Look up the tokens TypeId

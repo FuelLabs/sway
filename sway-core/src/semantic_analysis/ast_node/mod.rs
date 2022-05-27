@@ -1531,7 +1531,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
 /// Describes each field being drilled down into in storage and its type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageReassignment {
-    pub(crate) fields: Vec<TypeCheckedStorageReassignDescriptor>,
+    pub fields: Vec<TypeCheckedStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
     pub rhs: TypedExpression,
 }
@@ -1557,7 +1557,7 @@ impl TypeCheckedStorageReassignment {
 #[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub r#type: TypeId,
     pub(crate) span: Span,
 }
 
