@@ -42,10 +42,9 @@ pub fn caller_contract_id() -> ContractId {
 pub fn msg_sender() -> Result<Sender, AuthError> {
     if caller_is_external() {
         let sender_res = get_coins_owner();
-        if let Result::Ok(sender) = sender_res {
-            Result::Ok(sender)
-        } else {
-            sender_res
+        match sender_res {
+            Result::Ok(sender) => Result::Ok(sender),
+            sender_res => sender_res,
         }
     } else {
         // Get caller's `ContractId`.
