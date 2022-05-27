@@ -383,6 +383,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0xfb, 0xc7, 0x88, 0x4e,
             ])),
         ),
+        (
+            "should_pass/language/match_expressions_inside_generic_functions",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =

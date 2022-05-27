@@ -1,36 +1,36 @@
 [
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "a",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       },
       {
-        "components": null,
         "name": "b",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
     ],
     "name": "multiply_u64",
     "outputs": [
       {
+        "name": "",
+        "type": "(u64, u64)",
         "components": [
           {
-            "components": null,
             "name": "__tuple_element",
-            "type": "u64"
+            "type": "u64",
+            "components": null
           },
           {
-            "components": null,
             "name": "__tuple_element",
-            "type": "u64"
+            "type": "u64",
+            "components": null
           }
-        ],
-        "name": "",
-        "type": "(u64, u64)"
+        ]
       }
-    ],
-    "type": "function"
+    ]
   }
 ]

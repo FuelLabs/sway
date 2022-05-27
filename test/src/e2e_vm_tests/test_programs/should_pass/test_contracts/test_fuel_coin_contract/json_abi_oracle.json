@@ -1,78 +1,78 @@
 [
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "mint_amount",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
     ],
     "name": "mint",
     "outputs": [
       {
-        "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "components": []
       }
-    ],
-    "type": "function"
+    ]
   },
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "burn_amount",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
     ],
     "name": "burn",
     "outputs": [
       {
-        "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "components": []
       }
-    ],
-    "type": "function"
+    ]
   },
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "coins",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       },
       {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256"
-          }
-        ],
         "name": "asset_id",
-        "type": "struct ContractId"
-      },
-      {
+        "type": "struct ContractId",
         "components": [
           {
-            "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "components": null
           }
-        ],
+        ]
+      },
+      {
         "name": "c_id",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "components": [
+          {
+            "name": "value",
+            "type": "b256",
+            "components": null
+          }
+        ]
       }
     ],
     "name": "force_transfer",
     "outputs": [
       {
-        "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "components": []
       }
-    ],
-    "type": "function"
+    ]
   }
 ]

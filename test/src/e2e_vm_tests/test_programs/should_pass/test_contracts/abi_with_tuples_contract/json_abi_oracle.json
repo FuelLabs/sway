@@ -1,72 +1,72 @@
 [
   {
+    "type": "function",
     "inputs": [
       {
+        "name": "param",
+        "type": "(struct Person, u64)",
         "components": [
           {
+            "name": "__tuple_element",
+            "type": "struct Person",
             "components": [
               {
-                "components": null,
                 "name": "age",
-                "type": "u64"
+                "type": "u64",
+                "components": null
               }
-            ],
-            "name": "__tuple_element",
-            "type": "struct Person"
+            ]
           },
           {
-            "components": null,
             "name": "__tuple_element",
-            "type": "u64"
+            "type": "u64",
+            "components": null
           }
-        ],
-        "name": "param",
-        "type": "(struct Person, u64)"
+        ]
       }
     ],
     "name": "bug1",
     "outputs": [
       {
-        "components": null,
         "name": "",
-        "type": "bool"
+        "type": "bool",
+        "components": null
       }
-    ],
-    "type": "function"
+    ]
   },
   {
+    "type": "function",
     "inputs": [
       {
+        "name": "param",
+        "type": "(enum Location, u64)",
         "components": [
           {
+            "name": "__tuple_element",
+            "type": "enum Location",
             "components": [
               {
-                "components": [],
                 "name": "Earth",
-                "type": "()"
+                "type": "()",
+                "components": []
               }
-            ],
-            "name": "__tuple_element",
-            "type": "enum Location"
+            ]
           },
           {
-            "components": null,
             "name": "__tuple_element",
-            "type": "u64"
+            "type": "u64",
+            "components": null
           }
-        ],
-        "name": "param",
-        "type": "(enum Location, u64)"
+        ]
       }
     ],
     "name": "bug2",
     "outputs": [
       {
-        "components": null,
         "name": "",
-        "type": "bool"
+        "type": "bool",
+        "components": null
       }
-    ],
-    "type": "function"
+    ]
   }
 ]

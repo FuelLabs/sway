@@ -1,43 +1,43 @@
 [
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "storage_key",
-        "type": "b256"
+        "type": "b256",
+        "components": null
       }
     ],
     "name": "get_u64",
     "outputs": [
       {
-        "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
-    ],
-    "type": "function"
+    ]
   },
   {
+    "type": "function",
     "inputs": [
       {
-        "components": null,
         "name": "key",
-        "type": "b256"
+        "type": "b256",
+        "components": null
       },
       {
-        "components": null,
         "name": "value",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
     ],
     "name": "store_u64",
     "outputs": [
       {
-        "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "components": []
       }
-    ],
-    "type": "function"
+    ]
   }
 ]
