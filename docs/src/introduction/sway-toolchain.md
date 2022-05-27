@@ -16,7 +16,7 @@ Currently, only [Visual Studio Code is supported through a plugin](https://marke
 
 ## Sway Formatter (`forc-fmt`)
 
-A canonical formatter is provided with `forc-fmt`. [Installation instructions](./installation.md). It can be ran manually with
+A canonical formatter is provided with `forc-fmt`. [Installation instructions](./installation.md). It can be run manually with
 
 ```sh
 forc fmt
@@ -26,4 +26,4 @@ The [Visual Studio Code plugin]((https://marketplace.visualstudio.com/items?item
 
 ## Fuel Core (`fuel-core`)
 
-While not directly part of the Sway toolchain, an implementation of the Fuel protocol, [Fuel Core](https://github.com/FuelLabs/fuel-core), is provided. [The SDK](https://github.com/FuelLabs/fuels-rs) will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.
+While not directly part of the Sway toolchain, an implementation of the Fuel protocol, [Fuel Core](https://github.com/FuelLabs/fuel-core), is provided. [The Rust SDK](https://github.com/FuelLabs/fuels-rs) will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.
