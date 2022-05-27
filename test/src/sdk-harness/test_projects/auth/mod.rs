@@ -1,5 +1,4 @@
-use fuel_tx::ContractId;
-use fuels::prelude::*;
+use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -52,7 +51,7 @@ async fn get_contracts() -> (
     ContractId,
     LocalWallet,
 ) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
 
     let id_1 = Contract::deploy(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
