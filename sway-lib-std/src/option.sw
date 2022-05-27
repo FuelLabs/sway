@@ -51,9 +51,7 @@ impl<T> Option<T> {
     fn unwrap(self) -> T {
         match self {
             Option::Some(inner_value) => inner_value,
-            _ => {
-                revert(0);
-            }
+            _ => revert(0),
         }
     }
 }
