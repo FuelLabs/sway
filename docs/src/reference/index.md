@@ -1,4 +1,4 @@
-# Reference
+# Sway Reference
 
 - [Style Guide](./style_guide.md)
 - [Known Issues and Workarounds](./known_issues_and_workarounds.md)
