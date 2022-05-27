@@ -3,15 +3,15 @@ project="highlight.js"
 sway="sway.js"
 
 if ! test -d ./${project}; then
-    git clone git@github.com:highlightjs/highlight.js.git
+    git clone --depth 1 --branch 11.3.1 git@github.com:highlightjs/highlight.js.git
 fi
 
 cp ${sway} ${project}/src/languages
 cd ${project}
-npm install
+npm ci
 
 rm -rf build
-node tools/build.js sway rust ini
+node tools/build.js sway rust ini bash shell json
 cp build/highlight.min.js ../../../docs/theme/highlight.js
 
 # add "keep" in order to keep highlight.js repo

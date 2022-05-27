@@ -85,10 +85,8 @@ impl TypedExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name = MethodName::FromType {
+        let method_name = MethodName::FromTrait {
             call_path: call_path.clone(),
-            type_name: None,
-            type_name_span: None,
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
@@ -1818,7 +1816,7 @@ impl TypedExpression {
             )
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = MethodName::FromType {
+            let method_name = MethodName::FromTrait {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident::new_with_override("core", span.clone()),
@@ -1827,8 +1825,6 @@ impl TypedExpression {
                     suffix: Ident::new_with_override("index", span.clone()),
                     is_absolute: true,
                 },
-                type_name: None,
-                type_name_span: None,
             };
             type_check_method_application(
                 method_name,

@@ -1,7 +1,6 @@
 use fuel_tx::ContractId;
 use fuels::prelude::*;
 use fuels_abigen_macro::abigen;
-use fuels_signers::wallet::Wallet;
 
 abigen!(
     AuthContract,
@@ -51,7 +50,7 @@ async fn get_contracts() -> (
     ContractId,
     AuthCallerContract,
     ContractId,
-    Wallet,
+    LocalWallet,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
