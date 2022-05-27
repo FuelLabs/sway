@@ -379,6 +379,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_mismatched",
             ProgramState::Return(5),
         ),
+        (
+            "should_pass/language/result_monomorphization",
+            ProgramState::Return(5),
+        ),
+        (
+            "should_pass/language/result_monomorphization_2",
+            ProgramState::Revert(0),
+        ),
     ];
 
     let mut number_of_tests_run =

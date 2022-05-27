@@ -166,7 +166,7 @@ impl Items {
         // corresponding to `old_type`.
         let methods = self
             .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
+            .get_methods_for_type_by_trait(old_type.clone());
 
         // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
         // as the `TypeInfo` key.
