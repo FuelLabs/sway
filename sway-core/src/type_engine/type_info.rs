@@ -793,9 +793,9 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::Byte
             | TypeInfo::B256
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
