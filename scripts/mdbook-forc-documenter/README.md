@@ -20,7 +20,7 @@ Enter a new entry under the `Commands` section within `SUMMARY.md`, in this form
 
 ### Adding a new forc plugin
 
-Do the same as the above, with an extra step of adding an installation step within the CI. The preprocessor needs to be aware of the plugin when building the book, since it is calling `forc <plugin> --help` to generate the documentation. You can add this installation step within [`ci.yml`](https://github.com/FuelLabs/sway/blob/master/.github/workflows/ci.yml#L126) and [`gh-pages.yml`](https://github.com/FuelLabs/sway/blob/master/.github/workflows/gh-pages.yml#L26).
+Do the same as the above, with an extra step of adding an installation step within the CI. The preprocessor needs to be aware of the plugin when building the book, since it is calling `forc <plugin> --help` to generate the documentation. You can add this installation step within [`ci.yml`](https://github.com/FuelLabs/sway/blob/a19681c2165402d289bc6bae7a46a580ef3be5b5/.github/workflows/ci.yml#L126) and [`gh-pages.yml`](https://github.com/FuelLabs/sway/blob/a19681c2165402d289bc6bae7a46a580ef3be5b5/.github/workflows/gh-pages.yml#L26).
 
 ### Removing a forc command
 
