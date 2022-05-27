@@ -4,8 +4,6 @@
 
 * [#1663](https://github.com/FuelLabs/sway/issues/1663): Using an explicit `return` in all branches of an `if let` expression causes a compile error. The workaround is to use implicit returns instead.
 
-* [#1682](https://github.com/FuelLabs/sway/issues/1682): The compiler currently emits warnings from `sway-lib-std/src/u128.sw` about some unreachable code. Those warnings can be ignored.
-
 * [#1664](https://github.com/FuelLabs/sway/issues/1664): Binary and hex literals cannot be used for integer types (i.e. `u8`, `u16`, `u32`, `u64`). Only decimal literals can be used at the moment.
 
 * [#1657](https://github.com/FuelLabs/sway/issues/1657): Accessing data members of a `struct` directly from a function call does not currently work. The same applies to `enum` types and arrays. The workaround is to store the result of the function call in a temporary variable and accessing the required elements from that variable instead.
