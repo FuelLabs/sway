@@ -153,55 +153,67 @@
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.</p>
-<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
-<p>A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions can be found <a href="https://www.rust-lang.org/tools/install">here</a>.</p>
+<h2 id="installing-from-pre-compiled-binaries"><a class="header" href="#installing-from-pre-compiled-binaries">Installing from Pre-compiled Binaries</a></h2>
+<p>Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. They can be found attached to the release notes of the respective release. The latest <code>forc</code> release can be found here: <a href="https://github.com/FuelLabs/sway/releases/latest">https://github.com/FuelLabs/sway/releases/latest</a>.</p>
+<blockquote>
+<p><strong>Note</strong> <a href="https://github.com/FuelLabs/fuelup"><code>fuelup</code></a> is a work-in-progress equivalent of <code>rustup</code> for the Sway toolchain. Once ready, it will be able to easily download and manage Sway toolchain versions.</p>
+</blockquote>
+<h2 id="installing-from-source"><a class="header" href="#installing-from-source">Installing from Source</a></h2>
+<h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
+<p>A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing <code>rustup</code> can be found <a href="https://www.rust-lang.org/tools/install">here</a>. Then, install the Rust toolchain with:</p>
+<pre><code class="language-sh"># Install the latest stable Rust toolchain.
+rustup install stable
+</code></pre>
 <p>Installing <code>fuel-core</code> may require installing additional system dependencies. See <a href="https://github.com/FuelLabs/fuel-core#building">here</a> for instructions.</p>
-<h2 id="installing-from-cargo"><a class="header" href="#installing-from-cargo">Installing from Cargo</a></h2>
-<p>The Sway toolchain and Fuel Core full node can be installed with:</p>
+<p>The Sway toolchain is built and tested against the <code>stable</code> Rust toolchain version (<a href="https://github.com/rust-lang/rust/releases/latest">https://github.com/rust-lang/rust/releases/latest</a>).  There is no guarantee it will work with the <code>nightly</code> Rust toolchain, or with earlier <code>stable</code> versions, so ensure you are using <code>stable</code> with:</p>
+<pre><code class="language-sh"># Update installed Rust toolchain; can be used independently.
+rustup update
+# Set the stable Rust toolchain as default; can be used independently.
+rustup default stable
+</code></pre>
+<h3 id="installing-from-cargo"><a class="header" href="#installing-from-cargo">Installing from Cargo</a></h3>
+<p>The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:</p>
 <pre><code class="language-sh">cargo install forc fuel-core
 </code></pre>
-<p><code>forc</code> and <code>fuel-core</code> are built and tested against the <code>stable</code> Rust toolchain version 1.58 or later. If your install fails the first time, use <code>rustup update</code> and try again.</p>
-<p>There is no guarantee that either package will work with the <code>nightly</code> Rust toolchain, so ensure you are using <code>stable</code> with:</p>
-<pre><code class="language-sh">rustup default stable
-</code></pre>
-<h3 id="updating-forc"><a class="header" href="#updating-forc">Updating <code>forc</code></a></h3>
-<p>You can update <code>forc</code> and <code>fuel-core</code> with:</p>
+<h4 id="updating-forc-from-cargo"><a class="header" href="#updating-forc-from-cargo">Updating <code>forc</code> from Cargo</a></h4>
+<p>You can update the toolchain from source with Cargo with:</p>
 <pre><code class="language-sh">cargo install forc fuel-core
 </code></pre>
-<h3 id="installing-forc-plugins"><a class="header" href="#installing-forc-plugins">Installing <code>forc</code> Plugins</a></h3>
-<p>The Fuel ecosystem has a few plugins which can be easily installed via cargo.</p>
-<p>Note, <code>forc</code> detects anything in your path prefixed with <code>forc-</code> as a plugin. Use <code>forc plugins</code> to see what you currently have installed.</p>
+<h4 id="installing-forc-plugins-from-cargo"><a class="header" href="#installing-forc-plugins-from-cargo">Installing <code>forc</code> Plugins from Cargo</a></h4>
+<p>The Fuel ecosystem has a few plugins which can be easily installed via Cargo.</p>
+<blockquote>
+<p><strong>Note</strong> <code>forc</code> detects anything in your <code>$PATH</code> prefixed with <code>forc-</code> as a plugin. Use <code>forc plugins</code> to see what you currently have installed.</p>
+</blockquote>
 <pre><code class="language-sh"># Sway Formatter
 cargo install forc-fmt
 
 # Block Explorer
 cargo install forc-explore
 
-# Forc Language Server
+# Sway Language Server
 cargo install forc-lsp
 </code></pre>
-<h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
-<p>The Sway toolchain can be built from source by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>.</p>
-<p>The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
+<h3 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h3>
+<p>Rather than installing from <code>cargo</code>, the Sway toolchain can be built from a local source checkout by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>. The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
 <h2 id="enable-tab-completion-for-bash-fish-zsh-or-powershell"><a class="header" href="#enable-tab-completion-for-bash-fish-zsh-or-powershell">Enable tab completion for Bash, Fish, Zsh, or PowerShell</a></h2>
-<p><code>forc</code> now supports generating completion scripts for Bash, Fish, Zsh, and PowerShell. See <code>forc completions --help</code> for full details, but the gist is as simple as using one of the following:</p>
-<pre><code># Bash
-$ forc completions --shell=bash &gt; ~/.local/share/bash-completion/completions/forc
+<p><code>forc</code> supports generating completion scripts for Bash, Fish, Zsh, and PowerShell. See <code>forc completions --help</code> for full details, but the gist is as simple as using one of the following:</p>
+<pre><code class="language-sh"># Bash
+forc completions --shell=bash &gt; ~/.local/share/bash-completion/completions/forc
 
 # Bash (macOS/Homebrew)
-$ forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 
 # Fish
-$ mkdir -p ~/.config/fish/completions
-$ forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
+mkdir -p ~/.config/fish/completions
+forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
 
 # Zsh
-$ forc completions --shell=zsh &gt; ~/.zfunc/_forc
+forc completions --shell=zsh &gt; ~/.zfunc/_forc
 
 # PowerShell v5.0+
-$ forc completions --shell=powershell &gt;&gt; $PROFILE.CurrentUserCurrentHost
+forc completions --shell=powershell &gt;&gt; $PROFILE.CurrentUserCurrentHost
 # or
-$ forc completions --shell=powershell | Out-String | Invoke-Expression
+forc completions --shell=powershell | Out-String | Invoke-Expression
 </code></pre>
 <p>Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
