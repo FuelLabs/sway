@@ -22,6 +22,6 @@ mdbook serve
 
 ## Generating documentation for Forc commands/plugins
 
-The `mdbook-forc-documenter` now automatically handles documenting forc commands and plugins. This behavior is further documented in [the mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md).
+The `mdbook-forc-documenter` [preprocessor](https://rust-lang.github.io/mdBook/for_developers/preprocessors.html) now automatically handles documenting forc commands and plugins, but some actions have to be taken for the preprocessor to work. Please read the [mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md) before making changes to Forc commands or plugins.
 
 **It is important to note that changing the chapter names `Commands` and `Plugins` will affect the behaviour of the preprocessor**. When renaming the chapters, please make the same change [here](https://github.com/FuelLabs/sway/blob/master/scripts/mdbook-forc-documenter/src/lib.rs#L45,L56).
