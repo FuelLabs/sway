@@ -89,11 +89,7 @@ async fn send_tx(
         .await
     {
         Ok(logs) => {
-            if pretty_print {
-                info!("{:#?}", logs);
-            } else {
-                info!("{:?}", logs);
-            }
+            print_receipt_output(&logs, pretty_print)?;
             Ok(logs)
         }
         Err(e) => bail!("{e}"),
@@ -163,4 +159,35 @@ fn get_tx_inputs_and_outputs(
         .map(construct_output_from_contract)
         .collect::<Vec<_>>();
     (inputs, outputs)
+}
+
+fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
+    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    for (rec_index, receipt) in receipts.iter().enumerate() {
+        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+            anyhow!(
+                "Serialized receipts does not contain {} th index",
+                rec_index
+            )
+        })?;
+        match receipt {
+            fuel_tx::Receipt::LogData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            fuel_tx::Receipt::ReturnData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            _ => {}
+        }
+    }
+    if pretty_print {
+        info!("{}", serde_json::to_string_pretty(&receipt_to_json_array)?);
+    } else {
+        info!("{}", serde_json::to_string(&receipt_to_json_array)?);
+    }
+    Ok(())
 }
