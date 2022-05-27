@@ -1,14 +1,14 @@
 [
   {
+    "type": "function",
     "inputs": [],
     "name": "get_42",
     "outputs": [
       {
-        "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "components": null
       }
-    ],
-    "type": "function"
+    ]
   }
 ]
