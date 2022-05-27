@@ -89,10 +89,8 @@ async fn send_tx(
         .await
     {
         Ok(logs) => {
-            if pretty_print {
-                info!("{:#?}", logs);
-            } else {
-                info!("{:?}", logs);
+            for log in &logs {
+                format_receipt_output(log, pretty_print)?
             }
             Ok(logs)
         }
@@ -163,4 +161,28 @@ fn get_tx_inputs_and_outputs(
         .map(construct_output_from_contract)
         .collect::<Vec<_>>();
     (inputs, outputs)
+}
+
+fn format_receipt_output(rec: &fuel_tx::Receipt, pretty_print: bool) -> Result<()> {
+    let mut rec_value = serde_json::to_value(&rec).unwrap();
+    match rec {
+        fuel_tx::Receipt::LogData { data, .. } => {
+            if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                *v = hex::encode(data).into();
+            }
+        }
+        fuel_tx::Receipt::ReturnData { data, .. } => {
+            if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                *v = hex::encode(data).into();
+            }
+        }
+        _ => {}
+    }
+
+    if pretty_print {
+        info!("{}", serde_json::to_string_pretty(&rec_value)?);
+    } else {
+        info!("{}", serde_json::to_string(&rec_value)?);
+    }
+    Ok(())
 }
