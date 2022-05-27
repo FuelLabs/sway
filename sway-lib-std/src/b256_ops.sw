@@ -39,6 +39,8 @@ impl Add for b256 {
 
 }
 
+/// used to get both the sum and the overflow value from an addition.
+/// with normal addition, any overflow will cause a vm panic.
 fn overflowing_add(a: u64, b: u64) -> (u64, u64) {
     disable_overflow();
     let mut result = (0u64, 0u64);
