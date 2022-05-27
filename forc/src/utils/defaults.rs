@@ -30,10 +30,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.6", default-features = false }}
-fuel-tx = "0.9"
-fuels = "0.13"
-fuels-abigen-macro = "0.13"
+fuels = "0.14"
+fuels-abigen-macro = "0.14"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -94,10 +92,8 @@ fn main() -> bool {
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
-        r#"use fuel_tx::ContractId;
+        r#"use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
-use fuels::prelude::*;
-use fuels::test_helpers;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
@@ -106,7 +102,7 @@ abigen!(MyContract, "out/debug/"#,
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
 
     let id = Contract::deploy("./out/debug/"#,
         project_name,
@@ -124,7 +120,8 @@ async fn can_get_contract_id() {
     let (_instance, _id) = get_contract_instance().await;
 
     // Now you have an instance of your contract you can use to test each function
-}"#
+}
+"#
     )
 }
 
