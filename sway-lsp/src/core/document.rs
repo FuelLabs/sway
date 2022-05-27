@@ -117,7 +117,6 @@ impl TextDocument {
     }
 
     pub fn test_typed_parse(&self) {
-        use sway_types::ident::Ident;
         use super::traverse_typed_tree as ttt;
 
         let mut tokens: ttt::TokenMap = HashMap::new();
@@ -128,7 +127,7 @@ impl TextDocument {
             }
         }
 
-        for ((ident,span), token) in &tokens {
+        for ((ident, _span), token) in &tokens {
             ttt::debug_print_ident_and_token(ident, token);
         }
 

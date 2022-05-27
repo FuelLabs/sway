@@ -406,6 +406,27 @@ fn ast_node_type(token: &TokenType) -> String {
         TokenType::TypedExpression(exp) => {
             exp.expression.pretty_print()
         }
+        TokenType::TypedFunctionParameter(_) => {
+            "function parameter".to_string()
+        }
+        TokenType::TypedStructField(_) => {
+            "struct field".to_string()
+        }
+        TokenType::TypedEnumVariant(_) => {
+            "enum variant".to_string()
+        }
+        TokenType::TypedTraitFn(_) => {
+            "trait function".to_string()
+        }
+        TokenType::TypedStorageField(_) => {
+            "storage field".to_string()
+        }
+        TokenType::TypeCheckedStorageReassignDescriptor(_) => {
+            "storage reassignment descriptor".to_string()
+        }
+        TokenType::ReassignmentLhs(_) => {
+            "reassignment lhs".to_string()
+        }        
         _ => "".to_string()
     }
 }
