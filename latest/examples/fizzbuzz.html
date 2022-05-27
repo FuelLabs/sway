@@ -138,9 +138,8 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
-<p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
-and receive back its fizzbuzzability as an enum. Note that the deserialization scheme for the fizzbuzz enum will be included in the ABI descriptor
-so the caller knows what to do with the bytes.</p>
+<p>This example is not the traditional <a href="https://en.wikipedia.org/wiki/Fizz_buzz#Programming">FizzBuzz</a>; instead it is the smart contract version! A script can call the <code>fizzbuzz</code> ABI method of this contract with some <code>u64</code> value and receive back its fizzbuzzability as an <code>enum</code>.</p>
+<p>The format for custom structs and enums such as <code>FizzBuzzResult</code> will be automatically included in the ABI JSON so that off-chain code can handle the encoded form of the returned data.</p>
 <pre><code class="language-sway">contract;
 
 enum FizzBuzzResult {

@@ -462,7 +462,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <li><a href="examples/./wallet_smart_contract.html">Wallet Smart Contract</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="counter"><a class="header" href="#counter">Counter</a></h1>
-<p>The following is a simple example of a contract which implements a counter. Both the <code>initialize()</code> and <code>increment()</code> functions return the currently set value.</p>
+<p>The following is a simple example of a contract which implements a counter. Both the <code>initialize_counter()</code> and <code>increment_counter()</code> ABI methods return the currently set value.</p>
 <pre><code class="language-bash">forc template --template-name counter my_counter_project
 </code></pre>
 <pre><code class="language-sway">contract;
@@ -490,7 +490,8 @@ impl TestContract for Contract {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
-<p>The following is a simple example of a subcurrency which implements a <code>mint</code> and <code>send</code> function for a token. This example does not use Fuel's native asset system (see: <a href="examples/../blockchain-development/native_assets.html">Native Assets</a>).</p>
+<p>The following is a simple example of a subcurrency which implements functionality to mint and send token. It is a ledger-based token, i.e. the contract maintains a ledger of user account balances.</p>
+<p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
 use std::{
@@ -498,6 +499,7 @@ use std::{
     assert::assert,
     chain::auth::{AuthError, Sender, msg_sender},
     hash::sha256,
+    logging::log,
     result::*,
     revert::revert,
     storage::{get, store}
@@ -509,9 +511,8 @@ use std::{
 
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
-// Note: Serialization is not yet implemented, therefore logging
-//  of arbitrary structures will not work without manual
-//  serialization.
+// Note: Logging of arbitrary stack types is supported, however they cannot yet
+//  be decoded on the SDK side.
 
 /// Emitted when a token is sent.
 struct Sent {
@@ -521,10 +522,10 @@ struct Sent {
 }
 
 ////////////////////////////////////////
-// ABI declarations
+// ABI method declarations
 ////////////////////////////////////////
 
-/// ABI definition for a subcurrency.
+/// ABI for a subcurrency.
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
@@ -547,7 +548,8 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 ////////////////////////////////////////
 
 // Contract storage persists across transactions.
-// Note: Contract storage mappings are not implemented yet.
+// Note: Contract storage mappings are not implemented yet, so the domain
+//  separator needs to be provided manually.
 const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 ////////////////////////////////////////
@@ -557,44 +559,59 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
         let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
-        let sender = if let Sender::Address(addr) = sender.unwrap() {
-            assert(addr.into() == MINTER);
-        } else {
-            revert(0);
+        let sender: Address = match sender.unwrap() {
+            Sender::Address(addr) =&gt; {
+                assert(addr == ~Address::from(MINTER));
+                addr
+            },
+            _ =&gt; {
+                revert(0);
+            },
         };
 
         // Increase the balance of receiver
-        let storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
-        let mut receiver_amount = get::&lt;u64&gt;(storage_slot);
+        let storage_slot = sha256((STORAGE_BALANCES, receiver));
+        let receiver_amount = get::&lt;u64&gt;(storage_slot);
         store(storage_slot, receiver_amount + amount);
     }
 
     fn send(receiver: Address, amount: u64) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
         let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
-        let sender = if let Sender::Address(addr) = sender.unwrap() {
-            addr
-        } else {
-            revert(0);
+        let sender: Address = match sender.unwrap() {
+            Sender::Address(addr) =&gt; {
+                assert(addr == ~Address::from(MINTER));
+                addr
+            },
+            _ =&gt; {
+                revert(0);
+            },
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = sha256((STORAGE_BALANCES, sender.into()));
-        let mut sender_amount = get::&lt;u64&gt;(sender_storage_slot);
+        let sender_storage_slot = sha256((STORAGE_BALANCES, sender));
+        let sender_amount = get::&lt;u64&gt;(sender_storage_slot);
         assert(sender_amount &gt; amount);
         store(sender_storage_slot, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver.into()));
-        let mut receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
+        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver));
+        let receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
         store(receiver_storage_slot, receiver_amount + amount);
+
+        log(Sent {
+            from: sender, to: receiver, amount: amount
+        });
     }
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
-<p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
-and receive back its fizzbuzzability as an enum. Note that the deserialization scheme for the fizzbuzz enum will be included in the ABI descriptor
-so the caller knows what to do with the bytes.</p>
+<p>This example is not the traditional <a href="https://en.wikipedia.org/wiki/Fizz_buzz#Programming">FizzBuzz</a>; instead it is the smart contract version! A script can call the <code>fizzbuzz</code> ABI method of this contract with some <code>u64</code> value and receive back its fizzbuzzability as an <code>enum</code>.</p>
+<p>The format for custom structs and enums such as <code>FizzBuzzResult</code> will be automatically included in the ABI JSON so that off-chain code can handle the encoded form of the returned data.</p>
 <pre><code class="language-sway">contract;
 
 enum FizzBuzzResult {
@@ -623,7 +640,6 @@ impl FizzBuzz for Contract {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
-<p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
 <pre><code class="language-sway">contract;
 
 use std::{
@@ -651,22 +667,34 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        if msg_asset_id().into() == NATIVE_ASSET_ID {
+        if msg_asset_id() == ~ContractId::from(NATIVE_ASSET_ID) {
+            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
+            // Otherwise, we're receiving other native assets and don't care
+            // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
         }
     }
 
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
         let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
-        if let Sender::Address(addr) = sender.unwrap() {
-            assert(addr.into() == OWNER_ADDRESS);
-        } else {
-            revert(0);
-        }
+        match sender.unwrap() {
+            Sender::Address(addr) =&gt; {
+                assert(addr == ~Address::from(OWNER_ADDRESS));
+            },
+            _ =&gt; {
+                revert(0);
+            },
+        };
 
         let current_balance = storage.balance;
-        assert(current_balance &gt; amount_to_send);
+        assert(current_balance &gt;= amount_to_send);
+
         storage.balance = current_balance - amount_to_send;
+        // Note: `transfer_to_output()` is not a call and thus not an
+        // interaction. Regardless, this code conforms to
+        // checks-effects-interactions to avoid re-entrancy.
         transfer_to_output(amount_to_send, ~ContractId::from(NATIVE_ASSET_ID), recipient_address);
     }
 }
