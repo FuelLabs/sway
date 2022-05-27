@@ -53,7 +53,7 @@ Log {
 }
 ```
 
-Note that `ra` will always include the value being logged.
+Note that `ra` will include the value being logged. The additional registers `rb` to `rd` will be zero when using `log(x)`.
 
 ### `LogData` Receipt
 
