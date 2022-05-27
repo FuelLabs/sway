@@ -446,11 +446,13 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
 <p>Similar to Rust, Sway comes with its own standard library.</p>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
-<p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_init.html"><code>forc init</code></a>. Importing items from the standard library can be done using the <code>use</code> keyword. Example:</p>
+<p>The entire Sway standard library is a Forc project called <code>std</code>, and is available directly here: <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">https://github.com/FuelLabs/sway/tree/master/sway-lib-std</a> (navigate to the appropriate tagged release if the latest <code>master</code> is not compatible).</p>
+<h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
+<p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_init.html"><code>forc init</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automagically use the version of <code>std</code> that matches its version.</p>
+<p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
 <pre><code class="language-sway">use std::address::Address;
 </code></pre>
-<h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
-<p>Aside from the references to the standard library accross this book, you may also read the <code>std</code> library project directly <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">here</a>.</p>
+<p>This imports the <code>Address</code> type into the current namespace.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
 <ul>
