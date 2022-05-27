@@ -25,22 +25,34 @@ abi Wallet {
 
 impl Wallet for Contract {
     fn receive_funds() {
-        if msg_asset_id().into() == NATIVE_ASSET_ID {
+        if msg_asset_id() == ~ContractId::from(NATIVE_ASSET_ID) {
+            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
+            // Otherwise, we're receiving other native assets and don't care
+            // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
         }
     }
 
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
         let sender: Result<Sender, AuthError> = msg_sender();
-        if let Sender::Address(addr) = sender.unwrap() {
-            assert(addr.into() == OWNER_ADDRESS);
-        } else {
-            revert(0);
-        }
+        match sender.unwrap() {
+            Sender::Address(addr) => {
+                assert(addr == ~Address::from(OWNER_ADDRESS));
+            },
+            _ => {
+                revert(0);
+            },
+        };
 
         let current_balance = storage.balance;
-        assert(current_balance > amount_to_send);
+        assert(current_balance >= amount_to_send);
+
         storage.balance = current_balance - amount_to_send;
+        // Note: `transfer_to_output()` is not a call and thus not an
+        // interaction. Regardless, this code conforms to
+        // checks-effects-interactions to avoid re-entrancy.
         transfer_to_output(amount_to_send, ~ContractId::from(NATIVE_ASSET_ID), recipient_address);
     }
 }
