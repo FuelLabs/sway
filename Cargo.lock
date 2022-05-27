@@ -3783,6 +3783,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "forc",
+ "forc-util",
  "fuel-asm",
  "fuel-tx",
  "fuel-vm",

@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.41"
 forc = { path = "../forc", features = ["test"], default-features = false }
+forc-util = { version = "0.14.1", path = "../forc-util" }
 fuel-asm = "0.5"
 fuel-tx = "0.12"
 fuel-vm = { version = "0.11", features = ["random"] }
