@@ -10,17 +10,25 @@ This preprocessor is automatically run on every build, as long as the `book.toml
 
 ## Usage
 
-### Adding a new forc command or plugin
+### Adding a new forc command
 
-Enter a new entry under the `Commands` or `Plugins` section within `SUMMARY.md`, in this format:
+Enter a new entry under the `Commands` section within `SUMMARY.md`, in this format:
 
 ```md
 - [forc explore](./forc_explore.md)
 ```
 
-### Removing a forc command or plugin
+### Adding a new forc plugin
+
+Do the same as the above, with an extra step of adding an installation step within the CI. The preprocessor needs to be aware of the plugin when building the book, since it is calling `forc <plugin> --help` to generate the documentation. You can add this installation step within [`ci.yml`](https://github.com/FuelLabs/sway/blob/master/.github/workflows/ci.yml#L126) and [`gh-pages.yml`](https://github.com/FuelLabs/sway/blob/master/.github/workflows/gh-pages.yml#L26).
+
+### Removing a forc command
 
 Delete the entry from `SUMMARY.md`.
+
+### Removing a forc plugin
+
+Delete the entry from `SUMMARY.md`, along with the step within `ci.yml` and `gh-pages.yml`.
 
 ### Adding an example
 
@@ -29,3 +37,4 @@ Create a new Markdown file within `scripts/mdbook-forc-documenter/examples`, nam
 ### Removing an example
 
 Delete the Markdown file from within the above examples directory.
+
