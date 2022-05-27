@@ -7,8 +7,8 @@ use ::context::registers::stack_ptr;
 pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be stored with a single SWW.
-        asm(r1: key, r2: value) {
-            sww r1 r2;
+        asm(k: key, v: value) {
+            sww k v;
         };
     } else {
         // If reference type, then it's more than a word. Loop over every 32
@@ -49,9 +49,9 @@ pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be read with a single
         // SRW.
-        asm(r1: key, r2) {
-            srw r2 r1;
-            r2: T
+        asm(k: key, v) {
+            srw v k;
+            v: T
         }
     } else {
         // If reference type, then it's more than a word. Loop over every 32
