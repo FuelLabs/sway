@@ -89,9 +89,7 @@ async fn send_tx(
         .await
     {
         Ok(logs) => {
-            for log in &logs {
-                format_receipt_output(log, pretty_print)?
-            }
+            print_receipt_output(&logs, pretty_print)?;
             Ok(logs)
         }
         Err(e) => bail!("{e}"),
@@ -163,26 +161,33 @@ fn get_tx_inputs_and_outputs(
     (inputs, outputs)
 }
 
-fn format_receipt_output(rec: &fuel_tx::Receipt, pretty_print: bool) -> Result<()> {
-    let mut rec_value = serde_json::to_value(&rec).unwrap();
-    match rec {
-        fuel_tx::Receipt::LogData { data, .. } => {
-            if let Some(v) = rec_value.pointer_mut("/LogData/data") {
-                *v = hex::encode(data).into();
+fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
+    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    for (rec_index, receipt) in receipts.iter().enumerate() {
+        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+            anyhow!(
+                "Serialized receipts does not contain {} th index",
+                rec_index
+            )
+        })?;
+        match receipt {
+            fuel_tx::Receipt::LogData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                    *v = hex::encode(data).into();
+                }
             }
-        }
-        fuel_tx::Receipt::ReturnData { data, .. } => {
-            if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
-                *v = hex::encode(data).into();
+            fuel_tx::Receipt::ReturnData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                    *v = hex::encode(data).into();
+                }
             }
+            _ => {}
         }
-        _ => {}
     }
-
     if pretty_print {
-        info!("{}", serde_json::to_string_pretty(&rec_value)?);
+        info!("{}", serde_json::to_string_pretty(&receipt_to_json_array)?);
     } else {
-        info!("{}", serde_json::to_string(&rec_value)?);
+        info!("{}", serde_json::to_string(&receipt_to_json_array)?);
     }
     Ok(())
 }
