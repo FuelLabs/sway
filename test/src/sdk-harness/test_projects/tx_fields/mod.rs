@@ -1,8 +1,8 @@
-use fuel_tx::{Bytes32, ContractId};
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::consts::VM_TX_MEMORY;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::tx::{Bytes32, ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -11,7 +11,7 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
 
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",

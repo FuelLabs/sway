@@ -1,6 +1,6 @@
-use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId};
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::tx::{default_parameters::MAX_GAS_PER_TX, ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -15,7 +15,7 @@ abigen!(
 
 #[tokio::test]
 async fn can_detect_reentrancy() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -33,7 +33,7 @@ async fn can_detect_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_reentrancy() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -48,7 +48,7 @@ async fn can_block_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_cross_function_reentrancy() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -62,7 +62,7 @@ async fn can_block_cross_function_reentrancy() {
 
 #[tokio::test]
 async fn can_call_guarded_function() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
