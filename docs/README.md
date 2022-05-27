@@ -20,6 +20,8 @@ To serve locally:
 mdbook serve
 ```
 
-## Generating Forc commands documentation
+## Generating documentation for Forc commands/plugins
 
-The `mdbook-forc-documenter` now automatically handles documenting forc commands. This behavior is further documented in [the mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md).
+The `mdbook-forc-documenter` now automatically handles documenting forc commands and plugins. This behavior is further documented in [the mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md).
+
+**It is important to note that changing the chapter names `Commands` and `Plugins` will affect the behaviour of the preprocessor**. When renaming the chapters, please make the same change [here](https://github.com/FuelLabs/sway/blob/master/scripts/mdbook-forc-documenter/src/lib.rs#L45,L56).
