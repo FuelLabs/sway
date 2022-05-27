@@ -1,14 +1,14 @@
 [
   {
-    "type": "function",
     "inputs": [],
     "name": "returns_gm_one",
     "outputs": [
       {
+        "components": null,
         "name": "",
-        "type": "bool",
-        "components": null
+        "type": "bool"
       }
-    ]
+    ],
+    "type": "function"
   }
 ]

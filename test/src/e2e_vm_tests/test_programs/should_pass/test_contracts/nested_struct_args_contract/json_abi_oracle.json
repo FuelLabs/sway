@@ -1,43 +1,43 @@
 [
   {
-    "type": "function",
     "inputs": [
       {
-        "name": "input1",
-        "type": "struct StructOne",
         "components": [
           {
-            "name": "inn",
-            "type": "struct Inner",
             "components": [
               {
+                "components": null,
                 "name": "foo",
-                "type": "u64",
-                "components": null
+                "type": "u64"
               }
-            ]
+            ],
+            "name": "inn",
+            "type": "struct Inner"
           }
-        ]
+        ],
+        "name": "input1",
+        "type": "struct StructOne"
       },
       {
-        "name": "input2",
-        "type": "struct StructTwo",
         "components": [
           {
+            "components": null,
             "name": "foo",
-            "type": "u64",
-            "components": null
+            "type": "u64"
           }
-        ]
+        ],
+        "name": "input2",
+        "type": "struct StructTwo"
       }
     ],
     "name": "foo",
     "outputs": [
       {
+        "components": null,
         "name": "",
-        "type": "u64",
-        "components": null
+        "type": "u64"
       }
-    ]
+    ],
+    "type": "function"
   }
 ]

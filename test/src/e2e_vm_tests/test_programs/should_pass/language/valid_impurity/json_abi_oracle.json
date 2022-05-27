@@ -1,14 +1,14 @@
 [
   {
-    "type": "function",
     "inputs": [],
     "name": "impure_func",
     "outputs": [
       {
+        "components": null,
         "name": "",
-        "type": "bool",
-        "components": null
+        "type": "bool"
       }
-    ]
+    ],
+    "type": "function"
   }
 ]
