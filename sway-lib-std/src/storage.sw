@@ -14,18 +14,23 @@ pub fn store<T>(key: b256, value: T) {
         // store sequentially.
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
+
         let mut ptr = asm(r1, r2: value) {
             move r1 r2;
             r1
         };
+
         while size_left > 32 {
             asm(r1: local_key, r2: ptr) {
                 swwq r1 r2;
             };
             ptr = ptr + 32;
             size_left = size_left - 32;
+            // Generate a new key for each 32 byte chunk
+            // Should eventually replace this with `local_key = local_key + 1
             local_key = sha256(local_key);
         }
+
         asm(r1: local_key, r2: ptr) {
             swwq r1 r2;
         };
@@ -34,7 +39,7 @@ pub fn store<T>(key: b256, value: T) {
 
 /// Load a stack variable from storage.
 pub fn get<T>(key: b256) -> T {
-    let result = if !__is_reference_type::<T>() {
+    if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be read with a single SRW.
         asm(r1: key, r2) {
             srw r2 r1;
@@ -45,10 +50,13 @@ pub fn get<T>(key: b256) -> T {
         // read sequentially.
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
+        
+        // Keep track of the base pointer for the final result
         let result_ptr = asm(r1: size_left, r2) {
             move r2 sp;
             r2: u64 
         };
+
         while size_left > 32 {
             asm(r1: local_key, r2) {
                 move r2 sp;
@@ -56,14 +64,16 @@ pub fn get<T>(key: b256) -> T {
                 srwq r2 r1;
             };
             size_left = size_left - 32;
+            // Generate a new key for each 32 byte chunk
+            // Should eventually replace this with `local_key = local_key + 1
             local_key = sha256(local_key);
         }
+
         asm(r1: local_key, r2: result_ptr, r3) {
             move r3 sp;
             cfei i32;
             srwq r3 r1;
-            r2: T
+            r2: T // finally return the base pointer
         }
-    };
-    result
+    }
 }
