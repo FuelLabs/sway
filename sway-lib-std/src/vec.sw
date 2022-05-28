@@ -68,7 +68,7 @@ impl<T> RawVec<T> {
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    buf: RawVec,
+    buf: RawVec<T>,
     len: u64,
 }
 
