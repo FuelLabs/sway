@@ -43,3 +43,43 @@ impl Root for u8 {
         }
     }
 }
+
+pub trait Exponentiate {
+    fn pow(self, exponent: Self) -> Self;
+}
+
+impl Exponentiate for u64 {
+    fn pow(self, exponent: Self) -> Self {
+        asm(r1: self, r2: exponent, r3) {
+            exp r3 r1 r2;
+            r3: Self
+        }
+    }
+}
+
+impl Exponentiate for u32 {
+    fn pow(self, exponent: Self) -> Self {
+        asm(r1: self, r2: exponent, r3) {
+            exp r3 r1 r2;
+            r3: Self
+        }
+    }
+}
+
+impl Exponentiate for u16 {
+    fn pow(self, exponent: Self) -> Self {
+        asm(r1: self, r2: exponent, r3) {
+            exp r3 r1 r2;
+            r3: Self
+        }
+    }
+}
+
+impl Exponentiate for u8 {
+    fn pow(self, exponent: Self) -> Self {
+        asm(r1: self, r2: exponent, r3) {
+            exp r3 r1 r2;
+            r3: Self
+        }
+    }
+}

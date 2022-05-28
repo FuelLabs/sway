@@ -10,3 +10,4 @@ mod registers;
 mod storage;
 mod token_ops;
 mod tx_fields;
+mod exponentiation;
