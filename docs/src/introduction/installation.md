@@ -15,6 +15,12 @@ curl --proto '=https' --tlsv1.2 -sSf \
     https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s install
 ```
 
+You may need to add `~/.fuelup/bin` to your PATH. For Bash:
+
+```sh
+export PATH="${HOME}/.fuelup/bin/:${PATH}"
+```
+
 Then run
 
 ```sh
