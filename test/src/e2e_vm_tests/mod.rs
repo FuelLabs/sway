@@ -1,7 +1,8 @@
 mod harness;
+use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
-
 pub fn run(filter_regex: Option<regex::Regex>) {
+    init_tracing_subscriber();
     let filter = |name| {
         filter_regex
             .as_ref()
