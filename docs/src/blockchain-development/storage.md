@@ -48,4 +48,4 @@ An example is as follows:
 {{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-Note, if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).
+> **Note**: if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).

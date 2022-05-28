@@ -6,7 +6,7 @@ Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Cor
 
 Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. They can be found attached to the release notes of the respective release. The latest `forc` release can be found here: <https://github.com/FuelLabs/sway/releases/latest>.
 
-> **Note** [`fuelup`](https://github.com/FuelLabs/fuelup) is a work-in-progress equivalent of `rustup` for the Sway toolchain. Once ready, it will be able to easily download and manage Sway toolchain versions.
+> **Note**: [`fuelup`](https://github.com/FuelLabs/fuelup) is a work-in-progress equivalent of `rustup` for the Sway toolchain. Once ready, it will be able to easily download and manage Sway toolchain versions.
 
 ## Installing from Source
 
@@ -50,7 +50,7 @@ cargo install forc fuel-core
 
 The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
 
-> **Note** `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
 
 ```sh
 # Sway Formatter
