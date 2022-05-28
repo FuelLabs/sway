@@ -5,6 +5,7 @@ mod call_frames;
 mod context;
 mod hashing;
 mod logging;
+mod mapping;
 mod reentrancy;
 mod registers;
 mod storage;

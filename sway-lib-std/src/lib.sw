@@ -22,5 +22,6 @@ dep ecr;
 dep reentrancy;
 dep vm/mod;
 dep u128;
+dep mapping;
 
 use core::*;
