@@ -25,9 +25,6 @@ async fn overflowing_pow_u64_panics() {
         .call()
         .await
         .unwrap();
-    dbg!(&result);
-
-    // assert_eq!(result.value, 100);
 }
 
 #[tokio::test]
