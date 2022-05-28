@@ -180,7 +180,7 @@ impl ContractB for Contract {
 }
 </code></pre>
 <blockquote>
-<p><strong>NOTE</strong> The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the <code>impl</code> and call it inside the contract, similar to the <code>return_45()</code> function above.</p>
+<p><strong>Note</strong>: The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the <code>impl</code> and call it inside the contract, similar to the <code>return_45()</code> function above.</p>
 </blockquote>
 <h2 id="advanced-calls"><a class="header" href="#advanced-calls">Advanced Calls</a></h2>
 <p>All calls forward a gas stipend, and may additionally forward one native asset with the call.</p>

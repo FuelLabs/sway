@@ -181,7 +181,9 @@ abi Wallet {
 <p>Sway contracts should declare an ABI—an <strong>a</strong>pplication <strong>b</strong>inary <strong>i</strong>nterface—in a library so that it can be re-used by downstream contracts. Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <p>In the first line, we declare the name of this ABI: <code>Wallet</code>. To import this ABI into either a script or another contract for calling the contract, or the contract to implement the ABI, you would use <code>use wallet_lib::Wallet;</code>.</p>
 <p>In the second line we declare an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.</p>
-<p><em>Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>.</em></p>
+<blockquote>
+<p><strong>Note</strong>: We are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>.</p>
+</blockquote>
 <p>In the third line we declare another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
 <h3 id="implementing-the-abi-methods-in-wallet_contract"><a class="header" href="#implementing-the-abi-methods-in-wallet_contract">Implementing the ABI Methods in <code>wallet_contract</code></a></h3>
 <p>Now that we've defined the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
@@ -239,7 +241,9 @@ HexString256(HexFormatted(0xd9240bc439834bc6afc3f334abf285b3b733560b63d7ce1eb53a
 </code></pre>
 <p>Note the contract ID—you will need it in the next step.</p>
 <h2 id="write-a-sway-script-to-call-a-sway-contract"><a class="header" href="#write-a-sway-script-to-call-a-sway-contract">Write a Sway Script to Call a Sway Contract</a></h2>
-<p><em>Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK.</em></p>
+<blockquote>
+<p><strong>Note</strong>: If you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK.</p>
+</blockquote>
 <p>Now that we have deployed our wallet contract, we need to actually <em>call</em> our contract. We can do this by calling the contract from a script.</p>
 <p>Let's navigate to the <code>wallet_script</code> directory created previously.</p>
 <p>First, you need to import the <code>wallet_lib</code> library. Open up the <code>Forc.toml</code> in the root of the directory. Import <code>wallet_lib</code> repo by adding the following line to the bottom of the file:</p>
