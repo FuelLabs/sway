@@ -20,7 +20,7 @@ A good reference library to use when learning library design is the [Sway Standa
 library option;
 ```
 
-* An `use` statement that imports `revert` from another library _inside_ the standard library:
+* A `use` statement that imports `revert` from another library _inside_ the standard library:
 
 ```sway
 use ::revert::revert;
