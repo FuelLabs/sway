@@ -29,6 +29,8 @@ fuelup install
 
 to install the latest Sway toolchain.
 
+> **Note**: A `curl: (22) The requested URL returned error: 404` error when running any of the steps above is most likely an indication that a new release was published but binaries were not yet uploaded by CI. See: <https://github.com/FuelLabs/fuelup/issues/44>. Simply re-try the commands after binaries are uploaded.
+
 ## Installing from Source
 
 ### Dependencies
