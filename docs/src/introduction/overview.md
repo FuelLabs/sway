@@ -65,7 +65,7 @@ In the first line, we declare the name of this ABI: `Wallet`. To import this ABI
 
 In the second line we declare an ABI method called `receive_funds` which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.
 
-_Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md)._
+> **Note**: We are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md).
 
 In the third line we declare another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
 
@@ -160,7 +160,7 @@ Note the contract ID—you will need it in the next step.
 
 ## Write a Sway Script to Call a Sway Contract
 
-_Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK._
+> **Note**: If you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK.
 
 Now that we have deployed our wallet contract, we need to actually _call_ our contract. We can do this by calling the contract from a script.
 

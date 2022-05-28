@@ -37,7 +37,7 @@ fn main() {
 
 The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
 
-**_Note that the receipts shown below are being re-worked to become more readable in [#1717](https://github.com/FuelLabs/sway/pull/1717)._**
+> **Note**: The receipts shown below are being re-worked to become more readable in [#1717](https://github.com/FuelLabs/sway/pull/1717).
 
 ### `Log` Receipt
 

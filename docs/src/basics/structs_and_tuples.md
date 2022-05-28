@@ -135,6 +135,6 @@ let event = InventoryEvent::ItemLoss(Claim {
 
 ### Enum Memory Layout
 
-_This information is not vital if you are new to the language, or programming in general._
+> **Note**: This information is not vital if you are new to the language, or programming in general.
 
 Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the _largest_ enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of `Color` above, where the variants are all `()`, the size would be 8 bytes since the size of the largest variant is 0 bytes.
