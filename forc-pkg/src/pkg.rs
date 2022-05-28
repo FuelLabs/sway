@@ -297,40 +297,54 @@ impl BuildPlan {
 
 impl GitReference {
     /// Resolves the parsed forc git reference to the associated git ID.
-    pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
+    pub fn resolve<'a>(
+        &self,
+        repo: &'a git_repository::Repository,
+    ) -> Result<&'a git_repository::oid> {
         // Find the commit associated with this tag.
-        fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
+        fn resolve_tag<'a>(
+            repo: &'a git_repository::Repository,
+            tag: &str,
+        ) -> Result<&'a git_repository::oid> {
             let refname = format!("refs/remotes/origin/tags/{}", tag);
-            let id = repo.refname_to_id(&refname)?;
-            let obj = repo.find_object(id, None)?;
-            let obj = obj.peel(git2::ObjectType::Commit)?;
-            Ok(obj.id())
+            let id = repo.find_reference(&refname)?.id();
+            let obj = repo.find_object(id)?;
+            let obj = obj.peel_to_kind(git_repository::object::Kind::Commit)?;
+            Ok(&obj.id)
         }
 
         // Resolve to the target for the given branch.
-        fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
+        fn resolve_branch<'a>(
+            repo: &'a git_repository::Repository,
+            branch: &str,
+        ) -> Result<&'a git_repository::oid> {
             let name = format!("origin/{}", branch);
             let b = repo
-                .find_branch(&name, git2::BranchType::Remote)
+                .find_reference(&name)
                 .with_context(|| format!("failed to find branch `{}`", branch))?;
-            b.get()
-                .target()
-                .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
+            Ok(b.target().id())
         }
 
         // Use the HEAD commit when default branch is specified.
-        fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
-            let head_id = repo.refname_to_id("refs/remotes/origin/HEAD")?;
-            let head = repo.find_object(head_id, None)?;
-            Ok(head.peel(git2::ObjectType::Commit)?.id())
+        fn resolve_default_branch(
+            repo: &git_repository::Repository,
+        ) -> Result<&git_repository::oid> {
+            let head_id = repo.find_reference("refs/remotes/origin/HEAD")?.id();
+            let head = repo.find_object(head_id)?;
+            let obj = head.peel_to_kind(git_repository::object::Kind::Commit)?;
+            Ok(&obj.id)
         }
 
         // Find the commit for the given revision.
-        fn resolve_rev(repo: &git2::Repository, rev: &str) -> Result<git2::Oid> {
-            let obj = repo.revparse_single(rev)?;
-            match obj.as_tag() {
-                Some(tag) => Ok(tag.target_id()),
-                None => Ok(obj.id()),
+        fn resolve_rev<'a>(
+            repo: &'a git_repository::Repository,
+            rev: &str,
+        ) -> Result<&'a git_repository::oid> {
+            let id = rev.parse::<git_repository::ObjectId>()?;
+            let obj = repo.find_object(id)?;
+            match obj.try_to_tag_ref() {
+                Ok(tag_ref) => Ok(&tag_ref.target()),
+                _ => Ok(&obj.id),
             }
         }
 
@@ -745,7 +759,7 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
 /// the given source.
 fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &SourceGit, f: F) -> Result<O>
 where
-    F: FnOnce(git2::Repository) -> Result<O>,
+    F: FnOnce(git_repository::Repository) -> Result<O>,
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
@@ -754,7 +768,7 @@ where
     }
 
     // Initialise the repository.
-    let repo = git2::Repository::init(&repo_dir)
+    let repo = git_repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
 
     // Fetch the necessary references.
@@ -872,7 +886,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
-        let id = git2::Oid::from_str(&pinned.commit_hash)?;
+        let id = git_repository::ObjectId::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
         if path.exists() {
