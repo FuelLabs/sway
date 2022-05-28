@@ -4,9 +4,9 @@
     "name": "main",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
-        "type": "bool"
+        "type": "()"
       }
     ],
     "type": "function"
