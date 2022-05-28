@@ -6,6 +6,19 @@ use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::*;
 use ::context::call_frames::contract_id;
+use ::identity::Identity;
+
+pub fn mint_to(amount: u64, recipient: Identity) {
+    mint(amount);
+    match recipient {
+        Identity::Address(addr) => {
+            transfer_to_output(amount, contract_id(), addr);
+        },
+        Identity::ContractId(id) => {
+            force_transfer(amount, contract_id(), id);
+        },
+    }
+}
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
