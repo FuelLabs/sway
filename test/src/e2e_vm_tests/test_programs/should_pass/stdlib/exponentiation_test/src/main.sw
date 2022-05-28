@@ -1,9 +1,8 @@
 script;
 
-use std::{ assert::assert, math::* };
+use std::{assert::assert, math::*};
 use std::revert::revert;
 use core::num::*;
-
 
 fn main() -> bool {
     let max_u64 = ~u64::max();
@@ -12,7 +11,7 @@ fn main() -> bool {
     let max_u8 = ~u8::max();
 
     // u64
-    assert( 2.pow(2) == 4);
+    assert(2.pow(2) == 4);
     assert(2.pow(3) == 8);
     assert(42.pow(2) == 1764);
     assert(42.pow(3) == 74088);
@@ -53,7 +52,6 @@ fn main() -> bool {
     assert(2u8.pow(0u8) == 1u8);
     assert(0u8.pow(1u8) == 0u8);
     assert(0u8.pow(2u8) == 0u8);
-
 
     true
 }
