@@ -392,6 +392,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/match_expressions_inside_generic_functions",
             ProgramState::Return(1),
         ),
+        (
+            "should_pass/language/generic_inside_generic",
+            ProgramState::Return(7),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -537,6 +541,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_impl_purity_mismatch",
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
+        "should_fail/type_mismatch_error_message",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

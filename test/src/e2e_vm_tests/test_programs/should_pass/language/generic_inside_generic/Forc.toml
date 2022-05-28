@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "generic_inside_generic"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
