@@ -20,7 +20,8 @@ async fn overflowing_pow_u64_panics() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "ArithmeticOverflow")]
+// TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
+// #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u32_panics() {
     let wallet = launch_provider_and_get_single_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
@@ -32,6 +33,18 @@ async fn overflowing_pow_u32_panics() {
 
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
+async fn overflowing_pow_u32_panics_max() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (pow_instance, _) = get_pow_test_instance(wallet).await;
+    pow_instance.u32_overflow(u32::MAX, u32::MAX)
+        .call()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+// TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
+// #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u16_panics() {
     let wallet = launch_provider_and_get_single_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
@@ -43,10 +56,33 @@ async fn overflowing_pow_u16_panics() {
 
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
+async fn overflowing_pow_u16_panics_max() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (pow_instance, _) = get_pow_test_instance(wallet).await;
+    pow_instance.u16_overflow(u16::MAX, u16::MAX)
+        .call()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+// TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
+// #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u8_panics() {
     let wallet = launch_provider_and_get_single_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance.u8_overflow(10u8, 3u8)
+        .call()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+#[should_panic(expected = "ArithmeticOverflow")]
+async fn overflowing_pow_u8_panics_max() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (pow_instance, _) = get_pow_test_instance(wallet).await;
+    pow_instance.u8_overflow(u8::MAX, u8::MAX)
         .call()
         .await
         .unwrap();
