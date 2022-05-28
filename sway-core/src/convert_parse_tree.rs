@@ -1,23 +1,29 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
 use {
     crate::{
         constants::{
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        parse_tree::desugar_match_expression,
+        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CatchAll, CodeBlock, ConstantDeclaration,
-        Declaration, EnumDeclaration, EnumVariant, Expression, FunctionDeclaration,
-        FunctionParameter, ImplSelf, ImplTrait, ImportType, IncludeStatement, LazyOp, Literal,
-        MatchBranch, MatchCondition, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration, StorageField,
-        StructDeclaration, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-        SwayParseTree, TraitConstraint, TraitDeclaration, TraitFn, TreeType, TypeArgument,
-        TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
+        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
+        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
+        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
+        StructScrutineeField, Supertrait, SwayParseTree, TraitConstraint, TraitDeclaration,
+        TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement,
+        VariableDeclaration, Visibility, WhileLoop,
     },
-    std::{collections::HashMap, convert::TryFrom, iter, mem::MaybeUninit, ops::ControlFlow},
+    std::{
+        collections::HashMap,
+        convert::TryFrom,
+        iter,
+        mem::MaybeUninit,
+        ops::ControlFlow,
+        sync::atomic::{AtomicUsize, Ordering},
+    },
     sway_parse::{
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
         Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
@@ -64,15 +70,6 @@ impl ErrorContext {
     {
         self.errors.push(error.into());
         ErrorEmitted { _priv: () }
-    }
-
-    pub fn warnings<I, W>(&mut self, warnings: I)
-    where
-        I: IntoIterator<Item = W>,
-        W: Into<CompileWarning>,
-    {
-        self.warnings
-            .extend(warnings.into_iter().map(|warning| warning.into()));
     }
 
     pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
@@ -179,6 +176,8 @@ pub enum ConvertParseTreeError {
     InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
+    #[error("__generate_uid does not take arguments")]
+    GenerateUidTooManyArgs { span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -228,6 +227,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
+            ConvertParseTreeError::GenerateUidTooManyArgs { span, .. } => span.clone(),
         }
     }
 }
@@ -1170,29 +1170,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         }
         Expr::If(if_expr) => if_expr_to_expression(ec, if_expr)?,
         Expr::Match {
-            condition,
-            branches,
-            ..
+            value, branches, ..
         } => {
-            let condition = expr_to_expression(ec, *condition)?;
+            let value = expr_to_expression(ec, *value)?;
+            let var_decl_span = value.span();
+            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+            let var_decl_exp = Expression::VariableExpression {
+                name: var_decl_name.clone(),
+                span: var_decl_span,
+            };
             let branches = {
                 branches
                     .into_inner()
                     .into_iter()
                     .map(|match_branch| match_branch_to_match_branch(ec, match_branch))
                     .collect::<Result<_, _>>()?
-            };
-            let desugar_result = desugar_match_expression(&condition, branches, None);
-            let CompileResult {
-                value,
-                warnings,
-                errors,
-            } = desugar_result;
-            ec.warnings(warnings);
-            let error_emitted_opt = ec.errors(errors);
-            let (if_exp, var_decl_name, cases_covered) = match value {
-                Some(stuff) => stuff,
-                None => return Err(error_emitted_opt.unwrap()),
             };
             Expression::CodeBlock {
                 contents: CodeBlock {
@@ -1204,7 +1196,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                     type_ascription: TypeInfo::Unknown,
                                     type_ascription_span: None,
                                     is_mutable: false,
-                                    body: condition,
+                                    body: value,
                                 },
                             )),
                             span: span.clone(),
@@ -1212,8 +1204,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         AstNode {
                             content: AstNodeContent::ImplicitReturnExpression(
                                 Expression::MatchExp {
-                                    if_exp: Box::new(if_exp),
-                                    cases_covered,
+                                    value: Box::new(var_decl_exp),
+                                    branches,
                                     span: span.clone(),
                                 },
                             ),
@@ -1334,8 +1326,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     Expression::MethodApplication {
                         method_name: MethodName::FromType {
                             call_path,
-                            type_name: Some(type_name),
-                            type_name_span: Some(type_name_span),
+                            type_name,
+                            type_name_span,
                         },
                         contract_call_params: Vec::new(),
                         arguments,
@@ -1372,6 +1364,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             type_span,
                             span,
                         }
+                    } else if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::GenerateUid)
+                    {
+                        if !arguments.is_empty() {
+                            let error = ConvertParseTreeError::GenerateUidTooManyArgs { span };
+                            return Err(ec.error(error));
+                        }
+                        if generics_opt.is_some() {
+                            let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
+                            return Err(ec.error(error));
+                        }
+                        Expression::BuiltinGenerateUid { span }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1660,7 +1666,7 @@ fn binary_op_call(
     rhs: Expr,
 ) -> Result<Expression, ErrorEmitted> {
     Ok(Expression::MethodApplication {
-        method_name: MethodName::FromType {
+        method_name: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
@@ -1669,8 +1675,6 @@ fn binary_op_call(
                 suffix: Ident::new_with_override(name, op_span),
                 is_absolute: true,
             },
-            type_name: None,
-            type_name_span: None,
         },
         contract_call_params: Vec::new(),
         arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],
@@ -1939,17 +1943,7 @@ fn path_expr_to_expression(
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
-        match name.as_str() {
-            "true" => Expression::Literal {
-                value: Literal::Boolean(true),
-                span,
-            },
-            "false" => Expression::Literal {
-                value: Literal::Boolean(false),
-                span,
-            },
-            _ => Expression::VariableExpression { name, span },
-        }
+        Expression::VariableExpression { name, span }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
         Expression::DelineatedPath {
@@ -1985,8 +1979,11 @@ fn if_expr_to_expression(
         ..
     } = if_expr;
     let then_block_span = then_block.span();
-    let then_block = braced_code_block_contents_to_code_block(ec, then_block)?;
-    let else_opt = match else_opt {
+    let then_block = Expression::CodeBlock {
+        contents: braced_code_block_contents_to_code_block(ec, then_block)?,
+        span: then_block_span.clone(),
+    };
+    let else_block = match else_opt {
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
@@ -1995,26 +1992,52 @@ fn if_expr_to_expression(
                 }
                 ControlFlow::Continue(if_expr) => if_expr_to_expression(ec, *if_expr)?,
             };
-            Some(Box::new(expression))
+            Some(expression)
         }
     };
     let expression = match condition {
         IfCondition::Expr(condition) => Expression::IfExp {
             condition: Box::new(expr_to_expression(ec, *condition)?),
-            then: Box::new(Expression::CodeBlock {
-                contents: then_block,
-                span: then_block_span,
-            }),
-            r#else: else_opt,
+            then: Box::new(then_block),
+            r#else: else_block.map(Box::new),
             span,
         },
-        IfCondition::Let { lhs, rhs, .. } => Expression::IfLet {
-            scrutinee: pattern_to_scrutinee(ec, *lhs)?,
-            expr: Box::new(expr_to_expression(ec, *rhs)?),
-            then: then_block,
-            r#else: else_opt,
-            span,
-        },
+        IfCondition::Let { lhs, rhs, .. } => {
+            let scrutinee = pattern_to_scrutinee(ec, *lhs)?;
+            let scrutinee_span = scrutinee.span();
+            let mut branches = vec![MatchBranch {
+                scrutinee,
+                result: then_block.clone(),
+                span: Span::join(scrutinee_span, then_block_span),
+            }];
+            branches.push(match else_block {
+                Some(else_block) => {
+                    let else_block_span = else_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: else_block,
+                        span: else_block_span,
+                    }
+                }
+                None => {
+                    let else_block_span = then_block.span();
+                    MatchBranch {
+                        scrutinee: Scrutinee::CatchAll {
+                            span: else_block_span.clone(),
+                        },
+                        result: then_block,
+                        span: else_block_span,
+                    }
+                }
+            });
+            Expression::MatchExp {
+                value: Box::new(expr_to_expression(ec, *rhs)?),
+                branches,
+                span,
+            }
+        }
     };
     Ok(expression)
 }
@@ -2041,6 +2064,7 @@ fn literal_to_literal(
     literal: sway_parse::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
+        sway_parse::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
         sway_parse::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
@@ -2327,7 +2351,7 @@ fn match_branch_to_match_branch(
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
-        condition: pattern_to_match_condition(ec, match_branch.pattern)?,
+        scrutinee: pattern_to_scrutinee(ec, match_branch.pattern)?,
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
@@ -2521,64 +2545,42 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     }
 }
 
-fn pattern_to_match_condition(
-    ec: &mut ErrorContext,
-    pattern: Pattern,
-) -> Result<MatchCondition, ErrorEmitted> {
-    let match_condition = match pattern {
-        Pattern::Wildcard { underscore_token } => {
-            let span = underscore_token.span();
-            MatchCondition::CatchAll(CatchAll { span })
-        }
-        _ => MatchCondition::Scrutinee(pattern_to_scrutinee(ec, pattern)?),
-    };
-    Ok(match_condition)
-}
-
 fn pattern_to_scrutinee(
     ec: &mut ErrorContext,
     pattern: Pattern,
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
-        Pattern::Wildcard { .. } => {
-            let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span };
-            return Err(ec.error(error));
-        }
+        Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
+            span: underscore_token.span(),
+        },
         Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,
         },
-        Pattern::Constant(path_expr) => Scrutinee::EnumScrutinee {
-            call_path: path_expr_to_call_path(ec, path_expr)?,
-            variable_to_assign: Ident::new_no_span("_"),
-            span,
-        },
+        Pattern::Constant(path_expr) => {
+            let call_path = path_expr_to_call_path(ec, path_expr)?;
+            let call_path_span = call_path.span();
+            Scrutinee::EnumScrutinee {
+                call_path,
+                value: Box::new(Scrutinee::CatchAll {
+                    span: call_path_span,
+                }),
+                span,
+            }
+        }
         Pattern::Constructor { path, args } => {
-            let arg = match iter_to_array(args.into_inner()) {
+            let value = match iter_to_array(args.into_inner()) {
                 Some([arg]) => arg,
                 None => {
                     let error = ConvertParseTreeError::ConstructorPatternOneArg { span };
                     return Err(ec.error(error));
                 }
             };
-            let variable_to_assign = match arg {
-                Pattern::Var { mutable, name } => {
-                    if mutable.is_some() {
-                        let error = ConvertParseTreeError::MutableBindingsNotSupportedHere { span };
-                        return Err(ec.error(error));
-                    }
-                    name
-                }
-                _ => {
-                    let error = ConvertParseTreeError::ConstructorPatternSubPatterns { span };
-                    return Err(ec.error(error));
-                }
-            };
             Scrutinee::EnumScrutinee {
                 call_path: path_expr_to_call_path(ec, path)?,
-                variable_to_assign,
+                value: Box::new(pattern_to_scrutinee(ec, value)?),
                 span,
             }
         }

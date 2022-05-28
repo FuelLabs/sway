@@ -1,0 +1,18 @@
+[[package]]
+name = 'abi_with_tuples'
+dependencies = ['core']
+
+[[package]]
+name = 'call_abi_with_tuples'
+dependencies = [
+    'abi_with_tuples',
+    'std',
+]
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']

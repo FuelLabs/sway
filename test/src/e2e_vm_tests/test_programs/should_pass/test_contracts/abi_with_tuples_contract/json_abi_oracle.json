@@ -1,0 +1,72 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "age",
+                "type": "u64"
+              }
+            ],
+            "name": "__tuple_element",
+            "type": "struct Person"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64"
+          }
+        ],
+        "name": "param",
+        "type": "(struct Person, u64)"
+      }
+    ],
+    "name": "bug1",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": [],
+                "name": "Earth",
+                "type": "()"
+              }
+            ],
+            "name": "__tuple_element",
+            "type": "enum Location"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64"
+          }
+        ],
+        "name": "param",
+        "type": "(enum Location, u64)"
+      }
+    ],
+    "name": "bug2",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "type": "function"
+  }
+]

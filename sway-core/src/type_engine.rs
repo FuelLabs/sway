@@ -66,15 +66,21 @@ pub(crate) trait ToJsonAbi {
 impl ToJsonAbi for TypeId {
     fn generate_json_abi(&self) -> Option<Vec<Property>> {
         match look_up_type_id(*self) {
-            TypeInfo::Struct { fields, .. } => {
-                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
-            }
+            TypeInfo::Array(type_id, _) => Some(vec![Property {
+                name: "__array_element".to_string(),
+                type_field: type_id.json_abi_str(),
+                components: type_id.generate_json_abi(),
+            }]),
             TypeInfo::Enum { variant_types, .. } => Some(
                 variant_types
                     .iter()
                     .map(|x| x.generate_json_abi())
                     .collect(),
             ),
+            TypeInfo::Struct { fields, .. } => {
+                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
+            }
+            TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
             _ => None,
         }
     }
@@ -162,8 +168,8 @@ fn chain_of_refs() {
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
@@ -182,8 +188,8 @@ fn chain_of_refs_2() {
     let sp = Span::dummy();
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id));
-    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
+    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
     let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...

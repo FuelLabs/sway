@@ -1,0 +1,42 @@
+script {
+    fn main() -> () {
+        local ptr b256 key1
+        local ptr b256 key2
+        local ptr b256 key3
+
+        entry:
+        v0 = generate_uid, !1
+        v1 = get_ptr ptr b256 key1, ptr b256, 0, !2
+        store v0, ptr v1, !2
+        v2 = call anon_0(), !3
+        v3 = get_ptr ptr b256 key2, ptr b256, 0, !4
+        store v2, ptr v3, !4
+        v4 = call anon_1(), !5
+        v5 = get_ptr ptr b256 key3, ptr b256, 0, !6
+        store v4, ptr v5, !6
+        v6 = const unit ()
+        ret () v6
+    }
+
+    fn anon_0() -> b256 {
+        entry:
+        v0 = generate_uid, !7
+        ret b256 v0
+    }
+
+    fn anon_1() -> b256 {
+        entry:
+        v0 = generate_uid, !8
+        ret b256 v0
+    }
+}
+
+!0 = filepath "/path/to/generate_uid.sw"
+!1 = span !0 79 95
+!2 = span !0 68 96
+!3 = span !0 9 50
+!4 = span !0 101 118
+!5 = span !0 9 50
+!6 = span !0 123 140
+!7 = span !0 32 48
+!8 = span !0 32 48

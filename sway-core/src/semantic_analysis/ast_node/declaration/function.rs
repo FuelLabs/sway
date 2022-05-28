@@ -21,7 +21,7 @@ use sway_types::Span;
 mod function_parameter;
 pub use function_parameter::*;
 
-use super::MonomorphizeHelper;
+use super::{EnforceTypeArguments, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -78,12 +78,8 @@ impl CopyTypes for TypedFunctionDeclaration {
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
 
-        self.return_type =
-            match look_up_type_id(self.return_type).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.return_type)),
-            };
-
+        self.return_type
+            .update_type(type_mapping, &self.return_type_span);
         self.body.copy_types(type_mapping);
     }
 }
@@ -145,33 +141,34 @@ impl TypedFunctionDeclaration {
         is_snake_case(&name).ok(&mut warnings, &mut errors);
         opts.purity = purity;
 
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
-
         // insert parameters and generic type declarations into namespace
-        let mut fn_namespace = namespace.clone();
+        let mut namespace = namespace.clone();
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
-                fn_namespace
-                    .insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
                 warnings,
                 errors
             );
         }
 
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
                 match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+                    Some(matching_id) => {
+                        insert_type(TypeInfo::Ref(matching_id, parameter.type_span.clone()))
+                    }
                     None => check!(
-                        fn_namespace.resolve_type_with_self(
+                        namespace.resolve_type_with_self(
                             look_up_type_id(parameter.type_id),
                             self_type,
-                            parameter.type_span.clone(),
-                            true
+                            &parameter.type_span,
+                            EnforceTypeArguments::Yes
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
@@ -181,7 +178,7 @@ impl TypedFunctionDeclaration {
         });
 
         for FunctionParameter { name, type_id, .. } in parameters.clone() {
-            fn_namespace.insert_symbol(
+            namespace.insert_symbol(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -199,13 +196,13 @@ impl TypedFunctionDeclaration {
         }
 
         let return_type = match return_type.matches_type_parameter(&type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, return_type_span.clone())),
             None => check!(
-                fn_namespace.resolve_type_with_self(
+                namespace.resolve_type_with_self(
                     return_type,
                     self_type,
-                    return_type_span.clone(),
-                    true
+                    &return_type_span,
+                    EnforceTypeArguments::Yes
                 ),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
@@ -218,7 +215,7 @@ impl TypedFunctionDeclaration {
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body.clone(),
-                namespace: &mut fn_namespace,
+                namespace: &mut namespace,
                 return_type_annotation: return_type,
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",
@@ -273,76 +270,21 @@ impl TypedFunctionDeclaration {
             errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
 
-        ok(
-            TypedFunctionDeclaration {
-                name,
-                body,
-                parameters,
-                span,
-                return_type,
-                type_parameters,
-                return_type_span,
-                visibility,
-                // if this is for a contract, then it is a contract call
-                is_contract_call: mode == Mode::ImplAbiFn,
-                purity,
-            },
-            warnings,
-            errors,
-        )
-    }
+        let function_decl = TypedFunctionDeclaration {
+            name,
+            body,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            return_type_span,
+            visibility,
+            // if this is for a contract, then it is a contract call
+            is_contract_call: mode == Mode::ImplAbiFn,
+            purity,
+        };
 
-    /// Given a typed function declaration with type parameters, make a copy of it and update the
-    /// type ids which refer to generic types to be fresh copies, maintaining their referential
-    /// relationship. This is used so when this function is resolved, the types don't clobber the
-    /// generic type info.
-    pub(crate) fn monomorphize(
-        &self,
-        type_arguments: Vec<TypeArgument>,
-        self_type: TypeId,
-    ) -> CompileResult<TypedFunctionDeclaration> {
-        let mut warnings: Vec<CompileWarning> = vec![];
-        let mut errors: Vec<CompileError> = vec![];
-        debug_assert!(
-            !self.type_parameters.is_empty(),
-            "Only generic functions can be monomorphized"
-        );
-
-        let mut new_decl = self.clone();
-
-        let type_mapping = insert_type_parameters(&new_decl.type_parameters);
-        if !type_arguments.is_empty() {
-            // check type arguments against parameters
-            let type_arguments_span = type_arguments
-                .iter()
-                .map(|x| x.span.clone())
-                .reduce(Span::join)
-                .unwrap_or_else(|| self.span.clone());
-            if new_decl.type_parameters.len() != type_arguments.len() {
-                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                    given: type_arguments.len(),
-                    expected: new_decl.type_parameters.len(),
-                    span: type_arguments_span,
-                });
-            }
-
-            // check the type arguments
-            for ((_, decl_param), type_argument) in type_mapping.iter().zip(type_arguments.iter()) {
-                let (mut new_warnings, new_errors) = unify_with_self(
-                    *decl_param,
-                    type_argument.type_id,
-                    self_type,
-                    &type_argument.span,
-                    "Type argument is not castable to generic type paramter",
-                );
-                warnings.append(&mut new_warnings);
-                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            }
-        }
-
-        // make all type ids fresh ones
-        new_decl.copy_types(&type_mapping);
-        ok(new_decl, warnings, errors)
+        ok(function_decl, warnings, errors)
     }
 
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

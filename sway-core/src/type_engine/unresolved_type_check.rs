@@ -14,10 +14,15 @@ pub(crate) trait UnresolvedTypeCheck {
 impl UnresolvedTypeCheck for TypeId {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
         use TypeInfo::*;
+        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
+            Some(span)
+        } else {
+            None
+        };
         match look_up_type_id(*self) {
             UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
-                span: name.span().clone(),
+                span: span_override.unwrap_or_else(|| name.span().clone()),
             }],
             _ => vec![],
         }
@@ -131,29 +136,6 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .into_iter(),
                 )
                 .collect(),
-            IfLet {
-                enum_type,
-                expr,
-                then,
-                r#else,
-                ..
-            } => {
-                let mut buf = enum_type
-                    .check_for_unresolved_types()
-                    .into_iter()
-                    .chain(expr.check_for_unresolved_types().into_iter())
-                    .chain(
-                        then.contents
-                            .iter()
-                            .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                            .into_iter(),
-                    )
-                    .collect::<Vec<_>>();
-                if let Some(el) = r#else {
-                    buf.append(&mut el.check_for_unresolved_types());
-                }
-                buf
-            }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
@@ -189,7 +171,17 @@ impl UnresolvedTypeCheck for TypedExpression {
             SizeOfValue { expr } => expr.check_for_unresolved_types(),
             AbiCast { address, .. } => address.check_for_unresolved_types(),
             // storage access can never be generic
-            StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => vec![],
+            StorageAccess { .. }
+            | Literal(_)
+            | AbiName(_)
+            | FunctionParameter
+            | GenerateUid { .. } => vec![],
+            EnumTag { exp } => exp.check_for_unresolved_types(),
+            UnsafeDowncast { exp, variant } => exp
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(variant.r#type.check_for_unresolved_types().into_iter())
+                .collect(),
         }
     }
 }

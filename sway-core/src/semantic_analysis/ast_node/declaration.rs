@@ -448,13 +448,8 @@ pub struct TypedTraitFn {
 
 impl CopyTypes for TypedTraitFn {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
-        {
-            insert_type(TypeInfo::Ref(matching_id))
-        } else {
-            insert_type(look_up_type_id_raw(self.return_type))
-        };
+        self.return_type
+            .update_type(type_mapping, &self.return_type_span);
     }
 }
 
@@ -516,16 +511,14 @@ pub struct TypedReassignment {
 impl CopyTypes for TypedReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
-        self.lhs
-            .iter_mut()
-            .for_each(|ReassignmentLhs { ref mut r#type, .. }| {
-                *r#type = if let Some(matching_id) =
-                    look_up_type_id(*r#type).matches_type_parameter(type_mapping)
-                {
-                    insert_type(TypeInfo::Ref(matching_id))
-                } else {
-                    insert_type(look_up_type_id_raw(*r#type))
-                };
-            });
+        self.lhs.iter_mut().for_each(
+            |ReassignmentLhs {
+                 ref mut r#type,
+                 name,
+                 ..
+             }| {
+                r#type.update_type(type_mapping, name.span());
+            },
+        );
     }
 }

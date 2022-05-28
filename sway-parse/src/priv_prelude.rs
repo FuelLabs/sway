@@ -25,7 +25,7 @@ pub use {
             FnSignature, Item, ItemKind, TypeField,
         },
         keywords::*,
-        literal::{LitChar, LitInt, LitIntType, LitString, Literal},
+        literal::{LitBool, LitBoolType, LitChar, LitInt, LitIntType, LitString, Literal},
         parse::{Parse, ParseToEnd, Peek},
         parser::{ErrorEmitted, ParseResult, Parser, ParserConsumed, Peeker},
         path::{PathExpr, PathType},
