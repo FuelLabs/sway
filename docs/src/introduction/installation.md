@@ -65,7 +65,7 @@ cargo install forc fuel-core
 
 The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
 
-> **Note** `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
 
 ```sh
 # Sway Formatter
