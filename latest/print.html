@@ -797,68 +797,80 @@ fn main() {
 </ol>
 <p>Each special parameter is optional and assumes a default value when skipped.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements.</p>
+<p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
-<p>Libraries are denoted using the <code>library</code> keyword at the beginning of the file, followed by a name so that they can be imported, e.g. <code>library foo;</code>.</p>
+<p>Libraries are defined using the <code>library</code> keyword at the beginning of a file, followed by a name so that they can be imported.</p>
 <pre><code class="language-sway">library my_library;
-</code></pre>
-<p>A good reference library to use when learning library design is the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-core">Sway Core Library</a>. The <code>add</code> function interface is defined via the <code>Add</code> trait and then implemented for <code>u64</code>. This attaches this <code>add</code> function to the type so that, when the trait is imported, <code>u64</code>s can utilize the <code>add</code> function.</p>
-<pre><code class="language-sway">pub trait Add {
-    fn add(self, other: Self) -&gt; Self;
-}
 
-impl Add for u64 {
-    fn add(self, other: Self) -&gt; Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u64
-        }
+// library code
+</code></pre>
+<p>A good reference library to use when learning library design is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a>. For example, the standard library offers an <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw">implementation</a> of <code>enum Option&lt;T&gt;</code> which is a generic type that represents either the existence of a value using the variant <code>Some(..)</code> or a value's absence using the variant <code>None</code>. The <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw">Sway file implementing <code>Option&lt;T&gt;</code></a> has the following structure:</p>
+<ul>
+<li>The <code>library</code> keyword followed by the name of the library:</li>
+</ul>
+<pre><code class="language-sway">library option;
+</code></pre>
+<ul>
+<li>A <code>use</code> statement that imports <code>revert</code> from another library <em>inside</em> the standard library:</li>
+</ul>
+<pre><code class="language-sway">use ::revert::revert;
+</code></pre>
+<ul>
+<li>The <code>enum</code> definition which starts with the keyword <code>pub</code> to indicate that this <code>Option&lt;T&gt;</code> is publically available <em>outside</em> the <code>option</code> library:</li>
+</ul>
+<pre><code class="language-sway">pub enum Option&lt;T&gt; {
+    // variants
+}
+</code></pre>
+<ul>
+<li>An <code>impl</code> block that implements some methods for <code>Option&lt;T&gt;</code>:</li>
+</ul>
+<pre><code class="language-sway">impl&lt;T&gt; Option&lt;T&gt; {
+
+    fn is_some(self) -&gt; bool {
+        // body of is_some
     }
+
+    // other methods
 }
 </code></pre>
-<p>This snippet defines the trait <code>Add</code>, then implements it for the <code>u64</code> type by providing a function body. This gives all <code>u64</code>s the <code>add</code> function, which is inserted at compile time when you use the <code>+</code> operator in Sway. Libraries can export more than functions, though. You can also use libraries to just export types like below.</p>
-<pre><code class="language-sway">pub struct MyStruct {
-    field_one: u64,
-    field_two: bool,
-}
-</code></pre>
+<p>Now that the library <code>option</code> is fully written, and because <code>Option&lt;T&gt;</code> is defined with the <code>pub</code> keyword, we are now able to import <code>Option&lt;T&gt;</code> using <code>use std::option::Option;</code> from any Sway project and have access to all of its variants and methods.</p>
 <p>Libraries are composed of just a <code>Forc.toml</code> file and a <code>src</code> directory, unlike contracts which usually contain a <code>tests</code> directory and a <code>Cargo.toml</code> file as well. An example of a library's <code>Forc.toml</code>:</p>
 <pre><code class="language-toml">[project]
 authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
 entry = &quot;lib.sw&quot;
 license = &quot;Apache-2.0&quot;
-name = &quot;lib-std&quot;
+name = &quot;my_library&quot;
 
 [dependencies]
 </code></pre>
-<p>which denotes the authors, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries. For example, the <code>lib.sw</code> of the standard library looks like:</p>
+<p>which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.</p>
+<p>For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries. For example, the <code>lib.sw</code> of the standard library looks like:</p>
 <pre><code class="language-sway">library std;
 
 dep block;
 dep storage;
 dep constants;
+// .. Other deps
 </code></pre>
 <p>with other libraries contained in the <code>src</code> folder, like the block library (inside of <code>block.sw</code>):</p>
 <pre><code class="language-sway">library block;
 
-/// Get the current block height
-pub fn height() -&gt; u64 {
-    asm(height) {
-        bhei height;
-        height: u64
-    }
-}
+// Implementation of the `block` library 
 </code></pre>
 <p>The <code>dep</code> keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The <code>dep</code> keyword simply makes the library a dependency and fully accessible within the current context.</p>
 <h2 id="using-libraries"><a class="header" href="#using-libraries">Using Libraries</a></h2>
 <p>Libraries can be imported using the <code>use</code> keyword and with a <code>::</code> separating the name of the library and the import.</p>
-<p>Here is an example of importing storage and its related functions from the standard library.</p>
-<pre><code class="language-sway">use std::storage::*;
+<p>Here is an example of importing the <code>get&lt;T&gt;</code> and <code>store&lt;T&gt;</code> functions from the <code>storage</code> library.</p>
+<pre><code class="language-sway">use std::storage::{get, store};
 </code></pre>
 <p>Wildcard imports using <code>*</code> are supported, but it is always recommended to use explicit imports where possible.</p>
-<p>You will also need to link the library in the <code>Forc.toml</code> of the <code>forc</code> repo that you're calling from. You can do this by opening up the <code>Forc.toml</code> file and adding the following line to the bottom:</p>
-<pre><code class="language-toml">wallet_lib = { path = &quot;../wallet_lib&quot; }
+<p>Libraries <em>other than the standard library</em> have to be added as a dependency in <code>Forc.toml</code>. This can be done by adding a path to the library in the <code>[dependencies]</code> section. For example:</p>
+<pre><code class="language-toml">wallet_lib = { path = &quot;/path/to/wallet_lib&quot; }
 </code></pre>
+<blockquote>
+<p><strong>Note</strong>: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify <code>std</code> as an explicit dependency in <code>Forc.toml</code>.</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
 <p>A script is runnable bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.</p>
 <p>Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.</p>
