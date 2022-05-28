@@ -1,4 +1,5 @@
 mod harness;
+use assert_matches::assert_matches;
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
 pub fn run(filter_regex: Option<regex::Regex>) {
@@ -474,9 +475,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .fold(0, |acc, (name, res)| {
             if filter(name) {
                 assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-                // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
-                // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
-                assert!(crate::e2e_vm_tests::harness::test_json_abi(name).is_ok());
+                assert_matches!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(_));
                 acc + 1
             } else {
                 acc
