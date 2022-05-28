@@ -356,12 +356,49 @@ fn main() {
 <p>from the root of the <code>wallet_script</code> directory.</p>
 <p>Note that we are passing in the <code>wallet_contract</code> contract ID as a command-line parameter. You will need to pass in the contract ID of every contract that this script will be interacting with.</p>
 <p>If the script is successfully run, it will output something that looks like:</p>
-<pre><code class="language-console">$ forc run --contract &lt;contract-id&gt;
-  Compiled library &quot;lib-std&quot;.
+<pre><code class="language-console">$ forc run --pretty-print --contract &lt;contract-id&gt; 
+  Compiled library &quot;core&quot;.
+  Compiled library &quot;std&quot;.
   Compiled library &quot;wallet_lib&quot;.
   Compiled script &quot;wallet_script&quot;.
   Bytecode size is 272 bytes.
-[Call { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, to: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, amount: 0, color: 0x0000000000000000000000000000000000000000000000000000000000000000, gas: 10000, a: 1506869579, b: 968, pc: 1656, is: 1656 }, Return { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, val: 0, pc: 1764, is: 1656 }, Return { id: 0x0000000000000000000000000000000000000000000000000000000000000000, val: 0, pc: 584, is: 472 }, ScriptResult { result: InstructionResult { reason: RESERV00, instruction: Instruction { op: 0, ra: 0, rb: 0, rc: 0, rd: 0, imm06: 0, imm12: 0, imm18: 0, imm24: 0 } }, gas_used: 998 }]
+[
+  {
+    &quot;Call&quot;: {
+      &quot;amount&quot;: 0,
+      &quot;asset_id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+      &quot;gas&quot;: 99999240,
+      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
+      &quot;is&quot;: 11536,
+      &quot;param1&quot;: 3467577331,
+      &quot;param2&quot;: 10848,
+      &quot;pc&quot;: 11536,
+      &quot;to&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;
+    }
+  },
+  {
+    &quot;Return&quot;: {
+      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
+      &quot;is&quot;: 11536,
+      &quot;pc&quot;: 11608,
+      &quot;val&quot;: 0
+    }
+  },
+  {
+    &quot;Return&quot;: {
+      &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+      &quot;is&quot;: 10352,
+      &quot;pc&quot;: 10476,
+      &quot;val&quot;: 0
+    }
+  },
+  {
+    &quot;ScriptResult&quot;: {
+      &quot;gas_used&quot;: 971,
+      &quot;result&quot;: &quot;Success&quot;
+    }
+  }
+]
 </code></pre>
 <p>It returns a <code>Call</code> receipt and a <code>ScriptResult</code> receipt.</p>
 <h2 id="testing-sway-contracts"><a class="header" href="#testing-sway-contracts">Testing Sway contracts</a></h2>
@@ -1244,70 +1281,34 @@ struct Car {
 </code></pre>
 <h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
 <p>The <code>logging</code> library provides a generic <code>log</code> function that can be imported using <code>use std::logging::log</code> and used to log variables of any type. Each call to <code>log</code> appends a <code>receipt</code> to the list of receipts. There are two types of receipts that a <code>log</code> can generate: <code>Log</code> and <code>LogData</code>.</p>
-<blockquote>
-<p><strong>Note</strong>: The receipts shown below are being re-worked to become more readable in <a href="https://github.com/FuelLabs/sway/pull/1717">#1717</a>.</p>
-</blockquote>
 <h3 id="log-receipt"><a class="header" href="#log-receipt"><code>Log</code> Receipt</a></h3>
 <p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>. For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
-<pre><code class="language-console">Log {
-    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ra: 42,
-    rb: 0,
-    rc: 0,
-    rd: 0,
-    pc: 10404,
-    is: 10352,
+<pre><code class="language-console">&quot;Log&quot;: {
+  &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+  &quot;is&quot;: 10352,
+  &quot;pc&quot;: 10404,
+  &quot;ra&quot;: 42,
+  &quot;rb&quot;: 0,
+  &quot;rc&quot;: 0,
+  &quot;rd&quot;: 0
 }
 </code></pre>
 <p>Note that <code>ra</code> will include the value being logged. The additional registers <code>rb</code> to <code>rd</code> will be zero when using <code>log(x)</code>.</p>
 <h3 id="logdata-receipt"><a class="header" href="#logdata-receipt"><code>LogData</code> Receipt</a></h3>
 <p><code>LogData</code> is generated for <em>reference</em> types which include all types except for the <em>non_reference</em> types mentioned above. For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
-<pre><code class="language-console">LogData {
-    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ra: 0,
-    rb: 0,
-    ptr: 10468,
-    len: 32,
-    digest: 0x02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc,
-    data: [
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-    ],
-    pc: 10444,
-    is: 10352,
+<pre><code class="language-console">&quot;LogData&quot;: {
+  &quot;data&quot;: &quot;1111111111111111111111111111111111111111111111111111111111111111&quot;,
+  &quot;digest&quot;: &quot;02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc&quot;,
+  &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+  &quot;is&quot;: 10352,
+  &quot;len&quot;: 32,
+  &quot;pc&quot;: 10444,
+  &quot;ptr&quot;: 10468,
+  &quot;ra&quot;: 0,
+  &quot;rb&quot;: 0
 }
 </code></pre>
-<p>Note that <code>data</code> in the receipt above is a essentially a list of bytes where each entry is the decimal representation of a given byte in the data being logged (e.g. <code>17 = 0x11</code>). </p>
+<p>Note that <code>data</code> in the receipt above will include the value being logged as a hexadecimal.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>

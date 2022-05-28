@@ -277,12 +277,49 @@ fn main() {
 <p>from the root of the <code>wallet_script</code> directory.</p>
 <p>Note that we are passing in the <code>wallet_contract</code> contract ID as a command-line parameter. You will need to pass in the contract ID of every contract that this script will be interacting with.</p>
 <p>If the script is successfully run, it will output something that looks like:</p>
-<pre><code class="language-console">$ forc run --contract &lt;contract-id&gt;
-  Compiled library &quot;lib-std&quot;.
+<pre><code class="language-console">$ forc run --pretty-print --contract &lt;contract-id&gt; 
+  Compiled library &quot;core&quot;.
+  Compiled library &quot;std&quot;.
   Compiled library &quot;wallet_lib&quot;.
   Compiled script &quot;wallet_script&quot;.
   Bytecode size is 272 bytes.
-[Call { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, to: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, amount: 0, color: 0x0000000000000000000000000000000000000000000000000000000000000000, gas: 10000, a: 1506869579, b: 968, pc: 1656, is: 1656 }, Return { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, val: 0, pc: 1764, is: 1656 }, Return { id: 0x0000000000000000000000000000000000000000000000000000000000000000, val: 0, pc: 584, is: 472 }, ScriptResult { result: InstructionResult { reason: RESERV00, instruction: Instruction { op: 0, ra: 0, rb: 0, rc: 0, rd: 0, imm06: 0, imm12: 0, imm18: 0, imm24: 0 } }, gas_used: 998 }]
+[
+  {
+    &quot;Call&quot;: {
+      &quot;amount&quot;: 0,
+      &quot;asset_id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+      &quot;gas&quot;: 99999240,
+      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
+      &quot;is&quot;: 11536,
+      &quot;param1&quot;: 3467577331,
+      &quot;param2&quot;: 10848,
+      &quot;pc&quot;: 11536,
+      &quot;to&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;
+    }
+  },
+  {
+    &quot;Return&quot;: {
+      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
+      &quot;is&quot;: 11536,
+      &quot;pc&quot;: 11608,
+      &quot;val&quot;: 0
+    }
+  },
+  {
+    &quot;Return&quot;: {
+      &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
+      &quot;is&quot;: 10352,
+      &quot;pc&quot;: 10476,
+      &quot;val&quot;: 0
+    }
+  },
+  {
+    &quot;ScriptResult&quot;: {
+      &quot;gas_used&quot;: 971,
+      &quot;result&quot;: &quot;Success&quot;
+    }
+  }
+]
 </code></pre>
 <p>It returns a <code>Call</code> receipt and a <code>ScriptResult</code> receipt.</p>
 <h2 id="testing-sway-contracts"><a class="header" href="#testing-sway-contracts">Testing Sway contracts</a></h2>
