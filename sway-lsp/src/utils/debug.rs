@@ -1,6 +1,6 @@
 use crate::core::token::Token;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
-
+use crate::core::traverse_typed_tree::{get_range_from_span, TokenMap};
 // Flags for debugging various parts of the server
 #[derive(Debug, Default)]
 pub struct DebugFlags {
@@ -16,6 +16,20 @@ pub fn generate_warnings_for_parsed_tokens(tokens: &[Token]) -> Vec<Diagnostic> 
             range: token.range,
             severity: Some(DiagnosticSeverity::WARNING),
             message: token.name.clone(),
+            ..Default::default()
+        })
+        .collect();
+
+    warnings
+}
+
+pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+    let warnings = tokens
+        .keys()
+        .map(|(ident, span)| Diagnostic {
+            range: get_range_from_span(span),
+            severity: Some(DiagnosticSeverity::WARNING),
+            message: ident.as_str().to_string(),
             ..Default::default()
         })
         .collect();

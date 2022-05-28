@@ -1,5 +1,7 @@
 use super::token::Token;
 use super::token_type::TokenType;
+use super::traverse_typed_tree as ttt;
+
 use crate::{capabilities, core::token::traverse_node};
 use ropey::Rope;
 use std::collections::{BTreeMap, HashMap};
@@ -14,7 +16,12 @@ use sway_core::{
         ast_node::TypedAstNode,
     },
 };
+use sway_types::{
+    ident::Ident,
+    span::Span,
+};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
+
 
 
 #[derive(Debug)]
@@ -28,6 +35,7 @@ pub struct TextDocument {
     tokens: Vec<Token>,
     lines: HashMap<u32, Vec<usize>>,
     values: HashMap<String, Vec<usize>>,
+    pub token_map: ttt::TokenMap,
 }
 
 impl TextDocument {
@@ -41,6 +49,7 @@ impl TextDocument {
                 tokens: vec![],
                 lines: HashMap::new(),
                 values: HashMap::new(),
+                token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
         }
@@ -116,18 +125,16 @@ impl TextDocument {
         self.content.to_string()
     }
 
-    pub fn test_typed_parse(&self) {
-        use super::traverse_typed_tree as ttt;
-
-        let mut tokens: ttt::TokenMap = HashMap::new();
-
+    pub fn test_typed_parse(&mut self) {
+        self.token_map.clear();
+        
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
-                ttt::traverse_node(node, &mut tokens);
+                ttt::traverse_node(node, &mut self.token_map);
             }
         }
 
-        for ((ident, _span), token) in &tokens {
+        for ((ident, _span), token) in &self.token_map {
             ttt::debug_print_ident_and_token(ident, token);
         }
 
@@ -137,9 +144,9 @@ impl TextDocument {
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
         // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some( (ident, span) ) = ttt::ident_and_span_at_position(cursor_position, &tokens) {
+        if let Some( (ident, span) ) = ttt::ident_and_span_at_position(cursor_position, &self.token_map) {
             // Retrieve the typed_ast_node from our BTreeMap
-            if let Some(token) = tokens.get(&(ident, span)) {
+            if let Some(token) = self.token_map.get(&(ident, span)) {
                 //eprintln!("token = {:#?}", token);
 
                 // Look up the tokens TypeId

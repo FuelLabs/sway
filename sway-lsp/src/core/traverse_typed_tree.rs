@@ -18,6 +18,8 @@ use sway_core::type_engine::TypeId;
 use sway_core::parse_tree::literal::Literal;
 use tower_lsp::lsp_types::{Position, Range, SymbolKind};
 
+pub type TokenMap = HashMap<(Ident, Span), TokenType>;
+
 #[derive(Debug, Clone)]
 pub enum TokenType {
     TypedDeclaration(TypedDeclaration),
@@ -41,8 +43,6 @@ pub enum TokenType {
     TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
     ReassignmentLhs(ReassignmentLhs),
 }
-
-pub type TokenMap = HashMap<(Ident, Span), TokenType>;
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -361,7 +361,7 @@ pub fn ident_and_span_at_position(cursor_position: Position, tokens: &TokenMap) 
     None
 }
 
-fn get_range_from_span(span: &Span) -> Range {
+pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
 
