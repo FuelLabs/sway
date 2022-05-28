@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'exponentiation'
+name = 'exponentiation_test'
 dependencies = ['std']
 
 [[package]]
