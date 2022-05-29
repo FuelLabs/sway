@@ -3,9 +3,9 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'mapping'
-dependencies = ['std']
-
-[[package]]
 name = 'std'
 dependencies = ['core']
+
+[[package]]
+name = 'storage_map'
+dependencies = ['std']
