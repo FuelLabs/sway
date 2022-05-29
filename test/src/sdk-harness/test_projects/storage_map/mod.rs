@@ -25,7 +25,7 @@ async fn can_insert_and_get() {
 
     instance.init().call().await.unwrap();
 
-    // Insert into u64 -> T storage maps 
+    // Insert into u64 -> T storage maps
     instance.into_u64_to_bool(1, true).call().await.unwrap();
     instance.into_u64_to_bool(2, false).call().await.unwrap();
     instance.into_u64_to_bool(3, true).call().await.unwrap();
@@ -131,7 +131,7 @@ async fn can_insert_and_get() {
         .await
         .unwrap();
 
-    // Insert into T -> u64 storage maps 
+    // Insert into T -> u64 storage maps
     instance.into_bool_to_u64(true, 1).call().await.unwrap();
     instance.into_bool_to_u64(false, 2).call().await.unwrap();
 
@@ -329,11 +329,10 @@ async fn can_insert_and_get() {
         "fastest_modular_execution_layer_3"
     );
 
-
     // Get from T -> u64 storage maps
     assert_eq!(
         instance.from_bool_to_u64(true).call().await.unwrap().value,
-        1 
+        1
     );
     assert_eq!(
         instance.from_bool_to_u64(false).call().await.unwrap().value,
@@ -356,77 +355,123 @@ async fn can_insert_and_get() {
     );
 
     assert_eq!(
-        instance.from_tuple_to_u64(([1; 32], 42, true)).call().await.unwrap().value,
+        instance
+            .from_tuple_to_u64(([1; 32], 42, true))
+            .call()
+            .await
+            .unwrap()
+            .value,
         50
     );
     assert_eq!(
-        instance.from_tuple_to_u64(([2; 32], 24, true)).call().await.unwrap().value,
+        instance
+            .from_tuple_to_u64(([2; 32], 24, true))
+            .call()
+            .await
+            .unwrap()
+            .value,
         99
     );
     assert_eq!(
-        instance.from_tuple_to_u64(([3; 32], 99, true)).call().await.unwrap().value,
-        10 
+        instance
+            .from_tuple_to_u64(([3; 32], 99, true))
+            .call()
+            .await
+            .unwrap()
+            .value,
+        10
     );
 
     assert_eq!(
-        instance.from_struct_to_u64(Struct {
-            x: 42,
-            y: [66; 32],
-            z: [99; 32]
-        }).call().await.unwrap().value,
+        instance
+            .from_struct_to_u64(Struct {
+                x: 42,
+                y: [66; 32],
+                z: [99; 32]
+            })
+            .call()
+            .await
+            .unwrap()
+            .value,
         5
-        
     );
     assert_eq!(
-        instance.from_struct_to_u64(Struct {
-            x: 24,
-            y: [11; 32],
-            z: [90; 32]
-        }).call().await.unwrap().value,
-        
+        instance
+            .from_struct_to_u64(Struct {
+                x: 24,
+                y: [11; 32],
+                z: [90; 32]
+            })
+            .call()
+            .await
+            .unwrap()
+            .value,
         9
     );
     assert_eq!(
-        instance.from_struct_to_u64(Struct {
-            x: 77,
-            y: [55; 32],
-            z: [12; 32]
-        }).call().await.unwrap().value,
+        instance
+            .from_struct_to_u64(Struct {
+                x: 77,
+                y: [55; 32],
+                z: [12; 32]
+            })
+            .call()
+            .await
+            .unwrap()
+            .value,
         1
-        
     );
 
     assert_eq!(
-        instance.from_enum_to_u64(Enum::V1([66; 32])).call().await.unwrap().value,
+        instance
+            .from_enum_to_u64(Enum::V1([66; 32]))
+            .call()
+            .await
+            .unwrap()
+            .value,
         44
-        
     );
-//  This assert currently fails.. I'm not sure why yet
-//    assert_eq!(
-//        instance.from_enum_to_u64(Enum::V2(42)).call().await.unwrap().value,
-//        17
-//        
-//    );
+    //  This assert currently fails.. I'm not sure why yet
+    //    assert_eq!(
+    //        instance.from_enum_to_u64(Enum::V2(42)).call().await.unwrap().value,
+    //        17
+    //
+    //    );
     assert_eq!(
-        instance.from_enum_to_u64(Enum::V3([42; 32])).call().await.unwrap().value,
+        instance
+            .from_enum_to_u64(Enum::V3([42; 32]))
+            .call()
+            .await
+            .unwrap()
+            .value,
         1000
-        
     );
 
     assert_eq!(
-        instance.from_str_to_u64("fastest_modular_execution_layer_1".to_string()).call().await.unwrap().value,
+        instance
+            .from_str_to_u64("fastest_modular_execution_layer_1".to_string())
+            .call()
+            .await
+            .unwrap()
+            .value,
         9001
-        
     );
     assert_eq!(
-        instance.from_str_to_u64("fastest_modular_execution_layer_2".to_string()).call().await.unwrap().value,
+        instance
+            .from_str_to_u64("fastest_modular_execution_layer_2".to_string())
+            .call()
+            .await
+            .unwrap()
+            .value,
         1980
-        
     );
     assert_eq!(
-        instance.from_str_to_u64("fastest_modular_execution_layer_3".to_string()).call().await.unwrap().value,
+        instance
+            .from_str_to_u64("fastest_modular_execution_layer_3".to_string())
+            .call()
+            .await
+            .unwrap()
+            .value,
         1000
-        
     );
-
 }
