@@ -33,8 +33,44 @@ let v = storage.var1;
 Notes:
 
 * The only types currently supported by the syntax above are integers, Booleans, and structs.
-* The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
 * Storage, in general, is still work-in-progress and so, its use model may change in the future.
+
+## Storage Maps
+
+Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. Storage maps also have to be initialized using `new()`. For example:
+
+```sway
+{{#include ../../../examples/storage_map/src/main.sw}}
+```
+
+There are three important components to correctly using a storage map:
+
+* Declaring the storage map with your desired data types inside a `storage` block:
+
+```sway
+storage {
+    map1: Storage<u64, u64>,
+    // Other storage items
+}
+```
+
+* Making sure to initialize the storage map using `new()` in some contract method before using it:
+
+```sway
+fn init() {
+    storage.map1 = ~StorageMap::new::<u64, u64>();
+    // Other items to initialize
+}
+```
+
+The contract method that calls `new()` has to be called from an external context (such as you Rust SDK test) before you can actually use `insert()` and `get()` correctly.
+
+* Call `insert()` and `get()` as needed:
+
+```sway
+storage.map1.insert(42, 99);
+let value_in_key_42 = storage.map1.get(42);
+```
 
 ## Manual Storage Management
 
