@@ -42,65 +42,65 @@ storage {
 abi StorageMapTest {
     fn init();
 
-    fn into_u64_to_bool(key: u64, value: bool);
-    fn from_u64_to_bool(key: u64) -> bool;
+    fn insert_into_u64_to_bool_map(key: u64, value: bool);
+    fn get_from_u64_to_bool_map(key: u64) -> bool;
 
-    fn into_u64_to_u8(key: u64, value: u8);
-    fn from_u64_to_u8(key: u64) -> u8;
+    fn insert_into_u64_to_u8_map(key: u64, value: u8);
+    fn get_from_u64_to_u8_map(key: u64) -> u8;
 
-    fn into_u64_to_u16(key: u64, value: u16);
-    fn from_u64_to_u16(key: u64) -> u16;
+    fn insert_into_u64_to_u16_map(key: u64, value: u16);
+    fn get_from_u64_to_u16_map(key: u64) -> u16;
 
-    fn into_u64_to_u32(key: u64, value: u32);
-    fn from_u64_to_u32(key: u64) -> u32;
+    fn insert_into_u64_to_u32_map(key: u64, value: u32);
+    fn get_from_u64_to_u32_map(key: u64) -> u32;
 
-    fn into_u64_to_u64(key: u64, value: u64);
-    fn from_u64_to_u64(key: u64) -> u64;
+    fn insert_into_u64_to_u64_map(key: u64, value: u64);
+    fn get_from_u64_to_u64_map(key: u64) -> u64;
 
-    fn into_u64_to_tuple(key: u64, value: (b256, u8, bool));
-    fn from_u64_to_tuple(key: u64) -> (b256, u8, bool);
+    fn insert_into_u64_to_tuple_map(key: u64, value: (b256, u8, bool));
+    fn get_from_u64_to_tuple_map(key: u64) -> (b256, u8, bool);
 
-    fn into_u64_to_struct(key: u64, value: Struct);
-    fn from_u64_to_struct(key: u64) -> Struct;
+    fn insert_into_u64_to_struct_map(key: u64, value: Struct);
+    fn get_from_u64_to_struct_map(key: u64) -> Struct;
 
-    fn into_u64_to_enum(key: u64, value: Enum);
-    fn from_u64_to_enum(key: u64) -> Enum;
+    fn insert_into_u64_to_enum_map(key: u64, value: Enum);
+    fn get_from_u64_to_enum_map(key: u64) -> Enum;
 
-    fn into_u64_to_str(key: u64, value: str[33]);
-    fn from_u64_to_str(key: u64) -> str[33];
+    fn insert_into_u64_to_str_map(key: u64, value: str[33]);
+    fn get_from_u64_to_str_map(key: u64) -> str[33];
 
-    fn into_u64_to_array(key: u64, value: [b256;
+    fn insert_into_u64_to_array_map(key: u64, value: [b256;
     3]);
-    fn from_u64_to_array(key: u64) -> [b256;
+    fn get_from_u64_to_array_map(key: u64) -> [b256;
     3];
 
-    fn into_bool_to_u64(key: bool, value: u64);
-    fn from_bool_to_u64(key: bool) -> u64;
+    fn insert_into_bool_to_u64_map(key: bool, value: u64);
+    fn get_from_bool_to_u64_map(key: bool) -> u64;
 
-    fn into_u8_to_u64(key: u8, value: u64);
-    fn from_u8_to_u64(key: u8) -> u64;
+    fn insert_into_u8_to_u64_map(key: u8, value: u64);
+    fn get_from_u8_to_u64_map(key: u8) -> u64;
 
-    fn into_u16_to_u64(key: u16, value: u64);
-    fn from_u16_to_u64(key: u16) -> u64;
+    fn insert_into_u16_to_u64_map(key: u16, value: u64);
+    fn get_from_u16_to_u64_map(key: u16) -> u64;
 
-    fn into_u32_to_u64(key: u32, value: u64);
-    fn from_u32_to_u64(key: u32) -> u64;
+    fn insert_into_u32_to_u64_map(key: u32, value: u64);
+    fn get_from_u32_to_u64_map(key: u32) -> u64;
 
-    fn into_tuple_to_u64(key: (b256, u8, bool), value: u64);
-    fn from_tuple_to_u64(key: (b256, u8, bool)) -> u64;
+    fn insert_into_tuple_to_u64_map(key: (b256, u8, bool), value: u64);
+    fn get_from_tuple_to_u64_map(key: (b256, u8, bool)) -> u64;
 
-    fn into_struct_to_u64(key: Struct, value: u64);
-    fn from_struct_to_u64(key: Struct) -> u64;
+    fn insert_into_struct_to_u64_map(key: Struct, value: u64);
+    fn get_from_struct_to_u64_map(key: Struct) -> u64;
 
-    fn into_enum_to_u64(key: Enum, value: u64);
-    fn from_enum_to_u64(key: Enum) -> u64;
+    fn insert_into_enum_to_u64_map(key: Enum, value: u64);
+    fn get_from_enum_to_u64_map(key: Enum) -> u64;
 
-    fn into_str_to_u64(key: str[33], value: u64);
-    fn from_str_to_u64(key: str[33]) -> u64;
+    fn insert_into_str_to_u64_map(key: str[33], value: u64);
+    fn get_from_str_to_u64_map(key: str[33]) -> u64;
 
-    fn into_array_to_u64(key: [b256;
+    fn insert_into_array_to_u64_map(key: [b256;
     3], value: u64);
-    fn from_array_to_u64(key: [b256;
+    fn get_from_array_to_u64_map(key: [b256;
     3]) -> u64;
 }
 
@@ -130,151 +130,151 @@ impl StorageMapTest for Contract {
         3], u64>();
     }
 
-    fn into_u64_to_bool(key: u64, value: bool) {
+    fn insert_into_u64_to_bool_map(key: u64, value: bool) {
         storage.map1.insert(key, value);
     }
 
-    fn from_u64_to_bool(key: u64) -> bool {
+    fn get_from_u64_to_bool_map(key: u64) -> bool {
         storage.map1.get(key)
     }
 
-    fn into_u64_to_u8(key: u64, value: u8) {
+    fn insert_into_u64_to_u8_map(key: u64, value: u8) {
         storage.map2.insert(key, value);
     }
 
-    fn from_u64_to_u8(key: u64) -> u8 {
+    fn get_from_u64_to_u8_map(key: u64) -> u8 {
         storage.map2.get(key)
     }
 
-    fn into_u64_to_u16(key: u64, value: u16) {
+    fn insert_into_u64_to_u16_map(key: u64, value: u16) {
         storage.map3.insert(key, value);
     }
 
-    fn from_u64_to_u16(key: u64) -> u16 {
+    fn get_from_u64_to_u16_map(key: u64) -> u16 {
         storage.map3.get(key)
     }
 
-    fn into_u64_to_u32(key: u64, value: u32) {
+    fn insert_into_u64_to_u32_map(key: u64, value: u32) {
         storage.map4.insert(key, value);
     }
 
-    fn from_u64_to_u32(key: u64) -> u32 {
+    fn get_from_u64_to_u32_map(key: u64) -> u32 {
         storage.map4.get(key)
     }
 
-    fn into_u64_to_u64(key: u64, value: u64) {
+    fn insert_into_u64_to_u64_map(key: u64, value: u64) {
         storage.map5.insert(key, value);
     }
 
-    fn from_u64_to_u64(key: u64) -> u64 {
+    fn get_from_u64_to_u64_map(key: u64) -> u64 {
         storage.map5.get(key)
     }
 
-    fn into_u64_to_tuple(key: u64, value: (b256, u8, bool)) {
+    fn insert_into_u64_to_tuple_map(key: u64, value: (b256, u8, bool)) {
         storage.map6.insert(key, value);
     }
 
-    fn from_u64_to_tuple(key: u64) -> (b256, u8, bool) {
+    fn get_from_u64_to_tuple_map(key: u64) -> (b256, u8, bool) {
         storage.map6.get(key)
     }
 
-    fn into_u64_to_struct(key: u64, value: Struct) {
+    fn insert_into_u64_to_struct_map(key: u64, value: Struct) {
         storage.map7.insert(key, value);
     }
 
-    fn from_u64_to_struct(key: u64) -> Struct {
+    fn get_from_u64_to_struct_map(key: u64) -> Struct {
         storage.map7.get(key)
     }
 
-    fn into_u64_to_enum(key: u64, value: Enum) {
+    fn insert_into_u64_to_enum_map(key: u64, value: Enum) {
         storage.map8.insert(key, value);
     }
 
-    fn from_u64_to_enum(key: u64) -> Enum {
+    fn get_from_u64_to_enum_map(key: u64) -> Enum {
         storage.map8.get(key)
     }
 
-    fn into_u64_to_str(key: u64, value: str[33]) {
+    fn insert_into_u64_to_str_map(key: u64, value: str[33]) {
         storage.map9.insert(key, value);
     }
 
-    fn from_u64_to_str(key: u64) -> str[33] {
+    fn get_from_u64_to_str_map(key: u64) -> str[33] {
         storage.map9.get(key)
     }
 
-    fn into_u64_to_array(key: u64, value: [b256;
+    fn insert_into_u64_to_array_map(key: u64, value: [b256;
     3]) {
         storage.map10.insert(key, value);
     }
 
-    fn from_u64_to_array(key: u64) -> [b256;
+    fn get_from_u64_to_array_map(key: u64) -> [b256;
     3] {
         storage.map10.get(key)
     }
 
-    fn into_bool_to_u64(key: bool, value: u64) {
+    fn insert_into_bool_to_u64_map(key: bool, value: u64) {
         storage.map11.insert(key, value);
     }
-    fn from_bool_to_u64(key: bool) -> u64 {
+    fn get_from_bool_to_u64_map(key: bool) -> u64 {
         storage.map11.get(key)
     }
 
-    fn into_u8_to_u64(key: u8, value: u64) {
+    fn insert_into_u8_to_u64_map(key: u8, value: u64) {
         storage.map12.insert(key, value);
     }
-    fn from_u8_to_u64(key: u8) -> u64 {
+    fn get_from_u8_to_u64_map(key: u8) -> u64 {
         storage.map12.get(key)
     }
 
-    fn into_u16_to_u64(key: u16, value: u64) {
+    fn insert_into_u16_to_u64_map(key: u16, value: u64) {
         storage.map13.insert(key, value);
     }
-    fn from_u16_to_u64(key: u16) -> u64 {
+    fn get_from_u16_to_u64_map(key: u16) -> u64 {
         storage.map13.get(key)
     }
 
-    fn into_u32_to_u64(key: u32, value: u64) {
+    fn insert_into_u32_to_u64_map(key: u32, value: u64) {
         storage.map14.insert(key, value);
     }
-    fn from_u32_to_u64(key: u32) -> u64 {
+    fn get_from_u32_to_u64_map(key: u32) -> u64 {
         storage.map14.get(key)
     }
 
-    fn into_tuple_to_u64(key: (b256, u8, bool), value: u64) {
+    fn insert_into_tuple_to_u64_map(key: (b256, u8, bool), value: u64) {
         storage.map15.insert(key, value);
     }
-    fn from_tuple_to_u64(key: (b256, u8, bool)) -> u64 {
+    fn get_from_tuple_to_u64_map(key: (b256, u8, bool)) -> u64 {
         storage.map15.get(key)
     }
 
-    fn into_struct_to_u64(key: Struct, value: u64) {
+    fn insert_into_struct_to_u64_map(key: Struct, value: u64) {
         storage.map16.insert(key, value);
     }
 
-    fn from_struct_to_u64(key: Struct) -> u64 {
+    fn get_from_struct_to_u64_map(key: Struct) -> u64 {
         storage.map16.get(key)
     }
 
-    fn into_enum_to_u64(key: Enum, value: u64) {
+    fn insert_into_enum_to_u64_map(key: Enum, value: u64) {
         storage.map17.insert(key, value);
     }
 
-    fn from_enum_to_u64(key: Enum) -> u64 {
+    fn get_from_enum_to_u64_map(key: Enum) -> u64 {
         storage.map17.get(key)
     }
 
-    fn into_str_to_u64(key: str[33], value: u64) {
+    fn insert_into_str_to_u64_map(key: str[33], value: u64) {
         storage.map18.insert(key, value);
     }
-    fn from_str_to_u64(key: str[33]) -> u64 {
+    fn get_from_str_to_u64_map(key: str[33]) -> u64 {
         storage.map18.get(key)
     }
 
-    fn into_array_to_u64(key: [b256;
+    fn insert_into_array_to_u64_map(key: [b256;
     3], value: u64) {
         storage.map19.insert(key, value)
     }
-    fn from_array_to_u64(key: [b256;
+    fn get_from_array_to_u64_map(key: [b256;
     3]) -> u64 {
         storage.map19.get(key)
     }
