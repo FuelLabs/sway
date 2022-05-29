@@ -1,7 +1,8 @@
 mod harness;
+use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
-
 pub fn run(filter_regex: Option<regex::Regex>) {
+    init_tracing_subscriber();
     let filter = |name| {
         filter_regex
             .as_ref()
@@ -129,6 +130,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ), // true
         ("should_pass/stdlib/evm_ecr", ProgramState::Return(1)), // true
+        (
+            "should_pass/stdlib/exponentiation_test",
+            ProgramState::Return(1),
+        ), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
         ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
@@ -383,6 +388,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0xfb, 0xc7, 0x88, 0x4e,
             ])),
         ),
+        (
+            "should_pass/language/match_expressions_inside_generic_functions",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/generic_inside_generic",
+            ProgramState::Return(7),
+        ),
     ];
 
     let mut number_of_tests_run =
@@ -528,6 +541,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_impl_purity_mismatch",
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
+        "should_fail/type_mismatch_error_message",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

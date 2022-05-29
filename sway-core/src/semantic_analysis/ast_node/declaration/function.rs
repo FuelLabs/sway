@@ -144,6 +144,35 @@ impl TypedFunctionDeclaration {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
 
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+
+        // update the types in the type parameters
+        let type_parameters = type_parameters
+            .into_iter()
+            .map(|mut type_parameter| {
+                type_parameter.type_id = match look_up_type_id(type_parameter.type_id)
+                    .matches_type_parameter(&type_mapping)
+                {
+                    Some(matching_id) => {
+                        insert_type(TypeInfo::Ref(matching_id, type_parameter.span()))
+                    }
+                    None => check!(
+                        namespace.resolve_type_with_self(
+                            look_up_type_id(type_parameter.type_id),
+                            self_type,
+                            &type_parameter.span(),
+                            EnforceTypeArguments::Yes
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    ),
+                };
+                type_parameter
+            })
+            .collect::<Vec<_>>();
+
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
@@ -153,9 +182,6 @@ impl TypedFunctionDeclaration {
                 errors
             );
         }
-
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
 
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
