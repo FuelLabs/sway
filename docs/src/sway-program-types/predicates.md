@@ -14,4 +14,4 @@ fn main() -> bool {
 ## Debugging Predicates
 
 - Because they don't have any side effects (they are _pure_), predicates *cannot* create receipts (which are transactions), and thus cannot have logging or create a backtrace. This means that there is no native way to debug them aside from using a single-stepping debugger.
-- Given the above, we suggest that to debug and write _predicates_, you should actually write it  first  in a _script_, and, once it works as expected, move it inside a _predicate_.
+- As a workaround, the predicate can be written, tested, and debugged first as a script, and then changed back into a `predicate`.
