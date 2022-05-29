@@ -51,7 +51,7 @@ impl core::ops::Ord for U128 {
 
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
-        disable_overflow();
+        disable_panic_on_overflow();
         let mut result = U128 {
             upper: 0,
             lower: 0,
@@ -67,12 +67,12 @@ impl u64 {
             // Store the sum into the second word of result.
             sw result_ptr sum i1;
         };
-        enable_overflow();
+        enable_panic_on_overflow();
         result
     }
 
     pub fn overflowing_mul(self, right: Self) -> U128 {
-        disable_overflow();
+        disable_panic_on_overflow();
         let mut result = U128 {
             upper: 0,
             lower: 0,
@@ -88,7 +88,7 @@ impl u64 {
             // Store the product into the second word of result.
             sw result_ptr product i1;
         };
-        enable_overflow();
+        enable_panic_on_overflow();
         result
     }
 }

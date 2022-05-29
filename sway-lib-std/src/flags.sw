@@ -3,7 +3,7 @@ library flags;
 
 use ::context::registers::flags;
 
-pub fn disable_overflow() {
+pub fn disable_panic_on_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
     // 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010
@@ -16,7 +16,7 @@ pub fn disable_overflow() {
     }
 }
 
-pub fn enable_overflow() {
+pub fn enable_panic_on_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
     // 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101
