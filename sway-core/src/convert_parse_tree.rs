@@ -1248,7 +1248,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 generics_opt,
                             } = maybe_method_segment;
                             if let Some((_double_colon_token, generic_args)) = generics_opt {
-                                println!("here?1");
                                 let error = ConvertParseTreeError::GenericsNotSupportedHere {
                                     span: generic_args.span(),
                                 };
