@@ -8,39 +8,25 @@ impl Add for b256 {
     fn add(self, other: Self) -> Self {
         let (s1, s2, s3, s4) = decompose(self);
         let (o1, o2, o3, o4) = decompose(other);
-        let mut w1 = 0;
-        let mut w2 = 0;
-        let mut w3 = 0;
-        let mut w4 = 0;
-
         let mut total_overflow = 0;
-        let (sum_4, ovf_4) = overflowing_add(s4, o4);
-        w4 = sum_4;
 
+        let (sum_4, ovf_4) = overflowing_add(s4, o4);
         let (sum_3, ovf_3) = overflowing_add(s3, o3);
         total_overflow = ovf_3 + ovf_4;
         let (sum_3_final, carry_3) = overflowing_add(sum_3, total_overflow);
-        w3 = sum_3_final;
-
         let (sum_2, ovf_2) = overflowing_add(s2, o2);
         total_overflow = ovf_2 + carry_3;
         let (sum_2_final, carry_2) = overflowing_add(sum_2, total_overflow);
-        w2 = sum_2_final;
-
         let (sum_1, ovf_1) = overflowing_add(s1, o1);
         total_overflow = ovf_1 + carry_2;
-        // we use regular add for the highest bits because
-        // we want an overflow to panic, and we don't care
-        // about preserving the overflow if it does.
-        w1 = sum_1 + total_overflow;
 
-        compose(w1, w2, w3, w4)
+        compose(sum_1 + total_overflow, sum_2_final, sum_3_final, sum_4)
     }
 
 }
 
-/// used to get both the sum and the overflow value from an addition.
-/// with normal addition, any overflow will cause a vm panic.
+/// This is used to get both the sum and the overflow value from an addition.
+/// With normal addition, any overflow will cause a vm panic.
 fn overflowing_add(a: u64, b: u64) -> (u64, u64) {
     disable_overflow();
     let mut result = (0u64, 0u64);
