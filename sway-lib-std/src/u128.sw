@@ -24,7 +24,7 @@ pub trait From {
 impl From for U128 {
     pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper, lower,
+            upper, lower, 
         }
     }
 }
@@ -161,14 +161,14 @@ impl core::ops::Shiftable for U128 {
         // be discarded.
         // TODO remove the `else` once #1682 is fixed
         else if (rhs >= 64) {
-            return ~Self::from(self.lower << (rhs - 64), 0);
+            return ~Self::from(self.lower <<(rhs - 64), 0);
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save highest bits of lower half.
-        let highest_lower_bits = self.lower >> (64 - rhs);
+        let highest_lower_bits = self.lower >>(64 - rhs);
 
         let upper = (self.upper << rhs) + highest_lower_bits;
         let lower = self.lower << rhs;
@@ -187,14 +187,14 @@ impl core::ops::Shiftable for U128 {
         // be discarded.
         // TODO remove the `else` once #1682 is fixed
         else if (rhs >= 64) {
-            return ~Self::from(0, self.upper >> (rhs - 64));
+            return ~Self::from(0, self.upper >>(rhs - 64));
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save lowest bits of upper half.
-        let lowest_upper_bits = self.upper << (64 - rhs);
+        let lowest_upper_bits = self.upper <<(64 - rhs);
 
         let upper = self.upper >> rhs;
         let lower = (self.lower >> rhs) + lowest_upper_bits;
@@ -246,7 +246,7 @@ impl core::ops::Subtract for U128 {
         }
 
         U128 {
-            upper, lower,
+            upper, lower, 
         }
     }
 }
