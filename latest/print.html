@@ -152,11 +152,23 @@
 <li><a href="introduction/./standard_library.html">Standard Library</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
-<p>Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.</p>
+<p>Note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.</p>
 <h2 id="installing-from-pre-compiled-binaries"><a class="header" href="#installing-from-pre-compiled-binaries">Installing from Pre-compiled Binaries</a></h2>
-<p>Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. They can be found attached to the release notes of the respective release. The latest <code>forc</code> release can be found here: <a href="https://github.com/FuelLabs/sway/releases/latest">https://github.com/FuelLabs/sway/releases/latest</a>.</p>
+<p>Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported (<a href="https://github.com/FuelLabs/sway/issues/1526">tracking issue for Windows support</a>). Windows Subsystem for Linux should work but is not officially supported.</p>
+<p><a href="https://github.com/FuelLabs/fuelup"><code>fuelup</code></a> is the equivalent of Rust's <code>rustup</code> for the Sway toolchain. It enables easily downloading binary releases of the Sway toolchain.</p>
+<p>Start by installing <code>fuelup</code> with:</p>
+<pre><code class="language-sh">curl --proto '=https' --tlsv1.2 -sSf \
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s install
+</code></pre>
+<p>You may need to add <code>~/.fuelup/bin</code> to your PATH. For Bash:</p>
+<pre><code class="language-sh">export PATH=&quot;${HOME}/.fuelup/bin/:${PATH}&quot;
+</code></pre>
+<p>Then run</p>
+<pre><code class="language-sh">fuelup install
+</code></pre>
+<p>to install the latest Sway toolchain.</p>
 <blockquote>
-<p><strong>Note</strong>: <a href="https://github.com/FuelLabs/fuelup"><code>fuelup</code></a> is a work-in-progress equivalent of <code>rustup</code> for the Sway toolchain. Once ready, it will be able to easily download and manage Sway toolchain versions.</p>
+<p><strong>Note</strong>: A <code>curl: (22) The requested URL returned error: 404</code> error when running any of the steps above is most likely an indication that a new release was published but binaries were not yet uploaded by CI. See: <a href="https://github.com/FuelLabs/fuelup/issues/44">https://github.com/FuelLabs/fuelup/issues/44</a>. Simply re-try the commands after binaries are uploaded.</p>
 </blockquote>
 <h2 id="installing-from-source"><a class="header" href="#installing-from-source">Installing from Source</a></h2>
 <h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
