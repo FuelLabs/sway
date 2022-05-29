@@ -54,7 +54,7 @@ storage {
 }
 ```
 
-* Making sure to initialize the storage map using `new()` in some contract method before using it:
+* Initializing the storage map exactly once using `new()` in some contract method before using it:
 
 ```sway
 fn init() {
@@ -65,7 +65,7 @@ fn init() {
 
 The contract method that calls `new()` has to be called from an external context (such as you Rust SDK test) before you can actually use `insert()` and `get()` correctly.
 
-* Call `insert()` and `get()` as needed:
+* Calling `insert()` and `get()` as needed:
 
 ```sway
 storage.map1.insert(42, 99);
