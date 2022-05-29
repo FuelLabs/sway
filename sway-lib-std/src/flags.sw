@@ -3,6 +3,8 @@ library flags;
 
 use ::context::registers::flags;
 
+/// Call this function to allow overflowing operations to occur without a FuelVM panic.
+/// IMPORTANT !!! Don't forget to call enable_panic_on_overflow() after performing the operations for which you disabled the default panic-on-overflow behaviour in the first place !
 pub fn disable_panic_on_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
@@ -16,6 +18,7 @@ pub fn disable_panic_on_overflow() {
     }
 }
 
+/// Call this function to re-enable the panic-on-overflow behaviour in the FuelVM. Note that panic-on-overflow is the default behaviour, so there is no need to use this function unless you have previously modified the default FuelVM behaviour with disable_panic_on_overflow()
 pub fn enable_panic_on_overflow() {
     // Mask second bit, which is `F_WRAPPING`.
     // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
