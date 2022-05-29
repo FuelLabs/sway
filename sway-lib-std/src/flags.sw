@@ -1,4 +1,4 @@
-//! Functionality for setting & unsetting Fuel-VM flags to modify behavior related to the $err and $of registers
+//! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers
 library flags;
 
 use ::context::registers::flags;
