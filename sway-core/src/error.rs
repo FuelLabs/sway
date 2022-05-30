@@ -961,6 +961,11 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
+    #[error(
+        "Initializing a constant value via `const` is currently limited to primitive values \
+        such as numbers, bools, strings or b256s."
+    )]
+    NonLiteralConstantDeclValue { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1153,6 +1158,7 @@ impl CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
+            NonLiteralConstantDeclValue { span } => span.clone(),
         }
     }
 
