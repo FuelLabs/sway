@@ -37,10 +37,10 @@ pub fn caller_contract_id() -> ContractId {
 /// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        let sender_res = get_coins_owner();
-        match sender_res {
-            Result::Ok(sender) => Result::Ok(sender),
-            sender_res => sender_res,
+        let owner_res = get_coins_owner();
+        match owner_res {
+            Result::Ok(owner) => Result::Ok(owner),
+            owner_res => owner_res,
         }
     } else {
         // Get caller's `ContractId`.

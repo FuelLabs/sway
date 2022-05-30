@@ -1,4 +1,4 @@
-//! A wrapper type whith 2 variants; an `Address` and a `ContractId`
+//! A wrapper type with 2 variants; an `Address` and a `ContractId`
 library identity;
 
 use ::address::Address;
@@ -10,6 +10,6 @@ pub enum Identity {
 }
 
 // idea...
-// pub trait Indentification() {
+// pub trait Indentify() {
 //     fn resolve
 // }
