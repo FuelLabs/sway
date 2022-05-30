@@ -29,7 +29,7 @@ use std::sync::Arc;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree, TypedProgram,
+    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree, TypedProgram, TypedProgramKind,
 };
 pub mod types;
 pub use crate::parse_tree::{
@@ -110,7 +110,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
         };
         parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
             let library_name = match kind {
-                TreeType::Library { name } => name.to_string(),
+                TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
                     let error = CompileError::ImportMustBeLibrary { span };
@@ -118,12 +118,19 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 }
             };
             let submodule = ParseSubmodule {
-                library_name,
+                library_name: library_name.to_string(),
                 module,
             };
-            let key = dep.path.span().as_str().to_string();
+            // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
+            // constructor site is always `None`. If we introduce dep aliases in the future, this
+            // is where we should use it.
+            let dep_alias = None;
+            let dep_name = match dep_alias {
+                None => library_name.clone(),
+                Some(alias) => alias,
+            };
             res.flat_map(|mut submods| {
-                submods.push((key, submodule));
+                submods.push((dep_name, submodule));
                 ok(submods, vec![], vec![])
             })
         })

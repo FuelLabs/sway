@@ -38,11 +38,14 @@ pub struct ParseModule {
     /// The content of this module in the form of a `ParseTree`.
     pub tree: ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
-    pub submodules: Vec<(DependencyPath, ParseSubmodule)>,
+    pub submodules: Vec<(DepName, ParseSubmodule)>,
 }
 
-/// The dependency path span in the form of a `String`.
-pub type DependencyPath = String;
+/// The name used within a module to refer to one of its submodules.
+///
+/// If an alias was given to the `dep`, this will be the alias. If not, this is the submodule's
+/// library name.
+pub type DepName = Ident;
 
 /// A library module that was declared as a `dep` of another module.
 ///

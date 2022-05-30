@@ -7,7 +7,7 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    parse_tree::{DependencyPath, ParseModule, ParseProgram, Purity, TreeType},
+    parse_tree::{DepName, ParseModule, ParseProgram, ParseSubmodule, Purity, TreeType},
     semantic_analysis::{
         ast_node::Mode,
         namespace::{self, Namespace},
@@ -16,7 +16,6 @@ use crate::{
     type_engine::*,
     AstNode, ParseTree,
 };
-use std::collections::HashMap;
 use sway_types::{span::Span, Ident};
 
 #[derive(Clone, Debug)]
@@ -46,7 +45,7 @@ pub enum TypedProgramKind {
 
 #[derive(Clone, Debug)]
 pub struct TypedModule {
-    pub submodules: HashMap<DependencyPath, TypedSubmodule>,
+    pub submodules: Vec<(DepName, TypedSubmodule)>,
     pub namespace: namespace::Module,
     pub all_nodes: Vec<TypedAstNode>,
 }
@@ -216,15 +215,28 @@ impl TypedModule {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Self> {
-        // Type-check submodules first.
-        let submodules = Default::default();
-        for (path, submodule) in &parsed.submodules {
-            unimplemented!();
+        let ParseModule { submodules, tree } = parsed;
+
+        // Type-check submodules first in order of declaration.
+        let mut submodules_res = ok(vec![], vec![], vec![]);
+        for (name, submodule) in submodules {
+            let submodule_res = TypedSubmodule::type_check(
+                name.clone(),
+                submodule,
+                namespace,
+                build_config,
+                dead_code_graph,
+            );
+            submodules_res = submodules_res.flat_map(|mut submodules| {
+                submodule_res.map(|submodule| {
+                    submodules.push((name, submodule));
+                    submodules
+                })
+            });
         }
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
-        let ordered_nodes_res =
-            node_dependencies::order_ast_nodes_by_dependency(parsed.tree.root_nodes);
+        let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(tree.root_nodes);
 
         let typed_nodes_res = ordered_nodes_res.flat_map(|ordered_nodes| {
             Self::type_check_nodes(ordered_nodes, namespace, build_config, dead_code_graph)
@@ -235,10 +247,12 @@ impl TypedModule {
             ok(typed_nodes, vec![], errors)
         });
 
-        validated_nodes_res.map(|all_nodes| Self {
-            submodules,
-            namespace: namespace.module().clone(),
-            all_nodes,
+        submodules_res.flat_map(|submodules| {
+            validated_nodes_res.map(|all_nodes| Self {
+                submodules,
+                namespace: namespace.module().clone(),
+                all_nodes,
+            })
         })
     }
 
@@ -273,6 +287,28 @@ impl TypedModule {
         } else {
             ok(typed_nodes, warnings, errors)
         }
+    }
+}
+
+impl TypedSubmodule {
+    pub fn type_check(
+        dep_name: DepName,
+        submodule: ParseSubmodule,
+        parent_namespace: &mut Namespace,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph,
+    ) -> CompileResult<Self> {
+        let ParseSubmodule {
+            library_name,
+            module,
+        } = submodule;
+        let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
+        let module_res =
+            TypedModule::type_check(module, &mut dep_namespace, build_config, dead_code_graph);
+        module_res.map(|module| TypedSubmodule {
+            library_name,
+            module,
+        })
     }
 }
 
