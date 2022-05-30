@@ -52,7 +52,7 @@ pub struct TypedModule {
 
 #[derive(Clone, Debug)]
 pub struct TypedSubmodule {
-    pub library_name: String,
+    pub library_name: Ident,
     pub module: TypedModule,
 }
 

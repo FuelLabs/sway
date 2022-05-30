@@ -53,7 +53,7 @@ pub type DepName = Ident;
 #[derive(Debug)]
 pub struct ParseSubmodule {
     /// The name of a submodule, parsed from the `library` declaration within the module itself.
-    pub library_name: String,
+    pub library_name: Ident,
     pub module: ParseModule,
 }
 

@@ -29,7 +29,8 @@ use std::sync::Arc;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree, TypedProgram, TypedProgramKind,
+    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedParseTree, TypedProgram,
+    TypedProgramKind,
 };
 pub mod types;
 pub use crate::parse_tree::{
@@ -117,10 +118,6 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                     return err(vec![], vec![error]);
                 }
             };
-            let submodule = ParseSubmodule {
-                library_name: library_name.to_string(),
-                module,
-            };
             // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
             // constructor site is always `None`. If we introduce dep aliases in the future, this
             // is where we should use it.
@@ -128,6 +125,10 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
             let dep_name = match dep_alias {
                 None => library_name.clone(),
                 Some(alias) => alias,
+            };
+            let submodule = ParseSubmodule {
+                library_name,
+                module,
             };
             res.flat_map(|mut submods| {
                 submods.push((dep_name, submodule));
@@ -333,11 +334,10 @@ pub fn compile_to_ast(
         }
     };
 
-    let (mut l_warnings, mut l_errors) =
-        perform_control_flow_analysis(&typed_program, &mut dead_code_graph);
+    let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
-    errors.append(&mut l_errors);
-    warnings.append(&mut l_warnings);
+    errors.append(&mut cfa_res.errors);
+    warnings.append(&mut cfa_res.warnings);
     errors = dedup_unsorted(errors);
     warnings = dedup_unsorted(warnings);
     if !errors.is_empty() {
@@ -552,27 +552,64 @@ pub fn asm_to_bytecode(
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis(
-    program: &TypedProgram,
-    dead_code_graph: &mut ControlFlowGraph,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    // TODO: Append all submodules, not just root.
-    let tree_type = program.kind.tree_type();
+fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
+    let dca_res = dead_code_analysis(program);
+    let rpa_errors = return_path_analysis(program);
+    let rpa_res = if rpa_errors.is_empty() {
+        ok((), vec![], vec![])
+    } else {
+        err(vec![], rpa_errors)
+    };
+    dca_res.flat_map(|_| rpa_res)
+}
 
-    match ControlFlowGraph::append_module_to_dead_code_graph(
-        &program.root.all_nodes,
-        &tree_type,
-        dead_code_graph,
-    ) {
-        Ok(_) => (),
-        Err(e) => return (vec![], vec![e]),
-    }
-    let mut warnings = vec![];
+/// Constructs a dead code graph from all modules within the graph and then attempts to find dead
+/// code.
+///
+/// Returns the graph that was used for analysis.
+fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph> {
+    let mut dead_code_graph = Default::default();
+    let tree_type = program.kind.tree_type();
+    module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
+        let warnings = dead_code_graph.find_dead_code();
+        ok(dead_code_graph, warnings, vec![])
+    })
+}
+
+/// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
+fn module_dead_code_analysis(
+    module: &TypedModule,
+    tree_type: &TreeType,
+    graph: &mut ControlFlowGraph,
+) -> CompileResult<()> {
+    let init_res = ok((), vec![], vec![]);
+    let submodules_res = module
+        .submodules
+        .iter()
+        .fold(init_res, |res, (_, submodule)| {
+            let name = submodule.library_name.clone();
+            let tree_type = TreeType::Library { name };
+            res.flat_map(|_| module_dead_code_analysis(&submodule.module, &tree_type, graph))
+        });
+    submodules_res.flat_map(|()| {
+        ControlFlowGraph::append_module_to_dead_code_graph(&module.all_nodes, tree_type, graph)
+            .map(|_| ok((), vec![], vec![]))
+            .unwrap_or_else(|error| err(vec![], vec![error]))
+    })
+}
+
+fn return_path_analysis(program: &TypedProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    warnings.append(&mut dead_code_graph.find_dead_code());
-    let graph = ControlFlowGraph::construct_return_path_graph(&program.root.all_nodes);
-    errors.append(&mut graph.analyze_return_paths());
-    (warnings, errors)
+    module_return_path_analysis(&program.root, &mut errors);
+    errors
+}
+
+fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileError>) {
+    for (_, submodule) in &module.submodules {
+        module_return_path_analysis(&submodule.module, errors);
+    }
+    let graph = ControlFlowGraph::construct_return_path_graph(&module.all_nodes);
+    errors.extend(graph.analyze_return_paths());
 }
 
 #[test]
