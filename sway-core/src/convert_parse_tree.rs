@@ -2509,9 +2509,9 @@ fn statement_let_to_ast_nodes(
 
 fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
     IncludeStatement {
-        alias: None,
+        _alias: None,
         span: dependency.span(),
-        path_span: dependency.path.span(),
+        _path_span: dependency.path.span(),
     }
 }
 

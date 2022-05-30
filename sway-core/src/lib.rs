@@ -22,15 +22,14 @@ use crate::{
 };
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
-use control_flow_analysis::{ControlFlowGraph, Graph};
+use control_flow_analysis::ControlFlowGraph;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedParseTree, TypedProgram,
-    TypedProgramKind,
+    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedProgram, TypedProgramKind,
 };
 pub mod types;
 pub use crate::parse_tree::{
@@ -208,81 +207,6 @@ pub enum BytecodeCompilationResult {
     },
 }
 
-/// For internal compiler use.
-/// Compiles an included file and creates its control flow and dead code graphs.
-/// These graphs are merged into the parent program's graphs for accurate analysis.
-///
-/// TODO -- there is _so_ much duplicated code and messiness in this file around the
-/// different types of compilation and stuff. After we get to a good state with the MVP,
-/// clean up the types here with the power of hindsight
-pub(crate) fn compile_inner_dependency(
-    input: Arc<str>,
-    alias: Option<&Ident>,
-    dep_build_config: BuildConfig,
-    parent_namespace: &mut Namespace,
-    dead_code_graph: &mut ControlFlowGraph,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    // Parse the file.
-    let parse_program = check!(
-        parse(input.clone(), Some(&dep_build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // Check we have a library, and retrieve the name.
-    let library_name = match &parse_program.kind {
-        TreeType::Library { name } => name.clone(),
-        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            errors.push(CompileError::ImportMustBeLibrary {
-                span: span::Span::new(input, 0, 0, Some(dep_build_config.path())).unwrap(),
-            });
-            return err(warnings, errors);
-        }
-    };
-
-    // Fetch the name for the dep library module.
-    let dep_name = match alias {
-        Some(alias) => alias.clone(),
-        None => library_name,
-    };
-
-    let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
-
-    // Type-check the module, populating its namespace.
-    let typed_parse_tree = check!(
-        TypedParseTree::type_check(
-            parse_program.root.tree,
-            &mut dep_namespace,
-            &parse_program.kind,
-            &dep_build_config,
-            dead_code_graph,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // look for return path errors
-    let graph = ControlFlowGraph::construct_return_path_graph(typed_parse_tree.all_nodes());
-    errors.append(&mut graph.analyze_return_paths());
-
-    // The dead code will be analyzed later wholistically with the rest of the program
-    // since we can't tell what is dead and what isn't just from looking at this file
-    if let Err(e) = ControlFlowGraph::append_module_to_dead_code_graph(
-        typed_parse_tree.all_nodes(),
-        &parse_program.kind,
-        dead_code_graph,
-    ) {
-        errors.push(e)
-    };
-
-    ok((), warnings, errors)
-}
-
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
@@ -307,22 +231,11 @@ pub fn compile_to_ast(
         }
     };
 
-    let mut dead_code_graph = ControlFlowGraph {
-        graph: Graph::new(),
-        entry_points: vec![],
-        namespace: Default::default(),
-    };
-
     let CompileResult {
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(
-        parse_program,
-        initial_namespace,
-        &build_config.clone(),
-        &mut dead_code_graph,
-    );
+    } = TypedProgram::type_check(parse_program, initial_namespace);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {

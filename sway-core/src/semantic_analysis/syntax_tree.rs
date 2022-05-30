@@ -4,8 +4,6 @@ use super::{
 };
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
     error::*,
     parse_tree::{DepName, ParseModule, ParseProgram, ParseSubmodule, Purity, TreeType},
     semantic_analysis::{
@@ -14,7 +12,7 @@ use crate::{
         TypeCheckArguments,
     },
     type_engine::*,
-    AstNode, ParseTree,
+    AstNode,
 };
 use sway_types::{span::Span, Ident};
 
@@ -64,13 +62,11 @@ impl TypedProgram {
     pub fn type_check(
         parsed: ParseProgram,
         initial_namespace: namespace::Module,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mod_res = TypedModule::type_check(root, &mut namespace, build_config, dead_code_graph);
+        let mod_res = TypedModule::type_check(root, &mut namespace);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind, mod_span);
             kind_res.map(|kind| Self { kind, root })
@@ -209,24 +205,13 @@ impl TypedModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
-    pub fn type_check(
-        parsed: ParseModule,
-        namespace: &mut Namespace,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
-    ) -> CompileResult<Self> {
+    pub fn type_check(parsed: ParseModule, namespace: &mut Namespace) -> CompileResult<Self> {
         let ParseModule { submodules, tree } = parsed;
 
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
         for (name, submodule) in submodules {
-            let submodule_res = TypedSubmodule::type_check(
-                name.clone(),
-                submodule,
-                namespace,
-                build_config,
-                dead_code_graph,
-            );
+            let submodule_res = TypedSubmodule::type_check(name.clone(), submodule, namespace);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
                     submodules.push((name, submodule));
@@ -238,9 +223,8 @@ impl TypedModule {
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(tree.root_nodes);
 
-        let typed_nodes_res = ordered_nodes_res.flat_map(|ordered_nodes| {
-            Self::type_check_nodes(ordered_nodes, namespace, build_config, dead_code_graph)
-        });
+        let typed_nodes_res = ordered_nodes_res
+            .flat_map(|ordered_nodes| Self::type_check_nodes(ordered_nodes, namespace));
 
         let validated_nodes_res = typed_nodes_res.flat_map(|typed_nodes| {
             let errors = check_supertraits(&typed_nodes, namespace);
@@ -259,8 +243,6 @@ impl TypedModule {
     fn type_check_nodes(
         nodes: Vec<AstNode>,
         namespace: &mut Namespace,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Vec<TypedAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -273,8 +255,6 @@ impl TypedModule {
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text: Default::default(),
                     self_type: insert_type(TypeInfo::Contract),
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts: Default::default(),
                 })
@@ -295,16 +275,13 @@ impl TypedSubmodule {
         dep_name: DepName,
         submodule: ParseSubmodule,
         parent_namespace: &mut Namespace,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
     ) -> CompileResult<Self> {
         let ParseSubmodule {
             library_name,
             module,
         } = submodule;
         let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
-        let module_res =
-            TypedModule::type_check(module, &mut dep_namespace, build_config, dead_code_graph);
+        let module_res = TypedModule::type_check(module, &mut dep_namespace);
         module_res.map(|module| TypedSubmodule {
             library_name,
             module,
@@ -321,283 +298,6 @@ impl TypedProgramKind {
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum TypedParseTree {
-    Script {
-        main_function: TypedFunctionDeclaration,
-        namespace: namespace::Module,
-        declarations: Vec<TypedDeclaration>,
-        all_nodes: Vec<TypedAstNode>,
-    },
-    Predicate {
-        main_function: TypedFunctionDeclaration,
-        namespace: namespace::Module,
-        declarations: Vec<TypedDeclaration>,
-        all_nodes: Vec<TypedAstNode>,
-    },
-    Contract {
-        abi_entries: Vec<TypedFunctionDeclaration>,
-        namespace: namespace::Module,
-        declarations: Vec<TypedDeclaration>,
-        all_nodes: Vec<TypedAstNode>,
-    },
-    Library {
-        namespace: namespace::Module,
-        all_nodes: Vec<TypedAstNode>,
-    },
-}
-
-impl TypedParseTree {
-    /// The `all_nodes` field in the AST variants is used to perform control flow and return flow
-    /// analysis, while the direct copies of the declarations and main functions are used to create
-    /// the ASM.
-    pub(crate) fn all_nodes(&self) -> &[TypedAstNode] {
-        use TypedParseTree::*;
-        match self {
-            Library { all_nodes, .. } => all_nodes,
-            Script { all_nodes, .. } => all_nodes,
-            Contract { all_nodes, .. } => all_nodes,
-            Predicate { all_nodes, .. } => all_nodes,
-        }
-    }
-
-    pub fn namespace(&self) -> &namespace::Module {
-        use TypedParseTree::*;
-        match self {
-            Library { namespace, .. } => namespace,
-            Script { namespace, .. } => namespace,
-            Contract { namespace, .. } => namespace,
-            Predicate { namespace, .. } => namespace,
-        }
-    }
-
-    pub fn into_namespace(self) -> namespace::Module {
-        use TypedParseTree::*;
-        match self {
-            Library { namespace, .. } => namespace,
-            Script { namespace, .. } => namespace,
-            Contract { namespace, .. } => namespace,
-            Predicate { namespace, .. } => namespace,
-        }
-    }
-
-    /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
-        use TypedParseTree::*;
-        // Get all of the entry points for this tree type. For libraries, that's everything
-        // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        let errors: Vec<_> = match self {
-            Library { all_nodes, .. } => all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            Script { all_nodes, .. } => all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            Predicate { all_nodes, .. } => all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            Contract { abi_entries, .. } => abi_entries
-                .iter()
-                .map(TypedAstNode::from)
-                .flat_map(|x| x.check_for_unresolved_types())
-                .collect(),
-        };
-
-        if errors.is_empty() {
-            ok((), vec![], errors)
-        } else {
-            err(vec![], errors)
-        }
-    }
-
-    /// Type-check the given `parsed` tree.
-    ///
-    /// This is called from both the top-level `compile_*` functions, as well as internally for
-    /// each submodule dependency library.
-    pub fn type_check(
-        parsed: ParseTree,
-        namespace: &mut Namespace,
-        tree_type: &TreeType,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
-    ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
-        let ordered_nodes = check!(
-            node_dependencies::order_ast_nodes_by_dependency(parsed.root_nodes),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        let typed_nodes = check!(
-            TypedParseTree::type_check_nodes(
-                ordered_nodes,
-                namespace,
-                build_config,
-                dead_code_graph,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        TypedParseTree::validate_typed_nodes(
-            typed_nodes,
-            parsed.span,
-            namespace,
-            tree_type,
-            warnings,
-            errors,
-        )
-    }
-
-    fn type_check_nodes(
-        nodes: Vec<AstNode>,
-        namespace: &mut Namespace,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph,
-    ) -> CompileResult<Vec<TypedAstNode>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let typed_nodes = nodes
-            .into_iter()
-            .map(|node| {
-                TypedAstNode::type_check(TypeCheckArguments {
-                    checkee: node,
-                    namespace,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
-                    self_type: insert_type(TypeInfo::Contract),
-                    build_config,
-                    dead_code_graph,
-                    mode: Mode::NonAbi,
-                    opts: Default::default(),
-                })
-            })
-            .filter_map(|res| res.ok(&mut warnings, &mut errors))
-            .collect();
-
-        if !errors.is_empty() {
-            err(warnings, errors)
-        } else {
-            ok(typed_nodes, warnings, errors)
-        }
-    }
-
-    fn validate_typed_nodes(
-        typed_tree_nodes: Vec<TypedAstNode>,
-        span: Span,
-        namespace: &Namespace,
-        tree_type: &TreeType,
-        warnings: Vec<CompileWarning>,
-        mut errors: Vec<CompileError>,
-    ) -> CompileResult<Self> {
-        // Keep a copy of the nodes as they are.
-        let all_nodes = typed_tree_nodes.clone();
-
-        // Check that if trait B is a supertrait of trait A, and if A is implemented for type T,
-        // then B is also implemented for type T
-        errors.append(&mut check_supertraits(&all_nodes, namespace));
-
-        // Extract other interesting properties from the list.
-        let mut mains = Vec::new();
-        let mut declarations = Vec::new();
-        let mut abi_entries = Vec::new();
-        for node in typed_tree_nodes {
-            match node.content {
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.as_str() == "main" =>
-                {
-                    mains.push(func)
-                }
-                // ABI entries are all functions declared in impl_traits on the contract type
-                // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
-                    methods,
-                    type_implementing_for: TypeInfo::Contract,
-                    ..
-                }) => abi_entries.append(&mut methods.clone()),
-                // XXX we're excluding the above ABI methods, is that OK?
-                TypedAstNodeContent::Declaration(decl) => declarations.push(decl),
-                _ => (),
-            };
-        }
-
-        // impure functions are disallowed in non-contracts
-        if *tree_type != TreeType::Contract {
-            errors.append(&mut disallow_impure_functions(&declarations, &mains));
-        }
-
-        // Perform other validation based on the tree type.
-        let namespace = namespace.module().clone();
-        let typed_parse_tree = match tree_type {
-            TreeType::Predicate => {
-                // A predicate must have a main function and that function must return a boolean.
-                if mains.is_empty() {
-                    errors.push(CompileError::NoPredicateMainFunction(span));
-                    return err(warnings, errors);
-                }
-                if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
-                }
-                let main_func = &mains[0];
-                match look_up_type_id(main_func.return_type) {
-                    TypeInfo::Boolean => (),
-                    _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
-                        main_func.span.clone(),
-                    )),
-                }
-                TypedParseTree::Predicate {
-                    main_function: main_func.clone(),
-                    all_nodes,
-                    namespace,
-                    declarations,
-                }
-            }
-            TreeType::Script => {
-                // A script must have exactly one main function.
-                if mains.is_empty() {
-                    errors.push(CompileError::NoScriptMainFunction(span));
-                    return err(warnings, errors);
-                }
-                if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
-                }
-                TypedParseTree::Script {
-                    main_function: mains[0].clone(),
-                    all_nodes,
-                    namespace,
-                    declarations,
-                }
-            }
-            TreeType::Library { .. } => TypedParseTree::Library {
-                all_nodes,
-                namespace,
-            },
-            TreeType::Contract => TypedParseTree::Contract {
-                abi_entries,
-                namespace,
-                declarations,
-                all_nodes,
-            },
-        };
-
-        ok(typed_parse_tree, warnings, errors)
     }
 }
 
