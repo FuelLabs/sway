@@ -2311,7 +2311,6 @@ mod tests {
         let asm_result = compile_ir_to_asm(
             &ir,
             &BuildConfig {
-                root_module: std::sync::Arc::new("".into()),
                 canonical_root_module: std::sync::Arc::new("".into()),
                 use_orig_asm: false,
                 print_intermediate_asm: false,

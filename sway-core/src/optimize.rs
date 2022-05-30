@@ -2584,7 +2584,6 @@ mod tests {
         let canonical_root_module = std::sync::Arc::new(root_module.canonicalize().unwrap());
 
         let build_config = crate::build_config::BuildConfig {
-            root_module,
             canonical_root_module,
             use_orig_asm: false,
             print_intermediate_asm: false,
